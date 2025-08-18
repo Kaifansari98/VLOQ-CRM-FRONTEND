@@ -25,6 +25,9 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { useSelector } from "react-redux"
+import { RootState } from "@/redux/store"
+import { useEffect, useState } from "react"
 
 // This is sample data.
 const data = {
@@ -157,6 +160,14 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user } = useSelector((state: RootState) => state.auth);
+  const [userDelts, setUserDelts] = useState([]);
+
+  useEffect(() => {
+    if(user){
+      console.log(user);
+    }
+  });
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>

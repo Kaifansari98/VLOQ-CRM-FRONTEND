@@ -1,8 +1,28 @@
+"use client";
+
 import { GalleryVerticalEnd } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { toast } from "react-toastify"
+import { RootState } from "@/redux/store"
+import { useDispatch, useSelector } from "react-redux"
+import { useEffect } from "react"
 
 import { LoginForm } from "@/components/login-form"
 
 export default function LoginPage() {
+
+  const dispatch = useDispatch()
+  const router = useRouter()
+  const { user, token } = useSelector((state: RootState) => state.auth)
+
+    // ✅ If already logged in, redirect immediately
+    useEffect(() => {
+      if (user && token) {
+        console.log(user && token);
+        router.replace("/dashboard") // replace so user can't go back
+      }
+    }, [user, token, router])
+
   return (
     <div className="grid min-h-svh lg:grid-cols-2 w-full">
       <div className="flex flex-col gap-4 p-6 md:p-10">

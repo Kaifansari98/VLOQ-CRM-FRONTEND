@@ -30,6 +30,25 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
+import { useState } from "react"
+
+import { useDispatch } from "react-redux"
+import { useRouter } from "next/navigation"
+import { toast } from "react-toastify"
+import { logout } from "@/redux/slices/authSlice"
+
 export function NavUser({
   user,
 }: {
@@ -40,11 +59,31 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
+  const dispatch = useDispatch()
+  const router = useRouter()
+  const [open, setOpen] = useState(false) // 🔹 manage modal manually
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const handleLogout = () => {
+    // Clear Redux state
+    dispatch(logout())
+
+    // Clear any localStorage/sessionStorage tokens if used
+    localStorage.removeItem("token")
+
+    // Redirect to login
+    router.push("/")
+
+    // Toast notification
+    toast.success("You have been logged out 👋");
+    
+  }
 
   return (
+    <>
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
+        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
@@ -102,13 +141,37 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <LogOut />
-              Log out
-            </DropdownMenuItem>
+             {/* 🔹 Just open modal here */}
+             <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault()            // prevent Radix auto close behavior
+                  setMenuOpen(false)            // manually close dropdown
+                  setTimeout(() => setOpen(true), 0) // open modal AFTER dropdown unmounts
+                }}
+                className="cursor-pointer"
+              >
+                <LogOut />
+                Log out
+              </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
-    </SidebarMenu>
+    </SidebarMenu>  
+      {/* 🔹 AlertDialog outside so it's not unmounted */}
+      <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            You will be logged out of your account. You can log in again anytime.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleLogout}>Log out</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }
