@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AppProviders } from "@/redux/provider";
 import { ToastProvider } from "@/providers/ToastProvider";
+import { SessionLoader } from "@/components/SessionLoader"
 import { ProtectedLayout } from "@/providers/ProtectedLayout";
 
 const geistSans = Geist({
@@ -38,6 +39,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AppProviders>
+          <SessionLoader />
             <ProtectedLayout>
               {children}
               <ToastProvider />
