@@ -72,7 +72,7 @@ export function NavUser({
     localStorage.removeItem("token")
 
     // Redirect to login
-    router.push("/")
+    router.push("/login")
 
     // Toast notification
     toast.success("You have been logged out 👋");
