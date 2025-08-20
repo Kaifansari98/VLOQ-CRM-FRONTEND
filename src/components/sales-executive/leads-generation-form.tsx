@@ -65,7 +65,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 // Improved Multi-Select Component with dropdown behavior
 function SimpleMultiSelect({
-  value,
+  value = [],
   onChange,
   options,
   placeholder,
@@ -77,16 +77,13 @@ function SimpleMultiSelect({
   placeholder: string;
   disabled?: boolean; // ✅ allow disabled
 }) {
-  const [selectedItems, setSelectedItems] = useState<string[]>(value || []);
   const [isOpen, setIsOpen] = useState(false);
 
   const handleToggle = (itemValue: string) => {
-    if (disabled) return; // ✅ prevent interaction when disabled
-    const newItems = selectedItems.includes(itemValue)
-      ? selectedItems.filter((item) => item !== itemValue)
-      : [...selectedItems, itemValue];
-
-    setSelectedItems(newItems);
+    if (disabled) return;
+    const newItems = value.includes(itemValue)
+      ? value.filter((item) => item !== itemValue)
+      : [...value, itemValue];
     onChange(newItems);
   };
 
@@ -99,9 +96,9 @@ function SimpleMultiSelect({
         }`}
         onClick={() => !disabled && setIsOpen(!isOpen)}
       >
-        {selectedItems.length > 0 ? (
+        {value.length > 0 ? (
           <>
-            {selectedItems.map((item) => (
+            {value.map((item) => (
               <span
                 key={item}
                 className="bg-primary/10 text-primary px-2 py-1 rounded-sm text-xs flex items-center gap-1"
@@ -150,7 +147,7 @@ function SimpleMultiSelect({
             >
               <input
                 type="checkbox"
-                checked={selectedItems.includes(option.value)}
+                checked={value.includes(option.value)}
                 readOnly
                 className="rounded h-3 w-3"
               />
@@ -252,10 +249,12 @@ function SimpleFileUpload({
     </div>
   );
 }
-interface LeadsGenerationFormProps{
+interface LeadsGenerationFormProps {
   onClose: () => void;
 }
-export default function LeadsGenerationForm({onClose}: LeadsGenerationFormProps) {
+export default function LeadsGenerationForm({
+  onClose,
+}: LeadsGenerationFormProps) {
   const [files, setFiles] = useState<File[]>([]);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const createdBy = useAppSelector((state) => state.auth.user?.id);
@@ -268,7 +267,7 @@ export default function LeadsGenerationForm({onClose}: LeadsGenerationFormProps)
       console.log("Lead created:", data);
       form.reset();
       setFiles([]);
-      onClose()
+      onClose();
     },
     onError: (error: any) => {
       console.error("Form submission error:", error);
@@ -300,6 +299,14 @@ export default function LeadsGenerationForm({onClose}: LeadsGenerationFormProps)
       designer_remark: "",
     },
   });
+
+  const handleResetform = () => {
+    form.reset();
+    setFiles([]);
+    form.setValue("priority", "");
+    form.setValue("source_id", "");
+    form.setValue("site_type_id", "");
+  };
 
   function onSubmit(values: FormValues) {
     if (!vendorId || !createdBy) {
@@ -544,6 +551,7 @@ export default function LeadsGenerationForm({onClose}: LeadsGenerationFormProps)
                   <FormItem>
                     <FormLabel className="text-sm">Site Type *</FormLabel>
                     <Select
+                      value={field.value || ""}
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                       disabled={isLoading}
@@ -603,6 +611,7 @@ export default function LeadsGenerationForm({onClose}: LeadsGenerationFormProps)
                 <FormItem>
                   <FormLabel className="text-sm">Priority *</FormLabel>
                   <Select
+                    value={field.value || ""}
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
@@ -638,6 +647,7 @@ export default function LeadsGenerationForm({onClose}: LeadsGenerationFormProps)
                   <FormItem>
                     <FormLabel className="text-sm">Source *</FormLabel>
                     <Select
+                      value={field.value || ""}
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                       disabled={isLoading}
@@ -786,8 +796,13 @@ export default function LeadsGenerationForm({onClose}: LeadsGenerationFormProps)
           />
 
           <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" className="text-sm">
-              Cancel
+            <Button
+              type="button"
+              variant="outline"
+              className="text-sm"
+              onClick={handleResetform}
+            >
+              Reset
             </Button>
             <Button
               type="submit"
