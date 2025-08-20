@@ -1,9 +1,9 @@
-import LoginPage from "./login/page"
+import Page from "./dashboard/page"
 
 export default function Home() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background">
-      <LoginPage />
+      <Page />
     </main>
   )
 }
