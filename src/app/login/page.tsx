@@ -1,27 +1,29 @@
 "use client";
 
-import { GalleryVerticalEnd } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { toast } from "react-toastify"
-import { RootState } from "@/redux/store"
-import { useDispatch, useSelector } from "react-redux"
-import { useEffect } from "react"
+import { GalleryVerticalEnd } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
+import { RootState } from "@/redux/store";
+import { useDispatch, useSelector } from "react-redux";
+import { useEffect } from "react";
 
-import { LoginForm } from "@/components/login-form"
+import { LoginForm } from "@/components/login-form";
 
 export default function LoginPage() {
+  const dispatch = useDispatch();
+  const router = useRouter();
+  const { user, token } = useSelector((state: RootState) => state.auth);
 
-  const dispatch = useDispatch()
-  const router = useRouter()
-  const { user, token } = useSelector((state: RootState) => state.auth)
-
-    // ✅ If already logged in, redirect immediately
-    useEffect(() => {
-      if (user && token) {
-        console.log(user && token);
-        router.replace("/dashboard") // replace so user can't go back
-      }
-    }, [user, token, router])
+  // ✅ If already logged in, redirect immediately
+  useEffect(() => {
+    const user = localStorage.getItem("user");
+    const token = localStorage.getItem("token");
+    if (user && token) {
+      console.log(user && token);
+      router.replace("/dashboard"); // replace so user can't go back
+    }
+    console.log("Token fetch Successfully: ", token);
+  }, [user, token, router]);
 
   return (
     <div className="grid min-h-svh lg:grid-cols-2 w-full">
@@ -48,5 +50,5 @@ export default function LoginPage() {
         />
       </div>
     </div>
-  )
+  );
 }
