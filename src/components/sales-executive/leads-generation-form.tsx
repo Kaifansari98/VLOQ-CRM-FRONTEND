@@ -45,7 +45,7 @@ const formSchema = z.object({
   alt_contact_no: z.string().optional().or(z.literal("")),
   email: z.string().email("Please enter a valid email"),
   site_type_id: z.string().min(1, "Please select a site type"),
-  site_address: z.string().max(2000).optional(),
+  site_address: z.string().min(1, "Site Address is required").max(2000),
   priority: z.string().min(1, "Please select a priority"),
   source_id: z.string().min(1, "Please select a source"),
   product_types: z
@@ -325,21 +325,19 @@ export default function LeadsGenerationForm({
     const phoneNumber = phone?.nationalNumber || "";
 
     // Alt contact number (just keep digits)
-    const altContactNo = values.alt_contact_no
-      ? values.alt_contact_no.replace(/\D/g, "")
-      : "";
+    const altContactNo = values.alt_contact_no?.replace(/\D/g, "") || undefined;
 
     const payload = {
       firstname: values.firstname,
       lastname: values.lastname,
-      billing_name: values.billing_name || "",
+      billing_name: values.billing_name || undefined,
       email: values.email,
-      site_address: values.site_address || "",
+      site_address: values.site_address,
       site_type_id: Number(values.site_type_id),
       priority: values.priority,
       source_id: Number(values.source_id),
-      archetech_name: values.archetech_name || "",
-      designer_remark: values.designer_remark || "",
+      archetech_name: values.archetech_name || undefined,
+      designer_remark: values.designer_remark || undefined,
       vendor_id: vendorId,
       created_by: createdBy,
 

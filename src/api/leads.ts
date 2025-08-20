@@ -7,7 +7,7 @@ export interface CreateLeadPayload {
   contact_no: string
   alt_contact_no?: string
   email: string
-  site_address?: string
+  site_address: string
   site_type_id: number
   priority: string
   billing_name?: string
