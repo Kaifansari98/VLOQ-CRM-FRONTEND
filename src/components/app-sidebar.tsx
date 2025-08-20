@@ -65,8 +65,8 @@ const data = {
           url: "/dashboard/sales-executive",
         },
         {
-          title: "Starred",
-          url: "#",
+          title: "Leads Table",
+          url: "/dashboard/leadstable",
         },
         {
           title: "Settings",
