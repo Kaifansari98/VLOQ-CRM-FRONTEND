@@ -16,11 +16,11 @@ import {
 import { ModeToggle } from "@/components/ModeToggle";
 import { useVendorUserLeads } from "@/hooks/useLeadsQueries";
 import { useAppSelector } from "@/redux/store";
+import AgGridTable from "@/components/sales-executive/LeadsTable";
 export default function LeadsGenerationPage() {
 
   // const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   // const userId = useAppSelector((state) => state.auth.user?.id);
-
 
   return (
     <SidebarProvider>
@@ -56,8 +56,8 @@ export default function LeadsGenerationPage() {
 
 
 
-        <div>
-          <h1>Lead Table</h1>
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <AgGridTable/>
         </div>
 
       </SidebarInset>

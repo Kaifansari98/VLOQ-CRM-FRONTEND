@@ -66,7 +66,7 @@ const data = {
         },
         {
           title: "Leads Table",
-          url: "/dashboard/leadstable",
+          url: "/dashboard/sales-executive/leadstable",
         },
         {
           title: "Settings",
