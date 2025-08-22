@@ -14,21 +14,19 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/ModeToggle";
-import { useVendorUserLeads } from "@/hooks/useLeadsQueries";
-import { useAppSelector } from "@/redux/store";
-import AgGridTable from "@/components/sales-executive/LeadsTable";
+import LeadsTable from "@/components/sales-executive/LeadsTable"
 export default function LeadsGenerationPage() {
-
   // const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   // const userId = useAppSelector((state) => state.auth.user?.id);
 
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+      <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
+        {/* Header */}
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           {/* Left side - SidebarTrigger + Breadcrumb */}
-          <div className="flex items-center gap-2 px-4">
+          <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
             <Separator
               orientation="vertical"
@@ -49,17 +47,15 @@ export default function LeadsGenerationPage() {
             </Breadcrumb>
           </div>
 
-          <div className="flex items-center gap-2 pr-4">
+          <div className="flex items-center gap-2">
             <ModeToggle />
           </div>
         </header>
 
-
-
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <AgGridTable/>
-        </div>
-
+        {/* Content */}
+        <main className="flex-1 p-4 pt-0 overflow-x-hidden">
+          <LeadsTable />
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );
