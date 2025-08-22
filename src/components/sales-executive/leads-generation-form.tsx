@@ -254,8 +254,8 @@ export default function LeadsGenerationForm({
   onClose,
 }: LeadsGenerationFormProps) {
   const [files, setFiles] = useState<File[]>([]);
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const createdBy = useAppSelector((state) => state.auth.user?.id);
+  const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
+  const createdBy = useAppSelector((state: any) => state.auth.user?.id);
 
   const createLeadMutation = useMutation({
     mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
