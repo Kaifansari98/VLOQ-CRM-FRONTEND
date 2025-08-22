@@ -6,7 +6,7 @@ import { AppProviders } from "@/redux/provider";
 import { ToastProvider } from "@/providers/ToastProvider";
 import { SessionLoader } from "@/components/SessionLoader"
 import { ProtectedLayout } from "@/providers/ProtectedLayout";
-
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -41,7 +41,9 @@ export default function RootLayout({
           <AppProviders>
           <SessionLoader />
             <ProtectedLayout>
+              <NuqsAdapter>
               {children}
+              </NuqsAdapter>
               <ToastProvider />
             </ProtectedLayout>
           </AppProviders>
