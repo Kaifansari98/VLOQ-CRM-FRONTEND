@@ -17,6 +17,7 @@ import {
 } from "@tanstack/react-table";
 
 import { DataTable } from "@/components/data-table/data-table";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { DataTableAdvancedToolbar } from "@/components/data-table/data-table-advanced-toolbar";
 import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
 import { DataTableFilterMenu } from "@/components/data-table/data-table-filter-menu";
@@ -24,8 +25,13 @@ import { DataTableSortList } from "@/components/data-table/data-table-sort-list"
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
 import Loader from "@/components/generics/Loader";
+import { useDataTable } from "@/hooks/use-data-table";
 import { useFeatureFlags } from "./feature-flags-provider";
 import type { DataTableRowAction } from "@/types/data-table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Ellipsis } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { getVendorLeadsTableColumns } from "./tasks-table-columns";
 
 // Define processed lead type for table
