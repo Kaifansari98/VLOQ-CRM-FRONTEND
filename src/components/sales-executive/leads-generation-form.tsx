@@ -48,12 +48,8 @@ const formSchema = z.object({
   site_address: z.string().min(1, "Site Address is required").max(2000),
   priority: z.string().min(1, "Please select a priority"),
   source_id: z.string().min(1, "Please select a source"),
-  product_types: z
-    .array(z.string())
-    .optional(),
-  product_structures: z
-    .array(z.string())
-    .optional(),
+  product_types: z.array(z.string()).optional(),
+  product_structures: z.array(z.string()).optional(),
   documents: z.string().optional(),
   archetech_name: z.string().max(300).optional(),
   designer_remark: z.string().max(2000).optional(),
@@ -437,13 +433,8 @@ export default function LeadsGenerationForm({
                 <FormItem>
                   <FormLabel className="text-sm">Phone Number *</FormLabel>
                   <FormControl>
-                    {/* <Input
-                      placeholder="Enter phone number"
-                      type="tel"
-                      className="text-sm"
-                      {...field}
-                    /> */}
                     <PhoneInput
+                      defaultCountry="IN"
                       placeholder="Enter phone number"
                       className="text-sm"
                       {...field}
@@ -472,6 +463,7 @@ export default function LeadsGenerationForm({
                         {...field}
                         /> */}
                     <PhoneInput
+                      defaultCountry="IN"
                       placeholder="Enter alt number"
                       className="text-sm"
                       {...field}
