@@ -272,7 +272,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     },
     defaultColumn: {
       ...tableProps.defaultColumn,
-      enableColumnFilter: false,
+      enableColumnFilter: true,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
