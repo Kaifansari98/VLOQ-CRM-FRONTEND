@@ -5,6 +5,17 @@ import { useAppSelector } from "@/redux/store";
 import { useVendorUserLeads } from "@/hooks/useLeadsQueries";
 import type { Lead } from "@/api/leads";
 
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  SortingState,
+  ColumnFiltersState,
+  VisibilityState,
+} from "@tanstack/react-table";
+
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { DataTableAdvancedToolbar } from "@/components/data-table/data-table-advanced-toolbar";
@@ -25,7 +36,7 @@ import { getVendorLeadsTableColumns } from "./tasks-table-columns";
 
 // Define processed lead type for table
 type ProcessedLead = {
-  id: number; // 👈 unique id zaroori hai
+  id: number;
   srNo: number;
   name: string;
   email: string;
@@ -43,7 +54,6 @@ type ProcessedLead = {
   updatedAt: string;
 };
 
-
 const VendorLeadsTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -59,10 +69,15 @@ const VendorLeadsTable = () => {
   );
 
   // Row action state
-  const [rowAction, setRowAction] =
-    React.useState<DataTableRowAction<ProcessedLead> | null>(null);
+  const [rowAction, setRowAction] = React.useState<DataTableRowAction<ProcessedLead> | null>(null);
 
-  console.log(rowAction);
+  // Table state
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "createdAt", desc: true }
+  ]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = React.useState({});
 
   // Process leads into table data
   const rowData = useMemo<ProcessedLead[]>(() => {
@@ -87,35 +102,46 @@ const VendorLeadsTable = () => {
           .join(", ") || "",
       source: lead.source?.type || "",
       siteType: lead.siteType?.type || "",
-      createdAt: lead.created_at
-        ? new Date(lead.created_at).toLocaleDateString()
-        : "",
-      updatedAt: lead.updated_at
-        ? new Date(lead.updated_at).toLocaleDateString()
-        : "",
+      createdAt: lead.created_at || "",
+      updatedAt: lead.updated_at || "",
     }));
   }, [vendorUserLeadsQuery.data]);
 
   // Setup columns
   const columns = React.useMemo(
-    () => getVendorLeadsTableColumns({setRowAction}),
-    []
+    () => getVendorLeadsTableColumns({ setRowAction }),
+    [setRowAction]
   );
 
-  // Initialize DataTable hook
-  const { table, shallow, debounceMs, throttleMs } = useDataTable({
+  // Create table with direct TanStack Table
+  const table = useReactTable({
     data: rowData,
     columns,
-    pageCount: 1,
-    enableAdvancedFilter,
-    initialState: {
-      sorting: [{ id: "createdAt", desc: true }],
-      columnPinning: { right: ["actions"] },
-    },
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     getRowId: (row) => row.id.toString(),
-    shallow: false,
-    clearOnDefault: true,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
+    },
   });
+
+  // DEBUG: Log sorting state
+  React.useEffect(() => {
+    console.log("🔍 Sorting state:", sorting);
+    console.log("🔍 Table rows:", table.getRowModel().rows.map(r => ({
+      srNo: r.original.srNo,
+      name: r.original.name
+    })));
+  }, [sorting, table]);
 
   // Loading / Error / Empty
   if (vendorUserLeadsQuery.isLoading) {
@@ -138,6 +164,13 @@ const VendorLeadsTable = () => {
     return <div className="p-8 text-gray-500">No leads found</div>;
   }
 
+  // Mock the missing props that DataTable expects
+  const mockProps = {
+    shallow: false,
+    debounceMs: 300,
+    throttleMs: 50,
+  };
+
   // Render table
   return (
     <>
@@ -148,17 +181,17 @@ const VendorLeadsTable = () => {
             {filterFlag === "advancedFilters" ? (
               <DataTableFilterList
                 table={table}
-                shallow={shallow}
-                debounceMs={debounceMs}
-                throttleMs={throttleMs}
+                shallow={mockProps.shallow}
+                debounceMs={mockProps.debounceMs}
+                throttleMs={mockProps.throttleMs}
                 align="start"
               />
             ) : (
               <DataTableFilterMenu
                 table={table}
-                shallow={shallow}
-                debounceMs={debounceMs}
-                throttleMs={throttleMs}
+                shallow={mockProps.shallow}
+                debounceMs={mockProps.debounceMs}
+                throttleMs={mockProps.throttleMs}
               />
             )}
           </DataTableAdvancedToolbar>

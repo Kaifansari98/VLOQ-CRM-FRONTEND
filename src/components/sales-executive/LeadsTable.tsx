@@ -1,4 +1,5 @@
 import React from "react";
+import { Suspense } from "react";
 import { SidebarInset, SidebarProvider } from "../ui/sidebar";
 import { DataTableSkeleton } from "../data-table/data-table-skeleton";
 import { FeatureFlagsProvider } from "../../app/_components/feature-flags-provider";
@@ -12,7 +13,7 @@ export default function LeadsTable() {
 
         <main className="flex-1 p-4 pt-0 overflow-x-hidden ">
           <FeatureFlagsProvider>
-            <React.Suspense
+            <Suspense
               fallback={
                 <DataTableSkeleton
                   columnCount={10}
@@ -29,7 +30,7 @@ export default function LeadsTable() {
               }
             >
               <VendorLeadsTable />
-            </React.Suspense>
+            </Suspense>
           </FeatureFlagsProvider>
         </main>
       </SidebarInset>
