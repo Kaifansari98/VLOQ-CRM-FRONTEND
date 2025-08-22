@@ -36,6 +36,7 @@ import { useMutation } from "@tanstack/react-query";
 import { createLead } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
+import { FileUploadField } from "../custom/file-upload";
 
 const formSchema = z.object({
   firstname: z.string().min(1, "First name is required").max(300),
@@ -356,26 +357,6 @@ export default function LeadsGenerationForm({
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           {/* File Upload */}
-          <FormField
-            control={form.control}
-            name="documents"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">Site Photos</FormLabel>
-                <FormControl>
-                  <SimpleFileUpload
-                    onFilesChange={setFiles}
-                    maxFiles={5}
-                    maxSize={4 * 1024 * 1024}
-                  />
-                </FormControl>
-                <FormDescription className="text-xs">
-                  Upload photos or documents.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
 
           {/* First Name & Last Name */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -777,6 +758,23 @@ export default function LeadsGenerationForm({
                 </FormControl>
                 <FormDescription className="text-xs">
                   Additional remarks or notes.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="documents"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Site Photos</FormLabel>
+                <FormControl>
+                  <FileUploadField value={files} onChange={setFiles} />
+                </FormControl>
+                <FormDescription className="text-xs">
+                  Upload photos or documents.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
