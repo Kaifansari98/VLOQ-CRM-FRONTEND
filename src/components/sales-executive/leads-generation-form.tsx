@@ -385,9 +385,9 @@ export default function LeadsGenerationForm({
                       {...field}
                     />
                   </FormControl>
-                  <FormDescription className="text-xs">
+                  {/* <FormDescription className="text-xs">
                     Lead's first name.
-                  </FormDescription>
+                  </FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -407,9 +407,9 @@ export default function LeadsGenerationForm({
                       {...field}
                     />
                   </FormControl>
-                  <FormDescription className="text-xs">
+                  {/* <FormDescription className="text-xs">
                     Lead's last name.
-                  </FormDescription>
+                  </FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -432,9 +432,9 @@ export default function LeadsGenerationForm({
                       {...field}
                     />
                   </FormControl>
-                  <FormDescription className="text-xs">
+                  {/* <FormDescription className="text-xs">
                     Primary phone number.
-                  </FormDescription>
+                  </FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -461,9 +461,9 @@ export default function LeadsGenerationForm({
                       {...field}
                     />
                   </FormControl>
-                  <FormDescription className="text-xs">
+                  {/* <FormDescription className="text-xs">
                     Optional alternate number (without country code).
-                  </FormDescription>
+                  </FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -485,9 +485,9 @@ export default function LeadsGenerationForm({
                     {...field}
                   />
                 </FormControl>
-                <FormDescription className="text-xs">
+                {/* <FormDescription className="text-xs">
                   Lead's email address.
-                </FormDescription>
+                </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
@@ -509,9 +509,9 @@ export default function LeadsGenerationForm({
                       {...field}
                     />
                   </FormControl>
-                  <FormDescription className="text-xs">
+                  {/* <FormDescription className="text-xs">
                     Optional billing name.
-                  </FormDescription>
+                  </FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -549,9 +549,9 @@ export default function LeadsGenerationForm({
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormDescription className="text-xs">
+                    {/* <FormDescription className="text-xs">
                       Type of site/property.
-                    </FormDescription>
+                    </FormDescription> */}
                     <FormMessage />
                   </FormItem>
                 );
@@ -565,7 +565,7 @@ export default function LeadsGenerationForm({
             name="site_address"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm">Site Address</FormLabel>
+                <FormLabel className="text-sm">Site Address *</FormLabel>
                 <FormControl>
                   <Textarea
                     placeholder="Enter site address"
@@ -574,9 +574,9 @@ export default function LeadsGenerationForm({
                     {...field}
                   />
                 </FormControl>
-                <FormDescription className="text-xs">
+                {/* <FormDescription className="text-xs">
                   Site address of the lead.
-                </FormDescription>
+                </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
@@ -609,9 +609,9 @@ export default function LeadsGenerationForm({
                       <SelectItem value="low">Low Priority</SelectItem>
                     </SelectContent>
                   </Select>
-                  <FormDescription className="text-xs">
+                  {/* <FormDescription className="text-xs">
                     Lead priority level.
-                  </FormDescription>
+                  </FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -645,9 +645,9 @@ export default function LeadsGenerationForm({
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormDescription className="text-xs">
+                    {/* <FormDescription className="text-xs">
                       Lead source.
-                    </FormDescription>
+                    </FormDescription> */}
                     <FormMessage />
                   </FormItem>
                 );
@@ -686,9 +686,9 @@ export default function LeadsGenerationForm({
                         hidePlaceholderWhenSelected
                       />
                     </FormControl>
-                    <FormDescription className="text-xs">
+                    {/* <FormDescription className="text-xs">
                       Select furniture categories.
-                    </FormDescription>
+                    </FormDescription> */}
                     <FormMessage />
                   </FormItem>
                 );
@@ -726,9 +726,9 @@ export default function LeadsGenerationForm({
                         hidePlaceholderWhenSelected
                       />
                     </FormControl>
-                    <FormDescription className="text-xs">
+                    {/* <FormDescription className="text-xs">
                       Select structure types.
-                    </FormDescription>
+                    </FormDescription> */}
                     <FormMessage />
                   </FormItem>
                 );
@@ -751,9 +751,9 @@ export default function LeadsGenerationForm({
                     {...field}
                   />
                 </FormControl>
-                <FormDescription className="text-xs">
+                {/* <FormDescription className="text-xs">
                   Project architect name.
-                </FormDescription>
+                </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
@@ -774,9 +774,9 @@ export default function LeadsGenerationForm({
                     {...field}
                   />
                 </FormControl>
-                <FormDescription className="text-xs">
+                {/* <FormDescription className="text-xs">
                   Additional remarks or notes.
-                </FormDescription>
+                </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}

@@ -16,7 +16,6 @@ import { Ellipsis } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DataTableRowAction } from "@/types/data-table";
 
-
 export type ProcessedLead = {
   id: number;
   srNo: number;
@@ -67,8 +66,8 @@ export function getVendorLeadsTableColumns({
           className="translate-y-0.5"
         />
       ),
-      enableSorting: false,
-      enableHiding: false,
+      enableSorting: false, // Fixed: Checkbox column shouldn't be sortable
+      enableHiding: false,   // Fixed: Don't hide select column
       size: 50,
     },
     {
@@ -76,42 +75,65 @@ export function getVendorLeadsTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Sr. No." />
       ),
+      enableSorting: true,
+      enableHiding: true,
     },
     {
       accessorKey: "name",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Name" />
       ),
+      enableSorting: true,
+      enableHiding: true,
     },
     {
       accessorKey: "email",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Email" />
       ),
+      enableSorting: true,
+      enableHiding: true,
     },
     {
       accessorKey: "billingName",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Billing Name" />
       ),
+      enableSorting: true,
+      enableHiding: true,
     },
     {
       accessorKey: "siteAddress",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Site Address" />
       ),
+      enableSorting: true,
+      enableHiding: true,
     },
     {
       accessorKey: "architechName",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Architect Name" />
       ),
+      enableSorting: true,
+      enableHiding: true,
     },
     {
       accessorKey: "createdAt",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Created At" />
       ),
+      cell: ({ getValue }) => {
+        const dateValue = getValue() as string;
+        return dateValue ? new Date(dateValue).toLocaleDateString() : "";
+      },
+      sortingFn: (rowA, rowB, columnId) => {
+        const aDate = new Date(rowA.getValue(columnId) as string);
+        const bDate = new Date(rowB.getValue(columnId) as string);
+        return aDate.getTime() - bDate.getTime();
+      },
+      enableSorting: true,
+      enableHiding: true,
     },
     {
       id: "actions",
@@ -143,6 +165,8 @@ export function getVendorLeadsTableColumns({
           </DropdownMenuContent>
         </DropdownMenu>
       ),
+      enableSorting: false, // Actions column shouldn't be sortable
+      enableHiding: false,   // Actions column shouldn't be hidden
       size: 40,
     },
   ];
