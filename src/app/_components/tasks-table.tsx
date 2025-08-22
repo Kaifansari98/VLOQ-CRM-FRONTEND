@@ -144,13 +144,13 @@ const VendorLeadsTable = () => {
   }, [sorting, table]);
 
   // Loading / Error / Empty
-  if (vendorUserLeadsQuery.isLoading) {
-    return (
-      <div className="flex flex-1 justify-center items-center p-8 text-lg">
-        <Loader />
-      </div>
-    );
-  }
+  // if (vendorUserLeadsQuery.isLoading) {
+  //   return (
+  //     <div className="flex flex-1 justify-center items-center p-8 text-lg">
+  //       <Loader />
+  //     </div>
+  //   );
+  // }
 
   if (vendorUserLeadsQuery.error) {
     return (
@@ -160,9 +160,9 @@ const VendorLeadsTable = () => {
     );
   }
 
-  if (!rowData.length) {
-    return <div className="p-8 text-gray-500">No leads found</div>;
-  }
+  // if (!rowData.length) {
+  //   return <div className="p-8 text-gray-500">No leads found</div>;
+  // }
 
   // Mock the missing props that DataTable expects
   const mockProps = {
