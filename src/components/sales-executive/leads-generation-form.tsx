@@ -37,6 +37,7 @@ import { createLead } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { FileUploadField } from "../custom/file-upload";
+import MultipleSelector, { Option } from "../ui/multiselect";
 
 const formSchema = z.object({
   firstname: z.string().min(1, "First name is required").max(300),
@@ -352,6 +353,16 @@ export default function LeadsGenerationForm({
     createLeadMutation.mutate({ payload, files });
   }
 
+  // Transform string[] to Option[] for the component
+  const stringArrayToOptions = (strings: string[]): Option[] => {
+    return strings.map((str) => ({ value: str, label: str }));
+  };
+
+  // Transform Option[] back to string[] for form storage
+  const optionsToStringArray = (options: Option[]): string[] => {
+    return options.map((option) => option.value);
+  };
+
   return (
     <div className="w-full max-w-none pt-3 pb-6">
       <Form {...form}>
@@ -652,8 +663,9 @@ export default function LeadsGenerationForm({
               render={({ field }) => {
                 const { data: productTypes, isLoading } = useProductTypes();
 
-                // transform API data → { value, label }
-                const options =
+                // API se aane wale data ko transform karna
+                type Option = { value: string; label: string };
+                const options: Option[] =
                   productTypes?.data?.map((p: any) => ({
                     value: String(p.id),
                     label: p.type,
@@ -663,12 +675,15 @@ export default function LeadsGenerationForm({
                   <FormItem>
                     <FormLabel className="text-sm">Furniture Type</FormLabel>
                     <FormControl>
-                      <SimpleMultiSelect
-                        value={field.value}
-                        onChange={field.onChange}
-                        options={options}
+                      <MultipleSelector
+                        value={stringArrayToOptions(field.value || [])} // Transform string[] to Option[]
+                        onChange={(options) => {
+                          field.onChange(optionsToStringArray(options)); // Transform back to string[]
+                        }}
+                        options={options} // Make sure your options are Option[] format
                         placeholder="Select furniture types"
                         disabled={isLoading}
+                        hidePlaceholderWhenSelected
                       />
                     </FormControl>
                     <FormDescription className="text-xs">
@@ -700,12 +715,15 @@ export default function LeadsGenerationForm({
                       Furniture Structure
                     </FormLabel>
                     <FormControl>
-                      <SimpleMultiSelect
-                        value={field.value}
-                        onChange={field.onChange}
-                        options={options}
-                        placeholder="Select structures"
+                    <MultipleSelector
+                        value={stringArrayToOptions(field.value || [])} // Transform string[] to Option[]
+                        onChange={(options) => {
+                          field.onChange(optionsToStringArray(options)); // Transform back to string[]
+                        }}
+                        options={options} // Make sure your options are Option[] format
+                        placeholder="Select furniture types"
                         disabled={isLoading}
+                        hidePlaceholderWhenSelected
                       />
                     </FormControl>
                     <FormDescription className="text-xs">
