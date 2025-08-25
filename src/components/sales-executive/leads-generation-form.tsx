@@ -32,7 +32,7 @@ import {
 } from "@/hooks/useTypesMaster";
 import { PhoneInput } from "../ui/phone-input";
 import { toast } from "react-toastify";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createLead } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
@@ -245,6 +245,7 @@ function SimpleFileUpload({
     </div>
   );
 }
+
 interface LeadsGenerationFormProps {
   onClose: () => void;
 }
@@ -254,6 +255,7 @@ export default function LeadsGenerationForm({
   const [files, setFiles] = useState<File[]>([]);
   const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
   const createdBy = useAppSelector((state: any) => state.auth.user?.id);
+  const queryClient = useQueryClient();
 
   const createLeadMutation = useMutation({
     mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
@@ -261,6 +263,11 @@ export default function LeadsGenerationForm({
     onSuccess: (data) => {
       toast.success("Lead created successfully!");
       console.log("Lead created:", data);
+
+      queryClient.invalidateQueries({
+        queryKey: ["vendorUserLeads", vendorId, createdBy],
+      });
+
       form.reset();
       setFiles([]);
       onClose();
@@ -715,7 +722,7 @@ export default function LeadsGenerationForm({
                       Furniture Structure
                     </FormLabel>
                     <FormControl>
-                    <MultipleSelector
+                      <MultipleSelector
                         value={stringArrayToOptions(field.value || [])} // Transform string[] to Option[]
                         onChange={(options) => {
                           field.onChange(optionsToStringArray(options)); // Transform back to string[]

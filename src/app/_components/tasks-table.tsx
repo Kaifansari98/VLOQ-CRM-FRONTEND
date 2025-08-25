@@ -36,6 +36,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
 } from "@/components/ui/alert-dialog";
+import { useDeleteLead } from "@/hooks/useDeleteLead";
 
 // Define processed lead type for table
 type ProcessedLead = {
@@ -61,6 +62,7 @@ const VendorLeadsTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const shouldFetch = !!vendorId && !!userId;
+  // Fetch leads
   const vendorUserLeadsQuery = useVendorUserLeads(
     vendorId || 0,
     userId || 0,
@@ -69,7 +71,7 @@ const VendorLeadsTable = () => {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const [openDelete, setOpenDelete] = useState<boolean>(false);
 
-  // Fetch leads
+  const deleteLeadMutation = useDeleteLead();
 
   // Row action state
   const [rowAction, setRowAction] =
@@ -85,7 +87,11 @@ const VendorLeadsTable = () => {
   const handleDeleteLead = async () => {
     if (rowAction?.row) {
       const leadId = rowAction.row.original.id;
-      await deleteLead(leadId, userId!);
+      deleteLeadMutation.mutate({
+        leadId,
+        vendorId: vendorId!,
+        userId: userId!,
+      });
     }
     setOpenDelete(false);
     setRowAction(null);
@@ -183,7 +189,7 @@ const VendorLeadsTable = () => {
     throttleMs: 50,
   };
 
-  // Render table
+
   return (
     <>
       <DataTable table={table}>
