@@ -14,7 +14,9 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/ModeToggle";
-import LeadsTable from "@/components/sales-executive/LeadsTable"
+import LeadsTable from "@/components/sales-executive/LeadsTable";
+import { Button } from "@/components/ui/button";
+import { GenerateLeadFormModal } from "@/components/sales-executive/leads-generation-form-modal";
 export default function LeadsGenerationPage() {
   // const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   // const userId = useAppSelector((state) => state.auth.user?.id);
@@ -48,7 +50,13 @@ export default function LeadsGenerationPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <ModeToggle />
+            <div className="flex gap-2 items-center">
+              <GenerateLeadFormModal>
+                <Button>Add New Lead</Button>
+              </GenerateLeadFormModal>
+
+              <ModeToggle />
+            </div>
           </div>
         </header>
 

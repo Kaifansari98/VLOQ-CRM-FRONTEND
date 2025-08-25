@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useAppSelector } from "@/redux/store";
 import { useVendorUserLeads } from "@/hooks/useLeadsQueries";
-import type { Lead } from "@/api/leads";
+import { deleteLead, type Lead } from "@/api/leads";
 
 import {
   useReactTable,
@@ -17,22 +17,25 @@ import {
 } from "@tanstack/react-table";
 
 import { DataTable } from "@/components/data-table/data-table";
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { DataTableAdvancedToolbar } from "@/components/data-table/data-table-advanced-toolbar";
 import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
 import { DataTableFilterMenu } from "@/components/data-table/data-table-filter-menu";
 import { DataTableSortList } from "@/components/data-table/data-table-sort-list";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
-import Loader from "@/components/generics/Loader";
-import { useDataTable } from "@/hooks/use-data-table";
 import { useFeatureFlags } from "./feature-flags-provider";
 import type { DataTableRowAction } from "@/types/data-table";
-import { Checkbox } from "@/components/ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Ellipsis } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { getVendorLeadsTableColumns } from "./tasks-table-columns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+  AlertDialogFooter,
+  AlertDialogHeader,
+} from "@/components/ui/alert-dialog";
 
 // Define processed lead type for table
 type ProcessedLead = {
@@ -58,25 +61,45 @@ const VendorLeadsTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const shouldFetch = !!vendorId && !!userId;
-
-  const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
-
-  // Fetch leads
   const vendorUserLeadsQuery = useVendorUserLeads(
     vendorId || 0,
     userId || 0,
     shouldFetch
   );
+  const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
+  const [openDelete, setOpenDelete] = useState<boolean>(false);
+
+  // Fetch leads
 
   // Row action state
-  const [rowAction, setRowAction] = React.useState<DataTableRowAction<ProcessedLead> | null>(null);
+  const [rowAction, setRowAction] =
+    React.useState<DataTableRowAction<ProcessedLead> | null>(null);
+
+  useEffect(() => {
+    console.log("Row Action ", rowAction);
+    if (rowAction?.variant === "delete" && rowAction.row) {
+      setOpenDelete(true);
+    }
+  }, [rowAction]);
+
+  const handleDeleteLead = async () => {
+    if (rowAction?.row) {
+      const leadId = rowAction.row.original.id;
+      await deleteLead(leadId, userId!);
+    }
+    setOpenDelete(false);
+    setRowAction(null);
+  };
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([
-    { id: "createdAt", desc: true }
+    { id: "createdAt", desc: true },
   ]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    []
+  );
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
   // Process leads into table data
@@ -137,20 +160,14 @@ const VendorLeadsTable = () => {
   // DEBUG: Log sorting state
   React.useEffect(() => {
     console.log("🔍 Sorting state:", sorting);
-    console.log("🔍 Table rows:", table.getRowModel().rows.map(r => ({
-      srNo: r.original.srNo,
-      name: r.original.name
-    })));
+    console.log(
+      "🔍 Table rows:",
+      table.getRowModel().rows.map((r) => ({
+        srNo: r.original.srNo,
+        name: r.original.name,
+      }))
+    );
   }, [sorting, table]);
-
-  // Loading / Error / Empty
-  // if (vendorUserLeadsQuery.isLoading) {
-  //   return (
-  //     <div className="flex flex-1 justify-center items-center p-8 text-lg">
-  //       <Loader />
-  //     </div>
-  //   );
-  // }
 
   if (vendorUserLeadsQuery.error) {
     return (
@@ -160,11 +177,6 @@ const VendorLeadsTable = () => {
     );
   }
 
-  // if (!rowData.length) {
-  //   return <div className="p-8 text-gray-500">No leads found</div>;
-  // }
-
-  // Mock the missing props that DataTable expects
   const mockProps = {
     shallow: false,
     debounceMs: 300,
@@ -176,31 +188,51 @@ const VendorLeadsTable = () => {
     <>
       <DataTable table={table}>
         {enableAdvancedFilter ? (
-          <DataTableAdvancedToolbar table={table}>
-            <DataTableSortList table={table} align="start" />
-            {filterFlag === "advancedFilters" ? (
-              <DataTableFilterList
-                table={table}
-                shallow={mockProps.shallow}
-                debounceMs={mockProps.debounceMs}
-                throttleMs={mockProps.throttleMs}
-                align="start"
-              />
-            ) : (
-              <DataTableFilterMenu
-                table={table}
-                shallow={mockProps.shallow}
-                debounceMs={mockProps.debounceMs}
-                throttleMs={mockProps.throttleMs}
-              />
-            )}
-          </DataTableAdvancedToolbar>
+          <>
+            <DataTableAdvancedToolbar table={table}>
+              <DataTableSortList table={table} align="start" />
+              {filterFlag === "advancedFilters" ? (
+                <DataTableFilterList
+                  table={table}
+                  shallow={mockProps.shallow}
+                  debounceMs={mockProps.debounceMs}
+                  throttleMs={mockProps.throttleMs}
+                  align="start"
+                />
+              ) : (
+                <DataTableFilterMenu
+                  table={table}
+                  shallow={mockProps.shallow}
+                  debounceMs={mockProps.debounceMs}
+                  throttleMs={mockProps.throttleMs}
+                />
+              )}
+            </DataTableAdvancedToolbar>
+          </>
         ) : (
           <DataTableToolbar table={table}>
             <DataTableSortList table={table} align="end" />
           </DataTableToolbar>
         )}
       </DataTable>
+
+      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              lead from your system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteLead}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
