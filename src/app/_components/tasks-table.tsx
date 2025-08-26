@@ -63,6 +63,9 @@ export type ProcessedLead = {
 const VendorLeadsTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type.user_type as string | undefined
+  );
   const shouldFetch = !!vendorId && !!userId;
   // Fetch leads
   const vendorUserLeadsQuery = useVendorUserLeads(
@@ -148,8 +151,8 @@ const VendorLeadsTable = () => {
 
   // Setup columns
   const columns = React.useMemo(
-    () => getVendorLeadsTableColumns({ setRowAction }),
-    [setRowAction]
+    () => getVendorLeadsTableColumns({ setRowAction, userType }),
+    [setRowAction, userType]
   );
 
   // Create table with direct TanStack Table
@@ -199,6 +202,7 @@ const VendorLeadsTable = () => {
     throttleMs: 50,
   };
 
+  console.log("usertypes: ", userType);
   return (
     <>
       <DataTable table={table}>
