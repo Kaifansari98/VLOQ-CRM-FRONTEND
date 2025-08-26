@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import ViewLeadModal from "@/components/sales-executive/view-lead-moda";
+import AssignLeadModal from "@/components/sales-executive/assign-lead-moda";
 
 // Define processed lead type for table
 export type ProcessedLead = {
@@ -72,6 +73,7 @@ const VendorLeadsTable = () => {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const [openDelete, setOpenDelete] = useState<boolean>(false);
   const [openView, setOpenView] = useState<boolean>(false);
+  const [assignOpenLead, setAssignOpenLead] = useState<boolean>(false);
   const deleteLeadMutation = useDeleteLead();
 
   // Row action state
@@ -83,10 +85,12 @@ const VendorLeadsTable = () => {
       setOpenDelete(true);
     }
     if (rowAction?.variant === "view" && rowAction.row) {
-      // console.log(rowAction)
-      // console.log(rowAction.row)
-      console.log("Original Data row Leads: ", rowAction.row.original)
+      console.log("Original Data row Leads: ", rowAction.row.original);
       setOpenView(true);
+    }
+    if (rowAction?.variant === "reassignlead" && rowAction.row) {
+      console.log("Original Data row Leads: ", rowAction.row.original);
+      setAssignOpenLead(true);
     }
   }, [rowAction]);
 
@@ -169,17 +173,17 @@ const VendorLeadsTable = () => {
     },
   });
 
-  // DEBUG: Log sorting state
-  React.useEffect(() => {
-    console.log("🔍 Sorting state:", sorting);
-    console.log(
-      "🔍 Table rows:",
-      table.getRowModel().rows.map((r) => ({
-        srNo: r.original.srNo,
-        name: r.original.name,
-      }))
-    );
-  }, [sorting, table]);
+  // // DEBUG: Log sorting state
+  // React.useEffect(() => {
+  //   // console.log("🔍 Sorting state:", sorting);
+  //   console.log(
+  //     "🔍 Table rows:",
+  //     table.getRowModel().rows.map((r) => ({
+  //       srNo: r.original.srNo,
+  //       name: r.original.name,
+  //     }))
+  //   );
+  // }, [sorting, table]);
 
   if (vendorUserLeadsQuery.error) {
     return (
@@ -245,7 +249,16 @@ const VendorLeadsTable = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-     <ViewLeadModal open={openView} onOpenChange={setOpenView} data={rowAction?.row.original} />
+      <ViewLeadModal
+        open={openView}
+        onOpenChange={setOpenView}
+        data={rowAction?.row.original}
+      />
+      <AssignLeadModal
+        open={assignOpenLead}
+        onOpenChange={setAssignOpenLead}
+        leadData={rowAction?.row.original}
+      />
     </>
   );
 };

@@ -262,7 +262,7 @@ export default function LeadsGenerationForm({
       createLead(payload, files),
     onSuccess: (data) => {
       toast.success("Lead created successfully!");
-      console.log("Lead created:", data);
+      // console.log("Lead created:", data);
 
       queryClient.invalidateQueries({
         queryKey: ["vendorUserLeads", vendorId, createdBy],
@@ -317,7 +317,7 @@ export default function LeadsGenerationForm({
       return;
     }
 
-    console.log("[DEBUG] Form values before processing:", values);
+    // console.log("[DEBUG] Form values before processing:", values);
 
     // Parse phone number properly
     const phone = values.contact_no
@@ -355,7 +355,7 @@ export default function LeadsGenerationForm({
       product_structures: values.product_structures || [],
     };
 
-    console.log("[DEBUG] Processed payload:", payload);
+    // console.log("[DEBUG] Processed payload:", payload);
 
     createLeadMutation.mutate({ payload, files });
   }
@@ -531,7 +531,7 @@ export default function LeadsGenerationForm({
                 const { data: siteTypes, isLoading, error } = useSiteTypes();
 
                 useEffect(() => {
-                  console.log("🔍 siteTypes response:", siteTypes);
+                  // console.log("🔍 siteTypes response:", siteTypes);
                 }, [siteTypes]);
 
                 return (

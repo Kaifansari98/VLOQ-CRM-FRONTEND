@@ -140,6 +140,12 @@ export interface Lead {
   createdBy: User;
 }
 
+export interface AssignToPayload {
+  assign_to: number;
+  assign_by: number;
+  assignment_reason?: string;
+}
+
 export const createLead = async (
   payload: CreateLeadPayload,
   files: File[] = []
@@ -203,16 +209,35 @@ export const getVendorLeads = async (
 export const getVendorUserLeads = async (
   vendorId: number,
   userId: number
-): Promise<VendorUserLeadsResponse> => {
+): Promise<Lead[]> => {
   const response = await apiClient.get(
     `/leads/get-vendor-user-leads/vendor/${vendorId}/user/${userId}`
   );
-  return response.data;
+  return response.data.data.leads; // <-- notice the extra .data.leads
 };
 
 export const deleteLead = async (leadId: number, userId: number) => {
   const response = await apiClient.delete(
     `/leads/delete-lead/${leadId}/user-id/${userId}`
+  );
+  return response.data;
+};
+
+export const getVendorSalesExecutiveUsers = async (vendorId: number) => {
+  const response = await apiClient.get(
+    `/leads/sales-executives/vendor/${vendorId}`
+  );
+  return response.data;
+};
+
+export const assignLeadToAnotherSalesExecutive = async (
+  vendorId: number,
+  leadId: number,
+  payload: AssignToPayload
+) => {
+  const response = await apiClient.put(
+    `/leads/sales-executives/vendor/${vendorId}/lead/${leadId}`,
+    payload
   );
   return response.data;
 };
