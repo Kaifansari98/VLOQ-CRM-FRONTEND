@@ -32,7 +32,7 @@ import {
 } from "@/hooks/useTypesMaster";
 import { PhoneInput } from "../ui/phone-input";
 import { toast } from "react-toastify";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createLead } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
@@ -245,6 +245,7 @@ function SimpleFileUpload({
     </div>
   );
 }
+
 interface LeadsGenerationFormProps {
   onClose: () => void;
 }
@@ -254,13 +255,19 @@ export default function LeadsGenerationForm({
   const [files, setFiles] = useState<File[]>([]);
   const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
   const createdBy = useAppSelector((state: any) => state.auth.user?.id);
+  const queryClient = useQueryClient();
 
   const createLeadMutation = useMutation({
     mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
       createLead(payload, files),
     onSuccess: (data) => {
       toast.success("Lead created successfully!");
-      console.log("Lead created:", data);
+      // console.log("Lead created:", data);
+
+      queryClient.invalidateQueries({
+        queryKey: ["vendorUserLeads", vendorId, createdBy],
+      });
+
       form.reset();
       setFiles([]);
       onClose();
@@ -310,7 +317,7 @@ export default function LeadsGenerationForm({
       return;
     }
 
-    console.log("[DEBUG] Form values before processing:", values);
+    // console.log("[DEBUG] Form values before processing:", values);
 
     // Parse phone number properly
     const phone = values.contact_no
@@ -348,7 +355,7 @@ export default function LeadsGenerationForm({
       product_structures: values.product_structures || [],
     };
 
-    console.log("[DEBUG] Processed payload:", payload);
+    // console.log("[DEBUG] Processed payload:", payload);
 
     createLeadMutation.mutate({ payload, files });
   }
@@ -524,7 +531,7 @@ export default function LeadsGenerationForm({
                 const { data: siteTypes, isLoading, error } = useSiteTypes();
 
                 useEffect(() => {
-                  console.log("🔍 siteTypes response:", siteTypes);
+                  // console.log("🔍 siteTypes response:", siteTypes);
                 }, [siteTypes]);
 
                 return (
@@ -715,7 +722,7 @@ export default function LeadsGenerationForm({
                       Furniture Structure
                     </FormLabel>
                     <FormControl>
-                    <MultipleSelector
+                      <MultipleSelector
                         value={stringArrayToOptions(field.value || [])} // Transform string[] to Option[]
                         onChange={(options) => {
                           field.onChange(optionsToStringArray(options)); // Transform back to string[]
