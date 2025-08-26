@@ -152,7 +152,6 @@ export function GenerateLeadFormModal({
   useEffect(() => {
     console.log(vendorId);
   });
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>

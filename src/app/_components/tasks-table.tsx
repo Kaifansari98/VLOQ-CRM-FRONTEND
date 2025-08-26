@@ -37,9 +37,10 @@ import {
   AlertDialogHeader,
 } from "@/components/ui/alert-dialog";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
+import ViewLeadModal from "@/components/sales-executive/view-lead-moda";
 
 // Define processed lead type for table
-type ProcessedLead = {
+export type ProcessedLead = {
   id: number;
   srNo: number;
   name: string;
@@ -70,7 +71,7 @@ const VendorLeadsTable = () => {
   );
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const [openDelete, setOpenDelete] = useState<boolean>(false);
-
+  const [openView, setOpenView] = useState<boolean>(false);
   const deleteLeadMutation = useDeleteLead();
 
   // Row action state
@@ -78,9 +79,14 @@ const VendorLeadsTable = () => {
     React.useState<DataTableRowAction<ProcessedLead> | null>(null);
 
   useEffect(() => {
-    console.log("Row Action ", rowAction);
     if (rowAction?.variant === "delete" && rowAction.row) {
       setOpenDelete(true);
+    }
+    if (rowAction?.variant === "view" && rowAction.row) {
+      // console.log(rowAction)
+      // console.log(rowAction.row)
+      console.log("Original Data row Leads: ", rowAction.row.original)
+      setOpenView(true);
     }
   }, [rowAction]);
 
@@ -184,11 +190,10 @@ const VendorLeadsTable = () => {
   }
 
   const mockProps = {
-    shallow: false,
+    shallow: true,
     debounceMs: 300,
     throttleMs: 50,
   };
-
 
   return (
     <>
@@ -239,6 +244,8 @@ const VendorLeadsTable = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+     <ViewLeadModal open={openView} onOpenChange={setOpenView} data={rowAction?.row.original} />
     </>
   );
 };

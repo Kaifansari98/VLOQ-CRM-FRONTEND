@@ -67,7 +67,7 @@ export function getVendorLeadsTableColumns({
         />
       ),
       enableSorting: false, // Fixed: Checkbox column shouldn't be sortable
-      enableHiding: false,   // Fixed: Don't hide select column
+      enableHiding: false, // Fixed: Don't hide select column
       size: 50,
     },
     {
@@ -76,6 +76,7 @@ export function getVendorLeadsTableColumns({
         <DataTableColumnHeader column={column} title="Sr. No." />
       ),
       enableSorting: true,
+      enableColumnFilter: true,
       enableHiding: true,
     },
     {
@@ -85,6 +86,7 @@ export function getVendorLeadsTableColumns({
       ),
       enableSorting: true,
       enableHiding: true,
+      enableColumnFilter: true,
     },
     {
       accessorKey: "email",
@@ -93,6 +95,7 @@ export function getVendorLeadsTableColumns({
       ),
       enableSorting: true,
       enableHiding: true,
+      enableColumnFilter: true,
     },
     {
       accessorKey: "billingName",
@@ -101,6 +104,7 @@ export function getVendorLeadsTableColumns({
       ),
       enableSorting: true,
       enableHiding: true,
+      enableColumnFilter: true,
     },
     {
       accessorKey: "siteAddress",
@@ -109,6 +113,7 @@ export function getVendorLeadsTableColumns({
       ),
       enableSorting: true,
       enableHiding: true,
+      enableColumnFilter: true,
     },
     {
       accessorKey: "architechName",
@@ -117,6 +122,7 @@ export function getVendorLeadsTableColumns({
       ),
       enableSorting: true,
       enableHiding: true,
+      enableColumnFilter: true,
     },
     {
       accessorKey: "createdAt",
@@ -134,6 +140,7 @@ export function getVendorLeadsTableColumns({
       },
       enableSorting: true,
       enableHiding: true,
+      enableColumnFilter: true,
     },
     {
       id: "actions",
@@ -144,18 +151,33 @@ export function getVendorLeadsTableColumns({
               aria-label="Open menu"
               variant="ghost"
               className="flex size-8 p-0 data-[state=open]:bg-muted"
-              
             >
               <Ellipsis className="size-4" aria-hidden="true" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
+            {/* 👇 New View Option */}
+            <DropdownMenuItem
+              onSelect={() => setRowAction({ row, variant: "view" })}
+            >
+              View
+            </DropdownMenuItem>
+      
+
             <DropdownMenuItem
               onSelect={() => setRowAction({ row, variant: "update" })}
             >
               Edit
             </DropdownMenuItem>
+           
+
+            <DropdownMenuItem
+              onSelect={() => setRowAction({ row, variant: "reassignlead" })}
+            >
+              Reassign Lead
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
+
             <DropdownMenuItem
               onSelect={() => setRowAction({ row, variant: "delete" })}
             >
@@ -165,8 +187,8 @@ export function getVendorLeadsTableColumns({
           </DropdownMenuContent>
         </DropdownMenu>
       ),
-      enableSorting: false, // Actions column shouldn't be sortable
-      enableHiding: false,   // Actions column shouldn't be hidden
+      enableSorting: false,
+      enableHiding: false,
       size: 40,
     },
   ];
