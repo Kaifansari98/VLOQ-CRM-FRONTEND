@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
+import { toast } from "react-toastify";
 
 const avatarColors = [
   "bg-red-500",
@@ -113,7 +114,7 @@ const AssignLeadModal = ({
     mutationFn: (payload: AssignToPayload) =>
       assignLeadToAnotherSalesExecutive(vendorId!, leadData!.id, payload),
     onSuccess: () => {
-      console.log("Lead assigned successfully!");
+      toast.success("Assign Lead Successfully.")
       queryClient.invalidateQueries({
         queryKey: ["vendorUserLeads", vendorId, userId],
       });
@@ -121,7 +122,8 @@ const AssignLeadModal = ({
     },
     onError: (error: any) => {
       console.error("Failed to assign lead", error.response?.data || error);
-    },
+       toast.error("Something went wrong!")
+    }
   });
 
   // Handler function

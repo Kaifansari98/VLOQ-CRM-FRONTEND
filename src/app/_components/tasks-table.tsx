@@ -40,6 +40,7 @@ import { useDeleteLead } from "@/hooks/useDeleteLead";
 import ViewLeadModal from "@/components/sales-executive/view-lead-moda";
 import AssignLeadModal from "@/components/sales-executive/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/lead-edit-form-modal";
+import { toast } from "react-toastify";
 
 // Define processed lead type for table
 export type ProcessedLead = {
@@ -97,21 +98,39 @@ const VendorLeadsTable = () => {
       console.log("Original Data row Leads: ", rowAction.row.original);
       setAssignOpenLead(true);
     }
-    if(rowAction?.variant === "edit" && rowAction.row) {
+    if (rowAction?.variant === "edit" && rowAction.row) {
       console.log("Original Edit Data row Leads: ", rowAction.row.original);
       setEditOpenLead(true);
     }
   }, [rowAction]);
 
   const handleDeleteLead = async () => {
-    if (rowAction?.row) {
-      const leadId = rowAction.row.original.id;
-      deleteLeadMutation.mutate({
-        leadId,
-        vendorId: vendorId!,
-        userId: userId!,
-      });
+    if (!rowAction?.row) return;
+
+    const leadId = rowAction.row.original.id;
+
+    // ✅ Pre-check vendorId and userId
+    if (!vendorId || !userId) {
+      toast.error("Vendor or User information is missing!");
+      return;
     }
+
+    deleteLeadMutation.mutate(
+      {
+        leadId,
+        vendorId,
+        userId,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Lead deleted successfully!");
+        },
+        onError: (error: any) => {
+          toast.error(error?.message || "Failed to delete lead!");
+        },
+      }
+    );
+
     setOpenDelete(false);
     setRowAction(null);
   };
@@ -131,13 +150,14 @@ const VendorLeadsTable = () => {
   const rowData = useMemo<ProcessedLead[]>(() => {
     if (!vendorUserLeadsQuery.data) return [];
 
-    console.log("vendor user leads: ", vendorUserLeadsQuery.data)
+    console.log("vendor user leads: ", vendorUserLeadsQuery.data);
 
     return vendorUserLeadsQuery.data.map((lead: Lead, index: number) => ({
       id: lead.id,
       srNo: index + 1,
       name: `${lead.firstname} ${lead.lastname}`.trim(),
       email: lead.email || "",
+      assign_to: lead.assignedTo?.user_name || "",
       contact: lead.contact_no || "",
       priority: lead.priority || "",
       siteAddress: lead.site_address || "",
