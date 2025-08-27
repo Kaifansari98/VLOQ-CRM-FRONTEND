@@ -38,6 +38,8 @@ import { useAppSelector } from "@/redux/store";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { FileUploadField } from "../custom/file-upload";
 import MultipleSelector, { Option } from "../ui/multiselect";
+import { canReassingLead } from "../utils/privileges";
+import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 
 const formSchema = z.object({
   firstname: z.string().min(1, "First name is required").max(300),
@@ -52,6 +54,8 @@ const formSchema = z.object({
   source_id: z.string().min(1, "Please select a source"),
   product_types: z.array(z.string()).optional(),
   product_structures: z.array(z.string()).optional(),
+  assign_to: z.string().optional(),
+  assigned_by: z.string().optional(),
   documents: z.string().optional(),
   archetech_name: z.string().max(300).optional(),
   designer_remark: z.string().max(2000).optional(),
@@ -255,8 +259,17 @@ export default function LeadsGenerationForm({
   const [files, setFiles] = useState<File[]>([]);
   const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
   const createdBy = useAppSelector((state: any) => state.auth.user?.id);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type.user_type as string | undefined
+  );
   const queryClient = useQueryClient();
-
+  // fetch data once at top of component (after form etc.)
+  const { data: vendorUsers, isLoading } = useVendorSalesExecutiveUsers(vendorId);
+  const { data: vendorUsersAssignedBy, isLoading: isLoadingAssignedBy } = useVendorSalesExecutiveUsers(vendorId);
+  console.log("userType:", userType, "canReassingLead:", canReassingLead(userType));
+  console.log("vendorUsers response:", vendorUsers);
+  const vendorUserss = vendorUsers?.data?.sales_executives ?? [];
+  
   const createLeadMutation = useMutation({
     mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
       createLead(payload, files),
@@ -300,6 +313,8 @@ export default function LeadsGenerationForm({
       documents: "",
       archetech_name: "",
       designer_remark: "",
+      assign_to: "",
+      assigned_by: "",
     },
   });
 
@@ -353,22 +368,26 @@ export default function LeadsGenerationForm({
 
       product_types: values.product_types || [],
       product_structures: values.product_structures || [],
+
+      // Assignment logic based on user role
+        ...(canReassingLead(userType) 
+        ? { 
+            // Admin/Super-admin can assign to anyone
+            assign_to: values.assign_to ? Number(values.assign_to) : undefined,
+            assigned_by: values.assigned_by ? Number(values.assigned_by) : undefined
+          }
+        : {
+            // Sales executive self-assigns
+            assign_to: createdBy,
+            assigned_by: undefined
+          }
+      ),
     };
 
     // console.log("[DEBUG] Processed payload:", payload);
 
     createLeadMutation.mutate({ payload, files });
   }
-
-  // Transform string[] to Option[] for the component
-  const stringArrayToOptions = (strings: string[]): Option[] => {
-    return strings.map((str) => ({ value: str, label: str }));
-  };
-
-  // Transform Option[] back to string[] for form storage
-  const optionsToStringArray = (options: Option[]): string[] => {
-    return options.map((option) => option.value);
-  };
 
   return (
     <div className="w-full max-w-none pt-3 pb-6">
@@ -663,85 +682,126 @@ export default function LeadsGenerationForm({
           </div>
 
           {/* Product Types & Structures */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-            <FormField
-              control={form.control}
-              name="product_types"
-              render={({ field }) => {
-                const { data: productTypes, isLoading } = useProductTypes();
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+  <FormField
+    control={form.control}
+    name="product_types"
+    render={({ field }) => {
+      const { data: productTypes, isLoading } = useProductTypes();
 
-                // API se aane wale data ko transform karna
-                type Option = { value: string; label: string };
-                const options: Option[] =
-                  productTypes?.data?.map((p: any) => ({
-                    value: String(p.id),
-                    label: p.type,
-                  })) ?? [];
+      // Transform API data to options
+      const options: Option[] =
+        productTypes?.data?.map((p: any) => ({
+          value: String(p.id),
+          label: p.type,
+        })) ?? [];
 
-                return (
-                  <FormItem>
-                    <FormLabel className="text-sm">Furniture Type</FormLabel>
-                    <FormControl>
-                      <MultipleSelector
-                        value={stringArrayToOptions(field.value || [])} // Transform string[] to Option[]
-                        onChange={(options) => {
-                          field.onChange(optionsToStringArray(options)); // Transform back to string[]
-                        }}
-                        options={options} // Make sure your options are Option[] format
-                        placeholder="Select furniture types"
-                        disabled={isLoading}
-                        hidePlaceholderWhenSelected
-                      />
-                    </FormControl>
-                    {/* <FormDescription className="text-xs">
-                      Select furniture categories.
-                    </FormDescription> */}
-                    <FormMessage />
-                  </FormItem>
-                );
+      // Transform selected IDs back to Option[] format for display
+      const selectedOptions = (field.value || []).map(id => {
+        const option = options.find(opt => opt.value === id);
+        return option || { value: id, label: id }; // fallback if option not found
+      });
+
+      return (
+        <FormItem>
+          <FormLabel className="text-sm">Furniture Type</FormLabel>
+          <FormControl>
+            <MultipleSelector
+              value={selectedOptions} // Pass Option[] with proper labels
+              onChange={(selectedOptions) => {
+                // Extract IDs from selected options and store as string[]
+                const selectedIds = selectedOptions.map(opt => opt.value);
+                field.onChange(selectedIds);
               }}
+              options={options}
+              placeholder="Select furniture types"
+              disabled={isLoading}
+              hidePlaceholderWhenSelected
             />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      );
+    }}
+  />
 
-            <FormField
-              control={form.control}
-              name="product_structures"
-              render={({ field }) => {
-                const { data: productStructures, isLoading } =
-                  useProductStructureTypes();
+  <FormField
+    control={form.control}
+    name="product_structures"
+    render={({ field }) => {
+      const { data: productStructures, isLoading } = useProductStructureTypes();
 
-                // transform API response → { value, label }
-                const options =
-                  productStructures?.data?.map((p: any) => ({
-                    value: String(p.id),
-                    label: p.type, // 👈 make sure matches API field name
-                  })) ?? [];
+      // Transform API data to options
+      const options: Option[] =
+        productStructures?.data?.map((p: any) => ({
+          value: String(p.id),
+          label: p.type,
+        })) ?? [];
 
-                return (
-                  <FormItem>
-                    <FormLabel className="text-sm">
-                      Furniture Structure
-                    </FormLabel>
-                    <FormControl>
-                      <MultipleSelector
-                        value={stringArrayToOptions(field.value || [])} // Transform string[] to Option[]
-                        onChange={(options) => {
-                          field.onChange(optionsToStringArray(options)); // Transform back to string[]
-                        }}
-                        options={options} // Make sure your options are Option[] format
-                        placeholder="Select furniture types"
-                        disabled={isLoading}
-                        hidePlaceholderWhenSelected
-                      />
-                    </FormControl>
-                    {/* <FormDescription className="text-xs">
-                      Select structure types.
-                    </FormDescription> */}
-                    <FormMessage />
-                  </FormItem>
-                );
+      // Transform selected IDs back to Option[] format for display
+      const selectedOptions = (field.value || []).map(id => {
+        const option = options.find(opt => opt.value === id);
+        return option || { value: id, label: id }; // fallback if option not found
+      });
+
+      return (
+        <FormItem>
+          <FormLabel className="text-sm">Furniture Structure</FormLabel>
+          <FormControl>
+            <MultipleSelector
+              value={selectedOptions} // Pass Option[] with proper labels
+              onChange={(selectedOptions) => {
+                // Extract IDs from selected options and store as string[]
+                const selectedIds = selectedOptions.map(opt => opt.value);
+                field.onChange(selectedIds);
               }}
+              options={options}
+              placeholder="Select furniture structures"
+              disabled={isLoading}
+              hidePlaceholderWhenSelected
             />
-          </div>
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      );
+    }}
+  />
+</div>
+
+{canReassingLead(userType) && (
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    {/* Assign To */}
+    <FormField
+      control={form.control}
+      name="assign_to"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel className="text-sm">Assign To</FormLabel>
+          <Select
+            value={field.value || ""}
+            onValueChange={field.onChange}
+            disabled={isLoading}
+          >
+            <FormControl>
+              <SelectTrigger className="text-sm w-full">
+                <SelectValue placeholder="Select assignee" />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              {vendorUserss?.map((user: any) => (
+                <SelectItem key={user.id} value={String(user.id)}>
+                  {user.user_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  </div>
+)}
+
 
           {/* Architect Name */}
           <FormField
