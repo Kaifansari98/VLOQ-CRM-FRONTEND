@@ -166,7 +166,7 @@ export function getVendorLeadsTableColumns({
       
 
             <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "update" })}
+              onSelect={() => setRowAction({ row, variant: "edit" })}
             >
               Edit
             </DropdownMenuItem>

@@ -39,6 +39,7 @@ import {
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import ViewLeadModal from "@/components/sales-executive/view-lead-moda";
 import AssignLeadModal from "@/components/sales-executive/assign-lead-moda";
+import { EditLeadModal } from "@/components/sales-executive/lead-edit-form-modal";
 
 // Define processed lead type for table
 export type ProcessedLead = {
@@ -77,6 +78,7 @@ const VendorLeadsTable = () => {
   const [openDelete, setOpenDelete] = useState<boolean>(false);
   const [openView, setOpenView] = useState<boolean>(false);
   const [assignOpenLead, setAssignOpenLead] = useState<boolean>(false);
+  const [editOpenLead, setEditOpenLead] = useState<boolean>(false);
   const deleteLeadMutation = useDeleteLead();
 
   // Row action state
@@ -94,6 +96,10 @@ const VendorLeadsTable = () => {
     if (rowAction?.variant === "reassignlead" && rowAction.row) {
       console.log("Original Data row Leads: ", rowAction.row.original);
       setAssignOpenLead(true);
+    }
+    if(rowAction?.variant === "edit" && rowAction.row) {
+      console.log("Original Edit Data row Leads: ", rowAction.row.original);
+      setEditOpenLead(true);
     }
   }, [rowAction]);
 
@@ -124,6 +130,8 @@ const VendorLeadsTable = () => {
   // Process leads into table data
   const rowData = useMemo<ProcessedLead[]>(() => {
     if (!vendorUserLeadsQuery.data) return [];
+
+    console.log("vendor user leads: ", vendorUserLeadsQuery.data)
 
     return vendorUserLeadsQuery.data.map((lead: Lead, index: number) => ({
       id: lead.id,
@@ -261,6 +269,12 @@ const VendorLeadsTable = () => {
       <AssignLeadModal
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}
+        leadData={rowAction?.row.original}
+      />
+
+      <EditLeadModal
+        open={editOpenLead}
+        onOpenChange={setEditOpenLead}
         leadData={rowAction?.row.original}
       />
     </>
