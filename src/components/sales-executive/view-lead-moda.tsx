@@ -1,7 +1,7 @@
 import React from "react";
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
 import { Button } from "../ui/button";
-import { Download } from "lucide-react";
+import { Download, Star } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import { ScrollArea } from "../ui/scroll-area";
 
@@ -50,29 +50,10 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
 
         <DialogHeader className="flex items-start justify-end border-b px-6 py-4 border-b">
           <Button>
-            <Download size={20} className="mr-2" /> Download Form As PDF
+            <Star size={20} className="mr-2" /> Lead Information
           </Button>
         </DialogHeader>
         <ScrollArea className="max-h-[calc(90vh-100px)]">
-          {/* Vendor + Logo */}
-          <div className="flex flex-col-reverse md:flex-row justify-between items-start md:items-center gap-4 px-5 py-4">
-            <div className="text-left">
-              <h1 className="text-lg font-semibold uppercase">
-                {vendor?.vendor_name}
-              </h1>
-              <p className="text-sm text-gray-600 capitalize">
-                {vendor?.address ??
-                  "742 Evergreen Terrace, Sector 12, Near Central Park, Springfield, Illinois 62704, United States"}
-              </p>
-            </div>
-            <div className="flex-shrink-0">
-              <img
-                src="/globe.svg"
-                alt="Company Logo"
-                className="w-20 h-20 md:w-24 md:h-24 object-contain"
-              />
-            </div>
-          </div>
 
           <div className="px-5 py-4">
             {/* Lead Info */}
@@ -134,9 +115,9 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+              {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4"> */}
                 {/* Remarks */}
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 mt-4">
                   <p className="text-sm font-medium">Design Remarks</p>
                   <div className="bg-muted border rounded-sm py-1 px-2 text-sm max-h-200 overflow-y-auto">
                     {data?.designerRemark || "N/A"}
@@ -144,7 +125,7 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
                 </div>
 
                 {/* Address */}
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 mt-4">
                   <p className="text-sm font-medium">Site Address</p>
                   <div className="bg-muted border rounded-sm py-1 px-2 text-sm max-h-200 overflow-y-auto">
                     {data?.siteAddress || "N/A"}
@@ -152,7 +133,7 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
                 </div>
               </div>
             </div>
-          </div>
+          {/* </div> */}
         </ScrollArea>
       </DialogContent>
     </Dialog>
