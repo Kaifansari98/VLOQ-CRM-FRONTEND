@@ -1,6 +1,6 @@
 // hooks/useLeadsQueries.ts
 import { useQuery, UseQueryResult } from '@tanstack/react-query'
-import { getVendorLeads, getVendorUserLeads, VendorLeadsResponse, VendorUserLeadsResponse } from '@/api/leads'
+import { getLeadById, getVendorLeads, getVendorUserLeads, VendorLeadsResponse, VendorUserLeadsResponse } from '@/api/leads'
 
 // Hook for getting vendor leads
 export const useVendorLeads = (
@@ -28,5 +28,14 @@ export const useVendorUserLeads = (
     enabled: enabled && !!vendorId && !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
+  })
+}
+
+
+export function useLeadById(leadId?: number, vendorId?: number, userId?: number) {
+  return useQuery({
+    queryKey: ["lead", leadId, vendorId, userId],
+    queryFn: () => getLeadById(leadId!, vendorId!, userId!), // non-null assertion because we check enabled below
+    enabled: !!leadId && !!vendorId && !!userId, // run only if ids exist
   })
 }
