@@ -108,6 +108,11 @@ export interface SiteType {
   vendor_id: number;
 }
 
+export interface AssignTo{
+  user_name:string
+  id?:number
+}
+
 export interface Lead {
   id: number;
   firstname: string;
@@ -138,6 +143,7 @@ export interface Lead {
   source: Source;
   siteType: SiteType;
   createdBy: User;
+  assignedTo: AssignTo | null,
 }
 
 export interface AssignToPayload {

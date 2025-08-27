@@ -38,8 +38,10 @@ export type ProcessedLead = {
 };
 
 interface GetVendorLeadsTableColumnsProps {
-  setRowAction: React.Dispatch<React.SetStateAction<DataTableRowAction<ProcessedLead> | null>>;
-  userType?: string;  
+  setRowAction: React.Dispatch<
+    React.SetStateAction<DataTableRowAction<ProcessedLead> | null>
+  >;
+  userType?: string;
 }
 
 export function getVendorLeadsTableColumns({
@@ -52,31 +54,31 @@ export function getVendorLeadsTableColumns({
 
 
   return [
-    {
-      id: "select", 
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-          className="translate-y-0.5"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-          className="translate-y-0.5"
-        />
-      ),
-      enableSorting: false, // Fixed: Checkbox column shouldn't be sortable
-      enableHiding: false, // Fixed: Don't hide select column
-      size: 50,
-    },
+    // {
+    //   id: "select",
+    //   header: ({ table }) => (
+    //     <Checkbox
+    //       checked={
+    //         table.getIsAllPageRowsSelected() ||
+    //         (table.getIsSomePageRowsSelected() && "indeterminate")
+    //       }
+    //       onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+    //       aria-label="Select all"
+    //       className="translate-y-0.5"
+    //     />
+    //   ),
+    //   cell: ({ row }) => (
+    //     <Checkbox
+    //       checked={row.getIsSelected()}
+    //       onCheckedChange={(value) => row.toggleSelected(!!value)}
+    //       aria-label="Select row"
+    //       className="translate-y-0.5"
+    //     />
+    //   ),
+    //   enableSorting: false, // Fixed: Checkbox column shouldn't be sortable
+    //   enableHiding: false, // Fixed: Don't hide select column
+    //   size: 50,
+    // },
     {
       accessorKey: "srNo",
       header: ({ column }) => (
@@ -149,6 +151,20 @@ export function getVendorLeadsTableColumns({
       enableHiding: true,
       enableColumnFilter: true,
     },
+    ...(canReassingLead(userType)
+      ? [
+          {
+            accessorKey: "assign_to",
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Sales Executive" />
+            ),
+            cell: ({ row }) => row.getValue("assign_to"),
+            enableSorting: true,
+            enableHiding: true,
+            enableColumnFilter: true,
+          } as ColumnDef<ProcessedLead>,
+        ]
+      : []),
     {
       id: "actions",
       cell: ({ row }) => (
@@ -169,22 +185,20 @@ export function getVendorLeadsTableColumns({
             >
               View
             </DropdownMenuItem>
-      
 
             <DropdownMenuItem
               onSelect={() => setRowAction({ row, variant: "edit" })}
             >
               Edit
             </DropdownMenuItem>
-           
-          {canReassingLead(userType) && (
 
-            <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "reassignlead" })}
-            >
-              Reassign Lead
-            </DropdownMenuItem>
-          )}
+            {canReassingLead(userType) && (
+              <DropdownMenuItem
+                onSelect={() => setRowAction({ row, variant: "reassignlead" })}
+              >
+                Reassign Lead
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
 
             <DropdownMenuItem
