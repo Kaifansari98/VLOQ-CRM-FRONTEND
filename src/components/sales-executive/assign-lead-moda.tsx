@@ -209,8 +209,8 @@ const AssignLeadModal = ({
               later.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="space-x-2">
-            <AlertDialogCancel className="bg-gray-100 text-gray-700 hover:bg-gray-200">
+          <AlertDialogFooter className="">
+            <AlertDialogCancel className="text-gray-700 hover:bg-gray-100">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction onClick={confrimHandleAssignLead}>

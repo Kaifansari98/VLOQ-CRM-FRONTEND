@@ -55,7 +55,7 @@ const data = {
   ],
   navMain: [
     {
-      title: "Sales Executive",
+      title: "Leads",
       url: "/",
       icon: SquareTerminal,
       isActive: true,
