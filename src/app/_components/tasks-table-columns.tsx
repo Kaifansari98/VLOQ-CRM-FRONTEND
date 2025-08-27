@@ -16,6 +16,7 @@ import { Ellipsis } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DataTableRowAction } from "@/types/data-table";
 import { canReassingLead } from "@/components/utils/privileges";
+import { useState } from "react";
 
 export type ProcessedLead = {
   id: number;
@@ -45,9 +46,14 @@ export function getVendorLeadsTableColumns({
   setRowAction,
   userType,
 }: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedLead>[] {
+
+  // const [editModalOpen, setEditModalOpen] = useState(false);
+  // const [selectedEditLeadId, setSelectedEditLeadId] = useState<number | null>(null);
+
+
   return [
     {
-      id: "select",
+      id: "select", 
       header: ({ table }) => (
         <Checkbox
           checked={
@@ -157,7 +163,7 @@ export function getVendorLeadsTableColumns({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
-            {/* 👇 New View Option */}
+      
             <DropdownMenuItem
               onSelect={() => setRowAction({ row, variant: "view" })}
             >

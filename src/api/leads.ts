@@ -147,22 +147,22 @@ export interface AssignToPayload {
 }
 
 export interface EditLeadPayload {
-  firstname: string; // yes
-  lastname: string; // yes
-  country_code: string; // yes
-  contact_no: number; // yes
-  alt_contact_no?: string; // yes
-  email?: string; // yes
-  site_address?: string; // yes
-  site_type_id?: number; // yes
-  priority?: string; // yes
-  billing_name?: string; // yes
-  source_id?: number; // yes 
-  archetech_name?: string; // yes
-  designer_remark?: string; // yes
-  product_types?: number[]; // yes
-  product_structures?: string[]; // yes
-  updated_by: string; // yes
+  firstname: string; 
+  lastname: string; 
+  country_code: string; 
+  contact_no: number; 
+  alt_contact_no?: string; 
+  email?: string; 
+  site_address?: string; 
+  site_type_id?: number; 
+  priority?: string; 
+  billing_name?: string; 
+  source_id?: number; 
+  archetech_name?: string; 
+  designer_remark?: string; 
+  product_types?: number[]; 
+  product_structures?: string[]; 
+  updated_by: string; 
 }
 
 export const createLead = async (
@@ -260,7 +260,6 @@ export const getVendorSalesExecutiveUsers = async (vendorId: number) => {
   );
   return response.data;
 };
-
 
 export const getLeadById = async (leadId: number,vendorId: number, userId: number) => {
   const response = await apiClient.get(`/leads/get-lead/${leadId}/vendor/${vendorId}/user/${userId}`);

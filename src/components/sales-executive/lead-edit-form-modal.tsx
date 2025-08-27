@@ -22,26 +22,10 @@ interface EditLeadModalProps {
   onOpenChange: (open: boolean) => void;
   leadData?: {
     id: number;
-    srNo: number;
-    name: string;
-    contact: string;
-    email: string;
-    siteAddress: string;
-    siteType: string;
-    source: string;
-    priority: string;
-    productTypes: string;
-    productStructures: string;
-    billingName: string;
-    architechName: string;
-    designerRemark: string;
-    createdAt: string;
-    updatedAt: string;
   };
 }
 
-
-export function EditLeadModal({ open, onOpenChange }: EditLeadModalProps) {
+export function EditLeadModal({ open, onOpenChange, leadData }: EditLeadModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -59,8 +43,12 @@ export function EditLeadModal({ open, onOpenChange }: EditLeadModalProps) {
 
         <ScrollArea className="max-h-[calc(90vh-100px)]">
           <div className="px-6">
-
-            {/* <EditLeadForm /> */}
+            {leadData ? (
+              <EditLeadForm
+                leadData={leadData}
+                onClose={() => onOpenChange(false)}
+              />
+            ) : null}
           </div>
         </ScrollArea>
       </DialogContent>
