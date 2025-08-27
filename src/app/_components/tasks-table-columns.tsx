@@ -15,6 +15,7 @@ import {
 import { Ellipsis } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DataTableRowAction } from "@/types/data-table";
+import { canReassingLead } from "@/components/utils/privileges";
 
 export type ProcessedLead = {
   id: number;
@@ -36,13 +37,13 @@ export type ProcessedLead = {
 };
 
 interface GetVendorLeadsTableColumnsProps {
-  setRowAction: React.Dispatch<
-    React.SetStateAction<DataTableRowAction<ProcessedLead> | null>
-  >;
+  setRowAction: React.Dispatch<React.SetStateAction<DataTableRowAction<ProcessedLead> | null>>;
+  userType?: string;  
 }
 
 export function getVendorLeadsTableColumns({
   setRowAction,
+  userType,
 }: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedLead>[] {
   return [
     {
@@ -165,17 +166,19 @@ export function getVendorLeadsTableColumns({
       
 
             <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "update" })}
+              onSelect={() => setRowAction({ row, variant: "edit" })}
             >
               Edit
             </DropdownMenuItem>
            
+          {canReassingLead(userType) && (
 
             <DropdownMenuItem
               onSelect={() => setRowAction({ row, variant: "reassignlead" })}
             >
               Reassign Lead
             </DropdownMenuItem>
+          )}
             <DropdownMenuSeparator />
 
             <DropdownMenuItem

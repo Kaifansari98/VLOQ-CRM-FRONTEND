@@ -146,6 +146,25 @@ export interface AssignToPayload {
   assignment_reason?: string;
 }
 
+export interface EditLeadPayload {
+  firstname: string; // yes
+  lastname: string; // yes
+  country_code: string; // no
+  contact_no: number; // yes
+  alt_contact_no?: string; // no 
+  email?: string; // yes
+  site_address?: string; // yes
+  site_type_id?: number; // no 
+  priority?: string; // yes
+  billing_name?: string; // yes
+  source_id?: number; // source // no 
+  archetech_name?: string; // yes
+  designer_remark?: string; // yes
+  product_types?: number[]; // yes
+  product_structures?: string[]; // yes
+  updated_by: string; // yes
+}
+
 export const createLead = async (
   payload: CreateLeadPayload,
   files: File[] = []
@@ -190,6 +209,18 @@ export const createLead = async (
     console.error("[DEBUG] API Error:", error.response?.data);
     throw error;
   }
+};
+
+export const updateLead = async (
+  payload: EditLeadPayload,
+  leadId: number,
+  userId: number
+) => {
+  const response = await apiClient.put(
+    `/leads/update/${leadId}/userId/${userId}`,
+    payload
+  );
+  return response.data
 };
 
 export type VendorLeadsResponse = Lead[];

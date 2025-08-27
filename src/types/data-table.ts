@@ -36,5 +36,5 @@ export interface ExtendedColumnFilter<TData> extends FilterItemSchema {
 
 export interface DataTableRowAction<TData> {
   row: Row<TData>;
-  variant: "update" | "delete" | "view"  | "reassignlead";
+  variant: "edit" | "delete" | "view"  | "reassignlead";
 }

@@ -39,6 +39,7 @@ import {
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import ViewLeadModal from "@/components/sales-executive/view-lead-moda";
 import AssignLeadModal from "@/components/sales-executive/assign-lead-moda";
+import { EditLeadModal } from "@/components/sales-executive/lead-edit-form-modal";
 
 // Define processed lead type for table
 export type ProcessedLead = {
@@ -63,6 +64,9 @@ export type ProcessedLead = {
 const VendorLeadsTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type.user_type as string | undefined
+  );
   const shouldFetch = !!vendorId && !!userId;
   // Fetch leads
   const vendorUserLeadsQuery = useVendorUserLeads(
@@ -74,6 +78,7 @@ const VendorLeadsTable = () => {
   const [openDelete, setOpenDelete] = useState<boolean>(false);
   const [openView, setOpenView] = useState<boolean>(false);
   const [assignOpenLead, setAssignOpenLead] = useState<boolean>(false);
+  const [editOpenLead, setEditOpenLead] = useState<boolean>(false);
   const deleteLeadMutation = useDeleteLead();
 
   // Row action state
@@ -91,6 +96,10 @@ const VendorLeadsTable = () => {
     if (rowAction?.variant === "reassignlead" && rowAction.row) {
       console.log("Original Data row Leads: ", rowAction.row.original);
       setAssignOpenLead(true);
+    }
+    if(rowAction?.variant === "edit" && rowAction.row) {
+      console.log("Original Edit Data row Leads: ", rowAction.row.original);
+      setEditOpenLead(true);
     }
   }, [rowAction]);
 
@@ -122,6 +131,8 @@ const VendorLeadsTable = () => {
   const rowData = useMemo<ProcessedLead[]>(() => {
     if (!vendorUserLeadsQuery.data) return [];
 
+    console.log("vendor user leads: ", vendorUserLeadsQuery.data)
+
     return vendorUserLeadsQuery.data.map((lead: Lead, index: number) => ({
       id: lead.id,
       srNo: index + 1,
@@ -148,8 +159,8 @@ const VendorLeadsTable = () => {
 
   // Setup columns
   const columns = React.useMemo(
-    () => getVendorLeadsTableColumns({ setRowAction }),
-    [setRowAction]
+    () => getVendorLeadsTableColumns({ setRowAction, userType }),
+    [setRowAction, userType]
   );
 
   // Create table with direct TanStack Table
@@ -199,6 +210,7 @@ const VendorLeadsTable = () => {
     throttleMs: 50,
   };
 
+  console.log("usertypes: ", userType);
   return (
     <>
       <DataTable table={table}>
@@ -257,6 +269,12 @@ const VendorLeadsTable = () => {
       <AssignLeadModal
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}
+        leadData={rowAction?.row.original}
+      />
+
+      <EditLeadModal
+        open={editOpenLead}
+        onOpenChange={setEditOpenLead}
         leadData={rowAction?.row.original}
       />
     </>
