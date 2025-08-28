@@ -155,41 +155,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     }
   };
 
-  const debugFormSubmission = async () => {
-    const values = form.getValues();
-    console.log("📝 Current form values:", values);
-
-    const errors = form.formState.errors;
-    console.log("❌ Form errors:", errors);
-
-    const isValid = form.formState.isValid;
-    console.log("✅ Form is valid:", isValid);
-
-    // Manually trigger validation
-    const manualValidation = await form.trigger();
-    console.log("🔍 Manual validation result:", manualValidation);
-  };
-
-  // 4. Test the API call directly
-  const testDirectAPICall = async () => {
-    const testPayload = {
-      firstname: "Test",
-      lastname: "User",
-      country_code: "+91",
-      contact_no: "9999999999",
-      email: "test@test.com",
-      updated_by: createdBy!,
-    };
-
-    try {
-      console.log("🧪 Testing direct API call...");
-      const result = await updateLead(testPayload, leadData.id, createdBy!);
-      console.log("✅ Direct API test successful:", result);
-    } catch (error) {
-      console.error("❌ Direct API test failed:", error);
-    }
-  };
-
   // Initialize form with default values from leadData
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -911,7 +876,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
               type="submit"
               className="text-sm"
               disabled={updateLeadMutation.isPending}
-              onClick={handleUpdateClick}
             >
               {updateLeadMutation.isPending ? "Updating..." : "Update Lead"}
             </Button>
