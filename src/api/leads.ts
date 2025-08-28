@@ -156,7 +156,7 @@ export interface EditLeadPayload {
   firstname: string; 
   lastname: string; 
   country_code: string; 
-  contact_no: number; 
+  contact_no: string; 
   alt_contact_no?: string; 
   email?: string; 
   site_address?: string; 
@@ -167,8 +167,8 @@ export interface EditLeadPayload {
   archetech_name?: string; 
   designer_remark?: string; 
   product_types?: number[]; 
-  product_structures?: string[]; 
-  updated_by: string; 
+  product_structures?: number[]; 
+  updated_by: number; 
 }
 
 export const createLead = async (

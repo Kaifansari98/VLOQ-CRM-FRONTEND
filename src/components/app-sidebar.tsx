@@ -160,14 +160,9 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user } = useSelector((state: RootState) => state.auth);
+  const vendorName = useSelector((state: RootState) => state.auth.user);
   const [userDelts, setUserDelts] = useState([]);
 
-  // useEffect(() => {
-  //   if(user){
-  //     console.log(user);
-  //   }
-  // });
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
