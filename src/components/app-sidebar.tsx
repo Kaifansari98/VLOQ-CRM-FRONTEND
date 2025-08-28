@@ -26,7 +26,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { useSelector } from "react-redux"
-import { RootState } from "@/redux/store"
+import { RootState, useAppSelector } from "@/redux/store"
 import { useEffect, useState } from "react"
 
 // This is sample data.
@@ -160,20 +160,38 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const vendorName = useSelector((state: RootState) => state.auth.user);
-  const [userDelts, setUserDelts] = useState([]);
+  const user = useAppSelector((state) => state.auth.user);
+
+  const userData = user
+    ? {
+        name: user?.user_name || 'username', // show vendor_name first
+        email: user?.user_email,
+        avatar: "/avatars/shadcn.jpg", // fallback, can later replace with vendor.logo if needed
+      }
+    : data.user;
 
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
-      </SidebarHeader>
+  {user ? (
+    <TeamSwitcher
+      teams={[
+        {
+          name: user.vendor?.vendor_name || "Default Vendor",
+          logo: GalleryVerticalEnd,
+          plan: user.vendor?.primary_contact_email || "xyz@gmail.com",
+        },
+      ]}
+    />
+  ) : null}
+</SidebarHeader>
+
       <SidebarContent>
         <NavMain items={data.navMain} />
         <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={userData} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
