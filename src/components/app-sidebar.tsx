@@ -69,72 +69,88 @@ const data = {
           url: "/dashboard/sales-executive/leadstable",
         },
         {
-          title: "Settings",
-          url: "#",
+          title: "Initial Site Measurement",
+          url: "/dashboard/sales-executive",
+        },
+        {
+          title: "Designing Stage",
+          url: "/dashboard/sales-executive",
+        },
+        {
+          title: "Booking Stage",
+          url: "/dashboard/sales-executive",
         },
       ],
     },
     {
-      title: "Models",
+      title: "Project",
       url: "#",
       icon: Bot,
       items: [
         {
-          title: "Genesis",
+          title: "Final Measurement",
           url: "#",
         },
         {
-          title: "Explorer",
+          title: "Client Documentation",
           url: "#",
         },
         {
-          title: "Quantum",
+          title: "Client Approval",
           url: "#",
         },
       ],
     },
     {
-      title: "Documentation",
+      title: "Production",
       url: "#",
       icon: BookOpen,
       items: [
         {
-          title: "Introduction",
+          title: "Tech Check",
           url: "#",
         },
         {
-          title: "Get Started",
+          title: "Order Login",
           url: "#",
         },
         {
-          title: "Tutorials",
+          title: "Production",
           url: "#",
         },
         {
-          title: "Changelog",
+          title: "Ready To Dispatch",
           url: "#",
         },
       ],
     },
     {
-      title: "Settings",
+      title: "Installation",
       url: "#",
       icon: Settings2,
       items: [
         {
-          title: "General",
+          title: "Site Readiness",
           url: "#",
         },
         {
-          title: "Team",
+          title: "Dispatch",
           url: "#",
         },
         {
-          title: "Billing",
+          title: "Installation Planning",
           url: "#",
         },
         {
-          title: "Limits",
+          title: "Under Installation",
+          url: "#",
+        },
+        {
+          title: "Final Handover",
+          url: "#",
+        },
+        {
+          title: "Servicing",
           url: "#",
         },
       ],
