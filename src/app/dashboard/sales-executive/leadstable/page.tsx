@@ -43,7 +43,7 @@ export default function LeadsGenerationPage() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Leads Table</BreadcrumbPage>
+                  <BreadcrumbPage>View Leads</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
