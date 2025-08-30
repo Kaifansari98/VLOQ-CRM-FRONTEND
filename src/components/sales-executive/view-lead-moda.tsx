@@ -10,6 +10,7 @@ interface LeadViewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   data?: {
+    id: number;
     name: string;
     email: string;
     contact: string;
@@ -25,6 +26,9 @@ interface LeadViewModalProps {
     designerRemark: string;
   };
 }
+
+
+
 
 const ViewLeadModal: React.FC<LeadViewModalProps> = ({
   open,
@@ -143,7 +147,7 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
         </ScrollArea>
       </DialogContent>
 
-      <InitialSiteMeasuresMent open={openModal} onOpenChange={setOpenModal} />
+      <InitialSiteMeasuresMent open={openModal} onOpenChange={setOpenModal} leadId={data?.id} />
     </Dialog>
   );
 };

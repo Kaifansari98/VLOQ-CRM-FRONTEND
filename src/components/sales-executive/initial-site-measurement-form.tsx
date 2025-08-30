@@ -24,56 +24,116 @@ import { PdfUploadField } from "../pdf-upload-input";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import DateInputPicker from "../origin-date-input";
+import { useAppSelector } from "@/redux/store";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { getLeadById, uploadInitialSiteMeasurement } from "@/api/leads";
+import { toast } from "react-toastify";
 
 interface LeadViewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  leadId: number | undefined;
 }
 
 const formSchema = z.object({
   current_site_photos: z.any().optional(),
-  initial_site_measurement_document: z
+  upload_pdf: z
     .array(z.instanceof(File))
     .min(1, "Please upload a PDF")
     .max(1, "Only one PDF allowed"),
-  initial_site_measurement_payble_amount: z
-    .number("Amount must be a number")
-    .optional(),
-  initial_site_measurement_amount_payment_date: z.string().optional(),
-  payment_details: z.any().optional(),
-  payment_details_text: z.string().optional(),
+  amount: z.number("Amount must be a number").optional(),
+  payment_date: z.string().optional(),
+  payment_image: z.any().optional(),
+  payment_text: z.string().optional(),
 });
-
 
 const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   open,
   onOpenChange,
+  leadId,
 }) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       current_site_photos: [],
-      initial_site_measurement_document: [],
-      payment_details: [],
+      upload_pdf: [],
+      payment_image: [],
     },
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // Table format
-    console.table(values);
+  const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state: any) => state.auth.user?.id);
 
-    // Full JSON format
-    console.log(JSON.stringify(values, null, 2));
+  const { data: accountId } = useQuery({
+    queryKey: ["lead", leadId],
+    queryFn: () => getLeadById(leadId!, vendorId, userId),
+    select: (res) => res?.data?.lead?.account?.id,
+  });
+
+  const mutation = useMutation({
+    mutationFn: uploadInitialSiteMeasurement,
+    onSuccess: () => {
+      toast.success("Initial Site Measurement Upload Successflly!");
+      handleReset();
+      onOpenChange(false);
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "Something went wrong");
+    },
+  });
+
+  let clientId = 1;
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
+    const formData = new FormData();
+
+    // Required IDs
+    formData.append("lead_id", leadId?.toString() || "");
+    formData.append("account_id", accountId?.toString() || "");
+    formData.append("vendor_id", vendorId?.toString() || "");
+    formData.append("created_by", userId?.toString() || "");
+    formData.append("client_id", clientId.toString() || "");
+
+    // Current Site Photos (multiple allowed)
+    values.current_site_photos?.forEach((file: File) => {
+      formData.append("current_site_photos", file);
+    });
+
+    // PDF (only one file allowed as per schema)
+    values.upload_pdf?.forEach((file: File) => {
+      formData.append("upload_pdf", file);
+    });
+
+    // Payable amount
+    if (values.amount) {
+      formData.append("amount", values.amount.toString());
+    }
+
+    // Payment date
+    if (values.payment_date) {
+      formData.append("payment_date", values.payment_date);
+    }
+
+    // Payment details text
+    if (values.payment_text) {
+      formData.append("payment_text", values.payment_text);
+    }
+    // Payment details images
+    values.payment_image?.forEach((file: File) => {
+      formData.append("payment_image", file);
+    });
+
+    // ✅ API call via mutation
+    mutation.mutate(formData);
   };
 
   const handleReset = () => {
     form.reset({
       current_site_photos: [],
-      initial_site_measurement_document: [], // reset empty array
-      initial_site_measurement_payble_amount: undefined,
-      initial_site_measurement_amount_payment_date: undefined, // ✅ instead of ""
-      payment_details: [],
-      payment_details_text: "",
+      upload_pdf: [], // reset empty array
+      amount: undefined,
+      payment_date: undefined, // ✅ instead of ""
+      payment_image: [],
+      payment_text: "",
     });
   };
 
@@ -120,7 +180,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
 
                 <FormField
                   control={form.control}
-                  name="initial_site_measurement_document"
+                  name="upload_pdf"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm">
@@ -140,7 +200,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                 <div className="flex flex-col sm:flex-row gap-4">
                   <FormField
                     control={form.control}
-                    name="initial_site_measurement_payble_amount"
+                    name="amount"
                     render={({ field }) => (
                       <FormItem className="w-full">
                         <FormLabel className="text-sm">
@@ -169,7 +229,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                   {/* Date Picker field */}
                   <FormField
                     control={form.control}
-                    name="initial_site_measurement_amount_payment_date"
+                    name="payment_date"
                     render={({ field }) => (
                       <FormItem className="w-full">
                         <FormLabel className="text-sm">
@@ -199,7 +259,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
 
                 <FormField
                   control={form.control}
-                  name="payment_details"
+                  name="payment_image"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm">Payment Details</FormLabel>
@@ -219,7 +279,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
 
                 <FormField
                   control={form.control}
-                  name="payment_details_text"
+                  name="payment_text"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm">
@@ -243,7 +303,9 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                   <Button type="button" variant="outline" onClick={handleReset}>
                     Reset
                   </Button>
-                  <Button type="submit">Submit</Button>
+                  <Button type="submit" disabled={mutation.isPending}>
+                    {mutation.isPending ? "Submitting..." : "Submit"}
+                  </Button>
                 </div>
               </form>
             </Form>

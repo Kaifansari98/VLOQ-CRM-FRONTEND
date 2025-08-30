@@ -108,9 +108,9 @@ export interface SiteType {
   vendor_id: number;
 }
 
-export interface AssignTo{
-  user_name:string
-  id?:number
+export interface AssignTo {
+  user_name: string;
+  id?: number;
 }
 
 export interface Lead {
@@ -143,7 +143,7 @@ export interface Lead {
   source: Source;
   siteType: SiteType;
   createdBy: User;
-  assignedTo: AssignTo | null,
+  assignedTo: AssignTo | null;
 }
 
 export interface AssignToPayload {
@@ -153,22 +153,22 @@ export interface AssignToPayload {
 }
 
 export interface EditLeadPayload {
-  firstname: string; 
-  lastname: string; 
-  country_code: string; 
-  contact_no: string; 
-  alt_contact_no?: string; 
-  email?: string; 
-  site_address?: string; 
-  site_type_id?: number; 
-  priority?: string; 
-  billing_name?: string; 
-  source_id?: number; 
-  archetech_name?: string; 
-  designer_remark?: string; 
-  product_types?: number[]; 
-  product_structures?: number[]; 
-  updated_by: number; 
+  firstname: string;
+  lastname: string;
+  country_code: string;
+  contact_no: string;
+  alt_contact_no?: string;
+  email?: string;
+  site_address?: string;
+  site_type_id?: number;
+  priority?: string;
+  billing_name?: string;
+  source_id?: number;
+  archetech_name?: string;
+  designer_remark?: string;
+  product_types?: number[];
+  product_structures?: number[];
+  updated_by: number;
 }
 
 export const createLead = async (
@@ -226,7 +226,7 @@ export const updateLead = async (
     `/leads/update/${leadId}/userId/${userId}`,
     payload
   );
-  return response.data
+  return response.data;
 };
 
 export type VendorLeadsResponse = Lead[];
@@ -267,10 +267,16 @@ export const getVendorSalesExecutiveUsers = async (vendorId: number) => {
   return response.data;
 };
 
-export const getLeadById = async (leadId: number,vendorId: number, userId: number) => {
-  const response = await apiClient.get(`/leads/get-lead/${leadId}/vendor/${vendorId}/user/${userId}`);
+export const getLeadById = async (
+  leadId: number,
+  vendorId: number,
+  userId: number
+) => {
+  const response = await apiClient.get(
+    `/leads/get-lead/${leadId}/vendor/${vendorId}/user/${userId}`
+  );
   return response.data;
-}
+};
 
 export const assignLeadToAnotherSalesExecutive = async (
   vendorId: number,
@@ -280,6 +286,19 @@ export const assignLeadToAnotherSalesExecutive = async (
   const response = await apiClient.put(
     `/leads/sales-executives/vendor/${vendorId}/lead/${leadId}`,
     payload
+  );
+  return response.data;
+};
+
+export const uploadInitialSiteMeasurement = async (payload: any) => {
+  const response = await apiClient.post(
+    "/leads/initial-site-measurement/payment-upload",
+    payload,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
   );
   return response.data;
 };
