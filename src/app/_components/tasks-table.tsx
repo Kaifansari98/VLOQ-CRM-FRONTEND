@@ -196,6 +196,7 @@ const VendorLeadsTable = () => {
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getRowId: (row) => row.id.toString(),
+    globalFilterFn: "includesString",
     state: {
       sorting,
       columnFilters,
@@ -234,6 +235,7 @@ const VendorLeadsTable = () => {
   return (
     <>
       <DataTable table={table}>
+        
         {enableAdvancedFilter ? (
           <>
             <DataTableAdvancedToolbar table={table}>

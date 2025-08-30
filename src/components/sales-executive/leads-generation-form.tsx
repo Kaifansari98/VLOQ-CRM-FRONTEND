@@ -54,7 +54,8 @@ const formSchema = z.object({
   source_id: z.string().min(1, "Please select a source"),
   product_types: z.array(z.string()).optional(),
   product_structures: z.array(z.string()).optional(),
-  assign_to: z.string().min(1, "Please select an assignee"), 
+  // status_id:z.n
+  assign_to: z.string().min(1, "Please select an assignee"),
   assigned_by: z.string(),
   documents: z.string().optional(),
   archetech_name: z.string().max(300).optional(),

@@ -11,10 +11,10 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ellipsis } from "lucide-react";
+import { Ellipsis, Eye, SquarePen, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DataTableRowAction } from "@/types/data-table";
-import { canReassingLead } from "@/components/utils/privileges";
+import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
 
 export type ProcessedLead = {
   id: number;
@@ -46,7 +46,6 @@ export function getVendorLeadsTableColumns({
   setRowAction,
   userType,
 }: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedLead>[] {
-
   return [
     {
       id: "actions",
@@ -62,16 +61,18 @@ export function getVendorLeadsTableColumns({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
-      
             <DropdownMenuItem
               onSelect={() => setRowAction({ row, variant: "view" })}
             >
+              <Eye size={20} />
               View
             </DropdownMenuItem>
+            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
 
             <DropdownMenuItem
               onSelect={() => setRowAction({ row, variant: "edit" })}
             >
+              <SquarePen size={20} />
               Edit
             </DropdownMenuItem>
 
@@ -79,17 +80,22 @@ export function getVendorLeadsTableColumns({
               <DropdownMenuItem
                 onSelect={() => setRowAction({ row, variant: "reassignlead" })}
               >
+                <Users size={20} />
                 Reassign Lead
               </DropdownMenuItem>
             )}
-            <DropdownMenuSeparator />
 
-            <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "delete" })}
-            >
-              Delete
-              <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
-            </DropdownMenuItem>
+            {canDeleteLead(userType) && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={() => setRowAction({ row, variant: "delete" })}
+                >
+                  Delete
+                  <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -135,7 +141,7 @@ export function getVendorLeadsTableColumns({
     },
 
     {
-      accessorKey: "siteType", 
+      accessorKey: "siteType",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Site Type" />
       ),
@@ -144,7 +150,7 @@ export function getVendorLeadsTableColumns({
       enableColumnFilter: true,
     },
     {
-      accessorKey: "priority", 
+      accessorKey: "priority",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Priority" />
       ),
@@ -153,15 +159,19 @@ export function getVendorLeadsTableColumns({
         // You can customize the display based on priority value
         const priorityColors = {
           urgent: "text-red-600 font-bold",
-          high: "text-orange-600 font-medium", 
+          high: "text-orange-600 font-medium",
           standard: "text-green-600",
-          low: "text-gray-600"
+          low: "text-gray-600",
         };
         return (
           <div className="p-1 flex items-center justify-center">
-          <span className={priorityColors[priority as keyof typeof priorityColors] || ""}>
-            {priority?.charAt(0).toUpperCase() + priority?.slice(1)}
-          </span>
+            <span
+              className={
+                priorityColors[priority as keyof typeof priorityColors] || ""
+              }
+            >
+              {priority?.charAt(0).toUpperCase() + priority?.slice(1)}
+            </span>
           </div>
         );
       },
@@ -183,6 +193,8 @@ export function getVendorLeadsTableColumns({
           } as ColumnDef<ProcessedLead>,
         ]
       : []),
+
+    
     {
       accessorKey: "createdAt",
       header: ({ column }) => (
@@ -227,6 +239,6 @@ export function getVendorLeadsTableColumns({
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
-    }
+    },
   ];
 }

@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
 import { Button } from "../ui/button";
 import { Download, Star } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import { ScrollArea } from "../ui/scroll-area";
+import InitialSiteMeasuresMent from "./initial-site-measurement-form";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -30,6 +31,7 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
   onOpenChange,
   data,
 }) => {
+  const [openModal, setOpenModal] = useState<boolean>(false);
   const formatDateTime = (dateString?: string) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
@@ -43,18 +45,22 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
   };
   const vendor = useAppSelector((state) => state.auth.user?.vendor);
 
+  const handleOpenModal = () => {
+    setOpenModal(true)
+    // onOpenChange(false)
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-3xl p-0 gap-0">
         {/* Header */}
 
         <DialogHeader className="flex items-start justify-end border-b px-6 py-4 border-b">
-          <Button>
-            <Star size={20} className="mr-2" /> Lead Information
+          <Button onClick={handleOpenModal}>
+            <Star size={20} className="mr-2" /> Initial Site Measurement
           </Button>
         </DialogHeader>
         <ScrollArea className="max-h-[calc(90vh-100px)]">
-
           <div className="px-5 py-4">
             {/* Lead Info */}
             <div className="w-full border py-4 px-5 mt-2 rounded-lg">
@@ -116,26 +122,28 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
               </div>
 
               {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4"> */}
-                {/* Remarks */}
-                <div className="flex flex-col gap-1 mt-4">
-                  <p className="text-sm font-medium">Design Remarks</p>
-                  <div className="bg-muted border rounded-sm py-1 px-2 text-sm max-h-200 overflow-y-auto">
-                    {data?.designerRemark || "N/A"}
-                  </div>
+              {/* Remarks */}
+              <div className="flex flex-col gap-1 mt-4">
+                <p className="text-sm font-medium">Design Remarks</p>
+                <div className="bg-muted border rounded-sm py-1 px-2 text-sm max-h-200 overflow-y-auto">
+                  {data?.designerRemark || "N/A"}
                 </div>
+              </div>
 
-                {/* Address */}
-                <div className="flex flex-col gap-1 mt-4">
-                  <p className="text-sm font-medium">Site Address</p>
-                  <div className="bg-muted border rounded-sm py-1 px-2 text-sm max-h-200 overflow-y-auto">
-                    {data?.siteAddress || "N/A"}
-                  </div>
+              {/* Address */}
+              <div className="flex flex-col gap-1 mt-4">
+                <p className="text-sm font-medium">Site Address</p>
+                <div className="bg-muted border rounded-sm py-1 px-2 text-sm max-h-200 overflow-y-auto">
+                  {data?.siteAddress || "N/A"}
                 </div>
               </div>
             </div>
+          </div>
           {/* </div> */}
         </ScrollArea>
       </DialogContent>
+
+      <InitialSiteMeasuresMent open={openModal} onOpenChange={setOpenModal} />
     </Dialog>
   );
 };
