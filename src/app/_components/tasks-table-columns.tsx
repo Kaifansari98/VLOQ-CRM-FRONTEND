@@ -11,10 +11,12 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ellipsis, Eye, SquarePen, Users } from "lucide-react";
+import { Ellipsis, Eye, SquarePen, Users, Text, Contact } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DataTableRowAction } from "@/types/data-table";
 import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
+import CustomeBadge from "@/components/origin-badge";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 export type ProcessedLead = {
   id: number;
@@ -33,6 +35,7 @@ export type ProcessedLead = {
   siteType: string;
   createdAt: string;
   updatedAt: string;
+  altContact?: string; // 👈 backend ke key ke sath match
 };
 
 interface GetVendorLeadsTableColumnsProps {
@@ -47,6 +50,7 @@ export function getVendorLeadsTableColumns({
   userType,
 }: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedLead>[] {
   return [
+    // Action Button
     {
       id: "actions",
       cell: ({ row }) => (
@@ -103,6 +107,7 @@ export function getVendorLeadsTableColumns({
       enableHiding: false,
       size: 40,
     },
+    // Sr NO
     {
       accessorKey: "srNo",
       header: ({ column }) => (
@@ -112,6 +117,8 @@ export function getVendorLeadsTableColumns({
       enableColumnFilter: true,
       enableHiding: true,
     },
+
+    // First name and lastname
     {
       accessorKey: "name",
       header: ({ column }) => (
@@ -120,7 +127,15 @@ export function getVendorLeadsTableColumns({
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
+      meta: {
+        label: "Name",
+        placeholder: "Search names...", // 👈 input placeholder
+        variant: "text", // 👈 search type
+        icon: Text, // 👈 search icon
+      },
     },
+
+    // contact
     {
       accessorKey: "contact",
       header: ({ column }) => (
@@ -129,7 +144,15 @@ export function getVendorLeadsTableColumns({
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
+      // meta: {
+      //   label: "Contact",
+      //   placeholder: "Search contact", // 👈 input placeholder
+      //   variant: "text", // 👈 search type
+      //   icon: Contact, // 👈 search icon
+      // },
     },
+
+    // Email
     {
       accessorKey: "email",
       header: ({ column }) => (
@@ -140,6 +163,7 @@ export function getVendorLeadsTableColumns({
       enableColumnFilter: true,
     },
 
+    // Site Type
     {
       accessorKey: "siteType",
       header: ({ column }) => (
@@ -149,6 +173,7 @@ export function getVendorLeadsTableColumns({
       enableHiding: true,
       enableColumnFilter: true,
     },
+    // Priority
     {
       accessorKey: "priority",
       header: ({ column }) => (
@@ -156,29 +181,50 @@ export function getVendorLeadsTableColumns({
       ),
       cell: ({ getValue }) => {
         const priority = getValue() as string;
-        // You can customize the display based on priority value
-        const priorityColors = {
-          urgent: "text-red-600 font-bold",
-          high: "text-orange-600 font-medium",
-          standard: "text-green-600",
-          low: "text-gray-600",
+
+        // map bgColor classes for CustomeBadge
+        const priorityColors: Record<string, string> = {
+          urgent: "bg-red-500",
+          high: "bg-amber-500",
+          standard: "bg-emerald-500",
+          low: "bg-gray-500",
         };
+
         return (
-          <div className="p-1 flex items-center justify-center">
-            <span
-              className={
-                priorityColors[priority as keyof typeof priorityColors] || ""
-              }
-            >
-              {priority?.charAt(0).toUpperCase() + priority?.slice(1)}
-            </span>
-          </div>
+          <CustomeBadge
+            title={priority?.charAt(0).toUpperCase() + priority?.slice(1)}
+            bgColor={priorityColors[priority] || "bg-gray-400"}
+          />
         );
       },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
+      meta: {
+        label: "Priority",
+        variant: "multiSelect",
+        options: ["urgent", "high", "standard", "low"].map((p) => {
+          const colors: Record<string, string> = {
+            urgent: "bg-red-500",
+            high: "bg-amber-500",
+            standard: "bg-emerald-500",
+            low: "bg-gray-500",
+          };
+
+          return {
+            value: p,
+            label: (
+              <div className="flex items-center gap-2">
+                <span className={`size-2 rounded-full ${colors[p]}`} />
+                {p.charAt(0).toUpperCase() + p.slice(1)}
+              </div>
+            ),
+          };
+        }) as unknown as { value: string; label: string }[], // 👈 force cast
+      },
     },
+
+    // Sales Executive
     ...(canReassingLead(userType)
       ? [
           {
@@ -194,25 +240,7 @@ export function getVendorLeadsTableColumns({
         ]
       : []),
 
-    
-    {
-      accessorKey: "createdAt",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Created At" />
-      ),
-      cell: ({ getValue }) => {
-        const dateValue = getValue() as string;
-        return dateValue ? new Date(dateValue).toLocaleDateString() : "";
-      },
-      sortingFn: (rowA, rowB, columnId) => {
-        const aDate = new Date(rowA.getValue(columnId) as string);
-        const bDate = new Date(rowB.getValue(columnId) as string);
-        return aDate.getTime() - bDate.getTime();
-      },
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
-    },
+    // ArchitechName
     {
       accessorKey: "architechName",
       header: ({ column }) => (
@@ -222,6 +250,7 @@ export function getVendorLeadsTableColumns({
       enableHiding: true,
       enableColumnFilter: true,
     },
+    // Billing Name
     {
       accessorKey: "billingName",
       header: ({ column }) => (
@@ -231,6 +260,94 @@ export function getVendorLeadsTableColumns({
       enableHiding: true,
       enableColumnFilter: true,
     },
+
+    // Source
+    {
+      accessorKey: "source",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Source" />
+      ),
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+    },
+    // Create At
+    {
+      accessorKey: "createdAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Created At" />
+      ),
+      cell: ({ getValue }) => {
+        const dateValue = getValue() as string;
+        if (!dateValue) return "";
+        const date = new Date(dateValue);
+        return (
+          <span className="text-gray-700">
+            {date.toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })}
+          </span>
+        );
+      },
+
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+    },
+    // Alt contact
+    {
+      accessorKey: "altContact",
+      header: ({ column }) => (
+        <div className="w-full text-center">
+          <DataTableColumnHeader column={column} title="Alt Contact" />
+        </div>
+      ),
+      cell: ({ getValue }) => {
+        const rawValue = getValue() as string | null;
+
+        let formatted = "–";
+        if (rawValue) {
+          try {
+            const phone = parsePhoneNumberFromString(rawValue); // ✅ correct method
+            if (phone) {
+              formatted = phone.formatInternational(); // e.g. +91 98765 43210
+            } else {
+              formatted = rawValue;
+            }
+          } catch {
+            formatted = rawValue; // fallback
+          }
+        }
+
+        return <div className="w-full text-center">{formatted}</div>;
+      },
+    },
+
+    // Product Types
+    {
+      accessorKey: "productTypes",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Product Types" />
+      ),
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+    },
+
+    // Product Structures
+    {
+      accessorKey: "productStructures",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Product Structures" />
+      ),
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+    },
+
+    // Site Address
     {
       accessorKey: "siteAddress",
       header: ({ column }) => (
@@ -239,6 +356,29 @@ export function getVendorLeadsTableColumns({
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
+      cell: ({ row }) => (
+        <div className="max-w-[300px] truncate">
+          {row.getValue("siteAddress")}
+        </div>
+      ),
+    },
+    // design Remark
+    {
+      accessorKey: "designerRemark",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Designer Remark" />
+      ),
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+      cell: ({ row }) => (
+        <div
+          className="max-w-[250px] truncate"
+          title={row.getValue("designerRemark")}
+        >
+          {row.getValue("designerRemark")}
+        </div>
+      ),
     },
   ];
 }

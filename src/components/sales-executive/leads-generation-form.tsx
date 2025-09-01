@@ -40,6 +40,7 @@ import { FileUploadField } from "../custom/file-upload";
 import MultipleSelector, { Option } from "../ui/multiselect";
 import { canReassingLead } from "../utils/privileges";
 import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
+import TextAreaInput from "../origin-text-area";
 
 const formSchema = z.object({
   firstname: z.string().min(1, "First name is required").max(300),
@@ -599,16 +600,12 @@ export default function LeadsGenerationForm({
               <FormItem>
                 <FormLabel className="text-sm">Site Address *</FormLabel>
                 <FormControl>
-                  <Textarea
-                    placeholder="Enter site address"
-                    className="resize-none text-sm"
-                    rows={2}
-                    {...field}
+                  <TextAreaInput
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Enter your address"
                   />
                 </FormControl>
-                {/* <FormDescription className="text-xs">
-                  Site address of the lead.
-                </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
@@ -846,10 +843,8 @@ export default function LeadsGenerationForm({
               <FormItem>
                 <FormLabel className="text-sm">Designer's Remark</FormLabel>
                 <FormControl>
-                  <Textarea
-                    placeholder="Enter remarks"
-                    className="resize-none text-sm"
-                    rows={3}
+                  <TextAreaInput
+                    placeholder="Enter your remarks"
                     {...field}
                   />
                 </FormControl>
