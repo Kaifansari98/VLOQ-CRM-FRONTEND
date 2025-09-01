@@ -113,6 +113,10 @@ export interface AssignTo {
   id?: number;
 }
 
+export interface StatusType {
+  type:string
+}
+
 export interface Lead {
   id: number;
   firstname: string;
@@ -144,6 +148,7 @@ export interface Lead {
   siteType: SiteType;
   createdBy: User;
   assignedTo: AssignTo | null;
+  statusType: StatusType;
 }
 
 export interface AssignToPayload {

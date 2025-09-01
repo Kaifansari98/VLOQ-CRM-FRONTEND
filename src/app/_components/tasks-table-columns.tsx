@@ -17,6 +17,8 @@ import type { DataTableRowAction } from "@/types/data-table";
 import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
 import CustomeBadge from "@/components/origin-badge";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
+import CustomeStatusBadge from "@/components/origin-status-badge";
+import RemarkTooltip from "@/components/origin-tooltip";
 
 export type ProcessedLead = {
   id: number;
@@ -36,6 +38,7 @@ export type ProcessedLead = {
   createdAt: string;
   updatedAt: string;
   altContact?: string; // 👈 backend ke key ke sath match
+  status: string;
 };
 
 interface GetVendorLeadsTableColumnsProps {
@@ -118,7 +121,7 @@ export function getVendorLeadsTableColumns({
       enableHiding: true,
     },
 
-    // First name and lastname
+    // First name and lastname: 1
     {
       accessorKey: "name",
       header: ({ column }) => (
@@ -135,7 +138,7 @@ export function getVendorLeadsTableColumns({
       },
     },
 
-    // contact
+    // contact: 2
     {
       accessorKey: "contact",
       header: ({ column }) => (
@@ -152,7 +155,7 @@ export function getVendorLeadsTableColumns({
       // },
     },
 
-    // Email
+    // Email : 3
     {
       accessorKey: "email",
       header: ({ column }) => (
@@ -163,17 +166,7 @@ export function getVendorLeadsTableColumns({
       enableColumnFilter: true,
     },
 
-    // Site Type
-    {
-      accessorKey: "siteType",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Site Type" />
-      ),
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
-    },
-    // Priority
+    // Priority: 4
     {
       accessorKey: "priority",
       header: ({ column }) => (
@@ -224,7 +217,34 @@ export function getVendorLeadsTableColumns({
       },
     },
 
-    // Sales Executive
+    // Status : 5
+    {
+      accessorKey: "status",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+      cell: ({ row }) => {
+        const status = row.getValue("status") as string;
+
+        return <CustomeStatusBadge title={status} />;
+      },
+    },
+
+    // Site Type: 6
+    {
+      accessorKey: "siteType",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Site Type" />
+      ),
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+    },
+
+    // Sales Executive: 7
     ...(canReassingLead(userType)
       ? [
           {
@@ -239,6 +259,22 @@ export function getVendorLeadsTableColumns({
           } as ColumnDef<ProcessedLead>,
         ]
       : []),
+
+    // Site Address: 8
+    {
+      accessorKey: "siteAddress",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Site Address" />
+      ),
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+      cell: ({ row }) => (
+        <div className="max-w-[300px] truncate">
+          {row.getValue("siteAddress")}
+        </div>
+      ),
+    },
 
     // ArchitechName
     {
@@ -347,21 +383,6 @@ export function getVendorLeadsTableColumns({
       enableColumnFilter: true,
     },
 
-    // Site Address
-    {
-      accessorKey: "siteAddress",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Site Address" />
-      ),
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
-      cell: ({ row }) => (
-        <div className="max-w-[300px] truncate">
-          {row.getValue("siteAddress")}
-        </div>
-      ),
-    },
     // design Remark
     {
       accessorKey: "designerRemark",
@@ -371,14 +392,14 @@ export function getVendorLeadsTableColumns({
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
-      cell: ({ row }) => (
-        <div
-          className="max-w-[250px] truncate"
-          title={row.getValue("designerRemark")}
-        >
-          {row.getValue("designerRemark")}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const fullRemark = row.getValue("designerRemark") as string;
+        const truncatedRemark =
+          fullRemark.length > 15 ? fullRemark.slice(0, 15) + "..." : fullRemark;
+        return (
+          <RemarkTooltip remark={truncatedRemark} remarkFull={fullRemark} />
+        );
+      },
     },
   ];
 }

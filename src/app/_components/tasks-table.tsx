@@ -42,10 +42,6 @@ import AssignLeadModal from "@/components/sales-executive/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/lead-edit-form-modal";
 import { toast } from "react-toastify";
 
-
-
-
-
 // Define processed lead type for table
 export type ProcessedLead = {
   id: number;
@@ -65,6 +61,7 @@ export type ProcessedLead = {
   updatedAt: string;
   altContact?: string;
   source: string;
+  status: string;
 };
 
 const VendorLeadsTable = () => {
@@ -86,9 +83,18 @@ const VendorLeadsTable = () => {
   const [assignOpenLead, setAssignOpenLead] = useState<boolean>(false);
   const [editOpenLead, setEditOpenLead] = useState<boolean>(false);
   const deleteLeadMutation = useDeleteLead();
-  const [globalFilter, setGlobalFilter] = React.useState("")
-
-
+  const [globalFilter, setGlobalFilter] = React.useState("");
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({
+      architechName: false,
+      billingName: false,
+      source: false,
+      createdAt: false,
+      altContact: false,
+      productTypes: false,
+      productStructures: false,
+      designerRemark: false,
+    });
   // Row action state
   const [rowAction, setRowAction] =
     React.useState<DataTableRowAction<ProcessedLead> | null>(null);
@@ -149,8 +155,7 @@ const VendorLeadsTable = () => {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
+
   const [rowSelection, setRowSelection] = React.useState({});
 
   // Process leads into table data
@@ -181,7 +186,8 @@ const VendorLeadsTable = () => {
       siteType: lead.siteType?.type || "",
       createdAt: lead.created_at || "",
       updatedAt: lead.updated_at || "",
-      altContact: lead.alt_contact_no || "",  // 👈 backend ke key ke sath match
+      altContact: lead.alt_contact_no || "", // 👈 backend ke key ke sath match
+      status: lead.statusType?.type || "",
     }));
   }, [vendorUserLeadsQuery.data]);
 
@@ -192,29 +198,28 @@ const VendorLeadsTable = () => {
   );
 
   // Create table with direct TanStack Table
-const table = useReactTable({
-  data: rowData,
-  columns,
-  onSortingChange: setSorting,
-  onColumnFiltersChange: setColumnFilters,
-  onColumnVisibilityChange: setColumnVisibility,
-  onRowSelectionChange: setRowSelection,
-  onGlobalFilterChange: setGlobalFilter, // 👈 yeh add karo
-  getCoreRowModel: getCoreRowModel(),
-  getSortedRowModel: getSortedRowModel(),
-  getFilteredRowModel: getFilteredRowModel(),
-  getPaginationRowModel: getPaginationRowModel(),
-  getRowId: (row) => row.id.toString(),
-  globalFilterFn: "includesString",
-  state: {
-    sorting,
-    columnFilters,
-    columnVisibility,
-    rowSelection,
-    globalFilter, // 👈 yaha state me inject karo
-  },
-})
-
+  const table = useReactTable({
+    data: rowData,
+    columns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    onGlobalFilterChange: setGlobalFilter,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getRowId: (row) => row.id.toString(),
+    globalFilterFn: "includesString",
+    state: {
+      sorting,
+      columnFilters,
+      rowSelection,
+      globalFilter,
+      columnVisibility,
+    },
+  });
 
   // // DEBUG: Log sorting state
   // React.useEffect(() => {
@@ -246,9 +251,6 @@ const table = useReactTable({
   return (
     <>
       <DataTable table={table}>
-
-        
-        
         {enableAdvancedFilter ? (
           <>
             <DataTableAdvancedToolbar table={table}>
