@@ -19,6 +19,7 @@ import CustomeBadge from "@/components/origin-badge";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
+import CustomeTooltip from "@/components/cutome-tooltip";
 
 export type ProcessedLead = {
   id: number;
@@ -132,12 +133,25 @@ export function getVendorLeadsTableColumns({
       enableColumnFilter: true,
       meta: {
         label: "Name",
-        placeholder: "Search names...", // 👈 input placeholder
-        variant: "text", // 👈 search type
-        icon: Text, // 👈 search icon
+        placeholder: "Search names...",
+        variant: "text",
+        icon: Text,
+      },
+      cell: ({ row }) => {
+        const name = row.getValue("name") as string;
+        const maxLength = 25;
+
+        // Agar name chhota hai, sirf text dikhaye
+        if (name.length <= maxLength) {
+          return <span>{name}</span>;
+        }
+
+        // Agar name bada hai, truncate + tooltip dikhaye
+        const truncateValue = name.slice(0, maxLength) + "...";
+
+        return <CustomeTooltip value={name} truncateValue={truncateValue} />;
       },
     },
-
     // contact: 2
     {
       accessorKey: "contact",
@@ -164,6 +178,18 @@ export function getVendorLeadsTableColumns({
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
+      cell: ({ row }) => {
+        const email = row.getValue("email") as string;
+        const maxLength = 20;
+
+        if (email.length <= maxLength) {
+          return <span>{email}</span>;
+        }
+
+        const truncateValue = email.slice(0, maxLength) + "...";
+
+        return <CustomeTooltip truncateValue={truncateValue} value={email} />;
+      },
     },
 
     // Priority: 4
@@ -269,13 +295,21 @@ export function getVendorLeadsTableColumns({
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
-      cell: ({ row }) => (
-        <div className="max-w-[300px] truncate">
-          {row.getValue("siteAddress")}
-        </div>
-      ),
-    },
+      cell: ({ row }) => {
+        const address = row.getValue("siteAddress") as string;
+        const maxLength = 30;
 
+        if (address.length <= maxLength) {
+          return <span>{address}</span>;
+        }
+
+        const truncateAddress = address.slice(0, maxLength) + "...";
+
+        return (
+          <RemarkTooltip remark={truncateAddress} remarkFull={address} />
+        );
+      },
+    },
     // ArchitechName
     {
       accessorKey: "architechName",

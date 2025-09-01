@@ -6,35 +6,27 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-interface RemarkTooltipProps {
-  remark: string;
-  remarkFull: string;
+interface CustomeTooltipProps {
+  truncateValue: string;
+  value: string;
 }
-
-export default function RemarkTooltip({
-  remark,
-  remarkFull,
-}: RemarkTooltipProps) {
+export default function CustomeTooltip({
+  truncateValue,
+  value,
+}: CustomeTooltipProps) {
   return (
     <TooltipProvider delayDuration={0}>
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            variant="outline"
             size="sm"
             className="border-0 shadow-none p-0 font-normal text-inherit bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent"
           >
-            {remark}
+            {truncateValue}
           </Button>
         </TooltipTrigger>
-        <TooltipContent className="py-3 w-[300px] ">
-          <div className="space-y-1">
-            <p className="text-[13px] font-medium">Design Remark</p>
-            <p className="text-muted-foreground text-xs">
-              {remarkFull}
-              <code>trigger</code> prop to <code>click</code>.
-            </p>
-          </div>
+        <TooltipContent className="dark px-2 py-1 text-xs">
+          {value}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
