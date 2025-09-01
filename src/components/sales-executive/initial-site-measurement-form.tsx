@@ -84,6 +84,11 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
 
   let clientId = 1;
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    console.log("Id's: ", leadId, accountId, vendorId, userId, clientId);
+    if (!leadId || !accountId) {
+      toast.error("Lead or account data is missing!");
+      return;
+    }
     const formData = new FormData();
 
     // Required IDs
@@ -102,7 +107,6 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     values.upload_pdf?.forEach((file: File) => {
       formData.append("upload_pdf", file);
     });
-
     // Payable amount
     if (values.amount) {
       formData.append("amount", values.amount.toString());
@@ -121,6 +125,18 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     values.payment_image?.forEach((file: File) => {
       formData.append("payment_image", file);
     });
+
+    // ✅ DEBUG: Log all FormData entries
+    console.log("==== FORM DATA TO BE SENT ====");
+    for (const [key, value] of formData.entries()) {
+      // If it's a file, show name and type
+      if (value instanceof File) {
+        console.log(key, value.name, value.type, value.size + " bytes");
+      } else {
+        console.log(key, value);
+      }
+    }
+    console.log("==== END FORM DATA ====");
 
     // ✅ API call via mutation
     mutation.mutate(formData);

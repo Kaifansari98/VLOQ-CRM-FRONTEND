@@ -255,7 +255,11 @@ export function getVendorLeadsTableColumns({
       cell: ({ row }) => {
         const status = row.getValue("status") as string;
 
-        return <CustomeStatusBadge title={status} />;
+        return (
+          <div className="flex items-center justify-center">
+            <CustomeStatusBadge title={status} />
+          </div>
+        );
       },
     },
 
@@ -305,11 +309,10 @@ export function getVendorLeadsTableColumns({
 
         const truncateAddress = address.slice(0, maxLength) + "...";
 
-        return (
-          <RemarkTooltip remark={truncateAddress} remarkFull={address} />
-        );
+        return <RemarkTooltip remark={truncateAddress} remarkFull={address} />;
       },
     },
+
     // ArchitechName
     {
       accessorKey: "architechName",
@@ -320,6 +323,7 @@ export function getVendorLeadsTableColumns({
       enableHiding: true,
       enableColumnFilter: true,
     },
+    
     // Billing Name
     {
       accessorKey: "billingName",
