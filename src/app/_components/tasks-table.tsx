@@ -56,10 +56,12 @@ export type ProcessedLead = {
   designerRemark: string;
   productTypes: string;
   productStructures: string;
-  source: string;
   siteType: string;
   createdAt: string;
   updatedAt: string;
+  altContact?: string;
+  source: string;
+  status: string;
 };
 
 const VendorLeadsTable = () => {
@@ -81,7 +83,18 @@ const VendorLeadsTable = () => {
   const [assignOpenLead, setAssignOpenLead] = useState<boolean>(false);
   const [editOpenLead, setEditOpenLead] = useState<boolean>(false);
   const deleteLeadMutation = useDeleteLead();
-
+  const [globalFilter, setGlobalFilter] = React.useState("");
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({
+      architechName: false,
+      billingName: false,
+      source: false,
+      createdAt: false,
+      altContact: false,
+      productTypes: false,
+      productStructures: false,
+      designerRemark: false,
+    });
   // Row action state
   const [rowAction, setRowAction] =
     React.useState<DataTableRowAction<ProcessedLead> | null>(null);
@@ -142,8 +155,7 @@ const VendorLeadsTable = () => {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
+
   const [rowSelection, setRowSelection] = React.useState({});
 
   // Process leads into table data
@@ -174,6 +186,8 @@ const VendorLeadsTable = () => {
       siteType: lead.siteType?.type || "",
       createdAt: lead.created_at || "",
       updatedAt: lead.updated_at || "",
+      altContact: lead.alt_contact_no || "", // 👈 backend ke key ke sath match
+      status: lead.statusType?.type || "",
     }));
   }, [vendorUserLeadsQuery.data]);
 
@@ -191,16 +205,19 @@ const VendorLeadsTable = () => {
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getRowId: (row) => row.id.toString(),
+    globalFilterFn: "includesString",
     state: {
       sorting,
       columnFilters,
-      columnVisibility,
       rowSelection,
+      globalFilter,
+      columnVisibility,
     },
   });
 

@@ -11,10 +11,15 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ellipsis } from "lucide-react";
+import { Ellipsis, Eye, SquarePen, Users, Text, Contact } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DataTableRowAction } from "@/types/data-table";
-import { canReassingLead } from "@/components/utils/privileges";
+import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
+import CustomeBadge from "@/components/origin-badge";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
+import CustomeStatusBadge from "@/components/origin-status-badge";
+import RemarkTooltip from "@/components/origin-tooltip";
+import CustomeTooltip from "@/components/cutome-tooltip";
 
 export type ProcessedLead = {
   id: number;
@@ -33,6 +38,8 @@ export type ProcessedLead = {
   siteType: string;
   createdAt: string;
   updatedAt: string;
+  altContact?: string; // 👈 backend ke key ke sath match
+  status: string;
 };
 
 interface GetVendorLeadsTableColumnsProps {
@@ -46,8 +53,8 @@ export function getVendorLeadsTableColumns({
   setRowAction,
   userType,
 }: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedLead>[] {
-
   return [
+    // Action Button
     {
       id: "actions",
       cell: ({ row }) => (
@@ -62,16 +69,18 @@ export function getVendorLeadsTableColumns({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
-      
             <DropdownMenuItem
               onSelect={() => setRowAction({ row, variant: "view" })}
             >
+              <Eye size={20} />
               View
             </DropdownMenuItem>
+            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
 
             <DropdownMenuItem
               onSelect={() => setRowAction({ row, variant: "edit" })}
             >
+              <SquarePen size={20} />
               Edit
             </DropdownMenuItem>
 
@@ -79,17 +88,22 @@ export function getVendorLeadsTableColumns({
               <DropdownMenuItem
                 onSelect={() => setRowAction({ row, variant: "reassignlead" })}
               >
+                <Users size={20} />
                 Reassign Lead
               </DropdownMenuItem>
             )}
-            <DropdownMenuSeparator />
 
-            <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "delete" })}
-            >
-              Delete
-              <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
-            </DropdownMenuItem>
+            {canDeleteLead(userType) && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={() => setRowAction({ row, variant: "delete" })}
+                >
+                  Delete
+                  <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -97,6 +111,7 @@ export function getVendorLeadsTableColumns({
       enableHiding: false,
       size: 40,
     },
+    // Sr NO
     {
       accessorKey: "srNo",
       header: ({ column }) => (
@@ -106,6 +121,8 @@ export function getVendorLeadsTableColumns({
       enableColumnFilter: true,
       enableHiding: true,
     },
+
+    // First name and lastname: 1
     {
       accessorKey: "name",
       header: ({ column }) => (
@@ -114,7 +131,28 @@ export function getVendorLeadsTableColumns({
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
+      meta: {
+        label: "Name",
+        placeholder: "Search names...",
+        variant: "text",
+        icon: Text,
+      },
+      cell: ({ row }) => {
+        const name = row.getValue("name") as string;
+        const maxLength = 25;
+
+        // Agar name chhota hai, sirf text dikhaye
+        if (name.length <= maxLength) {
+          return <span>{name}</span>;
+        }
+
+        // Agar name bada hai, truncate + tooltip dikhaye
+        const truncateValue = name.slice(0, maxLength) + "...";
+
+        return <CustomeTooltip value={name} truncateValue={truncateValue} />;
+      },
     },
+    // contact: 2
     {
       accessorKey: "contact",
       header: ({ column }) => (
@@ -123,7 +161,15 @@ export function getVendorLeadsTableColumns({
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
+      // meta: {
+      //   label: "Contact",
+      //   placeholder: "Search contact", // 👈 input placeholder
+      //   variant: "text", // 👈 search type
+      //   icon: Contact, // 👈 search icon
+      // },
     },
+
+    // Email : 3
     {
       accessorKey: "email",
       header: ({ column }) => (
@@ -132,10 +178,94 @@ export function getVendorLeadsTableColumns({
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
+      cell: ({ row }) => {
+        const email = row.getValue("email") as string;
+        const maxLength = 20;
+
+        if (email.length <= maxLength) {
+          return <span>{email}</span>;
+        }
+
+        const truncateValue = email.slice(0, maxLength) + "...";
+
+        return <CustomeTooltip truncateValue={truncateValue} value={email} />;
+      },
     },
 
+    // Priority: 4
     {
-      accessorKey: "siteType", 
+      accessorKey: "priority",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Priority" />
+      ),
+      cell: ({ getValue }) => {
+        const priority = getValue() as string;
+
+        // map bgColor classes for CustomeBadge
+        const priorityColors: Record<string, string> = {
+          urgent: "bg-red-500",
+          high: "bg-amber-500",
+          standard: "bg-emerald-500",
+          low: "bg-gray-500",
+        };
+
+        return (
+          <CustomeBadge
+            title={priority?.charAt(0).toUpperCase() + priority?.slice(1)}
+            bgColor={priorityColors[priority] || "bg-gray-400"}
+          />
+        );
+      },
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+      meta: {
+        label: "Priority",
+        variant: "multiSelect",
+        options: ["urgent", "high", "standard", "low"].map((p) => {
+          const colors: Record<string, string> = {
+            urgent: "bg-red-500",
+            high: "bg-amber-500",
+            standard: "bg-emerald-500",
+            low: "bg-gray-500",
+          };
+
+          return {
+            value: p,
+            label: (
+              <div className="flex items-center gap-2">
+                <span className={`size-2 rounded-full ${colors[p]}`} />
+                {p.charAt(0).toUpperCase() + p.slice(1)}
+              </div>
+            ),
+          };
+        }) as unknown as { value: string; label: string }[], // 👈 force cast
+      },
+    },
+
+    // Status : 5
+    {
+      accessorKey: "status",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+      cell: ({ row }) => {
+        const status = row.getValue("status") as string;
+
+        return (
+          <div className="flex items-center justify-center">
+            <CustomeStatusBadge title={status} />
+          </div>
+        );
+      },
+    },
+
+    // Site Type: 6
+    {
+      accessorKey: "siteType",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Site Type" />
       ),
@@ -143,32 +273,8 @@ export function getVendorLeadsTableColumns({
       enableHiding: true,
       enableColumnFilter: true,
     },
-    {
-      accessorKey: "priority", 
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Priority" />
-      ),
-      cell: ({ getValue }) => {
-        const priority = getValue() as string;
-        // You can customize the display based on priority value
-        const priorityColors = {
-          urgent: "text-red-600 font-bold",
-          high: "text-orange-600 font-medium", 
-          standard: "text-green-600",
-          low: "text-gray-600"
-        };
-        return (
-          <div className="p-1 flex items-center justify-center">
-          <span className={priorityColors[priority as keyof typeof priorityColors] || ""}>
-            {priority?.charAt(0).toUpperCase() + priority?.slice(1)}
-          </span>
-          </div>
-        );
-      },
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
-    },
+
+    // Sales Executive: 7
     ...(canReassingLead(userType)
       ? [
           {
@@ -183,24 +289,31 @@ export function getVendorLeadsTableColumns({
           } as ColumnDef<ProcessedLead>,
         ]
       : []),
+
+    // Site Address: 8
     {
-      accessorKey: "createdAt",
+      accessorKey: "siteAddress",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Created At" />
+        <DataTableColumnHeader column={column} title="Site Address" />
       ),
-      cell: ({ getValue }) => {
-        const dateValue = getValue() as string;
-        return dateValue ? new Date(dateValue).toLocaleDateString() : "";
-      },
-      sortingFn: (rowA, rowB, columnId) => {
-        const aDate = new Date(rowA.getValue(columnId) as string);
-        const bDate = new Date(rowB.getValue(columnId) as string);
-        return aDate.getTime() - bDate.getTime();
-      },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
+      cell: ({ row }) => {
+        const address = row.getValue("siteAddress") as string;
+        const maxLength = 30;
+
+        if (address.length <= maxLength) {
+          return <span>{address}</span>;
+        }
+
+        const truncateAddress = address.slice(0, maxLength) + "...";
+
+        return <RemarkTooltip remark={truncateAddress} remarkFull={address} />;
+      },
     },
+
+    // ArchitechName
     {
       accessorKey: "architechName",
       header: ({ column }) => (
@@ -210,6 +323,8 @@ export function getVendorLeadsTableColumns({
       enableHiding: true,
       enableColumnFilter: true,
     },
+    
+    // Billing Name
     {
       accessorKey: "billingName",
       header: ({ column }) => (
@@ -219,14 +334,110 @@ export function getVendorLeadsTableColumns({
       enableHiding: true,
       enableColumnFilter: true,
     },
+
+    // Source
     {
-      accessorKey: "siteAddress",
+      accessorKey: "source",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Site Address" />
+        <DataTableColumnHeader column={column} title="Source" />
       ),
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
-    }
+    },
+    // Create At
+    {
+      accessorKey: "createdAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Created At" />
+      ),
+      cell: ({ getValue }) => {
+        const dateValue = getValue() as string;
+        if (!dateValue) return "";
+        const date = new Date(dateValue);
+        return (
+          <span className="text-gray-700">
+            {date.toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })}
+          </span>
+        );
+      },
+
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+    },
+    // Alt contact
+    {
+      accessorKey: "altContact",
+      header: ({ column }) => (
+        <div className="w-full text-center">
+          <DataTableColumnHeader column={column} title="Alt Contact" />
+        </div>
+      ),
+      cell: ({ getValue }) => {
+        const rawValue = getValue() as string | null;
+
+        let formatted = "–";
+        if (rawValue) {
+          try {
+            const phone = parsePhoneNumberFromString(rawValue); // ✅ correct method
+            if (phone) {
+              formatted = phone.formatInternational(); // e.g. +91 98765 43210
+            } else {
+              formatted = rawValue;
+            }
+          } catch {
+            formatted = rawValue; // fallback
+          }
+        }
+
+        return <div className="w-full text-center">{formatted}</div>;
+      },
+    },
+
+    // Product Types
+    {
+      accessorKey: "productTypes",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Product Types" />
+      ),
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+    },
+
+    // Product Structures
+    {
+      accessorKey: "productStructures",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Product Structures" />
+      ),
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+    },
+
+    // design Remark
+    {
+      accessorKey: "designerRemark",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Designer Remark" />
+      ),
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+      cell: ({ row }) => {
+        const fullRemark = row.getValue("designerRemark") as string;
+        const truncatedRemark =
+          fullRemark.length > 15 ? fullRemark.slice(0, 15) + "..." : fullRemark;
+        return (
+          <RemarkTooltip remark={truncatedRemark} remarkFull={fullRemark} />
+        );
+      },
+    },
   ];
 }

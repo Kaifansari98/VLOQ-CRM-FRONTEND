@@ -70,7 +70,7 @@ const data = {
         },
         {
           title: "Initial Site Measurement",
-          url: "/dashboard/sales-executive",
+          url: "/dashboard/sales-executive/initial-site-measurement",
         },
         {
           title: "Designing Stage",

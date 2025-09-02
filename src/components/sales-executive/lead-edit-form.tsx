@@ -41,6 +41,7 @@ import { canReassingLead } from "../utils/privileges";
 import { updateLead, getLeadById, EditLeadPayload } from "@/api/leads";
 import { CountryCode, parsePhoneNumber } from "libphonenumber-js";
 import { apiClient } from "@/lib/apiClient";
+import TextAreaInput from "../origin-text-area";
 
 // Form validation schema
 const formSchema = z.object({
@@ -152,41 +153,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       });
     } catch (error) {
       console.error("📞 Phone parsing error:", error);
-    }
-  };
-
-  const debugFormSubmission = async () => {
-    const values = form.getValues();
-    console.log("📝 Current form values:", values);
-
-    const errors = form.formState.errors;
-    console.log("❌ Form errors:", errors);
-
-    const isValid = form.formState.isValid;
-    console.log("✅ Form is valid:", isValid);
-
-    // Manually trigger validation
-    const manualValidation = await form.trigger();
-    console.log("🔍 Manual validation result:", manualValidation);
-  };
-
-  // 4. Test the API call directly
-  const testDirectAPICall = async () => {
-    const testPayload = {
-      firstname: "Test",
-      lastname: "User",
-      country_code: "+91",
-      contact_no: "9999999999",
-      email: "test@test.com",
-      updated_by: createdBy!,
-    };
-
-    try {
-      console.log("🧪 Testing direct API call...");
-      const result = await updateLead(testPayload, leadData.id, createdBy!);
-      console.log("✅ Direct API test successful:", result);
-    } catch (error) {
-      console.error("❌ Direct API test failed:", error);
     }
   };
 
@@ -670,11 +636,10 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
               <FormItem>
                 <FormLabel className="text-sm">Site Address *</FormLabel>
                 <FormControl>
-                  <Textarea
-                    placeholder="Enter site address"
-                    className="resize-none text-sm"
-                    rows={2}
-                    {...field}
+                  <TextAreaInput
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Enter your address"
                   />
                 </FormControl>
                 {/* <FormDescription className="text-xs">
@@ -883,11 +848,10 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
               <FormItem>
                 <FormLabel className="text-sm">Designer's Remark</FormLabel>
                 <FormControl>
-                  <Textarea
-                    placeholder="Enter remarks"
-                    className="resize-none text-sm"
-                    rows={3}
-                    {...field}
+                  <TextAreaInput
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Enter ysiteur Remark"
                   />
                 </FormControl>
                 {/* <FormDescription className="text-xs">
@@ -911,7 +875,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
               type="submit"
               className="text-sm"
               disabled={updateLeadMutation.isPending}
-              onClick={handleUpdateClick}
             >
               {updateLeadMutation.isPending ? "Updating..." : "Update Lead"}
             </Button>

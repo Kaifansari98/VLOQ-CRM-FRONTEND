@@ -40,6 +40,7 @@ import { FileUploadField } from "../custom/file-upload";
 import MultipleSelector, { Option } from "../ui/multiselect";
 import { canReassingLead } from "../utils/privileges";
 import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
+import TextAreaInput from "../origin-text-area";
 
 const formSchema = z.object({
   firstname: z.string().min(1, "First name is required").max(300),
@@ -54,7 +55,8 @@ const formSchema = z.object({
   source_id: z.string().min(1, "Please select a source"),
   product_types: z.array(z.string()).optional(),
   product_structures: z.array(z.string()).optional(),
-  assign_to: z.string().min(1, "Please select an assignee"), 
+  // status_id:z.n
+  assign_to: z.string().min(1, "Please select an assignee"),
   assigned_by: z.string(),
   documents: z.string().optional(),
   archetech_name: z.string().max(300).optional(),
@@ -598,16 +600,12 @@ export default function LeadsGenerationForm({
               <FormItem>
                 <FormLabel className="text-sm">Site Address *</FormLabel>
                 <FormControl>
-                  <Textarea
-                    placeholder="Enter site address"
-                    className="resize-none text-sm"
-                    rows={2}
-                    {...field}
+                  <TextAreaInput
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Enter your address"
                   />
                 </FormControl>
-                {/* <FormDescription className="text-xs">
-                  Site address of the lead.
-                </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
@@ -845,10 +843,8 @@ export default function LeadsGenerationForm({
               <FormItem>
                 <FormLabel className="text-sm">Designer's Remark</FormLabel>
                 <FormControl>
-                  <Textarea
-                    placeholder="Enter remarks"
-                    className="resize-none text-sm"
-                    rows={3}
+                  <TextAreaInput
+                    placeholder="Enter your remarks"
                     {...field}
                   />
                 </FormControl>
