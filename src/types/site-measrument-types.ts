@@ -37,9 +37,12 @@ export interface Account {
 export interface Document {
   id: number;
   doc_og_name: string;
+  doc_sys_name: string;
+  doc_type_id: number;
   signed_url: string;
   file_type: string;
   is_image: boolean;
+  created_at: string;
 }
 
 export interface PaymentInfo {
@@ -55,6 +58,20 @@ export interface LedgerEntry {
   amount: number;
   type: string;
   payment_date: string;
+}
+export interface Pagination {
+  currentPage: number;
+  totalPages: number;
+  totalRecords: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+export interface SiteMeasurmentResponse {
+  success: boolean;
+  message: string;
+  data: SiteMeasurmentLead[];
+  pagination: Pagination;
 }
 
 export interface Upload {
@@ -110,20 +127,7 @@ export interface SiteMeasurmentLead {
   uploads: Upload[];
 }
 
-export interface Pagination {
-  currentPage: number;
-  totalPages: number;
-  totalRecords: number;
-  hasNext: boolean;
-  hasPrev: boolean;
-}
 
-export interface SiteMeasurmentResponse {
-  success: boolean;
-  message: string;
-  data: SiteMeasurmentLead[];
-  pagination: Pagination;
-}
 
 export type ProcessedSiteMeasurementLead = {
   id: number;
@@ -145,10 +149,6 @@ export type ProcessedSiteMeasurementLead = {
   altContact?: string;
   status: string;
   assignedTo: string;
-  documentUrl: DocumentUrl[];
-};
-
-export type DocumentUrl = {
-  doc_og_name: string;
-  signed_url: string;
+  documentUrl: Document[];
+  paymentInfo: PaymentInfo | null;
 };
