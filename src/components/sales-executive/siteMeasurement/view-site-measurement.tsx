@@ -24,7 +24,7 @@ interface LeadViewModalProps {
     priority: string;
     siteAddress: string;
     designerRemark: string;
-    documentUrl: string[];
+    documentUrl: { doc_og_name: string; signed_url: string }[];
   };
 }
 
@@ -58,9 +58,18 @@ const ViewInitialSiteMeasurmentLead: React.FC<LeadViewModalProps> = ({
         <ScrollArea className="max-h-[calc(90vh-100px)]">
           {/* <h1>{data?.map }</h1> */}
           <div>
-            {data?.documentUrl?.map((doc: string, index: number) => (
-              <div key={index}>{doc}</div>
-            ))}
+          {data?.documentUrl?.map((doc, index) => (
+  <div key={index} className="flex items-center gap-2 mb-2">
+    <a
+      href={doc.signed_url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-blue-600 underline"
+    >
+      {doc.doc_og_name}
+    </a>
+  </div>
+))}
           </div>
         </ScrollArea>
       </DialogContent>

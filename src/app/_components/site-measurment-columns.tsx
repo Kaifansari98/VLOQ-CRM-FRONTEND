@@ -41,7 +41,7 @@ export type ProcessedLead = {
   altContact?: string;
   status: string;
   assignedTo: string;
-  documentUrl: string[];
+  documentUrl: { doc_og_name: string; signed_url: string }[];
 };
 
 interface GetSiteMeasurementColumnProps {

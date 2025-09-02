@@ -90,7 +90,13 @@ export interface SiteMeasurmentLead {
   billing_name: string;
   archetech_name: string;
   designer_remark: string;
-  document: Document[];
+  documents: {
+    id: number;
+    doc_og_name: string;
+    signed_url: string;
+    file_type: string;
+    is_image: boolean;
+  }[];
   vendor: Vendor;
   siteType: SiteType;
   source: Source;

@@ -66,7 +66,7 @@ export type ProcessedLead = {
   source: string;
   status: string;
   assignedTo: string;
-  documentUrl: string[];
+  documentUrl: { doc_og_name: string; signed_url: string }[];
 };
 
 const SiteMeasurementTable = () => {
@@ -139,27 +139,22 @@ const SiteMeasurementTable = () => {
 
   // Memoized values
   const rowData = useMemo<ProcessedLead[]>(() => {
-    // Fix: API returns data directly under 'data' property, not nested
     if (!data?.data) return [];
-
+  
     return data.data.map((lead: SiteMeasurmentLead, index: number) => {
-      // Extract all document URLs from uploads
-      const allDocumentUrls: string[] = [];
-
-      // Check if uploads exist and iterate through them
-      if (lead.uploads && Array.isArray(lead.uploads)) {
-        lead.uploads.forEach((upload) => {
-          // Check if documents exist in this upload
-          if (upload.documents && Array.isArray(upload.documents)) {
-            upload.documents.forEach((doc) => {
-              if (doc.doc_sys_name) {
-                allDocumentUrls.push(doc.doc_sys_name);
-              }
+      const allDocumentUrls: { doc_og_name: string; signed_url: string }[] = [];
+  
+      if (lead.documents && Array.isArray(lead.documents)) {
+        lead.documents.forEach((doc: any) => {
+          if (doc.doc_og_name && doc.signed_url) {
+            allDocumentUrls.push({
+              doc_og_name: doc.doc_og_name,
+              signed_url: doc.signed_url,
             });
           }
         });
-      }
-
+      }      
+  
       return {
         id: lead.id,
         srNo: index + 1,
@@ -178,12 +173,13 @@ const SiteMeasurementTable = () => {
         altContact: lead.alt_contact_no || "",
         status: lead.statusType?.type || "",
         assignedTo: lead.assignedTo?.user_name || "Unassigned",
-        productTypes: "", // You might need to map this from lead.summary or other fields
-        productStructures: "", // You might need to map this from lead.summary or other fields
-        documentUrl: allDocumentUrls, // Now properly mapped as string array
+        productTypes: "",
+        productStructures: "",
+        documentUrl: allDocumentUrls, // ✅ now includes signed_url
       };
     });
   }, [data]);
+  
 
   const columns = React.useMemo(
     () => getSiteMeasurementColumn({ setRowAction, userType }),
