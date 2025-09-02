@@ -117,6 +117,9 @@ export function getVendorLeadsTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Sr. No." />
       ),
+      meta: {
+        label: "SrNo",
+      },
       enableSorting: true,
       enableColumnFilter: true,
       enableHiding: true,
@@ -161,12 +164,9 @@ export function getVendorLeadsTableColumns({
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
-      // meta: {
-      //   label: "Contact",
-      //   placeholder: "Search contact", // 👈 input placeholder
-      //   variant: "text", // 👈 search type
-      //   icon: Contact, // 👈 search icon
-      // },
+      meta: {
+        label: "Contact",
+      },
     },
 
     // Email : 3
@@ -175,6 +175,9 @@ export function getVendorLeadsTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Email" />
       ),
+      meta: {
+        label: "Email",
+      },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
@@ -249,6 +252,9 @@ export function getVendorLeadsTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Status" />
       ),
+      meta: {
+        label: "Status",
+      },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
@@ -269,6 +275,9 @@ export function getVendorLeadsTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Site Type" />
       ),
+      meta: {
+        label: "Site Type",
+      },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
@@ -283,6 +292,9 @@ export function getVendorLeadsTableColumns({
               <DataTableColumnHeader column={column} title="Sales Executive" />
             ),
             cell: ({ row }) => row.getValue("assign_to"),
+            meta: {
+              label: "Sales Executive",
+            },
             enableSorting: true,
             enableHiding: true,
             enableColumnFilter: true,
@@ -296,6 +308,9 @@ export function getVendorLeadsTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Site Address" />
       ),
+      meta: {
+        label: "Site Address",
+      },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
@@ -319,17 +334,23 @@ export function getVendorLeadsTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Architect Name" />
       ),
+      meta: {
+        label: "Architech Name",
+      },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
     },
-    
+
     // Billing Name
     {
       accessorKey: "billingName",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Billing Name" />
       ),
+      meta: {
+        label: "Billing Name", //
+      },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
@@ -341,6 +362,9 @@ export function getVendorLeadsTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Source" />
       ),
+      meta: {
+        label: "Source",
+      },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
@@ -366,6 +390,10 @@ export function getVendorLeadsTableColumns({
         );
       },
 
+      meta: {
+        label: "Created At",
+      },
+
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
@@ -378,6 +406,9 @@ export function getVendorLeadsTableColumns({
           <DataTableColumnHeader column={column} title="Alt Contact" />
         </div>
       ),
+      meta: {
+        label: "Alt Contact",
+      },
       cell: ({ getValue }) => {
         const rawValue = getValue() as string | null;
 
@@ -405,6 +436,9 @@ export function getVendorLeadsTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Product Types" />
       ),
+      meta: {
+        label: "Product Types",
+      },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
@@ -416,6 +450,9 @@ export function getVendorLeadsTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Product Structures" />
       ),
+      meta: {
+        label: "Product Structures",
+      },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
@@ -430,6 +467,9 @@ export function getVendorLeadsTableColumns({
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
+      meta: {
+        label: "Designer's Remark",
+      },
       cell: ({ row }) => {
         const fullRemark = row.getValue("designerRemark") as string;
         const truncatedRemark =

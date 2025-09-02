@@ -16,10 +16,10 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/ModeToggle";
-import { Card } from "@/components/ui/card";
 import { useAppSelector } from "@/redux/store";
 import { useQuery } from "@tanstack/react-query";
 import { getInitialSiteMeasurement } from "@/api/leads";
+
 
 export default function InitialSiteMeasurement() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -28,12 +28,8 @@ export default function InitialSiteMeasurement() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["initial-site-measurement", vendorId],
     queryFn: () => getInitialSiteMeasurement(vendorId!, statusId),
-    enabled: !!vendorId, // 👈 yaha se query tabhi chalega jab vendorId ho
+    enabled: !!vendorId,
   });
-
-  if (!vendorId) {
-    return <p className="p-4">Please login to view measurements.</p>;
-  }
 
   return (
     <SidebarProvider>
@@ -62,23 +58,6 @@ export default function InitialSiteMeasurement() {
             <ModeToggle />
           </div>
         </header>
-
-        <main className="flex-1 p-4 pt-0 overflow-x-hidden">
-          {isLoading && <p>Loading...</p>}
-          {isError && <p>Something went wrong</p>}
-
-          {data?.data?.length > 0 ? (
-            <div className="grid grid-cols-4 gap-4">
-              {data.data.map((lead: any) => (
-                <Card key={lead.id} className="p-4">
-                  Lead ID: {lead.id}
-                </Card>
-              ))}
-            </div>
-          ) : (
-            !isLoading && <p>No records found</p>
-          )}
-        </main>
       </SidebarInset>
     </SidebarProvider>
   );
