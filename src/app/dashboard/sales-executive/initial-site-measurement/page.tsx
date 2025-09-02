@@ -1,0 +1,85 @@
+"use client";
+
+import { AppSidebar } from "@/components/app-sidebar";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Separator } from "@/components/ui/separator";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { ModeToggle } from "@/components/ModeToggle";
+import { Card } from "@/components/ui/card";
+import { useAppSelector } from "@/redux/store";
+import { useQuery } from "@tanstack/react-query";
+import { getInitialSiteMeasurement } from "@/api/leads";
+
+export default function InitialSiteMeasurement() {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const statusId = 2;
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["initial-site-measurement", vendorId],
+    queryFn: () => getInitialSiteMeasurement(vendorId!, statusId),
+    enabled: !!vendorId, // 👈 yaha se query tabhi chalega jab vendorId ho
+  });
+
+  if (!vendorId) {
+    return <p className="p-4">Please login to view measurements.</p>;
+  }
+
+  return (
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator
+              orientation="vertical"
+              className="mr-2 data-[orientation=vertical]:h-4"
+            />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem className="hidden md:block">
+                  <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator className="hidden md:block" />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>Initial Site Measurement</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
+          <div className="flex items-center gap-2 pr-4">
+            <ModeToggle />
+          </div>
+        </header>
+
+        <main className="flex-1 p-4 pt-0 overflow-x-hidden">
+          {isLoading && <p>Loading...</p>}
+          {isError && <p>Something went wrong</p>}
+
+          {data?.data?.length > 0 ? (
+            <div className="grid grid-cols-4 gap-4">
+              {data.data.map((lead: any) => (
+                <Card key={lead.id} className="p-4">
+                  Lead ID: {lead.id}
+                </Card>
+              ))}
+            </div>
+          ) : (
+            !isLoading && <p>No records found</p>
+          )}
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}

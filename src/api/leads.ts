@@ -114,7 +114,7 @@ export interface AssignTo {
 }
 
 export interface StatusType {
-  type:string
+  type: string;
 }
 
 export interface Lead {
@@ -304,6 +304,16 @@ export const uploadInitialSiteMeasurement = async (payload: any) => {
         "Content-Type": "multipart/form-data",
       },
     }
+  );
+  return response.data;
+};
+
+export const getInitialSiteMeasurement = async (
+  vendorId: number,
+  statusId: number
+) => {
+  const response = await apiClient.get(
+    `/leads/initial-site-measurement/vendor/${vendorId}/status/${statusId}`
   );
   return response.data;
 };
