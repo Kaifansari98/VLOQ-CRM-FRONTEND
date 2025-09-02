@@ -93,13 +93,13 @@ export function LoginForm({
         >
           {loginMutation.isPending ? "Logging in..." : "Login"}
         </Button>
-        {loginMutation.isError && (
-          <p className="text-red-500 text-sm">
-            {loginMutation.error instanceof Error
-              ? loginMutation.error.message
-              : "Login failed"}
-          </p>
-        )}
+        {/* {loginMutation.isError && (
+          // <p className="text-red-500 text-sm">
+          //   {loginMutation.error instanceof Error
+          //     ? loginMutation.error.message
+          //     : "Login failed"}
+          // </p>
+        )} */}
         <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
           <span className="bg-background text-muted-foreground relative z-10 px-2">
             Or continue with

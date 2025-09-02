@@ -170,7 +170,7 @@ const VendorLeadsTable = () => {
       name: `${lead.firstname} ${lead.lastname}`.trim(),
       email: lead.email || "",
       assign_to: lead.assignedTo?.user_name || "",
-      contact: lead.contact_no || "",
+      contact: lead.country_code + " " + lead.contact_no || "",
       priority: lead.priority || "",
       siteAddress: lead.site_address || "",
       billingName: lead.billing_name || "",
