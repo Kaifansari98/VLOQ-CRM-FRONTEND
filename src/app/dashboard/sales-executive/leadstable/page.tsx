@@ -37,9 +37,7 @@ export default function LeadsGenerationPage() {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/dashboard">
-                    Leads
-                  </BreadcrumbLink>
+                  <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
