@@ -18,8 +18,8 @@ import {
 import { ModeToggle } from "@/components/ModeToggle";
 import { useAppSelector } from "@/redux/store";
 import { useQuery } from "@tanstack/react-query";
-import { getInitialSiteMeasurement } from "@/api/leads";
-
+import { getInitialSiteMeasurement2 } from "@/api/measurment-leads";
+import InitialSiteSkeleton from "@/components/sales-executive/measurement-skeleton";
 
 export default function InitialSiteMeasurement() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -27,14 +27,14 @@ export default function InitialSiteMeasurement() {
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["initial-site-measurement", vendorId],
-    queryFn: () => getInitialSiteMeasurement(vendorId!, statusId),
+    queryFn: () => getInitialSiteMeasurement2(vendorId!, statusId),
     enabled: !!vendorId,
   });
 
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
@@ -58,6 +58,10 @@ export default function InitialSiteMeasurement() {
             <ModeToggle />
           </div>
         </header>
+
+        <main className="flex-1 p-4 pt-0 overflow-x-hidden">
+          <InitialSiteSkeleton />
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );
