@@ -43,35 +43,12 @@ import { EditLeadModal } from "@/components/sales-executive/lead-edit-form-modal
 import { toast } from "react-toastify";
 import { useInitialSiteMeasurement } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import ViewInitialSiteMeasurmentLead from "@/components/sales-executive/siteMeasurement/view-site-measurement";
-import { SiteMeasurmentLead } from "@/types/site-measrument-types";
-
-// Define processed lead type for table
-export type ProcessedLead = {
-  id: number;
-  srNo: number;
-  name: string;
-  email: string;
-  contact: string;
-  priority: string;
-  siteAddress: string;
-  billingName: string;
-  architechName: string;
-  designerRemark: string;
-  productTypes: string;
-  productStructures: string;
-  siteType: string;
-  createdAt: string;
-  updatedAt: string;
-  altContact?: string;
-  source: string;
-  status: string;
-  assignedTo: string;
-  documentUrl: { doc_og_name: string; signed_url: string }[];
-};
+import {
+  ProcessedSiteMeasurementLead,
+  SiteMeasurmentLead,
+} from "@/types/site-measrument-types";
 
 const SiteMeasurementTable = () => {
-  // 🔥 ALL HOOKS MUST BE CALLED FIRST, BEFORE ANY CONDITIONAL LOGIC
-
   // Redux selectors
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -100,7 +77,9 @@ const SiteMeasurementTable = () => {
       designerRemark: false,
     });
   const [rowAction, setRowAction] =
-    React.useState<DataTableRowAction<ProcessedLead> | null>(null);
+    React.useState<DataTableRowAction<ProcessedSiteMeasurementLead> | null>(
+      null
+    );
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "createdAt", desc: true },
   ]);
@@ -138,12 +117,12 @@ const SiteMeasurementTable = () => {
   }, [rowAction]);
 
   // Memoized values
-  const rowData = useMemo<ProcessedLead[]>(() => {
+  const rowData = useMemo<ProcessedSiteMeasurementLead[]>(() => {
     if (!data?.data) return [];
-  
+
     return data.data.map((lead: SiteMeasurmentLead, index: number) => {
       const allDocumentUrls: { doc_og_name: string; signed_url: string }[] = [];
-  
+
       if (lead.documents && Array.isArray(lead.documents)) {
         lead.documents.forEach((doc: any) => {
           if (doc.doc_og_name && doc.signed_url) {
@@ -153,8 +132,8 @@ const SiteMeasurementTable = () => {
             });
           }
         });
-      }      
-  
+      }
+
       return {
         id: lead.id,
         srNo: index + 1,
@@ -179,7 +158,6 @@ const SiteMeasurementTable = () => {
       };
     });
   }, [data]);
-  
 
   const columns = React.useMemo(
     () => getSiteMeasurementColumn({ setRowAction, userType }),

@@ -22,15 +22,6 @@ import { getInitialSiteMeasurement2 } from "@/api/measurment-leads";
 import InitialSiteSkeleton from "@/components/sales-executive/measurement-skeleton";
 
 export default function InitialSiteMeasurement() {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const statusId = 2;
-
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["initial-site-measurement", vendorId],
-    queryFn: () => getInitialSiteMeasurement2(vendorId!, statusId),
-    enabled: !!vendorId,
-  });
-
   return (
     <SidebarProvider>
       <AppSidebar />

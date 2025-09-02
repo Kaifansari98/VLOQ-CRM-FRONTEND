@@ -37,10 +37,9 @@ export interface Account {
 export interface Document {
   id: number;
   doc_og_name: string;
-  doc_sys_name: string;
-  doc_type: string;
-  created_at: string;
-  createdBy: UserRef;
+  signed_url: string;
+  file_type: string;
+  is_image: boolean;
 }
 
 export interface PaymentInfo {
@@ -90,13 +89,7 @@ export interface SiteMeasurmentLead {
   billing_name: string;
   archetech_name: string;
   designer_remark: string;
-  documents: {
-    id: number;
-    doc_og_name: string;
-    signed_url: string;
-    file_type: string;
-    is_image: boolean;
-  }[];
+  documents: Document[];
   vendor: Vendor;
   siteType: SiteType;
   source: Source;
@@ -131,3 +124,31 @@ export interface SiteMeasurmentResponse {
   data: SiteMeasurmentLead[];
   pagination: Pagination;
 }
+
+export type ProcessedSiteMeasurementLead = {
+  id: number;
+  srNo: number;
+  name: string;
+  email: string;
+  contact: string;
+  priority: string;
+  siteAddress: string;
+  billingName: string;
+  architechName: string;
+  designerRemark: string;
+  productTypes: string;
+  productStructures: string;
+  source: string;
+  siteType: string;
+  createdAt: string;
+  updatedAt: string;
+  altContact?: string;
+  status: string;
+  assignedTo: string;
+  documentUrl: DocumentUrl[];
+};
+
+export type DocumentUrl = {
+  doc_og_name: string;
+  signed_url: string;
+};

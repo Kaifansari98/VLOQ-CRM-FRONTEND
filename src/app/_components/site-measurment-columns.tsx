@@ -11,7 +11,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ellipsis, Eye, SquarePen, Users, Text, Contact } from "lucide-react";
+import { Ellipsis, Eye, SquarePen, Users, Text, Contact, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DataTableRowAction } from "@/types/data-table";
 import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
@@ -20,33 +20,11 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/cutome-tooltip";
-
-export type ProcessedLead = {
-  id: number;
-  srNo: number;
-  name: string;
-  email: string;
-  contact: string;
-  priority: string;
-  siteAddress: string;
-  billingName: string;
-  architechName: string;
-  designerRemark: string;
-  productTypes: string;
-  productStructures: string;
-  source: string;
-  siteType: string;
-  createdAt: string;
-  updatedAt: string;
-  altContact?: string;
-  status: string;
-  assignedTo: string;
-  documentUrl: { doc_og_name: string; signed_url: string }[];
-};
+import { ProcessedSiteMeasurementLead } from "@/types/site-measrument-types";
 
 interface GetSiteMeasurementColumnProps {
   setRowAction: React.Dispatch<
-    React.SetStateAction<DataTableRowAction<ProcessedLead> | null>
+    React.SetStateAction<DataTableRowAction<ProcessedSiteMeasurementLead> | null>
   >;
   userType?: string;
 }
@@ -54,7 +32,7 @@ interface GetSiteMeasurementColumnProps {
 export function getSiteMeasurementColumn({
   setRowAction,
   userType,
-}: GetSiteMeasurementColumnProps): ColumnDef<ProcessedLead>[] {
+}: GetSiteMeasurementColumnProps): ColumnDef<ProcessedSiteMeasurementLead>[] {
   return [
     // Action Button
     {
@@ -76,6 +54,13 @@ export function getSiteMeasurementColumn({
             >
               <Eye size={20} />
               View
+            </DropdownMenuItem>
+
+             <DropdownMenuItem
+              onSelect={() => setRowAction({ row, variant: 'measurement' })}
+            >
+              <Ruler size={20} />
+              Measurement
             </DropdownMenuItem>
             {!canDeleteLead(userType) && <DropdownMenuSeparator />}
 
@@ -303,7 +288,7 @@ export function getSiteMeasurementColumn({
             enableSorting: true,
             enableHiding: true,
             enableColumnFilter: true,
-          } as ColumnDef<ProcessedLead>,
+          } as ColumnDef<ProcessedSiteMeasurementLead>,
         ]
       : []),
 
