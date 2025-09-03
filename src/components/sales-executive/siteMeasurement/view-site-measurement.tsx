@@ -1,49 +1,49 @@
 import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
-import { Download, Star } from "lucide-react";
-import { useAppSelector } from "@/redux/store";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Star } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import InitialSiteMeasuresMent from "../initial-site-measurement-form";
+import { ProcessedSiteMeasurementLead } from "@/types/site-measrument-types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-interface LeadViewModalProps {
+interface ViewInitialSiteMeasurmentLeadProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  data?: {
-    id: number;
-    name: string;
-    email: string;
-    contact: string;
-    billingName: string;
-    architechName: string;
-    productStructures: string;
-    productTypes: string;
-    source: string;
-    siteType: string;
-    createdAt: string;
-    priority: string;
-    siteAddress: string;
-    designerRemark: string;
-    documentUrl: { doc_og_name: string; signed_url: string }[];
-  };
+  data?: ProcessedSiteMeasurementLead;
 }
 
-const ViewInitialSiteMeasurmentLead: React.FC<LeadViewModalProps> = ({
-  open,
-  onOpenChange,
-  data,
-}) => {
-  //   const formatDateTime = (dateString?: string) => {
-  //     if (!dateString) return "N/A";
-  //     const date = new Date(dateString);
-  //     return date.toLocaleString("en-IN", {
-  //       year: "numeric",
-  //       month: "short",
-  //       day: "numeric",
-  //       hour: "2-digit",
-  //       minute: "2-digit",
-  //     });
-  //   };
+const ViewInitialSiteMeasurmentLead: React.FC<
+  ViewInitialSiteMeasurmentLeadProps
+> = ({ open, onOpenChange, data }) => {
+
+
+  const [openConfirmation, setOpenconfirmation] = useState<boolean>(false);
+  const formatDateTime = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -51,28 +51,111 @@ const ViewInitialSiteMeasurmentLead: React.FC<LeadViewModalProps> = ({
         {/* Header */}
 
         <DialogHeader className="flex items-start justify-end border-b px-6 py-4 border-b">
-          <Button>
-            <Star size={20} className="mr-2" /> Initial Site Measurement
+          <Button onClick={() => setOpenconfirmation(true)}>
+            <Star size={20} className="mr-2" /> Move To Designing Stage
           </Button>
         </DialogHeader>
         <ScrollArea className="max-h-[calc(90vh-100px)]">
-          {/* <h1>{data?.map }</h1> */}
-          <div>
-          {data?.documentUrl?.map((doc, index) => (
-  <div key={index} className="flex items-center gap-2 mb-2">
-    <a
-      href={doc.signed_url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-blue-600 underline"
-    >
-      {doc.doc_og_name}
-    </a>
-  </div>
-))}
+          <div className="px-5 py-4">
+            {/* Lead Info */}
+            <div className="w-full border py-4 px-5 mt-2 rounded-lg">
+              <div className="border-b flex justify-between items-center pb-2 mb-4">
+                <h1 className="font-semibold">Lead Information</h1>
+                <p className="text-sm">{formatDateTime(data?.createdAt)}</p>
+              </div>
+
+              {/* Responsive Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">Lead Name</p>
+                  <p>{data?.name}</p>
+                </div>
+
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">Lead Email</p>
+                  <p>{data?.email}</p>
+                </div>
+
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">Lead Contact</p>
+                  <p>{data?.contact}</p>
+                </div>
+
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">Billing Name</p>
+                  <p>{data?.billingName}</p>
+                </div>
+
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">Architect Name</p>
+                  <p>{data?.architechName}</p>
+                </div>
+
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">Product Structures</p>
+                  <p>{data?.productStructures}</p>
+                </div>
+
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">Product Types</p>
+                  <p>{data?.productTypes}</p>
+                </div>
+
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">Source</p>
+                  <p>{data?.source}</p>
+                </div>
+
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">Site Type</p>
+                  <p>{data?.siteType}</p>
+                </div>
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">Priority</p>
+                  <p>{data?.priority}</p>
+                </div>
+              </div>
+
+              {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4"> */}
+              {/* Remarks */}
+              <div className="flex flex-col gap-1 mt-4">
+                <p className="text-sm font-medium">Design Remarks</p>
+                <div className="bg-muted border rounded-sm py-1 px-2 text-sm max-h-200 overflow-y-auto">
+                  {data?.designerRemark || "N/A"}
+                </div>
+              </div>
+
+              {/* Address */}
+              <div className="flex flex-col gap-1 mt-4">
+                <p className="text-sm font-medium">Site Address</p>
+                <div className="bg-muted border rounded-sm py-1 px-2 text-sm max-h-200 overflow-y-auto">
+                  {data?.siteAddress || "N/A"}
+                </div>
+              </div>
+            </div>
           </div>
         </ScrollArea>
       </DialogContent>
+
+      <AlertDialog open={openConfirmation} onOpenChange={setOpenconfirmation}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will be logged out of your account. You can log in again
+              anytime.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => console.log("button clicked....")}
+            >
+              Yes{" "}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };

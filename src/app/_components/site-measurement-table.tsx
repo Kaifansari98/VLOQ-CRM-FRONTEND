@@ -43,35 +43,15 @@ import { EditLeadModal } from "@/components/sales-executive/lead-edit-form-modal
 import { toast } from "react-toastify";
 import { useInitialSiteMeasurement } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import ViewInitialSiteMeasurmentLead from "@/components/sales-executive/siteMeasurement/view-site-measurement";
-import { SiteMeasurmentLead } from "@/types/site-measrument-types";
-
-// Define processed lead type for table
-export type ProcessedLead = {
-  id: number;
-  srNo: number;
-  name: string;
-  email: string;
-  contact: string;
-  priority: string;
-  siteAddress: string;
-  billingName: string;
-  architechName: string;
-  designerRemark: string;
-  productTypes: string;
-  productStructures: string;
-  siteType: string;
-  createdAt: string;
-  updatedAt: string;
-  altContact?: string;
-  source: string;
-  status: string;
-  assignedTo: string;
-  documentUrl: { doc_og_name: string; signed_url: string }[];
-};
+import {
+  Document,
+  ProcessedSiteMeasurementLead,
+  SiteMeasurmentLead,
+  Upload,
+} from "@/types/site-measrument-types";
+import SiteMesurementModal from "@/components/sales-executive/siteMeasurement/site-mesurement-modal";
 
 const SiteMeasurementTable = () => {
-  // 🔥 ALL HOOKS MUST BE CALLED FIRST, BEFORE ANY CONDITIONAL LOGIC
-
   // Redux selectors
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -87,6 +67,7 @@ const SiteMeasurementTable = () => {
   const [openView, setOpenView] = useState<boolean>(false);
   const [assignOpenLead, setAssignOpenLead] = useState<boolean>(false);
   const [editOpenLead, setEditOpenLead] = useState<boolean>(false);
+  const [openMesurement, setOpenMesurement] = useState<boolean>(false);
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({
@@ -100,7 +81,9 @@ const SiteMeasurementTable = () => {
       designerRemark: false,
     });
   const [rowAction, setRowAction] =
-    React.useState<DataTableRowAction<ProcessedLead> | null>(null);
+    React.useState<DataTableRowAction<ProcessedSiteMeasurementLead> | null>(
+      null
+    );
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "createdAt", desc: true },
   ]);
@@ -135,26 +118,35 @@ const SiteMeasurementTable = () => {
       console.log("Original Edit Data row Leads: ", rowAction.row.original);
       setEditOpenLead(true);
     }
+
+    if (rowAction?.variant === "measurement" && rowAction.row) {
+      console.log("Original Edit Data row Leads: ", rowAction.row.original);
+      setOpenMesurement(true);
+    }
   }, [rowAction]);
 
   // Memoized values
-  const rowData = useMemo<ProcessedLead[]>(() => {
+  const rowData = useMemo<ProcessedSiteMeasurementLead[]>(() => {
     if (!data?.data) return [];
-  
+
     return data.data.map((lead: SiteMeasurmentLead, index: number) => {
-      const allDocumentUrls: { doc_og_name: string; signed_url: string }[] = [];
-  
-      if (lead.documents && Array.isArray(lead.documents)) {
-        lead.documents.forEach((doc: any) => {
-          if (doc.doc_og_name && doc.signed_url) {
-            allDocumentUrls.push({
+      const allDocumentUrls: Document[] = Array.isArray(lead.documents)
+        ? lead.documents
+            .filter(
+              (doc): doc is Document => !!doc.doc_og_name && !!doc.signed_url
+            )
+            .map((doc) => ({
+              id: doc.id,
               doc_og_name: doc.doc_og_name,
+              doc_sys_name: doc.doc_sys_name,
               signed_url: doc.signed_url,
-            });
-          }
-        });
-      }      
-  
+              file_type: doc.file_type,
+              is_image: doc.is_image,
+              created_at: doc.created_at,
+              doc_type_id: doc.doc_type_id,
+            }))
+        : [];
+
       return {
         id: lead.id,
         srNo: index + 1,
@@ -175,11 +167,14 @@ const SiteMeasurementTable = () => {
         assignedTo: lead.assignedTo?.user_name || "Unassigned",
         productTypes: "",
         productStructures: "",
-        documentUrl: allDocumentUrls, // ✅ now includes signed_url
+        documentUrl: allDocumentUrls,
+        paymentInfo:
+          lead.uploads.find((item: Upload) => item.paymentInfo !== null)
+            ?.paymentInfo || null,
+        accountId: lead.account.id || "",
       };
     });
   }, [data]);
-  
 
   const columns = React.useMemo(
     () => getSiteMeasurementColumn({ setRowAction, userType }),
@@ -338,6 +333,13 @@ const SiteMeasurementTable = () => {
         onOpenChange={setOpenView}
         data={rowAction?.row.original}
       />
+
+      <SiteMesurementModal
+        open={openMesurement}
+        onOpenChange={setOpenMesurement}
+        data={rowAction?.row.original}
+      />
+
       <AssignLeadModal
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}
