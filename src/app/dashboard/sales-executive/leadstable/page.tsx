@@ -1,3 +1,5 @@
+"use client";
+
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
@@ -17,6 +19,7 @@ import { ModeToggle } from "@/components/ModeToggle";
 import LeadsTable from "@/components/sales-executive/Lead/LeadsTable";
 import { Button } from "@/components/ui/button";
 import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-generation-form-modal";
+import { Suspense } from "react";
 export default function LeadsGenerationPage() {
   // const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   // const userId = useAppSelector((state) => state.auth.user?.id);
@@ -60,7 +63,10 @@ export default function LeadsGenerationPage() {
 
         {/* Content */}
         <main className="flex-1 p-4 pt-0 overflow-x-hidden">
+          <Suspense fallback={<p>Loading...</p>}>
+
           <LeadsTable />
+          </Suspense>
         </main>
       </SidebarInset>
     </SidebarProvider>
