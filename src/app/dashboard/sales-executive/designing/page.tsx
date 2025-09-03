@@ -18,7 +18,7 @@ import {
 import { ModeToggle } from "@/components/ModeToggle";
 import DesigningSkeleton from "@/components/sales-executive/Designing/designing-skeleton";
 
-export default function InitialSiteMeasurement() {
+export default function DesigningPage() {
   return (
     <SidebarProvider>
       <AppSidebar />
