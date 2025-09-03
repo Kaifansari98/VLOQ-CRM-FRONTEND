@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/ModeToggle";
 import { Card } from "@/components/ui/card";
-import { GenerateLeadFormModal } from "@/components/sales-executive/leads-generation-form-modal";
 
 export default function LeadsGenerationPage() {
   return (

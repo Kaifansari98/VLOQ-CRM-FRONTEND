@@ -14,9 +14,9 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/ModeToggle";
-import LeadsTable from "@/components/sales-executive/LeadsTable";
+import LeadsTable from "@/components/sales-executive/Lead/LeadsTable";
 import { Button } from "@/components/ui/button";
-import { GenerateLeadFormModal } from "@/components/sales-executive/leads-generation-form-modal";
+import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-generation-form-modal";
 export default function LeadsGenerationPage() {
   // const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   // const userId = useAppSelector((state) => state.auth.user?.id);

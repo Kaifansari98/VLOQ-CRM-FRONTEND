@@ -1,10 +1,16 @@
 import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
-import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "../../ui/button";
 import { Blinds, Download, Star } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
-import { ScrollArea } from "../ui/scroll-area";
+import { ScrollArea } from "../../ui/scroll-area";
 import InitialSiteMeasuresMent from "./initial-site-measurement-form";
+import { sanitize, sanitizeAndCapitalize } from "../../utils/sanitizeCapitalize";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -24,6 +30,7 @@ interface LeadViewModalProps {
     priority: string;
     siteAddress: string;
     designerRemark: string;
+    status: string;
   };
 }
 
@@ -44,22 +51,30 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
       minute: "2-digit",
     });
   };
-  const vendor = useAppSelector((state) => state.auth.user?.vendor);
 
   const handleOpenModal = () => {
-    setOpenModal(true)
+    setOpenModal(true);
     // onOpenChange(false)
-  }
+  };
+
+  const status = data?.status;
+  console.log(status);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-3xl p-0 gap-0">
         {/* Header */}
 
-        <DialogHeader className="flex items-start justify-end border-b px-6 py-4">
-          <Button onClick={handleOpenModal}>
-            <Blinds size={20} className="mr-1.5" />Move to Initial Site Measurement
-          </Button>
+        <DialogHeader className="flex items-start justify-end border-b px-6 py-4 border-b">
+          {status === "open" ? (
+            <Button onClick={handleOpenModal}>
+              <Blinds size={20} className="mr-2" /> Initial Site Measurement
+            </Button>
+          ) : (
+            <DialogTitle className="capitalize">
+              {sanitize(status || "")}
+            </DialogTitle>
+          )}
         </DialogHeader>
         <ScrollArea className="max-h-[calc(90vh-100px)]">
           <div className="px-5 py-4">
@@ -144,7 +159,11 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
         </ScrollArea>
       </DialogContent>
 
-      <InitialSiteMeasuresMent open={openModal} onOpenChange={setOpenModal} leadId={data?.id} />
+      <InitialSiteMeasuresMent
+        open={openModal}
+        onOpenChange={setOpenModal}
+        leadId={data?.id}
+      />
     </Dialog>
   );
 };

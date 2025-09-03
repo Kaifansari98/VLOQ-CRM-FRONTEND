@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 import {
   AudioWaveform,
   BookOpen,
@@ -12,22 +12,22 @@ import {
   PieChart,
   Settings2,
   SquareTerminal,
-} from "lucide-react"
+} from "lucide-react";
 
-import { NavMain } from "@/components/nav-main"
-import { NavProjects } from "@/components/nav-projects"
-import { NavUser } from "@/components/nav-user"
-import { TeamSwitcher } from "@/components/team-switcher"
+import { NavMain } from "@/components/nav-main";
+import { NavProjects } from "@/components/nav-projects";
+import { NavUser } from "@/components/nav-user";
+import { TeamSwitcher } from "@/components/team-switcher";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
-} from "@/components/ui/sidebar"
-import { useSelector } from "react-redux"
-import { RootState, useAppSelector } from "@/redux/store"
-import { useEffect, useState } from "react"
+} from "@/components/ui/sidebar";
+import { useSelector } from "react-redux";
+import { RootState, useAppSelector } from "@/redux/store";
+import { useEffect, useState } from "react";
 
 // This is sample data.
 const data = {
@@ -74,7 +74,7 @@ const data = {
         },
         {
           title: "Designing Stage",
-          url: "/dashboard/sales-executive",
+          url: "/dashboard/sales-executive/designing",
         },
         {
           title: "Booking Stage",
@@ -173,14 +173,14 @@ const data = {
       icon: Map,
     },
   ],
-}
+};
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const user = useAppSelector((state) => state.auth.user);
 
   const userData = user
     ? {
-        name: user?.user_name || 'username', // show vendor_name first
+        name: user?.user_name || "username", // show vendor_name first
         email: user?.user_email,
         avatar: "/avatars/shadcn.jpg", // fallback, can later replace with vendor.logo if needed
       }
@@ -189,18 +189,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-  {user ? (
-    <TeamSwitcher
-      teams={[
-        {
-          name: user.vendor?.vendor_name || "Default Vendor",
-          logo: GalleryVerticalEnd,
-          plan: user.vendor?.primary_contact_email || "xyz@gmail.com",
-        },
-      ]}
-    />
-  ) : null}
-</SidebarHeader>
+        {user ? (
+          <TeamSwitcher
+            teams={[
+              {
+                name: user.vendor?.vendor_name || "Default Vendor",
+                logo: GalleryVerticalEnd,
+                plan: user.vendor?.primary_contact_email || "xyz@gmail.com",
+              },
+            ]}
+          />
+        ) : null}
+      </SidebarHeader>
 
       <SidebarContent>
         <NavMain items={data.navMain} />
@@ -211,5 +211,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }

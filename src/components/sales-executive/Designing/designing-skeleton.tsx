@@ -1,11 +1,10 @@
 import React from "react";
 import { Suspense } from "react";
-import { SidebarInset, SidebarProvider } from "../ui/sidebar";
-import { DataTableSkeleton } from "../data-table/data-table-skeleton";
-import { FeatureFlagsProvider } from "../../app/_components/feature-flags-provider";
-import VendorLeadsTable from "@/app/_components/tasks-table";
+import { SidebarInset, SidebarProvider } from "../../ui/sidebar";
+import { DataTableSkeleton } from "../../data-table/data-table-skeleton";
+import { FeatureFlagsProvider } from "../../../app/_components/feature-flags-provider";
 
-export default function LeadsTable() {
+export default function DesigningSkeleton() {
   return (
     <SidebarProvider>
       <SidebarInset className=" w-full h-full flex flex-col">
@@ -28,9 +27,7 @@ export default function LeadsTable() {
                   ]}
                 />
               }
-            >
-              <VendorLeadsTable />
-            </Suspense>
+            ></Suspense>
           </FeatureFlagsProvider>
         </main>
       </SidebarInset>
