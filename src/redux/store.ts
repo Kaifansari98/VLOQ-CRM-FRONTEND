@@ -2,12 +2,10 @@
 import { configureStore } from "@reduxjs/toolkit"
 import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux"
 import authReducer from "@/redux/slices/authSlice"
-import leadsReducer from '@/redux/slices/leadsSlice'
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
-    leads: leadsReducer,
   },
 })
 
