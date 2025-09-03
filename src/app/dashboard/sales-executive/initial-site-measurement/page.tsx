@@ -1,5 +1,4 @@
 "use client";
-
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
@@ -20,7 +19,7 @@ import { useAppSelector } from "@/redux/store";
 import { useQuery } from "@tanstack/react-query";
 import { getInitialSiteMeasurement2 } from "@/api/measurment-leads";
 import InitialSiteSkeleton from "@/components/sales-executive/siteMeasurement/measurement-skeleton";
-
+import { Suspense } from "react";
 export default function InitialSiteMeasurement() {
   return (
     <SidebarProvider>
@@ -49,9 +48,10 @@ export default function InitialSiteMeasurement() {
             <ModeToggle />
           </div>
         </header>
-
         <main className="flex-1 p-4 pt-0 overflow-x-hidden">
-          <InitialSiteSkeleton />
+          <Suspense fallback={<p>Loading...</p>}>
+            <InitialSiteSkeleton />
+          </Suspense>
         </main>
       </SidebarInset>
     </SidebarProvider>
