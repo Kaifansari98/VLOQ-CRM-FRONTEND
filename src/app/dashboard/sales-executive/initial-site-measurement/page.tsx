@@ -19,7 +19,7 @@ import { ModeToggle } from "@/components/ModeToggle";
 import { useAppSelector } from "@/redux/store";
 import { useQuery } from "@tanstack/react-query";
 import { getInitialSiteMeasurement2 } from "@/api/measurment-leads";
-import InitialSiteSkeleton from "@/components/sales-executive/SiteMeasurement/measurement-skeleton";
+import InitialSiteSkeleton from "@/components/sales-executive/siteMeasurement/measurement-skeleton";
 
 export default function InitialSiteMeasurement() {
   return (
