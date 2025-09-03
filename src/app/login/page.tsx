@@ -2,25 +2,23 @@
 
 import { GalleryVerticalEnd } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { toast } from "react-toastify";
 import { RootState } from "@/redux/store";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { useEffect } from "react";
 
 import { LoginForm } from "@/components/login-form";
+import Image from "next/image";
 
 export default function LoginPage() {
-  const dispatch = useDispatch();
   const router = useRouter();
   const { user, token } = useSelector((state: RootState) => state.auth);
 
-  // ✅ If already logged in, redirect immediately
   useEffect(() => {
     const user = localStorage.getItem("user");
     const token = localStorage.getItem("token");
     if (user && token) {
       console.log(user && token);
-      router.replace("/dashboard"); // replace so user can't go back
+      router.replace("/dashboard");
     }
     console.log("Token fetch Successfully: ", token);
   }, [user, token, router]);
@@ -43,7 +41,7 @@ export default function LoginPage() {
         </div>
       </div>
       <div className="bg-muted relative hidden lg:block">
-        <img
+        <Image
           src="image.png"
           alt="Image"
           className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"

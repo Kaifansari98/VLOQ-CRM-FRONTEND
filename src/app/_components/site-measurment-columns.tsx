@@ -11,7 +11,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ellipsis, Eye, SquarePen, Users, Text, Contact, Ruler } from "lucide-react";
+import { Ellipsis, Eye, SquarePen, Users, Text, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DataTableRowAction } from "@/types/data-table";
 import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
