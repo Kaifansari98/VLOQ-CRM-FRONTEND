@@ -1,5 +1,10 @@
 import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "../ui/button";
 import { Download, Star } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
@@ -24,11 +29,9 @@ interface LeadViewModalProps {
     priority: string;
     siteAddress: string;
     designerRemark: string;
+    status: string;
   };
 }
-
-
-
 
 const ViewLeadModal: React.FC<LeadViewModalProps> = ({
   open,
@@ -47,12 +50,14 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
       minute: "2-digit",
     });
   };
-  const vendor = useAppSelector((state) => state.auth.user?.vendor);
 
   const handleOpenModal = () => {
-    setOpenModal(true)
+    setOpenModal(true);
     // onOpenChange(false)
-  }
+  };
+
+  const status = data?.status;
+  console.log(status);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -60,9 +65,13 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
         {/* Header */}
 
         <DialogHeader className="flex items-start justify-end border-b px-6 py-4 border-b">
-          <Button onClick={handleOpenModal}>
-            <Star size={20} className="mr-2" /> Initial Site Measurement
-          </Button>
+          {status === "open" ? (
+            <Button onClick={handleOpenModal}>
+              <Star size={20} className="mr-2" /> Initial Site Measurement
+            </Button>
+          ) : (
+            <DialogTitle className="capitalize">{status}</DialogTitle>
+          )}
         </DialogHeader>
         <ScrollArea className="max-h-[calc(90vh-100px)]">
           <div className="px-5 py-4">
@@ -147,7 +156,11 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
         </ScrollArea>
       </DialogContent>
 
-      <InitialSiteMeasuresMent open={openModal} onOpenChange={setOpenModal} leadId={data?.id} />
+      <InitialSiteMeasuresMent
+        open={openModal}
+        onOpenChange={setOpenModal}
+        leadId={data?.id}
+      />
     </Dialog>
   );
 };
