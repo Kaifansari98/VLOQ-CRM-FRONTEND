@@ -67,7 +67,7 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
         <DialogHeader className="flex items-start justify-end border-b px-6 py-4 border-b">
           {status === "open" ? (
             <Button onClick={handleOpenModal}>
-              <Star size={20} className="mr-2" /> Initial Site Measurement
+              <Blinds size={20} className="mr-2" /> Initial Site Measurement
             </Button>
           ) : (
             <DialogTitle className="capitalize">{status}</DialogTitle>
