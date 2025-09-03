@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
 import { Button } from "../ui/button";
-import { Download, Star } from "lucide-react";
+import { Blinds, Download, Star } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import { ScrollArea } from "../ui/scroll-area";
 import InitialSiteMeasuresMent from "./initial-site-measurement-form";
@@ -26,9 +26,6 @@ interface LeadViewModalProps {
     designerRemark: string;
   };
 }
-
-
-
 
 const ViewLeadModal: React.FC<LeadViewModalProps> = ({
   open,
@@ -59,9 +56,9 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
       <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-3xl p-0 gap-0">
         {/* Header */}
 
-        <DialogHeader className="flex items-start justify-end border-b px-6 py-4 border-b">
+        <DialogHeader className="flex items-start justify-end border-b px-6 py-4">
           <Button onClick={handleOpenModal}>
-            <Star size={20} className="mr-2" /> Initial Site Measurement
+            <Blinds size={20} className="mr-1.5" />Move to Initial Site Measurement
           </Button>
         </DialogHeader>
         <ScrollArea className="max-h-[calc(90vh-100px)]">
