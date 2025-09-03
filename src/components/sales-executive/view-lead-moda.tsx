@@ -10,6 +10,7 @@ import { Blinds, Download, Star } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import { ScrollArea } from "../ui/scroll-area";
 import InitialSiteMeasuresMent from "./initial-site-measurement-form";
+import { sanitize, sanitizeAndCapitalize } from "../utils/sanitizeCapitalize";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -70,7 +71,9 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
               <Blinds size={20} className="mr-2" /> Initial Site Measurement
             </Button>
           ) : (
-            <DialogTitle className="capitalize">{status}</DialogTitle>
+            <DialogTitle className="capitalize">
+              {sanitize(status || "")}
+            </DialogTitle>
           )}
         </DialogHeader>
         <ScrollArea className="max-h-[calc(90vh-100px)]">
