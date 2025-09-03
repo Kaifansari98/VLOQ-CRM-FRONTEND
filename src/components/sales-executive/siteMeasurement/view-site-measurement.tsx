@@ -1,9 +1,25 @@
 import React, { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Star } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { ProcessedSiteMeasurementLead } from "@/types/site-measrument-types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ViewInitialSiteMeasurmentLeadProps {
   open: boolean;
@@ -14,31 +30,33 @@ interface ViewInitialSiteMeasurmentLeadProps {
 const ViewInitialSiteMeasurmentLead: React.FC<
   ViewInitialSiteMeasurmentLeadProps
 > = ({ open, onOpenChange, data }) => {
-    const formatDateTime = (dateString?: string) => {
-      if (!dateString) return "N/A";
-      const date = new Date(dateString);
-      return date.toLocaleString("en-IN", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    };
+
+
+  const [openConfirmation, setOpenconfirmation] = useState<boolean>(false);
+  const formatDateTime = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-3xl p-0 gap-0">
         {/* Header */}
 
-        <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle>Initial Site Measurement</DialogTitle>
-          <DialogDescription>
-           Displays the complete record of this lead’s initial site measurement.
-          </DialogDescription>
+        <DialogHeader className="flex items-start justify-end border-b px-6 py-4 border-b">
+          <Button onClick={() => setOpenconfirmation(true)}>
+            <Star size={20} className="mr-2" /> Move To Designing Stage
+          </Button>
         </DialogHeader>
         <ScrollArea className="max-h-[calc(90vh-100px)]">
-         <div className="px-5 py-4">
+          <div className="px-5 py-4">
             {/* Lead Info */}
             <div className="w-full border py-4 px-5 mt-2 rounded-lg">
               <div className="border-b flex justify-between items-center pb-2 mb-4">
@@ -118,6 +136,26 @@ const ViewInitialSiteMeasurmentLead: React.FC<
           </div>
         </ScrollArea>
       </DialogContent>
+
+      <AlertDialog open={openConfirmation} onOpenChange={setOpenconfirmation}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will be logged out of your account. You can log in again
+              anytime.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => console.log("button clicked....")}
+            >
+              Yes{" "}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };

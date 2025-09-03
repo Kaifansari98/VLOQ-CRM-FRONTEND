@@ -8,7 +8,7 @@ export const useInitialSiteMeasurement = (
   enabled: boolean = true
 ) => {
   return useQuery({
-    queryKey: ["siteMeasurementLeads", vendorId, statusId],
+    queryKey: ["siteMeasurementLeads"],
     queryFn: () => getInitialSiteMeasurement2(vendorId, statusId),
     enabled: enabled && !!vendorId,
     staleTime: 5 * 60 * 1000,

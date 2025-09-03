@@ -171,6 +171,7 @@ const SiteMeasurementTable = () => {
         paymentInfo:
           lead.uploads.find((item: Upload) => item.paymentInfo !== null)
             ?.paymentInfo || null,
+        accountId: lead.account.id || "",
       };
     });
   }, [data]);

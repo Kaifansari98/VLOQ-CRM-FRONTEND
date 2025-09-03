@@ -127,7 +127,17 @@ export interface SiteMeasurmentLead {
   uploads: Upload[];
 }
 
-
+export interface EditPayload {
+  lead_id: number;
+  vendor_id: number;
+  account_id: number;
+  updated_by: number;
+  amount?: number;
+  payment_text?: string;
+  payment_date?: string;
+  current_site_photos?: string[];
+  payment_details_photos?: string[];
+}
 
 export type ProcessedSiteMeasurementLead = {
   id: number;
@@ -151,4 +161,5 @@ export type ProcessedSiteMeasurementLead = {
   assignedTo: string;
   documentUrl: Document[];
   paymentInfo: PaymentInfo | null;
+  accountId: number;
 };

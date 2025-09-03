@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/apiClient";
+import { EditPayload } from "@/types/site-measrument-types";
 
 export const getInitialSiteMeasurement2 = async (
   vendorId: number,
@@ -9,3 +10,24 @@ export const getInitialSiteMeasurement2 = async (
   );
   return response.data;
 };
+
+
+
+
+export const UpdateInitialSiteMeasurement = async (
+  paymentId: number,
+  formData: FormData
+) => {
+  const response = await apiClient.put(
+    `/leads/initial-site-measurement/${paymentId}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return response.data;
+};
+
