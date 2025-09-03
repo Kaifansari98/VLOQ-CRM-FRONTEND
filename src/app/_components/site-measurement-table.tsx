@@ -37,19 +37,19 @@ import {
   AlertDialogHeader,
 } from "@/components/ui/alert-dialog";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
-import ViewLeadModal from "@/components/sales-executive/view-lead-moda";
-import AssignLeadModal from "@/components/sales-executive/assign-lead-moda";
-import { EditLeadModal } from "@/components/sales-executive/lead-edit-form-modal";
+import ViewLeadModal from "@/components/sales-executive/Lead/view-lead-moda";
+import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
+import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { toast } from "react-toastify";
 import { useInitialSiteMeasurement } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
-import ViewInitialSiteMeasurmentLead from "@/components/sales-executive/siteMeasurement/view-site-measurement";
+import ViewInitialSiteMeasurmentLead from "@/components/sales-executive/SiteMeasurement/view-site-measurement";
 import {
   Document,
   ProcessedSiteMeasurementLead,
   SiteMeasurmentLead,
   Upload,
 } from "@/types/site-measrument-types";
-import SiteMesurementModal from "@/components/sales-executive/siteMeasurement/site-mesurement-modal";
+import SiteMesurementModal from "@/components/sales-executive/SiteMeasurement/site-mesurement-modal";
 
 const SiteMeasurementTable = () => {
   // Redux selectors

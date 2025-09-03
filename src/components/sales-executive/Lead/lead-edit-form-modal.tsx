@@ -10,7 +10,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import LeadsGenerationForm from "./leads-generation-form";
 import { useAppSelector } from "@/redux/store";
 import { useEffect } from "react";
 import { boolean } from "zod";

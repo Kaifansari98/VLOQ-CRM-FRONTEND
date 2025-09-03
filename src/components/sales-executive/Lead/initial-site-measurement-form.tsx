@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "../ui/scroll-area";
+import { ScrollArea } from "../../ui/scroll-area";
 import z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,12 +18,12 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../ui/form";
-import { FileUploadField } from "../custom/file-upload";
-import { PdfUploadField } from "../pdf-upload-input";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import DateInputPicker from "../origin-date-input";
+} from "../../ui/form";
+import { FileUploadField } from "../../custom/file-upload";
+import { PdfUploadField } from "../../pdf-upload-input";
+import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
+import DateInputPicker from "../../origin-date-input";
 import { useAppSelector } from "@/redux/store";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getLeadById, uploadInitialSiteMeasurement } from "@/api/leads";

@@ -23,287 +23,140 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { CloudUpload, Paperclip, ChevronDown, Phone } from "lucide-react";
+import { CloudUpload, Paperclip, ChevronDown } from "lucide-react";
+import MultipleSelector, {Option} from "@/components/ui/multiselect";
+import { FileUploadField } from "@/components/custom/file-upload";
+import { useAppSelector } from "@/redux/store";
+import { toast } from "react-toastify";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+// import { updateLead } from "@/api/leads"; // ✅ Update API
+import { PhoneInput } from "@/components/ui/phone-input";
 import {
-  useSiteTypes,
   useSourceTypes,
   useProductStructureTypes,
   useProductTypes,
+  useSiteTypes,
 } from "@/hooks/useTypesMaster";
-import { PhoneInput } from "../ui/phone-input";
-import { toast } from "react-toastify";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createLead } from "@/api/leads";
-import { useAppSelector } from "@/redux/store";
-import { parsePhoneNumberFromString } from "libphonenumber-js";
-import { FileUploadField } from "../custom/file-upload";
-import MultipleSelector, { Option } from "../ui/multiselect";
-import { canReassingLead } from "../utils/privileges";
-import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
-import TextAreaInput from "../origin-text-area";
+import { canReassingLead } from "@/components/utils/privileges";
+import { updateLead, getLeadById, EditLeadPayload } from "@/api/leads";
+import { CountryCode, parsePhoneNumber } from "libphonenumber-js";
+import { apiClient } from "@/lib/apiClient";
+import TextAreaInput from "@/components/origin-text-area";
 
+// Form validation schema
 const formSchema = z.object({
+  // Required fields
   firstname: z.string().min(1, "First name is required").max(300),
   lastname: z.string().min(1, "Last name is required").max(300),
-  billing_name: z.string().optional(),
-  contact_no: z.string().min(1, "This Contact number isn't valid").max(20),
-  alt_contact_no: z.string().optional().or(z.literal("")),
+
+  // Fix phone validation - make it more lenient or add custom validation
+  contact_no: z
+    .string()
+    .min(1, "Phone number is required")
+    .refine((val) => {
+      try {
+        // Try to parse the phone number
+        const parsed = parsePhoneNumber(val);
+        return parsed && parsed.isValid();
+      } catch (error) {
+        // If parsing fails, check if it's at least 10 digits
+        const digitsOnly = val.replace(/\D/g, "");
+        return digitsOnly.length >= 10;
+      }
+    }, "Please enter a valid phone number"),
+
   email: z.string().email("Please enter a valid email"),
   site_type_id: z.string().min(1, "Please select a site type"),
   site_address: z.string().min(1, "Site Address is required").max(2000),
   priority: z.string().min(1, "Please select a priority"),
   source_id: z.string().min(1, "Please select a source"),
+
+  // Optional fields - fix alt_contact_no validation
+  billing_name: z.string().optional(),
+  alt_contact_no: z
+    .string()
+    .optional()
+    .refine((val) => {
+      if (!val || val.trim() === "") return true; // Allow empty
+      try {
+        const parsed = parsePhoneNumber(val);
+        return parsed && parsed.isValid();
+      } catch (error) {
+        const digitsOnly = val.replace(/\D/g, "");
+        return digitsOnly.length >= 10;
+      }
+    }, "Please enter a valid alternate phone number"),
+
   product_types: z.array(z.string()).optional(),
   product_structures: z.array(z.string()).optional(),
-  // status_id:z.n
-  assign_to: z.string().min(1, "Please select an assignee"),
-  assigned_by: z.string(),
-  documents: z.string().optional(),
   archetech_name: z.string().max(300).optional(),
   designer_remark: z.string().max(2000).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-// Improved Multi-Select Component with dropdown behavior
-function SimpleMultiSelect({
-  value = [],
-  onChange,
-  options,
-  placeholder,
-  disabled = false, // ✅ added default
-}: {
-  value?: string[];
-  onChange: (value: string[]) => void;
-  options: { value: string; label: string }[];
-  placeholder: string;
-  disabled?: boolean; // ✅ allow disabled
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const handleToggle = (itemValue: string) => {
-    if (disabled) return;
-    const newItems = value.includes(itemValue)
-      ? value.filter((item) => item !== itemValue)
-      : [...value, itemValue];
-    onChange(newItems);
-  };
-
-  return (
-    <div className="relative">
-      {/* Trigger */}
-      <div
-        className={`flex flex-wrap gap-1 min-h-[40px] p-2 border rounded-md cursor-pointer hover:bg-accent/50 ${
-          disabled ? "opacity-50 cursor-not-allowed" : ""
-        }`}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-      >
-        {value.length > 0 ? (
-          <>
-            {value.map((item) => (
-              <span
-                key={item}
-                className="bg-primary/10 text-primary px-2 py-1 rounded-sm text-xs flex items-center gap-1"
-              >
-                {options.find((opt) => opt.value === item)?.label || item}
-                {!disabled && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggle(item);
-                    }}
-                    className="ml-1 hover:bg-primary/20 rounded text-xs"
-                  >
-                    ×
-                  </button>
-                )}
-              </span>
-            ))}
-            <ChevronDown
-              className={`ml-auto h-4 w-4 transition-transform ${
-                isOpen ? "rotate-180" : ""
-              }`}
-            />
-          </>
-        ) : (
-          <>
-            <span className="text-muted-foreground text-sm">{placeholder}</span>
-            <ChevronDown
-              className={`ml-auto h-4 w-4 transition-transform ${
-                isOpen ? "rotate-180" : ""
-              }`}
-            />
-          </>
-        )}
-      </div>
-
-      {/* Dropdown */}
-      {isOpen && !disabled && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 border rounded-md bg-background shadow-lg max-h-40 overflow-y-auto">
-          {options.map((option) => (
-            <div
-              key={option.value}
-              className="flex items-center space-x-2 p-2 hover:bg-accent rounded cursor-pointer"
-              onClick={() => handleToggle(option.value)}
-            >
-              <input
-                type="checkbox"
-                checked={value.includes(option.value)}
-                readOnly
-                className="rounded h-3 w-3"
-              />
-              <label className="text-sm cursor-pointer flex-1">
-                {option.label}
-              </label>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Overlay */}
-      {isOpen && !disabled && (
-        <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-      )}
-    </div>
-  );
-}
-
-// Improved File Upload Component
-function SimpleFileUpload({
-  onFilesChange,
-  maxFiles = 5,
-  maxSize = 4 * 1024 * 1024,
-}: {
-  onFilesChange: (files: File[]) => void;
-  maxFiles?: number;
-  maxSize?: number;
-}) {
-  const [files, setFiles] = useState<File[]>([]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []);
-    const validFiles = selectedFiles.filter((file) => file.size <= maxSize);
-
-    if (validFiles.length + files.length <= maxFiles) {
-      const newFiles = [...files, ...validFiles];
-      setFiles(newFiles);
-      onFilesChange(newFiles);
-    }
-  };
-
-  const removeFile = (index: number) => {
-    const newFiles = files.filter((_, i) => i !== index);
-    setFiles(newFiles);
-    onFilesChange(newFiles);
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-slate-400 transition-colors">
-        <input
-          type="file"
-          multiple
-          accept="image/*,.pdf,.doc,.docx"
-          onChange={handleFileChange}
-          className="hidden"
-          id="fileInput"
-        />
-        <label htmlFor="fileInput" className="cursor-pointer block">
-          <CloudUpload className="text-gray-500 w-6 h-6 mx-auto mb-2" />
-          <p className="mb-1 text-xs text-gray-500">
-            <span className="font-semibold">Click to upload</span> or drag and
-            drop
-          </p>
-          <p className="text-xs text-gray-500">
-            Max {Math.round(maxSize / 1024 / 1024)}MB per file
-          </p>
-        </label>
-      </div>
-
-      {files.length > 0 && (
-        <div className="space-y-2 max-h-32 overflow-y-auto">
-          {files.map((file, index) => (
-            <div
-              key={index}
-              className="flex items-center justify-between p-2 border rounded text-xs"
-            >
-              <div className="flex items-center space-x-2 flex-1 min-w-0">
-                <Paperclip className="h-3 w-3 flex-shrink-0" />
-                <span className="truncate">{file.name}</span>
-                <span className="text-gray-500 flex-shrink-0">
-                  ({Math.round(file.size / 1024)}KB)
-                </span>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => removeFile(index)}
-                className="h-6 px-2 text-xs"
-              >
-                ×
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface LeadsGenerationFormProps {
+interface EditLeadFormProps {
+  leadData: any; // ✅ Type it properly if you have interface
   onClose: () => void;
 }
-export default function LeadsGenerationForm({
-  onClose,
-}: LeadsGenerationFormProps) {
-  const [files, setFiles] = useState<File[]>([]);
-  const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
-  const createdBy = useAppSelector((state: any) => state.auth.user?.id);
-  const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type as string | undefined
-  );
+
+export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
+  const [files, setFiles] = useState<File[]>(leadData?.documents || []);
+  const [isLoadingLead, setIsLoadingLead] = useState(false);
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const createdBy = useAppSelector((state) => state.auth.user?.id);
   const queryClient = useQueryClient();
-  // fetch data once at top of component (after form etc.)
-  const { data: vendorUsers, isLoading } =
-    useVendorSalesExecutiveUsers(vendorId);
-  const { data: vendorUsersAssignedBy, isLoading: isLoadingAssignedBy } =
-    useVendorSalesExecutiveUsers(vendorId);
-  console.log(
-    "userType:",
-    userType,
-    "canReassingLead:",
-    canReassingLead(userType)
-  );
-  console.log("vendorUsers response:", vendorUsers);
-  const vendorUserss = vendorUsers?.data?.sales_executives ?? [];
+  const [primaryCountry, setPrimaryCountry] = useState<CountryCode>("IN");
+  const [altCountry, setAltCountry] = useState<CountryCode>("IN");
 
-  const createLeadMutation = useMutation({
-    mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
-      createLead(payload, files),
+  const updateLeadMutation = useMutation({
+    mutationFn: async (payload: EditLeadPayload) => {
+      const result = await updateLead(payload, leadData.id, createdBy!);
+      return result;
+    },
     onSuccess: (data) => {
-      toast.success("Lead created successfully!");
-      // console.log("Lead created:", data);
-
+      console.log("✅ Mutation onSuccess:", data);
+      toast.success("Lead updated successfully!");
       queryClient.invalidateQueries({
         queryKey: ["vendorUserLeads", vendorId, createdBy],
       });
-
-      form.reset();
-      setFiles([]);
       onClose();
     },
     onError: (error: any) => {
-      console.error("Form submission error:", error);
-      const errorMessage =
-        error?.response?.data?.details ||
-        error?.response?.data?.error ||
-        "Failed to create lead";
-      toast.error(errorMessage);
+      toast.error(error?.response?.data?.message || "Failed to update lead");
     },
   });
 
+  const debugFormErrors = () => {
+    const errors = form.formState.errors;
+    console.log("🔍 Detailed form errors:", errors);
+
+    // Check each field individually
+    Object.keys(errors).forEach((fieldName) => {
+      console.log(
+        `❌ ${fieldName}:`,
+        errors[fieldName as keyof typeof errors]?.message
+      );
+    });
+
+    // Check specific phone number validation
+    const contactNo = form.getValues("contact_no");
+    console.log("📞 Contact number value:", contactNo);
+
+    try {
+      const parsed = parsePhoneNumber(contactNo);
+      console.log("📞 Parsed phone:", {
+        isValid: parsed?.isValid(),
+        country: parsed?.country,
+        nationalNumber: parsed?.nationalNumber,
+        countryCallingCode: parsed?.countryCallingCode,
+      });
+    } catch (error) {
+      console.error("📞 Phone parsing error:", error);
+    }
+  };
+
+  // Initialize form with default values from leadData
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -319,85 +172,278 @@ export default function LeadsGenerationForm({
       source_id: "",
       product_types: [],
       product_structures: [],
-      documents: "",
       archetech_name: "",
       designer_remark: "",
-      assign_to: "",
-      assigned_by: "",
     },
   });
 
-  const handleResetform = () => {
-    form.reset();
-    setFiles([]);
-    form.setValue("priority", "");
-    form.setValue("source_id", "");
-    form.setValue("site_type_id", "");
-  };
+  useEffect(() => {
+    console.log("LeadID: ", leadData.id);
+    console.log("VendorID: ", vendorId);
+    console.log("CreatedBy: ", createdBy);
+    const fetchLeadData = async () => {
+      if (!leadData?.id || !vendorId || !createdBy) return;
 
-  function onSubmit(values: FormValues) {
+      try {
+        setIsLoadingLead(true);
+        const response = await getLeadById(leadData.id, vendorId, createdBy);
+        const lead = response.data.lead;
+
+        // Extract product type IDs from the nested structure
+        const productTypeIds =
+          lead.productMappings?.map((mapping: any) =>
+            String(mapping.product_type_id)
+          ) || [];
+
+        // Extract product structure IDs from the nested structure
+        const productStructureIds =
+          lead.leadProductStructureMapping?.map((mapping: any) =>
+            String(mapping.product_structure_id)
+          ) || [];
+
+        // Set country codes for phone inputs
+        if (lead.contact_no && lead.country_code) {
+          try {
+            const phoneWithCountryCode = `${lead.country_code}${lead.contact_no}`;
+            const parsedPhone = parsePhoneNumber(phoneWithCountryCode);
+            if (parsedPhone?.country) {
+              setPrimaryCountry(parsedPhone.country);
+            }
+          } catch (error) {
+            console.log("Error parsing primary phone:", error);
+          }
+        }
+
+        // For alternate contact, try to detect country from the number itself
+        if (lead.alt_contact_no) {
+          try {
+            const altPhoneToCheck = lead.alt_contact_no.startsWith("+")
+              ? lead.alt_contact_no
+              : `+${lead.alt_contact_no}`;
+            const parsedAltPhone = parsePhoneNumber(altPhoneToCheck);
+            if (parsedAltPhone?.country) {
+              setAltCountry(parsedAltPhone.country);
+            }
+          } catch (error) {
+            console.log("Error parsing alternate phone:", error);
+            // Fallback to same country as primary if primary exists
+            if (primaryCountry !== "IN") {
+              setAltCountry(primaryCountry);
+            }
+          }
+        }
+
+        // Format phone numbers to E.164 format
+        let formattedContactNo = "";
+        let formattedAltContactNo = "";
+
+        // Format primary contact number
+        if (lead.contact_no && lead.country_code) {
+          formattedContactNo = `${lead.country_code}${lead.contact_no}`;
+        }
+
+        // Format alternate contact number
+        if (lead.alt_contact_no) {
+          if (lead.alt_contact_no.startsWith("+")) {
+            formattedAltContactNo = lead.alt_contact_no;
+          } else {
+            // If no + prefix, try to add it
+            formattedAltContactNo = `+${lead.alt_contact_no}`;
+          }
+        }
+
+        // Update the form.reset call in useEffect to exclude documents
+        form.reset({
+          firstname: lead.firstname || "",
+          lastname: lead.lastname || "",
+          billing_name: lead.billing_name || "",
+          contact_no: formattedContactNo,
+          alt_contact_no: formattedAltContactNo,
+          email: lead.email || "",
+          site_type_id: lead.site_type_id ? String(lead.site_type_id) : "",
+          site_address: lead.site_address || "",
+          priority: lead.priority || "",
+          source_id: lead.source_id ? String(lead.source_id) : "",
+          product_types: productTypeIds,
+          product_structures: productStructureIds,
+          // REMOVE THIS LINE: documents: lead.documents || "",
+          archetech_name: lead.archetech_name || "",
+          designer_remark: lead.designer_remark || "",
+        });
+
+        // Handle documents if they exist
+        if (lead.documents && Array.isArray(lead.documents)) {
+          setFiles(lead.documents);
+        }
+      } catch (error) {
+        console.error("Error fetching lead data:", error);
+        toast.error("Failed to load lead data");
+      } finally {
+        setIsLoadingLead(false);
+      }
+    };
+
+    fetchLeadData();
+  }, [leadData?.id, vendorId, createdBy, form]);
+
+  if (isLoadingLead) {
+    return (
+      <div className="w-full max-w-none pt-3 pb-6 flex items-center justify-center">
+        <div className="text-sm">Loading lead data...</div>
+      </div>
+    );
+  }
+
+  const onSubmit = async (values: FormValues) => {
+    console.log("🚀 Update button clicked - Form submission started");
+    console.log("📋 Form values received:", values);
+
     if (!vendorId || !createdBy) {
+      console.error("❌ Missing authentication:", { vendorId, createdBy });
       toast.error("User authentication required");
       return;
     }
 
-    // console.log("[DEBUG] Form values before processing:", values);
+    // Primary contact number split
+    let country_code = "";
+    let contact_no = "";
+    if (values.contact_no) {
+      try {
+        const parsed = parsePhoneNumber(values.contact_no);
+        if (parsed) {
+          country_code = `+${parsed.countryCallingCode}`;
+          contact_no = parsed.nationalNumber.toString();
+        }
+      } catch (error) {
+        console.error("❌ Error parsing primary phone:", error);
+        toast.error("Invalid primary phone number format");
+        return;
+      }
+    }
 
-    // Parse phone number properly
-    const phone = values.contact_no
-      ? parsePhoneNumberFromString(values.contact_no)
-      : null;
+    // Alt contact number split
+    let alt_country_code = "";
+    let alt_contact_no = "";
+    if (values.alt_contact_no && values.alt_contact_no.trim()) {
+      try {
+        const parsedAlt = parsePhoneNumber(values.alt_contact_no);
+        if (parsedAlt) {
+          alt_country_code = `+${parsedAlt.countryCallingCode}`;
+          alt_contact_no = parsedAlt.nationalNumber.toString();
+        }
+      } catch (error) {
+        console.error("⚠️ Error parsing alt phone:", error);
+        alt_contact_no = values.alt_contact_no.replace(/\D/g, "");
+      }
+    }
 
-    const countryCode = phone?.countryCallingCode
-      ? `+${phone.countryCallingCode}`
-      : "";
-    const phoneNumber = phone?.nationalNumber || "";
-
-    // Alt contact number (just keep digits)
-    const altContactNo = values.alt_contact_no?.replace(/\D/g, "") || undefined;
-
-    const payload = {
-      firstname: values.firstname,
-      lastname: values.lastname,
-      billing_name: values.billing_name || undefined,
-      email: values.email,
-      site_address: values.site_address,
-      site_type_id: Number(values.site_type_id),
-      priority: values.priority,
-      source_id: Number(values.source_id),
-      archetech_name: values.archetech_name || undefined,
-      designer_remark: values.designer_remark || undefined,
-      vendor_id: vendorId,
-      created_by: createdBy,
-
-      // ✅ cleanly separated
-      country_code: countryCode,
-      contact_no: phoneNumber,
-      alt_contact_no: altContactNo,
-
-      product_types: values.product_types || [],
-      product_structures: values.product_structures || [],
-
-      // Assignment logic based on user role
-      ...(canReassingLead(userType)
-        ? {
-            // Admin/Super-admin can assign to anyone
-            assign_to: values.assign_to ? Number(values.assign_to) : undefined,
-            assigned_by: values.assigned_by
-              ? Number(values.assigned_by)
-              : undefined,
-          }
-        : {
-            // Sales executive self-assigns
-            assign_to: createdBy,
-            assigned_by: undefined,
-          }),
+    const payload: EditLeadPayload = {
+      firstname: values.firstname || "",
+      lastname: values.lastname || "",
+      billing_name: values.billing_name || "",
+      country_code,
+      contact_no,
+      alt_contact_no: alt_contact_no || undefined,
+      email: values.email || "",
+      site_type_id: values.site_type_id
+        ? Number(values.site_type_id)
+        : undefined,
+      site_address: values.site_address || "",
+      priority: values.priority || "",
+      source_id: values.source_id ? Number(values.source_id) : undefined,
+      product_types: (values.product_types || []).map((id) => Number(id)),
+      product_structures: (values.product_structures || []).map((id) =>
+        Number(id)
+      ),
+      archetech_name: values.archetech_name || "",
+      designer_remark: values.designer_remark || "",
+      updated_by: createdBy!,
+      // NO documents field in payload
     };
 
-    // console.log("[DEBUG] Processed payload:", payload);
+    console.log("📤 Final Payload being sent:", payload);
+    console.log("🔗 API call details:", {
+      leadId: leadData.id,
+      userId: createdBy,
+      endpoint: `/leads/update/${leadData.id}/userId/${createdBy}`,
+    });
 
-    createLeadMutation.mutate({ payload, files });
-  }
+    try {
+      // Call the mutation
+      const result = await updateLeadMutation.mutateAsync(payload);
+      console.log("✅ Update successful:", result);
+    } catch (error: any) {
+      console.error("❌ Update failed:", {
+        error: error,
+        response: error.response?.data,
+        status: error.response?.status,
+        message: error.message,
+      });
+
+      // More detailed error handling
+      if (error.response) {
+        console.error(
+          "Server responded with error:",
+          error.response.status,
+          error.response.data
+        );
+        toast.error(
+          error.response.data?.message ||
+            `Server error: ${error.response.status}`
+        );
+      } else if (error.request) {
+        console.error("No response received:", error.request);
+        toast.error("Network error: Unable to reach server");
+      } else {
+        console.error("Request setup error:", error.message);
+        toast.error("Request failed: " + error.message);
+      }
+    }
+  };
+
+  // Update your handleUpdateClick function
+  const handleUpdateClick = async () => {
+    console.log("🔧 Direct button click handler");
+
+    // Get current form values
+    const currentValues = form.getValues();
+    console.log("Current form values:", currentValues);
+
+    // Debug form errors first
+    debugFormErrors();
+
+    // Validate form
+    const isValid = await form.trigger();
+    console.log("📋 Form validation result:", isValid);
+
+    if (!isValid) {
+      console.log("❌ Form validation failed - checking individual fields...");
+
+      // Check each required field
+      const requiredFields = [
+        "firstname",
+        "lastname",
+        "contact_no",
+        "email",
+        "site_type_id",
+        "site_address",
+        "priority",
+        "source_id",
+      ];
+
+      for (const field of requiredFields) {
+        const fieldValid = await form.trigger(field as any);
+        console.log(`📝 ${field} valid:`, fieldValid);
+      }
+
+      toast.error("Please fix form errors before submitting");
+      return;
+    }
+
+    console.log("✅ Form validation passed - proceeding with submission");
+    // Proceed with submission
+    onSubmit(currentValues);
+  };
 
   return (
     <div className="w-full max-w-none pt-3 pb-6">
@@ -421,6 +467,9 @@ export default function LeadsGenerationForm({
                       {...field}
                     />
                   </FormControl>
+                  {/* <FormDescription className="text-xs">
+                    Lead's first name.
+                  </FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -459,15 +508,12 @@ export default function LeadsGenerationForm({
                   <FormLabel className="text-sm">Phone Number *</FormLabel>
                   <FormControl>
                     <PhoneInput
-                      defaultCountry="IN"
+                      defaultCountry={primaryCountry}
                       placeholder="Enter phone number"
                       className="text-sm"
                       {...field}
                     />
                   </FormControl>
-                  {/* <FormDescription className="text-xs">
-                    Primary phone number.
-                  </FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -480,23 +526,13 @@ export default function LeadsGenerationForm({
                 <FormItem>
                   <FormLabel className="text-sm">Alt. Phone Number</FormLabel>
                   <FormControl>
-                    {/* Use regular Input instead of PhoneInput */}
-                    {/* <Input
-                        placeholder="Enter alternate number"
-                        type="tel"
-                        className="text-sm"
-                        {...field}
-                        /> */}
                     <PhoneInput
-                      defaultCountry="IN"
+                      defaultCountry={altCountry}
                       placeholder="Enter alt number"
                       className="text-sm"
                       {...field}
                     />
                   </FormControl>
-                  {/* <FormDescription className="text-xs">
-                    Optional alternate number (without country code).
-                  </FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -606,6 +642,9 @@ export default function LeadsGenerationForm({
                     placeholder="Enter your address"
                   />
                 </FormControl>
+                {/* <FormDescription className="text-xs">
+                  Site address of the lead.
+                </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
@@ -778,40 +817,6 @@ export default function LeadsGenerationForm({
             />
           </div>
 
-          {canReassingLead(userType) && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Assign To */}
-              <FormField
-                control={form.control}
-                name="assign_to"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm">Assign To</FormLabel>
-                    <Select
-                      value={field.value || ""}
-                      onValueChange={field.onChange}
-                      disabled={isLoading}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="text-sm w-full">
-                          <SelectValue placeholder="Select assignee" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {vendorUserss?.map((user: any) => (
-                          <SelectItem key={user.id} value={String(user.id)}>
-                            {user.user_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          )}
-
           {/* Architect Name */}
           <FormField
             control={form.control}
@@ -844,8 +849,9 @@ export default function LeadsGenerationForm({
                 <FormLabel className="text-sm">Designer's Remark</FormLabel>
                 <FormControl>
                   <TextAreaInput
-                    placeholder="Enter your remarks"
-                    {...field}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Enter ysiteur Remark"
                   />
                 </FormControl>
                 {/* <FormDescription className="text-xs">
@@ -856,38 +862,21 @@ export default function LeadsGenerationForm({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="documents"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">Site Photos</FormLabel>
-                <FormControl>
-                  <FileUploadField value={files} onChange={setFiles} />
-                </FormControl>
-                <FormDescription className="text-xs">
-                  Upload photos or documents.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
           <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
             <Button
               type="button"
               variant="outline"
               className="text-sm"
-              onClick={handleResetform}
+              onClick={() => form.reset()}
             >
               Reset
             </Button>
             <Button
               type="submit"
               className="text-sm"
-              disabled={createLeadMutation.isPending}
+              disabled={updateLeadMutation.isPending}
             >
-              {createLeadMutation.isPending ? "Creating..." : "Create Lead"}
+              {updateLeadMutation.isPending ? "Updating..." : "Update Lead"}
             </Button>
           </div>
         </form>

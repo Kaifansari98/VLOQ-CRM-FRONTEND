@@ -16,10 +16,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/ModeToggle";
-import { useAppSelector } from "@/redux/store";
-import { useQuery } from "@tanstack/react-query";
-import { getInitialSiteMeasurement2 } from "@/api/measurment-leads";
-import InitialSiteSkeleton from "@/components/sales-executive/SiteMeasurement/measurement-skeleton";
+import DesigningSkeleton from "@/components/sales-executive/Designing/designing-skeleton";
 
 export default function InitialSiteMeasurement() {
   return (
@@ -40,7 +37,7 @@ export default function InitialSiteMeasurement() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Initial Site Measurement</BreadcrumbPage>
+                  <BreadcrumbPage>Designing</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -51,7 +48,8 @@ export default function InitialSiteMeasurement() {
         </header>
 
         <main className="flex-1 p-4 pt-0 overflow-x-hidden">
-          <InitialSiteSkeleton />
+          {/* <InitialSiteSkeleton /> */}
+          <DesigningSkeleton />
         </main>
       </SidebarInset>
     </SidebarProvider>

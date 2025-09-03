@@ -5,12 +5,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "../ui/button";
+import { Button } from "../../ui/button";
 import { Blinds, Download, Star } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
-import { ScrollArea } from "../ui/scroll-area";
+import { ScrollArea } from "../../ui/scroll-area";
 import InitialSiteMeasuresMent from "./initial-site-measurement-form";
-import { sanitize, sanitizeAndCapitalize } from "../utils/sanitizeCapitalize";
+import { sanitize, sanitizeAndCapitalize } from "../../utils/sanitizeCapitalize";
 
 interface LeadViewModalProps {
   open: boolean;
