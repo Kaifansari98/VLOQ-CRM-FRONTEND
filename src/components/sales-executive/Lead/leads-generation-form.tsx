@@ -42,28 +42,34 @@ import { canReassingLead } from "@/components/utils/privileges";
 import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 import TextAreaInput from "@/components/origin-text-area";
 
-const formSchema = z.object({
-  firstname: z.string().min(1, "First name is required").max(300),
-  lastname: z.string().min(1, "Last name is required").max(300),
-  billing_name: z.string().optional(),
-  contact_no: z.string().min(1, "This Contact number isn't valid").max(20),
-  alt_contact_no: z.string().optional().or(z.literal("")),
-  email: z.string().email("Please enter a valid email"),
-  site_type_id: z.string().min(1, "Please select a site type"),
-  site_address: z.string().min(1, "Site Address is required").max(2000),
-  priority: z.string().min(1, "Please select a priority"),
-  source_id: z.string().min(1, "Please select a source"),
-  product_types: z.array(z.string()).optional(),
-  product_structures: z.array(z.string()).optional(),
-  // status_id:z.n
-  assign_to: z.string().min(1, "Please select an assignee"),
-  assigned_by: z.string(),
-  documents: z.string().optional(),
-  archetech_name: z.string().max(300).optional(),
-  designer_remark: z.string().max(2000).optional(),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+const createFormSchema = (userType: string | undefined) => {
+  const isAdminOrSuperAdmin = userType === "admin" || userType === "super_admin";
+  
+  return z.object({
+    firstname: z.string().min(1, "First name is required").max(300),
+    lastname: z.string().min(1, "Last name is required").max(300),
+    billing_name: z.string().optional(),
+    contact_no: z.string().min(1, "This Contact number isn't valid").max(20),
+    alt_contact_no: z.string().optional().or(z.literal("")),
+    email: z.string().email("Please enter a valid email"),
+    site_type_id: z.string().min(1, "Please select a site type"),
+    site_address: z.string().min(1, "Site Address is required").max(2000),
+    priority: z.string().min(1, "Please select a priority"),
+    source_id: z.string().min(1, "Please select a source"),
+    product_types: z.array(z.string()).optional(),
+    product_structures: z.array(z.string()).optional(),
+    // Dynamic validation based on user role
+    assign_to: isAdminOrSuperAdmin 
+      ? z.string().min(1, "Please select an assignee")
+      : z.string().optional(),
+    assigned_by: isAdminOrSuperAdmin 
+      ? z.string()
+      : z.string().optional(),
+    documents: z.string().optional(),
+    archetech_name: z.string().max(300).optional(),
+    designer_remark: z.string().max(2000).optional(),
+  });
+};
 
 // Improved Multi-Select Component with dropdown behavior
 function SimpleMultiSelect({
@@ -264,7 +270,12 @@ export default function LeadsGenerationForm({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
+  
+  const formSchema = createFormSchema(userType);
+  type FormValues = z.infer<typeof formSchema>;
+  
   const queryClient = useQueryClient();
+
   // fetch data once at top of component (after form etc.)
   const { data: vendorUsers, isLoading } =
     useVendorSalesExecutiveUsers(vendorId);
@@ -383,14 +394,14 @@ export default function LeadsGenerationForm({
         ? {
             // Admin/Super-admin can assign to anyone
             assign_to: values.assign_to ? Number(values.assign_to) : undefined,
-            assigned_by: values.assigned_by
-              ? Number(values.assigned_by)
+            assigned_by: createdBy
+              ? createdBy
               : undefined,
           }
         : {
             // Sales executive self-assigns
             assign_to: createdBy,
-            assigned_by: undefined,
+            assigned_by: createdBy,
           }),
     };
 

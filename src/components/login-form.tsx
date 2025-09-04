@@ -38,7 +38,7 @@ export function LoginForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    loginMutation.mutate({ user_contact: phone, password });
+    loginMutation.mutate({ identifier: phone, password });
   };
 
   useEffect(() => {

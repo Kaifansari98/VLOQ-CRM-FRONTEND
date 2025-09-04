@@ -5,7 +5,8 @@ import { setCredentials } from "@/redux/slices/authSlice"
 import { toast } from "react-toastify"
 
 interface LoginPayload {
-  user_contact: string
+  identifier: string,
+  // user_contact: string
   password: string
 }
 
