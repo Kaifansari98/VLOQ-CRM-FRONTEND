@@ -11,7 +11,15 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ellipsis, Eye, SquarePen, Users, Text, Ruler } from "lucide-react";
+import {
+  Ellipsis,
+  Eye,
+  SquarePen,
+  Users,
+  Text,
+  Ruler,
+  Info,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DataTableRowAction } from "@/types/data-table";
 import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
@@ -20,21 +28,21 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/cutome-tooltip";
-import { ProcessedSiteMeasurementLead } from "@/types/site-measrument-types";
+import { ProcessedDesigningStageLead } from "@/types/designing-stage-types";
+import Link from "next/link";
 
 interface GetSiteMeasurementColumnProps {
   setRowAction: React.Dispatch<
-    React.SetStateAction<DataTableRowAction<ProcessedSiteMeasurementLead> | null>
+    React.SetStateAction<DataTableRowAction<ProcessedDesigningStageLead> | null>
   >;
   userType?: string;
 }
 
-export function getSiteMeasurementColumn({
+export function getDesigningStageColumn({
   setRowAction,
   userType,
-}: GetSiteMeasurementColumnProps): ColumnDef<ProcessedSiteMeasurementLead>[] {
+}: GetSiteMeasurementColumnProps): ColumnDef<ProcessedDesigningStageLead>[] {
   return [
-    // Action Button
     {
       id: "actions",
       cell: ({ row }) => (
@@ -56,29 +64,21 @@ export function getSiteMeasurementColumn({
               View
             </DropdownMenuItem>
 
-             <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: 'measurement' })}
-            >
-              <Ruler size={20} />
-              Measurement
-            </DropdownMenuItem>
-            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
-
-            <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "edit" })}
-            >
-              <SquarePen size={20} />
-              Edit
-            </DropdownMenuItem>
-
-            {canReassingLead(userType) && (
-              <DropdownMenuItem
-                onSelect={() => setRowAction({ row, variant: "reassignlead" })}
+            <DropdownMenuItem asChild>
+              <Link
+                href={{
+                  pathname:
+                    "/dashboard/sales-executive/designing-stage/details",
+                  query: { leadId: row.original.id },
+                }}
+                className="flex items-center gap-2"
               >
-                <Users size={20} />
-                Reassign Lead
-              </DropdownMenuItem>
-            )}
+                <Info size={20} />
+                Details
+              </Link>
+            </DropdownMenuItem>
+
+            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
 
             {canDeleteLead(userType) && (
               <>
@@ -288,7 +288,7 @@ export function getSiteMeasurementColumn({
             enableSorting: true,
             enableHiding: true,
             enableColumnFilter: true,
-          } as ColumnDef<ProcessedSiteMeasurementLead>,
+          } as ColumnDef<ProcessedDesigningStageLead>,
         ]
       : []),
 
@@ -424,32 +424,32 @@ export function getSiteMeasurementColumn({
     },
 
     // Product Types
-    // {
-    //   accessorKey: "productTypes",
-    //   header: ({ column }) => (
-    //     <DataTableColumnHeader column={column} title="Product Types" />
-    //   ),
-    //   meta: {
-    //     label: "Product Types",
-    //   },
-    //   enableSorting: true,
-    //   enableHiding: true,
-    //   enableColumnFilter: true,
-    // },
+    {
+      accessorKey: "productTypes",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Product Types" />
+      ),
+      meta: {
+        label: "Product Types",
+      },
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+    },
 
     // Product Structures
-    // {
-    //   accessorKey: "productStructures",
-    //   header: ({ column }) => (
-    //     <DataTableColumnHeader column={column} title="Product Structures" />
-    //   ),
-    //   meta: {
-    //     label: "Product Structures",
-    //   },
-    //   enableSorting: true,
-    //   enableHiding: true,
-    //   enableColumnFilter: true,
-    // },
+    {
+      accessorKey: "productStructures",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Product Structures" />
+      ),
+      meta: {
+        label: "Product Structures",
+      },
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+    },
 
     // design Remark
     {
@@ -466,7 +466,7 @@ export function getSiteMeasurementColumn({
       cell: ({ row }) => {
         const fullRemark = row.getValue("designerRemark") as string;
         if (!fullRemark) return "–";
-        
+
         const truncatedRemark =
           fullRemark.length > 15 ? fullRemark.slice(0, 15) + "..." : fullRemark;
         return (

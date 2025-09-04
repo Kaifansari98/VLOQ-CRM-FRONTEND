@@ -15,12 +15,9 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/ModeToggle";
-import { useAppSelector } from "@/redux/store";
-import InitialSiteSkeleton from "@/components/sales-executive/siteMeasurement/measurement-skeleton";
-import { Suspense, useEffect } from "react";
-import { useDesigningStageLeads } from "@/hooks/designing-stage/designing-leads-hooks";
-
-export default function InitialSiteMeasurement() {
+import { Suspense } from "react";
+import DesigningStageSkeleton from "@/components/sales-executive/designing-stage/designing-stage-skeleton";
+export default function DesigningStage() {
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -39,7 +36,7 @@ export default function InitialSiteMeasurement() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Initial Site Measurement</BreadcrumbPage>
+                  <BreadcrumbPage>Designing Stage</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -50,7 +47,7 @@ export default function InitialSiteMeasurement() {
         </header>
         <main className="flex-1 p-4 pt-0 overflow-x-hidden">
           <Suspense fallback={<p>Loading...</p>}>
-            <InitialSiteSkeleton />
+            <DesigningStageSkeleton />
           </Suspense>
         </main>
       </SidebarInset>

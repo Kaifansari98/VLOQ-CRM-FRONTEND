@@ -117,7 +117,7 @@ export const createLead = async (
 
   // Debug FormData contents
   console.log("[DEBUG] FormData entries:");
-  for (let pair of formData.entries()) {
+  for (const pair of formData.entries()) {
     console.log(pair[0] + ": " + pair[1]);
   }
 

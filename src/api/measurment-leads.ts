@@ -1,5 +1,4 @@
 import { apiClient } from "@/lib/apiClient";
-import { EditPayload } from "@/types/site-measrument-types";
 
 export const getInitialSiteMeasurement2 = async (
   vendorId: number,
