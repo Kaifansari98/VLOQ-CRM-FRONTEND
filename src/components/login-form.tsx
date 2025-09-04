@@ -30,7 +30,7 @@ export function LoginForm({
   useEffect(() => {
     if (user && token) {
       console.log(user && token);
-      router.replace("/dashboard"); // replace so user can't go back
+      router.replace("/dashboard/sales-executive/leadstable"); // replace so user can't go back
     }
 
     console.log("Login Phone number:", phone);
@@ -50,7 +50,7 @@ export function LoginForm({
         })
       );
       toast.success("Login successful 🎉");
-      router.push("/dashboard");
+      router.push("/dashboard/sales-executive/leadstable");
     }
   }, [loginMutation.isSuccess, loginMutation.data, dispatch, router]);
 

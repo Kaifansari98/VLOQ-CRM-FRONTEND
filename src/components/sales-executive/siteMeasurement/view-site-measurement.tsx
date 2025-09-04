@@ -2,9 +2,7 @@ import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import { Star } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -20,6 +18,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useMoveToDesigningStage } from "@/api/designingStageQueries";
+import { useAppSelector } from "@/redux/store";
 
 interface ViewInitialSiteMeasurmentLeadProps {
   open: boolean;
@@ -30,27 +30,55 @@ interface ViewInitialSiteMeasurmentLeadProps {
 const ViewInitialSiteMeasurmentLead: React.FC<
   ViewInitialSiteMeasurmentLeadProps
 > = ({ open, onOpenChange, data }) => {
-
-
   const [openConfirmation, setOpenconfirmation] = useState<boolean>(false);
+
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const createdBy = useAppSelector((state) => state.auth.user?.id);
+
+  // ✅ Hook for API call
+  const { mutate: moveToDesigningStage, isPending } = useMoveToDesigningStage()
+
+  const handleConfirm = () => {
+    if (!data || !vendorId || !createdBy) return
+  
+    moveToDesigningStage(
+      {
+        lead_id: data.id,       // from the lead data
+        user_id: createdBy,     // ✅ from Redux
+        vendor_id: vendorId,    // ✅ from Redux
+      },
+      {
+        onSuccess: (res) => {
+          console.log("✅ API success:", res)
+          setOpenconfirmation(false)
+          onOpenChange(false) // close dialog
+        },
+        onError: (err) => {
+          console.error("❌ API error:", err)
+        },
+      }
+    )
+  }
+
   const formatDateTime = (dateString?: string) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
+    if (!dateString) return "N/A"
+    const date = new Date(dateString)
     return date.toLocaleString("en-IN", {
       year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    });
-  };
+    })
+  }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-3xl p-0 gap-0">
         {/* Header */}
 
-        <DialogHeader className="flex items-start justify-end border-b px-6 py-4 border-b">
+        <DialogHeader className="flex items-start justify-end border-b px-6 py-4">
           <Button onClick={() => setOpenconfirmation(true)}>
             <Star size={20} className="mr-2" /> Move To Designing Stage
           </Button>
@@ -142,16 +170,13 @@ const ViewInitialSiteMeasurmentLead: React.FC<
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              You will be logged out of your account. You can log in again
-              anytime.
+              This will move the lead to Designing Stage.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => console.log("button clicked....")}
-            >
-              Yes{" "}
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirm} disabled={isPending}>
+              {isPending ? "Processing..." : "Yes, Move"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

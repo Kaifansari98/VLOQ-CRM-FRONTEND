@@ -22,14 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { CloudUpload, Paperclip, ChevronDown } from "lucide-react";
 import MultipleSelector, {Option} from "@/components/ui/multiselect";
-import { FileUploadField } from "@/components/custom/file-upload";
 import { useAppSelector } from "@/redux/store";
 import { toast } from "react-toastify";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-// import { updateLead } from "@/api/leads"; // ✅ Update API
 import { PhoneInput } from "@/components/ui/phone-input";
 import {
   useSourceTypes,
@@ -37,10 +33,8 @@ import {
   useProductTypes,
   useSiteTypes,
 } from "@/hooks/useTypesMaster";
-import { canReassingLead } from "@/components/utils/privileges";
 import { updateLead, getLeadById, EditLeadPayload } from "@/api/leads";
 import { CountryCode, parsePhoneNumber } from "libphonenumber-js";
-import { apiClient } from "@/lib/apiClient";
 import TextAreaInput from "@/components/origin-text-area";
 
 // Form validation schema
