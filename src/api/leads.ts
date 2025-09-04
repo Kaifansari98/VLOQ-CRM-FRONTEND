@@ -220,4 +220,3 @@ export const uploadInitialSiteMeasurement = async (payload: any) => {
   );
   return response.data;
 };
-
