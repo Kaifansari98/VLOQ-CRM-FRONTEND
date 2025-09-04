@@ -47,7 +47,6 @@ const DesigningStageTable = () => {
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
   const { data, isLoading, isError } = useDesigningStageLeads(vendorId!, 3);
-
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const [openDelete, setOpenDelete] = useState<boolean>(false);
   const [openView, setOpenView] = useState<boolean>(false);
@@ -88,14 +87,6 @@ const DesigningStageTable = () => {
     if (rowAction?.variant === "view" && rowAction.row) {
       console.log("Original Data row Leads: ", rowAction.row.original);
       setOpenView(true);
-    }
-    if (rowAction?.variant === "reassignlead" && rowAction.row) {
-      console.log("Original Data row Leads: ", rowAction.row.original);
-      setAssignOpenLead(true);
-    }
-    if (rowAction?.variant === "edit" && rowAction.row) {
-      console.log("Original Edit Data row Leads: ", rowAction.row.original);
-      setEditOpenLead(true);
     }
   }, [rowAction]);
 

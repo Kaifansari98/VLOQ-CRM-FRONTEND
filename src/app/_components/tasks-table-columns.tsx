@@ -262,7 +262,7 @@ export function getVendorLeadsTableColumns({
         const status = row.getValue("status") as string;
 
         return (
-          <div className="flex items-center justify-center">
+          <div className="flex items-center">
             <CustomeStatusBadge title={status} />
           </div>
         );

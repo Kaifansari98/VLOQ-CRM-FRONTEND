@@ -11,7 +11,15 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ellipsis, Eye, SquarePen, Users, Text, Ruler } from "lucide-react";
+import {
+  Ellipsis,
+  Eye,
+  SquarePen,
+  Users,
+  Text,
+  Ruler,
+  Info,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DataTableRowAction } from "@/types/data-table";
 import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
@@ -21,6 +29,7 @@ import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import { ProcessedDesigningStageLead } from "@/types/designing-stage-types";
+import Link from "next/link";
 
 interface GetSiteMeasurementColumnProps {
   setRowAction: React.Dispatch<
@@ -55,29 +64,17 @@ export function getDesigningStageColumn({
               View
             </DropdownMenuItem>
 
-             <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: 'measurement' })}
-            >
-              <Ruler size={20} />
-              Measurement
-            </DropdownMenuItem>
-            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
-
-            <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "edit" })}
-            >
-              <SquarePen size={20} />
-              Edit
-            </DropdownMenuItem>
-
-            {canReassingLead(userType) && (
-              <DropdownMenuItem
-                onSelect={() => setRowAction({ row, variant: "reassignlead" })}
+            <DropdownMenuItem asChild>
+              <Link
+                href="/dashboard/sales-executive/designing-stage/details"
+                className="flex items-center gap-2"
               >
-                <Users size={20} />
-                Reassign Lead
-              </DropdownMenuItem>
-            )}
+                <Info size={20} />
+                Details
+              </Link>
+            </DropdownMenuItem>
+
+            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
 
             {canDeleteLead(userType) && (
               <>
@@ -465,7 +462,7 @@ export function getDesigningStageColumn({
       cell: ({ row }) => {
         const fullRemark = row.getValue("designerRemark") as string;
         if (!fullRemark) return "–";
-        
+
         const truncatedRemark =
           fullRemark.length > 15 ? fullRemark.slice(0, 15) + "..." : fullRemark;
         return (
