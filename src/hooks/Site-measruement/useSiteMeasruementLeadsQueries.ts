@@ -15,4 +15,3 @@ export const useInitialSiteMeasurement = (
     refetchOnWindowFocus: false,
   });
 };
-

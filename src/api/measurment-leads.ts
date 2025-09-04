@@ -11,9 +11,6 @@ export const getInitialSiteMeasurement2 = async (
   return response.data;
 };
 
-
-
-
 export const UpdateInitialSiteMeasurement = async (
   paymentId: number,
   formData: FormData
