@@ -16,11 +16,26 @@ import {
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/ModeToggle";
 import { useAppSelector } from "@/redux/store";
-import { useQuery } from "@tanstack/react-query";
-import { getInitialSiteMeasurement2 } from "@/api/measurment-leads";
 import InitialSiteSkeleton from "@/components/sales-executive/siteMeasurement/measurement-skeleton";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
+import { useDesigningStageLeads } from "@/api/designingStageQueries";
+
 export default function InitialSiteMeasurement() {
+
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
+
+  const { data, isLoading, isError } = useDesigningStageLeads(1, 3);
+
+  useEffect(() => {
+    if (data) {
+      console.log("📦 Designing Stage Leads:", data)
+    }
+  }, [data])
+
+  if (isLoading) return <p>Loading...</p>
+  if (isError) return <p>Error fetching leads</p>
+
   return (
     <SidebarProvider>
       <AppSidebar />
