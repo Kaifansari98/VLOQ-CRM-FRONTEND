@@ -1,5 +1,4 @@
 "use client";
-
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
@@ -16,6 +15,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/ModeToggle";
+import { Suspense } from "react";
+import DesigningStageSkeleton from "@/components/sales-executive/designing-stage/designing-stage-skeleton";
 export default function DesigningStage() {
   return (
     <SidebarProvider>
@@ -45,7 +46,9 @@ export default function DesigningStage() {
           </div>
         </header>
         <main className="flex-1 p-4 pt-0 overflow-x-hidden">
-        
+          <Suspense fallback={<p>Loading...</p>}>
+            <DesigningStageSkeleton />
+          </Suspense>
         </main>
       </SidebarInset>
     </SidebarProvider>
