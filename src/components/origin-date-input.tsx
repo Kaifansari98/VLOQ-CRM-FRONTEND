@@ -13,6 +13,9 @@ export default function DateInputPicker({
   onChange,
   label,
 }: DateInputPickerProps) {
+  // Format today as YYYY-MM-DD
+  const today = new Date().toISOString().split("T")[0];
+
   return (
     <div className="flex items-center gap-2 w-full">
       {label && (
@@ -25,6 +28,7 @@ export default function DateInputPicker({
           type="date"
           className="border rounded px-2 py-1 w-full"
           value={value ? value.toISOString().split("T")[0] : ""}
+          max={today} // ✅ restrict future dates
           onChange={(e) => {
             onChange?.(e.target.value ? new Date(e.target.value) : undefined);
           }}

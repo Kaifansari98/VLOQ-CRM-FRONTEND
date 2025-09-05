@@ -5,7 +5,9 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import React, { useState } from "react";
-import AddQuotationModal from "./add-quotation-moda";
+import AddQuotationModal from "./pill-tabs-component/modals/add-quotation-modal";
+import DesignsModal from "./pill-tabs-component/modals/designs-modal";
+import AddMeetingsModal from "./pill-tabs-component/modals/add-meetings-modal";
 
 // Tab type
 type TabItemType = {
@@ -27,6 +29,8 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
     const [activeTab, setActiveTab] = React.useState(defaultActiveId);
     const [openQuotationModal, setOpenQuotationModal] =
       useState<boolean>(false);
+    const [openDesignsModal, setOpenDesignsModal] = useState<boolean>(false);
+    const [openMeetingsModal, setOpenMeetingsModal] = useState<boolean>(false);
     const handleClick = (id: string) => {
       setActiveTab(id);
       onTabChange?.(id);
@@ -75,13 +79,13 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
             </Button>
           )}
           {activeTab === "meetings" && (
-            <Button>
+            <Button onClick={() => setOpenMeetingsModal(true)}>
               <Plus size={20} />
               Add Meeting
             </Button>
           )}
           {activeTab === "designs" && (
-            <Button>
+            <Button onClick={() => setOpenDesignsModal(true)}>
               <Plus size={20} />
               Add Design
             </Button>
@@ -99,6 +103,16 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
         <AddQuotationModal
           open={openQuotationModal}
           onOpenChange={setOpenQuotationModal}
+        />
+
+        <DesignsModal
+          open={openDesignsModal}
+          onOpenChange={setOpenDesignsModal}
+        />
+
+        <AddMeetingsModal
+          open={openMeetingsModal}
+          onOpenChange={setOpenMeetingsModal}
         />
       </div>
     );

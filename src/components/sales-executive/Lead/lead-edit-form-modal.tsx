@@ -29,7 +29,7 @@ export function EditLeadModal({ open, onOpenChange, leadData }: EditLeadModalPro
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-2xl p-0 gap-0 "
+        className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-2xl p-0 gap-0"
         onInteractOutside={(e) => e.preventDefault()} // Overlay click disable
         onEscapeKeyDown={(e) => e.preventDefault()} // Escape close disable
       >

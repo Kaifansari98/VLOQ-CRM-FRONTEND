@@ -87,8 +87,42 @@ export const submitQuotation = async (
   return response.data;
 };
 
-
 export const fetchLeadById = async (vendorId: number, leadId: number) => {
-  const { data } = await apiClient.get(`/leads/designing-stage/vendor/${vendorId}/lead/${leadId}`);
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}`
+  );
   return data; // This should return the API response payload
+};
+
+export interface SubmitMeetingPayload {
+  files: File[];
+  desc: string;
+  date: string;
+  vendorId: number;
+  leadId: number;
+  userId: number;
+  accountId: number;
+}
+
+export const submitMeeting = async (payload: SubmitMeetingPayload) => {
+  const formData = new FormData();
+
+  formData.append("leadId", payload.leadId.toString());
+  formData.append("vendorId", payload.vendorId.toString());
+  formData.append("userId", payload.userId.toString());
+  formData.append("accountId", payload.accountId.toString());
+  formData.append("date", new Date(payload.date).toISOString()); // safer
+  formData.append("desc", payload.desc);
+
+  payload.files.forEach((file) => {
+    formData.append("files", file); // MUST match multer field
+  });
+
+  const { data } = await apiClient.post(
+    "/leads/designing-stage/design-meeting",
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+
+  return data;
 };
