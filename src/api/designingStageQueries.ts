@@ -58,3 +58,37 @@ export const fetchDesigningStageLeads = async (
   );
   return data;
 };
+
+// ✅ API function for file upload
+export const submitQuotation = async (
+  file: File,
+  vendorId: number,
+  leadId: number,
+  userId: number,
+  accountId: number
+) => {
+  const formData = new FormData();
+  formData.append("file", file); // must match multer field name
+  formData.append("vendorId", vendorId.toString());
+  formData.append("leadId", leadId.toString());
+  formData.append("userId", userId.toString());
+  formData.append("accountId", accountId.toString());
+
+  const response = await apiClient.post(
+    "/leads/designing-stage/upload-quoation",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return response.data;
+};
+
+
+export const fetchLeadById = async (vendorId: number, leadId: number) => {
+  const { data } = await apiClient.get(`/leads/designing-stage/vendor/${vendorId}/lead/${leadId}`);
+  return data; // This should return the API response payload
+};

@@ -69,7 +69,7 @@ export function getDesigningStageColumn({
                 href={{
                   pathname:
                     "/dashboard/sales-executive/designing-stage/details",
-                  query: { leadId: row.original.id },
+                  query: { leadId: row.original.id, accountId: row.original.accountId },
                 }}
                 className="flex items-center gap-2"
               >

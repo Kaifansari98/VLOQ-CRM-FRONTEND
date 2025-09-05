@@ -22,10 +22,12 @@ import MettingsTab from "@/components/sales-executive/designing-stage/pill-tabs-
 import SelectionsTab from "@/components/sales-executive/designing-stage/pill-tabs-component/selection";
 import DesigningTab from "@/components/sales-executive/designing-stage/pill-tabs-component/designs";
 import { useSearchParams } from "next/navigation";
+import { DetailsProvider } from "@/components/sales-executive/designing-stage/pill-tabs-component/details-context";
 
 export default function Details() {
   const searchParams = useSearchParams();
   const leadId = Number(searchParams.get("leadId") ?? 0);
+  const accountId = Number(searchParams.get("accountId") ?? 0);
 
   console.log("leadId from Click Details Button: ", leadId);
   return (
@@ -61,23 +63,33 @@ export default function Details() {
         </header>
 
         {/* Main */}
-        <main className="flex-1 p-6">
-          <PillTabs
-            tabs={[
-              {
-                id: "quotation",
-                label: "Quotation",
-                content: <QuotationTab leadId={leadId} />,
-              },
-              { id: "meetings", label: "Meetings", content: <MettingsTab /> },
-              { id: "designs", label: "Designs", content: <DesigningTab /> },
-              {
-                id: "selections",
-                label: "Selections",
-                content: <SelectionsTab />,
-              },
-            ]}
-          />
+        <main className="flex-1 h-full w-full p-6">
+          <DetailsProvider value={{ leadId, accountId }}>
+            <PillTabs
+              tabs={[
+                {
+                  id: "quotation",
+                  label: "Quotation",
+                  content: <QuotationTab />,
+                },
+                {
+                  id: "meetings",
+                  label: "Meetings",
+                  content: <MettingsTab />,
+                },
+                {
+                  id: "designs",
+                  label: "Designs",
+                  content: <DesigningTab />,
+                },
+                {
+                  id: "selections",
+                  label: "Selections",
+                  content: <SelectionsTab />,
+                },
+              ]}
+            />
+          </DetailsProvider>
         </main>
       </SidebarInset>
     </SidebarProvider>
