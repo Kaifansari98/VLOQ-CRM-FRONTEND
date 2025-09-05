@@ -58,3 +58,10 @@ export const fetchDesigningStageLeads = async (
   );
   return data;
 };
+
+export const submitQuotation = async () => {
+  const response = await apiClient.post(
+    `/leads/designing-stage/upload-quoation`
+  );
+  return response.data;
+};
