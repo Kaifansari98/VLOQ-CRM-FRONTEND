@@ -9,7 +9,6 @@ import AddQuotationModal from "./pill-tabs-component/modals/add-quotation-modal"
 import DesignsModal from "./pill-tabs-component/modals/designs-modal";
 import AddMeetingsModal from "./pill-tabs-component/modals/add-meetings-modal";
 
-// Tab type
 type TabItemType = {
   id: string;
   leadId?: number | null;
@@ -27,10 +26,10 @@ type PillTabsProps = {
 const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
   ({ tabs, defaultActiveId = tabs[0]?.id, onTabChange, className }, ref) => {
     const [activeTab, setActiveTab] = React.useState(defaultActiveId);
-    const [openQuotationModal, setOpenQuotationModal] =
-      useState<boolean>(false);
-    const [openDesignsModal, setOpenDesignsModal] = useState<boolean>(false);
-    const [openMeetingsModal, setOpenMeetingsModal] = useState<boolean>(false);
+    const [openQuotationModal, setOpenQuotationModal] = useState(false);
+    const [openDesignsModal, setOpenDesignsModal] = useState(false);
+    const [openMeetingsModal, setOpenMeetingsModal] = useState(false);
+
     const handleClick = (id: string) => {
       setActiveTab(id);
       onTabChange?.(id);
@@ -40,76 +39,102 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
 
     return (
       <div ref={ref} className="flex flex-col gap-4">
-        <div className="flex justify-between items-center">
+        {/* Tabs + Action Button */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          {/* Tabs wrapper (scrollable on mobile) */}
           <div
             className={cn(
-              "flex items-center gap-1 p-1 bg-background rounded-full border w-fit",
+              "flex items-center gap-1 p-1 bg-background rounded-full border",
+              "overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent",
+              "max-w-full sm:max-w-none",
               className
             )}
           >
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => handleClick(tab.id)}
-                className={cn(
-                  "relative px-4 py-2 rounded-full transition touch-none",
-                  "text-xs font-medium",
-                  activeTab === tab.id
-                    ? "text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {activeTab === tab.id && (
-                  <motion.div
-                    layoutId="pill-tabs-active-pill"
-                    className="absolute inset-0 bg-primary rounded-full"
-                    transition={{ type: "spring", duration: 0.5 }}
-                  />
-                )}
-                <span className="relative z-10">{tab.label}</span>
-              </button>
-            ))}
+            <div className="flex gap-1">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleClick(tab.id)}
+                  className={cn(
+                    "relative px-3 sm:px-4 py-1.5 sm:py-2 rounded-full transition touch-none flex-shrink-0",
+                    "text-xs sm:text-sm font-medium",
+                    activeTab === tab.id
+                      ? "text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {activeTab === tab.id && (
+                    <motion.div
+                      layoutId="pill-tabs-active-pill"
+                      className="absolute inset-0 bg-primary rounded-full"
+                      transition={{ type: "spring", duration: 0.5 }}
+                    />
+                  )}
+                  <span className="relative z-10 whitespace-nowrap">
+                    {tab.label}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
 
-          {activeTab === "quotation" && (
-            <Button onClick={() => setOpenQuotationModal(true)}>
-              <Plus size={20} />
-              Add Quotation
-            </Button>
-          )}
-          {activeTab === "meetings" && (
-            <Button onClick={() => setOpenMeetingsModal(true)}>
-              <Plus size={20} />
-              Add Meeting
-            </Button>
-          )}
-          {activeTab === "designs" && (
-            <Button onClick={() => setOpenDesignsModal(true)}>
-              <Plus size={20} />
-              Add Design
-            </Button>
-          )}
-          {activeTab === "selections" && (
-            <Button>
-              <Plus size={20} />
-              Add Selection
-            </Button>
-          )}
+          {/* Add Button */}
+          <div className="flex justify-end">
+            {activeTab === "quotation" && (
+              <Button
+                size="sm"
+                className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap"
+                onClick={() => setOpenQuotationModal(true)}
+              >
+                <Plus size={16} className="sm:mr-1" />
+                <span>Add Quotation</span>
+              </Button>
+            )}
+            {activeTab === "meetings" && (
+              <Button
+                size="sm"
+                className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap"
+                onClick={() => setOpenMeetingsModal(true)}
+              >
+                <Plus size={16} className="sm:mr-1" />
+                <span>Add Meeting</span>
+              </Button>
+            )}
+            {activeTab === "designs" && (
+              <Button
+                size="sm"
+                className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap"
+                onClick={() => setOpenDesignsModal(true)}
+              >
+                <Plus size={16} className="sm:mr-1" />
+                <span>Add Design</span>
+              </Button>
+            )}
+            {activeTab === "selections" && (
+              <Button
+                size="sm"
+                className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap"
+              >
+                <Plus size={16} className="sm:mr-1" />
+                <span>Add Selection</span>
+              </Button>
+            )}
+          </div>
         </div>
 
-        <div className="mt-4">{activeContent}</div>
+        {/* Active Content */}
+        <div className="mt-2 sm:mt-4">{activeContent}</div>
 
+        {/* Modals */}
         <AddQuotationModal
           open={openQuotationModal}
           onOpenChange={setOpenQuotationModal}
         />
-
         <DesignsModal
           open={openDesignsModal}
           onOpenChange={setOpenDesignsModal}
         />
-
         <AddMeetingsModal
           open={openMeetingsModal}
           onOpenChange={setOpenMeetingsModal}
@@ -120,5 +145,4 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
 );
 
 PillTabs.displayName = "PillTabs";
-
 export default PillTabs;

@@ -1,6 +1,9 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
-import { GetDesigningStageResponse } from "@/types/designing-stage-types";
+import {
+  GetDesigningStageResponse,
+  GetMeetingsResponse,
+} from "@/types/designing-stage-types";
 
 // ✅ Define the response type (adjust fields once API shape is confirmed)
 export interface DesigningStageLead {
@@ -124,5 +127,15 @@ export const submitMeeting = async (payload: SubmitMeetingPayload) => {
     { headers: { "Content-Type": "multipart/form-data" } }
   );
 
+  return data;
+}; 
+
+export const getMeetings = async (
+  vendorId: number,
+  leadId: number
+): Promise<GetMeetingsResponse> => {
+  const { data } = await apiClient.get<GetMeetingsResponse>(
+    `/leads/designing-stage/${vendorId}/${leadId}/design-meetings`
+  );
   return data;
 };
