@@ -87,3 +87,8 @@ export const submitQuotation = async (
   return response.data;
 };
 
+
+export const fetchLeadById = async (vendorId: number, leadId: number) => {
+  const { data } = await apiClient.get(`/leads/designing-stage/vendor/${vendorId}/lead/${leadId}`);
+  return data; // This should return the API response payload
+};
