@@ -24,6 +24,8 @@ import { useForm } from "react-hook-form";
 import { PdfUploadField } from "@/components/pdf-upload-input";
 import { toast } from "react-toastify";
 import { DocumentsUploader } from "@/components/document-upload";
+import { useAppSelector } from "@/redux/store";
+import { useSubmitQuotation } from "@/hooks/designing-stage/designing-leads-hooks";
 
 // ✅ Schema (without PDF rules)
 const quotationSchema = z.object({
@@ -37,47 +39,54 @@ interface LeadViewModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const AddQuotationModal: React.FC<LeadViewModalProps> = ({
-  open,
-  onOpenChange,
-}) => {
+const AddQuotationModal: React.FC<LeadViewModalProps> = ({ open, onOpenChange }) => {
   const { leadId, accountId } = useDetails();
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id)!;
+  const userId = useAppSelector((s) => s.auth.user?.id)!;
+
+  const { mutate: uploadQuotation, isPending } = useSubmitQuotation();
 
   const form = useForm<QuotationFormValues>({
     resolver: zodResolver(quotationSchema),
-    defaultValues: {
-      upload_pdf: [],
-    },
+    defaultValues: { upload_pdf: [] },
   });
 
   const onSubmit = (data: QuotationFormValues) => {
-    console.log("Submitting quotation with:", {
-      leadId,
-      accountId,
-      file: data.upload_pdf,
-    });
+    if (!data.upload_pdf || data.upload_pdf.length === 0) {
+      toast.error("Please upload a quotation file.");
+      return;
+    }
 
-    toast.success("Quotation submitted successfully!");
-    onOpenChange(false);
+    const file = data.upload_pdf[0]; // assuming single file
+    uploadQuotation(
+      { file, vendorId, leadId, userId, accountId },
+      {
+        onSuccess: () => {
+          toast.success("Quotation uploaded successfully!");
+          onOpenChange(false);
+        },
+        onError: (err: any) => {
+          toast.error(err?.message || "Upload failed!");
+        },
+      }
+    );
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-3xl p-0 gap-0">
-        <DialogHeader className="flex items-start justify-between border-b px-6 py-4">
-          <DialogTitle className="capitalize">Add Quotation</DialogTitle>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Quotation</DialogTitle>
         </DialogHeader>
-
-        <ScrollArea className="max-h-[calc(90vh-100px)] p-6">
+        <ScrollArea>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* PDF Upload Field */}
               <FormField
                 control={form.control}
                 name="upload_pdf"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm">Quotation Fiels</FormLabel>
+                    <FormLabel>Quotation File</FormLabel>
                     <FormControl>
                       <DocumentsUploader
                         value={field.value}
@@ -89,7 +98,9 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
                 )}
               />
               <div className="flex justify-end">
-                <Button type="submit">Submit Quotation</Button>
+                <Button type="submit" disabled={isPending}>
+                  {isPending ? "Uploading..." : "Submit Quotation"}
+                </Button>
               </div>
             </form>
           </Form>
@@ -99,4 +110,4 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   );
 };
 
-export default AddQuotationModal;
+export default AddQuotationModal
