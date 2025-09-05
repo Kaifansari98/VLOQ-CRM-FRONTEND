@@ -1,13 +1,11 @@
 import React from "react";
+import { useDetails } from "./details-context";
 
-interface QuotationProps {
-  leadId: number | null;
-}
-
-const QuotationTab = ({ leadId }: QuotationProps) => {
+const QuotationTab = () => {
+  const { leadId, accountId } = useDetails();
   return (
-    <div className="w-full h-full bg-red-500">
-      Lead ID: {leadId}
+    <div className="w-full bg-red-500">
+      <h1>LeadId: {leadId}</h1>
     </div>
   );
 };
