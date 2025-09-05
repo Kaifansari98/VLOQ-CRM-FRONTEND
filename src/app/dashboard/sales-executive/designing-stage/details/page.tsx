@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
@@ -24,7 +25,7 @@ import DesigningTab from "@/components/sales-executive/designing-stage/pill-tabs
 import { useSearchParams } from "next/navigation";
 import { DetailsProvider } from "@/components/sales-executive/designing-stage/pill-tabs-component/details-context";
 
-export default function Details() {
+function DetailsContent() {
   const searchParams = useSearchParams();
   const leadId = Number(searchParams.get("leadId") ?? 0);
   const accountId = Number(searchParams.get("accountId") ?? 0);
@@ -32,67 +33,60 @@ export default function Details() {
   console.log("leadId from Click Details Button: ", leadId);
 
   return (
+    <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
+      {/* Header */}
+      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
+        <div className="flex items-center gap-2">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/dashboard/sales-executive/designing-stage">
+                  Designing Stage
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Details</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+        <div className="flex items-center gap-2">
+          <ModeToggle />
+        </div>
+      </header>
+
+      {/* Main */}
+      <main className="flex-1 h-full w-full p-6">
+        <DetailsProvider value={{ leadId, accountId }}>
+          <PillTabs
+            tabs={[
+              { id: "quotation", label: "Quotation", content: <QuotationTab /> },
+              { id: "meetings", label: "Meetings", content: <MettingsTab /> },
+              { id: "designs", label: "Designs", content: <DesigningTab /> },
+              { id: "selections", label: "Selections", content: <SelectionsTab /> },
+            ]}
+          />
+        </DetailsProvider>
+      </main>
+    </SidebarInset>
+  );
+}
+
+export default function Details() {
+  return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
-        {/* Header */}
-        <header className="flex h-14 sm:h-16 shrink-0 items-center justify-between gap-2 px-3 sm:px-4 border-b">
-          <div className="flex items-center gap-2 min-w-0">
-            <SidebarTrigger className="-ml-1 shrink-0" />
-            <Separator orientation="vertical" className="mr-2 h-4 hidden sm:block" />
-            <Breadcrumb className="truncate">
-              <BreadcrumbList className="flex flex-wrap gap-1 text-sm sm:text-base">
-                <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard/sales-executive/designing-stage">
-                    Designing Stage
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Details</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-          <div className="flex items-center gap-2">
-            <ModeToggle />
-          </div>
-        </header>
-
-        {/* Main */}
-        <main className="flex-1 h-full w-full p-3 sm:p-4 md:p-6 overflow-y-auto">
-          <DetailsProvider value={{ leadId, accountId }}>
-            <PillTabs
-              tabs={[
-                {
-                  id: "quotation",
-                  label: "Quotation",
-                  content: <QuotationTab />,
-                },
-                {
-                  id: "meetings",
-                  label: "Meetings",
-                  content: <MettingsTab />,
-                },
-                {
-                  id: "designs",
-                  label: "Designs",
-                  content: <DesigningTab />,
-                },
-                {
-                  id: "selections",
-                  label: "Selections",
-                  content: <SelectionsTab />,
-                },
-              ]}
-            />
-          </DetailsProvider>
-        </main>
-      </SidebarInset>
+      {/* ✅ Wrap in Suspense */}
+      <Suspense fallback={<div>Loading...</div>}>
+        <DetailsContent />
+      </Suspense>
     </SidebarProvider>
   );
 }
