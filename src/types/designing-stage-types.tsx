@@ -161,7 +161,7 @@ export interface ProductMapping {
 }
 
 export interface AssignTo {
-  id: number,
+  id: number;
   user_email: string;
   user_name: string;
 }
@@ -264,3 +264,58 @@ export type ProcessedDesigningStageLead = {
   paymentInfo: Payment | null;
   accountId: number;
 };
+
+{
+  /* Types for Meetings */
+}
+
+export interface MeetingDocument {
+  id: number;
+  doc_og_name: string;
+  doc_sys_name: string;
+  created_by: number;
+  created_at: string;
+  deleted_by: number | null;
+  deleted_at: string | null;
+  is_deleted: boolean;
+  doc_type_id: number;
+  account_id: number;
+  lead_id: number;
+  vendor_id: number;
+  signedUrl: string;
+}
+
+// Document Mapping interface
+export interface DesignMeetingDocsMapping {
+  id: number;
+  lead_id: number;
+  account_id: number;
+  vendor_id: number;
+  meeting_id: number;
+  document_id: number;
+  created_at: string;
+  created_by: number;
+  document: MeetingDocument;
+}
+
+// Meeting interface
+export interface Meeting {
+  id: number;
+  lead_id: number;
+  account_id: number;
+  vendor_id: number;
+  date: string;
+  desc: string;
+  created_by: number;
+  updated_by: number | null;
+  created_at: string;
+  updated_at: string | null;
+  designMeetingDocsMapping: DesignMeetingDocsMapping[];
+}
+
+// API Response interface
+export interface GetMeetingsResponse {
+  success: boolean;
+  logs: string[];
+  meetings: Meeting[];
+}
