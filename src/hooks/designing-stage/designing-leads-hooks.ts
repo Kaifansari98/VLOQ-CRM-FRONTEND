@@ -1,9 +1,12 @@
 import {
   fetchDesigningStageLeads,
   submitQuotation,
+  submitSelection,
+  SubmitSelectionPayload,
 } from "@/api/designingStageQueries";
 import { GetDesigningStageResponse } from "@/types/designing-stage-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
 
 export const useDesigningStageLeads = (vendorId: number, status: number) => {
   return useQuery<GetDesigningStageResponse>({
@@ -35,6 +38,17 @@ export const useSubmitQuotation = () => {
       queryClient.invalidateQueries({
         queryKey: ["getQuotationDoc", variables.vendorId, variables.leadId],
       });
+    },
+  });
+};
+
+export const useSubmitSelection = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: SubmitSelectionPayload) => submitSelection(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["selections"] });
     },
   });
 };

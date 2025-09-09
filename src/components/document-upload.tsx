@@ -20,10 +20,42 @@ import { toast } from "react-toastify";
 interface DocumentsFieldProps {
   value: File[];
   onChange: (files: File[]) => void;
+  accept?: string; // e.g. ".pdf,.docx,.xlsx"
 }
 
-export function DocumentsUploader({ value, onChange }: DocumentsFieldProps) {
-  // Simulated upload
+export function DocumentsUploader({
+  value,
+  onChange,
+  accept,
+}: DocumentsFieldProps) {
+  // Extension -> Friendly label map
+  const extToLabel: Record<string, string> = {
+    ".pdf": "PDF",
+    ".doc": "Word",
+    ".docx": "Word",
+    ".xls": "Excel",
+    ".xlsx": "Excel",
+    ".jpg": "Image",
+    ".jpeg": "Image",
+    ".png": "Image",
+    ".pyo": "Word",
+    ".pytha": "Word",
+  };
+
+  // Dynamic accepted formats text
+  const acceptedFormats = React.useMemo(() => {
+    if (!accept) return ["PDF", "Word", "Excel"]; // fallback
+    return accept
+      .split(",")
+      .map((ext) => ext.trim())
+      .map((ext) => extToLabel[ext] || ext.toUpperCase());
+  }, [accept]);
+
+  const description = `Supports ${acceptedFormats.join(
+    ", "
+  )}. Drag & drop or click below to select files.`;
+
+  // Simulated upload handler
   const onUpload: NonNullable<FileUploadProps["onUpload"]> = React.useCallback(
     async (files, { onProgress, onSuccess, onError }) => {
       try {
@@ -65,18 +97,15 @@ export function DocumentsUploader({ value, onChange }: DocumentsFieldProps) {
       onValueChange={onChange}
       onFileReject={onFileReject}
       onUpload={onUpload}
-      multiple={true}
-      accept=".pdf,.doc,.docx,.xls,.xlsx"
+      multiple
+      accept={accept ?? ".pdf,.doc,.docx,.xls,.xlsx"}
       className="w-full"
     >
       <FileUploadDropzone>
         <Upload className="size-7 text-blue-500" />
         <p className="font-medium text-sm">Upload Documents</p>
-        <p className="text-muted-foreground text-xs">
-          <p className="text-muted-foreground text-xs text-center max-w-sm">
-            Supports PDF, Word & Excel. Drag & drop or click below to select
-            files.
-          </p>
+        <p className="text-muted-foreground text-xs text-center max-w-sm">
+          {description}
         </p>
         <FileUploadTrigger asChild>
           <Button variant="outline" size="sm" className="mt-2">

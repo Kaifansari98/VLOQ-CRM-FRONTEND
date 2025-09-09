@@ -106,7 +106,6 @@ export interface SubmitMeetingPayload {
   accountId: number;
 }
 
-// ✅ NEW: Design Upload API Function
 export interface SubmitDesignPayload {
   files: File[];
   vendorId: number;
@@ -179,4 +178,36 @@ export const useSubmitDesigns = () => {
   return useMutation<any, Error, SubmitDesignPayload>({
     mutationFn: submitDesigns,
   });
+};
+
+export interface SubmitSelectionPayload {
+  desc: string;
+  type: string;
+  vendor_id: number;
+  lead_id: number;
+  user_id: number;
+  account_id: number;
+}
+
+export const submitSelection = async (payload: SubmitSelectionPayload) => {
+  const formData = new FormData();
+
+  formData.append("desc", payload.desc);
+  formData.append("type", payload.type);
+  formData.append("vendor_id", String(payload.vendor_id));
+  formData.append("lead_id", String(payload.lead_id));
+  formData.append("created_by", String(payload.user_id));
+  formData.append("account_id", String(payload.account_id));
+
+  const response = await apiClient.post(
+    "/leads/designing-stage/design-selection",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data", // ✅ important
+      },
+    }
+  );
+
+  return response.data;
 };
