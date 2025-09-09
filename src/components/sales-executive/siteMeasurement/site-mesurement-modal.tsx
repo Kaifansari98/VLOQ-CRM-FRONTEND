@@ -158,7 +158,7 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
             {currentSitePhotos.length > 0 && (
               <div>
                 <h3 className="font-semibold text-md mb-2">Site Photos</h3>
-
+                
                 <div className="flex flex-wrap gap-3">
                   {currentSitePhotos.map((doc) => (
                     <img
