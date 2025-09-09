@@ -79,7 +79,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
           </div>
 
           {/* Add Button */}
-          <div className="flex justify-end">
+          <div className="flex justify-start">
             {activeTab === "quotation" && (
               <Button
                 size="sm"

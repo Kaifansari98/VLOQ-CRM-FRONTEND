@@ -169,7 +169,7 @@ const MeetingsTab = () => {
   if (!data?.meetings || data.meetings.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 space-y-6">
-        <div className="text-center">
+        <div className="text-center flex flex-col justify-center items-center">
           <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-6">
             <Calendar size={40} className="text-muted-foreground" />
           </div>

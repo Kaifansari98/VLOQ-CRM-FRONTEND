@@ -62,6 +62,12 @@ export const fetchDesigningStageLeads = async (
   return data;
 };
 
+export const getQuotationDoc = async (vendorId: number, leadId: number) => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/${vendorId}/${leadId}/design-quotation-documents`
+  );
+  return data; // This should return the API response payload
+};
 // ✅ API function for file upload
 export const submitQuotation = async (
   file: File,
@@ -88,13 +94,6 @@ export const submitQuotation = async (
   );
 
   return response.data;
-};
-
-export const fetchLeadById = async (vendorId: number, leadId: number) => {
-  const { data } = await apiClient.get(
-    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}`
-  );
-  return data; // This should return the API response payload
 };
 
 export interface SubmitMeetingPayload {
@@ -137,7 +136,7 @@ export const submitMeeting = async (payload: SubmitMeetingPayload) => {
   );
 
   return data;
-}; 
+};
 
 export const getMeetings = async (
   vendorId: number,
@@ -165,10 +164,10 @@ export const submitDesigns = async (payload: SubmitDesignPayload) => {
   const { data } = await apiClient.post(
     "/leads/designing-stage/upload-designs",
     formData,
-    { 
-      headers: { 
-        "Content-Type": "multipart/form-data" 
-      } 
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
     }
   );
 

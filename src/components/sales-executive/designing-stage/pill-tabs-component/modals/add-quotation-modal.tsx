@@ -21,7 +21,6 @@ import { Button } from "@/components/ui/button";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { PdfUploadField } from "@/components/pdf-upload-input";
 import { toast } from "react-toastify";
 import { DocumentsUploader } from "@/components/document-upload";
 import { useAppSelector } from "@/redux/store";
@@ -29,7 +28,9 @@ import { useSubmitQuotation } from "@/hooks/designing-stage/designing-leads-hook
 
 // ✅ Schema (without PDF rules)
 const quotationSchema = z.object({
-  upload_pdf: z.any(),
+  upload_pdf: z
+    .array(z.instanceof(File))
+    .min(1, "At least one quotation file is required"),
 });
 
 type QuotationFormValues = z.infer<typeof quotationSchema>;
@@ -56,23 +57,25 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
 
   const onSubmit = (data: QuotationFormValues) => {
     if (!data.upload_pdf || data.upload_pdf.length === 0) {
-      toast.error("Please upload a quotation file.");
+      toast.error("Please upload at least one quotation file.");
       return;
     }
 
-    const file = data.upload_pdf[0]; // assuming single file
-    uploadQuotation(
-      { file, vendorId, leadId, userId, accountId },
-      {
-        onSuccess: () => {
-          toast.success("Quotation uploaded successfully!");
-          onOpenChange(false);
-        },
-        onError: (err: any) => {
-          toast.error(err?.message || "Upload failed!");
-        },
-      }
-    );
+    data.upload_pdf.forEach((file) => {
+      uploadQuotation(
+        { file, vendorId, leadId, userId, accountId },
+        {
+          onSuccess: () => {
+            toast.success(`uploaded successfully!`);
+          },
+          onError: (err: any) => {
+            toast.error(err?.message || `Failed to upload ${file.name}`);
+          },
+        }
+      );
+    });
+
+    onOpenChange(false);
   };
 
   return (
