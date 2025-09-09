@@ -76,10 +76,9 @@ const DesignsModal: React.FC<LeadViewModalProps> = ({ open, onOpenChange }) => {
       });
 
       toast.success("Design files uploaded successfully!");
-      
-      // ✅ Invalidate and refetch the lead data to update the UI
+
       queryClient.invalidateQueries({
-        queryKey: ["leadById", vendorId, leadId],
+        queryKey: ["getDesignsDoc", vendorId, leadId],
       });
 
       // Reset form and close modal
@@ -119,6 +118,7 @@ const DesignsModal: React.FC<LeadViewModalProps> = ({ open, onOpenChange }) => {
                         <DocumentsUploader
                           value={field.value}
                           onChange={field.onChange}
+                          accept=".pyo,.pytha"
                         />
                       </FormControl>
                       <FormMessage />
@@ -126,19 +126,21 @@ const DesignsModal: React.FC<LeadViewModalProps> = ({ open, onOpenChange }) => {
                   )}
                 />
                 <div className="flex justify-end gap-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={handleClose}
                     disabled={submitDesignsMutation.isPending}
                   >
                     Cancel
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={submitDesignsMutation.isPending}
                   >
-                    {submitDesignsMutation.isPending ? "Uploading..." : "Submit Designs"}
+                    {submitDesignsMutation.isPending
+                      ? "Uploading..."
+                      : "Submit Designs"}
                   </Button>
                 </div>
               </form>

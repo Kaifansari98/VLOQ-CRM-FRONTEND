@@ -8,6 +8,7 @@ import React, { useState } from "react";
 import AddQuotationModal from "./pill-tabs-component/modals/add-quotation-modal";
 import DesignsModal from "./pill-tabs-component/modals/designs-modal";
 import AddMeetingsModal from "./pill-tabs-component/modals/add-meetings-modal";
+import AddSelectionModal from "./pill-tabs-component/modals/add-selection-modal";
 
 type TabItemType = {
   id: string;
@@ -29,6 +30,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
     const [openQuotationModal, setOpenQuotationModal] = useState(false);
     const [openDesignsModal, setOpenDesignsModal] = useState(false);
     const [openMeetingsModal, setOpenMeetingsModal] = useState(false);
+    const [openSelectionsModal, setOpenSelectionsModal] = useState(false);
 
     const handleClick = (id: string) => {
       setActiveTab(id);
@@ -45,7 +47,6 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
           <div
             className={cn(
               "flex items-center gap-1 p-1 bg-background rounded-full border",
-              "overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent",
               "max-w-full sm:max-w-none",
               className
             )}
@@ -80,7 +81,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
           </div>
 
           {/* Add Button */}
-          <div className="flex justify-end">
+          <div className="flex justify-start">
             {activeTab === "quotation" && (
               <Button
                 size="sm"
@@ -114,6 +115,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
             {activeTab === "selections" && (
               <Button
                 size="sm"
+                onClick={() => setOpenSelectionsModal(true)}
                 className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap"
               >
                 <Plus size={16} className="sm:mr-1" />
@@ -138,6 +140,11 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
         <AddMeetingsModal
           open={openMeetingsModal}
           onOpenChange={setOpenMeetingsModal}
+        />
+
+        <AddSelectionModal 
+        open={openSelectionsModal}
+        onOpenChange={setOpenSelectionsModal}
         />
       </div>
     );
