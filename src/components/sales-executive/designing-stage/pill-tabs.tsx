@@ -45,7 +45,6 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
           <div
             className={cn(
               "flex items-center gap-1 p-1 bg-background rounded-full border",
-              "overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent",
               "max-w-full sm:max-w-none",
               className
             )}

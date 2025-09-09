@@ -64,12 +64,17 @@ export function getDesigningStageColumn({
               View
             </DropdownMenuItem>
 
+            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
+
             <DropdownMenuItem asChild>
               <Link
                 href={{
                   pathname:
                     "/dashboard/sales-executive/designing-stage/details",
-                  query: { leadId: row.original.id, accountId: row.original.accountId },
+                  query: {
+                    leadId: row.original.id,
+                    accountId: row.original.accountId,
+                  },
                 }}
                 className="flex items-center gap-2"
               >
@@ -77,8 +82,6 @@ export function getDesigningStageColumn({
                 Details
               </Link>
             </DropdownMenuItem>
-
-            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
 
             {canDeleteLead(userType) && (
               <>
