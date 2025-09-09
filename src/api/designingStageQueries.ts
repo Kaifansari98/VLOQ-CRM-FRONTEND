@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 import {
+  DesignSelectionsResponse,
   GetDesigningStageResponse,
   GetDesignsResponse,
   GetMeetingsResponse,
@@ -219,6 +220,16 @@ export const getDesignsDoc = async (
 ): Promise<GetDesignsResponse> => {
   const { data } = await apiClient.get<GetDesignsResponse>(
     `/leads/designing-stage/${vendorId}/${leadId}/design-stage1-documents`
+  );
+  return data;
+};
+
+export const getSelectionData = async (
+  vendorId: number,
+  leadId: number
+): Promise<DesignSelectionsResponse> => {
+  const { data } = await apiClient.get<DesignSelectionsResponse>(
+    `/leads/designing-stage/${vendorId}/${leadId}/design-selections`
   );
   return data;
 };

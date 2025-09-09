@@ -1,11 +1,13 @@
 import {
   fetchDesigningStageLeads,
   getDesignsDoc,
+  getSelectionData,
   submitQuotation,
   submitSelection,
   SubmitSelectionPayload,
 } from "@/api/designingStageQueries";
 import {
+  DesignSelectionsResponse,
   GetDesigningStageResponse,
   GetDesignsResponse,
 } from "@/types/designing-stage-types";
@@ -60,6 +62,14 @@ export const useDesignsDoc = (vendorId: number, leadId: number) => {
   return useQuery<GetDesignsResponse>({
     queryKey: ["getDesignsDoc", vendorId, leadId],
     queryFn: () => getDesignsDoc(vendorId, leadId),
-    enabled: !!vendorId && !!leadId, // prevent query until params available
+    enabled: !!vendorId && !!leadId,
+  });
+};
+
+export const useSelectionData = (vendorId: number, leadId: number) => {
+  return useQuery<DesignSelectionsResponse>({
+    queryKey: ["getDesignsDoc", vendorId, leadId],
+    queryFn: () => getSelectionData(vendorId, leadId),
+    enabled: !!vendorId && !!leadId, 
   });
 };

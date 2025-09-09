@@ -3,7 +3,7 @@ import { useDetails } from "./details-context";
 import { useAppSelector } from "@/redux/store";
 import { useQuery } from "@tanstack/react-query";
 import { getQuotationDoc } from "@/api/designingStageQueries";
-import { Ban, Calendar } from "lucide-react";
+import { Ban, Calendar, File } from "lucide-react";
 
 const QuotationTab = () => {
   const { leadId } = useDetails();
@@ -84,20 +84,7 @@ const QuotationTab = () => {
                   ) : (
                     <div className="flex flex-col items-center w-full">
                       <div className="flex items-center justify-center w-full h-40 bg-muted rounded border border-border mb-2">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-12 w-12 text-muted-foreground"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 4v16m8-8H4"
-                          />
-                        </svg>
+                        <File size={50} className="text-gray-600" />
                       </div>
                       <a
                         href={doc.signedUrl}

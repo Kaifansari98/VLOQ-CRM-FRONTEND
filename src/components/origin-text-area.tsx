@@ -8,6 +8,7 @@ interface TextAreaInputProps {
   onChange?: (value: string) => void;
   maxLength?: number;
   placeholder: string;
+  readOnly?: boolean;
 }
 
 export default function TextAreaInput({
@@ -15,6 +16,8 @@ export default function TextAreaInput({
   onChange,
   maxLength = 1000,
   placeholder,
+  readOnly = false,
+
 }: TextAreaInputProps) {
   const id = useId();
   const characterCount = value?.length || 0;
@@ -29,6 +32,7 @@ export default function TextAreaInput({
         aria-describedby={`${id}-description`}
         placeholder={placeholder}
         rows={2}
+        readOnly={readOnly}
       />
       <p
         id={`${id}-description`}

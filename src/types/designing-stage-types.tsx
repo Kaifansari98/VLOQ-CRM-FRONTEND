@@ -370,3 +370,28 @@ export interface GetDesignsResponse {
   logs: string[];
   data: DesignsData;
 }
+
+{
+  /* Types for Selection */
+}
+
+export interface DesignSelection {
+  id: number;
+  lead_id: number;
+  account_id: number;
+  vendor_id: number;
+  type: string;
+  desc: string;
+  created_by: number;
+  updated_by: number | null;
+  created_at: string;
+  updated_at: string;
+  account: Account;
+}
+
+export interface DesignSelectionsResponse {
+  success: boolean;
+  message: string;
+  logs: string[];
+  data: DesignSelection[];
+}
