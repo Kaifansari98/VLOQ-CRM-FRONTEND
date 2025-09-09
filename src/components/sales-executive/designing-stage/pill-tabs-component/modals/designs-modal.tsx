@@ -118,7 +118,7 @@ const DesignsModal: React.FC<LeadViewModalProps> = ({ open, onOpenChange }) => {
                         <DocumentsUploader
                           value={field.value}
                           onChange={field.onChange}
-                          accept=".pyo,.pytha"
+                          accept=".pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct"
                         />
                       </FormControl>
                       <FormMessage />
