@@ -77,9 +77,8 @@ const DesignsModal: React.FC<LeadViewModalProps> = ({ open, onOpenChange }) => {
 
       toast.success("Design files uploaded successfully!");
 
-      // ✅ Invalidate and refetch the lead data to update the UI
       queryClient.invalidateQueries({
-        queryKey: ["leadById", vendorId, leadId],
+        queryKey: ["getDesignsDoc", vendorId, leadId],
       });
 
       // Reset form and close modal

@@ -319,3 +319,54 @@ export interface GetMeetingsResponse {
   logs: string[];
   meetings: Meeting[];
 }
+
+{
+  /* Types or Interface for get designs */
+}
+
+export interface DocumentType {
+  id: number;
+  type: string;
+  tag: string;
+}
+
+export interface User {
+  id: number;
+  user_name: string;
+  user_email: string;
+  user_contact: string;
+}
+
+export interface DesignsDocument {
+  id: number;
+  doc_og_name: string;
+  doc_sys_name: string;
+  created_by: number;
+  created_at: string;
+  deleted_by: number | null;
+  deleted_at: string | null;
+  is_deleted: boolean;
+  doc_type_id: number;
+  account_id: number;
+  lead_id: number;
+  vendor_id: number;
+  signedUrl: string;
+  documentType: DocumentType;
+  createdBy: User;
+  deletedBy: User | null;
+}
+
+export interface DesignsData {
+  lead_id: number;
+  vendor_id: number;
+  document_type: string;
+  total_documents: number;
+  documents: DesignsDocument[];
+}
+
+export interface GetDesignsResponse {
+  success: boolean;
+  message: string;
+  logs: string[];
+  data: DesignsData;
+}

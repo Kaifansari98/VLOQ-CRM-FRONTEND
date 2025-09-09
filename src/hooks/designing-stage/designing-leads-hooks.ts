@@ -1,12 +1,15 @@
 import {
   fetchDesigningStageLeads,
+  getDesignsDoc,
   submitQuotation,
   submitSelection,
   SubmitSelectionPayload,
 } from "@/api/designingStageQueries";
-import { GetDesigningStageResponse } from "@/types/designing-stage-types";
+import {
+  GetDesigningStageResponse,
+  GetDesignsResponse,
+} from "@/types/designing-stage-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
 
 export const useDesigningStageLeads = (vendorId: number, status: number) => {
   return useQuery<GetDesigningStageResponse>({
@@ -50,5 +53,13 @@ export const useSubmitSelection = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["selections"] });
     },
+  });
+};
+
+export const useDesignsDoc = (vendorId: number, leadId: number) => {
+  return useQuery<GetDesignsResponse>({
+    queryKey: ["getDesignsDoc", vendorId, leadId],
+    queryFn: () => getDesignsDoc(vendorId, leadId),
+    enabled: !!vendorId && !!leadId, // prevent query until params available
   });
 };
