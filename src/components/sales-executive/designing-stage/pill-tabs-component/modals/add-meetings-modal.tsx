@@ -23,9 +23,9 @@ import {
 } from "@/components/ui/form";
 import DateInputPicker from "@/components/origin-date-input";
 import TextAreaInput from "@/components/origin-text-area";
-import { PdfUploadField } from "@/components/pdf-upload-input";
+import {} from "@/components/pdf-upload-input";
 import { Button } from "@/components/ui/button";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { submitMeeting } from "@/api/designingStageQueries";
 import { toast } from "react-toastify";
 import { FilesUploader } from "@/components/files-uploader";
@@ -62,6 +62,7 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
     },
   });
 
+  const queryClient = useQueryClient(); // ✅ yeh add karo
   const mutation = useMutation({
     mutationFn: (values: MeetingFormValues) =>
       submitMeeting({
@@ -77,6 +78,11 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
       toast.success("Meeting added successfully!");
       form.reset();
       onOpenChange(false);
+
+      // ✅ Refetch meetings query
+      queryClient.invalidateQueries({
+        queryKey: ["meetings", vendorId, leadId],
+      });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || "Failed to add meeting!");

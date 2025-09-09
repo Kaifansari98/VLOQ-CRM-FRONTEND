@@ -1,7 +1,9 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 import {
+  DesignSelectionsResponse,
   GetDesigningStageResponse,
+  GetDesignsResponse,
   GetMeetingsResponse,
 } from "@/types/designing-stage-types";
 
@@ -62,6 +64,12 @@ export const fetchDesigningStageLeads = async (
   return data;
 };
 
+export const getQuotationDoc = async (vendorId: number, leadId: number) => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/${vendorId}/${leadId}/design-quotation-documents`
+  );
+  return data; // This should return the API response payload
+};
 // ✅ API function for file upload
 export const submitQuotation = async (
   file: File,
@@ -90,17 +98,18 @@ export const submitQuotation = async (
   return response.data;
 };
 
-export const fetchLeadById = async (vendorId: number, leadId: number) => {
-  const { data } = await apiClient.get(
-    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}`
-  );
-  return data; // This should return the API response payload
-};
-
 export interface SubmitMeetingPayload {
   files: File[];
   desc: string;
   date: string;
+  vendorId: number;
+  leadId: number;
+  userId: number;
+  accountId: number;
+}
+
+export interface SubmitDesignPayload {
+  files: File[];
   vendorId: number;
   leadId: number;
   userId: number;
@@ -128,7 +137,7 @@ export const submitMeeting = async (payload: SubmitMeetingPayload) => {
   );
 
   return data;
-}; 
+};
 
 export const getMeetings = async (
   vendorId: number,
@@ -136,6 +145,91 @@ export const getMeetings = async (
 ): Promise<GetMeetingsResponse> => {
   const { data } = await apiClient.get<GetMeetingsResponse>(
     `/leads/designing-stage/${vendorId}/${leadId}/design-meetings`
+  );
+  return data;
+};
+
+export const submitDesigns = async (payload: SubmitDesignPayload) => {
+  const formData = new FormData();
+
+  formData.append("vendorId", payload.vendorId.toString());
+  formData.append("leadId", payload.leadId.toString());
+  formData.append("userId", payload.userId.toString());
+  formData.append("accountId", payload.accountId.toString());
+
+  // Append multiple files
+  payload.files.forEach((file) => {
+    formData.append("files", file); // MUST match multer field name
+  });
+
+  const { data } = await apiClient.post(
+    "/leads/designing-stage/upload-designs",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return data;
+};
+
+// ✅ NEW: Hook for Design Upload
+export const useSubmitDesigns = () => {
+  return useMutation<any, Error, SubmitDesignPayload>({
+    mutationFn: submitDesigns,
+  });
+};
+
+export interface SubmitSelectionPayload {
+  desc: string;
+  type: string;
+  vendor_id: number;
+  lead_id: number;
+  user_id: number;
+  account_id: number;
+}
+
+export const submitSelection = async (payload: SubmitSelectionPayload) => {
+  const formData = new FormData();
+
+  formData.append("desc", payload.desc);
+  formData.append("type", payload.type);
+  formData.append("vendor_id", String(payload.vendor_id));
+  formData.append("lead_id", String(payload.lead_id));
+  formData.append("created_by", String(payload.user_id));
+  formData.append("account_id", String(payload.account_id));
+
+  const response = await apiClient.post(
+    "/leads/designing-stage/design-selection",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data", // ✅ important
+      },
+    }
+  );
+
+  return response.data;
+};
+
+export const getDesignsDoc = async (
+  vendorId: number,
+  leadId: number
+): Promise<GetDesignsResponse> => {
+  const { data } = await apiClient.get<GetDesignsResponse>(
+    `/leads/designing-stage/${vendorId}/${leadId}/design-stage1-documents`
+  );
+  return data;
+};
+
+export const getSelectionData = async (
+  vendorId: number,
+  leadId: number
+): Promise<DesignSelectionsResponse> => {
+  const { data } = await apiClient.get<DesignSelectionsResponse>(
+    `/leads/designing-stage/${vendorId}/${leadId}/design-selections`
   );
   return data;
 };

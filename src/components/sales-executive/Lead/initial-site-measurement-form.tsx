@@ -156,7 +156,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-3xl p-0 gap-0">
-        <DialogHeader className="flex items-start justify-end border-b px-6 py-4 border-b">
+        <DialogHeader className="flex items-start justify-end border-b px-6 py-4">
           <DialogTitle>Initial Site Measurement Form</DialogTitle>
           <DialogDescription>
             Fill the below fields to send this lead to initial site measurement
