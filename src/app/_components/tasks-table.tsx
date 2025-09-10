@@ -62,6 +62,7 @@ export type ProcessedLead = {
   altContact?: string;
   source: string;
   status: string;
+  initial_site_measurement_date: string;
 };
 
 const VendorLeadsTable = () => {
@@ -197,6 +198,7 @@ const VendorLeadsTable = () => {
       updatedAt: lead.updated_at || "",
       altContact: lead.alt_contact_no || "", // 👈 backend ke key ke sath match
       status: lead.statusType?.type || "",
+      initial_site_measurement_date: lead.initial_site_measurement_date || "",
     }));
   }, [vendorUserLeadsQuery.data]);
 
