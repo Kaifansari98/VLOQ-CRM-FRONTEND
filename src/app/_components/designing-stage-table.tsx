@@ -132,6 +132,7 @@ const DesigningStageTable = () => {
       documentUrl: lead.documents || [],
       paymentInfo: lead.payments?.[0] || null, // or decide how you want to map
       accountId: lead.account_id,
+      initial_site_measurement_date: lead.initial_site_measurement_date || "",
     }));
   }, [data?.data]);
 

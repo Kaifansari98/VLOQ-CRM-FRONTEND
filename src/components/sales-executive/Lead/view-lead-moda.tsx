@@ -31,6 +31,7 @@ interface LeadViewModalProps {
     siteAddress: string;
     designerRemark: string;
     status: string;
+    initial_site_measurement_date: string;
   };
 }
 
@@ -134,6 +135,18 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
                 <div className="flex flex-col">
                   <p className="text-sm font-medium">Priority</p>
                   <p>{data?.priority}</p>
+                </div>
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">Initial Site Measurement Date</p>
+                  <p>
+                    {data?.initial_site_measurement_date && data.initial_site_measurement_date.trim() !== ""
+                      ? new Date(data.initial_site_measurement_date).toLocaleDateString("en-IN", {
+                          year: "numeric",
+                          month: "short",
+                          day: "2-digit",
+                        })
+                      : "-"}
+                  </p>
                 </div>
               </div>
 

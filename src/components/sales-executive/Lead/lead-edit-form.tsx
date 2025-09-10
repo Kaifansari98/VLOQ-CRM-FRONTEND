@@ -85,6 +85,17 @@ const formSchema = z.object({
   product_structures: z.array(z.string()).optional(),
   archetech_name: z.string().max(300).optional(),
   designer_remark: z.string().max(2000).optional(),
+  initial_site_measurement_date: z
+  .string()
+  .optional()
+  .refine(
+    (val) => {
+      if (!val) return true;
+      const today = new Date().toISOString().split("T")[0];
+      return val >= today;
+    },
+    { message: "Initial site measurement date cannot be in the past" }
+  ),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -168,6 +179,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       product_structures: [],
       archetech_name: "",
       designer_remark: "",
+      initial_site_measurement_date: "",
     },
   });
 
@@ -352,6 +364,9 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       archetech_name: values.archetech_name || "",
       designer_remark: values.designer_remark || "",
       updated_by: createdBy!,
+      initial_site_measurement_date: values.initial_site_measurement_date
+      ? new Date(values.initial_site_measurement_date).toISOString()
+      : undefined,
       // NO documents field in payload
     };
 
@@ -811,6 +826,8 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             />
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+
           {/* Architect Name */}
           <FormField
             control={form.control}
@@ -833,6 +850,27 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
               </FormItem>
             )}
           />
+
+<FormField
+  control={form.control}
+  name="initial_site_measurement_date"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel className="text-sm">Initial Site Measurement Date</FormLabel>
+      <FormControl>
+        <Input
+          type="date"
+          className="text-sm"
+          value={field.value || ""}
+          onChange={(e) => field.onChange(e.target.value)}
+          min={new Date().toISOString().split("T")[0]}
+        />
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+</div>
 
           {/* Designer Remark */}
           <FormField

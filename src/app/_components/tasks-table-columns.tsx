@@ -40,6 +40,7 @@ export type ProcessedLead = {
   updatedAt: string;
   altContact?: string; // 👈 backend ke key ke sath match
   status: string;
+  initial_site_measurement_date: string;
 };
 
 interface GetVendorLeadsTableColumnsProps {
