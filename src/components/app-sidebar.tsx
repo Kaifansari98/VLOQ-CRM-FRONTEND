@@ -181,8 +181,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const userData = user
     ? {
         name: user?.user_name || "username", // show vendor_name first
-        email: user?.user_email,
+
         avatar: "/avatars/shadcn.jpg", // fallback, can later replace with vendor.logo if needed
+        email: user?.user_email || "N/A",
       }
     : data.user;
 
@@ -195,7 +196,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               {
                 name: user.vendor?.vendor_name || "Default Vendor",
                 logo: GalleryVerticalEnd,
-                plan: user.vendor?.primary_contact_email || "xyz@gmail.com",
+                plan: user?.user_type?.user_type || ""
               },
             ]}
           />
