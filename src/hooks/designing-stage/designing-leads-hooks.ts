@@ -1,4 +1,6 @@
 import {
+  editSelection,
+  EditSelectionPayload,
   fetchDesigningStageLeads,
   getDesignsDoc,
   getSelectionData,
@@ -68,8 +70,21 @@ export const useDesignsDoc = (vendorId: number, leadId: number) => {
 
 export const useSelectionData = (vendorId: number, leadId: number) => {
   return useQuery<DesignSelectionsResponse>({
-    queryKey: ["getDesignsDoc", vendorId, leadId],
+    queryKey: ["getSelectionData"],
     queryFn: () => getSelectionData(vendorId, leadId),
-    enabled: !!vendorId && !!leadId, 
+    enabled: !!vendorId && !!leadId,
   });
 };
+
+export const useEditSelectionData = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ selectionId, payload }: { selectionId: number; payload: EditSelectionPayload }) =>
+      editSelection(selectionId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["getSelectionData"] });
+    },
+  });
+};
+
