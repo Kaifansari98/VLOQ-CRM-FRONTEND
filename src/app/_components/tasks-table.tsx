@@ -98,6 +98,7 @@ const VendorLeadsTable = () => {
   // Row action state
   const [rowAction, setRowAction] =
     React.useState<DataTableRowAction<ProcessedLead> | null>(null);
+  const [openCreateLead, setOpenCreateLead] = useState<boolean>(false);
 
   useEffect(() => {
     if (rowAction?.variant === "delete" && rowAction.row) {
@@ -147,6 +148,14 @@ const VendorLeadsTable = () => {
     setOpenDelete(false);
     setRowAction(null);
   };
+
+  const handleRowClick = (row: ProcessedLead) => {
+    const tableRow = table.getRowModel().rows.find(r => r.original.id === row.id);
+    if (tableRow) {
+      setRowAction({ variant: "view", row: tableRow });
+      setOpenView(true);
+    }
+  };  
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -250,7 +259,7 @@ const VendorLeadsTable = () => {
   console.log("usertypes: ", userType);
   return (
     <>
-      <DataTable table={table}>
+      <DataTable table={table} onRowClick={handleRowClick}>
         {enableAdvancedFilter ? (
           <>
             <DataTableAdvancedToolbar table={table}>

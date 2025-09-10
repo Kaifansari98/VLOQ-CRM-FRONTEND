@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   table: TanstackTable<TData>;
   actionBar?: React.ReactNode;
+  onRowClick?: (row: TData) => void;
 }
 
 export function DataTable<TData>({
@@ -23,6 +24,7 @@ export function DataTable<TData>({
   actionBar,
   children,
   className,
+  onRowClick, // ✅ destructure here
   ...props
 }: DataTableProps<TData>) {
   return (
@@ -61,6 +63,8 @@ export function DataTable<TData>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  onClick={() => onRowClick?.(row.original)} // ✅ use destructured
+                  className={onRowClick ? "cursor-pointer" : undefined}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
@@ -69,10 +73,7 @@ export function DataTable<TData>({
                         ...getCommonPinningStyles({ column: cell.column }),
                       }}
                     >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
