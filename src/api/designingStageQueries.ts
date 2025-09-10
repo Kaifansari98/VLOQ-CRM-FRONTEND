@@ -233,3 +233,30 @@ export const getSelectionData = async (
   );
   return data;
 };
+
+export interface EditSelectionPayload {
+  type: string;
+  desc: string;
+  updated_by: number;
+}
+
+export const editSelection = async (
+  selectionId: number,
+  payload: EditSelectionPayload
+) => {
+  const formData = new FormData();
+  formData.append("desc", payload.desc);
+  formData.append("type", payload.type);
+  formData.append("updated_by", String(payload.updated_by));
+  const response = await apiClient.put(
+    `/leads/designing-stage/design-selection/${selectionId}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return response.data;
+};
