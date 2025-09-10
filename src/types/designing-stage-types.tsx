@@ -215,6 +215,7 @@ export interface DesigningLead {
   ledgers: Ledger[];
   productMappings: ProductMapping[];
   leadProductStructureMapping: LeadProductStructureMapping[];
+  initial_site_measurement_date: string;
 }
 
 // Pagination interface
@@ -263,6 +264,7 @@ export type ProcessedDesigningStageLead = {
   documentUrl: Document[];
   paymentInfo: Payment | null;
   accountId: number;
+  initial_site_measurement_date: string;
 };
 
 {
