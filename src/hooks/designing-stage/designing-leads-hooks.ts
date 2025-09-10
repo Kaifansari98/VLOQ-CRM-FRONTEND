@@ -49,17 +49,6 @@ export const useSubmitQuotation = () => {
   });
 };
 
-export const useSubmitSelection = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (payload: SubmitSelectionPayload) => submitSelection(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["selections"] });
-    },
-  });
-};
-
 export const useDesignsDoc = (vendorId: number, leadId: number) => {
   return useQuery<GetDesignsResponse>({
     queryKey: ["getDesignsDoc", vendorId, leadId],
@@ -68,9 +57,25 @@ export const useDesignsDoc = (vendorId: number, leadId: number) => {
   });
 };
 
+export const useSubmitSelection = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: SubmitSelectionPayload) => submitSelection(payload),
+    onSuccess: (_, variables) => {
+      // Invalidate the specific selection data query
+      queryClient.invalidateQueries({ 
+        queryKey: ["getSelectionData", variables.vendor_id, variables.lead_id] 
+      });
+      // Also invalidate the general selections query as fallback
+      queryClient.invalidateQueries({ queryKey: ["selections"] });
+    },
+  });
+};
+
 export const useSelectionData = (vendorId: number, leadId: number) => {
   return useQuery<DesignSelectionsResponse>({
-    queryKey: ["getSelectionData"],
+    queryKey: ["getSelectionData", vendorId, leadId],
     queryFn: () => getSelectionData(vendorId, leadId),
     enabled: !!vendorId && !!leadId,
   });
@@ -82,9 +87,13 @@ export const useEditSelectionData = () => {
   return useMutation({
     mutationFn: ({ selectionId, payload }: { selectionId: number; payload: EditSelectionPayload }) =>
       editSelection(selectionId, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["getSelectionData"] });
+    onSuccess: (_, variables) => {
+      // We need to invalidate queries but we don't have vendorId/leadId in the variables
+      // So invalidate all getSelectionData queries
+      queryClient.invalidateQueries({ 
+        queryKey: ["getSelectionData"] 
+      });
+      queryClient.invalidateQueries({ queryKey: ["selections"] });
     },
   });
 };
-

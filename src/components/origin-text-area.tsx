@@ -9,6 +9,7 @@ interface TextAreaInputProps {
   maxLength?: number;
   placeholder: string;
   readOnly?: boolean;
+  disabled?: boolean;
 }
 
 export default function TextAreaInput({
@@ -17,7 +18,7 @@ export default function TextAreaInput({
   maxLength = 1000,
   placeholder,
   readOnly = false,
-
+  disabled = false,
 }: TextAreaInputProps) {
   const id = useId();
   const characterCount = value?.length || 0;
@@ -33,6 +34,7 @@ export default function TextAreaInput({
         placeholder={placeholder}
         rows={2}
         readOnly={readOnly}
+        disabled={disabled}
       />
       <p
         id={`${id}-description`}
