@@ -275,10 +275,18 @@ const SiteMeasurementTable = () => {
     throttleMs: 50,
   };
 
+  const handleRowClick = (row: ProcessedSiteMeasurementLead) => {
+    const tableRow = table.getRowModel().rows.find(r => r.original.id === row.id);
+    if (tableRow) {
+      setRowAction({ variant: "view", row: tableRow });
+      setOpenView(true);
+    }
+  }; 
+
   // Main render
   return (
     <>
-      <DataTable table={table}>
+      <DataTable table={table} onRowClick={handleRowClick}>
         {enableAdvancedFilter ? (
           <>
             <DataTableAdvancedToolbar table={table}>

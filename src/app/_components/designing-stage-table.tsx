@@ -90,6 +90,14 @@ const DesigningStageTable = () => {
     }
   }, [rowAction]);
 
+  const handleRowClick = (row: ProcessedDesigningStageLead) => {
+    const tableRow = table.getRowModel().rows.find(r => r.original.id === row.id);
+    if (tableRow) {
+      setRowAction({ variant: "view", row: tableRow });
+      setOpenView(true);
+    }
+  };  
+
   const rowData = useMemo<ProcessedDesigningStageLead[]>(() => {
     if (!data?.data) return [];
 
@@ -204,7 +212,7 @@ const DesigningStageTable = () => {
 
   return (
     <>
-      <DataTable table={table}>
+      <DataTable table={table} onRowClick={handleRowClick}>
         {enableAdvancedFilter ? (
           <>
             <DataTableAdvancedToolbar table={table}>
