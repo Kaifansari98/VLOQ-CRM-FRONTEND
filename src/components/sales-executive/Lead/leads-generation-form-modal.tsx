@@ -14,18 +14,20 @@ import LeadsGenerationForm from "./leads-generation-form";
 
 export function GenerateLeadFormModal({
   children,
+  open,
+  onOpenChange,
 }: {
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
-  const [isOpen, setIsOpen] = useState<boolean>(false);
-
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent
-        className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-2xl p-0 gap-0 "
-        onInteractOutside={(e) => e.preventDefault()} // Overlay click disable
-        onEscapeKeyDown={(e) => e.preventDefault()} // Escape close disable
+        className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-2xl p-0 gap-0"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle>Create New Lead</DialogTitle>
@@ -36,7 +38,7 @@ export function GenerateLeadFormModal({
 
         <ScrollArea className="max-h-[calc(90vh-100px)]">
           <div className="px-6">
-            <LeadsGenerationForm onClose={() => setIsOpen(!isOpen)} />
+            <LeadsGenerationForm onClose={() => onOpenChange(false)} />
           </div>
         </ScrollArea>
       </DialogContent>
