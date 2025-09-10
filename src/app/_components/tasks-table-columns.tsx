@@ -56,62 +56,66 @@ export function getVendorLeadsTableColumns({
 }: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedLead>[] {
   return [
     // Action Button
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              aria-label="Open menu"
-              variant="ghost"
-              className="flex size-8 p-0 data-[state=open]:bg-muted"
-            >
-              <Ellipsis className="size-4" aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
+{
+  id: "actions",
+  cell: ({ row }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          aria-label="Open menu"
+          variant="ghost"
+          className="flex size-8 p-0 data-[state=open]:bg-muted"
+        >
+          <Ellipsis className="size-4" aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-40">
+        <DropdownMenuItem
+          data-slot="action-button"
+          onSelect={() => setRowAction({ row, variant: "view" })}
+        >
+          <Eye size={20} />
+          View
+        </DropdownMenuItem>
+        {!canDeleteLead(userType) && <DropdownMenuSeparator />}
+
+        <DropdownMenuItem
+          data-slot="action-button"
+          onSelect={() => setRowAction({ row, variant: "edit" })}
+        >
+          <SquarePen size={20} />
+          Edit
+        </DropdownMenuItem>
+
+        {canReassingLead(userType) && (
+          <DropdownMenuItem
+            data-slot="action-button"
+            onSelect={() => setRowAction({ row, variant: "reassignlead" })}
+          >
+            <Users size={20} />
+            Reassign Lead
+          </DropdownMenuItem>
+        )}
+
+        {canDeleteLead(userType) && (
+          <>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "view" })}
+              data-slot="action-button"
+              onSelect={() => setRowAction({ row, variant: "delete" })}
             >
-              <Eye size={20} />
-              View
+              Delete
+              <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
             </DropdownMenuItem>
-            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
-
-            <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "edit" })}
-            >
-              <SquarePen size={20} />
-              Edit
-            </DropdownMenuItem>
-
-            {canReassingLead(userType) && (
-              <DropdownMenuItem
-                onSelect={() => setRowAction({ row, variant: "reassignlead" })}
-              >
-                <Users size={20} />
-                Reassign Lead
-              </DropdownMenuItem>
-            )}
-
-            {canDeleteLead(userType) && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onSelect={() => setRowAction({ row, variant: "delete" })}
-                >
-                  Delete
-                  <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-      enableSorting: false,
-      enableHiding: false,
-      size: 40,
-    },
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ),
+  enableSorting: false,
+  enableHiding: false,
+  size: 40,
+},
     // Sr NO
     {
       accessorKey: "srNo",
