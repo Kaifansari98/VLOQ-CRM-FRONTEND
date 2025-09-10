@@ -1,6 +1,9 @@
 "use client"
 
 import { ChevronRight, type LucideIcon } from "lucide-react"
+import { useLeadStats } from "@/hooks/useLeadStats"
+import { CountBadge } from "./count-badge"
+import { useAppSelector } from "@/redux/store"
 
 import {
   Collapsible,
@@ -18,20 +21,43 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 
+interface NavItem {
+  title: string
+  url: string
+  icon?: LucideIcon
+  isActive?: boolean
+  items?: {
+    title: string
+    url: string
+    showCount?: 'total_leads' | 'total_initial_site_measurement_leads' | 'total_designing_stage_leads'
+  }[]
+}
+
 export function NavMain({
   items,
 }: {
-  items: {
-    title: string
-    url: string
-    icon?: LucideIcon
-    isActive?: boolean
-    items?: {
-      title: string
-      url: string
-    }[]
-  }[]
+  items: NavItem[]
 }) {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
+  
+  const { data: leadStats, isLoading, error } = useLeadStats(vendorId, userId);
+
+  const getCountForItem = (showCount?: string) => {
+    if (!leadStats?.data || !showCount) return undefined;
+    
+    switch (showCount) {
+      case 'total_leads':
+        return leadStats.data.total_leads;
+      case 'total_initial_site_measurement_leads':
+        return leadStats.data.total_initial_site_measurement_leads;
+      case 'total_designing_stage_leads':
+        return leadStats.data.total_designing_stage_leads;
+      default:
+        return undefined;
+    }
+  };
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
@@ -56,8 +82,15 @@ export function NavMain({
                   {item.items?.map((subItem) => (
                     <SidebarMenuSubItem key={subItem.title}>
                       <SidebarMenuSubButton asChild>
-                        <a href={subItem.url}>
+                        <a href={subItem.url} className="flex items-center justify-between w-full">
                           <span>{subItem.title}</span>
+                          {subItem.showCount && (
+                            <CountBadge 
+                              count={getCountForItem(subItem.showCount)}
+                              isLoading={isLoading}
+                              className="ml-2"
+                            />
+                          )}
                         </a>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
