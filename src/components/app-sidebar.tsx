@@ -29,7 +29,7 @@ import { useSelector } from "react-redux";
 import { RootState, useAppSelector } from "@/redux/store";
 import { useEffect, useState } from "react";
 
-// This is sample data.
+// Updated navigation data with showCount properties
 const data = {
   user: {
     name: "Vloq PVT LTD.",
@@ -67,14 +67,17 @@ const data = {
         {
           title: "View Leads",
           url: "/dashboard/sales-executive/leadstable",
+          showCount: "total_leads" as const,
         },
         {
-          title: "Initial Site Measurement",
+          title: "Site Measurement",
           url: "/dashboard/sales-executive/initial-site-measurement",
+          showCount: "total_initial_site_measurement_leads" as const,
         },
         {
           title: "Designing Stage",
           url: "/dashboard/sales-executive/designing-stage",
+          showCount: "total_designing_stage_leads" as const,
         },
         {
           title: "Booking Stage",
@@ -180,9 +183,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const userData = user
     ? {
-        name: user?.user_name || "username", // show vendor_name first
-
-        avatar: "/avatars/shadcn.jpg", // fallback, can later replace with vendor.logo if needed
+        name: user?.user_name || "username",
+        avatar: "/avatars/shadcn.jpg",
         email: user?.user_email || "N/A",
       }
     : data.user;
