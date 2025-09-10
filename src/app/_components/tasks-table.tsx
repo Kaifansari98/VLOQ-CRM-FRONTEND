@@ -62,6 +62,7 @@ export type ProcessedLead = {
   altContact?: string;
   source: string;
   status: string;
+  initial_site_measurement_date: string;
 };
 
 const VendorLeadsTable = () => {
@@ -98,6 +99,7 @@ const VendorLeadsTable = () => {
   // Row action state
   const [rowAction, setRowAction] =
     React.useState<DataTableRowAction<ProcessedLead> | null>(null);
+  const [openCreateLead, setOpenCreateLead] = useState<boolean>(false);
 
   useEffect(() => {
     if (rowAction?.variant === "delete" && rowAction.row) {
@@ -148,6 +150,14 @@ const VendorLeadsTable = () => {
     setRowAction(null);
   };
 
+  const handleRowClick = (row: ProcessedLead) => {
+    const tableRow = table.getRowModel().rows.find(r => r.original.id === row.id);
+    if (tableRow) {
+      setRowAction({ variant: "view", row: tableRow });
+      setOpenView(true);
+    }
+  };  
+
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "createdAt", desc: true },
@@ -188,6 +198,7 @@ const VendorLeadsTable = () => {
       updatedAt: lead.updated_at || "",
       altContact: lead.alt_contact_no || "", // 👈 backend ke key ke sath match
       status: lead.statusType?.type || "",
+      initial_site_measurement_date: lead.initial_site_measurement_date || "",
     }));
   }, [vendorUserLeadsQuery.data]);
 
@@ -250,7 +261,7 @@ const VendorLeadsTable = () => {
   console.log("usertypes: ", userType);
   return (
     <>
-      <DataTable table={table}>
+      <DataTable table={table} onRowClick={handleRowClick}>
         {enableAdvancedFilter ? (
           <>
             <DataTableAdvancedToolbar table={table}>

@@ -62,6 +62,7 @@ export interface Lead {
   createdBy: User;
   assignedTo: AssignTo | null;
   statusType: StatusType;
+  initial_site_measurement_date: string;
 }
 
 export interface AssignToPayload {
@@ -87,6 +88,7 @@ export interface EditLeadPayload {
   product_types?: number[];
   product_structures?: number[];
   updated_by: number;
+  initial_site_measurement_date?: string;
 }
 
 export const createLead = async (
