@@ -19,10 +19,11 @@ import { ModeToggle } from "@/components/ModeToggle";
 import LeadsTable from "@/components/sales-executive/Lead/LeadsTable";
 import { Button } from "@/components/ui/button";
 import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-generation-form-modal";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 export default function LeadsGenerationPage() {
   // const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   // const userId = useAppSelector((state) => state.auth.user?.id);
+  const [openCreateLead, setOpenCreateLead] = useState(false);
 
   return (
     <SidebarProvider>
@@ -52,7 +53,7 @@ export default function LeadsGenerationPage() {
 
           <div className="flex items-center gap-2">
             <div className="flex gap-2 items-center">
-              <GenerateLeadFormModal>
+              <GenerateLeadFormModal open={openCreateLead} onOpenChange={setOpenCreateLead}>
                 <Button>Add New Lead</Button>
               </GenerateLeadFormModal>
 
