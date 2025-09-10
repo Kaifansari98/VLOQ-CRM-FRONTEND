@@ -7,6 +7,7 @@ export interface User {
   user_contact: string
   user_email: string
   user_type_id: number
+  user_role: string
   status: string
   vendor: Record<string, any>
   user_type: Record<string, any>
