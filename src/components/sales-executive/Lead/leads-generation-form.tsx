@@ -68,6 +68,7 @@ const createFormSchema = (userType: string | undefined) => {
     documents: z.string().optional(),
     archetech_name: z.string().max(300).optional(),
     designer_remark: z.string().max(2000).optional(),
+    initial_site_measurement_date: z.string().optional(),
   });
 };
 
@@ -388,6 +389,9 @@ export default function LeadsGenerationForm({
 
       product_types: values.product_types || [],
       product_structures: values.product_structures || [],
+      initial_site_measurement_date: values.initial_site_measurement_date
+    ? new Date(values.initial_site_measurement_date).toISOString()
+    : undefined,
 
       // Assignment logic based on user role
       ...(canReassingLead(userType)
@@ -822,7 +826,7 @@ export default function LeadsGenerationForm({
               />
             </div>
           )}
-
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
           {/* Architect Name */}
           <FormField
             control={form.control}
@@ -845,6 +849,36 @@ export default function LeadsGenerationForm({
               </FormItem>
             )}
           />
+
+<FormField
+  control={form.control}
+  name="initial_site_measurement_date"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel className="text-sm">Initial Site Measurement Date</FormLabel>
+      <FormControl>
+        <Input
+          type="date"
+          className="text-sm"
+          value={field.value || ""}
+          onChange={(e) => {
+            const selectedDate = e.target.value;
+            // prevent selecting past dates
+            const today = new Date().toISOString().split("T")[0];
+            if (selectedDate < today) {
+              toast.error("Date cannot be in the past");
+              return;
+            }
+            field.onChange(selectedDate);
+          }}
+          min={new Date().toISOString().split("T")[0]} // enforce no past dates
+        />
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  )}
+/> </div>
+
 
           {/* Designer Remark */}
           <FormField
