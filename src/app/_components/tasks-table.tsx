@@ -107,10 +107,6 @@ const VendorLeadsTable = () => {
     if (rowAction?.variant === "delete" && rowAction.row) {
       setOpenDelete(true);
     }
-    if (rowAction?.variant === "view" && rowAction.row) {
-      console.log("Original Data row Leads: ", rowAction.row.original);
-      setOpenView(true);
-    }
     if (rowAction?.variant === "reassignlead" && rowAction.row) {
       console.log("Original Data row Leads: ", rowAction.row.original);
       setAssignOpenLead(true);
@@ -308,11 +304,6 @@ const VendorLeadsTable = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <ViewLeadModal
-        open={openView}
-        onOpenChange={setOpenView}
-        data={rowAction?.row.original}
-      />
       <AssignLeadModal
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}
