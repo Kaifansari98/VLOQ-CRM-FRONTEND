@@ -31,6 +31,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  useMoveToBookingStage,
+  useSiteSupervisors,
+} from "@/hooks/booking-stage/use-booking";
+import { BookingPayload } from "@/api/booking";
 
 // ✅ Enhanced Zod schema with proper file validation
 const bookingSchema = z.object({
@@ -73,6 +78,7 @@ interface LeadViewModalProps {
   data?: {
     id: number;
     name: string;
+    accountId: number;
   };
 }
 
@@ -82,7 +88,14 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   data,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  // ✅ Fixed form initialization with proper typing
+  const userId = useAppSelector((state) => state.auth.user?.id);
+  const leadId = data?.id;
+  const accountId = data?.accountId;
+  const clientId = 1;
+
+  const { data: siteSupervisors, isLoading } = useSiteSupervisors(vendorId!);
+  const vendorUser = siteSupervisors?.data?.site_supervisors || [];
+  const { mutate, isPending } = useMoveToBookingStage();
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
@@ -96,39 +109,39 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     mode: "onChange", // Real-time validation
   });
 
-  const { data: vendorSalesExecutive, isLoading } =
-    useVendorSalesExecutiveUsers(vendorId!);
-
   if (isLoading) {
     return <div>Loading...</div>;
   }
 
-  const vendorUser = vendorSalesExecutive?.data.sales_executives;
-  console.log(
-    "Vendor Sales Executives:",
-    vendorSalesExecutive.data.sales_executives
-  );
-
-  // ✅ Properly typed submit handler
   const onSubmit: SubmitHandler<BookingFormValues> = (values) => {
-    console.log("✅ Booking form submitted successfully:");
-    console.log("📄 Final Documents:", values.final_documents);
-    console.log("💰 Amount Received:", values.amount_received);
-    console.log("🏷️ Booking Amount:", values.booking_amount);
-    console.log(
-      "📑 Payment Details Document:",
-      values.payment_details_document
-    );
-    console.log("📝 Payment Text:", values.payment_text);
+    if (!leadId || !accountId || !vendorId || !userId) {
+      console.error("❌ Missing IDs in booking payload");
+      return;
+    }
 
-    // 🚀 Success message
-    console.log("🎉 Form validation passed - Ready for API integration!");
+    const payload: BookingPayload = {
+      lead_id: leadId,
+      account_id: accountId,
+      vendor_id: vendorId,
+      created_by: userId,
+      client_id: clientId,
+      bookingAmount: values.booking_amount,
+      bookingAmountPaymentDetailsText: values.payment_text,
+      finalBookingAmount: values.amount_received,
+      siteSupervisorId: Number(values.assign_to),
+      booking_payment_file: values.payment_details_document, // ✅ multiple files
+      final_documents: values.final_documents, // ✅ multiple files
+    };
 
-    // Close modal after successful submission
-    onOpenChange(false);
 
-    // Reset form for next use
-    form.reset();
+    console.log("✅ Booking Payload:", payload);
+    // ✅ API call via hook
+    mutate(payload, {
+      onSuccess: () => {
+        onOpenChange(false); // modal close
+        form.reset(); // reset form
+      },
+    });
   };
 
   // Handle form errors
@@ -326,11 +339,9 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   <Button
                     type="submit"
                     className="rounded-md"
-                    disabled={form.formState.isSubmitting}
+                    disabled={isPending || form.formState.isSubmitting} // <- mutate ka pending bhi disable karega
                   >
-                    {form.formState.isSubmitting
-                      ? "Submitting..."
-                      : "Submit Booking"}
+                    {isPending ? "Submitting..." : "Submit Booking"}
                   </Button>
                 </div>
               </form>

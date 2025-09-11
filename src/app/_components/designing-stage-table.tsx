@@ -40,6 +40,7 @@ import ViewLeadModal from "@/components/sales-executive/Lead/view-lead-moda";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import BookingModal from "@/components/sales-executive/designing-stage/booking-modal";
+import { useRouter } from "next/navigation";
 
 const DesigningStageTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -47,6 +48,7 @@ const DesigningStageTable = () => {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
+  const router = useRouter();
   const { data, isLoading, isError } = useDesigningStageLeads(vendorId!, 3);
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const [openDelete, setOpenDelete] = useState<boolean>(false);
@@ -96,11 +98,8 @@ const DesigningStageTable = () => {
   }, [rowAction]);
 
   const handleRowClick = (row: ProcessedDesigningStageLead) => {
-    // const tableRow = table.getRowModel().rows.find(r => r.original.id === row.id);
-    // if (tableRow) {
-    //   setRowAction({ variant: "view", row: tableRow });
-    //   setOpenView(true);
-    // }
+    const lead = row?.id;
+    router.push(`/dashboard/sales-executive/designing-stage/details/${lead}`);
   };
 
   const rowData = useMemo<ProcessedDesigningStageLead[]>(() => {
