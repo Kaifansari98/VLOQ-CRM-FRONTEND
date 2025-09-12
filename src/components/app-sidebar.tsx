@@ -12,6 +12,8 @@ import {
   PieChart,
   Settings2,
   SquareTerminal,
+  CalendarCheck2,
+  BookOpenCheck
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -57,13 +59,13 @@ const data = {
     {
       title: "My Task",
       url: "/dashboard/my-tasks",
-      icon: SquareTerminal, // ya koi aur icon chahiye ho
+      icon: CalendarCheck2, // ya koi aur icon chahiye ho
       isActive: false,
     },
     {
       title: "Leads",
       url: "/",
-      icon: SquareTerminal,
+      icon: BookOpenCheck,
       isActive: true,
       items: [
         {
@@ -71,7 +73,7 @@ const data = {
           url: "/dashboard/sales-executive",
         },
         {
-          title: "View Leads",
+          title: "Open Leads",
           url: "/dashboard/sales-executive/leadstable",
           showCount: "total_leads" as const,
         },

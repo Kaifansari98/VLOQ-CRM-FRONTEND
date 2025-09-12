@@ -173,6 +173,16 @@ export const getVendorUserLeads = async (
   return response.data.data.leads; // <-- notice the extra .data.leads
 };
 
+// Get leads for a specific user of a vendor
+export const getVendorUserLeadsOpen = async (
+  vendorId: number,
+): Promise<Lead[]> => {
+  const response = await apiClient.get(
+    `/leads/bookingStage/status1-leads/${vendorId}`
+  );
+  return response.data.data; 
+};
+
 export const deleteLead = async (leadId: number, userId: number) => {
   const response = await apiClient.delete(
     `/leads/delete-lead/${leadId}/user-id/${userId}`

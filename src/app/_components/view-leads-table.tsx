@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useAppSelector } from "@/redux/store";
-import { useVendorUserLeads } from "@/hooks/useLeadsQueries";
+import { useVendorUserLeads, useVendorUserLeadsOpen } from "@/hooks/useLeadsQueries";
 import { type Lead } from "@/api/leads";
 
 import {
@@ -75,10 +75,8 @@ const ViewOpenLeadTable = () => {
   );
   const shouldFetch = !!vendorId && !!userId;
   // Fetch leads
-  const vendorUserLeadsQuery = useVendorUserLeads(
+  const vendorUserLeadsQuery = useVendorUserLeadsOpen(
     vendorId || 0,
-    userId || 0,
-    shouldFetch
   );
   const router = useRouter();
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
