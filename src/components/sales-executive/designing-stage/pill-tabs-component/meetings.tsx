@@ -63,14 +63,6 @@ const MeetingsTab = () => {
     });
   };
 
-  const formatTimeOnly = (dateString: string): string => {
-    if (!dateString) return "";
-    return new Date(dateString).toLocaleTimeString("en-IN", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   const handleViewMeeting = (meeting: Meeting) => {
     setSelectedMeeting(meeting);
   };
@@ -248,11 +240,6 @@ const MeetingsTab = () => {
                 <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                   <Calendar size={12} />
                   {formatDateOnly(meeting.date)}
-                </div>
-
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Clock size={12} />
-                  {formatTimeOnly(meeting.date)}
                 </div>
 
                 <p className="line-clamp-3 text-sm leading-relaxed text-foreground">

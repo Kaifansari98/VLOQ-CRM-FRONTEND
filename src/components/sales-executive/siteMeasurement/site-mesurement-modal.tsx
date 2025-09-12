@@ -78,9 +78,9 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
                       Initial Site Measurement Document
                     </h3>
                     <div
-                      onClick={() =>
-                        window.open(pdfDocs[0].signed_url, "_blank")
-                      }
+                      onClick={() => {
+                        window.open(pdfDocs[0].signed_url, "_blank");
+                      }}
                       className="cursor-pointer w-full h-56 border rounded-xl shadow-sm flex flex-col items-center justify-center hover:shadow-md transition"
                     >
                       <FileText size={56} className="text-red-500 mb-3" />
@@ -129,9 +129,14 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
                         type="text"
                         value={
                           payment
-                            ? new Date(
-                                payment.payment_date
-                              ).toLocaleDateString()
+                            ? new Date(payment.payment_date).toLocaleDateString(
+                                "en-IN",
+                                {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                }
+                              )
                             : "N/A"
                         }
                         readOnly
@@ -158,7 +163,7 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
             {currentSitePhotos.length > 0 && (
               <div>
                 <h3 className="font-semibold text-md mb-2">Site Photos</h3>
-                
+
                 <div className="flex flex-wrap gap-3">
                   {currentSitePhotos.map((doc) => (
                     <img
