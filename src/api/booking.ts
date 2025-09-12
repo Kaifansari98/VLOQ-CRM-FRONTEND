@@ -55,4 +55,9 @@ export const getAllSiteSuperVisors = async (vendorId: number) => {
   return data;
 };
 
-
+export const getBookingLeads = async (vendorId: number) => {
+  const { data } = await apiClient.get(
+    `/leads/bookingStage/status4-leads/${vendorId}`
+  );
+  return data;
+};

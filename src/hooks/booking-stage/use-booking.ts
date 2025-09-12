@@ -1,8 +1,10 @@
 import {
   BookingPayload,
   getAllSiteSuperVisors,
+  getBookingLeads,
   moveToBookingStage,
 } from "@/api/booking";
+import { BookingLeadResponse } from "@/types/booking-types";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
@@ -26,5 +28,14 @@ export const useSiteSupervisors = (vendorId: number) => {
     queryFn: () => getAllSiteSuperVisors(vendorId),
     enabled: !!vendorId, // ✅ only run when vendorId exists
     staleTime: 5 * 60 * 1000, // cache data for 5 minutes
+  });
+};
+
+export const useBookingLeads = (vendorId: number) => {
+  return useQuery<BookingLeadResponse>({
+    queryKey: ["bookingLeads", vendorId],
+    queryFn: () => getBookingLeads(vendorId),
+    enabled: !!vendorId, // only run if vendorId is provided
+    staleTime: 1000 * 60 * 5, // cache for 5 min
   });
 };
