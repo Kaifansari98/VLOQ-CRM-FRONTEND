@@ -41,6 +41,7 @@ import ViewLeadModal from "@/components/sales-executive/Lead/view-lead-moda";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
 
 // Define processed lead type for table
 export type ProcessedLead = {
@@ -78,6 +79,7 @@ const VendorLeadsTable = () => {
     userId || 0,
     shouldFetch
   );
+  const router = useRouter();
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const [openDelete, setOpenDelete] = useState<boolean>(false);
   const [openView, setOpenView] = useState<boolean>(false);
@@ -104,10 +106,6 @@ const VendorLeadsTable = () => {
   useEffect(() => {
     if (rowAction?.variant === "delete" && rowAction.row) {
       setOpenDelete(true);
-    }
-    if (rowAction?.variant === "view" && rowAction.row) {
-      console.log("Original Data row Leads: ", rowAction.row.original);
-      setOpenView(true);
     }
     if (rowAction?.variant === "reassignlead" && rowAction.row) {
       console.log("Original Data row Leads: ", rowAction.row.original);
@@ -151,12 +149,9 @@ const VendorLeadsTable = () => {
   };
 
   const handleRowClick = (row: ProcessedLead) => {
-    const tableRow = table.getRowModel().rows.find(r => r.original.id === row.id);
-    if (tableRow) {
-      setRowAction({ variant: "view", row: tableRow });
-      setOpenView(true);
-    }
-  };  
+    const leadId = row.id;
+    router.push(`/dashboard/sales-executive/leadstable/details/${leadId}`);
+  };
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -309,11 +304,6 @@ const VendorLeadsTable = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <ViewLeadModal
-        open={openView}
-        onOpenChange={setOpenView}
-        data={rowAction?.row.original}
-      />
       <AssignLeadModal
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}

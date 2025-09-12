@@ -20,10 +20,14 @@ import { toast } from "react-toastify";
 interface FileUploadFieldProps {
   value: File[];
   onChange: (files: File[]) => void;
-  
+  accept?: string;
 }
 
-export function FileUploadField({ value, onChange }: FileUploadFieldProps) {
+export function FileUploadField({
+  value,
+  onChange,
+  accept,
+}: FileUploadFieldProps) {
   const onUpload: NonNullable<FileUploadProps["onUpload"]> = React.useCallback(
     async (files, { onProgress, onSuccess, onError }) => {
       try {
@@ -76,7 +80,7 @@ export function FileUploadField({ value, onChange }: FileUploadFieldProps) {
       maxFiles={20}
       className="w-full"
       multiple
-      accept="image/*,.png,.jpg,.jpeg"
+      accept={accept ?? "image/*,.png,.jpg,.jpeg"}
     >
       <FileUploadDropzone>
         <div className="flex flex-col items-center gap-1 text-center">

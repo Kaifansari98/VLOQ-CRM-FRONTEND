@@ -37,14 +37,16 @@ import { createLead } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { FileUploadField } from "@/components/custom/file-upload";
-import MultipleSelector ,{Option} from "@/components/ui/multiselect";
+import MultipleSelector, { Option } from "@/components/ui/multiselect";
 import { canReassingLead } from "@/components/utils/privileges";
 import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 import TextAreaInput from "@/components/origin-text-area";
+import CustomeDatePicker from "@/components/default";
 
 const createFormSchema = (userType: string | undefined) => {
-  const isAdminOrSuperAdmin = userType === "admin" || userType === "super_admin";
-  
+  const isAdminOrSuperAdmin =
+    userType === "admin" || userType === "super_admin";
+
   return z.object({
     firstname: z.string().min(1, "First name is required").max(300),
     lastname: z.string().min(1, "Last name is required").max(300),
@@ -59,12 +61,10 @@ const createFormSchema = (userType: string | undefined) => {
     product_types: z.array(z.string()).optional(),
     product_structures: z.array(z.string()).optional(),
     // Dynamic validation based on user role
-    assign_to: isAdminOrSuperAdmin 
+    assign_to: isAdminOrSuperAdmin
       ? z.string().min(1, "Please select an assignee")
       : z.string().optional(),
-    assigned_by: isAdminOrSuperAdmin 
-      ? z.string()
-      : z.string().optional(),
+    assigned_by: isAdminOrSuperAdmin ? z.string() : z.string().optional(),
     documents: z.string().optional(),
     archetech_name: z.string().max(300).optional(),
     designer_remark: z.string().max(2000).optional(),
@@ -271,10 +271,10 @@ export default function LeadsGenerationForm({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
-  
+
   const formSchema = createFormSchema(userType);
   type FormValues = z.infer<typeof formSchema>;
-  
+
   const queryClient = useQueryClient();
 
   // fetch data once at top of component (after form etc.)
@@ -390,17 +390,15 @@ export default function LeadsGenerationForm({
       product_types: values.product_types || [],
       product_structures: values.product_structures || [],
       initial_site_measurement_date: values.initial_site_measurement_date
-    ? new Date(values.initial_site_measurement_date).toISOString()
-    : undefined,
+        ? new Date(values.initial_site_measurement_date).toISOString()
+        : undefined,
 
       // Assignment logic based on user role
       ...(canReassingLead(userType)
         ? {
             // Admin/Super-admin can assign to anyone
             assign_to: values.assign_to ? Number(values.assign_to) : undefined,
-            assigned_by: createdBy
-              ? createdBy
-              : undefined,
+            assigned_by: createdBy ? createdBy : undefined,
           }
         : {
             // Sales executive self-assigns
@@ -826,59 +824,45 @@ export default function LeadsGenerationForm({
               />
             </div>
           )}
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-          {/* Architect Name */}
-          <FormField
-            control={form.control}
-            name="archetech_name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">Architect Name</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter architect name"
-                    type="text"
-                    className="text-sm"
-                    {...field}
-                  />
-                </FormControl>
-                {/* <FormDescription className="text-xs">
-                  Project architect name.
-                </FormDescription> */}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-<FormField
-  control={form.control}
-  name="initial_site_measurement_date"
-  render={({ field }) => (
-    <FormItem>
-      <FormLabel className="text-sm">Initial Site Measurement Date</FormLabel>
-      <FormControl>
-        <Input
-          type="date"
-          className="text-sm"
-          value={field.value || ""}
-          onChange={(e) => {
-            const selectedDate = e.target.value;
-            // prevent selecting past dates
-            const today = new Date().toISOString().split("T")[0];
-            if (selectedDate < today) {
-              toast.error("Date cannot be in the past");
-              return;
-            }
-            field.onChange(selectedDate);
-          }}
-          min={new Date().toISOString().split("T")[0]} // enforce no past dates
-        />
-      </FormControl>
-      <FormMessage />
-    </FormItem>
-  )}
-/> </div>
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+            {/* Architect Name */}
+            <FormField
+              control={form.control}
+              name="archetech_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Architect Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter architect name"
+                      type="text"
+                      className="text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="initial_site_measurement_date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">
+                    Initial Site Measurement Date
+                  </FormLabel>
+                  <FormControl>
+                    <CustomeDatePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />{" "}
+          </div>
 
           {/* Designer Remark */}
           <FormField
@@ -888,10 +872,7 @@ export default function LeadsGenerationForm({
               <FormItem>
                 <FormLabel className="text-sm">Designer's Remark</FormLabel>
                 <FormControl>
-                  <TextAreaInput
-                    placeholder="Enter your remarks"
-                    {...field}
-                  />
+                  <TextAreaInput placeholder="Enter your remarks" {...field} />
                 </FormControl>
                 {/* <FormDescription className="text-xs">
                   Additional remarks or notes.

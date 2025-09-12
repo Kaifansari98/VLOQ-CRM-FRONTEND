@@ -81,7 +81,7 @@ const data = {
         },
         {
           title: "Booking Stage",
-          url: "/dashboard/sales-executive",
+          url: "/dashboard/sales-executive/booking-stage",
         },
       ],
     },

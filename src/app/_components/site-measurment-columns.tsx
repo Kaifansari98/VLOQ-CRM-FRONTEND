@@ -11,7 +11,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ellipsis, Eye, SquarePen, Users, Text, Ruler } from "lucide-react";
+import { Ellipsis, Eye, SquarePen, Users, Text, Ruler, Move } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DataTableRowAction } from "@/types/data-table";
 import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
@@ -21,6 +21,7 @@ import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import { ProcessedSiteMeasurementLead } from "@/types/site-measrument-types";
+import { useRouter } from "next/navigation";
 
 interface GetSiteMeasurementColumnProps {
   setRowAction: React.Dispatch<
@@ -33,6 +34,7 @@ export function getSiteMeasurementColumn({
   setRowAction,
   userType,
 }: GetSiteMeasurementColumnProps): ColumnDef<ProcessedSiteMeasurementLead>[] {
+  const router = useRouter();
   return [
     // Action Button
     {
@@ -53,11 +55,27 @@ export function getSiteMeasurementColumn({
               onSelect={() => setRowAction({ row, variant: "view" })}
             >
               <Eye size={20} />
-              View
+              <button
+                className="w-full text-left"
+                onClick={() =>
+                  router.push(
+                    `/dashboard/sales-executive/initial-site-measurement/details/${row.original.id}`
+                  )
+                }
+              >
+                view
+              </button>
             </DropdownMenuItem>
 
-             <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: 'measurement' })}
+            <DropdownMenuItem
+              onSelect={() => setRowAction({ row, variant: "move" })}
+            >
+              <Move size={20} />
+              Move To Design
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              onSelect={() => setRowAction({ row, variant: "measurement" })}
             >
               <Ruler size={20} />
               Measurement
@@ -466,7 +484,7 @@ export function getSiteMeasurementColumn({
       cell: ({ row }) => {
         const fullRemark = row.getValue("designerRemark") as string;
         if (!fullRemark) return "–";
-        
+
         const truncatedRemark =
           fullRemark.length > 15 ? fullRemark.slice(0, 15) + "..." : fullRemark;
         return (

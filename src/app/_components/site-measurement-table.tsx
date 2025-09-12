@@ -35,12 +35,10 @@ import {
   AlertDialogHeader,
 } from "@/components/ui/alert-dialog";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
-import ViewLeadModal from "@/components/sales-executive/Lead/view-lead-moda";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { toast } from "react-toastify";
 import { useInitialSiteMeasurement } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
-import ViewInitialSiteMeasurmentLead from "@/components/sales-executive/siteMeasurement/view-site-measurement";
 import {
   Document,
   ProcessedSiteMeasurementLead,
@@ -48,6 +46,9 @@ import {
   Upload,
 } from "@/types/site-measrument-types";
 import SiteMesurementModal from "@/components/sales-executive/siteMeasurement/site-mesurement-modal";
+import { useRouter } from "next/navigation";
+import { useMoveToDesigningStage } from "@/api/designingStageQueries";
+import { useQueryClient } from "@tanstack/react-query";
 
 const SiteMeasurementTable = () => {
   // Redux selectors
@@ -59,10 +60,10 @@ const SiteMeasurementTable = () => {
 
   // Feature flags
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
-
+  const router = useRouter();
   // State hooks
   const [openDelete, setOpenDelete] = useState<boolean>(false);
-  const [openView, setOpenView] = useState<boolean>(false);
+  const [openMoveCnfrm, setOpenMoveCnfrm] = useState<boolean>(false);
   const [assignOpenLead, setAssignOpenLead] = useState<boolean>(false);
   const [editOpenLead, setEditOpenLead] = useState<boolean>(false);
   const [openMesurement, setOpenMesurement] = useState<boolean>(false);
@@ -89,6 +90,7 @@ const SiteMeasurementTable = () => {
     []
   );
   const [rowSelection, setRowSelection] = React.useState({});
+  const leadId = Number(rowAction?.row.id);
 
   // Query hooks - always called, but conditionally with null/undefined params
   const { data, error, isLoading, isError } = useInitialSiteMeasurement(
@@ -99,14 +101,37 @@ const SiteMeasurementTable = () => {
   // Custom hooks
   const deleteLeadMutation = useDeleteLead();
 
+  const { mutate: moveToDesigningStage, isPending: isMovePending } =
+    useMoveToDesigningStage();
+  const queryClient = useQueryClient();
+
+  const handleMoveToDesigningStage = () => {
+    if (!leadId || !vendorId || !userId) {
+      toast.error("❌ Missing required data to move lead");
+      return;
+    }
+
+    moveToDesigningStage(
+      { lead_id: leadId, vendor_id: vendorId, user_id: userId },
+      {
+        onSuccess: (res) => {
+          toast.success("Lead moved to Designing Stage successfully!");
+          queryClient.invalidateQueries({
+            queryKey: ["siteMeasurementLeads", vendorId, 2],
+          });
+        },
+        onError: (err) => {
+          console.error("❌ API error:", err);
+          toast.error("Failed to move lead. Please try again.");
+        },
+      }
+    );
+  };
+
   // Effects
   useEffect(() => {
     if (rowAction?.variant === "delete" && rowAction.row) {
       setOpenDelete(true);
-    }
-    if (rowAction?.variant === "view" && rowAction.row) {
-      console.log("Original Data row Leads: ", rowAction.row.original);
-      setOpenView(true);
     }
     if (rowAction?.variant === "reassignlead" && rowAction.row) {
       console.log("Original Data row Leads: ", rowAction.row.original);
@@ -115,6 +140,11 @@ const SiteMeasurementTable = () => {
     if (rowAction?.variant === "edit" && rowAction.row) {
       console.log("Original Edit Data row Leads: ", rowAction.row.original);
       setEditOpenLead(true);
+    }
+
+    if (rowAction?.variant === "move" && rowAction.row) {
+      console.log("Original Edit Data row Leads: ", rowAction.row.id);
+      setOpenMoveCnfrm(true);
     }
 
     if (rowAction?.variant === "measurement" && rowAction.row) {
@@ -276,12 +306,11 @@ const SiteMeasurementTable = () => {
   };
 
   const handleRowClick = (row: ProcessedSiteMeasurementLead) => {
-    const tableRow = table.getRowModel().rows.find(r => r.original.id === row.id);
-    if (tableRow) {
-      setRowAction({ variant: "view", row: tableRow });
-      setOpenView(true);
-    }
-  }; 
+    const lead = row.id;
+    router.push(
+      `/dashboard/sales-executive/initial-site-measurement/details/${lead}`
+    );
+  };
 
   // Main render
   return (
@@ -334,11 +363,27 @@ const SiteMeasurementTable = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <ViewInitialSiteMeasurmentLead
-        open={openView}
-        onOpenChange={setOpenView}
-        data={rowAction?.row.original}
-      />
+      <AlertDialog open={openMoveCnfrm} onOpenChange={setOpenMoveCnfrm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will move the lead to Designing Stage.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isMovePending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMoveToDesigningStage}
+              disabled={isMovePending}
+            >
+              {isMovePending ? "Processing..." : "Yes, Move"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <SiteMesurementModal
         open={openMesurement}

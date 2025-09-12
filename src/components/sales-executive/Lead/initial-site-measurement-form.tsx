@@ -28,6 +28,7 @@ import { useAppSelector } from "@/redux/store";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getLeadById, uploadInitialSiteMeasurement } from "@/api/leads";
 import { toast } from "react-toastify";
+import CustomeDatePicker from "@/components/default";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -252,19 +253,9 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                           Initial Site Measurement Amount Payment Date
                         </FormLabel>
                         <FormControl>
-                          <DateInputPicker
-                            value={
-                              field.value ? new Date(field.value) : undefined
-                            }
-                            onChange={(date?: Date) => {
-                              if (date) {
-                                field.onChange(
-                                  date.toISOString().split("T")[0]
-                                ); // save as string "YYYY-MM-DD"
-                              } else {
-                                field.onChange(undefined);
-                              }
-                            }}
+                          <CustomeDatePicker
+                            value={field.value}
+                            onChange={field.onChange}
                           />
                         </FormControl>
                         <FormMessage />

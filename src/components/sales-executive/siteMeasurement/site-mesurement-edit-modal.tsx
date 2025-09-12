@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect } from "react";
 import {
   Dialog,
@@ -13,7 +15,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 import { useAppSelector } from "@/redux/store";
 import { useUpdateSiteMeasurementMutation } from "@/hooks/Site-measruement/useUpdateSiteMeasurement";
-import { EditPayload } from "@/types/site-measrument-types";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import CustomeDatePicker from "@/components/default";
 
 // --------- Props ---------
 interface Data {
@@ -24,14 +34,16 @@ interface Data {
     amount: number;
     payment_date: string;
     payment_text: string;
-  } | null; // ✅ null allowed
+  } | null;
 }
-interface ViewInitialSiteMeasurmentLeadProps {
+
+interface SiteMesurementEditModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   data?: Data;
 }
 
+// --------- Validation Schema ---------
 const paymentSchema = z.object({
   amount: z.number().min(1, "Amount must be greater than 0"),
   payment_date: z.string().min(1, "Payment date is required"),
@@ -42,13 +54,13 @@ const paymentSchema = z.object({
 
 type PaymentFormValues = z.infer<typeof paymentSchema>;
 
-const SiteMesurementEditModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
+const SiteMesurementEditModal: React.FC<SiteMesurementEditModalProps> = ({
   open,
   onOpenChange,
   data,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const updatedby = useAppSelector((state) => state.auth.user?.id);
+  const updatedBy = useAppSelector((state) => state.auth.user?.id);
 
   const { mutateAsync } = useUpdateSiteMeasurementMutation();
 
@@ -73,12 +85,6 @@ const SiteMesurementEditModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
     }
   }, [data, form]);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = form;
-
   const onSubmit = async (values: PaymentFormValues) => {
     if (!data) return;
 
@@ -86,7 +92,7 @@ const SiteMesurementEditModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
     formData.append("lead_id", data.id.toString());
     formData.append("vendor_id", vendorId!.toString());
     formData.append("account_id", data.accountId.toString());
-    formData.append("updated_by", updatedby!.toString());
+    formData.append("updated_by", updatedBy!.toString());
     formData.append("amount", values.amount.toString());
     formData.append("payment_text", values.payment_text);
     formData.append("payment_date", values.payment_date);
@@ -94,7 +100,7 @@ const SiteMesurementEditModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
     try {
       await mutateAsync({
         paymentId: data.paymentInfo?.id || 0,
-        formData, // send FormData instead of JSON
+        formData,
       });
       onOpenChange(false);
     } catch (error) {
@@ -113,71 +119,83 @@ const SiteMesurementEditModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
         </DialogHeader>
 
         <ScrollArea className="max-h-[calc(90vh-100px)]">
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            className="px-5 py-4 space-y-6"
-          >
-            <div>
-              <label className="block text-sm font-medium mb-1">Amount</label>
-              <input
-                type="number"
-                step="0.01"
-                {...register("amount", { valueAsNumber: true })}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none"
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="px-5 py-4 space-y-6"
+            >
+              {/* Amount */}
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount</FormLabel>
+                    <FormControl>
+                      <input
+                        type="number"
+                        step="0.01"
+                        {...field}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              {errors.amount && (
-                <p className="text-red-500 text-xs mt-1">
-                  {errors.amount.message}
-                </p>
-              )}
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Payment Date
-              </label>
-              <input
-                type="date"
-                {...register("payment_date")}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none"
+              {/* Payment Date */}
+              <FormField
+                control={form.control}
+                name="payment_date"
+                render={({ field }) => (
+                  <FormItem className="w-full">
+                    <FormLabel>Payment Date</FormLabel>
+                    <FormControl>
+                      <CustomeDatePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              {errors.payment_date && (
-                <p className="text-red-500 text-xs mt-1">
-                  {errors.payment_date.message}
-                </p>
-              )}
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Description
-              </label>
-              <textarea
-                rows={3}
-                {...register("payment_text")}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm resize-none focus:outline-none"
+              {/* Description */}
+              <FormField
+                control={form.control}
+                name="payment_text"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <textarea
+                        rows={3}
+                        {...field}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm resize-none focus:outline-none"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              {errors.payment_text && (
-                <p className="text-red-500 text-xs mt-1">
-                  {errors.payment_text.message}
-                </p>
-              )}
-            </div>
 
-            {/* Actions */}
-            <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Save"}
-              </Button>
-            </div>
-          </form>
+              {/* Actions */}
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </ScrollArea>
       </DialogContent>
     </Dialog>

@@ -35,28 +35,11 @@ const MeetingDetailsModal = ({
       year: "numeric",
     });
 
-  const formatTimeOnly = (dateString: string): string =>
-    new Date(dateString).toLocaleTimeString("en-IN", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
   const handleViewDocument = (docMapping: DesignMeetingDocsMapping) => {
-    // if (!docMapping?.document?.signedUrl) return;
-    // window.open(docMapping.document.signedUrl, "_blank");
-  };
-
-  // ✅ Download Document (force download trigger karega)
-  const handleDownloadDocument = (docMapping: DesignMeetingDocsMapping) => {
-    if (!docMapping?.document?.signedUrl) return;
-
-    const link = document.createElement("a");
-    link.href = docMapping.document.signedUrl;
-
-    // original name use karo, fallback "document.pdf"
-    link.download = docMapping.document.doc_og_name || "document.pdf";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const url =
+      docMapping.document?.signedUrl || docMapping.document?.signedUrl;
+    if (!url) return;
+    window.open(url, "_blank");
   };
 
   return (
@@ -74,7 +57,7 @@ const MeetingDetailsModal = ({
         <ScrollArea className="flex-1 max-h-[calc(95vh-80px)] sm:max-h-[calc(85vh-120px)]">
           <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
             {/* Meeting Overview - Responsive Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {/* Date Card */}
               <Card className="p-3 gap-0.5 sm:p-4">
                 <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
@@ -88,22 +71,6 @@ const MeetingDetailsModal = ({
                 </div>
                 <p className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
                   {formatDateOnly(meeting.date)}
-                </p>
-              </Card>
-
-              {/* Time Card */}
-              <Card className="p-3 gap-0.5 sm:p-4">
-                <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                  <Clock
-                    size={16}
-                    className="text-green-600 dark:text-green-400 sm:w-[18px] sm:h-[18px]"
-                  />
-                  <span className="font-medium text-xs sm:text-sm text-gray-600 dark:text-gray-300">
-                    Time
-                  </span>
-                </div>
-                <p className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  {formatTimeOnly(meeting.date)}
                 </p>
               </Card>
 
@@ -183,9 +150,7 @@ const MeetingDetailsModal = ({
                             <p className="font-medium text-xs sm:text-sm mb-1 text-gray-900 dark:text-gray-100">
                               {docMapping.document?.doc_og_name}
                             </p>
-                            {/* <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 mb-1">
-                              ID: {docMapping.id}
-                            </p> */}
+
                             <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-500">
                               Meeting attachment •{" "}
                               {formatDateOnly(meeting.date)}
@@ -193,13 +158,11 @@ const MeetingDetailsModal = ({
                           </div>
                         </div>
 
-                        {/* Action buttons - Stacked on mobile */}
                         <div className="flex items-center gap-2 sm:flex-shrink-0">
-                          
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleDownloadDocument(docMapping)}
+                            onClick={() => handleViewDocument(docMapping)}
                             className="flex items-center gap-1 sm:gap-2 dark:border-neutral-600 dark:text-gray-200 text-xs px-2 py-1 sm:px-3 sm:py-2 flex-1 sm:flex-initial"
                           >
                             <Download

@@ -21,7 +21,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import DateInputPicker from "@/components/origin-date-input";
 import TextAreaInput from "@/components/origin-text-area";
 import {} from "@/components/pdf-upload-input";
 import { Button } from "@/components/ui/button";
@@ -29,6 +28,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { submitMeeting } from "@/api/designingStageQueries";
 import { toast } from "react-toastify";
 import { FilesUploader } from "@/components/files-uploader";
+import CustomeDatePicker from "@/components/default";
 
 export const meetingSchema = z.object({
   date: z.string().min(1, "Meeting date is required"),
@@ -117,15 +117,9 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
                     <FormItem className="w-full">
                       <FormLabel className="text-sm">Meeting Date</FormLabel>
                       <FormControl>
-                        <DateInputPicker
-                          value={
-                            field.value ? new Date(field.value) : undefined
-                          }
-                          onChange={(date?: Date) =>
-                            field.onChange(
-                              date ? date.toISOString().split("T")[0] : ""
-                            )
-                          }
+                        <CustomeDatePicker
+                          value={field.value}
+                          onChange={field.onChange}
                         />
                       </FormControl>
                       <FormMessage />

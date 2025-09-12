@@ -10,7 +10,10 @@ import { Blinds, Download, Star } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import { ScrollArea } from "../../ui/scroll-area";
 import InitialSiteMeasuresMent from "./initial-site-measurement-form";
-import { sanitize, sanitizeAndCapitalize } from "../../utils/sanitizeCapitalize";
+import {
+  sanitize,
+  sanitizeAndCapitalize,
+} from "../../utils/sanitizeCapitalize";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -31,7 +34,6 @@ interface LeadViewModalProps {
     siteAddress: string;
     designerRemark: string;
     status: string;
-    initial_site_measurement_date: string;
   };
 }
 
@@ -66,7 +68,7 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
       <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-3xl p-0 gap-0">
         {/* Header */}
 
-        <DialogHeader className="flex items-start justify-end border-b px-6 py-4 border-b">
+        <DialogHeader className="flex items-start justify-end  px-6 py-4 border-b">
           {status === "open" ? (
             <Button onClick={handleOpenModal}>
               <Blinds size={20} className="mr-2" /> Initial Site Measurement
@@ -135,18 +137,6 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
                 <div className="flex flex-col">
                   <p className="text-sm font-medium">Priority</p>
                   <p>{data?.priority}</p>
-                </div>
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium">Initial Site Measurement Date</p>
-                  <p>
-                    {data?.initial_site_measurement_date && data.initial_site_measurement_date.trim() !== ""
-                      ? new Date(data.initial_site_measurement_date).toLocaleDateString("en-IN", {
-                          year: "numeric",
-                          month: "short",
-                          day: "2-digit",
-                        })
-                      : "-"}
-                  </p>
                 </div>
               </div>
 

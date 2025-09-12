@@ -20,6 +20,7 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/cutome-tooltip";
+import { useRouter } from "next/navigation";
 
 export type ProcessedLead = {
   id: number;
@@ -54,68 +55,79 @@ export function getVendorLeadsTableColumns({
   setRowAction,
   userType,
 }: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedLead>[] {
+  const router = useRouter();
   return [
     // Action Button
-{
-  id: "actions",
-  cell: ({ row }) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          aria-label="Open menu"
-          variant="ghost"
-          className="flex size-8 p-0 data-[state=open]:bg-muted"
-        >
-          <Ellipsis className="size-4" aria-hidden="true" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuItem
-          data-slot="action-button"
-          onSelect={() => setRowAction({ row, variant: "view" })}
-        >
-          <Eye size={20} />
-          View
-        </DropdownMenuItem>
-        {!canDeleteLead(userType) && <DropdownMenuSeparator />}
-
-        <DropdownMenuItem
-          data-slot="action-button"
-          onSelect={() => setRowAction({ row, variant: "edit" })}
-        >
-          <SquarePen size={20} />
-          Edit
-        </DropdownMenuItem>
-
-        {canReassingLead(userType) && (
-          <DropdownMenuItem
-            data-slot="action-button"
-            onSelect={() => setRowAction({ row, variant: "reassignlead" })}
-          >
-            <Users size={20} />
-            Reassign Lead
-          </DropdownMenuItem>
-        )}
-
-        {canDeleteLead(userType) && (
-          <>
-            <DropdownMenuSeparator />
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              aria-label="Open menu"
+              variant="ghost"
+              className="flex size-8 p-0 data-[state=open]:bg-muted"
+            >
+              <Ellipsis className="size-4" aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
             <DropdownMenuItem
               data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: "delete" })}
+              onSelect={() => setRowAction({ row, variant: "view" })}
             >
-              Delete
-              <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
+              <Eye size={20} />
+
+              <button
+              className="w-full text-left"
+                onClick={() =>
+                  router.push(
+                    `/dashboard/sales-executive/leadstable/details/${row.original.id}`
+                  )
+                }
+              >
+                View
+              </button>
             </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  ),
-  enableSorting: false,
-  enableHiding: false,
-  size: 40,
-},
+            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
+
+            <DropdownMenuItem
+              data-slot="action-button"
+              onSelect={() => setRowAction({ row, variant: "edit" })}
+            >
+              <SquarePen size={20} />
+              Edit
+            </DropdownMenuItem>
+
+            {canReassingLead(userType) && (
+              <DropdownMenuItem
+                data-slot="action-button"
+                onSelect={() => setRowAction({ row, variant: "reassignlead" })}
+              >
+                <Users size={20} />
+                Reassign Lead
+              </DropdownMenuItem>
+            )}
+
+            {canDeleteLead(userType) && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  data-slot="action-button"
+                  onSelect={() => setRowAction({ row, variant: "delete" })}
+                >
+                  Delete
+                  <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+      size: 40,
+    },
     // Sr NO
     {
       accessorKey: "srNo",
