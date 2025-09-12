@@ -41,7 +41,7 @@ export function NavMain({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   
-  const { data: leadStats, isLoading, error } = useLeadStats(vendorId, userId);
+  const { data: leadStats, isLoading } = useLeadStats(vendorId, userId);
 
   const getCountForItem = (showCount?: string) => {
     if (!leadStats?.data || !showCount) return undefined;
@@ -63,42 +63,50 @@ export function NavMain({
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
-          <Collapsible
-            key={item.title}
-            asChild
-            defaultOpen={item.isActive}
-            className="group/collapsible"
-          >
-            <SidebarMenuItem>
-              <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip={item.title}>
+          <SidebarMenuItem key={item.title}>
+            {item.items ? (
+              // Agar items hain to Collapsible banao
+              <Collapsible asChild defaultOpen={item.isActive} className="group/collapsible">
+                <div>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton tooltip={item.title}>
+                      {item.icon && <item.icon />}
+                      <span>{item.title}</span>
+                      <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {item.items.map((subItem) => (
+                        <SidebarMenuSubItem key={subItem.title}>
+                          <SidebarMenuSubButton asChild>
+                            <a href={subItem.url} className="flex items-center justify-between w-full">
+                              <span>{subItem.title}</span>
+                              {subItem.showCount && (
+                                <CountBadge 
+                                  count={getCountForItem(subItem.showCount)}
+                                  isLoading={isLoading}
+                                  className="ml-2"
+                                />
+                              )}
+                            </a>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+            ) : (
+              // Agar items nahi hain to simple clickable button
+              <SidebarMenuButton asChild tooltip={item.title}>
+                <a href={item.url} className="flex items-center gap-2 w-full">
                   {item.icon && <item.icon />}
                   <span>{item.title}</span>
-                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                </SidebarMenuButton>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <SidebarMenuSub>
-                  {item.items?.map((subItem) => (
-                    <SidebarMenuSubItem key={subItem.title}>
-                      <SidebarMenuSubButton asChild>
-                        <a href={subItem.url} className="flex items-center justify-between w-full">
-                          <span>{subItem.title}</span>
-                          {subItem.showCount && (
-                            <CountBadge 
-                              count={getCountForItem(subItem.showCount)}
-                              isLoading={isLoading}
-                              className="ml-2"
-                            />
-                          )}
-                        </a>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  ))}
-                </SidebarMenuSub>
-              </CollapsibleContent>
-            </SidebarMenuItem>
-          </Collapsible>
+                </a>
+              </SidebarMenuButton>
+            )}
+          </SidebarMenuItem>
         ))}
       </SidebarMenu>
     </SidebarGroup>

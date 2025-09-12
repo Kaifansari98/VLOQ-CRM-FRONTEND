@@ -42,6 +42,7 @@ import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda"
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
+import { getViewOpenLeadsTableColumns } from "./view-tables-coloumns";
 
 // Define processed lead type for table
 export type ProcessedLead = {
@@ -66,7 +67,7 @@ export type ProcessedLead = {
   initial_site_measurement_date: string;
 };
 
-const MyTaskTable = () => {
+const ViewOpenLeadTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
@@ -101,7 +102,6 @@ const MyTaskTable = () => {
   // Row action state
   const [rowAction, setRowAction] =
     React.useState<DataTableRowAction<ProcessedLead> | null>(null);
-  const [openCreateLead, setOpenCreateLead] = useState<boolean>(false);
 
   useEffect(() => {
     if (rowAction?.variant === "delete" && rowAction.row) {
@@ -199,7 +199,7 @@ const MyTaskTable = () => {
 
   // Setup columns
   const columns = React.useMemo(
-    () => getVendorLeadsTableColumns({ setRowAction, userType }),
+    () => getViewOpenLeadsTableColumns({ setRowAction, userType }),
     [setRowAction, userType]
   );
 
@@ -254,7 +254,7 @@ const MyTaskTable = () => {
   };
 
   console.log("usertypes: ", userType);
-  return (
+   return (
     <>
       <DataTable table={table} onRowClick={handleRowClick}>
         {enableAdvancedFilter ? (
@@ -319,4 +319,4 @@ const MyTaskTable = () => {
   );
 };
 
-export default MyTaskTable;
+export default ViewOpenLeadTable;
