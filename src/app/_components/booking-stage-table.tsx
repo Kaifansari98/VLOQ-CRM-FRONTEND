@@ -180,7 +180,7 @@ const BookingStageLeadsTable = () => {
 
   const handleRowClick = (row: ProcessedBookingLead) => {
     router.push(
-      `/dashboard/sales-executive/initial-site-measurement/details/${row.id}`
+      `/dashboard/sales-executive/booking-stage/details/${row.id}`
     );
   };
 

@@ -61,7 +61,7 @@ export function getBookingLeadsTableColumns({
                 className="w-full text-left"
                 onClick={() =>
                   router.push(
-                    `/dashboard/sales-executive/leadstable/details/${row.original.id}`
+                    `/dashboard/sales-executive/booking-stage/details/${row.original.id}`
                   )
                 }
               >
