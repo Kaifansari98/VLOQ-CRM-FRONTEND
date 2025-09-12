@@ -52,7 +52,7 @@ const bookingSchema = z.object({
     .positive("Amount must be greater than 0")
     .min(1, "Minimum amount is 1"),
 
-  booking_amount: z
+  final_booking_amount: z
     .number()
     .positive("Booking amount must be greater than 0")
     .min(1, "Minimum booking amount is 1"),
@@ -101,7 +101,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     defaultValues: {
       final_documents: [],
       amount_received: 0,
-      booking_amount: 0,
+      final_booking_amount: 0,
       payment_details_document: [],
       payment_text: "",
       assign_to: "",
@@ -125,9 +125,9 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       vendor_id: vendorId,
       created_by: userId,
       client_id: clientId,
-      bookingAmount: values.booking_amount,
+      bookingAmount: values.amount_received,
       bookingAmountPaymentDetailsText: values.payment_text,
-      finalBookingAmount: values.amount_received,
+      finalBookingAmount: values.final_booking_amount,
       siteSupervisorId: Number(values.assign_to),
       booking_payment_file: values.payment_details_document, // ✅ multiple files
       final_documents: values.final_documents, // ✅ multiple files
@@ -153,7 +153,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     form.reset({
       final_documents: [],
       amount_received: 0,
-      booking_amount: 0,
+      final_booking_amount: 0,
       payment_details_document: [],
       payment_text: "",
     });
@@ -231,7 +231,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
 
                     <FormField
                       control={form.control}
-                      name="booking_amount"
+                      name="final_booking_amount"   
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm">

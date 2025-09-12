@@ -55,6 +55,12 @@ const data = {
   ],
   navMain: [
     {
+      title: "My Task",
+      url: "/dashboard/my-tasks",
+      icon: SquareTerminal, // ya koi aur icon chahiye ho
+      isActive: false,
+    },
+    {
       title: "Leads",
       url: "/",
       icon: SquareTerminal,
@@ -198,7 +204,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               {
                 name: user.vendor?.vendor_name || "Default Vendor",
                 logo: GalleryVerticalEnd,
-                plan: user?.user_type?.user_type || ""
+                plan: user?.user_type?.user_type || "",
               },
             ]}
           />
