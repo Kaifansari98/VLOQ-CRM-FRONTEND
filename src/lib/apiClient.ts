@@ -6,7 +6,7 @@ export const apiClient = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-})
+});
 
 // Optional: attach token from Redux/localStorage automatically
 apiClient.interceptors.request.use((config) => {
@@ -15,4 +15,4 @@ apiClient.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config
-})
+});
