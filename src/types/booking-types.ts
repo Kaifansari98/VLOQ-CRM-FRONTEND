@@ -51,6 +51,14 @@ export interface Document {
   created_at: string;
 }
 
+export interface DocumentBooking {
+  id: number;
+  originalName: string;
+  s3Key: string;
+  signedUrl: string;
+  type: string;
+}
+
 export interface PaymentInfo {
   id: number;
   amount: number;
@@ -113,11 +121,13 @@ export interface ProductStructure {
 export interface SiteSuperVisor {
   id: number;
   user_name: string;
+  userName: string;
 }
 
 export interface PaymentDetails {
   amount: number;
   payment_text: string;
+  text: string;
 }
 export interface ProductStructureMapping {
   productStructure: ProductStructure;
@@ -159,6 +169,20 @@ export interface BookingLead {
   updated_at: string;
 }
 
+
+export interface BookingLeadById {
+  id: number;
+  firstname: string;
+  lastname: string;
+  designer_remark: string;
+  finalBookingAmount: number;
+  account_id: number;
+  supervisors: SiteSuperVisor[];
+  payments: PaymentDetails[];
+  documents: DocumentBooking[];
+  account: Account;
+  assignedTo: AssignedTo | null;
+}
 // ─────────── API Response ───────────
 export interface BookingLeadResponse {
   success: boolean;
@@ -174,7 +198,7 @@ export interface BookingEditPayload {
   account_id: number;
   updated_by: number;
   amount?: number;
-  payment_text?: string;
+  text?: string;
   payment_date?: string;
   final_documents?: string[];
   payment_details_photos?: string[];
@@ -210,3 +234,5 @@ export type ProcessedBookingLead = {
   siteSupervisorId: number;
   accountId: number;
 };
+
+

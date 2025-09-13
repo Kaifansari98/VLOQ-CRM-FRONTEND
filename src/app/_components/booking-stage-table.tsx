@@ -40,6 +40,7 @@ import { BookingLead, ProcessedBookingLead } from "@/types/booking-types";
 import { getBookingLeadsTableColumns } from "./booking-stage-columns";
 import { useBookingLeads } from "@/hooks/booking-stage/use-booking";
 import BookingEditModal from "@/components/sales-executive/booking-stage/bookint-edit-form";
+import BookingViewModal from "@/components/sales-executive/booking-stage/view-booking-modal";
 
 const BookingStageLeadsTable = () => {
   // Redux selectors
@@ -52,7 +53,6 @@ const BookingStageLeadsTable = () => {
   // Feature flags
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const router = useRouter();
-  const queryClient = useBookingLeads(vendorId!);
 
   // React Query hook
   const { data, error, isLoading, isError } = useBookingLeads(vendorId!);
@@ -60,6 +60,7 @@ const BookingStageLeadsTable = () => {
   // Local state
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
+  const [openViewModal, setOpenViewModal] = useState<boolean>(false);
   const [editOpenLead, setEditOpenLead] = useState(false);
   const [rowAction, setRowAction] =
     useState<DataTableRowAction<ProcessedBookingLead> | null>(null);
@@ -162,6 +163,7 @@ const BookingStageLeadsTable = () => {
     if (rowAction.variant === "delete") setOpenDelete(true);
     if (rowAction.variant === "reassignlead") setAssignOpenLead(true);
     if (rowAction.variant === "edit") setEditOpenLead(true);
+    if (rowAction.variant === "view") setOpenViewModal(true);
   }, [rowAction]);
 
   // Handlers
@@ -252,6 +254,12 @@ const BookingStageLeadsTable = () => {
       <BookingEditModal
         open={editOpenLead}
         onOpenChange={setEditOpenLead}
+        data={rowAction?.row.original}
+      />
+
+      <BookingViewModal
+        open={openViewModal}
+        onOpenChange={setOpenViewModal}
         data={rowAction?.row.original}
       />
     </>

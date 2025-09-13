@@ -56,17 +56,7 @@ export function getBookingLeadsTableColumns({
               onSelect={() => setRowAction({ row, variant: "view" })}
             >
               <Eye size={20} />
-
-              <button
-                className="w-full text-left"
-                onClick={() =>
-                  router.push(
-                    `/dashboard/sales-executive/booking-stage/details/${row.original.id}`
-                  )
-                }
-              >
-                View
-              </button>
+              View
             </DropdownMenuItem>
             {!canDeleteLead(userType) && <DropdownMenuSeparator />}
 

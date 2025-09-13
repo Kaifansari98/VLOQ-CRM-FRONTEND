@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/apiClient";
+import { BookingLeadById } from "@/types/booking-types";
 
 export interface BookingPayload {
   lead_id: number;
@@ -79,5 +80,41 @@ export const EditBookingForm = async (payload: EditBookingPayload) => {
   return data;
 };
 
+export const getBookingLeadById = async (
+  vendorId: number,
+  leadId: number
+): Promise<BookingLeadById> => {
+  const { data } = await apiClient.get(
+    `/leads/bookingStage/vendor/${vendorId}/lead/${leadId}`
+  );
+  return data?.data;
+};
 
+export interface UploadBookintPayload {
+  lead_id: number;
+  account_id: number;
+  vendor_id: number;
+  created_by: number;
+  final_documents: File[];
+}
 
+export const UploadBookingDoc = async (payload: UploadBookintPayload) => {
+  const formData = new FormData();
+  formData.append("lead_id", payload.lead_id.toString());
+  formData.append("account_id", payload.account_id.toString());
+  formData.append("vendor_id", payload.vendor_id.toString());
+  formData.append("created_by", payload.created_by.toString());
+  payload.final_documents.forEach((file) => {
+    formData.append("final_documents", file);
+  });
+  const { data } = await apiClient.post(
+    `/leads/bookingStage/add-more-files`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+  return data;
+};
