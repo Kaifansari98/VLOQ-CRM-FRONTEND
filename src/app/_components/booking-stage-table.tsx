@@ -34,13 +34,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
-import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { BookingLead, ProcessedBookingLead } from "@/types/booking-types";
 import { getBookingLeadsTableColumns } from "./booking-stage-columns";
 import { useBookingLeads } from "@/hooks/booking-stage/use-booking";
-import { Upload } from "@/types/site-measrument-types";
+import BookingEditModal from "@/components/sales-executive/booking-stage/bookint-edit-form";
 
 const BookingStageLeadsTable = () => {
   // Redux selectors
@@ -107,6 +106,13 @@ const BookingStageLeadsTable = () => {
       altContact: lead.alt_contact_no || "",
       status: lead.statusType?.type || "",
       assignedTo: lead.assignedTo?.user_name || "",
+
+      siteSupervisor: lead.siteSupervisors?.[0]?.user_name || "-",
+      siteSupervisorId: lead.siteSupervisors?.[0]?.id,
+      bookingAmount: lead.payments?.[0].amount || 0,
+      paymentsText: lead.payments?.[0].payment_text || "-",
+      final_booking_amt: lead.final_booking_amt,
+      accountId: lead.account_id,
       productTypes:
         lead.productMappings
           ?.map((pm) => pm.productType?.type)
@@ -179,9 +185,7 @@ const BookingStageLeadsTable = () => {
   };
 
   const handleRowClick = (row: ProcessedBookingLead) => {
-    router.push(
-      `/dashboard/sales-executive/booking-stage/details/${row.id}`
-    );
+    router.push(`/dashboard/sales-executive/booking-stage/details/${row.id}`);
   };
 
   // Early returns
@@ -245,10 +249,10 @@ const BookingStageLeadsTable = () => {
         onOpenChange={setAssignOpenLead}
         leadData={rowAction?.row.original}
       />
-      <EditLeadModal
+      <BookingEditModal
         open={editOpenLead}
         onOpenChange={setEditOpenLead}
-        leadData={rowAction?.row.original}
+        data={rowAction?.row.original}
       />
     </>
   );

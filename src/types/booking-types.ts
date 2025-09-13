@@ -109,9 +109,21 @@ export interface ProductStructure {
   type: string;
 }
 
+
+export interface SiteSuperVisor {
+  id: number;
+  user_name: string;
+}
+
+export interface PaymentDetails {
+  amount: number;
+  payment_text: string;
+}
 export interface ProductStructureMapping {
   productStructure: ProductStructure;
 }
+
+
 
 // ─────────── Main Booking Lead ───────────
 export interface BookingLead {
@@ -127,6 +139,10 @@ export interface BookingLead {
   billing_name: string;
   archetech_name: string;
   designer_remark: string;
+  final_booking_amt: number;
+  account_id: number;
+  siteSupervisors: SiteSuperVisor[];
+  payments: PaymentDetails[];
   documents: Document[];
   vendor: Vendor;
   siteType: SiteType;
@@ -178,6 +194,8 @@ export type ProcessedBookingLead = {
   designerRemark: string;
   productTypes: string;
   productStructures: string;
+  final_booking_amt: number;
+  siteSupervisor: string;
   source?: string;
   siteType?: string;
   createdAt: string;
@@ -187,5 +205,8 @@ export type ProcessedBookingLead = {
   assignedTo: string;
   documentUrl?: Document[];
   paymentInfo?: PaymentInfo | null;
-  accountId?: number;
+  paymentsText: string;
+  bookingAmount: number;
+  siteSupervisorId: number;
+  accountId: number;
 };

@@ -61,3 +61,23 @@ export const getBookingLeads = async (vendorId: number) => {
   );
   return data;
 };
+
+export interface EditBookingPayload {
+  lead_id: number;
+  account_id: number;
+  vendor_id: number;
+  created_by: number;
+  client_id: number;
+  bookingAmount?: number;
+  finalBookingAmount?: number;
+  siteSupervisorId?: number;
+  bookingAmountPaymentDetailsText?: string;
+}
+
+export const EditBookingForm = async (payload: EditBookingPayload) => {
+  const { data } = await apiClient.put(`/leads/bookingStage/edit`, payload);
+  return data;
+};
+
+
+

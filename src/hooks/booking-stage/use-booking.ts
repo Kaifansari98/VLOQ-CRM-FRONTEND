@@ -1,5 +1,7 @@
 import {
   BookingPayload,
+  EditBookingForm,
+  EditBookingPayload,
   getAllSiteSuperVisors,
   getBookingLeads,
   moveToBookingStage,
@@ -37,5 +39,11 @@ export const useBookingLeads = (vendorId: number) => {
     queryFn: () => getBookingLeads(vendorId),
     enabled: !!vendorId, // only run if vendorId is provided
     staleTime: 1000 * 60 * 5, // cache for 5 min
+  });
+};
+
+export const useEditBooking = () => {
+  return useMutation({
+    mutationFn: (payload: EditBookingPayload) => EditBookingForm(payload),
   });
 };
