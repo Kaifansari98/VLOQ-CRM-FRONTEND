@@ -66,10 +66,10 @@ const data = {
       icon: BookOpenCheck,
       isActive: true,
       items: [
-        {
-          title: "Dashboard",
-          url: "/dashboard/sales-executive",
-        },
+        // {
+        //   title: "Dashboard",
+        //   url: "/dashboard/sales-executive",
+        // },
         {
           title: "Open Leads",
           url: "/dashboard/sales-executive/leadstable",
