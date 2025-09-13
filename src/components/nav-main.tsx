@@ -4,7 +4,7 @@ import { ChevronRight, type LucideIcon } from "lucide-react";
 import { useLeadStats } from "@/hooks/useLeadStats";
 import { CountBadge } from "./count-badge";
 import { useAppSelector } from "@/redux/store";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "./ui/badge";
 
 import {
   Collapsible,
@@ -96,8 +96,6 @@ export function NavMain({ items }: { items: NavItem[] }) {
                         </div>
                         {item.showCount && (
                           <Badge
-                            variant="primary"
-                            shape="circle"
                             className="ml-2"
                           >
                             {isLoading
@@ -122,9 +120,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                                 (getCountForItem(subItem.showCount) ?? 0) >
                                   0 && (
                                   <Badge
-                                    variant="primary"
-                                    shape="circle"
-                                    className="ml-2"
+                                    className="ml-2 rounded-full"
                                   >
                                     {isLoading
                                       ? "…"

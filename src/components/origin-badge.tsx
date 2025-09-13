@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "./ui/badge";
 
 interface CustomeBadgeProps {
   title: string;
@@ -7,9 +7,9 @@ interface CustomeBadgeProps {
 
 export default function CustomeBadge({ title, bgColor }: CustomeBadgeProps) {
   return (
-    <Badge appearance="outline" className="gap-1.5">
+    <Badge variant="outline" className="gap-1.5">
       <span
-        className={`size-1.5 rounded-full ${bgColor}`}
+        className={`h-1.5 w-1.5 rounded-full ${bgColor}`}
         aria-hidden="true"
       ></span>
       {title}
