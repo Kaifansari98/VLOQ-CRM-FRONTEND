@@ -11,7 +11,6 @@ import {
   Map,
   PieChart,
   Settings2,
-  SquareTerminal,
   CalendarCheck2,
   BookOpenCheck
 } from "lucide-react";
@@ -27,9 +26,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { useSelector } from "react-redux";
-import { RootState, useAppSelector } from "@/redux/store";
-import { useEffect, useState } from "react";
+import { useAppSelector } from "@/redux/store";
 
 // Updated navigation data with showCount properties
 const data = {
@@ -61,6 +58,7 @@ const data = {
       url: "/dashboard/my-tasks",
       icon: CalendarCheck2, // ya koi aur icon chahiye ho
       isActive: false,
+      showCount: "total_leads" as const,
     },
     {
       title: "Leads",
@@ -75,7 +73,7 @@ const data = {
         {
           title: "Open Leads",
           url: "/dashboard/sales-executive/leadstable",
-          showCount: "total_leads" as const,
+          showCount: "total_open_leads" as const,
         },
         {
           title: "Site Measurement",
@@ -90,6 +88,7 @@ const data = {
         {
           title: "Booking Stage",
           url: "/dashboard/sales-executive/booking-stage",
+          showCount: "total_booking_stage_leads" as const,
         },
       ],
     },
