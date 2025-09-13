@@ -3,7 +3,7 @@
 import { Check, ChevronsUpDown } from "lucide-react";
 import * as React from "react";
 
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "./badge";
 import {
   Command,
   CommandEmpty,

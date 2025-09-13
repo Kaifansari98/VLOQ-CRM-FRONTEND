@@ -13,7 +13,7 @@ import { parseAsStringEnum, useQueryState } from "nuqs";
 import * as React from "react";
 
 import { DataTableRangeFilter } from "@/components/data-table/data-table-range-filter";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "../ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
