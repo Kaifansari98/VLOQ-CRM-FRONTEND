@@ -127,7 +127,7 @@ export const submitMeeting = async (payload: SubmitMeetingPayload) => {
   formData.append("desc", payload.desc);
 
   payload.files.forEach((file) => {
-    formData.append("files", file); // MUST match multer field
+    formData.append("files", file);
   });
 
   const { data } = await apiClient.post(

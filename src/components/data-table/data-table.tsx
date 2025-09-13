@@ -50,7 +50,7 @@ export function DataTable<TData>({
                       ? null
                       : flexRender(
                           header.column.columnDef.header,
-                          header.getContext(),
+                          header.getContext()
                         )}
                   </TableHead>
                 ))}
@@ -61,23 +61,23 @@ export function DataTable<TData>({
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
-  key={row.id}
-  data-state={row.getIsSelected() && "selected"}
-  onClick={(event) => {
-    // Prevent row click if the target is within a dropdown menu or an action button
-    if (
-      event.target instanceof HTMLElement &&
-      (event.target.closest('[data-slot="action-button"]') ||
-        event.target.closest('button') ||
-        event.target.closest('[role="button"]') ||
-        event.target.closest('[data-radix-menu-content]'))
-    ) {
-      return;
-    }
-    onRowClick?.(row.original);
-  }}
-  className={onRowClick ? "cursor-pointer" : undefined}
->
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  onDoubleClick={(event) => {
+                    // Prevent row click if the target is within a dropdown menu or an action button
+                    if (
+                      event.target instanceof HTMLElement &&
+                      (event.target.closest('[data-slot="action-button"]') ||
+                        event.target.closest("button") ||
+                        event.target.closest('[role="button"]') ||
+                        event.target.closest("[data-radix-menu-content]"))
+                    ) {
+                      return;
+                    }
+                    onRowClick?.(row.original);
+                  }}
+                  className={onRowClick ? "cursor-pointer" : undefined}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
@@ -85,7 +85,10 @@ export function DataTable<TData>({
                         ...getCommonPinningStyles({ column: cell.column }),
                       }}
                     >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>

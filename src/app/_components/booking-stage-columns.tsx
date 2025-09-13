@@ -11,7 +11,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ellipsis, Eye, Text, Info, Calendar } from "lucide-react";
+import { Ellipsis, Eye, SquarePen, Users, Text } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DataTableRowAction } from "@/types/data-table";
 import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
@@ -20,21 +20,23 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/cutome-tooltip";
-import { ProcessedDesigningStageLead } from "@/types/designing-stage-types";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ProcessedBookingLead } from "@/types/booking-types";
 
-interface GetSiteMeasurementColumnProps {
+interface GetVendorLeadsTableColumnsProps {
   setRowAction: React.Dispatch<
-    React.SetStateAction<DataTableRowAction<ProcessedDesigningStageLead> | null>
+    React.SetStateAction<DataTableRowAction<ProcessedBookingLead> | null>
   >;
   userType?: string;
 }
 
-export function getDesigningStageColumn({
+export function getBookingLeadsTableColumns({
   setRowAction,
   userType,
-}: GetSiteMeasurementColumnProps): ColumnDef<ProcessedDesigningStageLead>[] {
+}: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedBookingLead>[] {
+  const router = useRouter();
   return [
+    // Action Button
     {
       id: "actions",
       cell: ({ row }) => (
@@ -50,42 +52,47 @@ export function getDesigningStageColumn({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
             <DropdownMenuItem
+              data-slot="action-button"
               onSelect={() => setRowAction({ row, variant: "view" })}
             >
               <Eye size={20} />
-              View
-            </DropdownMenuItem>
 
-            <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "booking" })}
-            >
-              <Calendar size={20} />
-              Booking
+              <button
+                className="w-full text-left"
+                onClick={() =>
+                  router.push(
+                    `/dashboard/sales-executive/booking-stage/details/${row.original.id}`
+                  )
+                }
+              >
+                View
+              </button>
             </DropdownMenuItem>
-
             {!canDeleteLead(userType) && <DropdownMenuSeparator />}
 
-            <DropdownMenuItem asChild>
-              <Link
-                href={{
-                  pathname:
-                    "/dashboard/sales-executive/designing-stage/details",
-                  query: {
-                    leadId: row.original.id,
-                    accountId: row.original.accountId,
-                  },
-                }}
-                className="flex items-center gap-2"
-              >
-                <Info size={20} />
-                Details
-              </Link>
+            <DropdownMenuItem
+              data-slot="action-button"
+              onSelect={() => setRowAction({ row, variant: "edit" })}
+            >
+              <SquarePen size={20} />
+              Edit
             </DropdownMenuItem>
+
+            {canReassingLead(userType) && (
+              <DropdownMenuItem
+                data-slot="action-button"
+                onSelect={() => setRowAction({ row, variant: "reassignlead" })}
+              >
+                <Users size={20} />
+                Reassign Lead
+              </DropdownMenuItem>
+            )}
 
             {canDeleteLead(userType) && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
+                  data-slot="action-button"
                   onSelect={() => setRowAction({ row, variant: "delete" })}
                 >
                   Delete
@@ -251,7 +258,7 @@ export function getDesigningStageColumn({
         const status = row.getValue("status") as string;
 
         return (
-          <div className="flex items-center justify-center">
+          <div className="flex items-center">
             <CustomeStatusBadge title={status} />
           </div>
         );
@@ -272,7 +279,7 @@ export function getDesigningStageColumn({
       enableColumnFilter: true,
     },
 
-    // Sales Executive: 7 - FIXED the column definition
+    // Sales Executive: 7
     ...(canReassingLead(userType)
       ? [
           {
@@ -280,17 +287,14 @@ export function getDesigningStageColumn({
             header: ({ column }) => (
               <DataTableColumnHeader column={column} title="Sales Executive" />
             ),
-            cell: ({ row }) => {
-              const assignedTo = row.getValue("assignedTo") as string;
-              return assignedTo || "Unassigned";
-            },
+            cell: ({ row }) => row.getValue("assignedTo"),
             meta: {
               label: "Sales Executive",
             },
             enableSorting: true,
             enableHiding: true,
             enableColumnFilter: true,
-          } as ColumnDef<ProcessedDesigningStageLead>,
+          } as ColumnDef<ProcessedBookingLead>,
         ]
       : []),
 
@@ -420,9 +424,6 @@ export function getDesigningStageColumn({
 
         return <div className="w-full text-center">{formatted}</div>;
       },
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
     },
 
     // Product Types
@@ -467,8 +468,6 @@ export function getDesigningStageColumn({
       },
       cell: ({ row }) => {
         const fullRemark = row.getValue("designerRemark") as string;
-        if (!fullRemark) return "–";
-
         const truncatedRemark =
           fullRemark.length > 15 ? fullRemark.slice(0, 15) + "..." : fullRemark;
         return (

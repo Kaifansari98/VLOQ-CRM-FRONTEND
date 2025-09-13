@@ -16,13 +16,9 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/ModeToggle";
-import ViewLeadsSkeleton from "@/components/sales-executive/Lead/view-leads-skeleton";
-import { Button } from "@/components/ui/button";
-import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-generation-form-modal";
-import { Suspense, useState } from "react";
-export default function LeadsGenerationPage() {
-  const [openCreateLead, setOpenCreateLead] = useState(false);
-
+import { Suspense } from "react";
+import BookingStageSkeleton from "@/components/sales-executive/booking-stage/booking-leads-skeleton";
+export default function LeadsBookingPage() {
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -43,7 +39,7 @@ export default function LeadsGenerationPage() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>View Leads</BreadcrumbPage>
+                  <BreadcrumbPage>Booking-Stage</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -51,10 +47,6 @@ export default function LeadsGenerationPage() {
 
           <div className="flex items-center gap-2">
             <div className="flex gap-2 items-center">
-              <GenerateLeadFormModal open={openCreateLead} onOpenChange={setOpenCreateLead}>
-                <Button>Add New Lead</Button>
-              </GenerateLeadFormModal>
-
               <ModeToggle />
             </div>
           </div>
@@ -63,8 +55,7 @@ export default function LeadsGenerationPage() {
         {/* Content */}
         <main className="flex-1 p-4 pt-0 overflow-x-hidden">
           <Suspense fallback={<p>Loading...</p>}>
-
-          <ViewLeadsSkeleton />
+            <BookingStageSkeleton />
           </Suspense>
         </main>
       </SidebarInset>

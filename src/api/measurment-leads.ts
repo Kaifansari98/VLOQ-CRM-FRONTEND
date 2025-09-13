@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/apiClient";
 
-export const getInitialSiteMeasurement2 = async (
+export const getInitialSiteMeasurement = async (
   vendorId: number,
   statusId: number
 ) => {

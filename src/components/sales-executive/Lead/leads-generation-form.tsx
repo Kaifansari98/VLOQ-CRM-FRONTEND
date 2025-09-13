@@ -37,14 +37,16 @@ import { createLead } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { FileUploadField } from "@/components/custom/file-upload";
-import MultipleSelector ,{Option} from "@/components/ui/multiselect";
+import MultipleSelector, { Option } from "@/components/ui/multiselect";
 import { canReassingLead } from "@/components/utils/privileges";
 import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 import TextAreaInput from "@/components/origin-text-area";
+import CustomeDatePicker from "@/components/default";
 
 const createFormSchema = (userType: string | undefined) => {
-  const isAdminOrSuperAdmin = userType === "admin" || userType === "super_admin";
-  
+  const isAdminOrSuperAdmin =
+    userType === "admin" || userType === "super_admin";
+
   return z.object({
     firstname: z.string().min(1, "First name is required").max(300),
     lastname: z.string().min(1, "Last name is required").max(300),
@@ -59,205 +61,16 @@ const createFormSchema = (userType: string | undefined) => {
     product_types: z.array(z.string()).optional(),
     product_structures: z.array(z.string()).optional(),
     // Dynamic validation based on user role
-    assign_to: isAdminOrSuperAdmin 
+    assign_to: isAdminOrSuperAdmin
       ? z.string().min(1, "Please select an assignee")
       : z.string().optional(),
-    assigned_by: isAdminOrSuperAdmin 
-      ? z.string()
-      : z.string().optional(),
+    assigned_by: isAdminOrSuperAdmin ? z.string() : z.string().optional(),
     documents: z.string().optional(),
     archetech_name: z.string().max(300).optional(),
     designer_remark: z.string().max(2000).optional(),
     initial_site_measurement_date: z.string().optional(),
   });
 };
-
-// Improved Multi-Select Component with dropdown behavior
-function SimpleMultiSelect({
-  value = [],
-  onChange,
-  options,
-  placeholder,
-  disabled = false, // ✅ added default
-}: {
-  value?: string[];
-  onChange: (value: string[]) => void;
-  options: { value: string; label: string }[];
-  placeholder: string;
-  disabled?: boolean; // ✅ allow disabled
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const handleToggle = (itemValue: string) => {
-    if (disabled) return;
-    const newItems = value.includes(itemValue)
-      ? value.filter((item) => item !== itemValue)
-      : [...value, itemValue];
-    onChange(newItems);
-  };
-
-  return (
-    <div className="relative">
-      {/* Trigger */}
-      <div
-        className={`flex flex-wrap gap-1 min-h-[40px] p-2 border rounded-md cursor-pointer hover:bg-accent/50 ${
-          disabled ? "opacity-50 cursor-not-allowed" : ""
-        }`}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-      >
-        {value.length > 0 ? (
-          <>
-            {value.map((item) => (
-              <span
-                key={item}
-                className="bg-primary/10 text-primary px-2 py-1 rounded-sm text-xs flex items-center gap-1"
-              >
-                {options.find((opt) => opt.value === item)?.label || item}
-                {!disabled && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggle(item);
-                    }}
-                    className="ml-1 hover:bg-primary/20 rounded text-xs"
-                  >
-                    ×
-                  </button>
-                )}
-              </span>
-            ))}
-            <ChevronDown
-              className={`ml-auto h-4 w-4 transition-transform ${
-                isOpen ? "rotate-180" : ""
-              }`}
-            />
-          </>
-        ) : (
-          <>
-            <span className="text-muted-foreground text-sm">{placeholder}</span>
-            <ChevronDown
-              className={`ml-auto h-4 w-4 transition-transform ${
-                isOpen ? "rotate-180" : ""
-              }`}
-            />
-          </>
-        )}
-      </div>
-
-      {/* Dropdown */}
-      {isOpen && !disabled && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 border rounded-md bg-background shadow-lg max-h-40 overflow-y-auto">
-          {options.map((option) => (
-            <div
-              key={option.value}
-              className="flex items-center space-x-2 p-2 hover:bg-accent rounded cursor-pointer"
-              onClick={() => handleToggle(option.value)}
-            >
-              <input
-                type="checkbox"
-                checked={value.includes(option.value)}
-                readOnly
-                className="rounded h-3 w-3"
-              />
-              <label className="text-sm cursor-pointer flex-1">
-                {option.label}
-              </label>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Overlay */}
-      {isOpen && !disabled && (
-        <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-      )}
-    </div>
-  );
-}
-
-// Improved File Upload Component
-function SimpleFileUpload({
-  onFilesChange,
-  maxFiles = 5,
-  maxSize = 4 * 1024 * 1024,
-}: {
-  onFilesChange: (files: File[]) => void;
-  maxFiles?: number;
-  maxSize?: number;
-}) {
-  const [files, setFiles] = useState<File[]>([]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []);
-    const validFiles = selectedFiles.filter((file) => file.size <= maxSize);
-
-    if (validFiles.length + files.length <= maxFiles) {
-      const newFiles = [...files, ...validFiles];
-      setFiles(newFiles);
-      onFilesChange(newFiles);
-    }
-  };
-
-  const removeFile = (index: number) => {
-    const newFiles = files.filter((_, i) => i !== index);
-    setFiles(newFiles);
-    onFilesChange(newFiles);
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-slate-400 transition-colors">
-        <input
-          type="file"
-          multiple
-          accept="image/*,.pdf,.doc,.docx"
-          onChange={handleFileChange}
-          className="hidden"
-          id="fileInput"
-        />
-        <label htmlFor="fileInput" className="cursor-pointer block">
-          <CloudUpload className="text-gray-500 w-6 h-6 mx-auto mb-2" />
-          <p className="mb-1 text-xs text-gray-500">
-            <span className="font-semibold">Click to upload</span> or drag and
-            drop
-          </p>
-          <p className="text-xs text-gray-500">
-            Max {Math.round(maxSize / 1024 / 1024)}MB per file
-          </p>
-        </label>
-      </div>
-
-      {files.length > 0 && (
-        <div className="space-y-2 max-h-32 overflow-y-auto">
-          {files.map((file, index) => (
-            <div
-              key={index}
-              className="flex items-center justify-between p-2 border rounded text-xs"
-            >
-              <div className="flex items-center space-x-2 flex-1 min-w-0">
-                <Paperclip className="h-3 w-3 flex-shrink-0" />
-                <span className="truncate">{file.name}</span>
-                <span className="text-gray-500 flex-shrink-0">
-                  ({Math.round(file.size / 1024)}KB)
-                </span>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => removeFile(index)}
-                className="h-6 px-2 text-xs"
-              >
-                ×
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 interface LeadsGenerationFormProps {
   onClose: () => void;
@@ -267,14 +80,15 @@ export default function LeadsGenerationForm({
 }: LeadsGenerationFormProps) {
   const [files, setFiles] = useState<File[]>([]);
   const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
   const createdBy = useAppSelector((state: any) => state.auth.user?.id);
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
-  
+
   const formSchema = createFormSchema(userType);
   type FormValues = z.infer<typeof formSchema>;
-  
+
   const queryClient = useQueryClient();
 
   // fetch data once at top of component (after form etc.)
@@ -390,17 +204,15 @@ export default function LeadsGenerationForm({
       product_types: values.product_types || [],
       product_structures: values.product_structures || [],
       initial_site_measurement_date: values.initial_site_measurement_date
-    ? new Date(values.initial_site_measurement_date).toISOString()
-    : undefined,
+        ? new Date(values.initial_site_measurement_date).toISOString()
+        : undefined,
 
       // Assignment logic based on user role
       ...(canReassingLead(userType)
         ? {
             // Admin/Super-admin can assign to anyone
             assign_to: values.assign_to ? Number(values.assign_to) : undefined,
-            assigned_by: createdBy
-              ? createdBy
-              : undefined,
+            assigned_by: createdBy ? createdBy : undefined,
           }
         : {
             // Sales executive self-assigns
@@ -411,7 +223,18 @@ export default function LeadsGenerationForm({
 
     // console.log("[DEBUG] Processed payload:", payload);
 
-    createLeadMutation.mutate({ payload, files });
+    createLeadMutation.mutate(
+      { payload, files },
+      {
+        onSuccess: () => {
+          // ✅ Refetch lead count after success
+          queryClient.invalidateQueries({
+            queryKey: ["leadStats", vendorId, userId],
+          });
+        },
+      }
+    );
+    
   }
 
   return (
@@ -826,59 +649,45 @@ export default function LeadsGenerationForm({
               />
             </div>
           )}
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-          {/* Architect Name */}
-          <FormField
-            control={form.control}
-            name="archetech_name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">Architect Name</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter architect name"
-                    type="text"
-                    className="text-sm"
-                    {...field}
-                  />
-                </FormControl>
-                {/* <FormDescription className="text-xs">
-                  Project architect name.
-                </FormDescription> */}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-<FormField
-  control={form.control}
-  name="initial_site_measurement_date"
-  render={({ field }) => (
-    <FormItem>
-      <FormLabel className="text-sm">Initial Site Measurement Date</FormLabel>
-      <FormControl>
-        <Input
-          type="date"
-          className="text-sm"
-          value={field.value || ""}
-          onChange={(e) => {
-            const selectedDate = e.target.value;
-            // prevent selecting past dates
-            const today = new Date().toISOString().split("T")[0];
-            if (selectedDate < today) {
-              toast.error("Date cannot be in the past");
-              return;
-            }
-            field.onChange(selectedDate);
-          }}
-          min={new Date().toISOString().split("T")[0]} // enforce no past dates
-        />
-      </FormControl>
-      <FormMessage />
-    </FormItem>
-  )}
-/> </div>
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+            {/* Architect Name */}
+            <FormField
+              control={form.control}
+              name="archetech_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Architect Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter architect name"
+                      type="text"
+                      className="text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="initial_site_measurement_date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">
+                    Initial Site Measurement Date
+                  </FormLabel>
+                  <FormControl>
+                    <CustomeDatePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />{" "}
+          </div>
 
           {/* Designer Remark */}
           <FormField
@@ -888,10 +697,7 @@ export default function LeadsGenerationForm({
               <FormItem>
                 <FormLabel className="text-sm">Designer's Remark</FormLabel>
                 <FormControl>
-                  <TextAreaInput
-                    placeholder="Enter your remarks"
-                    {...field}
-                  />
+                  <TextAreaInput placeholder="Enter your remarks" {...field} />
                 </FormControl>
                 {/* <FormDescription className="text-xs">
                   Additional remarks or notes.

@@ -11,7 +11,8 @@ import {
   Map,
   PieChart,
   Settings2,
-  SquareTerminal,
+  CalendarCheck2,
+  BookOpenCheck
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -25,9 +26,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { useSelector } from "react-redux";
-import { RootState, useAppSelector } from "@/redux/store";
-import { useEffect, useState } from "react";
+import { useAppSelector } from "@/redux/store";
 
 // Updated navigation data with showCount properties
 const data = {
@@ -55,9 +54,16 @@ const data = {
   ],
   navMain: [
     {
+      title: "My Task",
+      url: "/dashboard/my-tasks",
+      icon: CalendarCheck2, // ya koi aur icon chahiye ho
+      isActive: false,
+      showCount: "total_leads" as const,
+    },
+    {
       title: "Leads",
       url: "/",
-      icon: SquareTerminal,
+      icon: BookOpenCheck,
       isActive: true,
       items: [
         {
@@ -65,9 +71,9 @@ const data = {
           url: "/dashboard/sales-executive",
         },
         {
-          title: "View Leads",
+          title: "Open Leads",
           url: "/dashboard/sales-executive/leadstable",
-          showCount: "total_leads" as const,
+          showCount: "total_open_leads" as const,
         },
         {
           title: "Site Measurement",
@@ -81,7 +87,8 @@ const data = {
         },
         {
           title: "Booking Stage",
-          url: "/dashboard/sales-executive",
+          url: "/dashboard/sales-executive/booking-stage",
+          showCount: "total_booking_stage_leads" as const,
         },
       ],
     },
@@ -198,7 +205,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               {
                 name: user.vendor?.vendor_name || "Default Vendor",
                 logo: GalleryVerticalEnd,
-                plan: user?.user_type?.user_type || ""
+                plan: user?.user_type?.user_type || "",
               },
             ]}
           />

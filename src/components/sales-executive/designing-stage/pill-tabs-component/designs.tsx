@@ -3,7 +3,7 @@ import { useDetails } from "./details-context";
 import { useAppSelector } from "@/redux/store";
 import { useDesignsDoc } from "@/hooks/designing-stage/designing-leads-hooks";
 import { DesignsDocument } from "@/types/designing-stage-types";
-import { File } from "lucide-react";
+import { File, Palette } from "lucide-react";
 
 const DesigningTab = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -79,9 +79,20 @@ const DesigningTab = () => {
           </div>
         </div>
       ) : (
-        <p className="mt-4 text-sm text-muted-foreground">
-          No designsDoc available.
-        </p>
+        <div className="flex flex-col items-center justify-center py-16 space-y-6">
+          <div className="text-center flex flex-col justify-center items-center">
+            <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-6">
+              <Palette size={40} className="text-muted-foreground" />
+            </div>
+            <h3 className="font-semibold text-xl mb-3">
+              No design documents uploaded
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
+              Once you upload your design files, they will be listed here for
+              easy access and reference.
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );
