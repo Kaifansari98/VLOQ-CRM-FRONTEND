@@ -25,7 +25,7 @@ import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import DateInputPicker from "../../origin-date-input";
 import { useAppSelector } from "@/redux/store";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getLeadById, uploadInitialSiteMeasurement } from "@/api/leads";
 import { toast } from "react-toastify";
 import CustomeDatePicker from "@/components/default";
@@ -71,10 +71,16 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     select: (res) => res?.data?.lead?.account?.id,
   });
 
+  const queryClient = useQueryClient();
+
   const mutation = useMutation({
     mutationFn: uploadInitialSiteMeasurement,
     onSuccess: () => {
       toast.success("Initial Site Measurement Upload Successflly!");
+      // ✅ Refetch lead count after success
+      queryClient.invalidateQueries({
+        queryKey: ["leadStats", vendorId, userId],
+      });
       handleReset();
       onOpenChange(false);
     },

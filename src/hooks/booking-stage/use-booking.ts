@@ -9,12 +9,25 @@ import {
 import { BookingLeadResponse } from "@/types/booking-types";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAppSelector } from "@/redux/store";
+import { stat } from "fs";
 
 export const useMoveToBookingStage = () => {
+
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
+
   return useMutation({
     mutationFn: (payload: BookingPayload) => moveToBookingStage(payload),
     onSuccess: (data) => {
       toast.success("Lead moved to Booking Stage successfully");
+      // ✅ Refetch lead count after success
+      queryClient.invalidateQueries({
+        queryKey: ["leadStats", vendorId, userId],
+        exact: true,
+      });
       console.log("Lead moved to Booking Stage:", data);
     },
     onError: (error: any) => {
