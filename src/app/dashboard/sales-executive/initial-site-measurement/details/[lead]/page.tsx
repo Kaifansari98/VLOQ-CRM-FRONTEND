@@ -63,6 +63,10 @@ export default function SiteMeasurementLead() {
           queryClient.invalidateQueries({
             queryKey: ["siteMeasurementLeads", vendorId, 2],
           });
+          // ✅ Refetch lead count after success
+          queryClient.invalidateQueries({
+            queryKey: ["leadStats", vendorId, userId],
+          });
         },
         onError: (err) => {
           console.error("❌ API error:", err);

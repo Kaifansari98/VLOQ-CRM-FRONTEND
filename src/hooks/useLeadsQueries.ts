@@ -1,6 +1,6 @@
 // hooks/useLeadsQueries.ts
 import { useQuery, UseQueryResult } from '@tanstack/react-query'
-import { getLeadById, getVendorLeads, getVendorUserLeads, VendorLeadsResponse, VendorUserLeadsResponse } from '@/api/leads'
+import { getLeadById, getVendorLeads, getVendorUserLeads, getVendorUserLeadsOpen, VendorLeadsResponse, VendorUserLeadsResponse } from '@/api/leads'
 
 // Hook for getting vendor leads
 export const useVendorLeads = (
@@ -26,6 +26,19 @@ export const useVendorUserLeads = (
     queryKey: ['vendorUserLeads', vendorId, userId],
     queryFn: () => getVendorUserLeads(vendorId, userId),
     enabled: enabled && !!vendorId && !!userId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  })
+}
+
+// Hook for getting vendor user leads
+export const useVendorUserLeadsOpen = (
+  vendorId: number,
+): UseQueryResult<VendorUserLeadsResponse, Error> => {
+  return useQuery({
+    queryKey: ['vendorUserLeads', vendorId],
+    queryFn: () => getVendorUserLeadsOpen(vendorId),
+    enabled: !!vendorId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
   })
