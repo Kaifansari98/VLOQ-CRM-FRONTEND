@@ -1,10 +1,15 @@
 import {
   BookingPayload,
+  EditBookingForm,
+  EditBookingPayload,
   getAllSiteSuperVisors,
+  getBookingLeadById,
   getBookingLeads,
   moveToBookingStage,
+  UploadBookingDoc,
+  UploadBookintPayload,
 } from "@/api/booking";
-import { BookingLeadResponse } from "@/types/booking-types";
+import { BookingLeadById, BookingLeadResponse } from "@/types/booking-types";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
@@ -12,7 +17,6 @@ import { useAppSelector } from "@/redux/store";
 import { stat } from "fs";
 
 export const useMoveToBookingStage = () => {
-
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -50,5 +54,33 @@ export const useBookingLeads = (vendorId: number) => {
     queryFn: () => getBookingLeads(vendorId),
     enabled: !!vendorId, // only run if vendorId is provided
     staleTime: 1000 * 60 * 5, // cache for 5 min
+  });
+};
+
+export const useEditBooking = () => {
+  return useMutation({
+    mutationFn: (payload: EditBookingPayload) => EditBookingForm(payload),
+  });
+};
+
+export const useBookingLeadById = (vendorId?: number, leadId?: number) => {
+  return useQuery({
+    queryKey: ["bookingLead", leadId], // cache key
+    queryFn: () => getBookingLeadById(vendorId!, leadId!), // fetch function
+    enabled: !!leadId, // only run when leadId exists
+  });
+};
+
+export const useUploadBookingDoc = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UploadBookintPayload) => UploadBookingDoc(payload),
+    onSuccess: (_data, variables) => {
+      // Invalidate booking lead so UI refreshes
+      queryClient.invalidateQueries({
+        queryKey: ["bookingLead", variables.lead_id],
+      });
+    },
   });
 };
