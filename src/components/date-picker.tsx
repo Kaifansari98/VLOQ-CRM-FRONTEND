@@ -8,34 +8,33 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Calendar as CalendarIcon, X } from "lucide-react";
 
 interface CustomeDatePickerProps {
-  value?: string; // RHF field value (stored as "YYYY-MM-DD" string)
-  onChange: (value?: string) => void; // RHF field onChange
+  value?: string; // store as "YYYY-MM-DD"
+  onChange: (value?: string) => void;
+  restriction?: "none" | "pastOnly" | "futureOnly"; // dynamic restriction
 }
 
 export default function CustomeDatePicker({
   value,
   onChange,
+  restriction = "none",
 }: CustomeDatePickerProps) {
   const [date, setDate] = React.useState<Date | undefined>(
-    value ? new Date(value) : undefined
+    value ? parseISO(value) : undefined
   );
 
   React.useEffect(() => {
-    if (value) {
-      setDate(new Date(value));
-    } else {
-      setDate(undefined);
-    }
+    if (value) setDate(parseISO(value));
+    else setDate(undefined);
   }, [value]);
 
   const handleSelect = (selected?: Date) => {
     if (selected) {
       setDate(selected);
-      onChange(selected.toISOString().split("T")[0]); // save as string
+      onChange(format(selected, "yyyy-MM-dd"));
     } else {
       setDate(undefined);
       onChange(undefined);
@@ -46,6 +45,18 @@ export default function CustomeDatePicker({
     e.preventDefault();
     setDate(undefined);
     onChange(undefined);
+  };
+
+  // disable logic
+  const today = new Date();
+  const disableDates = (date: Date) => {
+    if (restriction === "futureOnly") {
+      return date < new Date(today.setHours(0, 0, 0, 0)); // disable past
+    }
+    if (restriction === "pastOnly") {
+      return date > new Date(today.setHours(23, 59, 59, 999)); // disable future
+    }
+    return false; // no restriction
   };
 
   return (
@@ -79,6 +90,7 @@ export default function CustomeDatePicker({
           selected={date}
           onSelect={handleSelect}
           autoFocus
+          disabled={disableDates}
         />
       </PopoverContent>
     </Popover>

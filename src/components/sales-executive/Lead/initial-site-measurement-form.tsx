@@ -28,7 +28,8 @@ import { useAppSelector } from "@/redux/store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getLeadById, uploadInitialSiteMeasurement } from "@/api/leads";
 import { toast } from "react-toastify";
-import CustomeDatePicker from "@/components/default";
+import CustomeDatePicker from "@/components/date-picker";
+import TextAreaInput from "@/components/origin-text-area";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -77,7 +78,6 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     mutationFn: uploadInitialSiteMeasurement,
     onSuccess: () => {
       toast.success("Initial Site Measurement Upload Successflly!");
-      // ✅ Refetch lead count after success
       queryClient.invalidateQueries({
         queryKey: ["leadStats", vendorId, userId],
       });
@@ -144,7 +144,8 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       }
     }
     console.log("==== END FORM DATA ====");
-
+    console.log(values);
+    console.log(vendorId);
     // ✅ API call via mutation
     mutation.mutate(formData);
   };
@@ -207,7 +208,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm">
-                        Initial Site Measurement Document
+                        Initial Site Measurement Document *
                       </FormLabel>
                       <FormControl>
                         <PdfUploadField
@@ -249,7 +250,6 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                     )}
                   />
 
-                  {/* Date Picker field */}
                   <FormField
                     control={form.control}
                     name="payment_date"
@@ -262,6 +262,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                           <CustomeDatePicker
                             value={field.value}
                             onChange={field.onChange}
+                            restriction="futureOnly"
                           />
                         </FormControl>
                         <FormMessage />
@@ -299,11 +300,10 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                         Payment Details Text
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Enter your text"
-                          type="text"
-                          className="text-sm"
-                          {...field}
+                        <TextAreaInput
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Enter your payment details"
                         />
                       </FormControl>
                       <FormMessage />

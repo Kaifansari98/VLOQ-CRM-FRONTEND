@@ -23,7 +23,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import CustomeDatePicker from "@/components/default";
+import CustomeDatePicker from "@/components/date-picker";
 
 // --------- Props ---------
 interface Data {
@@ -149,12 +149,13 @@ const SiteMesurementEditModal: React.FC<SiteMesurementEditModalProps> = ({
                 control={form.control}
                 name="payment_date"
                 render={({ field }) => (
-                  <FormItem className="w-full">
+                  <FormItem>
                     <FormLabel>Payment Date</FormLabel>
                     <FormControl>
                       <CustomeDatePicker
                         value={field.value}
                         onChange={field.onChange}
+                        restriction="futureOnly"
                       />
                     </FormControl>
                     <FormMessage />
@@ -162,7 +163,6 @@ const SiteMesurementEditModal: React.FC<SiteMesurementEditModalProps> = ({
                 )}
               />
 
-              {/* Description */}
               <FormField
                 control={form.control}
                 name="payment_text"

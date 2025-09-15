@@ -41,7 +41,7 @@ import MultipleSelector, { Option } from "@/components/ui/multiselect";
 import { canReassingLead } from "@/components/utils/privileges";
 import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 import TextAreaInput from "@/components/origin-text-area";
-import CustomeDatePicker from "@/components/default";
+import CustomeDatePicker from "@/components/date-picker";
 
 const createFormSchema = (userType: string | undefined) => {
   const isAdminOrSuperAdmin =
