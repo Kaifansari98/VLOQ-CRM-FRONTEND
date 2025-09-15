@@ -71,6 +71,28 @@ export function FileUploadField({
     toast.error(`${message}: "${fileName}" has been rejected`);
   }, []);
 
+
+  const readableAccept = React.useMemo(() => {
+  if (!accept) return "any file type";
+
+  return accept
+    .split(",")
+    .map((type) => {
+      type = type.trim();
+
+      if (type === "image/*") return "Images";
+      if (type === "video/*") return "Videos";
+      if (type === "audio/*") return "Audio Files";
+
+      // Extensions
+      if (type.startsWith(".")) return type.toUpperCase().replace(".", "");
+
+      return type;
+    })
+    .join(", ");
+}, [accept]);
+
+
   return (
     <FileUpload
       value={value}
@@ -80,7 +102,7 @@ export function FileUploadField({
       maxFiles={20}
       className="w-full"
       multiple
-      accept={accept ?? "image/*,.png,.jpg,.jpeg"}
+      accept={accept ?? "image/*,.png,.jpg,.jpeg  "}
     >
       <FileUploadDropzone>
         <div className="flex flex-col items-center gap-1 text-center">
@@ -94,7 +116,7 @@ export function FileUploadField({
         </div>
         <FileUploadTrigger asChild>
           <Button variant="outline" size="sm" className="mt-2 w-fit">
-            Browse files
+            Select files
           </Button>
         </FileUploadTrigger>
       </FileUploadDropzone>

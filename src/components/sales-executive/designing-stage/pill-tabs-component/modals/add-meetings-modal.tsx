@@ -28,7 +28,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { submitMeeting } from "@/api/designingStageQueries";
 import { toast } from "react-toastify";
 import { FilesUploader } from "@/components/files-uploader";
-import CustomeDatePicker from "@/components/default";
+import CustomeDatePicker from "@/components/date-picker";
 
 export const meetingSchema = z.object({
   date: z.string().min(1, "Meeting date is required"),

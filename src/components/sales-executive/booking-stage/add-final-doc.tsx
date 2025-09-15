@@ -23,16 +23,14 @@ import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import { useAppSelector } from "@/redux/store";
 import { FileUploadField } from "@/components/custom/file-upload";
+import { useUploadBookingDoc } from "@/hooks/booking-stage/use-booking";
 
-// ✅ Schema (without PDF rules)
+// ✅ Schema
 const uploadSchema = z.object({
   final_documents: z
     .array(z.any())
     .min(1, "Final documents are required")
-    .max(20, "You can upload up to 20 documents")
-    .refine((files) => files.length > 0, {
-      message: "At least one document is required",
-    }),
+    .max(20, "You can upload up to 20 documents"),
 });
 
 type UploadDocFormValues = z.infer<typeof uploadSchema>;
@@ -41,12 +39,14 @@ interface LeadViewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   leadId?: number;
+  accountId: number;
 }
 
-const AddQuotationModal: React.FC<LeadViewModalProps> = ({
+const UploadFinalDoc: React.FC<LeadViewModalProps> = ({
   open,
   onOpenChange,
   leadId,
+  accountId,
 }) => {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id)!;
   const userId = useAppSelector((s) => s.auth.user?.id)!;
@@ -56,8 +56,30 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
     defaultValues: { final_documents: [] },
   });
 
-  const onSubmit = (data: UploadDocFormValues) => {
-    onOpenChange(false);
+  const { mutate: uploadDoc, isPending } = useUploadBookingDoc();
+
+  const onSubmit = (values: UploadDocFormValues) => {
+    if (!leadId) return;
+
+    uploadDoc(
+      {
+        lead_id: leadId,
+        account_id: accountId,
+        vendor_id: vendorId,
+        created_by: userId,
+        final_documents: values.final_documents,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Documents uploaded successfully ✅");
+          onOpenChange(false);
+          form.reset();
+        },
+        onError: (error: any) => {
+          toast.error(error?.response?.data?.message || "Upload failed ❌");
+        },
+      }
+    );
   };
 
   return (
@@ -85,7 +107,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
                         <FileUploadField
                           value={field.value}
                           onChange={field.onChange}
-                          accept=".pptx., .ppt, .pdf, .jpg, .jpeg, .png, .pyo"
+                          accept=".pptx,.ppt,.pdf,.jpg,.jpeg,.png,.pyo"
                         />
                       </FormControl>
                       <FormMessage />
@@ -93,7 +115,9 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
                   )}
                 />
                 <div className="flex justify-end">
-                  <Button type="submit">Upload</Button>
+                  <Button type="submit" disabled={isPending}>
+                    {isPending ? "Uploading..." : "Upload"}
+                  </Button>
                 </div>
               </form>
             </Form>
@@ -104,4 +128,4 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   );
 };
 
-export default AddQuotationModal;
+export default UploadFinalDoc;

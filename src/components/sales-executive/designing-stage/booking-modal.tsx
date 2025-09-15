@@ -36,38 +36,32 @@ import {
   useSiteSupervisors,
 } from "@/hooks/booking-stage/use-booking";
 import { BookingPayload } from "@/api/booking";
+import { toast } from "react-toastify";
 
 // ✅ Enhanced Zod schema with proper file validation
-const bookingSchema = z.object({
-  final_documents: z
-    .array(z.any())
-    .min(1, "Final documents are required")
-    .max(20, "You can upload up to 20 documents")
-    .refine((files) => files.length > 0, {
-      message: "At least one document is required",
-    }),
+const bookingSchema = z
+  .object({
+    final_documents: z
+      .array(z.any())
+      .max(20, "You can upload up to 20 documents"),
 
-  amount_received: z
-    .number()
-    .positive("Amount must be greater than 0")
-    .min(1, "Minimum amount is 1"),
+    amount_received: z.number().positive("Amount must be greater than 0"),
 
-  final_booking_amount: z
-    .number()
-    .positive("Booking amount must be greater than 0")
-    .min(1, "Minimum booking amount is 1"),
+    final_booking_amount: z
+      .number()
+      .positive("Booking amount must be greater than 0"),
 
-  payment_details_document: z
-    .array(z.any())
-    .min(1, "Final Documents are required")
-    .max(20, "You can upload up to 20 documents")
-    .refine((files) => files.length > 0, {
-      message: "At least one document is required",
-    }),
+    payment_details_document: z
+      .array(z.any())
+      .max(20, "You can upload up to 20 documents"),
 
-  payment_text: z.string().min(1, "Payment details are required"),
-  assign_to: z.string().min(1, "Please select an assignee"),
-});
+    payment_text: z.string().min(1, "Payment details are required"),
+    assign_to: z.string().min(1, "Please select an assignee"),
+  })
+  .refine((data) => data.amount_received <= data.final_booking_amount, {
+    message: "Amount Received should not be greater than Total Booking Amount",
+    path: ["amount_received"], 
+  });
 
 // ✅ Proper type inference from schema
 type BookingFormValues = z.infer<typeof bookingSchema>;
@@ -114,6 +108,13 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   }
 
   const onSubmit: SubmitHandler<BookingFormValues> = (values) => {
+    if (values.amount_received > values.final_booking_amount) {
+      toast.error(
+        "Amount Received should not be greater than Total Booking Amount"
+      );
+      return;
+    }
+
     if (!leadId || !accountId || !vendorId || !userId) {
       console.error("❌ Missing IDs in booking payload");
       return;
@@ -132,7 +133,6 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       booking_payment_file: values.payment_details_document, // ✅ multiple files
       final_documents: values.final_documents, // ✅ multiple files
     };
-
 
     console.log("✅ Booking Payload:", payload);
     // ✅ API call via hook
@@ -231,7 +231,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
 
                     <FormField
                       control={form.control}
-                      name="final_booking_amount"   
+                      name="final_booking_amount"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm">

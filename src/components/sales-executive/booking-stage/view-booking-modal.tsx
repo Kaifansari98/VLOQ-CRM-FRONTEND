@@ -23,6 +23,7 @@ import {
   Plus,
 } from "lucide-react";
 import { DocumentBooking } from "@/types/booking-types";
+import UploadFinalDoc from "./add-final-doc";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -30,6 +31,7 @@ interface LeadViewModalProps {
   data?: {
     id: number;
     name: string;
+    accountId: number;
   };
 }
 
@@ -40,13 +42,13 @@ const BookingViewModal: React.FC<LeadViewModalProps> = ({
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const leadId = data?.id;
-  const [openFinalDocModal, setOpenFinalDocModal] = useState<boolean>();
+  const [openFinalDocModal, setOpenFinalDocModal] = useState<boolean>(false);
   const {
     data: leadData,
     isLoading,
     isError,
   } = useBookingLeadById(vendorId, leadId);
-
+  console.log("Account id: ", data?.accountId);
   if (isLoading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -94,7 +96,7 @@ const BookingViewModal: React.FC<LeadViewModalProps> = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-4xl p-0 gap-0">
+        <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-3xl p-0 gap-0">
           {/* Header */}
           <DialogHeader className="flex items-start justify-between px-6 py-4 border-b">
             <DialogTitle className="capitalize">
@@ -102,7 +104,7 @@ const BookingViewModal: React.FC<LeadViewModalProps> = ({
             </DialogTitle>
           </DialogHeader>
 
-          <ScrollArea className="max-h-90vh]">
+          <ScrollArea className="max-h-[calc(90vh-100px)]">
             <div className="p-6 space-y-6">
               {/* Top 3 Key Metrics Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -187,24 +189,67 @@ const BookingViewModal: React.FC<LeadViewModalProps> = ({
                   <h1 className="text-sm font-medium">
                     Final Documents (Quotations + Design)
                   </h1>
-                  <div className="flex flex-wrap gap-3">
-                    {finalDocs.map((doc: DocumentBooking) => (
-                      <img
-                        key={doc.id}
-                        src={doc.signedUrl}
-                        alt={doc.originalName}
-                        className="h-32 w-32 object-cover rounded-lg border"
-                      />
-                    ))}
 
-                    {/* Add Image Button bhi yahi row me aa gaya */}
+                  <div className="flex flex-wrap gap-3">
+                    {finalDocs.map((doc: DocumentBooking) => {
+                      const fileExt = doc.originalName
+                        .split(".")
+                        .pop()
+                        ?.toLowerCase();
+
+                      const isImage = ["jpg", "jpeg", "png"].includes(
+                        fileExt || ""
+                      );
+                      const isPdf = fileExt === "pdf";
+                      const isPresentation = ["ppt", "pptx", "pyo"].includes(
+                        fileExt || ""
+                      );
+
+                      return (
+                        <div
+                          key={doc.id}
+                          className="h-32 w-32 rounded-lg border flex items-center justify-center overflow-hidden relative bg-gray-50"
+                        >
+                          {isImage ? (
+                            <img
+                              src={doc.signedUrl}
+                              alt={doc.originalName}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : isPdf ? (
+                            <div className="flex flex-col items-center justify-center w-full h-full bg-red-50 text-red-600 rounded-lg">
+                              <i className="fa-regular fa-file-pdf text-4xl"></i>
+                              <span className="text-xs font-medium mt-1">
+                                PDF
+                              </span>
+                            </div>
+                          ) : isPresentation ? (
+                            <div className="flex flex-col items-center justify-center w-full h-full bg-orange-50 text-orange-600 rounded-lg">
+                              <i className="fa-regular fa-file-powerpoint text-4xl"></i>
+                              <span className="text-xs font-medium mt-1">
+                                PPT
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center w-full h-full bg-gray-100 text-gray-500 rounded-lg">
+                              <i className="fa-regular fa-file text-4xl"></i>
+                              <span className="text-xs font-medium mt-1">
+                                FILE
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Add Image / File button */}
                     <div
                       className="flex items-center justify-center h-32 w-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition"
-                      onClick={() => console.log("Add Image Clicked")}
+                      onClick={() => setOpenFinalDocModal(true)}
                     >
                       <div className="flex flex-col items-center text-gray-400">
                         <Plus size={40} />
-                        <span className="text-xs mt-1">Add Image</span>
+                        <span className="text-xs mt-1">Add File</span>
                       </div>
                     </div>
                   </div>
@@ -223,17 +268,6 @@ const BookingViewModal: React.FC<LeadViewModalProps> = ({
                         className="h-32 w-32 object-cover rounded-lg border"
                       />
                     ))}
-
-                    {/* Add Image Button bhi yahi row me aa gaya */}
-                    <div
-                      className="flex items-center justify-center h-32 w-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition"
-                      onClick={() => console.log("Add Image Clicked")}
-                    >
-                      <div className="flex flex-col items-center text-gray-400">
-                        <Plus size={40} />
-                        <span className="text-xs mt-1">Add Image</span>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -242,7 +276,12 @@ const BookingViewModal: React.FC<LeadViewModalProps> = ({
         </DialogContent>
       </Dialog>
 
-      
+      <UploadFinalDoc
+        open={openFinalDocModal}
+        onOpenChange={setOpenFinalDocModal}
+        leadId={leadId}
+        accountId={data?.accountId!}
+      />
     </>
   );
 };
