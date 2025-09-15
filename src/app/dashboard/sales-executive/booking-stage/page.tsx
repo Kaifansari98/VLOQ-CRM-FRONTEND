@@ -25,7 +25,6 @@ export default function LeadsBookingPage() {
       <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
         {/* Header */}
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          {/* Left side - SidebarTrigger + Breadcrumb */}
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
             <Separator

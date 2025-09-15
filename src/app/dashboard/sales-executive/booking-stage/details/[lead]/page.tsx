@@ -21,6 +21,7 @@ import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import OpenLeadDetails from "@/components/tabScreens/OpenLeadDetails";
+import SiteMeasurementLeadDetails from "@/components/tabScreens/SiteMeasurementLeadDetails";
 
 export default function BookingStageLeadsDetails() {
   const { lead: leadId } = useParams();
@@ -63,9 +64,7 @@ export default function BookingStageLeadsDetails() {
       title: "Site measurement",
       color: "bg-zinc-900 hover:bg-gray-600",
       cardContent: (
-        <div className="p-4 border rounded-lg">
-          <p className="text-sm text-muted-foreground">No closed leads yet.</p>
-        </div>
+        <SiteMeasurementLeadDetails lead={lead} formatDateTime={formatDateTime} />
       ),
     },
     {

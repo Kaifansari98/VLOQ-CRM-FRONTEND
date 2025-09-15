@@ -82,74 +82,6 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
 
         <ScrollArea className="max-h-[calc(90vh-100px)]">
           <div className="px-6 py-6 space-y-8">
-            {/* PDF Documents Section */}
-            {pdfDocs.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Measurement Documents</h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {pdfDocs?.[0] && (
-                    <Card
-                      key={pdfDocs[0].id}
-                      className="hover:shadow-lg transition-all duration-200 cursor-pointer group"
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex flex-col items-center text-center space-y-3">
-                          <div className="relative">
-                            <div className="w-16 h-16 bg-red-50 rounded-lg flex items-center justify-center group-hover:bg-red-100 transition-colors">
-                              <FileText size={32} className="text-red-500" />
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <p className="font-medium text-sm leading-tight">
-                              {formatFileName(pdfDocs[0].doc_og_name)}
-                            </p>
-                            <p className="text-xs">
-                              {formatFileSize(pdfDocs[0].signed_url)}
-                            </p>
-                          </div>
-
-                          <div className="flex gap-2 pt-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(pdfDocs[0].signed_url, "_blank");
-                              }}
-                              className="text-xs gap-1 h-7"
-                            >
-                              <Eye size={12} />
-                              View
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const link = document.createElement("a");
-                                link.href = pdfDocs[0].signed_url;
-                                link.download = pdfDocs[0].doc_og_name;
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                              }}
-                              className="text-xs gap-1 h-7"
-                            >
-                              <Download size={12} />
-                              Download
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Payment Details Section - Only show if payment exists */}
             {payment && (
               <div className="space-y-4">
                 <div className="flex flex-row justify-between items-center">
@@ -232,7 +164,72 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
               </div>
             )}
 
-            {/* Site Photos Section */}
+            {pdfDocs.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Measurement Documents</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {pdfDocs?.[0] && (
+                    <Card
+                      key={pdfDocs[0].id}
+                      className="hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex flex-col items-center text-center space-y-3">
+                          <div className="relative">
+                            <div className="w-16 h-16 bg-red-50 rounded-lg flex items-center justify-center group-hover:bg-red-100 transition-colors">
+                              <FileText size={32} className="text-red-500" />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <p className="font-medium text-sm leading-tight">
+                              {formatFileName(pdfDocs[0].doc_og_name)}
+                            </p>
+                            <p className="text-xs">
+                              {formatFileSize(pdfDocs[0].signed_url)}
+                            </p>
+                          </div>
+
+                          <div className="flex gap-2 pt-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(pdfDocs[0].signed_url, "_blank");
+                              }}
+                              className="text-xs gap-1 h-7"
+                            >
+                              <Eye size={12} />
+                              View
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const link = document.createElement("a");
+                                link.href = pdfDocs[0].signed_url;
+                                link.download = pdfDocs[0].doc_og_name;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="text-xs gap-1 h-7"
+                            >
+                              <Download size={12} />
+                              Download
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </div>
+            )}
+
             {currentSitePhotos.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Site Photos</h3>
@@ -260,7 +257,6 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
               </div>
             )}
 
-            {/* Payment Images Section */}
             {paymentImages.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Payment Proofs</h3>

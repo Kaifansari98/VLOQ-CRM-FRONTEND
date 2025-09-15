@@ -234,7 +234,6 @@ export default function LeadsGenerationForm({
         },
       }
     );
-    
   }
 
   return (
@@ -681,6 +680,7 @@ export default function LeadsGenerationForm({
                     <CustomeDatePicker
                       value={field.value}
                       onChange={field.onChange}
+                      restriction="futureOnly"
                     />
                   </FormControl>
                   <FormMessage />
