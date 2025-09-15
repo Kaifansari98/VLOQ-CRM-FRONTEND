@@ -21,10 +21,14 @@ type PillTabsProps = {
   defaultActiveId?: string;
   onTabChange?: (id: string) => void;
   className?: string;
+  addButtons?: boolean;
 };
 
 const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
-  ({ tabs, defaultActiveId = tabs[0]?.id, onTabChange, className }, ref) => {
+  (
+    { tabs, defaultActiveId = tabs[0]?.id, onTabChange, className, addButtons },
+    ref
+  ) => {
     const [activeTab, setActiveTab] = React.useState(defaultActiveId);
     const [openQuotationModal, setOpenQuotationModal] = useState(false);
     const [openDesignsModal, setOpenDesignsModal] = useState(false);
@@ -78,38 +82,41 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
           </div>
 
           {/* Add Button */}
-          <div className="flex justify-start">
-            {activeTab === "quotation" && (
-              <Button
-                size="sm"
-                className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap"
-                onClick={() => setOpenQuotationModal(true)}
-              >
-                <Plus size={16} className="sm:mr-1" />
-                <span>Add Quotation</span>
-              </Button>
-            )}
-            {activeTab === "meetings" && (
-              <Button
-                size="sm"
-                className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap"
-                onClick={() => setOpenMeetingsModal(true)}
-              >
-                <Plus size={16} className="sm:mr-1" />
-                <span>Add Meeting</span>
-              </Button>
-            )}
-            {activeTab === "designs" && (
-              <Button
-                size="sm"
-                className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap"
-                onClick={() => setOpenDesignsModal(true)}
-              >
-                <Plus size={16} className="sm:mr-1" />
-                <span>Add Design</span>
-              </Button>
-            )}
-          </div>
+
+          {addButtons && (
+            <div className="flex justify-start">
+              {activeTab === "quotation" && (
+                <Button
+                  size="sm"
+                  className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap"
+                  onClick={() => setOpenQuotationModal(true)}
+                >
+                  <Plus size={16} className="sm:mr-1" />
+                  <span>Add Quotation</span>
+                </Button>
+              )}
+              {activeTab === "meetings" && (
+                <Button
+                  size="sm"
+                  className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap"
+                  onClick={() => setOpenMeetingsModal(true)}
+                >
+                  <Plus size={16} className="sm:mr-1" />
+                  <span>Add Meeting</span>
+                </Button>
+              )}
+              {activeTab === "designs" && (
+                <Button
+                  size="sm"
+                  className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap"
+                  onClick={() => setOpenDesignsModal(true)}
+                >
+                  <Plus size={16} className="sm:mr-1" />
+                  <span>Add Design</span>
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Active Content */}

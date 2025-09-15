@@ -31,8 +31,8 @@ const itemVariants = {
 export default function OpenLeadDetails({ lead, formatDateTime }: OpenLeadDetailsProps) {
   if (!lead) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <p className="text-gray-500">No lead details found.</p>
+      <div className="border border-gray-200 rounded-lg p-6">
+        <p>No lead details found.</p>
       </div>
     );
   }
@@ -55,7 +55,7 @@ export default function OpenLeadDetails({ lead, formatDateTime }: OpenLeadDetail
       className="bg-white border border-gray-200 rounded-lg overflow-hidden"
     >
       {/* Header */}
-      <div className="bg-gray-50 border-b border-gray-200 px-6 py-2.5">
+      <div className="border-b px-6 py-2.5">
         <div className="flex items-center justify-between">
           <h2 className="text-md font-semibold text-gray-900">Lead Details</h2>
           <div className="flex items-center gap-2 text-sm text-gray-500">

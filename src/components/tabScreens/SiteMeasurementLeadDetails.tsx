@@ -2,20 +2,16 @@
 
 import { useAppSelector } from "@/redux/store";
 import { motion } from "framer-motion";
-import {
-  Calendar,
-  Mail,
-  Phone,
-  User,
-  Building,
-  Package,
-  MapPin,
-  MessageSquare,
-} from "lucide-react";
+
+import { DetailsProvider } from "../sales-executive/designing-stage/pill-tabs-component/details-context";
+import PillTabs from "../sales-executive/designing-stage/pill-tabs";
+import QuotationTab from "../sales-executive/designing-stage/pill-tabs-component/quotation";
+import DesigningTab from "../sales-executive/designing-stage/pill-tabs-component/designs";
+import MeetingsTab from "../sales-executive/designing-stage/pill-tabs-component/meetings";
+import ViewSelection from "../sales-executive/designing-stage/pill-tabs-component/view-selection";
 
 type OpenLeadDetailsProps = {
   lead: any;
-  formatDateTime: (dateString?: string) => string;
 };
 
 const containerVariants = {
@@ -40,10 +36,11 @@ const itemVariants = {
 
 export default function SiteMeasurementLeadDetails({
   lead,
-  formatDateTime,
 }: OpenLeadDetailsProps) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const leadId = lead.leadId;
+  const accountId = lead.accountId;
 
   if (!lead) {
     return (
@@ -68,20 +65,29 @@ export default function SiteMeasurementLeadDetails({
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="bg-white border border-gray-200 rounded-lg overflow-hidden"
+      className="rounded-lg border h-full overflow-hidden"
     >
-      {/* Header */}
-      <div className="bg-gray-50 border-b border-gray-200 px-6 py-2.5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-md font-semibold text-gray-900">Lead Details</h2>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <Calendar className="w-4 h-4" />
-            {formatDateTime(lead.created_at)}
-          </div>
-        </div>
-      </div>
-
-      <div className="px-6 py-4 space-y-4"></div>
+      <main className="flex-1 h-full w-full p-6">
+        <DetailsProvider value={{ leadId, accountId }}>
+          <PillTabs
+            addButtons={false}
+            tabs={[
+              {
+                id: "quotation",
+                label: "Quotation",
+                content: <QuotationTab />,
+              },
+              { id: "meetings", label: "Meetings", content: <MeetingsTab /> },
+              { id: "designs", label: "Designs", content: <DesigningTab /> },
+              {
+                id: "selections",
+                label: "Selections",
+                content: <ViewSelection />,
+              },
+            ]}
+          />
+        </DetailsProvider>
+      </main>
     </motion.div>
   );
 }
