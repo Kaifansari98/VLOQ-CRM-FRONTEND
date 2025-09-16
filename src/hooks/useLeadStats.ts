@@ -9,6 +9,8 @@ interface LeadStatsResponse {
     total_initial_site_measurement_leads: number;
     total_designing_stage_leads: number;
     total_booking_stage_leads: number;
+    total_final_measurement_leads: number;
+    total_client_documentation_leads: number;
   };
 }
 
