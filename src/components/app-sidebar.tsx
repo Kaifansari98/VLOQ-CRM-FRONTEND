@@ -104,7 +104,7 @@ const data = {
         },
         {
           title: "Client Documentation",
-          url: "#",
+          url: "/dashboard/site-supervisor/client-documentation",
         },
         {
           title: "Client Approval",
