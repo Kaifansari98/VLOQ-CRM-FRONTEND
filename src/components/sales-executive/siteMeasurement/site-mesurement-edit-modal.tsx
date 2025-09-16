@@ -135,7 +135,8 @@ const SiteMesurementEditModal: React.FC<SiteMesurementEditModalProps> = ({
                       <input
                         type="number"
                         step="0.01"
-                        {...field}
+                        value={field.value === 0 ? "" : field.value}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
                         className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none"
                       />
                     </FormControl>

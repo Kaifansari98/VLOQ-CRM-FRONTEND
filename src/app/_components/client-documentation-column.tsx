@@ -29,19 +29,19 @@ import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import { useRouter } from "next/navigation";
-import { ProcessedFianlMeasurementLead } from "@/types/final-measurement";
+import { ProcessedClientDocumentationLead } from "@/types/client-documentation";
 
 interface GetVendorLeadsTableColumnsProps {
   setRowAction: React.Dispatch<
-    React.SetStateAction<DataTableRowActionFinalMeasurement<ProcessedFianlMeasurementLead> | null>
+    React.SetStateAction<DataTableRowActionFinalMeasurement<ProcessedClientDocumentationLead> | null>
   >;
   userType?: string;
 }
 
-export function getFinalMeasurementLeadsTableColumns({
+export function getClientDocumentationTableColumns({
   setRowAction,
   userType,
-}: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedFianlMeasurementLead>[] {
+}: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedClientDocumentationLead>[] {
   const router = useRouter();
   return [
     // Action Button
@@ -300,7 +300,7 @@ export function getFinalMeasurementLeadsTableColumns({
             enableSorting: true,
             enableHiding: true,
             enableColumnFilter: true,
-          } as ColumnDef<ProcessedFianlMeasurementLead>,
+          } as ColumnDef<ProcessedClientDocumentationLead>,
         ]
       : []),
 

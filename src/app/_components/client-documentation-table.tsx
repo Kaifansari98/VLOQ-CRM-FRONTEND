@@ -36,16 +36,16 @@ import { useDeleteLead } from "@/hooks/useDeleteLead";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-import { getFinalMeasurementLeadsTableColumns } from "./final-measurement-columns";
 import {
   FinalMeasurementLead,
-  ProcessedFianlMeasurementLead,
 } from "@/types/final-measurement";
-import { useFinalMeasurementLeads } from "@/hooks/final-measurement/use-final-measurement";
 import FinalMeasurementEditModal from "@/components/site-supervisor/final-measurement/final-measurement-edit-modal";
 import ClientDocumantationModal from "@/components/site-supervisor/final-measurement/client-documantation-modal";
+import { getClientDocumentationTableColumns } from "./client-documentation-column";
+import { useClientDocumentationLeads } from "@/hooks/client-documentation/use-clientdocumentation";
+import { ClientDocumentationLead, ProcessedClientDocumentationLead } from "@/types/client-documentation";
 
-const FinalMeasurementLeadsTable = () => {
+const ClientDocumentationLeadsTable = () => {
   // Redux selectors
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -57,10 +57,7 @@ const FinalMeasurementLeadsTable = () => {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const router = useRouter();
 
-  const { data, isLoading, isError } = useFinalMeasurementLeads(
-    vendorId!,
-    userId!
-  );
+  const { data, isLoading, isError } = useClientDocumentationLeads();
   console.log("Booking Leads Data:", data);
   // Local state
   const [openDelete, setOpenDelete] = useState(false);
@@ -69,7 +66,7 @@ const FinalMeasurementLeadsTable = () => {
   const [openClientDocModal, setOpenClientDocModal] = useState<boolean>(false);
 
   const [rowAction, setRowAction] =
-    useState<DataTableRowActionFinalMeasurement<ProcessedFianlMeasurementLead> | null>(
+    useState<DataTableRowActionFinalMeasurement<ProcessedClientDocumentationLead> | null>(
       null
     );
 
@@ -94,11 +91,11 @@ const FinalMeasurementLeadsTable = () => {
   const deleteLeadMutation = useDeleteLead();
 
   // Derived: formatted row data
-  const rowData = useMemo<ProcessedFianlMeasurementLead[]>(() => {
+  const rowData = useMemo<ProcessedClientDocumentationLead[]>(() => {
     if (!data?.data) return [];
 
     console.log("Final Measurement Leads:- ", data.data);
-    return data.data.map((lead: FinalMeasurementLead, index: number) => ({
+    return data.data.map((lead: ClientDocumentationLead, index: number) => ({
       id: lead.id,
       srNo: index + 1,
       name: `${lead.firstname || ""} ${lead.lastname || ""}`.trim(),
@@ -133,7 +130,7 @@ const FinalMeasurementLeadsTable = () => {
 
   // Columns
   const columns = useMemo(
-    () => getFinalMeasurementLeadsTableColumns({ setRowAction, userType }),
+    () => getClientDocumentationTableColumns({ setRowAction, userType }),
     [setRowAction, userType]
   );
 
@@ -190,7 +187,7 @@ const FinalMeasurementLeadsTable = () => {
     setRowAction(null);
   };
 
-  const handleRowClick = (row: ProcessedFianlMeasurementLead) => {
+  const handleRowClick = (row: ProcessedClientDocumentationLead) => {
     router.push(`/dashboard/sales-executive/booking-stage/details/${row.id}`);
   };
 
@@ -271,4 +268,4 @@ const FinalMeasurementLeadsTable = () => {
   );
 };
 
-export default FinalMeasurementLeadsTable;
+export default ClientDocumentationLeadsTable;

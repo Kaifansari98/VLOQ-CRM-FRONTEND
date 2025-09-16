@@ -59,6 +59,7 @@ const FinalMeasurementModal = ({
   onOpenChange,
   data,
 }: LeadViewModalProps) => {
+
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const form = useForm<z.infer<typeof formSchema>>({
@@ -102,7 +103,7 @@ const FinalMeasurementModal = ({
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title={`View Booking for ${data?.name || "Customer"}`}
+      title={`Final Measurement for ${data?.name || "Customer"}`}
       size="lg"
       description="Submit final measurement details with optional notes and attachments."
     >
@@ -187,13 +188,8 @@ const FinalMeasurementModal = ({
               >
                 Reset
               </Button>
-              <Button
-                type="submit"
-                disabled={finalMeasurementMutation.isPending}
-              >
-                {finalMeasurementMutation.isPending
-                  ? "Submitting..."
-                  : "Submit"}
+              <Button type="submit" disabled={finalMeasurementMutation.isPending}>
+                {finalMeasurementMutation.isPending ? "Submitting..." : "Submit"}
               </Button>
             </div>
           </form>
