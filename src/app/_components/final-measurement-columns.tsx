@@ -11,9 +11,17 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ellipsis, Eye, SquarePen, Users, Text, StretchHorizontal, Ruler } from "lucide-react";
+import {
+  Ellipsis,
+  Eye,
+  SquarePen,
+  Users,
+  Text,
+  Ruler,
+  FileText,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { DataTableRowAction, DataTableRowActionFinalMeasurement } from "@/types/data-table";
+import type { DataTableRowActionFinalMeasurement } from "@/types/data-table";
 import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
 import CustomeBadge from "@/components/origin-badge";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
@@ -21,19 +29,19 @@ import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import { useRouter } from "next/navigation";
-import { ProcessedBookingLead } from "@/types/booking-types";
+import { ProcessedFianlMeasurementLead } from "@/types/final-measurement";
 
 interface GetVendorLeadsTableColumnsProps {
   setRowAction: React.Dispatch<
-    React.SetStateAction<DataTableRowActionFinalMeasurement<ProcessedBookingLead> | null>
+    React.SetStateAction<DataTableRowActionFinalMeasurement<ProcessedFianlMeasurementLead> | null>
   >;
   userType?: string;
 }
 
-export function getBookingLeadsTableColumns({
+export function getFinalMeasurementLeadsTableColumns({
   setRowAction,
   userType,
-}: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedBookingLead>[] {
+}: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedFianlMeasurementLead>[] {
   const router = useRouter();
   return [
     // Action Button
@@ -68,12 +76,12 @@ export function getBookingLeadsTableColumns({
               Edit
             </DropdownMenuItem>
 
-             <DropdownMenuItem
+            <DropdownMenuItem
               data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: 'finalMeasu' })}
+              onSelect={() => setRowAction({ row, variant: "clientdoc" })}
             >
-              <Ruler size={20} />
-              Final Measurement
+              <FileText size={20} />
+              Client Documentation
             </DropdownMenuItem>
 
             {canReassingLead(userType) && (
@@ -292,7 +300,7 @@ export function getBookingLeadsTableColumns({
             enableSorting: true,
             enableHiding: true,
             enableColumnFilter: true,
-          } as ColumnDef<ProcessedBookingLead>,
+          } as ColumnDef<ProcessedFianlMeasurementLead>,
         ]
       : []),
 

@@ -10,7 +10,9 @@ export interface FinalMeasurementPayload {
   site_photos: File[]; // multiple images
 }
 
-export const UploadFinalMeasurement = async (payload: FinalMeasurementPayload) => {
+export const UploadFinalMeasurement = async (
+  payload: FinalMeasurementPayload
+) => {
   const formData = new FormData();
   formData.append("lead_id", payload.lead_id.toString());
   formData.append("account_id", payload.account_id.toString());
@@ -31,6 +33,49 @@ export const UploadFinalMeasurement = async (payload: FinalMeasurementPayload) =
 
   const { data } = await apiClient.post(
     `/leads/final-measurement/onboard`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return data;
+};
+
+export const getAllFinalMeasurementLeads = async (
+  vendorId: number,
+  userId: number
+) => {
+  const { data } = await apiClient.get(
+    `/leads/final-measurement/allLeads/vendorId/${vendorId}/userId/${userId}`
+  );
+  return data;
+};
+
+export interface uploadClientDocPayload {
+  leadId: number;
+  accountId: number;
+  vendorId: number;
+  createdBy: number;
+  documents: File[];
+}
+
+export const UploadClientDocumantation = async (
+  payload: uploadClientDocPayload
+) => {
+  const formData = new FormData();
+  formData.append("lead_id", payload.leadId.toString());
+  formData.append("account_id", payload.accountId.toString());
+  formData.append("vendor_id", payload.vendorId.toString());
+  formData.append("created_by", payload.createdBy.toString());
+  payload.documents.forEach((file) => {
+    formData.append("documents", file);
+  });
+
+  const { data } = await apiClient.post(
+    `/leads/client-documentation/submit-documents`,
     formData,
     {
       headers: {

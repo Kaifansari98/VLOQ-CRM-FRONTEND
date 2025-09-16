@@ -36,14 +36,16 @@ import { useDeleteLead } from "@/hooks/useDeleteLead";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-import { BookingLead, ProcessedBookingLead } from "@/types/booking-types";
-import { getBookingLeadsTableColumns } from "./booking-stage-columns";
-import { useBookingLeads } from "@/hooks/booking-stage/use-booking";
-import BookingEditModal from "@/components/sales-executive/booking-stage/bookint-edit-form";
-import BookingViewModal from "@/components/sales-executive/booking-stage/view-booking-modal";
-import FinalMeasurementModal from "@/components/sales-executive/booking-stage/final-measurement-modal";
+import { getFinalMeasurementLeadsTableColumns } from "./final-measurement-columns";
+import {
+  FinalMeasurementLead,
+  ProcessedFianlMeasurementLead,
+} from "@/types/final-measurement";
+import { useFinalMeasurementLeads } from "@/hooks/final-measurement/use-final-measurement";
+import FinalMeasurementEditModal from "@/components/site-supervisor/final-measurement/final-measurement-edit-modal";
+import ClientDocumantationModal from "@/components/site-supervisor/final-measurement/client-documantation-modal";
 
-const BookingStageLeadsTable = () => {
+const FinalMeasurementLeadsTable = () => {
   // Redux selectors
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -55,17 +57,21 @@ const BookingStageLeadsTable = () => {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const router = useRouter();
 
-  // React Query hook
-  const { data, error, isLoading, isError } = useBookingLeads(vendorId!);
+  const { data, isLoading, isError } = useFinalMeasurementLeads(
+    vendorId!,
+    userId!
+  );
   console.log("Booking Leads Data:", data);
   // Local state
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
-  const [openViewModal, setOpenViewModal] = useState<boolean>(false);
-  const [editOpenLead, setEditOpenLead] = useState(false);
-  const [openFinalModal, setOpenFinalModal] = useState(false);
+  const [openEditModal, setOpenEditModal] = useState<boolean>(false);
+  const [openClientDocModal, setOpenClientDocModal] = useState<boolean>(false);
+
   const [rowAction, setRowAction] =
-    useState<DataTableRowActionFinalMeasurement<ProcessedBookingLead> | null>(null);
+    useState<DataTableRowActionFinalMeasurement<ProcessedFianlMeasurementLead> | null>(
+      null
+    );
 
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([
@@ -88,10 +94,11 @@ const BookingStageLeadsTable = () => {
   const deleteLeadMutation = useDeleteLead();
 
   // Derived: formatted row data
-  const rowData = useMemo<ProcessedBookingLead[]>(() => {
+  const rowData = useMemo<ProcessedFianlMeasurementLead[]>(() => {
     if (!data?.data) return [];
 
-    return data.data.map((lead: BookingLead, index: number) => ({
+    console.log("Final Measurement Leads:- ", data.data);
+    return data.data.map((lead: FinalMeasurementLead, index: number) => ({
       id: lead.id,
       srNo: index + 1,
       name: `${lead.firstname || ""} ${lead.lastname || ""}`.trim(),
@@ -109,11 +116,6 @@ const BookingStageLeadsTable = () => {
       altContact: lead.alt_contact_no || "",
       status: lead.statusType?.type || "",
       assignedTo: lead.assignedTo?.user_name || "",
-
-      siteSupervisor: lead.siteSupervisors?.[0]?.user_name || "-",
-      siteSupervisorId: lead.siteSupervisors?.[0]?.id,
-      bookingAmount: lead.payments?.[0].amount || 0,
-      paymentsText: lead.payments?.[0].payment_text || "-",
       final_booking_amt: lead.final_booking_amt,
       accountId: lead.account_id,
       productTypes:
@@ -131,7 +133,7 @@ const BookingStageLeadsTable = () => {
 
   // Columns
   const columns = useMemo(
-    () => getBookingLeadsTableColumns({ setRowAction, userType }),
+    () => getFinalMeasurementLeadsTableColumns({ setRowAction, userType }),
     [setRowAction, userType]
   );
 
@@ -164,9 +166,8 @@ const BookingStageLeadsTable = () => {
     if (!rowAction) return;
     if (rowAction.variant === "delete") setOpenDelete(true);
     if (rowAction.variant === "reassignlead") setAssignOpenLead(true);
-    if (rowAction.variant === "edit") setEditOpenLead(true);
-    if (rowAction.variant === "view") setOpenViewModal(true);
-    if (rowAction.variant === "finalMeasu") setOpenFinalModal(true);
+    if (rowAction.variant === "edit") setOpenEditModal(true);
+    if (rowAction.variant === "clientdoc") setOpenClientDocModal(true);
   }, [rowAction]);
 
   // Handlers
@@ -189,7 +190,7 @@ const BookingStageLeadsTable = () => {
     setRowAction(null);
   };
 
-  const handleRowClick = (row: ProcessedBookingLead) => {
+  const handleRowClick = (row: ProcessedFianlMeasurementLead) => {
     router.push(`/dashboard/sales-executive/booking-stage/details/${row.id}`);
   };
 
@@ -254,25 +255,20 @@ const BookingStageLeadsTable = () => {
         onOpenChange={setAssignOpenLead}
         leadData={rowAction?.row.original}
       />
-      <BookingEditModal
-        open={editOpenLead}
-        onOpenChange={setEditOpenLead}
+
+      <FinalMeasurementEditModal
+        open={openEditModal}
+        onOpenChange={setOpenEditModal}
         data={rowAction?.row.original}
       />
 
-      <BookingViewModal
-        open={openViewModal}
-        onOpenChange={setOpenViewModal}
-        data={rowAction?.row.original}
-      />
-
-      <FinalMeasurementModal
-        open={openFinalModal}
-        onOpenChange={setOpenFinalModal}
+      <ClientDocumantationModal
+        open={openClientDocModal}
+        onOpenChange={setOpenClientDocModal}
         data={rowAction?.row.original}
       />
     </>
   );
 };
 
-export default BookingStageLeadsTable;
+export default FinalMeasurementLeadsTable;
