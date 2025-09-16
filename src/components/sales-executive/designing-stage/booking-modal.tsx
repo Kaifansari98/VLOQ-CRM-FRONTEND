@@ -60,7 +60,7 @@ const bookingSchema = z
   })
   .refine((data) => data.amount_received <= data.final_booking_amount, {
     message: "Amount Received should not be greater than Total Booking Amount",
-    path: ["amount_received"], 
+    path: ["amount_received"],
   });
 
 // ✅ Proper type inference from schema
@@ -201,6 +201,34 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                     <FormField
                       control={form.control}
+                      name="final_booking_amount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">
+                            Total Booking Amount *
+                          </FormLabel>
+                          <FormControl>
+                            <input
+                              type="number"
+                              placeholder="Enter total booking amount"
+                              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm "
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                field.onChange(
+                                  value === "" ? 0 : Number(value)
+                                );
+                              }}
+                              min="1"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
                       name="amount_received"
                       render={({ field }) => (
                         <FormItem>
@@ -222,35 +250,6 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                               }}
                               min="1"
                               step="0.01"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="final_booking_amount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm">
-                            Total Booking Amount *
-                          </FormLabel>
-                          <FormControl>
-                            <input
-                              type="number"
-                              placeholder="Enter total booking amount"
-                              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm "
-                              {...field}
-                              value={field.value || ""}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                field.onChange(
-                                  value === "" ? 0 : Number(value)
-                                );
-                              }}
-                              min="1"
                             />
                           </FormControl>
                           <FormMessage />

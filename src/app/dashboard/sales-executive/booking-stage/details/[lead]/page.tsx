@@ -21,6 +21,8 @@ import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import OpenLeadDetails from "@/components/tabScreens/OpenLeadDetails";
+import SiteMeasurementLeadDetails from "@/components/tabScreens/SiteMeasurementLeadDetails";
+import BookingLeadsDetails from "@/components/tabScreens/BookingLeadsDetails";
 
 export default function BookingStageLeadsDetails() {
   const { lead: leadId } = useParams();
@@ -32,6 +34,16 @@ export default function BookingStageLeadsDetails() {
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
 
   const lead = data?.data?.lead;
+  const createdAt = lead?.created_at;
+  const accountId = lead?.account_id;
+
+  console.log(lead);
+
+  const leadInfo = {
+    leadId: leadId,
+    createdAt: createdAt,
+    accountId: accountId,
+  };
 
   const formatDateTime = (dateString?: string) => {
     if (!dateString) return "N/A";
@@ -72,21 +84,13 @@ export default function BookingStageLeadsDetails() {
       id: "designing",
       title: "Desiging Stage",
       color: "bg-zinc-900 hover:bg-gray-600",
-      cardContent: (
-        <div className="p-4 border rounded-lg">
-          <p className="text-sm text-muted-foreground">No closed leads yet.</p>
-        </div>
-      ),
+      cardContent: <SiteMeasurementLeadDetails lead={leadInfo} />,
     },
     {
       id: "booking",
       title: "Booking Stage",
       color: "bg-zinc-900 hover:bg-gray-600",
-      cardContent: (
-        <div className="p-4 border rounded-lg">
-          <p className="text-sm text-muted-foreground">No closed leads yet.</p>
-        </div>
-      ),
+      cardContent: <BookingLeadsDetails lead={leadInfo} />,
     },
   ];
 

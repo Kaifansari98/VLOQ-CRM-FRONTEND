@@ -12,7 +12,7 @@ import {
   PieChart,
   Settings2,
   CalendarCheck2,
-  BookOpenCheck
+  BookOpenCheck,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -96,10 +96,11 @@ const data = {
       title: "Project",
       url: "#",
       icon: Bot,
+      isActive: true,
       items: [
         {
           title: "Final Measurement",
-          url: "#",
+          url: "/dashboard/site-supervisor/final-measurement",
         },
         {
           title: "Client Documentation",

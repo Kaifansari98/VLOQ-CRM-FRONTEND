@@ -1,4 +1,5 @@
 "use client";
+
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
@@ -15,19 +16,16 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/ModeToggle";
-import { useAppSelector } from "@/redux/store";
-import InitialSiteSkeleton from "@/components/sales-executive/siteMeasurement/measurement-skeleton";
-import { Suspense, useEffect } from "react";
-import { useDesigningStageLeads } from "@/hooks/designing-stage/designing-leads-hooks";
-
-export default function InitialSiteMeasurement() {
+import { Suspense } from "react";
+import FinalMeasurementSkeleton from "@/components/site-supervisor/final-measurement/final-measurement-skeleton";
+export default function LeadsBookingPage() {
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
-                <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-
-          <div className="flex items-center gap-2 px-4">
+        {/* Header */}
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
             <Separator
               orientation="vertical"
@@ -36,22 +34,27 @@ export default function InitialSiteMeasurement() {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
+                  <BreadcrumbLink href="/dashboard">project</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Initial Site Measurement</BreadcrumbPage>
+                  <BreadcrumbPage>Final-Measurement</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          <div className="flex items-center gap-2 pr-4">
-            <ModeToggle />
+
+          <div className="flex items-center gap-2">
+            <div className="flex gap-2 items-center">
+              <ModeToggle />
+            </div>
           </div>
         </header>
+
+        {/* Content */}
         <main className="flex-1 p-4 pt-0 overflow-x-hidden">
           <Suspense fallback={<p>Loading...</p>}>
-            <InitialSiteSkeleton />
+            <FinalMeasurementSkeleton />
           </Suspense>
         </main>
       </SidebarInset>

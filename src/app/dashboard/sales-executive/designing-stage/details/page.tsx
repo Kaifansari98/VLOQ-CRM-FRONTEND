@@ -66,6 +66,7 @@ function DetailsContent() {
       <main className="flex-1 h-full w-full p-6">
         <DetailsProvider value={{ leadId, accountId }}>
           <PillTabs
+          addButtons={true}
             tabs={[
               { id: "quotation", label: "Quotation", content: <QuotationTab /> },
               { id: "meetings", label: "Meetings", content: <MettingsTab /> },

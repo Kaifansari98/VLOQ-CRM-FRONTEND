@@ -84,7 +84,7 @@ export default function LeadDetails() {
           <div className="flex items-center gap-2">
             {leadStatus === "open" && (
               <Button onClick={() => setOpenMeasurementModal(true)}>
-                Move To Initialsite Measurement
+                Move To Initial Site Measurement
               </Button>
             )}
             <ModeToggle />

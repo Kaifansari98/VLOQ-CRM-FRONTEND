@@ -38,3 +38,8 @@ export interface DataTableRowAction<TData> {
   row: Row<TData>;
   variant: "edit" | "delete" | "view"  | "reassignlead" | "measurement" | "details" | "booking" | "move" ;
 }
+
+export interface DataTableRowActionFinalMeasurement<TData> {
+  row: Row<TData>;
+  variant: "edit" | "delete" | "view"  | "reassignlead" | "finalMeasu" ;
+}
