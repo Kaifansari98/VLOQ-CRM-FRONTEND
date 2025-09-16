@@ -1,3 +1,5 @@
+"use client";
+
 import { FileUploadField } from "@/components/custom/file-upload";
 import TextAreaInput from "@/components/origin-text-area";
 import { Button } from "@/components/ui/button";
@@ -15,6 +17,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { useForm } from "react-hook-form";
 import z from "zod";
+import { toast } from "react-toastify";
+import { useFinalMeasurement } from "@/hooks/final-measurement/use-final-measurement";
+import { useAppSelector } from "@/redux/store";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -54,6 +59,8 @@ const FinalMeasurementModal = ({
   onOpenChange,
   data,
 }: LeadViewModalProps) => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -63,9 +70,34 @@ const FinalMeasurementModal = ({
     },
   });
 
+  const finalMeasurementMutation = useFinalMeasurement();
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log(values);
+    if (!data) return;
+
+    finalMeasurementMutation.mutate(
+      {
+        lead_id: data.id,
+        account_id: data.accountId,
+        vendor_id: vendorId!,
+        created_by: userId!,
+        critical_discussion_notes: values.criticalDiscussion,
+        final_measurement_doc: values.finalMeasurementDoc,
+        site_photos: values.currentSitePhotos,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Final measurement uploaded successfully!");
+          form.reset();
+          onOpenChange(false);
+        },
+        onError: (error: any) => {
+          toast.error(error?.message || "Upload failed. Try again.");
+        },
+      }
+    );
   };
+
   return (
     <BaseModal
       open={open}
@@ -155,7 +187,14 @@ const FinalMeasurementModal = ({
               >
                 Reset
               </Button>
-              <Button type="submit">Submit</Button>
+              <Button
+                type="submit"
+                disabled={finalMeasurementMutation.isPending}
+              >
+                {finalMeasurementMutation.isPending
+                  ? "Submitting..."
+                  : "Submit"}
+              </Button>
             </div>
           </form>
         </Form>
