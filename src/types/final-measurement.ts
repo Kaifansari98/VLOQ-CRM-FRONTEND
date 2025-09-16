@@ -112,3 +112,25 @@ export interface FinalMeasurementLeadsResponse {
   message: string;
   data: FinalMeasurementLead[];
 }
+
+{
+  /* Tyeps for FinalMeasurementLeadBydId */
+}
+
+export interface FinalMeasurementDoc {
+  id: number;
+  doc_og_name: string;
+  doc_sys_name: string;
+  doc_type_id: number;
+  created_at: string;
+  signedUrl: string;
+}
+
+export interface FinalMeasurementLeadDetails {
+  id: number;
+  final_desc_note: string;
+  status_id: number;
+  vendor_id: number;
+  measurementDoc?: FinalMeasurementDoc; 
+  sitePhotos: FinalMeasurementDoc[];
+}
