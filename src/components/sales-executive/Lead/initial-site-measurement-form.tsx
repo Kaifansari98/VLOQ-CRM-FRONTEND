@@ -30,6 +30,7 @@ import { getLeadById, uploadInitialSiteMeasurement } from "@/api/leads";
 import { toast } from "react-toastify";
 import CustomeDatePicker from "@/components/date-picker";
 import TextAreaInput from "@/components/origin-text-area";
+import { SinglePdfUploadField } from "@/components/utils/single-pdf-uploader";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -40,9 +41,10 @@ interface LeadViewModalProps {
 const formSchema = z.object({
   current_site_photos: z.any().optional(),
   upload_pdf: z
-    .array(z.instanceof(File))
-    .min(1, "Please upload a PDF")
-    .max(1, "Only one PDF allowed"),
+    .instanceof(File, { message: "Please upload a PDF" })
+    .refine((file) => file.type === "application/pdf", {
+      message: "Only PDF file is allowed",
+    }),
   amount: z.number("Amount must be a number").optional(),
   payment_date: z.string().optional(),
   payment_image: z.any().optional(),
@@ -58,11 +60,10 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       current_site_photos: [],
-      upload_pdf: [],
+      upload_pdf: undefined,
       payment_image: [],
     },
   });
-
   const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state: any) => state.auth.user?.id);
 
@@ -85,7 +86,13 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       onOpenChange(false);
     },
     onError: (error: any) => {
-      toast.error(error?.message || "Something went wrong");
+      const backendMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Something went wrong";
+
+      console.log(error.response.data.message);
+      toast.error(backendMessage);
     },
   });
 
@@ -110,11 +117,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       formData.append("current_site_photos", file);
     });
 
-    // PDF (only one file allowed as per schema)
-    values.upload_pdf?.forEach((file: File) => {
-      formData.append("upload_pdf", file);
-    });
-    // Payable amount
+    formData.append("upload_pdf", values.upload_pdf);
     if (values.amount) {
       formData.append("amount", values.amount.toString());
     }
@@ -146,16 +149,15 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     console.log("==== END FORM DATA ====");
     console.log(values);
     console.log(vendorId);
-    // ✅ API call via mutation
     mutation.mutate(formData);
   };
 
   const handleReset = () => {
     form.reset({
       current_site_photos: [],
-      upload_pdf: [], // reset empty array
+      upload_pdf: undefined,
       amount: undefined,
-      payment_date: undefined, // ✅ instead of ""
+      payment_date: undefined,
       payment_image: [],
       payment_text: "",
     });
@@ -211,7 +213,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                         Initial Site Measurement Document *
                       </FormLabel>
                       <FormControl>
-                        <PdfUploadField
+                        <SinglePdfUploadField
                           value={field.value}
                           onChange={field.onChange}
                         />
@@ -281,6 +283,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                         <FileUploadField
                           value={field.value}
                           onChange={field.onChange}
+                          multiple={false}
                         />
                       </FormControl>
                       <FormDescription className="text-xs">

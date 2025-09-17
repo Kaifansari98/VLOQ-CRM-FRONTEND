@@ -70,14 +70,6 @@ export function getFinalMeasurementLeadsTableColumns({
 
             <DropdownMenuItem
               data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: "edit" })}
-            >
-              <SquarePen size={20} />
-              Edit
-            </DropdownMenuItem>
-
-            <DropdownMenuItem
-              data-slot="action-button"
               onSelect={() => setRowAction({ row, variant: "clientdoc" })}
             >
               <FileText size={20} />

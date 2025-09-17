@@ -62,7 +62,7 @@ export function SinglePdfUploadField({
 
   return (
     <FileUpload
-      value={value ? [value] : []} // internally still uses array
+      value={value ? [value] : []}
       onValueChange={(files) => onChange(files[0] ?? null)}
       onUpload={onUpload}
       onFileReject={onFileReject}

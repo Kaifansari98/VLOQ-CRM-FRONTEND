@@ -21,12 +21,14 @@ interface FileUploadFieldProps {
   value: File[];
   onChange: (files: File[]) => void;
   accept?: string;
+  multiple?: boolean;
 }
 
 export function FileUploadField({
   value,
   onChange,
   accept,
+  multiple,
 }: FileUploadFieldProps) {
   const onUpload: NonNullable<FileUploadProps["onUpload"]> = React.useCallback(
     async (files, { onProgress, onSuccess, onError }) => {
@@ -71,27 +73,25 @@ export function FileUploadField({
     toast.error(`${message}: "${fileName}" has been rejected`);
   }, []);
 
-
   const readableAccept = React.useMemo(() => {
-  if (!accept) return "any file type";
+    if (!accept) return "any file type";
 
-  return accept
-    .split(",")
-    .map((type) => {
-      type = type.trim();
+    return accept
+      .split(",")
+      .map((type) => {
+        type = type.trim();
 
-      if (type === "image/*") return "Images";
-      if (type === "video/*") return "Videos";
-      if (type === "audio/*") return "Audio Files";
+        if (type === "image/*") return "Images";
+        if (type === "video/*") return "Videos";
+        if (type === "audio/*") return "Audio Files";
 
-      // Extensions
-      if (type.startsWith(".")) return type.toUpperCase().replace(".", "");
+        // Extensions
+        if (type.startsWith(".")) return type.toUpperCase().replace(".", "");
 
-      return type;
-    })
-    .join(", ");
-}, [accept]);
-
+        return type;
+      })
+      .join(", ");
+  }, [accept]);
 
   return (
     <FileUpload
@@ -101,7 +101,7 @@ export function FileUploadField({
       onFileReject={onFileReject}
       maxFiles={20}
       className="w-full"
-      multiple
+      multiple={multiple ?? true}
       accept={accept ?? "image/*,.png,.jpg,.jpeg  "}
     >
       <FileUploadDropzone>
