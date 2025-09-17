@@ -32,7 +32,9 @@ interface NavItem {
     | "total_open_leads"
     | "total_initial_site_measurement_leads"
     | "total_designing_stage_leads"
-    | "total_booking_stage_leads";
+    | "total_booking_stage_leads"
+    | "total_final_measurement_leads"
+    | "total_client_documentation_leads";
   items?: {
     title: string;
     url: string;
@@ -41,7 +43,9 @@ interface NavItem {
       | "total_open_leads"
       | "total_initial_site_measurement_leads"
       | "total_designing_stage_leads"
-      | "total_booking_stage_leads";
+      | "total_booking_stage_leads"
+      | "total_final_measurement_leads"
+      | "total_client_documentation_leads";
   }[];
 }
 
@@ -53,7 +57,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
 
   const getCountForItem = (showCount?: string) => {
     if (!leadStats?.data || !showCount) return undefined;
-
+  
     switch (showCount) {
       case "total_leads":
         return leadStats.data.total_leads;
@@ -65,10 +69,14 @@ export function NavMain({ items }: { items: NavItem[] }) {
         return leadStats.data.total_designing_stage_leads;
       case "total_booking_stage_leads":
         return leadStats.data.total_booking_stage_leads;
+      case "total_final_measurement_leads": // ✅ new
+        return leadStats.data.total_final_measurement_leads;
+      case "total_client_documentation_leads": // ✅ new
+        return leadStats.data.total_client_documentation_leads;
       default:
         return undefined;
     }
-  };
+  };  
 
   return (
     <SidebarGroup>

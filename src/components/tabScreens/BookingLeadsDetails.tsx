@@ -152,7 +152,7 @@ export default function BookingLeadsDetails({ lead }: OpenLeadDetailsProps) {
                 </div>
                 <div>
                   <p className="text-sm font-medium">
-                    Amount Received
+                    Booking Amount Received 
                   </p>
                   <p className="text-lg font-bold ">
                     ₹
@@ -173,7 +173,7 @@ export default function BookingLeadsDetails({ lead }: OpenLeadDetailsProps) {
                 </div>
                 <div>
                   <p className="text-sm font-medium">
-                    Total Booking Amount
+                    Total Project Amount
                   </p>
                   <p className="text-lg font-bold ">
                     ₹

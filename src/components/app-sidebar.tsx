@@ -101,10 +101,12 @@ const data = {
         {
           title: "Final Measurement",
           url: "/dashboard/site-supervisor/final-measurement",
+          showCount: "total_final_measurement_leads" as const, // ✅ added
         },
         {
           title: "Client Documentation",
           url: "/dashboard/site-supervisor/client-documentation",
+          showCount: "total_client_documentation_leads" as const, // ✅ added
         },
         {
           title: "Client Approval",

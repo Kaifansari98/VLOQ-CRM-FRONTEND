@@ -59,7 +59,7 @@ const bookingSchema = z
     assign_to: z.string().min(1, "Please select an assignee"),
   })
   .refine((data) => data.amount_received <= data.final_booking_amount, {
-    message: "Amount Received should not be greater than Total Booking Amount",
+    message: "Booking Amount Received should not be greater than Total Project Amount",
     path: ["amount_received"],
   });
 
@@ -110,7 +110,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   const onSubmit: SubmitHandler<BookingFormValues> = (values) => {
     if (values.amount_received > values.final_booking_amount) {
       toast.error(
-        "Amount Received should not be greater than Total Booking Amount"
+        "Booking Amount Received should not be greater than Total Project Amount"
       );
       return;
     }
@@ -205,12 +205,12 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm">
-                            Total Booking Amount *
+                            Total Project Amount *
                           </FormLabel>
                           <FormControl>
                             <input
                               type="number"
-                              placeholder="Enter total booking amount"
+                              placeholder="Enter total project amount"
                               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm "
                               {...field}
                               value={field.value || ""}
@@ -233,7 +233,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm">
-                            Amount Received *
+                            Booking Amount Received *
                           </FormLabel>
                           <FormControl>
                             <input
@@ -264,7 +264,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   name="assign_to"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm">Assign To *</FormLabel>
+                      <FormLabel className="text-sm">Assign Final Measurement *</FormLabel>
                       <Select
                         value={field.value || ""}
                         onValueChange={field.onChange}
