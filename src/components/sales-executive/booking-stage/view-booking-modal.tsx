@@ -138,7 +138,7 @@ const BookingViewModal: React.FC<LeadViewModalProps> = ({
                         </div>
                         <div>
                           <p className="text-sm font-medium ">
-                            Amount Received
+                           Booking Amount Received 
                           </p>
                           <p className="text-lg font-bold ">
                             ₹
@@ -162,7 +162,7 @@ const BookingViewModal: React.FC<LeadViewModalProps> = ({
                         </div>
                         <div>
                           <p className="text-sm font-medium ">
-                            Total Booking Amount
+                            Total Project Amount
                           </p>
                           <p className="text-lg font-bold ">
                             ₹

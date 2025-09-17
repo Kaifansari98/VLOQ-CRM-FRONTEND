@@ -230,6 +230,7 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
               </div>
             )}
 
+            {/* Site Photos Section */}
             {currentSitePhotos.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Site Photos</h3>

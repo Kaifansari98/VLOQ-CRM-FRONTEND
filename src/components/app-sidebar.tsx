@@ -105,7 +105,7 @@ const data = {
         },
         {
           title: "Client Documentation",
-          url: "#",
+          url: "/dashboard/site-supervisor/client-documentation",
           showCount: "total_client_documentation_leads" as const, // ✅ added
         },
         {

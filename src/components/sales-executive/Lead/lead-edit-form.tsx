@@ -81,8 +81,13 @@ const formSchema = z.object({
       }
     }, "Please enter a valid alternate phone number"),
 
-  product_types: z.array(z.string()).optional(),
-  product_structures: z.array(z.string()).optional(),
+    product_types: z
+    .array(z.string())
+    .min(1, "Please select at least one product type"),
+  
+  product_structures: z
+    .array(z.string())
+    .min(1, "Please select at least one product structure"),
   archetech_name: z.string().max(300).optional(),
   designer_remark: z.string().max(2000).optional(),
   initial_site_measurement_date: z

@@ -53,13 +53,22 @@ const createFormSchema = (userType: string | undefined) => {
     billing_name: z.string().optional(),
     contact_no: z.string().min(1, "This Contact number isn't valid").max(20),
     alt_contact_no: z.string().optional().or(z.literal("")),
-    email: z.string().email("Please enter a valid email"),
+    email: z
+    .string()
+    .email("Please enter a valid email")
+    .optional()
+    .or(z.literal("")),
     site_type_id: z.string().min(1, "Please select a site type"),
     site_address: z.string().min(1, "Site Address is required").max(2000),
     priority: z.string().min(1, "Please select a priority"),
     source_id: z.string().min(1, "Please select a source"),
-    product_types: z.array(z.string()).optional(),
-    product_structures: z.array(z.string()).optional(),
+    product_types: z
+  .array(z.string())
+  .min(1, "Please select at least one product type"),
+
+product_structures: z
+  .array(z.string())
+  .min(1, "Please select at least one product structure"),
     // Dynamic validation based on user role
     assign_to: isAdminOrSuperAdmin
       ? z.string().min(1, "Please select an assignee")
@@ -234,7 +243,6 @@ export default function LeadsGenerationForm({
         },
       }
     );
-    
   }
 
   return (
@@ -347,7 +355,7 @@ export default function LeadsGenerationForm({
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm">Email *</FormLabel>
+                <FormLabel className="text-sm">Email</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Enter email address"
@@ -545,7 +553,7 @@ export default function LeadsGenerationForm({
 
                 return (
                   <FormItem>
-                    <FormLabel className="text-sm">Furniture Type</FormLabel>
+                    <FormLabel className="text-sm">Furniture Type *</FormLabel>
                     <FormControl>
                       <MultipleSelector
                         value={selectedOptions} // Pass Option[] with proper labels
@@ -591,7 +599,7 @@ export default function LeadsGenerationForm({
                 return (
                   <FormItem>
                     <FormLabel className="text-sm">
-                      Furniture Structure
+                      Furniture Structure *
                     </FormLabel>
                     <FormControl>
                       <MultipleSelector
@@ -624,7 +632,7 @@ export default function LeadsGenerationForm({
                 name="assign_to"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm">Assign To</FormLabel>
+                    <FormLabel className="text-sm">Assign Lead To *</FormLabel>
                     <Select
                       value={field.value || ""}
                       onValueChange={field.onChange}
