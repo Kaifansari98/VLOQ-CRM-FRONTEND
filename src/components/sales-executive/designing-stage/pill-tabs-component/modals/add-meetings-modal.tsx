@@ -29,6 +29,7 @@ import { submitMeeting } from "@/api/designingStageQueries";
 import { toast } from "react-toastify";
 import { FilesUploader } from "@/components/files-uploader";
 import CustomeDatePicker from "@/components/date-picker";
+import { FileUploadField } from "@/components/custom/file-upload";
 
 export const meetingSchema = z.object({
   date: z.string().min(1, "Meeting date is required"),
@@ -159,9 +160,10 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
                         Meeting Files (PDF/Image)
                       </FormLabel>
                       <FormControl>
-                        <FilesUploader
+                        <FileUploadField
                           value={field.value}
                           onChange={field.onChange}
+                          accept="image/*,.pdf,.doc,.docx"
                         />
                       </FormControl>
                       <FormMessage />
