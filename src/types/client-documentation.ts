@@ -131,3 +131,19 @@ export type ProcessedClientDocumentationLead = {
   updatedAt?: string;
   accountId: number;
 };
+
+{
+  /* Types for Client Documentation Details */
+}
+
+export interface ClientDocDetails {
+  id: number;
+  doc_og_name: string;
+  doc_sys_name: string;
+  signedUrl: string;
+  created_at: string;
+}
+
+export interface ClientDocDetailsResponse {
+  documents: ClientDocDetails[] | undefined;
+}

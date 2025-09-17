@@ -43,3 +43,8 @@ export interface DataTableRowActionFinalMeasurement<TData> {
   row: Row<TData>;
   variant: "edit" | "delete" | "view"  | "reassignlead" | "clientdoc" ;
 }
+
+export interface DataTableRowActionClientDocumentation<TData> {
+  row: Row<TData>;
+  variant: "edit" | "delete" | "view"  | "reassignlead" ;
+}
