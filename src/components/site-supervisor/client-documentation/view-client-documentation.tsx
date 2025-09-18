@@ -6,6 +6,11 @@ import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
 import { Plus } from "lucide-react";
 import UploadMoreClientDocumentationModal from "./uploadmore-client-documentaition-modal";
+import DocumentPreview from "@/components/utils/file-preview";
+import ImageCard from "@/components/utils/image-card";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"];
 
@@ -39,6 +44,8 @@ const ViewClientDocumentationModal: React.FC<Props> = ({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const leadId = data?.id;
   const accountId = data?.accountId;
+  const [openCarouselModal, setOpenCarouselModal] = useState(false);
+  const [startIndex, setStartIndex] = useState(0);
 
   const leadProps = {
     leadId: leadId ?? 0,
@@ -50,7 +57,19 @@ const ViewClientDocumentationModal: React.FC<Props> = ({
     leadId!
   );
 
-  const documents = leadDetails?.documents || [];
+  const allDocuments = leadDetails?.documents || [];
+
+  // 🔹 Images filter
+  const images = allDocuments.filter((doc) =>
+    isImageExt(getFileExtension(doc.doc_sys_name))
+  );
+
+  // 🔹 Non-images (Docs) filter
+  const docs = allDocuments.filter(
+    (doc) => !isImageExt(getFileExtension(doc.doc_sys_name))
+  );
+
+  console.log("Lead details: ", leadDetails);
 
   return (
     <>
@@ -62,69 +81,57 @@ const ViewClientDocumentationModal: React.FC<Props> = ({
         description="View, upload, and manage client-related documentation in one place."
       >
         <div className="px-5 py-4">
-          {/* Loading State */}
-          {isLoading && (
-            <p className="text-sm text-gray-500">Loading documents...</p>
-          )}
-
-          {/* Empty State */}
-          {!isLoading && documents.length === 0 && (
-            <p className="text-sm text-gray-500">No documents uploaded yet.</p>
-          )}
-
-          {/* Documents Grid */}
-          {documents.length > 0 && (
-            <div className="flex flex-wrap gap-3">
-              {documents.map((doc) => {
-                const ext = getFileExtension(doc.doc_sys_name);
-                const isImage = isImageExt(ext);
-
-                return (
-                  <div
-                    key={doc.id}
-                    className="relative h-32 w-32 rounded-lg border overflow-hidden bg-gray-50 group cursor-pointer"
-                    onClick={() =>
-                      !isImage && handleDownload(doc.signedUrl, doc.doc_og_name)
-                    }
-                    title={doc.doc_og_name}
-                  >
-                    {isImage ? (
-                      <img
-                        src={doc.signedUrl}
-                        alt={doc.doc_og_name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center bg-gray-100 text-gray-600 text-sm font-medium">
-                        .{ext.toUpperCase()}
-                      </div>
-                    )}
-
-                    {/* Hover Overlay */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center px-2 text-center">
-                      <span className="text-white text-xs break-words">
-                        {doc.doc_og_name}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Add Document Button */}
-              <div
-                className="flex items-center justify-center h-32 w-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 group"
-                // onClick={() => setOpenImageModal(true)}
+          <Card className="p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <h2 className="text-lg sm:text-xl font-semibold">
+                Client Documentation Files
+              </h2>
+              <Button
+                onClick={() => setAddMoreDoc(true)}
+                className="flex items-center text-xs sm:text-sm gap-2 h-8 sm:h-9"
               >
-                <div
-                  className="flex flex-col items-center text-gray-500 group-hover:text-blue-600"
-                  onClick={() => setAddMoreDoc(true)}
-                >
-                  <Plus size={24} className="mb-1" />
-                  <span className="text-xs font-medium">Add Documents</span>
-                </div>
+                <Plus className="h-4 w-4" />
+                Add More Files
+              </Button>
+            </div>
+
+            {/*Images */}
+            <div className="space-y-2">
+              <h3 className="text-base sm:text-lg font-semibold">Images</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+                {images.map((img, idx) => (
+                  <ImageCard
+                    key={img.id}
+                    image={img}
+                    size="medium"
+                    onClick={() => {
+                      setStartIndex(idx);
+                      setOpenCarouselModal(true);
+                    }}
+                  />
+                ))}
               </div>
             </div>
-          )}
+
+            {/* Documents */}
+            <div className="space-y-2">
+              <h3 className="text-base sm:text-lg font-semibold">Documents</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+                {docs
+                  .filter(
+                    (m) => !isImageExt(getFileExtension(m.doc_sys_name || ""))
+                  )
+                  .map((doc) => (
+                    <DocumentPreview
+                      key={doc.id}
+                      file={doc}
+                      size="medium"
+                      onClick={() => console.log("Clicked Document:", doc)}
+                    />
+                  ))}
+              </div>
+            </div>
+          </Card>
         </div>
       </BaseModal>
 
@@ -132,6 +139,13 @@ const ViewClientDocumentationModal: React.FC<Props> = ({
         open={addMoreDoc}
         onOpenChange={setAddMoreDoc}
         data={leadProps}
+      />
+
+      <ImageCarouselModal
+        images={images}
+        onClose={() => setOpenCarouselModal(false)}
+        initialIndex={startIndex}
+        open={openCarouselModal}
       />
     </>
   );

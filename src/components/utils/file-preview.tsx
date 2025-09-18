@@ -8,7 +8,7 @@ interface DocumentPreviewProps {
   file: {
     doc_sys_name: string;
     doc_og_name?: string;
-    signedUrl?: string;
+    signed_url?: string;
   };
   size?: "small" | "medium" | "large";
   onClick?: () => void;
@@ -41,7 +41,15 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
         </span>
       </div>
 
-      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-lg transition-opacity">
+      <div
+        onClick={() => {
+          if (file.signed_url) {
+            window.open(file.signed_url, "_blank");
+          }
+        }}
+        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 
+             flex items-center justify-center rounded-lg transition-opacity cursor-pointer"
+      >
         <span className="text-white text-xs sm:text-sm font-medium px-2 text-center">
           {file.doc_og_name ?? "document"}
         </span>

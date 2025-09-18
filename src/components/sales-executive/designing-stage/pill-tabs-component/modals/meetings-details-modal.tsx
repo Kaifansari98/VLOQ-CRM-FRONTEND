@@ -29,6 +29,7 @@ const MeetingDetailsModal = ({
   const meetings = meeting.designMeetingDocsMapping;
   const [openCarouselModal, setOpenCarouselModal] = useState(false);
   const [startIndex, setStartIndex] = useState(0);
+  
   const formatDateOnly = (dateString: string): string =>
     new Date(dateString).toLocaleDateString("en-IN", {
       day: "2-digit",

@@ -140,7 +140,7 @@ export interface ClientDocDetails {
   id: number;
   doc_og_name: string;
   doc_sys_name: string;
-  signedUrl: string;
+  signed_url: string;
   created_at: string;
 }
 
