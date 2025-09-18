@@ -34,9 +34,7 @@ import { FileUploadField } from "@/components/custom/file-upload";
 export const meetingSchema = z.object({
   date: z.string().min(1, "Meeting date is required"),
   desc: z.string().min(1, "Meeting description is required"),
-  files: z
-    .array(z.custom<File>()) // ✅ safer than instanceof
-    .min(1, "Please upload at least one file"),
+  files: z.array(z.custom<File>()).optional(),
 });
 
 export type MeetingFormValues = z.infer<typeof meetingSchema>;
@@ -67,7 +65,7 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
   const mutation = useMutation({
     mutationFn: (values: MeetingFormValues) =>
       submitMeeting({
-        files: values.files,
+        files: values.files ?? [],
         desc: values.desc,
         date: values.date,
         vendorId: vendorId,

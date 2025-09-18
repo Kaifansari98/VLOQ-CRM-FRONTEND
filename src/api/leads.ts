@@ -16,7 +16,7 @@ export interface CreateLeadPayload {
   country_code: string;
   contact_no: string;
   alt_contact_no?: string;
-  email: string;
+  email?: string;
   site_address: string;
   site_type_id: number;
   priority: string;
@@ -26,8 +26,8 @@ export interface CreateLeadPayload {
   designer_remark?: string;
   vendor_id: number;
   created_by: number;
-  product_types?: string[];
-  product_structures?: string[];
+  product_types: string[];
+  product_structures: string[];
 }
 
 export interface Lead {
@@ -101,7 +101,7 @@ export const createLead = async (
 
   // Append all form fields
   Object.entries(payload).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
+    if (value !== undefined && value !== null && value !== "") {
       if (Array.isArray(value)) {
         value.forEach((item) => {
           formData.append(key, item.toString());

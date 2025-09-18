@@ -230,7 +230,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                     render={({ field }) => (
                       <FormItem className="w-full">
                         <FormLabel className="text-sm">
-                          Initial Site Measurement Payble Amount
+                          Initial Site Measurement Payable Amount
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -264,7 +264,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                           <CustomeDatePicker
                             value={field.value}
                             onChange={field.onChange}
-                            restriction="futureOnly"
+                            restriction="pastOnly"
                           />
                         </FormControl>
                         <FormMessage />
