@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Image as ImageIcon } from "lucide-react"; // Lucide se image icon
+import React, { useState } from "react";
+import { Image as ImageIcon } from "lucide-react";
 
 interface ImageCardProps {
   image: {
@@ -10,7 +10,7 @@ interface ImageCardProps {
     doc_og_name?: string;
   };
   onClick?: () => void;
-  size?: "small" | "medium" | "large"; // optional, height control
+  size?: "small" | "medium" | "large";
 }
 
 const sizeClasses = {
@@ -24,7 +24,8 @@ const ImageCard: React.FC<ImageCardProps> = ({
   onClick,
   size = "medium",
 }) => {
-  const hasImage = !!image.signed_url;
+  const [isError, setIsError] = useState(false);
+  const hasImage = !!image.signed_url && !isError;
 
   return (
     <div className="relative group">
@@ -32,14 +33,16 @@ const ImageCard: React.FC<ImageCardProps> = ({
         <img
           src={image.signed_url}
           alt={image.doc_og_name ?? "image"}
+          onError={() => setIsError(true)}
           className={`${sizeClasses[size]} w-full object-cover rounded-lg border-2 border-gray-200 
             hover:border-blue-400 transition-colors cursor-pointer shadow-sm hover:shadow-md`}
         />
       ) : (
         <div
-          className={`${sizeClasses[size]} w-full flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-400`}
+          className={`${sizeClasses[size]} w-full flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400`}
         >
           <ImageIcon className="h-8 w-8 mb-1 opacity-60" />
+          <span className="text-xs">No Image</span>
         </div>
       )}
 

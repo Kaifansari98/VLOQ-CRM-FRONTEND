@@ -65,7 +65,9 @@ const BookingStageLeadsTable = () => {
   const [editOpenLead, setEditOpenLead] = useState(false);
   const [openFinalModal, setOpenFinalModal] = useState(false);
   const [rowAction, setRowAction] =
-    useState<DataTableRowActionFinalMeasurement<ProcessedBookingLead> | null>(null);
+    useState<DataTableRowActionFinalMeasurement<ProcessedBookingLead> | null>(
+      null
+    );
 
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([

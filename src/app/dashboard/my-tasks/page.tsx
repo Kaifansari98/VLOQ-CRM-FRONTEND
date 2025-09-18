@@ -4,10 +4,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -15,11 +13,13 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { ModeToggle } from "@/components/ModeToggle";
 import { Button } from "@/components/ui/button";
 import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-generation-form-modal";
 import { Suspense, useState } from "react";
 import MyTaskLeadsSkeleton from "@/components/sales-executive/my-tasks/my-tasks-skeleton";
+import Loader from "@/components/utils/loader";
 export default function MyTaskLeadPage() {
   const [openCreateLead, setOpenCreateLead] = useState(false);
 
@@ -29,7 +29,6 @@ export default function MyTaskLeadPage() {
       <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
         {/* Header */}
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          {/* Left side - SidebarTrigger + Breadcrumb */}
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
             <Separator
@@ -41,10 +40,6 @@ export default function MyTaskLeadPage() {
                 <BreadcrumbItem className="hidden md:block">
                   <BreadcrumbPage>My Tasks</BreadcrumbPage>
                 </BreadcrumbItem>
-                {/* <BreadcrumbSeparator className="hidden md:block" /> */}
-                {/* <BreadcrumbItem>
-                  <BreadcrumbPage>View Leads</BreadcrumbPage>
-                </BreadcrumbItem> */}
               </BreadcrumbList>
             </Breadcrumb>
           </div>
@@ -65,7 +60,20 @@ export default function MyTaskLeadPage() {
 
         {/* Content */}
         <main className="flex-1 p-4 pt-0 overflow-x-hidden">
-          <Suspense fallback={<p>Loading...</p>}>
+          <Suspense  fallback={
+                          <DataTableSkeleton
+                            columnCount={10}
+                            filterCount={2}
+                            cellWidths={[
+                              "10rem",
+                              "20rem",
+                              "10rem",
+                              "10rem",
+                              "8rem",
+                              "8rem",
+                            ]}
+                          />
+                        }>
             <MyTaskLeadsSkeleton />
           </Suspense>
         </main>

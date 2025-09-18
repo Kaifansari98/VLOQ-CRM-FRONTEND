@@ -16,6 +16,8 @@ import {
   VisibilityState,
 } from "@tanstack/react-table";
 
+import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
+
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableAdvancedToolbar } from "@/components/data-table/data-table-advanced-toolbar";
 import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
@@ -42,6 +44,7 @@ import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda"
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
+import Loader from "@/components/utils/loader";
 
 // Define processed lead type for table
 export type ProcessedLead = {
@@ -98,11 +101,9 @@ const MyTaskTable = () => {
       productStructures: false,
       designerRemark: false,
     });
-  // Row action state
+
   const [rowAction, setRowAction] =
     React.useState<DataTableRowAction<ProcessedLead> | null>(null);
-  const [openCreateLead, setOpenCreateLead] = useState<boolean>(false);
-
   useEffect(() => {
     if (rowAction?.variant === "delete" && rowAction.row) {
       setOpenDelete(true);
@@ -227,64 +228,69 @@ const MyTaskTable = () => {
     },
   });
 
-  // // DEBUG: Log sorting state
-  // React.useEffect(() => {
-  //   // console.log("🔍 Sorting state:", sorting);
-  //   console.log(
-  //     "🔍 Table rows:",
-  //     table.getRowModel().rows.map((r) => ({
-  //       srNo: r.original.srNo,
-  //       name: r.original.name,
-  //     }))
-  //   );
-  // }, [sorting, table]);
-
-  if (vendorUserLeadsQuery.error) {
-    return (
-      <div className="p-8 text-red-600">
-        Error loading leads: {vendorUserLeadsQuery.error.message}
-      </div>
-    );
-  }
-
   const mockProps = {
     shallow: true,
     debounceMs: 300,
     throttleMs: 50,
   };
 
-  console.log("usertypes: ", userType);
+  const isInitialLoading =
+    vendorUserLeadsQuery.isLoading && !vendorUserLeadsQuery.data;
+  const isFetching = vendorUserLeadsQuery.isFetching;
+
   return (
     <>
-      <DataTable table={table} onRowClick={handleRowClick}>
-        {enableAdvancedFilter ? (
-          <>
-            <DataTableAdvancedToolbar table={table}>
-              <DataTableSortList table={table} align="start" />
-              {filterFlag === "advancedFilters" ? (
-                <DataTableFilterList
-                  table={table}
-                  shallow={mockProps.shallow}
-                  debounceMs={mockProps.debounceMs}
-                  throttleMs={mockProps.throttleMs}
-                  align="start"
-                />
-              ) : (
-                <DataTableFilterMenu
-                  table={table}
-                  shallow={mockProps.shallow}
-                  debounceMs={mockProps.debounceMs}
-                  throttleMs={mockProps.throttleMs}
-                />
-              )}
-            </DataTableAdvancedToolbar>
-          </>
+      <div className="relative">
+        {isInitialLoading ? (
+                          <DataTableSkeleton
+                            columnCount={10}
+                            filterCount={2}
+                            cellWidths={[
+                              "10rem",
+                              "20rem",
+                              "10rem",
+                              "10rem",
+                              "8rem",
+                              "8rem",
+                            ]}
+                          />
         ) : (
-          <DataTableToolbar table={table}>
-            <DataTableSortList table={table} align="end" />
-          </DataTableToolbar>
+          <DataTable table={table} onRowClick={handleRowClick}>
+            {enableAdvancedFilter ? (
+              <DataTableAdvancedToolbar table={table}>
+                <DataTableSortList table={table} align="start" />
+                {filterFlag === "advancedFilters" ? (
+                  <DataTableFilterList
+                    table={table}
+                    shallow={mockProps.shallow}
+                    debounceMs={mockProps.debounceMs}
+                    throttleMs={mockProps.throttleMs}
+                    align="start"
+                  />
+                ) : (
+                  <DataTableFilterMenu
+                    table={table}
+                    shallow={mockProps.shallow}
+                    debounceMs={mockProps.debounceMs}
+                    throttleMs={mockProps.throttleMs}
+                  />
+                )}
+              </DataTableAdvancedToolbar>
+            ) : (
+              <DataTableToolbar table={table}>
+                <DataTableSortList table={table} align="end" />
+              </DataTableToolbar>
+            )}
+          </DataTable>
         )}
-      </DataTable>
+
+        {/* 🔥 Refetch ke time overlay loader */}
+        {isFetching && !isInitialLoading && (
+          <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-40">
+            <Loader size={60} message="Refreshing data..." />
+          </div>
+        )}
+      </div>
 
       <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
         <AlertDialogContent>
