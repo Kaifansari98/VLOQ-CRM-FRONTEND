@@ -104,7 +104,7 @@ const data = {
           showCount: "total_final_measurement_leads" as const, // ✅ added
         },
         {
-          title: "Client Documentation",
+          title: "Client Documents",
           url: "/dashboard/site-supervisor/client-documentation",
           showCount: "total_client_documentation_leads" as const, // ✅ added
         },

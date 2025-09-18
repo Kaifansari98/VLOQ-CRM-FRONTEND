@@ -159,7 +159,7 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
                       </FormLabel>
                       <FormControl>
                         <FileUploadField
-                          value={field.value}
+                          value={field.value ?? []}
                           onChange={field.onChange}
                           accept="image/*,.pdf,.doc,.docx"
                         />
