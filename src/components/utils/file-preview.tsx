@@ -31,8 +31,8 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
     <div className="relative group">
       <div
         onClick={onClick}
-        className={`${sizeClasses[size]} w-full flex flex-col items-center justify-center bg-gray-100 
-          border-2 border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:border-blue-400 
+        className={`${sizeClasses[size]} w-full flex flex-col items-center justify-center bg-gray-100
+          border-2  rounded-lg shadow-sm hover:shadow-md
           transition-colors cursor-pointer p-2`}
       >
         <FileText size={24} className="text-gray-500" />

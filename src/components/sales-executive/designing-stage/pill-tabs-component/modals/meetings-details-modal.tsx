@@ -29,7 +29,7 @@ const MeetingDetailsModal = ({
   const meetings = meeting.designMeetingDocsMapping;
   const [openCarouselModal, setOpenCarouselModal] = useState(false);
   const [startIndex, setStartIndex] = useState(0);
-  
+
   const formatDateOnly = (dateString: string): string =>
     new Date(dateString).toLocaleDateString("en-IN", {
       day: "2-digit",
@@ -41,10 +41,22 @@ const MeetingDetailsModal = ({
     .filter((m) => isImageExt(getFileExtension(m.document?.doc_sys_name || "")))
     .map((m, idx) => ({
       id: idx, // unique id for carousel
-      signed_url: m.document?.signedUrl ?? "",
+      signed_url: m.document.signedUrl,
       doc_og_name: m.document?.doc_og_name,
     }));
 
+  const docsArray = meetings
+    .filter(
+      (m) => !isImageExt(getFileExtension(m.document?.doc_sys_name || ""))
+    )
+    .map((m) => ({
+      file: {
+        id: m.document?.id,
+        doc_sys_name: m.document?.doc_sys_name || "",
+        doc_og_name: m.document?.doc_og_name,
+        signed_url: m.document?.signedUrl,
+      },
+    }));
   return (
     <>
       <BaseModal
@@ -122,28 +134,6 @@ const MeetingDetailsModal = ({
               </Button>
             </div>
 
-            {/* Documents */}
-            <div className="space-y-2">
-              <h3 className="text-base sm:text-lg font-semibold">Documents</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5  gap-3 sm:gap-4">
-                {meetings
-                  .filter(
-                    (m) =>
-                      !isImageExt(
-                        getFileExtension(m.document?.doc_sys_name || "")
-                      )
-                  )
-                  .map((doc) => (
-                    <DocumentPreview
-                      key={doc.id}
-                      file={doc.document!} // ensure document exists
-                      size="medium" // small / medium / large
-                      onClick={() => console.log("Clicked Document:", doc)}
-                    />
-                  ))}
-              </div>
-            </div>
-
             {/* Meeting Images */}
             <div className="space-y-2">
               <h3 className="text-base sm:text-lg font-semibold">
@@ -160,6 +150,15 @@ const MeetingDetailsModal = ({
                       setOpenCarouselModal(true);
                     }}
                   />
+                ))}
+              </div>
+            </div>
+            {/* Documents */}
+            <div className="space-y-2">
+              <h3 className="text-base sm:text-lg font-semibold">Documents</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5  gap-3 sm:gap-4">
+                {docsArray.map((doc, idx) => (
+                  <DocumentPreview key={idx} file={doc.file} size="medium" />
                 ))}
               </div>
             </div>
