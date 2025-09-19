@@ -5,7 +5,7 @@ export const getInitialSiteMeasurement = async (
   statusId: number
 ) => {
   const response = await apiClient.get(
-    `/leads/initial-site-measurement/vendor/${vendorId}/status/${statusId}`
+    `/leads/initial-site-measurement/vendor/${vendorId}/initial-site-measurement`
   );
   return response.data;
 };
