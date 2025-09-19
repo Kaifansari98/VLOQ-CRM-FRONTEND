@@ -59,7 +59,8 @@ const bookingSchema = z
     assign_to: z.string().min(1, "Please select an assignee"),
   })
   .refine((data) => data.amount_received <= data.final_booking_amount, {
-    message: "Booking Amount Received should not be greater than Total Project Amount",
+    message:
+      "Booking Amount Received should not be greater than Total Project Amount",
     path: ["amount_received"],
   });
 
@@ -274,7 +275,9 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   name="assign_to"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm">Assign Final Measurement *</FormLabel>
+                      <FormLabel className="text-sm">
+                        Assign Final Measurement *
+                      </FormLabel>
                       <Select
                         value={field.value || ""}
                         onValueChange={field.onChange}
@@ -311,6 +314,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                           value={field.value}
                           onChange={field.onChange}
                           accept=".jpg,.jpeg,.png"
+                          multiple={false}
                         />
                       </FormControl>
                       <FormMessage />

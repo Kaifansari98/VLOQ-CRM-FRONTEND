@@ -94,8 +94,7 @@ const SiteMeasurementTable = () => {
 
   // Query hooks - always called, but conditionally with null/undefined params
   const { data, error, isLoading, isError } = useInitialSiteMeasurement(
-    vendorId || 0, // Provide default value to avoid conditional hook calls
-    2
+    vendorId || 0
   );
 
   // Custom hooks

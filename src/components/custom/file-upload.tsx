@@ -134,8 +134,8 @@ export function FileUploadField({
           </p>
           <p className="text-muted-foreground text-xs">
             {multiple
-              ? `Or click to browse (max 20 files, allowed: ${readableAccept})`
-              : `Or click to browse (only 1 file allowed, allowed: ${readableAccept})`}
+              ? `On click to browse (max 20 files, allowed: ${readableAccept})`
+              : `On click to browse (only 1 file allowed, allowed: ${readableAccept})`}
           </p>
         </div>
         <FileUploadTrigger asChild>
