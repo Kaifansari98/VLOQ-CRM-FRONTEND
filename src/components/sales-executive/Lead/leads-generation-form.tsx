@@ -22,8 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { CloudUpload, Paperclip, ChevronDown, Phone } from "lucide-react";
 import {
   useSiteTypes,
   useSourceTypes,
@@ -54,21 +52,21 @@ const createFormSchema = (userType: string | undefined) => {
     contact_no: z.string().min(1, "This Contact number isn't valid").max(20),
     alt_contact_no: z.string().optional().or(z.literal("")),
     email: z
-    .string()
-    .email("Please enter a valid email")
-    .optional()
-    .or(z.literal("")),
+      .string()
+      .email("Please enter a valid email")
+      .optional()
+      .or(z.literal("")),
     site_type_id: z.string().min(1, "Please select a site type"),
     site_address: z.string().min(1, "Site Address is required").max(2000),
     priority: z.string().min(1, "Please select a priority"),
     source_id: z.string().min(1, "Please select a source"),
     product_types: z
-  .array(z.string())
-  .min(1, "Please select at least one product type"),
+      .array(z.string())
+      .min(1, "Please select at least one product type"),
 
-product_structures: z
-  .array(z.string())
-  .min(1, "Please select at least one product structure"),
+    product_structures: z
+      .array(z.string())
+      .min(1, "Please select at least one product structure"),
     // Dynamic validation based on user role
     assign_to: isAdminOrSuperAdmin
       ? z.string().min(1, "Please select an assignee")
@@ -119,12 +117,15 @@ export default function LeadsGenerationForm({
       createLead(payload, files),
     onSuccess: (data) => {
       toast.success("Lead created successfully!");
-      // console.log("Lead created:", data);
-
       queryClient.invalidateQueries({
-        queryKey: ["vendorUserLeads", vendorId, createdBy],
+        queryKey: ["leadStats", vendorId, userId],
       });
-
+      queryClient.invalidateQueries({
+        queryKey: ["vendorUserLeadsOpen", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["vendorUserLeads", vendorId, userId],
+      });
       form.reset();
       setFiles([]);
       onClose();

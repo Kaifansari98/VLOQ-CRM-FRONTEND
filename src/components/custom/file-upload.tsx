@@ -28,8 +28,11 @@ export function FileUploadField({
   value,
   onChange,
   accept,
-  multiple,
+  multiple = true,
 }: FileUploadFieldProps) {
+  const finalAccept = accept ?? ".png,.jpg,.jpeg";
+
+  // Upload simulation
   const onUpload: NonNullable<FileUploadProps["onUpload"]> = React.useCallback(
     async (files, { onProgress, onSuccess, onError }) => {
       try {
@@ -66,57 +69,78 @@ export function FileUploadField({
     []
   );
 
-  const onFileReject = React.useCallback((file: File, message: string) => {
-    const fileName =
-      file.name.length > 20 ? `${file.name.slice(0, 20)}...` : file.name;
+  // Handle value change (multiple / single)
+  const handleValueChange = React.useCallback(
+    (files: File[]) => {
+      if (!multiple && files.length > 1) {
+        toast.error("Only 1 file is allowed");
+        onChange([files[files.length - 1]]);
+      } else {
+        onChange(files);
+      }
+    },
+    [multiple, onChange]
+  );
 
-    toast.error(`${message}: "${fileName}" has been rejected`);
-  }, []);
+  const onFileReject = React.useCallback(
+    (file: File, message: string) => {
+      console.log("Reject reason:", message);
+
+      if (!multiple && message.toLowerCase().includes("max")) {
+        toast.error("Only 1 file is allowed");
+      } else if (message.toLowerCase().includes("type")) {
+        toast.error("This file type is not allowed");
+      } else {
+        toast.error(message); // fallback
+      }
+    },
+    [multiple]
+  );
 
   const readableAccept = React.useMemo(() => {
-    if (!accept) return "any file type";
+    if (!finalAccept) return "any file type";
 
-    return accept
+    return finalAccept
       .split(",")
       .map((type) => {
         type = type.trim();
-
         if (type === "image/*") return "Images";
         if (type === "video/*") return "Videos";
         if (type === "audio/*") return "Audio Files";
-
-        // Extensions
         if (type.startsWith(".")) return type.toUpperCase().replace(".", "");
-
         return type;
       })
       .join(", ");
-  }, [accept]);
+  }, [finalAccept]);
 
   return (
     <FileUpload
       value={value}
-      onValueChange={onChange}
+      onValueChange={handleValueChange}
       onUpload={onUpload}
-      onFileReject={onFileReject}
-      maxFiles={20}
+      onFileReject={onFileReject} // ✅ correct type
+      maxFiles={multiple ? 20 : 1}
       className="w-full"
-      multiple={multiple ?? true}
-      accept={accept ?? "image/*,.png,.jpg,.jpeg  "}
+      multiple={multiple}
+      accept={finalAccept}
     >
       <FileUploadDropzone>
         <div className="flex flex-col items-center gap-1 text-center">
           <div className="flex items-center justify-center rounded-full border p-2.5">
             <Upload className="size-6 text-muted-foreground" />
           </div>
-          <p className="font-medium text-sm">Drag & drop files here</p>
+          <p className="font-medium text-sm">
+            Drag & drop {`${multiple ? "files" : "file"}`} here
+          </p>
           <p className="text-muted-foreground text-xs">
-            Or click to browse (max 20 files)
+            {multiple
+              ? `Or click to browse (max 20 files, allowed: ${readableAccept})`
+              : `Or click to browse (only 1 file allowed, allowed: ${readableAccept})`}
           </p>
         </div>
         <FileUploadTrigger asChild>
           <Button variant="outline" size="sm" className="mt-2 w-fit">
-            Select files
+            {multiple ? "Select files" : "Select file"}
           </Button>
         </FileUploadTrigger>
       </FileUploadDropzone>

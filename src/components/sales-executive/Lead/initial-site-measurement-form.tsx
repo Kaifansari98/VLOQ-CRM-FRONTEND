@@ -194,6 +194,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                         <FileUploadField
                           value={field.value}
                           onChange={field.onChange}
+                          accept=".png, .jpg, .jpeg"
                         />
                       </FormControl>
                       <FormDescription className="text-xs">

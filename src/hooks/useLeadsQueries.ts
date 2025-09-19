@@ -36,7 +36,7 @@ export const useVendorUserLeadsOpen = (
   vendorId: number,
 ): UseQueryResult<VendorUserLeadsResponse, Error> => {
   return useQuery({
-    queryKey: ['vendorUserLeads', vendorId],
+    queryKey: ['vendorUserLeadsOpen', vendorId],
     queryFn: () => getVendorUserLeadsOpen(vendorId),
     enabled: !!vendorId,
     staleTime: 5 * 60 * 1000, // 5 minutes
