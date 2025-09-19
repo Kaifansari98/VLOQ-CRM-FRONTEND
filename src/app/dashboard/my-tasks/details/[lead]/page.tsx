@@ -84,7 +84,7 @@ export default function MyTaskLeadDetails() {
           <div className="flex items-center gap-2">
             {leadStatus === "open" && (
               <Button onClick={() => setOpenMeasurementModal(true)}>
-                Move To Initialsite Measurement
+                Assign Task
               </Button>
             )}
             <ModeToggle />
