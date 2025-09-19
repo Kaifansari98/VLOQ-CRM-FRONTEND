@@ -18,8 +18,11 @@ import { ModeToggle } from "@/components/ModeToggle";
 import { Button } from "@/components/ui/button";
 import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-generation-form-modal";
 import { Suspense, useState } from "react";
-import MyTaskLeadsSkeleton from "@/components/sales-executive/my-tasks/my-tasks-skeleton";
-import Loader from "@/components/utils/loader";
+import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
+import MyTaskTable from "@/app/_components/tasks-table";
+import { Shell } from "@/components/ui/shell";
+import { TableLoader } from "@/components/utils/table-skeleton";
+
 export default function MyTaskLeadPage() {
   const [openCreateLead, setOpenCreateLead] = useState(false);
 
@@ -27,8 +30,8 @@ export default function MyTaskLeadPage() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
-        {/* Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        {/* ✅ Sticky Header */}
+        <header className="sticky top-0 z-50 bg-background flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
             <Separator
@@ -45,38 +48,28 @@ export default function MyTaskLeadPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex gap-2 items-center">
-              <GenerateLeadFormModal
-                open={openCreateLead}
-                onOpenChange={setOpenCreateLead}
-              >
-                <Button>Add New Lead</Button>
-              </GenerateLeadFormModal>
-
-              <ModeToggle />
-            </div>
+            <GenerateLeadFormModal
+              open={openCreateLead}
+              onOpenChange={setOpenCreateLead}
+            >
+              <Button>Add New Lead</Button>
+            </GenerateLeadFormModal>
+            <ModeToggle />
           </div>
         </header>
 
-        {/* Content */}
-        <main className="flex-1 p-4 pt-0 overflow-x-hidden">
-          <Suspense  fallback={
-                          <DataTableSkeleton
-                            columnCount={10}
-                            filterCount={2}
-                            cellWidths={[
-                              "10rem",
-                              "20rem",
-                              "10rem",
-                              "10rem",
-                              "8rem",
-                              "8rem",
-                            ]}
-                          />
-                        }>
-            <MyTaskLeadsSkeleton />
-          </Suspense>
-        </main>
+        <Shell className="flex-1 overflow-y-auto px-2 sm:px-4 lg:px-6 gap-2">
+          <FeatureFlagsProvider>
+            <Suspense fallback={<TableLoader isLoading={true} />}>
+              {/* ✅ Horizontal scroll only here */}
+              <div className="w-full overflow-x-auto">
+                <div className="min-w-[800px]">
+                  <MyTaskTable />
+                </div>
+              </div>
+            </Suspense>
+          </FeatureFlagsProvider>
+        </Shell>
       </SidebarInset>
     </SidebarProvider>
   );

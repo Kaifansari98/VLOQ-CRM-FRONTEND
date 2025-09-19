@@ -45,6 +45,7 @@ import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/utils/loader";
+import { TableLoader } from "@/components/utils/table-skeleton";
 
 // Define processed lead type for table
 export type ProcessedLead = {
@@ -239,89 +240,42 @@ const MyTaskTable = () => {
   const isFetching = vendorUserLeadsQuery.isFetching;
 
   return (
-    <>
-      <div className="relative">
-        {isInitialLoading ? (
-                          <DataTableSkeleton
-                            columnCount={10}
-                            filterCount={2}
-                            cellWidths={[
-                              "10rem",
-                              "20rem",
-                              "10rem",
-                              "10rem",
-                              "8rem",
-                              "8rem",
-                            ]}
-                          />
-        ) : (
-          <DataTable table={table} onRowClick={handleRowClick}>
-            {enableAdvancedFilter ? (
-              <DataTableAdvancedToolbar table={table}>
-                <DataTableSortList table={table} align="start" />
-                {filterFlag === "advancedFilters" ? (
-                  <DataTableFilterList
-                    table={table}
-                    shallow={mockProps.shallow}
-                    debounceMs={mockProps.debounceMs}
-                    throttleMs={mockProps.throttleMs}
-                    align="start"
-                  />
-                ) : (
-                  <DataTableFilterMenu
-                    table={table}
-                    shallow={mockProps.shallow}
-                    debounceMs={mockProps.debounceMs}
-                    throttleMs={mockProps.throttleMs}
-                  />
-                )}
-              </DataTableAdvancedToolbar>
-            ) : (
-              <DataTableToolbar table={table}>
-                <DataTableSortList table={table} align="end" />
-              </DataTableToolbar>
-            )}
-          </DataTable>
-        )}
+    <div className="relative">
+    <DataTable table={table} onRowClick={handleRowClick}>
+      {enableAdvancedFilter ? (
+        <DataTableAdvancedToolbar table={table}>
+          <DataTableSortList table={table} align="start" />
+          {filterFlag === "advancedFilters" ? (
+            <DataTableFilterList
+              table={table}
+              shallow={mockProps.shallow}
+              debounceMs={mockProps.debounceMs}
+              throttleMs={mockProps.throttleMs}
+              align="start"
+            />
+          ) : (
+            <DataTableFilterMenu
+              table={table}
+              shallow={mockProps.shallow}
+              debounceMs={mockProps.debounceMs}
+              throttleMs={mockProps.throttleMs}
+            />
+          )}
+        </DataTableAdvancedToolbar>
+      ) : (
+        <DataTableToolbar table={table}>
+          <DataTableSortList table={table} align="end" />
+        </DataTableToolbar>
+      )}
+    </DataTable>
+  {/* 🔥 Refetch overlay loader */}
+  {isFetching && !isInitialLoading && (
+    <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-40">
+      <Loader size={60} />
+    </div>
+  )}
+</div>
 
-        {/* 🔥 Refetch ke time overlay loader */}
-        {isFetching && !isInitialLoading && (
-          <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-40">
-            <Loader size={60} message="Refreshing data..." />
-          </div>
-        )}
-      </div>
-
-      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              lead from your system.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteLead}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AssignLeadModal
-        open={assignOpenLead}
-        onOpenChange={setAssignOpenLead}
-        leadData={rowAction?.row.original}
-      />
-
-      <EditLeadModal
-        open={editOpenLead}
-        onOpenChange={setEditOpenLead}
-        leadData={rowAction?.row.original}
-      />
-    </>
   );
 };
 
