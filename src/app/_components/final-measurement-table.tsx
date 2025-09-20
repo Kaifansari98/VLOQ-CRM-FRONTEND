@@ -166,7 +166,7 @@ const FinalMeasurementLeadsTable = () => {
     if (!rowAction) return;
     if (rowAction.variant === "delete") setOpenDelete(true);
     if (rowAction.variant === "reassignlead") setAssignOpenLead(true);
-    if (rowAction.variant === "edit") setOpenEditModal(true);
+    if (rowAction.variant === "view") setOpenEditModal(true);
     if (rowAction.variant === "clientdoc") setOpenClientDocModal(true);
   }, [rowAction]);
 

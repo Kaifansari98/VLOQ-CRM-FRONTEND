@@ -2,7 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useAppSelector } from "@/redux/store";
-import { useVendorUserLeads, useVendorUserLeadsOpen } from "@/hooks/useLeadsQueries";
+import {
+  useVendorUserLeads,
+  useVendorUserLeadsOpen,
+} from "@/hooks/useLeadsQueries";
 import { type Lead } from "@/api/leads";
 
 import {
@@ -24,7 +27,9 @@ import { DataTableSortList } from "@/components/data-table/data-table-sort-list"
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
 import { useFeatureFlags } from "./feature-flags-provider";
-import type { DataTableRowAction } from "@/types/data-table";
+import type {
+  DataTableRowActionOpen,
+} from "@/types/data-table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +46,7 @@ import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { getViewOpenLeadsTableColumns } from "./view-tables-coloumns";
+import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 
 // Define processed lead type for table
 export type ProcessedLead = {
@@ -71,16 +77,12 @@ const ViewOpenLeadTable = () => {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
-  const shouldFetch = !!vendorId && !!userId;
-  // Fetch leads
-  const vendorUserLeadsQuery = useVendorUserLeadsOpen(
-    vendorId || 0,
-    userId || 0,
-  );
+
+  const vendorUserLeadsQuery = useVendorUserLeadsOpen(vendorId || 0);
   const router = useRouter();
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const [openDelete, setOpenDelete] = useState<boolean>(false);
-  const [openView, setOpenView] = useState<boolean>(false);
+  const [openAssignTask, setOpenAssignTak] = useState<boolean>(false);
   const [assignOpenLead, setAssignOpenLead] = useState<boolean>(false);
   const [editOpenLead, setEditOpenLead] = useState<boolean>(false);
   const deleteLeadMutation = useDeleteLead();
@@ -98,7 +100,7 @@ const ViewOpenLeadTable = () => {
     });
   // Row action state
   const [rowAction, setRowAction] =
-    React.useState<DataTableRowAction<ProcessedLead> | null>(null);
+    React.useState<DataTableRowActionOpen<ProcessedLead> | null>(null);
 
   useEffect(() => {
     if (rowAction?.variant === "delete" && rowAction.row) {
@@ -111,6 +113,9 @@ const ViewOpenLeadTable = () => {
     if (rowAction?.variant === "edit" && rowAction.row) {
       console.log("Original Edit Data row Leads: ", rowAction.row.original);
       setEditOpenLead(true);
+    }
+    if (rowAction?.variant === "assigntask" && rowAction.row) {
+      setOpenAssignTak(true);
     }
   }, [rowAction]);
 
@@ -188,7 +193,7 @@ const ViewOpenLeadTable = () => {
       siteType: lead.siteType?.type || "",
       createdAt: lead.created_at || "",
       updatedAt: lead.updated_at || "",
-      altContact: lead.alt_contact_no || "", // 👈 backend ke key ke sath match
+      altContact: lead.alt_contact_no || "",
       status: lead.statusType?.type || "",
       initial_site_measurement_date: lead.initial_site_measurement_date || "",
     }));
@@ -224,17 +229,6 @@ const ViewOpenLeadTable = () => {
     },
   });
 
-  // // DEBUG: Log sorting state
-  // React.useEffect(() => {
-  //   // console.log("🔍 Sorting state:", sorting);
-  //   console.log(
-  //     "🔍 Table rows:",
-  //     table.getRowModel().rows.map((r) => ({
-  //       srNo: r.original.srNo,
-  //       name: r.original.name,
-  //     }))
-  //   );
-  // }, [sorting, table]);
 
   if (vendorUserLeadsQuery.error) {
     return (
@@ -251,7 +245,7 @@ const ViewOpenLeadTable = () => {
   };
 
   console.log("usertypes: ", userType);
-   return (
+  return (
     <>
       <DataTable table={table} onRowClick={handleRowClick}>
         {enableAdvancedFilter ? (
@@ -311,6 +305,12 @@ const ViewOpenLeadTable = () => {
         open={editOpenLead}
         onOpenChange={setEditOpenLead}
         leadData={rowAction?.row.original}
+      />
+
+      <AssignTaskSiteMeasurementForm
+        open={openAssignTask}
+        onOpenChange={setOpenAssignTak}
+        data={rowAction?.row.original}
       />
     </>
   );

@@ -39,7 +39,22 @@ export interface DataTableRowAction<TData> {
   variant: "edit" | "delete" | "view"  | "reassignlead" | "measurement" | "details" | "booking" | "move" ;
 }
 
+
+export interface DataTableRowActionOpen<TData> {
+  row: Row<TData>;
+  variant: "view" | "assigntask"  | "edit" | "reassignlead" | "delete" ;
+}
+
+export interface DataTableRowActionSiteMeasurement<TData> {
+  row: Row<TData>;
+  variant: "view" | "uploadmeasurement"  | "edit" | "reassignlead" | "delete" ;
+}
 export interface DataTableRowActionFinalMeasurement<TData> {
   row: Row<TData>;
-  variant: "edit" | "delete" | "view"  | "reassignlead" | "clientdoc" ;
+  variant: "edit" | "delete" | "view"  | "reassignlead" | "clientdoc" | "finalMeasu";
+}
+
+export interface DataTableRowActionClientDocumentation<TData> {
+  row: Row<TData>;
+  variant: "edit" | "delete" | "view"  | "reassignlead" ;
 }

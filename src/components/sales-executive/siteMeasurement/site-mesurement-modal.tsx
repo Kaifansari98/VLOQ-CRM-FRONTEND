@@ -17,6 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import AddCurrentSitePhotos from "./current-site-image-add-modal";
 import AddPaymentDetailsPhotos from "./payment-details-image-add-modal";
+import ImageCarouselModal from "@/components/utils/image-carousel-modal";
+import BaseModal from "@/components/utils/baseModal";
 
 interface ViewInitialSiteMeasurmentLeadProps {
   open: boolean;
@@ -32,6 +34,11 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
   const [openEditModal, setOpenEditModal] = useState<boolean>(false);
   const [openImageModal, setOpenImageModal] = useState<boolean>(false);
   const [openImageModal2, setOpenImageModal2] = useState<boolean>(false);
+  const [openCarouselModal, setOpenCarouselModal] = useState(false);
+  const [modalStartIndex, setModalStartIndex] = useState(0);
+  const [openPaymentCarouselModal, setOpenPaymentCarouselModal] =
+    useState(false);
+  const [paymentModalStartIndex, setPaymentModalStartIndex] = useState(0);
 
   const documents = data?.documentUrl || [];
   const payment = data?.paymentInfo;
@@ -67,27 +74,81 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
   console.log("Payment Details: ", payment);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-4xl p-0 gap-0">
-        {/* Header */}
-        <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle className="text-xl font-semibold">
-            Site Measurement Details
-          </DialogTitle>
-          <DialogDescription>
-            Review initial site measurement documentation and payment
-            information
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <BaseModal
+        open={open}
+        onOpenChange={onOpenChange}
+        title="Site Measurement Details"
+        description="Review initial site measurement documentation and payment information"
+        size="lg"
+      >
+        <div className="px-6 py-6 space-y-8">
+          <div className="flex flex-col md:flex-row md:space-x-6 space-y-6 md:space-y-0">
+            {pdfDocs.length > 0 && (
+              <div className="md:w-[40%] order-1 space-y-4 flex flex-col">
+                <h3 className="text-md font-semibold">Measurement Documents</h3>
 
-        <ScrollArea className="max-h-[calc(90vh-100px)]">
-          <div className="px-6 py-6 space-y-8">
+                <div className="grid grid-cols-1 gap-4 flex-1">
+                  {pdfDocs.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="hover:shadow-xl transition-shadow duration-300 cursor-pointer group rounded-lg border border-gray-100 h-full flex flex-col justify-between"
+                    >
+                      <div className="flex flex-col items-center h-full justify-center text-center space-y-5 p-4">
+                        <div className="w-20 h-20 md:w-22 md:h-22 bg-gray-50 rounded-lg flex items-center justify-center transition-colors">
+                          <FileText size={50} className="text-red-500" />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-medium text-sm leading-tight truncate max-w-[120px]">
+                            {formatFileName(doc.doc_og_name)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {formatFileSize(doc.signed_url)}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 justify-center pb-4">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(doc.signed_url, "_blank");
+                            }}
+                            className="text-xs gap-1 h-7"
+                          >
+                            <Eye size={12} />
+                            View
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const link = document.createElement("a");
+                              link.href = doc.signed_url;
+                              link.download = doc.doc_og_name;
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }}
+                            className="text-xs gap-1 h-7"
+                          >
+                            <Download size={12} />
+                            Download
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ---------------- Payment Section ---------------- */}
             {payment && (
-              <div className="space-y-4">
-                <div className="flex flex-row justify-between items-center">
-                  <h3 className="text-lg font-semibold ">
-                    Payment Information
-                  </h3>
+              <div className="md:w-[60%] order-2 flex flex-col h-full">
+                <div className="flex flex-row justify-between items-start">
+                  <h3 className="text-md font-semibold">Payment Information</h3>
                   <Button
                     size="sm"
                     onClick={() => setOpenEditModal(true)}
@@ -98,177 +159,111 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
                   </Button>
                 </div>
 
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Payment Amount */}
-                      <div className="space-y-2">
-                        <Label htmlFor="amount" className="text-sm font-medium">
-                          Payment Amount
-                        </Label>
-                        <div className="relative">
-                          <Input
-                            id="amount"
-                            type="text"
-                            value={`₹${payment.amount.toLocaleString("en-IN")}`}
-                            readOnly
-                            className="font-semibold text-lg cursor-not-allowed"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Payment Date */}
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="payment_date"
-                          className="text-sm font-medium"
-                        >
-                          Payment Date
-                        </Label>
-                        <Input
-                          id="payment_date"
-                          type="text"
-                          value={new Date(
-                            payment.payment_date
-                          ).toLocaleDateString("en-IN", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                          readOnly
-                          className="bg-gray-50 cursor-not-allowed"
-                        />
-                      </div>
-
-                      {/* Payment Description - Full width */}
-                      <div className="md:col-span-2 space-y-2">
-                        <Label
-                          htmlFor="payment_text"
-                          className="text-sm font-medium "
-                        >
-                          Payment Description
-                        </Label>
-                        <Textarea
-                          id="payment_text"
-                          value={
-                            payment.payment_text || "No description provided"
-                          }
-                          readOnly
-                          rows={3}
-                          className="bg-gray-50 cursor-not-allowed resize-none"
-                        />
-                      </div>
+                <div className="space-y-3 flex-1 flex flex-col justify-between">
+                  <div className="flex flex-col gap-1 mt-4">
+                    <p className="text-sm font-medium">Payment Amount</p>
+                    <div className="bg-muted border rounded-sm py-1 px-2 text-sm max-h-200 overflow-y-auto">
+                      {payment.amount || "N/A"}
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {pdfDocs.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Measurement Documents</h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {pdfDocs?.[0] && (
-                    <Card
-                      key={pdfDocs[0].id}
-                      className="hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                  </div>
+                  <div className="flex flex-col gap-1 mt-4">
+                    <p className="text-sm font-medium">Payment Date</p>
+                    <div className="bg-muted border rounded-sm py-1 px-2 text-sm max-h-200 overflow-y-auto">
+                      {payment.payment_date || "N/A"}
+                    </div>
+                  </div>
+                  {/* Bottom Section: Description */}
+                  <div className="flex flex-col gap-1 mt-4">
+                    <p className="text-sm font-medium">Payment Description</p>
+                    <div
+                      className="bg-muted border rounded-sm py-1 px-2 text-sm 
+               overflow-hidden line-clamp-4"
+                      style={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 4,
+                        WebkitBoxOrient: "vertical",
+                      }}
                     >
-                      <CardContent className="p-4">
-                        <div className="flex flex-col items-center text-center space-y-3">
-                          <div className="relative">
-                            <div className="w-16 h-16 bg-red-50 rounded-lg flex items-center justify-center group-hover:bg-red-100 transition-colors">
-                              <FileText size={32} className="text-red-500" />
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <p className="font-medium text-sm leading-tight">
-                              {formatFileName(pdfDocs[0].doc_og_name)}
-                            </p>
-                            <p className="text-xs">
-                              {formatFileSize(pdfDocs[0].signed_url)}
-                            </p>
-                          </div>
-
-                          <div className="flex gap-2 pt-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(pdfDocs[0].signed_url, "_blank");
-                              }}
-                              className="text-xs gap-1 h-7"
-                            >
-                              <Eye size={12} />
-                              View
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const link = document.createElement("a");
-                                link.href = pdfDocs[0].signed_url;
-                                link.download = pdfDocs[0].doc_og_name;
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                              }}
-                              className="text-xs gap-1 h-7"
-                            >
-                              <Download size={12} />
-                              Download
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Site Photos Section */}
-            {currentSitePhotos.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Site Photos</h3>
-
-                <div className="flex flex-wrap gap-4">
-                  {currentSitePhotos.map((doc) => (
-                    <div key={doc.id} className="relative group">
-                      <img
-                        src={doc.signed_url}
-                        alt={doc.doc_og_name}
-                        className="h-32 w-32 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer shadow-sm hover:shadow-md"
-                      />
-                    </div>
-                  ))}
-                  <div
-                    className="flex items-center justify-center h-32 w-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 group"
-                    onClick={() => setOpenImageModal(true)}
-                  >
-                    <div className="flex flex-col items-center text-gray-500 group-hover:text-blue-600">
-                      <Plus size={24} className="mb-1" />
-                      <span className="text-xs font-medium">Add Photos</span>
+                      {payment.payment_text || "N/A"}You can write lorem20*5 and
+                      press the tab. 20 = number of words 5 = number of lines.
+                      This will generate 20 random words in 5 lines in VSCode
+                      ...
                     </div>
                   </div>
                 </div>
               </div>
             )}
+          </div>
+
+          <div className="space-y-5">
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Current Site Photos</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5  gap-3 sm:gap-4">
+                {currentSitePhotos.map((doc, idx) => (
+                  <div key={doc.id} className="relative group">
+                    <img
+                      src={doc.signed_url}
+                      alt={doc.doc_og_name ?? "site photo"}
+                      className="h-32 w-32 object-cover rounded-lg border-2 border-gray-200 
+                   hover:border-blue-400 transition-colors cursor-pointer shadow-sm hover:shadow-md"
+                    />
+
+                    {/* Overlay with filename */}
+                    <div
+                      onClick={() => {
+                        setModalStartIndex(idx);
+                        setOpenCarouselModal(true);
+                      }}
+                      className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 
+                   flex items-center justify-center rounded-lg transition-opacity"
+                    >
+                      <span className="text-white text-xs font-medium px-2 text-center">
+                        {doc.doc_og_name ?? "site photo"}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Add Button */}
+                <div
+                  className="flex items-center justify-center h-32 w-32 border-2 border-dashed border-gray-300 
+               rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-400 
+               transition-all duration-200 group"
+                  onClick={() => setOpenImageModal(true)}
+                >
+                  <div className="flex flex-col items-center text-gray-500 group-hover:text-blue-600">
+                    <Plus size={24} className="mb-1" />
+                    <span className="text-xs font-medium">Add Photos</span>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {paymentImages.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Payment Proofs</h3>
-                <div className="flex flex-wrap gap-4">
-                  {paymentImages.map((doc) => (
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5  gap-3 sm:gap-4">
+                  {paymentImages.map((doc, idx) => (
                     <div key={doc.id} className="relative group">
                       <img
                         src={doc.signed_url}
-                        alt={doc.doc_og_name}
+                        alt={doc.doc_og_name ?? "Payment Proof"}
                         className="h-32 w-32 object-cover rounded-lg border-2 border-gray-200 hover:border-green-400 transition-colors cursor-pointer shadow-sm hover:shadow-md"
                       />
+
+                      {/* Overlay with filename */}
+                      <div
+                        onClick={() => {
+                          setPaymentModalStartIndex(idx);
+                          setOpenPaymentCarouselModal(true);
+                        }}
+                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-lg transition-opacity"
+                      >
+                        <span className="text-white text-xs font-medium px-2 text-center">
+                          {doc.doc_og_name ?? "Payment Proof"}
+                        </span>
+                      </div>
                     </div>
                   ))}
 
@@ -286,50 +281,62 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
               </div>
             )}
           </div>
-        </ScrollArea>
-      </DialogContent>
+        </div>
+        <SiteMesurementEditModal
+          open={openEditModal}
+          onOpenChange={setOpenEditModal}
+          data={
+            data
+              ? {
+                  accountId: data.accountId,
+                  id: data.id,
+                  paymentInfo: data.paymentInfo,
+                }
+              : undefined
+          }
+        />
+        <AddCurrentSitePhotos
+          open={openImageModal}
+          onOpenChange={setOpenImageModal}
+          data={
+            data
+              ? {
+                  accountId: data.accountId,
+                  id: data.id,
+                  paymentId: data.paymentInfo?.id ?? null,
+                }
+              : undefined
+          }
+        />
 
-      <SiteMesurementEditModal
-        open={openEditModal}
-        onOpenChange={setOpenEditModal}
-        data={
-          data
-            ? {
-                accountId: data.accountId,
-                id: data.id,
-                paymentInfo: data.paymentInfo,
-              }
-            : undefined
-        }
-      />
-      <AddCurrentSitePhotos
-        open={openImageModal}
-        onOpenChange={setOpenImageModal}
-        data={
-          data
-            ? {
-                accountId: data.accountId,
-                id: data.id,
-                paymentId: data.paymentInfo?.id ?? null,
-              }
-            : undefined
-        }
+        <AddPaymentDetailsPhotos
+          open={openImageModal2}
+          onOpenChange={setOpenImageModal2}
+          data={
+            data
+              ? {
+                  accountId: data.accountId,
+                  id: data.id,
+                  paymentId: data.paymentInfo?.id ?? null,
+                }
+              : undefined
+          }
+        />
+      </BaseModal>
+      <ImageCarouselModal
+        open={openCarouselModal}
+        initialIndex={modalStartIndex}
+        images={currentSitePhotos}
+        onClose={() => setOpenCarouselModal(false)}
       />
 
-      <AddPaymentDetailsPhotos
-        open={openImageModal2}
-        onOpenChange={setOpenImageModal2}
-        data={
-          data
-            ? {
-                accountId: data.accountId,
-                id: data.id,
-                paymentId: data.paymentInfo?.id ?? null,
-              }
-            : undefined
-        }
+      <ImageCarouselModal
+        open={openPaymentCarouselModal}
+        initialIndex={paymentModalStartIndex}
+        images={paymentImages}
+        onClose={() => setOpenPaymentCarouselModal(false)}
       />
-    </Dialog>
+    </>
   );
 };
 

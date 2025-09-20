@@ -21,7 +21,7 @@ import {
   FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { DataTableRowActionFinalMeasurement } from "@/types/data-table";
+import type { DataTableRowActionClientDocumentation } from "@/types/data-table";
 import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
 import CustomeBadge from "@/components/origin-badge";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
@@ -33,7 +33,7 @@ import { ProcessedClientDocumentationLead } from "@/types/client-documentation";
 
 interface GetVendorLeadsTableColumnsProps {
   setRowAction: React.Dispatch<
-    React.SetStateAction<DataTableRowActionFinalMeasurement<ProcessedClientDocumentationLead> | null>
+    React.SetStateAction<DataTableRowActionClientDocumentation<ProcessedClientDocumentationLead> | null>
   >;
   userType?: string;
 }
@@ -68,21 +68,6 @@ export function getClientDocumentationTableColumns({
             </DropdownMenuItem>
             {!canDeleteLead(userType) && <DropdownMenuSeparator />}
 
-            <DropdownMenuItem
-              data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: "edit" })}
-            >
-              <SquarePen size={20} />
-              Edit
-            </DropdownMenuItem>
-
-            <DropdownMenuItem
-              data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: "clientdoc" })}
-            >
-              <FileText size={20} />
-              Client Documentation
-            </DropdownMenuItem>
 
             {canReassingLead(userType) && (
               <DropdownMenuItem

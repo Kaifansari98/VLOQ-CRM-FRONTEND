@@ -6,13 +6,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "../../ui/button";
-import { Blinds, Download, Star } from "lucide-react";
-import { useAppSelector } from "@/redux/store";
+import { Blinds } from "lucide-react";
 import { ScrollArea } from "../../ui/scroll-area";
 import InitialSiteMeasuresMent from "./initial-site-measurement-form";
 import {
   sanitize,
-  sanitizeAndCapitalize,
 } from "../../utils/sanitizeCapitalize";
 
 interface LeadViewModalProps {

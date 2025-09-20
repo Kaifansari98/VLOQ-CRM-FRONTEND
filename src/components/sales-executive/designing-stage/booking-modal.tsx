@@ -59,7 +59,8 @@ const bookingSchema = z
     assign_to: z.string().min(1, "Please select an assignee"),
   })
   .refine((data) => data.amount_received <= data.final_booking_amount, {
-    message: "Booking Amount Received should not be greater than Total Project Amount",
+    message:
+      "Booking Amount Received should not be greater than Total Project Amount",
     path: ["amount_received"],
   });
 
@@ -120,6 +121,16 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       return;
     }
 
+    // 🚨 check file errors
+    const hasFileError =
+      values.payment_details_document?.some((f: any) => f.error) ||
+      values.final_documents?.some((f: any) => f.error);
+
+    if (hasFileError) {
+      toast.error("Please fix file upload errors before submitting.");
+      return;
+    }
+
     const payload: BookingPayload = {
       lead_id: leadId,
       account_id: accountId,
@@ -130,23 +141,23 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       bookingAmountPaymentDetailsText: values.payment_text,
       finalBookingAmount: values.final_booking_amount,
       siteSupervisorId: Number(values.assign_to),
-      booking_payment_file: values.payment_details_document, // ✅ multiple files
-      final_documents: values.final_documents, // ✅ multiple files
+      booking_payment_file: values.payment_details_document,
+      final_documents: values.final_documents,
     };
 
     console.log("✅ Booking Payload:", payload);
-    // ✅ API call via hook
+
     mutate(payload, {
       onSuccess: () => {
-        onOpenChange(false); // modal close
-        form.reset(); // reset form
+        toast.success("Booking saved successfully!");
+        onOpenChange(false);
+        form.reset();
+      },
+      onError: (err: any) => {
+        toast.error(err?.response?.data?.message || "Failed to save booking");
+        console.error("❌ Booking error:", err);
       },
     });
-  };
-
-  // Handle form errors
-  const onError = (errors: any) => {
-    console.log("❌ Form validation errors:", errors);
   };
 
   const handleReset = () => {
@@ -172,7 +183,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
           <div className="px-5 py-4">
             <Form {...form}>
               <form
-                onSubmit={form.handleSubmit(onSubmit, onError)}
+                onSubmit={form.handleSubmit(onSubmit)}
                 className="space-y-6"
               >
                 {/* File Upload Section */}
@@ -264,7 +275,9 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   name="assign_to"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm">Assign Final Measurement *</FormLabel>
+                      <FormLabel className="text-sm">
+                        Assign Final Measurement *
+                      </FormLabel>
                       <Select
                         value={field.value || ""}
                         onValueChange={field.onChange}
@@ -301,6 +314,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                           value={field.value}
                           onChange={field.onChange}
                           accept=".jpg,.jpeg,.png"
+                          multiple={false}
                         />
                       </FormControl>
                       <FormMessage />

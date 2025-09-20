@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import MultipleSelector, {Option} from "@/components/ui/multiselect";
+import MultipleSelector, { Option } from "@/components/ui/multiselect";
 import { useAppSelector } from "@/redux/store";
 import { toast } from "react-toastify";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -59,7 +59,11 @@ const formSchema = z.object({
       }
     }, "Please enter a valid phone number"),
 
-  email: z.string().email("Please enter a valid email"),
+  email: z
+    .string()
+    .trim()
+    .email("Please enter a valid email")
+    .or(z.literal("")), // allow empty
   site_type_id: z.string().min(1, "Please select a site type"),
   site_address: z.string().min(1, "Site Address is required").max(2000),
   priority: z.string().min(1, "Please select a priority"),
@@ -81,26 +85,26 @@ const formSchema = z.object({
       }
     }, "Please enter a valid alternate phone number"),
 
-    product_types: z
+  product_types: z
     .array(z.string())
     .min(1, "Please select at least one product type"),
-  
+
   product_structures: z
     .array(z.string())
     .min(1, "Please select at least one product structure"),
   archetech_name: z.string().max(300).optional(),
   designer_remark: z.string().max(2000).optional(),
   initial_site_measurement_date: z
-  .string()
-  .optional()
-  .refine(
-    (val) => {
-      if (!val) return true;
-      const today = new Date().toISOString().split("T")[0];
-      return val >= today;
-    },
-    { message: "Initial site measurement date cannot be in the past" }
-  ),
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        const today = new Date().toISOString().split("T")[0];
+        return val >= today;
+      },
+      { message: "Initial site measurement date cannot be in the past" }
+    ),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -128,6 +132,10 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       console.log("✅ Mutation onSuccess:", data);
       toast.success("Lead updated successfully!");
       queryClient.invalidateQueries({
+        queryKey: ["vendorUserLeadsOpen", vendorId],
+      });
+
+      queryClient.invalidateQueries({
         queryKey: ["vendorUserLeads", vendorId, createdBy],
       });
       onClose();
@@ -137,36 +145,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     },
   });
 
-  const debugFormErrors = () => {
-    const errors = form.formState.errors;
-    console.log("🔍 Detailed form errors:", errors);
-
-    // Check each field individually
-    Object.keys(errors).forEach((fieldName) => {
-      console.log(
-        `❌ ${fieldName}:`,
-        errors[fieldName as keyof typeof errors]?.message
-      );
-    });
-
-    // Check specific phone number validation
-    const contactNo = form.getValues("contact_no");
-    console.log("📞 Contact number value:", contactNo);
-
-    try {
-      const parsed = parsePhoneNumber(contactNo);
-      console.log("📞 Parsed phone:", {
-        isValid: parsed?.isValid(),
-        country: parsed?.country,
-        nationalNumber: parsed?.nationalNumber,
-        countryCallingCode: parsed?.countryCallingCode,
-      });
-    } catch (error) {
-      console.error("📞 Phone parsing error:", error);
-    }
-  };
-
-  // Initialize form with default values from leadData
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -332,7 +310,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       }
     }
 
-    // Alt contact number split
     let alt_country_code = "";
     let alt_contact_no = "";
     if (values.alt_contact_no && values.alt_contact_no.trim()) {
@@ -370,8 +347,8 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       designer_remark: values.designer_remark || "",
       updated_by: createdBy!,
       initial_site_measurement_date: values.initial_site_measurement_date
-      ? new Date(values.initial_site_measurement_date).toISOString()
-      : undefined,
+        ? new Date(values.initial_site_measurement_date).toISOString()
+        : undefined,
       // NO documents field in payload
     };
 
@@ -413,50 +390,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         toast.error("Request failed: " + error.message);
       }
     }
-  };
-
-  // Update your handleUpdateClick function
-  const handleUpdateClick = async () => {
-    console.log("🔧 Direct button click handler");
-
-    // Get current form values
-    const currentValues = form.getValues();
-    console.log("Current form values:", currentValues);
-
-    // Debug form errors first
-    debugFormErrors();
-
-    // Validate form
-    const isValid = await form.trigger();
-    console.log("📋 Form validation result:", isValid);
-
-    if (!isValid) {
-      console.log("❌ Form validation failed - checking individual fields...");
-
-      // Check each required field
-      const requiredFields = [
-        "firstname",
-        "lastname",
-        "contact_no",
-        "email",
-        "site_type_id",
-        "site_address",
-        "priority",
-        "source_id",
-      ];
-
-      for (const field of requiredFields) {
-        const fieldValid = await form.trigger(field as any);
-        console.log(`📝 ${field} valid:`, fieldValid);
-      }
-
-      toast.error("Please fix form errors before submitting");
-      return;
-    }
-
-    console.log("✅ Form validation passed - proceeding with submission");
-    // Proceed with submission
-    onSubmit(currentValues);
   };
 
   return (
@@ -832,50 +765,51 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-
-          {/* Architect Name */}
-          <FormField
-            control={form.control}
-            name="archetech_name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">Architect Name</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter architect name"
-                    type="text"
-                    className="text-sm"
-                    {...field}
-                  />
-                </FormControl>
-                {/* <FormDescription className="text-xs">
+            {/* Architect Name */}
+            <FormField
+              control={form.control}
+              name="archetech_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Architect Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter architect name"
+                      type="text"
+                      className="text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  {/* <FormDescription className="text-xs">
                   Project architect name.
                 </FormDescription> */}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-<FormField
-  control={form.control}
-  name="initial_site_measurement_date"
-  render={({ field }) => (
-    <FormItem>
-      <FormLabel className="text-sm">Initial Site Measurement Date</FormLabel>
-      <FormControl>
-        <Input
-          type="date"
-          className="text-sm"
-          value={field.value || ""}
-          onChange={(e) => field.onChange(e.target.value)}
-          min={new Date().toISOString().split("T")[0]}
-        />
-      </FormControl>
-      <FormMessage />
-    </FormItem>
-  )}
-/>
-</div>
+            <FormField
+              control={form.control}
+              name="initial_site_measurement_date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">
+                    Initial Site Measurement Date
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      className="text-sm"
+                      value={field.value || ""}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           {/* Designer Remark */}
           <FormField

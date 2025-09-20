@@ -1,7 +1,16 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Calendar, Mail, Phone, User, Building, Package, MapPin, MessageSquare } from "lucide-react";
+import {
+  Calendar,
+  Mail,
+  Phone,
+  User,
+  Building,
+  Package,
+  MapPin,
+  MessageSquare,
+} from "lucide-react";
 
 type OpenLeadDetailsProps = {
   lead: any;
@@ -14,9 +23,9 @@ const containerVariants = {
     opacity: 1,
     transition: {
       duration: 0.3,
-      staggerChildren: 0.05
-    }
-  }
+      staggerChildren: 0.05,
+    },
+  },
 };
 
 const itemVariants = {
@@ -24,14 +33,17 @@ const itemVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.2 }
-  }
+    transition: { duration: 0.2 },
+  },
 };
 
-export default function OpenLeadDetails({ lead, formatDateTime }: OpenLeadDetailsProps) {
+export default function OpenLeadDetails({
+  lead,
+  formatDateTime,
+}: OpenLeadDetailsProps) {
   if (!lead) {
     return (
-      <div className="border border-gray-200 rounded-lg p-6">
+      <div className="border rounded-lg p-6">
         <p>No lead details found.</p>
       </div>
     );
@@ -41,9 +53,9 @@ export default function OpenLeadDetails({ lead, formatDateTime }: OpenLeadDetail
     <motion.div variants={itemVariants} className="space-y-1">
       <div className="flex items-center gap-2">
         {Icon && <Icon className="w-4 h-4 text-gray-400" />}
-        <label className="text-sm font-medium text-gray-700">{label}</label>
+        <label className="text-sm font-medium ">{label}</label>
       </div>
-      <p className="text-gray-900 pl-6">{value || "—"}</p>
+      <p className="pl-6">{value || "—"}</p>
     </motion.div>
   );
 
@@ -52,13 +64,13 @@ export default function OpenLeadDetails({ lead, formatDateTime }: OpenLeadDetail
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="bg-white border border-gray-200 rounded-lg overflow-hidden"
+      className="border rounded-lg w-full h-full"
     >
       {/* Header */}
       <div className="border-b px-6 py-2.5">
         <div className="flex items-center justify-between">
-          <h2 className="text-md font-semibold text-gray-900">Lead Details</h2>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
+          <h2 className="text-md font-semibold ">Lead Details</h2>
+          <div className="flex items-center gap-2 text-sm ">
             <Calendar className="w-4 h-4" />
             {formatDateTime(lead.created_at)}
           </div>
@@ -68,28 +80,28 @@ export default function OpenLeadDetails({ lead, formatDateTime }: OpenLeadDetail
       <div className="px-6 py-4 space-y-4">
         {/* Contact Information */}
         <motion.section variants={itemVariants}>
-          <h3 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-100">
+          <h3 className="text-base font-semibold mb-4 pb-2 border-b ">
             Contact Information
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InfoField 
-              label="Full Name" 
-              value={`${lead.firstname || ''} ${lead.lastname || ''}`.trim()} 
+            <InfoField
+              label="Full Name"
+              value={`${lead.firstname || ""} ${lead.lastname || ""}`.trim()}
               icon={User}
             />
-            <InfoField 
-              label="Email Address" 
-              value={lead.email} 
-              icon={Mail}
-            />
-            <InfoField 
-              label="Phone Number" 
-              value={lead.country_code && lead.contact_no ? `${lead.country_code} ${lead.contact_no}` : lead.contact_no} 
+            <InfoField label="Email Address" value={lead.email} icon={Mail} />
+            <InfoField
+              label="Phone Number"
+              value={
+                lead.country_code && lead.contact_no
+                  ? `${lead.country_code} ${lead.contact_no}`
+                  : lead.contact_no
+              }
               icon={Phone}
             />
-            <InfoField 
-              label="Billing Name" 
-              value={lead.billing_name} 
+            <InfoField
+              label="Billing Name"
+              value={lead.billing_name}
               icon={Building}
             />
           </div>
@@ -97,28 +109,24 @@ export default function OpenLeadDetails({ lead, formatDateTime }: OpenLeadDetail
 
         {/* Project Details */}
         <motion.section variants={itemVariants}>
-          <h3 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-100">
+          <h3 className="text-base font-semibold  mb-4 pb-2 border-b ">
             Project Details
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <InfoField 
-              label="Architect Name" 
-              value={lead.archetech_name} 
+            <InfoField
+              label="Architect Name"
+              value={lead.archetech_name}
               icon={User}
             />
-            <InfoField 
-              label="Site Type" 
-              value={lead.siteType?.type} 
+            <InfoField
+              label="Site Type"
+              value={lead.siteType?.type}
               icon={Building}
             />
-            <InfoField 
-              label="Source" 
-              value={lead.source?.type} 
-              icon={MapPin}
-            />
-            <InfoField 
-              label="Priority Level" 
-              value={lead.priority} 
+            <InfoField label="Source" value={lead.source?.type} icon={MapPin} />
+            <InfoField
+              label="Priority Level"
+              value={lead.priority}
               icon={Package}
             />
           </div>
@@ -126,24 +134,24 @@ export default function OpenLeadDetails({ lead, formatDateTime }: OpenLeadDetail
 
         {/* Product Information */}
         <motion.section variants={itemVariants}>
-          <h3 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-100">
+          <h3 className="text-base font-semibold mb-4 pb-2 border-b ">
             Product Information
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <InfoField 
-              label="Product Structures" 
+            <InfoField
+              label="Product Structures"
               value={lead.leadProductStructureMapping
                 ?.map((ps: any) => ps.productStructure?.type)
                 .filter(Boolean)
-                .join(", ")} 
+                .join(", ")}
               icon={Package}
             />
-            <InfoField 
-              label="Product Types" 
+            <InfoField
+              label="Product Types"
               value={lead.productMappings
                 ?.map((pm: any) => pm.productType?.type)
                 .filter(Boolean)
-                .join(", ")} 
+                .join(", ")}
               icon={Package}
             />
           </div>
@@ -151,17 +159,17 @@ export default function OpenLeadDetails({ lead, formatDateTime }: OpenLeadDetail
 
         {/* Additional Information */}
         <motion.section variants={itemVariants}>
-          <h3 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-100">
+          <h3 className="text-base font-semibold  mb-4 pb-2 border-b ">
             Additional Information
           </h3>
           <div className="space-y-6">
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <MessageSquare className="w-4 h-4 text-gray-400" />
-                <label className="text-sm font-medium text-gray-700">Design Remarks</label>
+                <MessageSquare className="w-4 h-4 " />
+                <label className="text-sm font-medium ">Design Remarks</label>
               </div>
-              <div className="bg-gray-50 border border-gray-200 rounded-md p-4 ml-6">
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+              <div className=" border rounded-md p-2 ml-6">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">
                   {lead.designer_remark || "No remarks provided"}
                 </p>
               </div>
@@ -169,11 +177,11 @@ export default function OpenLeadDetails({ lead, formatDateTime }: OpenLeadDetail
 
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <MapPin className="w-4 h-4 text-gray-400" />
-                <label className="text-sm font-medium text-gray-700">Site Address</label>
+                <MapPin className="w-4 h-4 " />
+                <label className="text-sm font-medium ">Site Address</label>
               </div>
-              <div className="bg-gray-50 border border-gray-200 rounded-md p-4 ml-6">
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+              <div className=" border  rounded-md p-4 ml-6">
+                <p className="text-sm  leading-relaxed whitespace-pre-wrap">
                   {lead.site_address || "No address provided"}
                 </p>
               </div>

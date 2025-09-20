@@ -49,7 +49,7 @@ const FinalMeasurementEditModal = ({ open, onOpenChange, data }: Props) => {
       <BaseModal
         open={open}
         onOpenChange={onOpenChange}
-        title={`Edit Final Measurement for ${data?.name || "Customer"}`}
+        title={`View Final Measurement for ${data?.name || "Customer"}`}
         size="lg"
         description="Update the final measurement details, modify notes, or adjust attachments as needed."
       >

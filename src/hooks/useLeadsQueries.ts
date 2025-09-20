@@ -37,10 +37,10 @@ export const useVendorUserLeadsOpen = (
   userId: number,
 ): UseQueryResult<VendorUserLeadsResponse, Error> => {
   return useQuery({
-    queryKey: ['vendorUserLeads', vendorId, userId],
-    queryFn: () => getVendorUserLeadsOpen(vendorId, userId),
-    enabled: !!vendorId && !!userId,
-    staleTime: 5 * 60 * 1000,
+    queryKey: ['vendorUserLeadsOpen', vendorId],
+    queryFn: () => getVendorUserLeadsOpen(vendorId),
+    enabled: !!vendorId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
   });
 };

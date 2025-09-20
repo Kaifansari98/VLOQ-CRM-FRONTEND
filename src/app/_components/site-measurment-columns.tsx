@@ -11,9 +11,18 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ellipsis, Eye, SquarePen, Users, Text, Ruler, Move } from "lucide-react";
+import {
+  Ellipsis,
+  Eye,
+  SquarePen,
+  Users,
+  Text,
+  Ruler,
+  Move,
+  ClipboardCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { DataTableRowAction } from "@/types/data-table";
+import type { DataTableRowActionSiteMeasurement } from "@/types/data-table";
 import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
 import CustomeBadge from "@/components/origin-badge";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
@@ -25,7 +34,7 @@ import { useRouter } from "next/navigation";
 
 interface GetSiteMeasurementColumnProps {
   setRowAction: React.Dispatch<
-    React.SetStateAction<DataTableRowAction<ProcessedSiteMeasurementLead> | null>
+    React.SetStateAction<DataTableRowActionSiteMeasurement<ProcessedSiteMeasurementLead> | null>
   >;
   userType?: string;
 }
@@ -50,7 +59,7 @@ export function getSiteMeasurementColumn({
               <Ellipsis className="size-4" aria-hidden="true" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuContent align="end">
             <DropdownMenuItem
               onSelect={() => setRowAction({ row, variant: "view" })}
             >
@@ -63,30 +72,19 @@ export function getSiteMeasurementColumn({
                   )
                 }
               >
-                view
+                View
               </button>
             </DropdownMenuItem>
 
-            <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "move" })}
-            >
-              <Move size={20} />
-              Move To Design
-            </DropdownMenuItem>
-
-            <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "measurement" })}
-            >
-              <Ruler size={20} />
-              Measurement
-            </DropdownMenuItem>
             {!canDeleteLead(userType) && <DropdownMenuSeparator />}
 
             <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "edit" })}
+              onSelect={() =>
+                setRowAction({ row, variant: "uploadmeasurement" })
+              }
             >
-              <SquarePen size={20} />
-              Edit
+              <ClipboardCheck size={20} />
+              Upload Measurement
             </DropdownMenuItem>
 
             {canReassingLead(userType) && (
