@@ -75,6 +75,7 @@ const ViewOpenLeadTable = () => {
   // Fetch leads
   const vendorUserLeadsQuery = useVendorUserLeadsOpen(
     vendorId || 0,
+    userId || 0,
   );
   const router = useRouter();
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
