@@ -176,11 +176,13 @@ export const getVendorUserLeads = async (
 // Get leads for a specific user of a vendor
 export const getVendorUserLeadsOpen = async (
   vendorId: number,
+  userId: number,
 ): Promise<Lead[]> => {
   const response = await apiClient.get(
-    `/leads/bookingStage/status1-leads/${vendorId}`
+    `/leads/bookingStage/status1-leads/vendorId/${vendorId}`,
+    { params: { userId } }
   );
-  return response.data.data; 
+  return response.data.data;
 };
 
 export const deleteLead = async (leadId: number, userId: number) => {

@@ -34,15 +34,16 @@ export const useVendorUserLeads = (
 // Hook for getting vendor user leads
 export const useVendorUserLeadsOpen = (
   vendorId: number,
+  userId: number,
 ): UseQueryResult<VendorUserLeadsResponse, Error> => {
   return useQuery({
-    queryKey: ['vendorUserLeads', vendorId],
-    queryFn: () => getVendorUserLeadsOpen(vendorId),
-    enabled: !!vendorId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryKey: ['vendorUserLeads', vendorId, userId],
+    queryFn: () => getVendorUserLeadsOpen(vendorId, userId),
+    enabled: !!vendorId && !!userId,
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-  })
-}
+  });
+};
 
 
 export function useLeadById(leadId?: number, vendorId?: number, userId?: number) {
