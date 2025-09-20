@@ -23,6 +23,7 @@ import SmoothTab from "@/components/kokonutui/smooth-tab";
 import OpenLeadDetails from "@/components/tabScreens/OpenLeadDetails";
 import SiteMeasurementLeadDetails from "@/components/tabScreens/SiteMeasurementLeadDetails";
 import BookingLeadsDetails from "@/components/tabScreens/BookingLeadsDetails";
+import FinalMeasurementDeatils from "@/components/tabScreens/FinalMeasurementDetails";
 
 export default function BookingStageLeadsDetails() {
   const { lead: leadId } = useParams();
@@ -36,6 +37,9 @@ export default function BookingStageLeadsDetails() {
   const lead = data?.data?.lead;
   const createdAt = lead?.created_at;
   const accountId = lead?.account_id;
+  
+  const status = lead.statusType.type;
+  console.log("Status Type: ",status)
 
   console.log(lead);
 
@@ -89,6 +93,18 @@ export default function BookingStageLeadsDetails() {
     {
       id: "booking",
       title: "Booking Stage",
+      color: "bg-zinc-900 hover:bg-gray-600",
+      cardContent: <BookingLeadsDetails lead={leadInfo} />,
+    },
+    {
+      id: "finalmeasurement",
+      title: "Final Measurement",
+      color: "bg-zinc-900 hover:bg-gray-600",
+      cardContent: <FinalMeasurementDeatils lead={leadInfo} />,
+    },
+    {
+      id: "clientdocumentation",
+      title: "Client Documentation",
       color: "bg-zinc-900 hover:bg-gray-600",
       cardContent: <BookingLeadsDetails lead={leadInfo} />,
     },
