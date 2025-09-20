@@ -34,6 +34,7 @@ export const useVendorUserLeads = (
 // Hook for getting vendor user leads
 export const useVendorUserLeadsOpen = (
   vendorId: number,
+  userId: number,
 ): UseQueryResult<VendorUserLeadsResponse, Error> => {
   return useQuery({
     queryKey: ['vendorUserLeadsOpen', vendorId],
@@ -41,8 +42,8 @@ export const useVendorUserLeadsOpen = (
     enabled: !!vendorId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
-  })
-}
+  });
+};
 
 
 export function useLeadById(leadId?: number, vendorId?: number, userId?: number) {
