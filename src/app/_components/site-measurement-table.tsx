@@ -22,7 +22,7 @@ import { DataTableSortList } from "@/components/data-table/data-table-sort-list"
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
 import { useFeatureFlags } from "./feature-flags-provider";
-import type { DataTableRowAction } from "@/types/data-table";
+import type { DataTableRowActionSiteMeasurement } from "@/types/data-table";
 import { getSiteMeasurementColumn } from "./site-measurment-columns";
 import {
   AlertDialog,
@@ -49,6 +49,7 @@ import SiteMesurementModal from "@/components/sales-executive/siteMeasurement/si
 import { useRouter } from "next/navigation";
 import { useMoveToDesigningStage } from "@/api/designingStageQueries";
 import { useQueryClient } from "@tanstack/react-query";
+import InitialSiteMeasuresMent from "@/components/sales-executive/Lead/initial-site-measurement-form";
 
 const SiteMeasurementTable = () => {
   // Redux selectors
@@ -80,7 +81,7 @@ const SiteMeasurementTable = () => {
       designerRemark: false,
     });
   const [rowAction, setRowAction] =
-    React.useState<DataTableRowAction<ProcessedSiteMeasurementLead> | null>(
+    React.useState<DataTableRowActionSiteMeasurement<ProcessedSiteMeasurementLead> | null>(
       null
     );
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -140,13 +141,7 @@ const SiteMeasurementTable = () => {
       console.log("Original Edit Data row Leads: ", rowAction.row.original);
       setEditOpenLead(true);
     }
-
-    if (rowAction?.variant === "move" && rowAction.row) {
-      console.log("Original Edit Data row Leads: ", rowAction.row.id);
-      setOpenMoveCnfrm(true);
-    }
-
-    if (rowAction?.variant === "measurement" && rowAction.row) {
+    if (rowAction?.variant === "uploadmeasurement" && rowAction.row) {
       console.log("Original Edit Data row Leads: ", rowAction.row.original);
       setOpenMesurement(true);
     }
@@ -362,34 +357,17 @@ const SiteMeasurementTable = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={openMoveCnfrm} onOpenChange={setOpenMoveCnfrm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will move the lead to Designing Stage.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isMovePending}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleMoveToDesigningStage}
-              disabled={isMovePending}
-            >
-              {isMovePending ? "Processing..." : "Yes, Move"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* <SiteMesurementModal
+        open={openMesurement}
+        onOpenChange={setOpenMesurement}
+        data={rowAction?.row.original}
+      /> */}
 
-      <SiteMesurementModal
+      <InitialSiteMeasuresMent
         open={openMesurement}
         onOpenChange={setOpenMesurement}
         data={rowAction?.row.original}
       />
-
       <AssignLeadModal
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}

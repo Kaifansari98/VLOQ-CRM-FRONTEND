@@ -19,9 +19,6 @@ import { ModeToggle } from "@/components/ModeToggle";
 import { useParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import InitialSiteMeasuresMent from "@/components/sales-executive/Lead/initial-site-measurement-form";
 
 export default function LeadDetails() {
   const { leadId } = useParams();
@@ -29,8 +26,6 @@ export default function LeadDetails() {
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const [openMesurementModal, setOpenMeasurementModal] =
-    useState<boolean>(false);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
 
@@ -40,7 +35,6 @@ export default function LeadDetails() {
 
   const lead = data?.data?.lead;
   const leadStatus = lead?.statusType?.type;
-
 
   const formatDateTime = (dateString?: string) => {
     if (!dateString) return "N/A";
@@ -81,14 +75,7 @@ export default function LeadDetails() {
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          <div className="flex items-center gap-2">
-            {leadStatus === "open" && (
-              <Button onClick={() => setOpenMeasurementModal(true)}>
-                Assign Task
-              </Button>
-            )}
-            <ModeToggle />
-          </div>
+          <ModeToggle />
         </header>
 
         {/* Body */}
@@ -185,12 +172,6 @@ export default function LeadDetails() {
           ) : (
             <p>No lead details found.</p>
           )}
-
-          <InitialSiteMeasuresMent
-            open={openMesurementModal}
-            onOpenChange={setOpenMeasurementModal}
-            leadId={leadIdNum}
-          />
         </main>
       </SidebarInset>
     </SidebarProvider>

@@ -11,9 +11,9 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ellipsis, Eye, SquarePen, Users, Text, Contact } from "lucide-react";
+import { Ellipsis, Eye, SquarePen, Users, Text, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { DataTableRowAction } from "@/types/data-table";
+import type { DataTableRowActionOpen } from "@/types/data-table";
 import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
 import CustomeBadge from "@/components/origin-badge";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
@@ -46,7 +46,7 @@ export type ProcessedLead = {
 
 interface GetVendorLeadsTableColumnsProps {
   setRowAction: React.Dispatch<
-    React.SetStateAction<DataTableRowAction<ProcessedLead> | null>
+    React.SetStateAction<DataTableRowActionOpen<ProcessedLead> | null>
   >;
   userType?: string;
 }
@@ -77,7 +77,6 @@ export function getViewOpenLeadsTableColumns({
               onSelect={() => setRowAction({ row, variant: "view" })}
             >
               <Eye size={20} />
-
               <button
                 className="w-full text-left"
                 onClick={() =>
@@ -88,6 +87,14 @@ export function getViewOpenLeadsTableColumns({
               >
                 View
               </button>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              data-slot="action-button"
+              onSelect={() => setRowAction({ row, variant: "assigntask" })}
+            >
+              <UserPlus size={20} />
+              Assign Task
             </DropdownMenuItem>
             {!canDeleteLead(userType) && <DropdownMenuSeparator />}
 

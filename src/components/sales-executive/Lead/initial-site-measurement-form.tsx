@@ -1,12 +1,6 @@
+"use client";
+
 import React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "../../ui/scroll-area";
 import z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,10 +14,8 @@ import {
   FormMessage,
 } from "../../ui/form";
 import { FileUploadField } from "../../custom/file-upload";
-import { PdfUploadField } from "../../pdf-upload-input";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
-import DateInputPicker from "../../origin-date-input";
 import { useAppSelector } from "@/redux/store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getLeadById, uploadInitialSiteMeasurement } from "@/api/leads";
@@ -31,11 +23,15 @@ import { toast } from "react-toastify";
 import CustomeDatePicker from "@/components/date-picker";
 import TextAreaInput from "@/components/origin-text-area";
 import { SinglePdfUploadField } from "@/components/utils/single-pdf-uploader";
+import BaseModal from "@/components/utils/baseModal"; // 👈 yaha import
 
 interface LeadViewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  leadId: number | undefined;
+  data?: {
+    id: number;
+    name: string;
+  };
 }
 
 const formSchema = z.object({
@@ -54,7 +50,7 @@ const formSchema = z.object({
 const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   open,
   onOpenChange,
-  leadId,
+  data,
 }) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -64,8 +60,10 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       payment_image: [],
     },
   });
+
   const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state: any) => state.auth.user?.id);
+  const leadId = data?.id;
 
   const { data: accountId } = useQuery({
     queryKey: ["lead", leadId],
@@ -78,7 +76,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   const mutation = useMutation({
     mutationFn: uploadInitialSiteMeasurement,
     onSuccess: () => {
-      toast.success("Initial Site Measurement Upload Successflly!");
+      toast.success("Initial Site Measurement Upload Successfully!");
       queryClient.invalidateQueries({
         queryKey: ["leadStats", vendorId, userId],
       });
@@ -91,64 +89,45 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
         error?.message ||
         "Something went wrong";
 
-      console.log(error.response.data.message);
+      console.log(error.response?.data?.message);
       toast.error(backendMessage);
     },
   });
 
   let clientId = 1;
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log("Id's: ", leadId, accountId, vendorId, userId, clientId);
     if (!leadId || !accountId) {
       toast.error("Lead or account data is missing!");
       return;
     }
-    const formData = new FormData();
 
-    // Required IDs
+    const formData = new FormData();
     formData.append("lead_id", leadId?.toString() || "");
     formData.append("account_id", accountId?.toString() || "");
     formData.append("vendor_id", vendorId?.toString() || "");
     formData.append("created_by", userId?.toString() || "");
     formData.append("client_id", clientId.toString() || "");
 
-    // Current Site Photos (multiple allowed)
     values.current_site_photos?.forEach((file: File) => {
       formData.append("current_site_photos", file);
     });
 
     formData.append("upload_pdf", values.upload_pdf);
+
     if (values.amount) {
       formData.append("amount", values.amount.toString());
     }
-
-    // Payment date
     if (values.payment_date) {
       formData.append("payment_date", values.payment_date);
     }
-
-    // Payment details text
     if (values.payment_text) {
       formData.append("payment_text", values.payment_text);
     }
-    // Payment details images
     values.payment_image?.forEach((file: File) => {
       formData.append("payment_image", file);
     });
 
-    // ✅ DEBUG: Log all FormData entries
-    console.log("==== FORM DATA TO BE SENT ====");
-    for (const [key, value] of formData.entries()) {
-      // If it's a file, show name and type
-      if (value instanceof File) {
-        console.log(key, value.name, value.type, value.size + " bytes");
-      } else {
-        console.log(key, value);
-      }
-    }
-    console.log("==== END FORM DATA ====");
-    console.log(values);
-    console.log(vendorId);
     mutation.mutate(formData);
   };
 
@@ -164,172 +143,163 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-3xl p-0 gap-0">
-        <DialogHeader className="flex items-start justify-end border-b px-6 py-4">
-          <DialogTitle>Initial Site Measurement Form</DialogTitle>
-          <DialogDescription>
-            Fill the below fields to send this lead to initial site measurement
-            form
-          </DialogDescription>
-        </DialogHeader>
+    <BaseModal
+      open={open}
+      onOpenChange={onOpenChange}
+       title={`Initial Site Measurement Form - ${data?.name || "Lead"}`}
+      description="Fill the below fields to send this lead to initial site measurement form"
+      size="lg"
+    >
+      <div className="px-5 py-4">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+            {/* Current Site Photos */}
+            <FormField
+              control={form.control}
+              name="current_site_photos"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Current Site Photos</FormLabel>
+                  <FormControl>
+                    <FileUploadField
+                      value={field.value}
+                      onChange={field.onChange}
+                      accept=".png, .jpg, .jpeg"
+                    />
+                  </FormControl>
+                  <FormDescription className="text-xs">
+                    Upload photos or documents.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <ScrollArea className="max-h-[calc(90vh-100px)]">
-          <div className="px-5 py-4">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-5"
-              >
-                {/* File Upload Field */}
-                <FormField
-                  control={form.control}
-                  name="current_site_photos"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">
-                        Current Site Photos
-                      </FormLabel>
-                      <FormControl>
-                        <FileUploadField
-                          value={field.value}
-                          onChange={field.onChange}
-                          accept=".png, .jpg, .jpeg"
-                        />
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        Upload photos or documents.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            {/* Upload PDF */}
+            <FormField
+              control={form.control}
+              name="upload_pdf"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">
+                    Initial Site Measurement Document *
+                  </FormLabel>
+                  <FormControl>
+                    <SinglePdfUploadField
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                <FormField
-                  control={form.control}
-                  name="upload_pdf"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">
-                        Initial Site Measurement Document *
-                      </FormLabel>
-                      <FormControl>
-                        <SinglePdfUploadField
-                          value={field.value}
-                          onChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* Amount */}
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem className="w-full">
+                    <FormLabel className="text-sm">
+                      Initial Site Measurement Payable Amount
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="Enter payable amount"
+                        value={field.value ?? ""}
+                        onChange={(e) =>
+                          field.onChange(
+                            e.target.value === ""
+                              ? undefined
+                              : parseFloat(e.target.value)
+                          )
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <FormField
-                    control={form.control}
-                    name="amount"
-                    render={({ field }) => (
-                      <FormItem className="w-full">
-                        <FormLabel className="text-sm">
-                          Initial Site Measurement Payable Amount
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="Enter payable amount"
-                            // ✅ agar value undefined ho to empty string dikhayega
-                            value={field.value ?? ""}
-                            onChange={(e) =>
-                              field.onChange(
-                                e.target.value === ""
-                                  ? undefined
-                                  : parseFloat(e.target.value)
-                              )
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              {/* Payment Date */}
+              <FormField
+                control={form.control}
+                name="payment_date"
+                render={({ field }) => (
+                  <FormItem className="w-full">
+                    <FormLabel className="text-sm">
+                      Initial Site Measurement Amount Payment Date
+                    </FormLabel>
+                    <FormControl>
+                      <CustomeDatePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        restriction="pastOnly"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-                  <FormField
-                    control={form.control}
-                    name="payment_date"
-                    render={({ field }) => (
-                      <FormItem className="w-full">
-                        <FormLabel className="text-sm">
-                          Initial Site Measurement Amount Payment Date
-                        </FormLabel>
-                        <FormControl>
-                          <CustomeDatePicker
-                            value={field.value}
-                            onChange={field.onChange}
-                            restriction="pastOnly"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+            {/* Payment Image */}
+            <FormField
+              control={form.control}
+              name="payment_image"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Payment Details</FormLabel>
+                  <FormControl>
+                    <FileUploadField
+                      value={field.value}
+                      onChange={field.onChange}
+                      multiple={false}
+                    />
+                  </FormControl>
+                  <FormDescription className="text-xs">
+                    Upload photos or documents.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                <FormField
-                  control={form.control}
-                  name="payment_image"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">Payment Details</FormLabel>
-                      <FormControl>
-                        <FileUploadField
-                          value={field.value}
-                          onChange={field.onChange}
-                          multiple={false}
-                        />
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        Upload photos or documents.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            {/* Payment Text */}
+            <FormField
+              control={form.control}
+              name="payment_text"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Payment Details Text</FormLabel>
+                  <FormControl>
+                    <TextAreaInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Enter your payment details"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                <FormField
-                  control={form.control}
-                  name="payment_text"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">
-                        Payment Details Text
-                      </FormLabel>
-                      <FormControl>
-                        <TextAreaInput
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Enter your payment details"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Action Buttons inside the form */}
-                <div className="py-3 flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={handleReset}>
-                    Reset
-                  </Button>
-                  <Button type="submit" disabled={mutation.isPending}>
-                    {mutation.isPending ? "Submitting..." : "Submit"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </div>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+            {/* Action Buttons */}
+            <div className="py-3 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={handleReset}>
+                Reset
+              </Button>
+              <Button type="submit" disabled={mutation.isPending}>
+                {mutation.isPending ? "Submitting..." : "Submit"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </div>
+    </BaseModal>
   );
 };
 
