@@ -40,6 +40,7 @@ import { canReassingLead } from "@/components/utils/privileges";
 import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 import TextAreaInput from "@/components/origin-text-area";
 import CustomeDatePicker from "@/components/date-picker";
+import MapPicker from "@/components/MapPicker";
 
 const createFormSchema = (userType: string | undefined) => {
   const isAdminOrSuperAdmin =
@@ -89,6 +90,7 @@ export default function LeadsGenerationForm({
   const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const createdBy = useAppSelector((state: any) => state.auth.user?.id);
+  const [mapOpen, setMapOpen] = useState(false);
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
@@ -446,17 +448,31 @@ export default function LeadsGenerationForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-sm">Site Address *</FormLabel>
-                <FormControl>
-                  <TextAreaInput
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Enter your address"
-                  />
-                </FormControl>
+                <div className="flex gap-2">
+                  <FormControl className="flex-1">
+                    <TextAreaInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Enter address or use map"
+                    />
+                  </FormControl>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setMapOpen(true)}>
+                    Open Map
+                  </Button>
+                </div>
                 <FormMessage />
+                <MapPicker
+                  open={mapOpen}
+                  onClose={() => setMapOpen(false)}
+                  onSelect={(address, link) => {
+                    field.onChange(address); // ✅ auto-fill textarea
+                    console.log("Selected Map Link:", link);
+                  }}
+                />
               </FormItem>
             )}
           />
+
 
           {/* Priority & Source */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
