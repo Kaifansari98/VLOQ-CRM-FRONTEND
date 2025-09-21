@@ -1,6 +1,7 @@
 import AssignToPicker from "@/components/assign-to-picker";
 import CustomeDatePicker from "@/components/date-picker";
 import TextAreaInput from "@/components/origin-text-area";
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -23,6 +24,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
 import z from "zod";
+import { useAssignToSiteMeasurement } from "@/hooks/useLeadsQueries";
+import { AssignToSiteMeasurementPayload } from "@/api/leads";
+import { toast } from "react-toastify";
 
 interface Props {
   open: boolean;
@@ -34,7 +38,7 @@ interface Props {
 }
 
 const formSchema = z.object({
-  assign_lead_to: z.number().min(1, "Assign lead to Is required"),
+  assign_lead_to: z.number().min(1, "Assign lead to is required"),
   task_type: z.enum(["Initial Site Measurement", "Follow Up"], {
     message: "Task Type is required",
   }),
@@ -44,7 +48,6 @@ const formSchema = z.object({
     .refine((val) => !isNaN(Date.parse(val)), {
       message: "Invalid date format",
     }),
-
   remark: z.string().min(1, "Remark is required"),
 });
 
@@ -56,9 +59,12 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const {
     data: vendorUsers,
-    isLoading,
+    isLoading: loadingUsers,
     error,
   } = useVendorSalesExecutiveUsers(vendorId!);
+  const leadId = data?.id!;
+  const userId = useAppSelector((state) => state.auth.user?.id);
+  const mutation = useAssignToSiteMeasurement(leadId);
 
   const mappedData =
     vendorUsers?.data?.sales_executives?.map((user: any) => ({
@@ -76,8 +82,34 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     },
   });
 
-  // 🚨 don’t return before useForm
-  if (isLoading) {
+  // ✅ use mutation hook
+
+ const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const payload: AssignToSiteMeasurementPayload = {
+    task_type: values.task_type,
+    due_date: values.due_date,
+    remark: values.remark,
+    user_id: values.assign_lead_to!,
+    created_by: userId!,
+  };
+
+  mutation.mutate(payload, {
+    onSuccess: (data) => {
+      console.log("API Response:", data); // Backend response
+      toast.success("Task assigned successfully!");
+      form.reset(); // Reset form on success
+      onOpenChange(false); // Close modal
+    },
+    onError: (error: any) => {
+      console.error("API Error:", error);
+      const backendMessage =
+        error?.response?.data?.message || error.message || "Something went wrong";
+      toast.error(backendMessage);
+    },
+  });
+};
+
+  if (loadingUsers) {
     return (
       <BaseModal
         open={open}
@@ -113,7 +145,8 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     >
       <div className="px-6 py-6 space-y-8">
         <Form {...form}>
-          <form className="space-y-5">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+            {/* Assign Lead To */}
             <FormField
               control={form.control}
               name="assign_lead_to"
@@ -123,27 +156,24 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                   <FormControl>
                     <AssignToPicker
                       data={mappedData}
-                      onChange={(selectedId) =>
-                        console.log("Selected ID:", selectedId)
-                      }
+                      value={field.value}
+                      onChange={field.onChange}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {/* Task Type + Due Date */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Task Type */}
               <Controller
                 control={form.control}
                 name="task_type"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm">Task Type</FormLabel>
-                    <Select
-                      value={field.value || ""}
-                      onValueChange={field.onChange}
-                    >
+                    <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger className="text-sm w-full">
                           <SelectValue placeholder="Select task type" />
@@ -160,7 +190,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                   </FormItem>
                 )}
               />
-              {/* Due Date */}
+
               <FormField
                 control={form.control}
                 name="due_date"
@@ -179,6 +209,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                 )}
               />
             </div>
+
             {/* Remark */}
             <FormField
               control={form.control}
@@ -197,6 +228,25 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                 </FormItem>
               )}
             />
+
+            {/* Buttons */}
+            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="text-sm"
+                onClick={() => form.reset()}
+              >
+                Reset
+              </Button>
+              <Button
+                type="submit"
+                className="text-sm"
+                disabled={mutation.isPending}
+              >
+                {mutation.isPending ? "Submitting..." : "Submit"}
+              </Button>
+            </div>
           </form>
         </Form>
       </div>

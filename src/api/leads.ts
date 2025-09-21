@@ -176,7 +176,7 @@ export const getVendorUserLeads = async (
 // Get leads for a specific user of a vendor
 export const getVendorUserLeadsOpen = async (
   vendorId: number,
-  userId: number,
+  userId: number
 ): Promise<Lead[]> => {
   const response = await apiClient.get(
     `/leads/bookingStage/status1-leads/vendorId/${vendorId}`,
@@ -233,4 +233,19 @@ export const uploadInitialSiteMeasurement = async (payload: any) => {
     }
   );
   return response.data;
+};
+
+export interface AssignToSiteMeasurementPayload {
+  task_type: string;
+  due_date: string;
+  remark: string;
+  user_id: number;
+  created_by: number;
+}
+export const assignToSiteMeasurement = async (leadId: number, payload: AssignToSiteMeasurementPayload) => {
+  const { data } = await apiClient.post(
+    `/leads/initial-site-measurement/leadId/${leadId}/tasks/assign-ism`,payload
+  );
+
+  return data
 };
