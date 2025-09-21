@@ -7,6 +7,8 @@ import { ToastProvider } from "@/providers/ToastProvider";
 import { SessionLoader } from "@/components/SessionLoader"
 import { ProtectedLayout } from "@/providers/ProtectedLayout";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+import Script from "next/script";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -29,9 +31,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Preload Google Maps */}
+        <link rel="dns-prefetch" href="//maps.googleapis.com" />
+        <link rel="preconnect" href="https://maps.googleapis.com" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* Load Google Maps script early */}
+        <Script
+          src={`https://maps.googleapis.com/maps/api/js?key=AIzaSyC6tUtx5tsO-QGvuPqHsutAbc-a64nkZBE&libraries=places,geometry`}
+          strategy="beforeInteractive"
+        />
+        
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -39,12 +52,12 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AppProviders>
-          <SessionLoader />
+            <SessionLoader />
             <ProtectedLayout>
               <NuqsAdapter>
-              {children}
+                {children}
+                <ToastProvider />
               </NuqsAdapter>
-              <ToastProvider />
             </ProtectedLayout>
           </AppProviders>
         </ThemeProvider>
