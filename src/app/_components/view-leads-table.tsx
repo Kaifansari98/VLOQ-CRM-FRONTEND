@@ -78,7 +78,7 @@ const ViewOpenLeadTable = () => {
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
 
-  const vendorUserLeadsQuery = useVendorUserLeadsOpen(vendorId || 0);
+  const vendorUserLeadsQuery = useVendorUserLeadsOpen(vendorId!, userId!);
   const router = useRouter();
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const [openDelete, setOpenDelete] = useState<boolean>(false);

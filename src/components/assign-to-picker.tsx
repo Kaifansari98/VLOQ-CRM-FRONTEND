@@ -27,15 +27,17 @@ interface SelectData {
 
 interface Props {
   data: SelectData[];
+  value?: number;
   onChange?: (selectedId: number | null) => void;
 }
 
-export default function AssignToPicker({ data, onChange }: Props) {
+export default function AssignToPicker({ data, value, onChange }: Props) {
   const id = useId();
   const [open, setOpen] = useState<boolean>(false);
-  const [value, setValue] = useState<string>(""); // store as string (id stringified)
 
-  const selectedItem = data.find((item) => item.id === Number(value));
+  // Convert value to string for comparison
+  const stringValue = value !== undefined && value !== null ? String(value) : "";
+  const selectedItem = data.find((item) => item.id === value);
 
   return (
     <div className="*:not-first:mt-2">
@@ -48,7 +50,7 @@ export default function AssignToPicker({ data, onChange }: Props) {
             aria-expanded={open}
             className="bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]"
           >
-            <span className={cn("truncate", !value && "text-muted-foreground")}>
+            <span className={cn("truncate", !stringValue && "text-muted-foreground")}>
               {selectedItem ? selectedItem.label : "Select user"}
             </span>
             <ChevronDownIcon
@@ -70,19 +72,15 @@ export default function AssignToPicker({ data, onChange }: Props) {
                 {data.map((item) => (
                   <CommandItem
                     key={item.id}
-                    value={String(item.id)} // ✅ string banana zaruri hai
+                    value={String(item.id)}
                     onSelect={(currentValue) => {
-                      const newValue =
-                        currentValue === value ? "" : currentValue;
-                      setValue(newValue);
+                      const newValue = currentValue === stringValue ? "" : currentValue;
                       setOpen(false);
                       onChange?.(newValue ? Number(newValue) : null);
                     }}
                   >
                     {item.label}
-                    {value === String(item.id) && (
-                      <CheckIcon size={16} className="ml-auto" />
-                    )}
+                    {stringValue === String(item.id) && <CheckIcon size={16} className="ml-auto" />}
                   </CommandItem>
                 ))}
               </CommandGroup>
