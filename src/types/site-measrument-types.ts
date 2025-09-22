@@ -93,6 +93,13 @@ export interface Upload {
   created_at: string;
 }
 
+export  interface TaskDetails {
+  id: number;
+  remark: string;
+  due_date: string;
+  status: string;
+} 
+
 export interface SiteMeasurmentLead {
   id: number;
   firstname: string;
@@ -125,6 +132,7 @@ export interface SiteMeasurmentLead {
     totalProductMappings: number;
   };
   uploads: Upload[];
+  tasks?:TaskDetails[]
 }
 
 export interface EditPayload {
@@ -162,4 +170,8 @@ export type ProcessedSiteMeasurementLead = {
   documentUrl: Document[];
   paymentInfo: PaymentInfo | null;
   accountId: number;
+  taskId?: number;
+  dueDate?: string;
+  remark?: string;
+  followStatus?:string;
 };
