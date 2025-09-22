@@ -17,6 +17,7 @@ export default function MapPicker({ open, onClose, onSelect }: MapPickerProps) {
   const markerRef = useRef<google.maps.Marker | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
 
   // Function to check if Google Maps is loaded
   const isGoogleMapsLoaded = () => {
@@ -53,6 +54,7 @@ export default function MapPicker({ open, onClose, onSelect }: MapPickerProps) {
     try {
       setIsLoading(true);
       setError(null);
+      setMapError(null);
 
       // Wait for Google Maps to load
       await waitForGoogleMaps();
@@ -83,45 +85,55 @@ export default function MapPicker({ open, onClose, onSelect }: MapPickerProps) {
       // Add click handler
       mapInstance.current.addListener("click", (e: google.maps.MapMouseEvent) => {
         if (!e.latLng || !mapInstance.current) return;
-
-        // Remove old marker
-        if (markerRef.current) {
-          markerRef.current.setMap(null);
-        }
-
-        // Add new marker
+        
+        // Clear any previous errors when user clicks
+        setError(null);
+      
+        if (markerRef.current) markerRef.current.setMap(null);
+      
         markerRef.current = new google.maps.Marker({
           position: e.latLng,
           map: mapInstance.current,
-          title: "Selected Location",
           animation: google.maps.Animation.DROP,
         });
-
-        // Reverse geocode
+      
         const geocoder = new google.maps.Geocoder();
+      
         geocoder.geocode({ location: e.latLng }, (results, status) => {
+          const link = `https://www.google.com/maps?q=${e.latLng!.lat()},${e.latLng!.lng()}`;
+          
           if (status === "OK" && results?.[0]) {
             const address = results[0].formatted_address;
-            const link = `https://www.google.com/maps?q=${e.latLng!.lat()},${e.latLng!.lng()}`;
+            
             console.log("📍 Map Link:", link);
             console.log("🏠 Address:", address);
+            
+            // ✅ Pass the formatted address
             onSelect(address, link);
             onClose();
           } else {
             console.error("Geocoding failed:", status);
-            // Still allow selection with coordinates
-            const coords = `${e.latLng!.lat()}, ${e.latLng!.lng()}`;
-            const link = `https://www.google.com/maps?q=${e.latLng!.lat()},${e.latLng!.lng()}`;
-            onSelect(coords, link);
-            onClose();
+            
+            // ✅ Set error state instead of alert
+            setError("Unable to get address for this location. Please try selecting a different location.");
+            
+            // Remove the marker since we couldn't get address
+            if (markerRef.current) {
+              markerRef.current.setMap(null);
+              markerRef.current = null;
+            }
+            
+            // Don't close the dialog, let user try again
+            return;
           }
         });
       });
+      
 
       setIsLoading(false);
     } catch (err) {
       console.error("Failed to initialize map:", err);
-      setError(err instanceof Error ? err.message : "Failed to load map");
+      setMapError(err instanceof Error ? err.message : "Failed to load map");
       setIsLoading(false);
     }
   };
@@ -132,6 +144,7 @@ export default function MapPicker({ open, onClose, onSelect }: MapPickerProps) {
     // Reset states when dialog opens
     setIsLoading(true);
     setError(null);
+    setMapError(null);
 
     // Initialize map after a short delay to ensure dialog is fully rendered
     const timer = setTimeout(() => {
@@ -181,14 +194,33 @@ export default function MapPicker({ open, onClose, onSelect }: MapPickerProps) {
             </div>
           )}
           
-          {error && (
+          {mapError && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
               <div className="flex flex-col items-center gap-4 p-6 text-center">
                 <p className="text-red-600 font-medium">Failed to load map</p>
-                <p className="text-sm text-gray-600">{error}</p>
+                <p className="text-sm text-gray-600">{mapError}</p>
                 <Button onClick={handleRetry} size="sm">
                   Try Again
                 </Button>
+              </div>
+            </div>
+          )}
+          
+          {error && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/90 z-10">
+              <div className="flex flex-col items-center gap-4 p-6 text-center max-w-md">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="text-red-700 font-medium text-sm">Address Not Found</p>
+                  <p className="text-red-600 text-sm mt-1">{error}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => setError(null)} size="sm" variant="outline">
+                    Try Different Location
+                  </Button>
+                  <Button onClick={onClose} size="sm">
+                    Enter Manually
+                  </Button>
+                </div>
               </div>
             </div>
           )}
