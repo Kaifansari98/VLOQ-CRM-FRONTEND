@@ -23,7 +23,7 @@ import SmoothTab from "@/components/kokonutui/smooth-tab";
 import OpenLeadDetails from "@/components/tabScreens/OpenLeadDetails";
 import SiteMeasurementLeadDetails from "@/components/tabScreens/SiteMeasurementLeadDetails";
 import BookingLeadsDetails from "@/components/tabScreens/BookingLeadsDetails";
-import FinalMeasurementDeatils from "@/components/tabScreens/FinalMeasurementDetails";
+import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 
 export default function BookingStageLeadsDetails() {
   const { lead: leadId } = useParams();
@@ -38,7 +38,7 @@ export default function BookingStageLeadsDetails() {
   const createdAt = lead?.created_at;
   const accountId = lead?.account_id;
   
-  const status = lead.statusType.type;
+  // const status = lead.statusType.type;
   console.log("Status Type: ",status)
 
   console.log(lead);
@@ -49,66 +49,12 @@ export default function BookingStageLeadsDetails() {
     accountId: accountId,
   };
 
-  const formatDateTime = (dateString?: string) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleString("en-IN", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
 
   if (isLoading) {
     return <p className="p-6">Loading lead details...</p>;
   }
 
-  const tabs = [
-    {
-      id: "details",
-      title: "Details",
-      color: "bg-zinc-900 hover:bg-zinc-800",
-      cardContent: (
-        <OpenLeadDetails lead={lead} formatDateTime={formatDateTime} />
-      ),
-    },
-    {
-      id: "measurement",
-      title: "Site measurement",
-      color: "bg-zinc-900 hover:bg-gray-600",
-      cardContent: (
-        <div className="p-4 border rounded-lg">
-          <p className="text-sm text-muted-foreground">No closed leads yet.</p>
-        </div>
-      ),
-    },
-    {
-      id: "designing",
-      title: "Desiging Stage",
-      color: "bg-zinc-900 hover:bg-gray-600",
-      cardContent: <SiteMeasurementLeadDetails lead={leadInfo} />,
-    },
-    {
-      id: "booking",
-      title: "Booking Stage",
-      color: "bg-zinc-900 hover:bg-gray-600",
-      cardContent: <BookingLeadsDetails lead={leadInfo} />,
-    },
-    {
-      id: "finalmeasurement",
-      title: "Final Measurement",
-      color: "bg-zinc-900 hover:bg-gray-600",
-      cardContent: <FinalMeasurementDeatils lead={leadInfo} />,
-    },
-    {
-      id: "clientdocumentation",
-      title: "Client Documentation",
-      color: "bg-zinc-900 hover:bg-gray-600",
-      cardContent: <BookingLeadsDetails lead={leadInfo} />,
-    },
-  ];
+
 
   return (
     <SidebarProvider>
@@ -146,7 +92,7 @@ export default function BookingStageLeadsDetails() {
 
         {/* Tabs */}
         <div className="px-6 pt-4">
-          <SmoothTab items={tabs} defaultTabId="details" />
+          <LeadDetailsUtil leadInfo={leadInfo} status="booking" />
         </div>
       </SidebarInset>
     </SidebarProvider>
