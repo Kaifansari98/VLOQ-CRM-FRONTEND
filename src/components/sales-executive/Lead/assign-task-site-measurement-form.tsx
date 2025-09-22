@@ -27,6 +27,7 @@ import z from "zod";
 import { useAssignToSiteMeasurement } from "@/hooks/useLeadsQueries";
 import { AssignToSiteMeasurementPayload } from "@/api/leads";
 import { toast } from "react-toastify";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Props {
   open: boolean;
@@ -65,6 +66,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const leadId = data?.id!;
   const userId = useAppSelector((state) => state.auth.user?.id);
   const mutation = useAssignToSiteMeasurement(leadId);
+  const queryClient = useQueryClient();
 
   const mappedData =
     vendorUsers?.data?.sales_executives?.map((user: any) => ({
@@ -82,32 +84,37 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     },
   });
 
-  // ✅ use mutation hook
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
+    const payload: AssignToSiteMeasurementPayload = {
+      task_type: values.task_type,
+      due_date: values.due_date,
+      remark: values.remark,
+      user_id: values.assign_lead_to!,
+      created_by: userId!,
+    };
 
- const onSubmit = (values: z.infer<typeof formSchema>) => {
-  const payload: AssignToSiteMeasurementPayload = {
-    task_type: values.task_type,
-    due_date: values.due_date,
-    remark: values.remark,
-    user_id: values.assign_lead_to!,
-    created_by: userId!,
+    mutation.mutate(payload, {
+      onSuccess: (data) => {
+        console.log("API Response:", data); // Backend response
+        toast.success("Task assigned successfully!");
+        queryClient.invalidateQueries({
+          queryKey: ["leadStats", vendorId, userId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["siteMeasurementLeads", vendorId],
+        });
+        onOpenChange(false);
+      },
+      onError: (error: any) => {
+        console.error("API Error:", error);
+        const backendMessage =
+          error?.response?.data?.message ||
+          error.message ||
+          "Something went wrong";
+        toast.error(backendMessage);
+      },
+    });
   };
-
-  mutation.mutate(payload, {
-    onSuccess: (data) => {
-      console.log("API Response:", data); // Backend response
-      toast.success("Task assigned successfully!");
-      form.reset(); // Reset form on success
-      onOpenChange(false); // Close modal
-    },
-    onError: (error: any) => {
-      console.error("API Error:", error);
-      const backendMessage =
-        error?.response?.data?.message || error.message || "Something went wrong";
-      toast.error(backendMessage);
-    },
-  });
-};
 
   if (loadingUsers) {
     return (
@@ -115,7 +122,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
         open={open}
         onOpenChange={onOpenChange}
         title="Loading..."
-        size="md"
+        size="lg"
       >
         <div className="p-6">Loading...</div>
       </BaseModal>
@@ -128,7 +135,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
         open={open}
         onOpenChange={onOpenChange}
         title="Error"
-        size="md"
+        size="lg"
       >
         <div className="p-6">Error: {error.message}</div>
       </BaseModal>
@@ -141,7 +148,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       onOpenChange={onOpenChange}
       title="Assign Task for Initial Site Measurement"
       description="Use this form to assign a site measurement task."
-      size="md"
+      size="smd"
     >
       <div className="px-6 py-6 space-y-8">
         <Form {...form}>

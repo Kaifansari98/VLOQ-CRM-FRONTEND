@@ -11,10 +11,12 @@ import {
   MapPin,
   MessageSquare,
 } from "lucide-react";
+import { formatDateTime } from "../utils/privileges";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+import { useAppSelector } from "@/redux/store";
 
 type OpenLeadDetailsProps = {
-  lead: any;
-  formatDateTime: (dateString?: string) => string;
+  leadId: number;
 };
 
 const containerVariants = {
@@ -38,9 +40,14 @@ const itemVariants = {
 };
 
 export default function OpenLeadDetails({
-  lead,
-  formatDateTime,
+  leadId,
 }: OpenLeadDetailsProps) {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
+  const { data, isLoading } = useLeadById(leadId, vendorId, userId);
+  const lead = data?.data?.lead;
+  // console.log("Lead Details: ", data.data.lead);
+
   if (!lead) {
     return (
       <div className="border rounded-lg p-6">

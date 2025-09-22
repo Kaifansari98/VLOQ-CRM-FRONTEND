@@ -16,12 +16,13 @@ interface BaseModalProps {
   title?: string;
   description?: string;
   children: ReactNode;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "smd";
 }
 
 const sizeClasses = {
   sm: "max-w-sm w-[95vw] md:max-w-md",
   md: "max-w-md w-[95vw] md:max-w-lg",
+  smd: "max-w-md w-[95vw] md:max-w-xl",
   lg: "max-w-lg w-[95vw] md:max-w-2xl lg:max-w-3xl",
   xl: "max-w-xl w-[95vw] md:max-w-4xl lg:max-w-5xl xl:max-w-6xl",
 };

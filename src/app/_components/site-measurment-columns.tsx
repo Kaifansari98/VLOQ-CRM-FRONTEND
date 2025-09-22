@@ -9,16 +9,19 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   Ellipsis,
   Eye,
-  SquarePen,
   Users,
   Text,
-  Ruler,
-  Move,
+  CheckCircle,
+  Clock,
+  XCircle,
   ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -86,6 +89,44 @@ export function getSiteMeasurementColumn({
               <ClipboardCheck size={20} />
               Upload Measurement
             </DropdownMenuItem>
+
+            {row.original.followStatus === "open" && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="flex items-center gap-2">
+                  <ClipboardCheck size={20} />
+                  FollowUp
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-48">
+                  <DropdownMenuItem
+                    onSelect={() => setRowAction({ row, variant: "completed" })}
+                    className="flex items-center gap-2"
+                  >
+                    <CheckCircle size={18} />
+                    Completed
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onSelect={() =>
+                      setRowAction({ row, variant: "reschedule" })
+                    }
+                    className="flex items-center gap-2"
+                  >
+                    <Clock size={18} />
+                    Reschedule
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuItem
+                    className="flex items-center gap-2"
+                    onSelect={() => setRowAction({ row, variant: "cancel" })}
+                  >
+                    <XCircle size={18} />
+                    Cancel
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
 
             {canReassingLead(userType) && (
               <DropdownMenuItem
