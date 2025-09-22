@@ -47,7 +47,7 @@ export interface DataTableRowActionOpen<TData> {
 
 export interface DataTableRowActionSiteMeasurement<TData> {
   row: Row<TData>;
-  variant: "view" | "uploadmeasurement"  | "edit" | "reassignlead" | "delete" ;
+  variant: "view" | "uploadmeasurement"  | "edit" | "reassignlead" | "delete" | "completed" | "reschedule" | "cancel" ;
 }
 export interface DataTableRowActionFinalMeasurement<TData> {
   row: Row<TData>;

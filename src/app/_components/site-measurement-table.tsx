@@ -38,18 +38,22 @@ import { useDeleteLead } from "@/hooks/useDeleteLead";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { toast } from "react-toastify";
-import { useInitialSiteMeasurement } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
+import {
+  useCancelledUpdateTask,
+  useCompletedUpdateTask,
+  useInitialSiteMeasurement,
+} from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import {
   Document,
   ProcessedSiteMeasurementLead,
   SiteMeasurmentLead,
   Upload,
 } from "@/types/site-measrument-types";
-import SiteMesurementModal from "@/components/sales-executive/siteMeasurement/site-mesurement-modal";
 import { useRouter } from "next/navigation";
 import { useMoveToDesigningStage } from "@/api/designingStageQueries";
 import { useQueryClient } from "@tanstack/react-query";
 import InitialSiteMeasuresMent from "@/components/sales-executive/Lead/initial-site-measurement-form";
+import RescheduleModal from "@/components/sales-executive/siteMeasurement/reschedule-modal";
 
 const SiteMeasurementTable = () => {
   // Redux selectors
@@ -64,10 +68,13 @@ const SiteMeasurementTable = () => {
   const router = useRouter();
   // State hooks
   const [openDelete, setOpenDelete] = useState<boolean>(false);
-  const [openMoveCnfrm, setOpenMoveCnfrm] = useState<boolean>(false);
   const [assignOpenLead, setAssignOpenLead] = useState<boolean>(false);
   const [editOpenLead, setEditOpenLead] = useState<boolean>(false);
   const [openMesurement, setOpenMesurement] = useState<boolean>(false);
+  const [openCompletedModal, setOpenCompletedModal] = useState<boolean>(false);
+  const [openCancelModal, setOpenCancelModal] = useState<boolean>(false);
+  const [openRescheduleModal, setOpenRescheduleModal] =
+    useState<boolean>(false);
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({
@@ -91,42 +98,16 @@ const SiteMeasurementTable = () => {
     []
   );
   const [rowSelection, setRowSelection] = React.useState({});
-  const leadId = Number(rowAction?.row.id);
 
   // Query hooks - always called, but conditionally with null/undefined params
   const { data, error, isLoading, isError } = useInitialSiteMeasurement(
     vendorId || 0
   );
-
+  const completedUpdateMutation = useCompletedUpdateTask();
+  const cancelledUpdateMutation = useCancelledUpdateTask();
+  const queryClient = useQueryClient();
   // Custom hooks
   const deleteLeadMutation = useDeleteLead();
-
-  const { mutate: moveToDesigningStage, isPending: isMovePending } =
-    useMoveToDesigningStage();
-  const queryClient = useQueryClient();
-
-  const handleMoveToDesigningStage = () => {
-    if (!leadId || !vendorId || !userId) {
-      toast.error("❌ Missing required data to move lead");
-      return;
-    }
-
-    moveToDesigningStage(
-      { lead_id: leadId, vendor_id: vendorId, user_id: userId },
-      {
-        onSuccess: (res) => {
-          toast.success("Lead moved to Designing Stage successfully!");
-          queryClient.invalidateQueries({
-            queryKey: ["siteMeasurementLeads", vendorId, 2],
-          });
-        },
-        onError: (err) => {
-          console.error("❌ API error:", err);
-          toast.error("Failed to move lead. Please try again.");
-        },
-      }
-    );
-  };
 
   // Effects
   useEffect(() => {
@@ -144,6 +125,15 @@ const SiteMeasurementTable = () => {
     if (rowAction?.variant === "uploadmeasurement" && rowAction.row) {
       console.log("Original Edit Data row Leads: ", rowAction.row.original);
       setOpenMesurement(true);
+    }
+    if (rowAction?.variant === "completed" && rowAction.row) {
+      setOpenCompletedModal(true);
+    }
+    if (rowAction?.variant === "cancel" && rowAction.row) {
+      setOpenCancelModal(true);
+    }
+    if (rowAction?.variant === "reschedule" && rowAction.row) {
+      setOpenRescheduleModal(true);
     }
   }, [rowAction]);
 
@@ -194,6 +184,10 @@ const SiteMeasurementTable = () => {
           lead.uploads.find((item: Upload) => item.paymentInfo !== null)
             ?.paymentInfo || null,
         accountId: lead.account.id || "",
+        taskId: lead.tasks?.[0].id,
+        dueDate: lead.tasks?.[0].due_date || "",
+        remark: lead.tasks?.[0].remark || "empty",
+        followStatus: lead.tasks?.[0].status || "",
       };
     });
   }, [data]);
@@ -240,9 +234,6 @@ const SiteMeasurementTable = () => {
     );
   }, [rowData]);
 
-  // 🔥 NOW HANDLE CONDITIONAL RENDERING AFTER ALL HOOKS
-
-  // Early returns for error states
   if (!vendorId) {
     return <p>No vendor selected</p>;
   }
@@ -256,13 +247,6 @@ const SiteMeasurementTable = () => {
     return <p>Something went wrong</p>;
   }
 
-  // Success state logging
-  console.log("API Success:", data);
-  console.log("Initial Site Measurement Data: ", data);
-  console.log("Processed Row Data: ", rowData);
-  console.log("usertypes: ", userType);
-
-  // Event handlers
   const handleDeleteLead = async () => {
     if (!rowAction?.row) return;
 
@@ -291,6 +275,76 @@ const SiteMeasurementTable = () => {
 
     setOpenDelete(false);
     setRowAction(null);
+  };
+
+  const handleMarkCompleted = () => {
+    if (!rowAction?.row) return;
+
+    const lead = rowAction.row.original;
+
+    completedUpdateMutation.mutate(
+      {
+        leadId: lead?.id || 0,
+        taskId: lead?.taskId || 0,
+        payload: {
+          status: "completed",
+          updated_by: userId || 0,
+          closed_at: new Date().toISOString(),
+          closed_by: userId || 0,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success("Lead marked as completed!");
+          setOpenCompletedModal(false);
+
+          // Invalidate query to refresh data
+          if (vendorId) {
+            queryClient.invalidateQueries({
+              queryKey: ["siteMeasurementLeads", vendorId],
+            });
+          }
+        },
+        onError: (err: any) => {
+          toast.error(err?.message || "❌ Failed to update lead");
+        },
+      }
+    );
+  };
+
+  const handleCancelLead = () => {
+    if (!rowAction?.row) return;
+
+    const lead = rowAction.row.original;
+
+    cancelledUpdateMutation.mutate(
+      {
+        leadId: lead.id,
+        taskId: lead.taskId || 0,
+        payload: {
+          status: "cancelled",
+          updated_by: userId || 0,
+          closed_by: userId || 0,
+          closed_at: new Date().toISOString(),
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success("Lead cancelled successfully!");
+          setOpenCancelModal(false);
+
+          // Invalidate query to refresh data
+          if (vendorId) {
+            queryClient.invalidateQueries({
+              queryKey: ["siteMeasurementLeads", vendorId],
+            });
+          }
+        },
+        onError: (err: any) => {
+          toast.error(err?.message || "Failed to cancel lead");
+        },
+      }
+    );
   };
 
   const mockProps = {
@@ -357,11 +411,56 @@ const SiteMeasurementTable = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* <SiteMesurementModal
-        open={openMesurement}
-        onOpenChange={setOpenMesurement}
-        data={rowAction?.row.original}
-      /> */}
+      {/* Completed Modal */}
+      <AlertDialog
+        open={openCompletedModal}
+        onOpenChange={setOpenCompletedModal}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark Lead as Completed?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to mark this lead as completed? This action
+              can’t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMarkCompleted}
+              disabled={completedUpdateMutation.isPending}
+            >
+              {completedUpdateMutation.isPending
+                ? "Processing..."
+                : "Completed"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Modal */}
+      <AlertDialog open={openCancelModal} onOpenChange={setOpenCancelModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel this lead? This action can’t be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelLead}
+              disabled={cancelledUpdateMutation.isPending}
+            >
+              {cancelledUpdateMutation.isPending
+                ? "Processing..."
+                : "Completed"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <InitialSiteMeasuresMent
         open={openMesurement}
@@ -378,6 +477,12 @@ const SiteMeasurementTable = () => {
         open={editOpenLead}
         onOpenChange={setEditOpenLead}
         leadData={rowAction?.row.original}
+      />
+
+      <RescheduleModal
+        open={openRescheduleModal}
+        onOpenChange={setOpenRescheduleModal}
+        data={rowAction?.row.original}
       />
     </>
   );
