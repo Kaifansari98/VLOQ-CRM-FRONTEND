@@ -184,10 +184,10 @@ const SiteMeasurementTable = () => {
           lead.uploads.find((item: Upload) => item.paymentInfo !== null)
             ?.paymentInfo || null,
         accountId: lead.account.id || "",
-        taskId: lead.tasks?.[0].id,
-        dueDate: lead.tasks?.[0].due_date || "",
-        remark: lead.tasks?.[0].remark || "empty",
-        followStatus: lead.tasks?.[0].status || "",
+        taskId: lead.tasks?.[0]?.id ?? 0,
+        dueDate: lead.tasks?.[0]?.due_date ?? "",
+        remark: lead.tasks?.[0]?.remark ?? "empty",
+        followStatus: lead.tasks?.[0]?.status ?? "",
       };
     });
   }, [data]);

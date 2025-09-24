@@ -132,7 +132,7 @@ export interface SiteMeasurmentLead {
     totalProductMappings: number;
   };
   uploads: Upload[];
-  tasks?:TaskDetails[]
+  tasks:TaskDetails[]
 }
 
 export interface EditPayload {
