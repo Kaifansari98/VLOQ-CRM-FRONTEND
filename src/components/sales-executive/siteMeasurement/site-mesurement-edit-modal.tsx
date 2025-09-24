@@ -83,10 +83,16 @@ const SiteMesurementEditModal: React.FC<SiteMesurementEditModalProps> = ({
         payment_text: data.paymentInfo.payment_text || "",
       });
     }
+
+    console.log("Lead Id:", data?.id);
+    console.log("Account Id: ", data?.accountId);
   }, [data, form]);
 
   const onSubmit = async (values: PaymentFormValues) => {
-    if (!data) return;
+    if (!data || !data.accountId) {
+      console.error("AccountId is missing, cannot submit");
+      return;
+    }
 
     const formData = new FormData();
     formData.append("lead_id", data.id.toString());

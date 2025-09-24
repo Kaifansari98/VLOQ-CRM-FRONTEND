@@ -37,8 +37,6 @@ import { DataTableAdvancedToolbar } from "@/components/data-table/data-table-adv
 import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
 import { DataTable } from "@/components/data-table/data-table";
 import ViewLeadModal from "@/components/sales-executive/Lead/view-lead-moda";
-import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
-import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import BookingModal from "@/components/sales-executive/designing-stage/booking-modal";
 import { useRouter } from "next/navigation";
 import SiteMesurementModal from "@/components/sales-executive/siteMeasurement/site-mesurement-modal";
@@ -105,10 +103,13 @@ const DesigningStageTable = () => {
 
   }, [rowAction]);
 
-  const handleRowClick = (row: ProcessedDesigningStageLead) => {
-    const lead = row?.id;
-    router.push(`/dashboard/sales-executive/designing-stage/details/${lead}`);
-  };
+ const handleRowClick = (row: ProcessedDesigningStageLead) => {
+  const leadId = row.id;
+  const accountId = row.accountId;   // or row.account.id depending on your data
+  router.push(
+    `/dashboard/sales-executive/designing-stage/details/${leadId}?accountId=${accountId}`
+  );
+};
 
   const rowData = useMemo<ProcessedDesigningStageLead[]>(() => {
     if (!data?.data) return [];
