@@ -63,6 +63,13 @@ export function getDesigningStageColumn({
               Booking
             </DropdownMenuItem>
 
+            <DropdownMenuItem
+              onSelect={() => setRowAction({ row, variant: "measurement-modal" })}
+            >
+              <Eye size={20} />
+              Site Measurements
+            </DropdownMenuItem>
+
             {!canDeleteLead(userType) && <DropdownMenuSeparator />}
 
             <DropdownMenuItem asChild>

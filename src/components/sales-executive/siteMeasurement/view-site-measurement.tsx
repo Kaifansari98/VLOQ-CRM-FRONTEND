@@ -79,9 +79,9 @@ const ViewInitialSiteMeasurmentLead: React.FC<
         {/* Header */}
 
         <DialogHeader className="flex items-start justify-end border-b px-6 py-4">
-          <Button onClick={() => setOpenconfirmation(true)}>
+          {/* <Button onClick={() => setOpenconfirmation(true)}>
             <Star size={20} className="mr-2" /> Move To Designing Stage
-          </Button>
+          </Button> */}
         </DialogHeader>
         <ScrollArea className="max-h-[calc(90vh-100px)]">
           <div className="px-5 py-4">

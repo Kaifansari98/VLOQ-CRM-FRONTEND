@@ -41,6 +41,8 @@ import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda"
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import BookingModal from "@/components/sales-executive/designing-stage/booking-modal";
 import { useRouter } from "next/navigation";
+import SiteMesurementModal from "@/components/sales-executive/siteMeasurement/site-mesurement-modal";
+import { ProcessedSiteMeasurementLead } from "@/types/site-measrument-types";
 
 const DesigningStageTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -49,11 +51,12 @@ const DesigningStageTable = () => {
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
   const router = useRouter();
-  const { data, isLoading, isError } = useDesigningStageLeads(vendorId!, 3);
+  const { data, isLoading, isError } = useDesigningStageLeads(vendorId!, userId!);
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const [openDelete, setOpenDelete] = useState<boolean>(false);
   const [openView, setOpenView] = useState<boolean>(false);
   const [bookingOpenLead, setBookingOpenLead] = useState<boolean>(false);
+  const [openMeasurementModal, setOpenMeasurementModal] = useState<boolean>(false);
   const deleteLeadMutation = useDeleteLead();
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [columnVisibility, setColumnVisibility] =
@@ -95,6 +98,11 @@ const DesigningStageTable = () => {
       console.log("Original Data row Leads: ", rowAction.row.original);
       setBookingOpenLead(true);
     }
+
+    if (rowAction?.variant === "measurement-modal" && rowAction.row) {
+      setOpenMeasurementModal(true);
+    }
+
   }, [rowAction]);
 
   const handleRowClick = (row: ProcessedDesigningStageLead) => {
@@ -276,6 +284,24 @@ const DesigningStageTable = () => {
         onOpenChange={setBookingOpenLead}
         data={rowAction?.row.original}
       />
+
+      <SiteMesurementModal
+          open={openMeasurementModal}
+          onOpenChange={setOpenMeasurementModal}
+          data={
+            rowAction?.row.original
+              ? ({
+                  ...rowAction.row.original,
+                  documentUrl: rowAction.row.original.documentUrl.map((doc) => ({
+                    ...doc,
+                    signed_url: doc.signedUrl, // map camelCase → snake_case
+                    file_type: "unknown",      // fallback
+                    is_image: false,           // fallback
+                  })),
+                } as ProcessedSiteMeasurementLead)
+              : undefined
+          }
+        />
     </>
   );
 };

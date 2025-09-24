@@ -186,11 +186,11 @@ export default function MyTaskLeadDetails() {
             <p>No lead details found.</p>
           )}
 
-          <InitialSiteMeasuresMent
+          {/* <InitialSiteMeasuresMent
             open={openMesurementModal}
             onOpenChange={setOpenMeasurementModal}
             leadId={leadIdNum}
-          />
+          /> */}
         </main>
       </SidebarInset>
     </SidebarProvider>

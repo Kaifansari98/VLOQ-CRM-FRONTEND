@@ -10,6 +10,21 @@ export interface FinalMeasurementPayload {
   site_photos: File[]; // multiple images
 }
 
+export interface AssignToFinalMeasurementPayload {
+  task_type: string;
+  due_date: string;
+  remark: string;
+  user_id: number;
+  created_by: number;
+}
+export const assignToFinalMeasurement = async (leadId: number, payload: AssignToFinalMeasurementPayload) => {
+  const { data } = await apiClient.post(
+    `/leads/final-measurement/leadId/${leadId}/tasks/assign-fm`,payload
+  );
+
+  return data
+};
+
 export const UploadFinalMeasurement = async (
   payload: FinalMeasurementPayload
 ) => {
@@ -49,7 +64,8 @@ export const getAllFinalMeasurementLeads = async (
   userId: number
 ) => {
   const { data } = await apiClient.get(
-    `/leads/final-measurement/allLeads/vendorId/${vendorId}/userId/${userId}`
+    `/leads/final-measurement/all/${vendorId}`, 
+    { params: { userId } } // ✅ send userId as query param
   );
   return data;
 };

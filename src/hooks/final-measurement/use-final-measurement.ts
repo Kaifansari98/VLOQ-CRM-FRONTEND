@@ -25,8 +25,8 @@ export const useFinalMeasurementLeads = (vendorId: number, userId: number) => {
   return useQuery<FinalMeasurementLeadsResponse>({
     queryKey: ["finalMeasurementLeads", vendorId, userId],
     queryFn: () => getAllFinalMeasurementLeads(vendorId, userId),
-    enabled: !!vendorId && !!userId, // fetch only when IDs are available
-    staleTime: 1000 * 60 * 5, // cache for 5 mins
+    enabled: !!vendorId && !!userId, // ✅ only fetch when both exist
+    staleTime: 1000 * 60 * 5, // 5 min cache
   });
 };
 

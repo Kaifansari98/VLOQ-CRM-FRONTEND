@@ -41,6 +41,7 @@ import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUse
 import TextAreaInput from "@/components/origin-text-area";
 import CustomeDatePicker from "@/components/date-picker";
 import MapPicker from "@/components/MapPicker";
+import { MapPin } from "lucide-react";
 
 const createFormSchema = (userType: string | undefined) => {
   const isAdminOrSuperAdmin =
@@ -91,6 +92,11 @@ export default function LeadsGenerationForm({
   const userId = useAppSelector((state) => state.auth.user?.id);
   const createdBy = useAppSelector((state: any) => state.auth.user?.id);
   const [mapOpen, setMapOpen] = useState(false);
+  const [savedMapLocation, setSavedMapLocation] = useState<{
+    lat: number;
+    lng: number;
+    address: string;
+  } | null>(null);
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
@@ -168,6 +174,7 @@ export default function LeadsGenerationForm({
   const handleResetform = () => {
     form.reset();
     setFiles([]);
+    setSavedMapLocation(null);
     form.setValue("priority", "");
     form.setValue("source_id", "");
     form.setValue("site_type_id", "");
@@ -442,36 +449,65 @@ export default function LeadsGenerationForm({
           </div>
 
           {/* Site Address */}
-          <FormField
-            control={form.control}
-            name="site_address"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">Site Address *</FormLabel>
-                <div className="flex gap-2">
-                  <FormControl className="flex-1">
-                    <TextAreaInput
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="Enter address or use map"
-                    />
-                  </FormControl>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setMapOpen(true)}>
-                    Open Map
-                  </Button>
-                </div>
-                <FormMessage />
-                <MapPicker
-                  open={mapOpen}
-                  onClose={() => setMapOpen(false)}
-                  onSelect={(address, link) => {
-                    field.onChange(address); // ✅ auto-fill textarea
-                    console.log("Selected Map Link:", link);
-                  }}
-                />
-              </FormItem>
-            )}
+<FormField
+  control={form.control}
+  name="site_address"
+  render={({ field }) => (
+    <FormItem>
+      <div className="w-full flex justify-between ">
+      <FormLabel className="text-sm">Site Address *</FormLabel>
+        <Button 
+          type="button" 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setMapOpen(true)}
+          className="flex items-center gap-1"
+        >
+          <MapPin className="h-4 w-4" />
+          {savedMapLocation ? 'Update Map' : 'Open Map'}
+        </Button>
+      </div>
+      <div className="flex gap-2">
+        <FormControl className="flex-1">
+          <TextAreaInput
+            value={field.value}
+            onChange={(value) => {
+              field.onChange(value);
+              // Clear saved location if user manually edits address
+              if (savedMapLocation && value !== savedMapLocation.address) {
+                setSavedMapLocation(null);
+              }
+            }}
+            placeholder="Enter address or use map"
           />
+        </FormControl>
+      </div>
+      <FormMessage />
+      <MapPicker
+        open={mapOpen}
+        onClose={() => setMapOpen(false)}
+        savedLocation={savedMapLocation} // Pass saved location to remember
+        onSelect={(address, link) => {
+          // Auto-fill textarea
+          field.onChange(address);
+          
+          // Save the location for future reference
+          const coords = link.match(/q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+          if (coords) {
+            const newLocation = {
+              lat: parseFloat(coords[1]),
+              lng: parseFloat(coords[2]),
+              address: address
+            };
+            setSavedMapLocation(newLocation);
+          }
+          
+          console.log("Selected Map Link:", link);
+        }}
+      />
+    </FormItem>
+  )}
+/>
 
 
           {/* Priority & Source */}

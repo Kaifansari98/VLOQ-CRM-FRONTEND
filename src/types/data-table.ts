@@ -36,7 +36,7 @@ export interface ExtendedColumnFilter<TData> extends FilterItemSchema {
 
 export interface DataTableRowAction<TData> {
   row: Row<TData>;
-  variant: "edit" | "delete" | "view"  | "reassignlead" | "measurement" | "details" | "booking" | "move" ;
+  variant: "edit" | "delete" | "view"  | "reassignlead" | "measurement" | "details" | "booking" | "move" | "measurement-modal" | "uploadmeasurement";
 }
 
 
@@ -51,10 +51,10 @@ export interface DataTableRowActionSiteMeasurement<TData> {
 }
 export interface DataTableRowActionFinalMeasurement<TData> {
   row: Row<TData>;
-  variant: "edit" | "delete" | "view"  | "reassignlead" | "clientdoc" | "finalMeasu";
+  variant: "edit" | "delete" | "view"  | "reassignlead" | "clientdoc" | "finalMeasu" | "assignTask" | "completed" | "reschedule" | "cancel" ;
 }
 
 export interface DataTableRowActionClientDocumentation<TData> {
   row: Row<TData>;
-  variant: "edit" | "delete" | "view"  | "reassignlead" ;
+  variant: "edit" | "delete" | "view"  | "reassignlead" | "clientdoc" ;
 }

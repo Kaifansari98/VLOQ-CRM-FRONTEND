@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/apiClient";
-import { BookingLeadById } from "@/types/booking-types";
+import { BookingLeadById, BookingLeadResponse } from "@/types/booking-types";
 
 export interface BookingPayload {
   lead_id: number;
@@ -56,9 +56,12 @@ export const getAllSiteSuperVisors = async (vendorId: number) => {
   return data;
 };
 
-export const getBookingLeads = async (vendorId: number) => {
-  const { data } = await apiClient.get(
-    `/leads/bookingStage/status4-leads/${vendorId}`
+export const getBookingLeads = async (
+  vendorId: number,
+  userId: number
+): Promise<BookingLeadResponse> => {
+  const { data } = await apiClient.get<BookingLeadResponse>(
+    `/leads/bookingStage/status4-leads/${vendorId}?userId=${userId}`
   );
   return data;
 };

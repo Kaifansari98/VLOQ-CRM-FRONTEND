@@ -16,6 +16,7 @@ import {
   VendorUserLeadsResponse,
 } from "@/api/leads";
 import { toast } from "react-toastify";
+import { assignToFinalMeasurement, AssignToFinalMeasurementPayload } from "@/api/final-measurement";
 
 // Hook for getting vendor leads
 export const useVendorLeads = (
@@ -72,10 +73,16 @@ export function useLeadById(
   });
 }
 
-
 export const useAssignToSiteMeasurement = (leadId: number) => {
   return useMutation({
     mutationFn: (payload: AssignToSiteMeasurementPayload) =>
       assignToSiteMeasurement(leadId, payload),
+  });
+};
+
+export const useAssignToFinalMeasurement = (leadId: number) => {
+  return useMutation({
+    mutationFn: (payload: AssignToFinalMeasurementPayload) =>
+      assignToFinalMeasurement(leadId, payload),
   });
 };

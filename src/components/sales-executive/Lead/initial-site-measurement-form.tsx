@@ -68,7 +68,13 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   const { data: accountId } = useQuery({
     queryKey: ["lead", leadId],
     queryFn: () => getLeadById(leadId!, vendorId, userId),
-    select: (res) => res?.data?.lead?.account?.id,
+    select: (res) => {
+      const accountId = res?.data?.lead?.account?.id ?? res?.data?.lead?.account_id;
+      if (!accountId) {
+        console.warn("Lead missing account data:", res?.data?.lead);
+      }
+      return accountId;
+    }
   });
 
   const queryClient = useQueryClient();
@@ -108,6 +114,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     formData.append("vendor_id", vendorId?.toString() || "");
     formData.append("created_by", userId?.toString() || "");
     formData.append("client_id", clientId.toString() || "");
+    formData.append("user_id", userId?.toString() || "");
 
     values.current_site_photos?.forEach((file: File) => {
       formData.append("current_site_photos", file);

@@ -42,6 +42,8 @@ import { useBookingLeads } from "@/hooks/booking-stage/use-booking";
 import BookingEditModal from "@/components/sales-executive/booking-stage/bookint-edit-form";
 import BookingViewModal from "@/components/sales-executive/booking-stage/view-booking-modal";
 import FinalMeasurementModal from "@/components/sales-executive/booking-stage/final-measurement-modal";
+import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-final-measurement-form";
+import AssignTaskFinalMeasurementForm from "@/components/sales-executive/Lead/assign-task-final-measurement-form";
 
 const BookingStageLeadsTable = () => {
   // Redux selectors
@@ -56,7 +58,7 @@ const BookingStageLeadsTable = () => {
   const router = useRouter();
 
   // React Query hook
-  const { data, error, isLoading, isError } = useBookingLeads(vendorId!);
+  const { data, error, isLoading, isError } = useBookingLeads(vendorId!, userId!);
   console.log("Booking Leads Data:", data);
   // Local state
   const [openDelete, setOpenDelete] = useState(false);
@@ -64,6 +66,7 @@ const BookingStageLeadsTable = () => {
   const [openViewModal, setOpenViewModal] = useState<boolean>(false);
   const [editOpenLead, setEditOpenLead] = useState(false);
   const [openFinalModal, setOpenFinalModal] = useState(false);
+  const [openFMTaskModal, setOpenFMTaskModal] = useState(false);
   const [rowAction, setRowAction] =
     useState<DataTableRowActionFinalMeasurement<ProcessedBookingLead> | null>(
       null
@@ -168,7 +171,8 @@ const BookingStageLeadsTable = () => {
     if (rowAction.variant === "reassignlead") setAssignOpenLead(true);
     if (rowAction.variant === "edit") setEditOpenLead(true);
     if (rowAction.variant === "view") setOpenViewModal(true);
-    if (rowAction.variant === "finalMeasu") setOpenFinalModal(true);
+    // if (rowAction.variant === "finalMeasu") setOpenFinalModal(true);
+    if (rowAction.variant === "assignTask" && rowAction.row) setOpenFMTaskModal(true);
   }, [rowAction]);
 
   // Handlers
@@ -268,11 +272,17 @@ const BookingStageLeadsTable = () => {
         data={rowAction?.row.original}
       />
 
-      <FinalMeasurementModal
+      <AssignTaskFinalMeasurementForm
+        open={openFMTaskModal}
+        onOpenChange={setOpenFMTaskModal}
+        data={rowAction?.row.original}
+      />
+
+      {/* <FinalMeasurementModal
         open={openFinalModal}
         onOpenChange={setOpenFinalModal}
         data={rowAction?.row.original}
-      />
+      /> */}
     </>
   );
 };

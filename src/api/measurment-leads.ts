@@ -1,8 +1,11 @@
 import { apiClient } from "@/lib/apiClient";
 
-export const getInitialSiteMeasurement = async (vendorId: number) => {
+export const getInitialSiteMeasurement = async (vendorId: number, userId: number) => {
   const response = await apiClient.get(
-    `/leads/initial-site-measurement/vendor/${vendorId}/initial-site-measurement`
+    `/leads/initial-site-measurement/vendor/${vendorId}/initial-site-measurement`,
+    {
+      params: { userId }, // ✅ send userId in query
+    }
   );
   return response.data;
 };
