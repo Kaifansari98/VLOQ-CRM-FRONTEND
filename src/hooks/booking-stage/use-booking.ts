@@ -46,12 +46,13 @@ export const useSiteSupervisors = (vendorId: number) => {
   });
 };
 
-export const useBookingLeads = (vendorId: number) => {
+export const useBookingLeads = (vendorId: number, userId: number) => {
   return useQuery<BookingLeadResponse>({
-    queryKey: ["bookingLeads", vendorId],
-    queryFn: () => getBookingLeads(vendorId),
-    enabled: !!vendorId, // only run if vendorId is provided
-    staleTime: 1000 * 60 * 5, // cache for 5 min
+    queryKey: ["bookingLeads", vendorId, userId],
+    queryFn: () => getBookingLeads(vendorId, userId),
+    enabled: !!vendorId && !!userId, // ✅ only fetch if both are available
+    staleTime: 1000 * 60 * 5, // 5 minutes cache
+    refetchOnWindowFocus: false,
   });
 };
 

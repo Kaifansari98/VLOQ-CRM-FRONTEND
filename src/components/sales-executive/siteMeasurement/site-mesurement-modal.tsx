@@ -1,20 +1,8 @@
 import React, { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { ProcessedSiteMeasurementLead } from "@/types/site-measrument-types";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Edit2, FileText, Plus, Download, Eye } from "lucide-react";
 import SiteMesurementEditModal from "./site-mesurement-edit-modal";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import AddCurrentSitePhotos from "./current-site-image-add-modal";
 import AddPaymentDetailsPhotos from "./payment-details-image-add-modal";
 import ImageCarouselModal from "@/components/utils/image-carousel-modal";

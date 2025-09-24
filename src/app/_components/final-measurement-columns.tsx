@@ -9,16 +9,21 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   Ellipsis,
   Eye,
-  SquarePen,
   Users,
   Text,
-  Ruler,
   FileText,
+  ClipboardCheck,
+  CheckCircle,
+  Clock,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DataTableRowActionFinalMeasurement } from "@/types/data-table";
@@ -29,11 +34,11 @@ import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import { useRouter } from "next/navigation";
-import { ProcessedFianlMeasurementLead } from "@/types/final-measurement";
+import { ProcessedFinalMeasurementLead } from "@/types/final-measurement";
 
 interface GetVendorLeadsTableColumnsProps {
   setRowAction: React.Dispatch<
-    React.SetStateAction<DataTableRowActionFinalMeasurement<ProcessedFianlMeasurementLead> | null>
+    React.SetStateAction<DataTableRowActionFinalMeasurement<ProcessedFinalMeasurementLead> | null>
   >;
   userType?: string;
 }
@@ -41,7 +46,7 @@ interface GetVendorLeadsTableColumnsProps {
 export function getFinalMeasurementLeadsTableColumns({
   setRowAction,
   userType,
-}: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedFianlMeasurementLead>[] {
+}: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedFinalMeasurementLead>[] {
   const router = useRouter();
   return [
     // Action Button
@@ -70,11 +75,49 @@ export function getFinalMeasurementLeadsTableColumns({
 
             <DropdownMenuItem
               data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: "clientdoc" })}
+              onSelect={() => setRowAction({ row, variant: "finalMeasu" })}
             >
               <FileText size={20} />
-              Client Documentation
+              Final Documentation
             </DropdownMenuItem>
+
+            {row.original.followStatus === "open" && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="flex items-center gap-2">
+                  <ClipboardCheck size={20} />
+                  Follow Up
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-48">
+                  <DropdownMenuItem
+                    onSelect={() => setRowAction({ row, variant: "completed" })}
+                    className="flex items-center gap-2"
+                  >
+                    <CheckCircle size={18} />
+                    Completed
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onSelect={() =>
+                      setRowAction({ row, variant: "reschedule" })
+                    }
+                    className="flex items-center gap-2"
+                  >
+                    <Clock size={18} />
+                    Reschedule
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuItem
+                    className="flex items-center gap-2"
+                    onSelect={() => setRowAction({ row, variant: "cancel" })}
+                  >
+                    <XCircle size={18} />
+                    Cancel
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
 
             {canReassingLead(userType) && (
               <DropdownMenuItem
@@ -292,7 +335,7 @@ export function getFinalMeasurementLeadsTableColumns({
             enableSorting: true,
             enableHiding: true,
             enableColumnFilter: true,
-          } as ColumnDef<ProcessedFianlMeasurementLead>,
+          } as ColumnDef<ProcessedFinalMeasurementLead>,
         ]
       : []),
 

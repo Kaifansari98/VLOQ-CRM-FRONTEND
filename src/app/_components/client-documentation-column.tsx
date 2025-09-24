@@ -69,6 +69,15 @@ export function getClientDocumentationTableColumns({
             {!canDeleteLead(userType) && <DropdownMenuSeparator />}
 
 
+            <DropdownMenuItem
+              data-slot="action-button"
+              onSelect={() => setRowAction({ row, variant: "clientdoc" })}
+            >
+              <FileText size={20} />
+              Client Documentation
+            </DropdownMenuItem>
+
+
             {canReassingLead(userType) && (
               <DropdownMenuItem
                 data-slot="action-button"

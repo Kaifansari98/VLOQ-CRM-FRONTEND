@@ -11,7 +11,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ellipsis, Eye, SquarePen, Users, Text, StretchHorizontal, Ruler } from "lucide-react";
+import { Ellipsis, Eye, SquarePen, Users, Text, StretchHorizontal, Ruler, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DataTableRowAction, DataTableRowActionFinalMeasurement } from "@/types/data-table";
 import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
@@ -68,12 +68,20 @@ export function getBookingLeadsTableColumns({
               Edit
             </DropdownMenuItem>
 
-             <DropdownMenuItem
+             {/* <DropdownMenuItem
               data-slot="action-button"
               onSelect={() => setRowAction({ row, variant: 'finalMeasu' })}
             >
               <Ruler size={20} />
               Final Measurement
+            </DropdownMenuItem> */}
+
+             <DropdownMenuItem
+              data-slot="action-button"
+              onSelect={() => setRowAction({ row, variant: 'assignTask' })}
+            >
+              <UserPlus size={20} />
+              Assign Task
             </DropdownMenuItem>
 
             {canReassingLead(userType) && (

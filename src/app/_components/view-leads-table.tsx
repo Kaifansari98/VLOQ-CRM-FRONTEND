@@ -3,7 +3,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAppSelector } from "@/redux/store";
 import {
-  useVendorUserLeads,
   useVendorUserLeadsOpen,
 } from "@/hooks/useLeadsQueries";
 import { type Lead } from "@/api/leads";

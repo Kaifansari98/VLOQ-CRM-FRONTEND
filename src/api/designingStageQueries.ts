@@ -55,10 +55,13 @@ export const useMoveToDesigningStage = () => {
 
 // ✅ API function
 export const fetchDesigningStageLeads = async (
-  vendorId: number
+  vendorId: number,
+  userId: number,
+  page: number = 1,
+  limit: number = 10
 ): Promise<GetDesigningStageResponse> => {
   const { data } = await apiClient.get<GetDesigningStageResponse>(
-    `/leads/designing-stage/get-all-leads/vendor/${vendorId}`
+    `/leads/designing-stage/get-all-leads/vendor/${vendorId}?userId=${userId}`
   );
   return data;
 };

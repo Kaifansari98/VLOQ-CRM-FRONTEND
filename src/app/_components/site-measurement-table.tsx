@@ -50,7 +50,6 @@ import {
   Upload,
 } from "@/types/site-measrument-types";
 import { useRouter } from "next/navigation";
-import { useMoveToDesigningStage } from "@/api/designingStageQueries";
 import { useQueryClient } from "@tanstack/react-query";
 import InitialSiteMeasuresMent from "@/components/sales-executive/Lead/initial-site-measurement-form";
 import RescheduleModal from "@/components/sales-executive/siteMeasurement/reschedule-modal";
@@ -101,7 +100,8 @@ const SiteMeasurementTable = () => {
 
   // Query hooks - always called, but conditionally with null/undefined params
   const { data, error, isLoading, isError } = useInitialSiteMeasurement(
-    vendorId || 0
+    vendorId || 0,
+    userId || 0
   );
   const completedUpdateMutation = useCompletedUpdateTask();
   const cancelledUpdateMutation = useCancelledUpdateTask();
@@ -184,17 +184,17 @@ const SiteMeasurementTable = () => {
           lead.uploads.find((item: Upload) => item.paymentInfo !== null)
             ?.paymentInfo || null,
         accountId: lead.account.id || "",
-        taskId: lead.tasks?.[0].id,
-        dueDate: lead.tasks?.[0].due_date || "",
-        remark: lead.tasks?.[0].remark || "empty",
-        followStatus: lead.tasks?.[0].status || "",
+        taskId: lead.tasks?.[0]?.id ?? null,
+        dueDate: lead.tasks?.[0]?.due_date ?? "",
+        remark: lead.tasks?.[0]?.remark ?? "empty",
+        followStatus: lead.tasks?.[0]?.status ?? "",
       };
     });
   }, [data]);
 
   const columns = React.useMemo(
-    () => getSiteMeasurementColumn({ setRowAction, userType }),
-    [setRowAction, userType]
+    () => getSiteMeasurementColumn({ setRowAction, userType, router }),
+    [setRowAction, userType, router]
   );
 
   // Table setup
@@ -418,9 +418,9 @@ const SiteMeasurementTable = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Mark Lead as Completed?</AlertDialogTitle>
+            <AlertDialogTitle>Mark Follow Up As Completed?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to mark this lead as completed? This action
+              Are you sure you want to mark this follow up as completed? This action
               can’t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -442,9 +442,9 @@ const SiteMeasurementTable = () => {
       <AlertDialog open={openCancelModal} onOpenChange={setOpenCancelModal}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Lead?</AlertDialogTitle>
+            <AlertDialogTitle>Cancel Follow Up?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel this lead? This action can’t be
+              Are you sure you want to cancel this Follow Up? This action can’t be
               undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

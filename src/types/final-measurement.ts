@@ -40,6 +40,13 @@ export interface LeadProductStructureMapping {
   productStructure: ProductStructure;
 }
 
+export  interface TaskDetails {
+  id: number;
+  remark: string;
+  due_date: string;
+  status: string;
+} 
+
 export interface FinalMeasurementLead {
   id: number;
   firstname: string;
@@ -70,6 +77,8 @@ export interface FinalMeasurementLead {
   created_at: string;
   updated_by: number | null;
   updated_at: string | null;
+  followStatus?: string,
+  tasks?:TaskDetails[]
 
   siteType: SiteType;
   source: SourceType;
@@ -83,7 +92,7 @@ export interface FinalMeasurementLead {
   leadProductStructureMapping: LeadProductStructureMapping[];
 }
 
-export type ProcessedFianlMeasurementLead = {
+export type ProcessedFinalMeasurementLead = {
   id: number;
   srNo: number;
   name: string;
@@ -105,6 +114,9 @@ export type ProcessedFianlMeasurementLead = {
   status?: string;
   assignedTo: string;
   accountId: number;
+  followStatus?: string,
+  taskId: number;
+  tasks?:TaskDetails[]
 };
 
 export interface FinalMeasurementLeadsResponse {

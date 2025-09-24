@@ -11,12 +11,13 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 
 export const useInitialSiteMeasurement = (
   vendorId: number,
+  userId: number,
   enabled: boolean = true
 ) => {
   return useQuery({
-    queryKey: ["siteMeasurementLeads", vendorId],
-    queryFn: () => getInitialSiteMeasurement(vendorId),
-    enabled: enabled && !!vendorId,
+    queryKey: ["siteMeasurementLeads", vendorId, userId],
+    queryFn: () => getInitialSiteMeasurement(vendorId, userId),
+    enabled: enabled && !!vendorId && !!userId, // ✅ ensure both exist
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });

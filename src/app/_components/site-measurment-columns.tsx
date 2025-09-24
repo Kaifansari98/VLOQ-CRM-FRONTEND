@@ -40,13 +40,14 @@ interface GetSiteMeasurementColumnProps {
     React.SetStateAction<DataTableRowActionSiteMeasurement<ProcessedSiteMeasurementLead> | null>
   >;
   userType?: string;
+  router: ReturnType<typeof useRouter>;
 }
 
 export function getSiteMeasurementColumn({
   setRowAction,
   userType,
+  router,
 }: GetSiteMeasurementColumnProps): ColumnDef<ProcessedSiteMeasurementLead>[] {
-  const router = useRouter();
   return [
     // Action Button
     {
@@ -94,7 +95,7 @@ export function getSiteMeasurementColumn({
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger className="flex items-center gap-2">
                   <ClipboardCheck size={20} />
-                  FollowUp
+                  Follow Up
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="w-48">
                   <DropdownMenuItem

@@ -18,7 +18,6 @@ import { ModeToggle } from "@/components/ModeToggle";
 import { useAppSelector } from "@/redux/store";
 import InitialSiteSkeleton from "@/components/sales-executive/siteMeasurement/measurement-skeleton";
 import { Suspense, useEffect } from "react";
-import { useDesigningStageLeads } from "@/hooks/designing-stage/designing-leads-hooks";
 
 export default function InitialSiteMeasurement() {
   return (
