@@ -49,7 +49,7 @@ export default function OpenLeadDetails({
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data, isLoading } = useLeadById(leadId, vendorId, userId);
   const lead = data?.data?.lead;
-  // console.log("Lead Details: ", data.data.lead);
+  console.log("Lead Details: ", leadId);
 
   if (!lead) {
     return (

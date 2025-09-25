@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "@/components/ModeToggle";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
@@ -26,15 +26,18 @@ import { Button } from "@/components/ui/button";
 
 export default function DesigningStageLead() {
   const { lead: leadId } = useParams();
+  const searchParams = useSearchParams(); // call the hook
+
   const leadIdNum = Number(leadId);
+  const accountIdNum = Number(searchParams.get("accountId"));
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
 
-    // 👇 modal state
-    const [assignOpen, setAssignOpen] = useState(false);
+  // 👇 modal state
+  const [assignOpen, setAssignOpen] = useState(false);
 
   if (isLoading) {
     return <p className="p-6">Loading lead details...</p>;
@@ -76,7 +79,11 @@ export default function DesigningStageLead() {
         </header>
 
         <main className="flex-1 px-6 pt-4">
-          <LeadDetailsUtil status="designing" leadId={leadIdNum} />
+          <LeadDetailsUtil
+            status="designing"
+            leadId={leadIdNum}
+            leadInfo={{ leadId: leadIdNum, accountId: accountIdNum }}
+          />
         </main>
 
         {/* ✅ Render modal here */}
@@ -86,7 +93,6 @@ export default function DesigningStageLead() {
           onlyFollowUp={true}
           data={{ id: leadIdNum, name: "" }}
         />
-
       </SidebarInset>
     </SidebarProvider>
   );

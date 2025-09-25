@@ -4,9 +4,11 @@ import {
   CompletedPayload,
   CompletedUpdateTheTaskIsmAndFollowUp,
   getInitialSiteMeasurement,
+  getSiteMeasurmentLeadById,
   ReschedulePayload,
   RescheduleTaskFollowUp,
 } from "@/api/measurment-leads";
+import { SiteMeasurementLeadData } from "@/types/site-measrument-types";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 export const useInitialSiteMeasurement = (
@@ -64,3 +66,13 @@ export const useRescheduleTask = () => {
     }) => RescheduleTaskFollowUp(leadId, taskId, payload),
   });
 };
+
+export function useSiteMeasurementLeadById(leadId: number) {
+  return useQuery<SiteMeasurementLeadData>({
+    queryKey: ["siteMeasurementLeadDetails", leadId],
+    queryFn: () => getSiteMeasurmentLeadById(leadId),
+    enabled: Boolean(leadId),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}

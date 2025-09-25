@@ -1,188 +1,294 @@
+"use client";
+
 import React, { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-} from "@/components/ui/dialog";
-import { Star } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ProcessedSiteMeasurementLead } from "@/types/site-measrument-types";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { useMoveToDesigningStage } from "@/api/designingStageQueries";
-import { useAppSelector } from "@/redux/store";
+import { Edit2, FileText, Plus, Download, Eye } from "lucide-react";
+import { useSiteMeasurementLeadById } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
+import { SiteMeasurementFile } from "@/types/site-measrument-types";
+import SiteMesurementEditModal from "../siteMeasurement/site-mesurement-edit-modal";
+import AddCurrentSitePhotos from "../siteMeasurement/current-site-image-add-modal";
+import AddPaymentDetailsPhotos from "../siteMeasurement/payment-details-image-add-modal";
 
-interface ViewInitialSiteMeasurmentLeadProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  data?: ProcessedSiteMeasurementLead;
+interface LeadInfo {
+  leadId: number;
+  accountId: number;
 }
+type Props = {
+  leadInfo: LeadInfo;
+};
 
-const ViewInitialSiteMeasurmentLead: React.FC<
-  ViewInitialSiteMeasurmentLeadProps
-> = ({ open, onOpenChange, data }) => {
-  const [openConfirmation, setOpenconfirmation] = useState<boolean>(false);
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.3, staggerChildren: 0.05 } },
+};
 
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const createdBy = useAppSelector((state) => state.auth.user?.id);
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+};
 
-  // ✅ Hook for API call
-  const { mutate: moveToDesigningStage, isPending } = useMoveToDesigningStage()
+export default function SiteMeasurementDetailsLeads({ leadInfo }: Props) {
+  const { leadId, accountId } = leadInfo;
+  const { data } = useSiteMeasurementLeadById(leadId);
 
-  const handleConfirm = () => {
-    if (!data || !vendorId || !createdBy) return
-  
-    moveToDesigningStage(
-      {
-        lead_id: data.id,       // from the lead data
-        user_id: createdBy,     // ✅ from Redux
-        vendor_id: vendorId,    // ✅ from Redux
-      },
-      {
-        onSuccess: (res) => {
-          console.log("✅ API success:", res)
-          setOpenconfirmation(false)
-          onOpenChange(false) // close dialog
-        },
-        onError: (err) => {
-          console.error("❌ API error:", err)
-        },
-      }
-    )
+  // Modal state
+  const [openEditModal, setOpenEditModal] = useState(false);
+  const [openImageModal, setOpenImageModal] = useState(false);
+  const [openImageModal2, setOpenImageModal2] = useState(false);
+  const [openCarouselModal, setOpenCarouselModal] = useState(false);
+  const [modalStartIndex, setModalStartIndex] = useState(0);
+  const [openPaymentCarouselModal, setOpenPaymentCarouselModal] =
+    useState(false);
+  const [paymentModalStartIndex, setPaymentModalStartIndex] = useState(0);
+
+
+  console.log(leadId, accountId)
+  if (!data) {
+    return (
+      <div className="border rounded-lg p-6">
+        <p>No site measurement details found.</p>
+      </div>
+    );
   }
 
-  const formatDateTime = (dateString?: string) => {
-    if (!dateString) return "N/A"
-    const date = new Date(dateString)
-    return date.toLocaleString("en-IN", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
+  // Extract data
+  const pdfDocs: SiteMeasurementFile[] =
+    data.initial_site_measurement_documents;
+  const currentSitePhotos: SiteMeasurementFile[] = data.current_site_photos;
+  const paymentImages: SiteMeasurementFile[] =
+    data.initial_site_measurement_payment_details;
+  const payment = data.payment_info;
 
+  const formatFileName = (filename: string) => {
+    const maxLength = 25;
+    if (filename.length <= maxLength) return filename;
+    const ext = filename.split(".").pop();
+    const name = filename.substring(0, filename.lastIndexOf("."));
+    return `${name.substring(0, maxLength - (ext?.length ?? 0) - 4)}...${ext}`;
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-3xl p-0 gap-0">
-        {/* Header */}
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="border rounded-lg w-full h-full p-6 space-y-8"
+    >
+      {/* -------- Documents & Payment -------- */}
+      <motion.div
+        variants={itemVariants}
+        className="flex flex-col md:flex-row md:space-x-6 space-y-6 md:space-y-0"
+      >
+        {/* Documents */}
+        {pdfDocs.length > 0 && (
+          <div className="md:w-[40%] space-y-4 flex flex-col">
+            <h3 className="text-md font-semibold">Measurement Documents</h3>
+            <div className="grid grid-cols-1 gap-4 flex-1">
+              {pdfDocs.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="hover:shadow-xl transition-shadow duration-300 rounded-lg border border-gray-100 flex flex-col justify-between p-4 text-center"
+                >
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="w-20 h-20 bg-gray-50 rounded-lg flex items-center justify-center">
+                      <FileText size={50} className="text-red-500" />
+                    </div>
+                    <p className="font-medium text-sm truncate max-w-[120px]">
+                      {formatFileName(doc.originalName)}
+                    </p>
+                    <div className="flex gap-2 justify-center">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.open(doc.signedUrl, "_blank")}
+                        className="text-xs gap-1 h-7"
+                      >
+                        <Eye size={12} /> View
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const link = document.createElement("a");
+                          link.href = doc.signedUrl;
+                          link.download = doc.originalName;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        className="text-xs gap-1 h-7"
+                      >
+                        <Download size={12} /> Download
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-        <DialogHeader className="flex items-start justify-end border-b px-6 py-4">
-          {/* <Button onClick={() => setOpenconfirmation(true)}>
-            <Star size={20} className="mr-2" /> Move To Designing Stage
-          </Button> */}
-        </DialogHeader>
-        <ScrollArea className="max-h-[calc(90vh-100px)]">
-          <div className="px-5 py-4">
-            {/* Lead Info */}
-            <div className="w-full border py-4 px-5 mt-2 rounded-lg">
-              <div className="border-b flex justify-between items-center pb-2 mb-4">
-                <h1 className="font-semibold">Lead Information</h1>
-                <p className="text-sm">{formatDateTime(data?.createdAt)}</p>
+        {/* Payment Info */}
+        {payment && (
+          <div className="md:w-[60%] flex flex-col">
+            <div className="flex justify-between items-start">
+              <h3 className="text-md font-semibold">Payment Information</h3>
+              <Button
+                size="sm"
+                onClick={() => setOpenEditModal(true)}
+                className="gap-2"
+              >
+                <Edit2 size={16} />{" "}
+                <span className="text-sm">Edit Details</span>
+              </Button>
+            </div>
+            <div className="space-y-4 mt-4">
+              <div>
+                <p className="text-sm font-medium">Payment Amount</p>
+                <div className="bg-muted border rounded-sm py-1 px-2 text-sm">
+                  {payment.amount ?? "N/A"}
+                </div>
               </div>
-
-              {/* Responsive Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium">Lead Name</p>
-                  <p>{data?.name}</p>
-                </div>
-
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium">Lead Email</p>
-                  <p>{data?.email}</p>
-                </div>
-
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium">Lead Contact</p>
-                  <p>{data?.contact}</p>
-                </div>
-
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium">Billing Name</p>
-                  <p>{data?.billingName}</p>
-                </div>
-
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium">Architect Name</p>
-                  <p>{data?.architechName}</p>
-                </div>
-
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium">Product Structures</p>
-                  <p>{data?.productStructures}</p>
-                </div>
-
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium">Product Types</p>
-                  <p>{data?.productTypes}</p>
-                </div>
-
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium">Source</p>
-                  <p>{data?.source}</p>
-                </div>
-
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium">Site Type</p>
-                  <p>{data?.siteType}</p>
-                </div>
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium">Priority</p>
-                  <p>{data?.priority}</p>
+              <div>
+                <p className="text-sm font-medium">Payment Date</p>
+                <div className="bg-muted border rounded-sm py-1 px-2 text-sm">
+                  {payment.payment_date ?? "N/A"}
                 </div>
               </div>
-
-              {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4"> */}
-              {/* Remarks */}
-              <div className="flex flex-col gap-1 mt-4">
-                <p className="text-sm font-medium">Design Remarks</p>
-                <div className="bg-muted border rounded-sm py-1 px-2 text-sm max-h-200 overflow-y-auto">
-                  {data?.designerRemark || "N/A"}
-                </div>
-              </div>
-
-              {/* Address */}
-              <div className="flex flex-col gap-1 mt-4">
-                <p className="text-sm font-medium">Site Address</p>
-                <div className="bg-muted border rounded-sm py-1 px-2 text-sm max-h-200 overflow-y-auto">
-                  {data?.siteAddress || "N/A"}
+              <div>
+                <p className="text-sm font-medium">Payment Description</p>
+                <div
+                  className="bg-muted border rounded-sm py-1 px-2 text-sm overflow-hidden"
+                  style={{
+                    display: "-webkit-box",
+                    WebkitLineClamp: 4,
+                    WebkitBoxOrient: "vertical",
+                  }}
+                >
+                  {payment.payment_text || "N/A"}
                 </div>
               </div>
             </div>
           </div>
-        </ScrollArea>
-      </DialogContent>
+        )}
+      </motion.div>
 
-      <AlertDialog open={openConfirmation} onOpenChange={setOpenconfirmation}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will move the lead to Designing Stage.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirm} disabled={isPending}>
-              {isPending ? "Processing..." : "Yes, Move"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </Dialog>
+      {/* -------- Current Site Photos -------- */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        <h3 className="text-lg font-semibold">Current Site Photos</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3">
+          {currentSitePhotos.map((doc, idx) => (
+            <div key={doc.id} className="relative group">
+              <img
+                src={doc.signedUrl}
+                alt={doc.originalName}
+                className="h-32 w-32 object-cover rounded-lg border-2 border-gray-200 
+                       hover:border-blue-400 transition-colors cursor-pointer shadow-sm hover:shadow-md"
+                onClick={() => {
+                  setModalStartIndex(idx);
+                  setOpenCarouselModal(true);
+                }}
+              />
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-lg transition-opacity">
+                <span className="text-white text-xs px-2 text-center">
+                  {doc.originalName}
+                </span>
+              </div>
+            </div>
+          ))}
+
+          {/* Add Button */}
+          <div
+            onClick={() => setOpenImageModal(true)}
+            className="flex items-center justify-center h-32 w-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 group"
+          >
+            <div className="flex flex-col items-center text-gray-500 group-hover:text-blue-600">
+              <Plus size={24} className="mb-1" />
+              <span className="text-xs font-medium">Add Photos</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* -------- Payment Proofs -------- */}
+      {paymentImages.length > 0 && (
+        <motion.div variants={itemVariants} className="space-y-4">
+          <h3 className="text-lg font-semibold">Payment Proofs</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3">
+            {paymentImages.map((doc, idx) => (
+              <div key={doc.id} className="relative group">
+                <img
+                  src={doc.signedUrl}
+                  alt={doc.originalName}
+                  className="h-32 w-32 object-cover rounded-lg border-2 border-gray-200 hover:border-green-400 transition-colors cursor-pointer shadow-sm hover:shadow-md"
+                  onClick={() => {
+                    setPaymentModalStartIndex(idx);
+                    setOpenPaymentCarouselModal(true);
+                  }}
+                />
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-lg transition-opacity">
+                  <span className="text-white text-xs px-2 text-center">
+                    {doc.originalName}
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            {/* Add Proof Button */}
+            <div
+              onClick={() => setOpenImageModal2(true)}
+              className="flex items-center justify-center h-32 w-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-green-50 hover:border-green-400 transition-all duration-200 group"
+            >
+              <div className="flex flex-col items-center text-gray-500 group-hover:text-green-600">
+                <Plus size={24} className="mb-1" />
+                <span className="text-xs font-medium">Add Proofs</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* -------- Modals -------- */}
+      <SiteMesurementEditModal
+        open={openEditModal}
+        onOpenChange={setOpenEditModal}
+        data={{
+          accountId: accountId,
+          id: leadId,
+          paymentInfo: payment,
+        }}
+      />
+      <AddCurrentSitePhotos
+        open={openImageModal}
+        onOpenChange={setOpenImageModal}
+        data={{
+          accountId,
+          id: leadId,
+          paymentId: payment?.id ?? null,
+        }}
+      />
+      <AddPaymentDetailsPhotos
+        open={openImageModal2}
+        onOpenChange={setOpenImageModal2}
+        data={{
+          accountId,
+          id: leadId,
+          paymentId: payment?.id ?? null,
+        }}
+      />
+      {/* <ImageCarouselModal
+        open={openCarouselModal}
+        initialIndex={modalStartIndex}
+        images={currentSitePhotos}
+        onClose={() => setOpenCarouselModal(false)}
+      />
+      <ImageCarouselModal
+        open={openPaymentCarouselModal}
+        initialIndex={paymentModalStartIndex}
+        images={paymentImages}
+        onClose={() => setOpenPaymentCarouselModal(false)}
+      /> */}
+    </motion.div>
   );
-};
-
-export default ViewInitialSiteMeasurmentLead;
+}
