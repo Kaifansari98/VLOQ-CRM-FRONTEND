@@ -1,9 +1,8 @@
 "use client";
-
-import { AppSidebar } from "@/components/app-sidebar";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import OpenLeadDetails from "@/components/tabScreens/OpenLeadDetails";
+import DesigningLeadsDetails from "../sales-executive/designing-stage/view-details-designing";
+import SiteMeasurementDetailsLeads from "../sales-executive/siteMeasurement/view-site-measurement";
 
 interface LeadDetailsUtilProps {
   status:
@@ -33,25 +32,13 @@ export default function LeadDetailsUtil({
       id: "measurement",
       title: "Site Measurement",
       color: "bg-zinc-900 hover:bg-gray-600",
-      cardContent: (
-        <div className="p-4 border rounded-lg">
-          <p className="text-sm text-muted-foreground">
-            Final measurement data goes here.
-          </p>
-        </div>
-      ),
+      cardContent: <SiteMeasurementDetailsLeads leadInfo={leadInfo} />
     },
     {
       id: "designing",
       title: "Designing Stage",
       color: "bg-zinc-900 hover:bg-gray-600",
-      cardContent: (
-        <div className="p-4 border rounded-lg">
-          <p className="text-sm text-muted-foreground">
-            Designing stage data goes here.
-          </p>
-        </div>
-      ),
+      cardContent: <DesigningLeadsDetails leadInfo={leadInfo} />,
     },
     {
       id: "booking",

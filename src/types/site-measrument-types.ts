@@ -93,12 +93,12 @@ export interface Upload {
   created_at: string;
 }
 
-export  interface TaskDetails {
+export interface TaskDetails {
   id: number;
   remark: string;
   due_date: string;
   status: string;
-} 
+}
 
 export interface SiteMeasurmentLead {
   id: number;
@@ -132,7 +132,7 @@ export interface SiteMeasurmentLead {
     totalProductMappings: number;
   };
   uploads: Upload[];
-  tasks?:TaskDetails[]
+  tasks: TaskDetails[];
 }
 
 export interface EditPayload {
@@ -173,5 +173,37 @@ export type ProcessedSiteMeasurementLead = {
   taskId?: number;
   dueDate?: string;
   remark?: string;
-  followStatus?:string;
+  followStatus?: string;
 };
+
+{
+  /* site measurment types */
+}
+
+export interface SiteMeasurementLeadResponse {
+  success: boolean;
+  data: SiteMeasurementLeadData;
+}
+
+export interface SiteMeasurementLeadData {
+  current_site_photos: SiteMeasurementFile[];
+  initial_site_measurement_documents: SiteMeasurementFile[];
+  initial_site_measurement_payment_details: SiteMeasurementFile[];
+  payment_info: PaymentInfo;
+}
+
+export interface SiteMeasurementFile {
+  id: number;
+  type: string; 
+  originalName: string;
+  s3Key: string;
+  signedUrl: string;
+}
+
+export interface PaymentInfo {
+  id: number;
+  amount: number;
+  payment_date: string;
+  payment_text: string;
+  payment_file_id: number | null;
+}

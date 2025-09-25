@@ -1,6 +1,9 @@
 import { apiClient } from "@/lib/apiClient";
 
-export const getInitialSiteMeasurement = async (vendorId: number, userId: number) => {
+export const getInitialSiteMeasurement = async (
+  vendorId: number,
+  userId: number
+) => {
   const response = await apiClient.get(
     `/leads/initial-site-measurement/vendor/${vendorId}/initial-site-measurement`,
     {
@@ -98,4 +101,11 @@ export const RescheduleTaskFollowUp = async (
     console.error("Error updating cancelled task:", error);
     throw error;
   }
+};
+
+export const getSiteMeasurmentLeadById = async (leadId: number) => {
+  const { data } = await apiClient.get(
+    `/leads/initial-site-measurement/leadId/${leadId}`
+  );
+  return data.data;
 };
