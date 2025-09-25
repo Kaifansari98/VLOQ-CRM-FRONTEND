@@ -3,11 +3,13 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { CloudUpload, Plus } from "lucide-react";
 import React, { useState } from "react";
 import AddQuotationModal from "./pill-tabs-component/modals/add-quotation-modal";
 import DesignsModal from "./pill-tabs-component/modals/designs-modal";
 import AddMeetingsModal from "./pill-tabs-component/modals/add-meetings-modal";
+import BookingModal from "./booking-modal";
+import { useAppSelector } from "@/redux/store";
 
 type TabItemType = {
   id: string;
@@ -33,6 +35,10 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
     const [openQuotationModal, setOpenQuotationModal] = useState(false);
     const [openDesignsModal, setOpenDesignsModal] = useState(false);
     const [openMeetingsModal, setOpenMeetingsModal] = useState(false);
+    const [openBookingModal, setOpenBookingModal] = useState(false);
+
+    const vendorId = useAppSelector((state) => state.auth?.user?.vendor_id);
+
     const handleClick = (id: string) => {
       setActiveTab(id);
       onTabChange?.(id);
@@ -84,37 +90,49 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
           {/* Add Button */}
 
           {addButtons && (
-            <div className="flex justify-start">
+            <div className="flex justify-start gap-2">
+              
+
               {activeTab === "quotation" && (
                 <Button
-                  size="sm"
-                  className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap"
+                size="sm"
+                variant="secondary"
+                  className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
                   onClick={() => setOpenQuotationModal(true)}
                 >
-                  <Plus size={16} className="sm:mr-1" />
-                  <span>Add Quotation</span>
+                  <CloudUpload size={16} className="sm:mr-1" />
+                  <span>Upload Quotations</span>
                 </Button>
               )}
               {activeTab === "meetings" && (
                 <Button
                   size="sm"
-                  className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap"
+                  className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
                   onClick={() => setOpenMeetingsModal(true)}
                 >
-                  <Plus size={16} className="sm:mr-1" />
-                  <span>Add Meeting</span>
+                  <CloudUpload size={16} className="sm:mr-1" />
+                  <span>Upload Meetings</span>
                 </Button>
               )}
               {activeTab === "designs" && (
                 <Button
                   size="sm"
-                  className="text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap"
+                  className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
                   onClick={() => setOpenDesignsModal(true)}
                 >
-                  <Plus size={16} className="sm:mr-1" />
-                  <span>Add Design</span>
+                  <CloudUpload size={16} className="sm:mr-1" />
+                  <span>Upload Designs</span>
                 </Button>
               )}
+              {/* ✅ Booking Button (Always Visible) */}
+            <Button
+              size="sm"
+              className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
+              onClick={() => setOpenBookingModal(true)}
+              >
+              <Plus size={16} />
+              <span>Booking Stage</span>
+            </Button>
             </div>
           )}
         </div>
@@ -134,6 +152,15 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
         <AddMeetingsModal
           open={openMeetingsModal}
           onOpenChange={setOpenMeetingsModal}
+        />
+        <BookingModal
+          open={openBookingModal}
+          onOpenChange={setOpenBookingModal}
+          // data={
+          //   activeLeadId
+          // //     ? { id: activeLeadId, name: activeLeadName, accountId: activeAccountId ?? 0 }
+          //     : undefined
+          // }
         />
       </div>
     );
