@@ -22,6 +22,8 @@ import { useRouter } from "next/navigation";
 
 export type ProcessedTask = {
   id: number;            // userLeadTask.id
+  accountId: number;
+  leadId: number;
   srNo: number;          // serial number in table
   name: string;          // leadMaster.name
   phoneNumber: string;   // leadMaster.phone_number

@@ -135,12 +135,25 @@ const MyTaskTable = () => {
     router.push(`/dashboard/sales-executive/leadstable/details/${leadId}`);
   }, [router]);
 
+  const handleRowDoubleClick = useCallback((row: ProcessedTask) => {
+    if (row.taskType === "Initial Site Measurement") {
+      setRowAction({ row: { original: row } as any, variant: "uploadmeasurement" });
+      setOpenMeasurement(true);
+    } else {
+      const leadId = row.id;
+      router.push(`/dashboard/sales-executive/leadstable/details/${leadId}`);
+    }
+  }, [router]);  
+  
+
   // Process leads into table data - Memoized to prevent re-renders
   const rowData = useMemo<ProcessedTask[]>(() => {
     if (!vendorUserTasksQuery.data) return [];
   
     return vendorUserTasksQuery.data.map((task, index) => ({
       id: task.userLeadTask.id,
+      leadId: task.leadMaster.id,
+      accountId: task.leadMaster.account_id,
       srNo: index + 1,
       name: task.leadMaster.name,
       phoneNumber: task.leadMaster.phone_number,
@@ -349,7 +362,11 @@ const MyTaskTable = () => {
 
   return (
     <div className="relative space-y-4">
-      <DataTable table={table} onRowClick={handleRowClick}>
+      <DataTable
+          table={table}
+          // onRowClick={handleRowClick}
+          onRowDoubleClick={handleRowDoubleClick} // 👈 add this
+        >
         {enableAdvancedFilter ? (
           <DataTableAdvancedToolbar table={table}>
             <DataTableSortList table={table} align="start" />
@@ -392,7 +409,11 @@ const MyTaskTable = () => {
       <InitialSiteMeasuresMent
         open={openMeasurement}
         onOpenChange={setOpenMeasurement}
-        data={rowAction?.row.original}
+        data={{
+          id: rowAction?.row.original.leadId || 0,         // ✅ leadId
+          accountId: rowAction?.row.original.accountId || 0, // ✅ accountId
+          name: rowAction?.row.original.name || "",
+        }}
       />
     </div>
   );
