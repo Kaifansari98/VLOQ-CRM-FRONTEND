@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +39,7 @@ import { BookingPayload } from "@/api/booking";
 import { toast } from "react-toastify";
 import { useISMPaymentInfo } from "@/hooks/booking-stage/use-booking";
 import { formatAmount } from "@/components/utils/general.utils";
+import SelectDocumentModal from "@/components/modal/select-doc-modal";
 
 // ✅ Enhanced Zod schema with proper file validation
 const bookingSchema = z
@@ -85,6 +86,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const [openSelectDocModal, setOpenSelectDocModal] = useState(false);
   const leadId = data?.id;
   const accountId = data?.accountId;
   const clientId = 1;
@@ -197,8 +199,14 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   name="final_documents"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm">
+                      <FormLabel className="text-sm flex  justify-between">
                         Final Documents (Quotations + Design) *
+                        <Button
+                          type="button"
+                          onClick={() => setOpenSelectDocModal(true)}
+                        >
+                          Select Documents
+                        </Button>
                       </FormLabel>
                       <FormControl>
                         <FileUploadField
@@ -377,6 +385,12 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
           </div>
         </ScrollArea>
       </DialogContent>
+
+      <SelectDocumentModal
+        open={openSelectDocModal}
+        onOpenChange={setOpenSelectDocModal}
+        leadId={leadId!}
+      />
     </Dialog>
   );
 };
