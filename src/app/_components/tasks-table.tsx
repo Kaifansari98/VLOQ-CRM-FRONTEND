@@ -55,8 +55,6 @@ const MyTaskTable = () => {
   );
 
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
-  const [openDelete, setOpenDelete] = useState<boolean>(false);
-  const [openView, setOpenView] = useState<boolean>(false);
   const [assignOpenLead, setAssignOpenLead] = useState<boolean>(false);
   const [editOpenLead, setEditOpenLead] = useState<boolean>(false);
   const deleteLeadMutation = useDeleteLead();
@@ -84,9 +82,6 @@ const MyTaskTable = () => {
   const [rowAction, setRowAction] = useState<DataTableRowAction<ProcessedTask> | null>(null);
   
   useEffect(() => {
-    if (rowAction?.variant === "delete" && rowAction.row) {
-      setOpenDelete(true);
-    }
     if (rowAction?.variant === "reassignlead" && rowAction.row) {
       console.log("Original Data row Leads: ", rowAction.row.original);
       setAssignOpenLead(true);
@@ -100,36 +95,6 @@ const MyTaskTable = () => {
       setOpenMeasurement(true);
     }
   }, [rowAction]);
-
-  const handleDeleteLead = useCallback(async () => {
-    if (!rowAction?.row) return;
-
-    const leadId = rowAction.row.original.id;
-
-    if (!vendorId || !userId) {
-      toast.error("Vendor or User information is missing!");
-      return;
-    }
-
-    deleteLeadMutation.mutate(
-      {
-        leadId,
-        vendorId,
-        userId,
-      },
-      {
-        onSuccess: () => {
-          toast.success("Lead deleted successfully!");
-        },
-        onError: (error: any) => {
-          toast.error(error?.message || "Failed to delete lead!");
-        },
-      }
-    );
-
-    setOpenDelete(false);
-    setRowAction(null);
-  }, [rowAction, vendorId, userId, deleteLeadMutation]);
 
   const router = useRouter();
 
@@ -366,7 +331,7 @@ const MyTaskTable = () => {
       <DataTable
           table={table}
           // onRowClick={handleRowClick}
-          onRowDoubleClick={handleRowDoubleClick} // 👈 add this
+          onRowDoubleClick={handleRowDoubleClick}
         >
         {enableAdvancedFilter ? (
           <DataTableAdvancedToolbar table={table}>
