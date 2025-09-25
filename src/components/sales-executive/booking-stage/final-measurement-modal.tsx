@@ -26,7 +26,7 @@ interface LeadViewModalProps {
   onOpenChange: (open: boolean) => void;
   data?: {
     id: number;
-    name: string;
+    name?: string;
     accountId: number;
   };
 }

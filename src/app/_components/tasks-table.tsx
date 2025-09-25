@@ -34,6 +34,7 @@ import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/utils/loader";
 import { useVendorUserTasks } from "@/hooks/useTasksQueries";
+import FinalMeasurementModal from "@/components/sales-executive/booking-stage/final-measurement-modal";
 
 const MyTaskTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -42,6 +43,9 @@ const MyTaskTable = () => {
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
   const shouldFetch = !!vendorId && !!userId;
+
+  const [openMeasurement, setOpenMeasurement] = useState(false);
+  const [openFinalMeasurement, setOpenFinalMeasurement] = useState(false);
   
   // Fetch leads
   const vendorUserTasksQuery = useVendorUserTasks(
@@ -55,7 +59,6 @@ const MyTaskTable = () => {
   const [openView, setOpenView] = useState<boolean>(false);
   const [assignOpenLead, setAssignOpenLead] = useState<boolean>(false);
   const [editOpenLead, setEditOpenLead] = useState<boolean>(false);
-  const [openMeasurement, setOpenMeasurement] = useState(false);
   const deleteLeadMutation = useDeleteLead();
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
@@ -139,7 +142,10 @@ const MyTaskTable = () => {
     if (row.taskType === "Initial Site Measurement") {
       setRowAction({ row: { original: row } as any, variant: "uploadmeasurement" });
       setOpenMeasurement(true);
-    } else {
+    } else if (row.taskType === "Final Measurements") {
+      setRowAction({ row: { original: row } as any, variant: "uploadfinalmeasurement" });
+      setOpenFinalMeasurement(true); }
+     else {
       const leadId = row.id;
       router.push(`/dashboard/sales-executive/leadstable/details/${leadId}`);
     }
@@ -413,6 +419,16 @@ const MyTaskTable = () => {
           id: rowAction?.row.original.leadId || 0,         // ✅ leadId
           accountId: rowAction?.row.original.accountId || 0, // ✅ accountId
           name: rowAction?.row.original.name || "",
+        }}
+      />
+
+      <FinalMeasurementModal
+        open={openFinalMeasurement}
+        onOpenChange={setOpenFinalMeasurement}
+        data={{
+          id: rowAction?.row.original.leadId || 0,
+          accountId: rowAction?.row.original.accountId || 0,
+          name: rowAction?.row.original.name,
         }}
       />
     </div>
