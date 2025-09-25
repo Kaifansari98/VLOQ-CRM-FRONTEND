@@ -31,7 +31,6 @@ interface LeadViewModalProps {
   data?: {
     id: number;
     accountId: number;
-    name: string;
   };
 }
 
@@ -66,7 +65,6 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   const userId = useAppSelector((state: any) => state.auth.user?.id);
   const leadId = data?.id;
   const accountId = data?.accountId;
-  
 
   // const { data: accountId } = useQuery({
   //   queryKey: ["lead", leadId],
@@ -156,7 +154,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-       title={`Initial Site Measurement Form - ${data?.name || "Lead"}`}
+      title="Initial Site Measurement Form "
       description="Fill the below fields to send this lead to initial site measurement form"
       size="lg"
     >
@@ -284,7 +282,9 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
               name="payment_text"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm">Payment Details Text</FormLabel>
+                  <FormLabel className="text-sm">
+                    Payment Details Text
+                  </FormLabel>
                   <FormControl>
                     <TextAreaInput
                       value={field.value}
