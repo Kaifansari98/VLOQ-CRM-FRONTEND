@@ -3,6 +3,7 @@ import {
   EditSelectionPayload,
   fetchDesigningStageLeads,
   getDesignsDoc,
+  getQuotationDoc,
   getSelectionData,
   submitQuotation,
   submitSelection,
@@ -102,3 +103,17 @@ export const useEditSelectionData = () => {
     },
   });
 };
+
+
+export function useQuotationDoc(vendorId?: number, leadId?: number) {
+  return useQuery({
+    queryKey: ["getQuotationDoc", vendorId, leadId],
+    queryFn: () => {
+      if (!vendorId || !leadId) {
+        throw new Error("vendorId and leadId are required");
+      }
+      return getQuotationDoc(vendorId, leadId);
+    },
+    enabled: Boolean(vendorId && leadId),
+  });
+}

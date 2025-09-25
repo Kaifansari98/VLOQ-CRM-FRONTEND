@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useDetails } from "./details-context";
 import { useAppSelector } from "@/redux/store";
 import { useDesignsDoc } from "@/hooks/designing-stage/designing-leads-hooks";
@@ -12,7 +12,6 @@ const DesigningTab = () => {
   const { data, error, isLoading } = useDesignsDoc(vendorId!, leadId);
   const designsDoc = data?.data.documents;
 
-  console.log(data?.data.documents);
 
   return (
     <div className="p-4">

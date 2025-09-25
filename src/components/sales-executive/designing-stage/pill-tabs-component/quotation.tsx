@@ -1,32 +1,18 @@
 import React, { useEffect } from "react";
 import { useDetails } from "./details-context";
 import { useAppSelector } from "@/redux/store";
-import { useQuery } from "@tanstack/react-query";
-import { getQuotationDoc } from "@/api/designingStageQueries";
 import { Ban, Calendar, File } from "lucide-react";
+import { useQuotationDoc } from "@/hooks/designing-stage/designing-leads-hooks";
 
 const QuotationTab = () => {
   const { leadId } = useDetails();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
-  const { data, error, isLoading } = useQuery({
-    queryKey: ["getQuotationDoc", vendorId, leadId],
-    queryFn: () => {
-      if (!vendorId || !leadId) {
-        throw new Error("vendorId and leadId are required");
-      }
-      return getQuotationDoc(vendorId, leadId);
-    },
-    enabled: !!vendorId && !!leadId,
-  });
+  const {data, error, isLoading} = useQuotationDoc(vendorId, leadId)
 
   const designQuotationDocs = data?.data?.documents;
+  
 
-  useEffect(() => {
-    if (data) {
-      console.log("Lead Details:", data.data);
-    }
-  }, [data]);
 
   if (!designQuotationDocs || designQuotationDocs.length === 0) {
     return (

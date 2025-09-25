@@ -38,7 +38,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
     useState(false);
   const [paymentModalStartIndex, setPaymentModalStartIndex] = useState(0);
 
-  console.log(leadId, accountId);
+  console.log("Site measurement data: ", data);
   if (!data) {
     return (
       <div className="border rounded-lg p-6">
@@ -77,13 +77,13 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
       >
         {/* Documents */}
         {pdfDocs.length > 0 && (
-          <div className="md:w-[40%] space-y-4 flex flex-col">
+          <div className="md:w-[40%] space-y-4 flex flex-col ">
             <h3 className="text-md font-semibold">Measurement Documents</h3>
             <div className="grid grid-cols-1 gap-4 flex-1">
               {pdfDocs.map((doc) => (
                 <div
                   key={doc.id}
-                  className="hover:shadow-xl transition-shadow duration-300 rounded-lg border border-gray-100 flex flex-col justify-between p-4 text-center"
+                  className="hover:shadow-xl transition-shadow duration-300 rounded-lg border border-gray-100 flex flex-col justify-center p-4 text-center"
                 >
                   <div className="flex flex-col items-center space-y-4">
                     <div className="w-20 h-20 bg-gray-50 rounded-lg flex items-center justify-center">
@@ -139,22 +139,22 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
               </Button>
             </div>
             <div className="space-y-4 mt-4">
-              <div>
+              <div className="space-y-2">
                 <p className="text-sm font-medium">Payment Amount</p>
-                <div className="bg-muted border rounded-sm py-1 px-2 text-sm">
+                <div className="bg-muted border rounded-sm p-2 text-sm">
                   {payment.amount ?? "N/A"}
                 </div>
               </div>
-              <div>
+              <div className="space-y-2">
                 <p className="text-sm font-medium">Payment Date</p>
-                <div className="bg-muted border rounded-sm py-1 px-2 text-sm">
+                <div className="bg-muted border rounded-sm p-2 text-sm">
                   {payment.payment_date ?? "N/A"}
                 </div>
               </div>
-              <div>
+              <div className="space-y-2">
                 <p className="text-sm font-medium">Payment Description</p>
                 <div
-                  className="bg-muted border rounded-sm py-1 px-2 text-sm overflow-hidden"
+                  className="bg-muted border rounded-sm p-2 text-sm overflow-y-scroll"
                   style={{
                     display: "-webkit-box",
                     WebkitLineClamp: 4,
