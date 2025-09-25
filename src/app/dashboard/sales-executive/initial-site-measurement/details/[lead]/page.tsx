@@ -79,7 +79,7 @@ export default function SiteMeasurementLead() {
         </header>
 
         <main className="flex-1 px-6 pt-4">
-          <LeadDetailsUtil status="measurement" leadId={leadIdNum} />
+          <LeadDetailsUtil status="details" leadId={leadIdNum} />
         </main>
 
         {/* ✅ Render modal here */}

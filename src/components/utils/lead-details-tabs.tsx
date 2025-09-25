@@ -1,8 +1,9 @@
 "use client";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import OpenLeadDetails from "@/components/tabScreens/OpenLeadDetails";
-import DesigningLeadsDetails from "../sales-executive/designing-stage/view-details-designing";
-import SiteMeasurementDetailsLeads from "../sales-executive/siteMeasurement/view-site-measurement";
+import BookingLeadsDetails from "../sales-executive/booking-stage/view-booking-modal";
+import SiteMeasurementLeadDetails from "../tabScreens/SiteMeasurementLeadDetails";
+import DesigningLeadsDetails from "../tabScreens/DesigningLeadDetails";
 
 interface LeadDetailsUtilProps {
   status:
@@ -32,25 +33,19 @@ export default function LeadDetailsUtil({
       id: "measurement",
       title: "Site Measurement",
       color: "bg-zinc-900 hover:bg-gray-600",
-      cardContent: <SiteMeasurementDetailsLeads leadInfo={leadInfo} />
+      cardContent: <SiteMeasurementLeadDetails leadId={leadId ?? 0} />,
     },
     {
       id: "designing",
       title: "Designing Stage",
       color: "bg-zinc-900 hover:bg-gray-600",
-      cardContent: <DesigningLeadsDetails leadInfo={leadInfo} />,
+      cardContent: <DesigningLeadsDetails leadId={leadId ?? 0} />,
     },
     {
       id: "booking",
       title: "Booking Stage",
       color: "bg-zinc-900 hover:bg-gray-600",
-      cardContent: (
-        <div className="p-4 border rounded-lg">
-          <p className="text-sm text-muted-foreground">
-            Booking stage data goes here.
-          </p>
-        </div>
-      ),
+      cardContent: <BookingLeadsDetails leadId={leadId ?? 0} />,
     },
     {
       id: "finalmeasurement",
@@ -80,7 +75,7 @@ export default function LeadDetailsUtil({
     details: ["details"],
     measurement: ["details", "measurement"],
     designing: ["details", "measurement", "designing"],
-    booking: ["details", "measurement", "designing", "booking"],
+    booking: ["details","measurement", "designing", "booking"],
     finalmeasurement: [
       "details",
       "measurement",
