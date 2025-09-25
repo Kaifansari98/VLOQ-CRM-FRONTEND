@@ -13,10 +13,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { ModeToggle } from "@/components/ModeToggle";
-import { Button } from "@/components/ui/button";
-import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-generation-form-modal";
 import { Suspense, useState } from "react";
 import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
 import MyTaskTable from "@/app/_components/tasks-table";
@@ -47,24 +44,17 @@ export default function MyTaskLeadPage() {
             </Breadcrumb>
           </div>
 
-          <div className="flex items-center gap-2">
-            <GenerateLeadFormModal
-              open={openCreateLead}
-              onOpenChange={setOpenCreateLead}
-            >
-              <Button>Add New Lead</Button>
-            </GenerateLeadFormModal>
             <ModeToggle />
-          </div>
         </header>
 
         <Shell className="flex-1 overflow-y-auto px-2 sm:px-4 lg:px-6 gap-2">
           <FeatureFlagsProvider>
             <Suspense fallback={<TableLoader isLoading={true} />}>
-              {/* ✅ Horizontal scroll only here */}
               <div className="w-full overflow-x-auto">
                 <div className="min-w-[800px]">
-                  <MyTaskTable />
+                  <Suspense fallback={<TableLoader isLoading={true} />}>
+                    <MyTaskTable />
+                  </Suspense>
                 </div>
               </div>
             </Suspense>

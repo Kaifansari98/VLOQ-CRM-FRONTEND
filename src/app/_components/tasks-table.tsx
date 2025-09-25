@@ -133,11 +133,6 @@ const MyTaskTable = () => {
 
   const router = useRouter();
 
-  const handleRowClick = useCallback((row: ProcessedTask) => {
-    const leadId = row.id;
-    router.push(`/dashboard/sales-executive/leadstable/details/${leadId}`);
-  }, [router]);
-
   const handleRowDoubleClick = useCallback((row: ProcessedTask) => {
     if (row.taskType === "Initial Site Measurement") {
       setRowAction({ row: { original: row } as any, variant: "uploadmeasurement" });
@@ -147,7 +142,7 @@ const MyTaskTable = () => {
       setOpenFinalMeasurement(true); }
      else {
       const leadId = row.id;
-      router.push(`/dashboard/sales-executive/leadstable/details/${leadId}`);
+      console.log("follow up is under development")
     }
   }, [router]);  
   
