@@ -40,9 +40,6 @@ import { BookingLead, ProcessedBookingLead } from "@/types/booking-types";
 import { getBookingLeadsTableColumns } from "./booking-stage-columns";
 import { useBookingLeads } from "@/hooks/booking-stage/use-booking";
 import BookingEditModal from "@/components/sales-executive/booking-stage/bookint-edit-form";
-import BookingViewModal from "@/components/sales-executive/booking-stage/view-booking-modal";
-import FinalMeasurementModal from "@/components/sales-executive/booking-stage/final-measurement-modal";
-import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-final-measurement-form";
 import AssignTaskFinalMeasurementForm from "@/components/sales-executive/Lead/assign-task-final-measurement-form";
 
 const BookingStageLeadsTable = () => {
@@ -65,7 +62,6 @@ const BookingStageLeadsTable = () => {
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openViewModal, setOpenViewModal] = useState<boolean>(false);
   const [editOpenLead, setEditOpenLead] = useState(false);
-  const [openFinalModal, setOpenFinalModal] = useState(false);
   const [openFMTaskModal, setOpenFMTaskModal] = useState(false);
   const [rowAction, setRowAction] =
     useState<DataTableRowActionFinalMeasurement<ProcessedBookingLead> | null>(
@@ -266,11 +262,7 @@ const BookingStageLeadsTable = () => {
         data={rowAction?.row.original}
       />
 
-      <BookingViewModal
-        open={openViewModal}
-        onOpenChange={setOpenViewModal}
-        data={rowAction?.row.original}
-      />
+  
 
       <AssignTaskFinalMeasurementForm
         open={openFMTaskModal}

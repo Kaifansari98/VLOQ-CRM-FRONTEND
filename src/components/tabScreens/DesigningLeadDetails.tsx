@@ -3,19 +3,16 @@
 import { motion } from "framer-motion";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { useAppSelector } from "@/redux/store";
-import PillTabs from "./pill-tabs";
-import { DetailsProvider } from "./pill-tabs-component/details-context";
-import QuotationTab from "./pill-tabs-component/quotation";
-import MeetingsTab from "./pill-tabs-component/meetings";
 import DesigningStageTable from "@/app/_components/designing-stage-table";
-import SelectionsTab from "./pill-tabs-component/selection";
-import DesigningTab from "./pill-tabs-component/designs";
-interface leadInfo {
-  leadId: number;
-  accountId: number;
-}
+import { DetailsProvider } from "../sales-executive/designing-stage/pill-tabs-component/details-context";
+import PillTabs from "../sales-executive/designing-stage/pill-tabs";
+import QuotationTab from "../sales-executive/designing-stage/pill-tabs-component/quotation";
+import MeetingsTab from "../sales-executive/designing-stage/pill-tabs-component/meetings";
+import DesigningTab from "../sales-executive/designing-stage/pill-tabs-component/designs";
+import SelectionsTab from "../sales-executive/designing-stage/pill-tabs-component/selection";
+
 type props = {
-  leadInfo: leadInfo;
+  leadId: number;
 };
 
 const containerVariants = {
@@ -38,11 +35,11 @@ const itemVariants = {
   },
 };
 
-export default function DesigningLeadsDetails({ leadInfo }: props) {
+export default function DesigningLeadsDetails({ leadId }: props) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const leadId = leadInfo.leadId;
-  const accountId = leadInfo.accountId;
+
+  const accountId = leadId;
 
   const InfoField = ({ label, value, icon: Icon }: any) => (
     <motion.div variants={itemVariants} className="space-y-1">
@@ -69,7 +66,7 @@ export default function DesigningLeadsDetails({ leadInfo }: props) {
       >
         <DetailsProvider value={{ leadId, accountId }}>
           <PillTabs
-            addButtons={false}
+            addButtons={true}
             tabs={[
               {
                 id: "quotation",

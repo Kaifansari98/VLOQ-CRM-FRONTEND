@@ -26,10 +26,7 @@ import { Button } from "@/components/ui/button";
 
 export default function DesigningStageLead() {
   const { lead: leadId } = useParams();
-  const searchParams = useSearchParams(); // call the hook
-
   const leadIdNum = Number(leadId);
-  const accountIdNum = Number(searchParams.get("accountId"));
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -79,11 +76,7 @@ export default function DesigningStageLead() {
         </header>
 
         <main className="flex-1 px-6 pt-4">
-          <LeadDetailsUtil
-            status="designing"
-            leadId={leadIdNum}
-            leadInfo={{ leadId: leadIdNum, accountId: accountIdNum }}
-          />
+          <LeadDetailsUtil status="designing" leadId={leadIdNum} />
         </main>
 
         {/* ✅ Render modal here */}
