@@ -104,10 +104,9 @@ const DesigningStageTable = () => {
   }, [rowAction]);
 
  const handleRowClick = (row: ProcessedDesigningStageLead) => {
-  const leadId = row.id;
-  const accountId = row.accountId;   // or row.account.id depending on your data
+  const leadId = row.id; 
   router.push(
-    `/dashboard/sales-executive/designing-stage/details/${leadId}?accountId=${accountId}`
+    `/dashboard/sales-executive/designing-stage/details/${leadId}`
   );
 };
 
