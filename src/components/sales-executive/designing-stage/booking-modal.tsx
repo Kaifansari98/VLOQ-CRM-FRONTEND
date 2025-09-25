@@ -74,7 +74,6 @@ interface LeadViewModalProps {
   onOpenChange: (open: boolean) => void;
   data?: {
     id: number;
-    name: string;
     accountId: number;
   };
 }
@@ -181,9 +180,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-3xl p-0 gap-0">
         {/* Header */}
         <DialogHeader className="flex items-start justify-between px-6 py-4 border-b">
-          <DialogTitle className="capitalize">
-            Booking for {data?.name || "Customer"}
-          </DialogTitle>
+          <DialogTitle className="capitalize">Booking Form</DialogTitle>
         </DialogHeader>
 
         <ScrollArea className="max-h-[calc(90vh-100px)]">

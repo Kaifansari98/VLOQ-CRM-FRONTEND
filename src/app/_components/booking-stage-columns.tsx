@@ -11,9 +11,18 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ellipsis, Eye, SquarePen, Users, Text, StretchHorizontal, Ruler, UserPlus } from "lucide-react";
+import {
+  Ellipsis,
+  Eye,
+  SquarePen,
+  Users,
+  Text,
+  StretchHorizontal,
+  Ruler,
+  UserPlus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { DataTableRowAction, DataTableRowActionFinalMeasurement } from "@/types/data-table";
+import type { DataTableRowActionFinalMeasurement } from "@/types/data-table";
 import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
 import CustomeBadge from "@/components/origin-badge";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
@@ -37,82 +46,82 @@ export function getBookingLeadsTableColumns({
   const router = useRouter();
   return [
     // Action Button
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              aria-label="Open menu"
-              variant="ghost"
-              className="flex size-8 p-0 data-[state=open]:bg-muted"
-            >
-              <Ellipsis className="size-4" aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: "view" })}
-            >
-              <Eye size={20} />
-              View
-            </DropdownMenuItem>
-            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
+    //  {
+    //     id: "actions",
+    //     cell: ({ row }) => (
+    //       <DropdownMenu>
+    //         <DropdownMenuTrigger asChild>
+    //           <Button
+    //             aria-label="Open menu"
+    //             variant="ghost"
+    //             className="flex size-8 p-0 data-[state=open]:bg-muted"
+    //           >
+    //             <Ellipsis className="size-4" aria-hidden="true" />
+    //           </Button>
+    //         </DropdownMenuTrigger>
+    //         <DropdownMenuContent align="end">
+    //           <DropdownMenuItem
+    //             data-slot="action-button"
+    //             onSelect={() => setRowAction({ row, variant: "view" })}
+    //           >
+    //             <Eye size={20} />
+    //             View
+    //           </DropdownMenuItem>
+    //           {!canDeleteLead(userType) && <DropdownMenuSeparator />}
 
-            <DropdownMenuItem
-              data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: "edit" })}
-            >
-              <SquarePen size={20} />
-              Edit
-            </DropdownMenuItem>
+    //           <DropdownMenuItem
+    //             data-slot="action-button"
+    //             onSelect={() => setRowAction({ row, variant: "edit" })}
+    //           >
+    //             <SquarePen size={20} />
+    //             Edit
+    //           </DropdownMenuItem>
 
-             {/* <DropdownMenuItem
-              data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: 'finalMeasu' })}
-            >
-              <Ruler size={20} />
-              Final Measurement
-            </DropdownMenuItem> */}
+    //           {/* <DropdownMenuItem
+    //             data-slot="action-button"
+    //             onSelect={() => setRowAction({ row, variant: 'finalMeasu' })}
+    //           >
+    //             <Ruler size={20} />
+    //             Final Measurement
+    //           </DropdownMenuItem> */}
 
-             <DropdownMenuItem
-              data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: 'assignTask' })}
-            >
-              <UserPlus size={20} />
-              Assign Task
-            </DropdownMenuItem>
+    //           <DropdownMenuItem
+    //             data-slot="action-button"
+    //             onSelect={() => setRowAction({ row, variant: "assignTask" })}
+    //           >
+    //             <UserPlus size={20} />
+    //             Assign Task
+    //           </DropdownMenuItem>
 
-            {canReassingLead(userType) && (
-              <DropdownMenuItem
-                data-slot="action-button"
-                onSelect={() => setRowAction({ row, variant: "reassignlead" })}
-              >
-                <Users size={20} />
-                Reassign Lead
-              </DropdownMenuItem>
-            )}
+    //           {canReassingLead(userType) && (
+    //             <DropdownMenuItem
+    //               data-slot="action-button"
+    //               onSelect={() => setRowAction({ row, variant: "reassignlead" })}
+    //             >
+    //               <Users size={20} />
+    //               Reassign Lead
+    //             </DropdownMenuItem>
+    //           )}
 
-            {canDeleteLead(userType) && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  data-slot="action-button"
-                  onSelect={() => setRowAction({ row, variant: "delete" })}
-                >
-                  Delete
-                  <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-      enableSorting: false,
-      enableHiding: false,
-      size: 40,
-    },
+    //           {canDeleteLead(userType) && (
+    //             <>
+    //               <DropdownMenuSeparator />
+    //               <DropdownMenuItem
+    //                 data-slot="action-button"
+    //                 onSelect={() => setRowAction({ row, variant: "delete" })}
+    //               >
+    //                 Delete
+    //                 <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
+    //               </DropdownMenuItem>
+    //             </>
+    //           )}
+    //         </DropdownMenuContent>
+    //       </DropdownMenu>
+    //     ),
+    //     enableSorting: false,
+    //     enableHiding: false,
+    //     size: 40,
+    //   },
     // Sr NO
     {
       accessorKey: "srNo",

@@ -24,17 +24,27 @@ import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
 import InitialSiteMeasuresMent from "@/components/sales-executive/Lead/initial-site-measurement-form";
 
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { useFeatureFlags } from "./feature-flags-provider";
 import type { DataTableRowAction } from "@/types/data-table";
-import { getVendorLeadsTableColumns, ProcessedTask } from "./tasks-table-columns";
+import {
+  getVendorLeadsTableColumns,
+  ProcessedTask,
+} from "./tasks-table-columns";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/utils/loader";
 import { useVendorUserTasks } from "@/hooks/useTasksQueries";
 import FinalMeasurementModal from "@/components/sales-executive/booking-stage/final-measurement-modal";
+import FollowUpModal from "@/components/follow-up-modal";
 
 const MyTaskTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -46,7 +56,7 @@ const MyTaskTable = () => {
 
   const [openMeasurement, setOpenMeasurement] = useState(false);
   const [openFinalMeasurement, setOpenFinalMeasurement] = useState(false);
-  
+
   // Fetch leads
   const vendorUserTasksQuery = useVendorUserTasks(
     vendorId || 0,
@@ -58,6 +68,7 @@ const MyTaskTable = () => {
   const [assignOpenLead, setAssignOpenLead] = useState<boolean>(false);
   const [editOpenLead, setEditOpenLead] = useState<boolean>(false);
   const deleteLeadMutation = useDeleteLead();
+  const [openFollowUp, setOpenFollowUp] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     architechName: false,
@@ -75,12 +86,13 @@ const MyTaskTable = () => {
     { id: "assignedAt", desc: true },
   ]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([
-    { id: "dueDate", value: "today" } // Set default filter
+    { id: "dueDate", value: "today" }, // Set default filter
   ]);
   const [rowSelection, setRowSelection] = useState({});
 
-  const [rowAction, setRowAction] = useState<DataTableRowAction<ProcessedTask> | null>(null);
-  
+  const [rowAction, setRowAction] =
+    useState<DataTableRowAction<ProcessedTask> | null>(null);
+
   useEffect(() => {
     if (rowAction?.variant === "reassignlead" && rowAction.row) {
       console.log("Original Data row Leads: ", rowAction.row.original);
@@ -94,28 +106,45 @@ const MyTaskTable = () => {
       console.log("Uploading measurement for row:", rowAction.row.original);
       setOpenMeasurement(true);
     }
+    if (rowAction?.variant === "Follow Up" && rowAction.row) {
+      setOpenFollowUp(true);
+    }
   }, [rowAction]);
 
   const router = useRouter();
 
-  const handleRowDoubleClick = useCallback((row: ProcessedTask) => {
-    if (row.taskType === "Initial Site Measurement") {
-      setRowAction({ row: { original: row } as any, variant: "uploadmeasurement" });
-      setOpenMeasurement(true);
-    } else if (row.taskType === "Final Measurements") {
-      setRowAction({ row: { original: row } as any, variant: "uploadfinalmeasurement" });
-      setOpenFinalMeasurement(true); }
-     else {
-      const leadId = row.id;
-      console.log("follow up is under development")
-    }
-  }, [router]);  
-  
+  const handleRowDoubleClick = useCallback(
+    (row: ProcessedTask) => {
+      if (row.taskType === "Initial Site Measurement") {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "uploadmeasurement",
+        });
+        setOpenMeasurement(true);
+      } else if (row.taskType === "Final Measurements") {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "uploadfinalmeasurement",
+        });
+        setOpenFinalMeasurement(true);
+      } else if (row.taskType === "Follow Up") {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "Follow Up",
+        });
+        setOpenFollowUp(true);
+      } else {
+        const leadId = row.id;
+        console.log("follow up is under development");
+      }
+    },
+    [router]
+  );
 
   // Process leads into table data - Memoized to prevent re-renders
   const rowData = useMemo<ProcessedTask[]>(() => {
     if (!vendorUserTasksQuery.data) return [];
-  
+
     return vendorUserTasksQuery.data.map((task, index) => ({
       id: task.userLeadTask.id,
       leadId: task.leadMaster.id,
@@ -133,30 +162,28 @@ const MyTaskTable = () => {
       assignedByName: task.userLeadTask.created_by_name || "-",
       assignedAt: task.userLeadTask.created_at,
     }));
-  }, [vendorUserTasksQuery.data]);  
-
-  console.log("Row data :- ",rowData);
+  }, [vendorUserTasksQuery.data]);
 
   // Calculate task counts - Memoized to prevent re-renders
   const taskCounts = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-  
+
     let counts = { today: 0, upcoming: 0, overdue: 0 };
-  
+
     rowData.forEach((task) => {
       if (!task.dueDate) return;
       const dueDate = new Date(task.dueDate);
       if (isNaN(dueDate.getTime())) return;
-  
+
       const taskDay = new Date(dueDate);
       taskDay.setHours(0, 0, 0, 0);
-  
+
       if (taskDay.getTime() === today.getTime()) counts.today++;
       else if (taskDay < today) counts.overdue++;
       else counts.upcoming++;
     });
-  
+
     return counts;
   }, [rowData]);
 
@@ -167,32 +194,35 @@ const MyTaskTable = () => {
   );
 
   // Custom filter function for due dates - Memoized to prevent re-creation
-  const dueDateFilterFn = useCallback((row: any, columnId: string, filterValue: string) => {
-    if (!filterValue || filterValue === "all") return true;
-    
-    const dueDate = row.getValue(columnId);
-    if (!dueDate) return false;
+  const dueDateFilterFn = useCallback(
+    (row: any, columnId: string, filterValue: string) => {
+      if (!filterValue || filterValue === "all") return true;
 
-    const taskDate = new Date(dueDate);
-    if (isNaN(taskDate.getTime())) return false;
+      const dueDate = row.getValue(columnId);
+      if (!dueDate) return false;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const taskDay = new Date(taskDate);
-    taskDay.setHours(0, 0, 0, 0);
+      const taskDate = new Date(dueDate);
+      if (isNaN(taskDate.getTime())) return false;
 
-    switch (filterValue) {
-      case "today":
-        return taskDay.getTime() === today.getTime();
-      case "overdue":
-        return taskDay < today;
-      case "upcoming":
-        return taskDay > today;
-      default:
-        return true;
-    }
-  }, []);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const taskDay = new Date(taskDate);
+      taskDay.setHours(0, 0, 0, 0);
+
+      switch (filterValue) {
+        case "today":
+          return taskDay.getTime() === today.getTime();
+        case "overdue":
+          return taskDay < today;
+        case "upcoming":
+          return taskDay > today;
+        default:
+          return true;
+      }
+    },
+    []
+  );
 
   // Create table with custom filter - Memoized to prevent re-creation
   const table = useReactTable({
@@ -234,7 +264,7 @@ const MyTaskTable = () => {
     return ({ table }: { table: any }) => {
       const column = table.getColumn("dueDate");
       const currentValue = (column?.getFilterValue() as string) ?? "";
-    
+
       return (
         <Select
           value={currentValue}
@@ -257,23 +287,33 @@ const MyTaskTable = () => {
   }, []);
 
   const DueDateTabs = useMemo(() => {
-    return ({ table, taskCounts }: { 
-      table: any; 
-      taskCounts: { today: number; upcoming: number; overdue: number } 
+    return ({
+      table,
+      taskCounts,
+    }: {
+      table: any;
+      taskCounts: { today: number; upcoming: number; overdue: number };
     }) => {
       const column = table.getColumn("dueDate");
       const currentFilter = (column?.getFilterValue() as string) || "today";
 
-      const handleTabChange = useCallback((value: string) => {
-        column?.setFilterValue(value);
-      }, [column]);
+      const handleTabChange = useCallback(
+        (value: string) => {
+          column?.setFilterValue(value);
+        },
+        [column]
+      );
 
       return (
         <div className="flex items-center justify-start h-full">
-          <Tabs value={currentFilter} onValueChange={handleTabChange} className="w-fit h-full">
+          <Tabs
+            value={currentFilter}
+            onValueChange={handleTabChange}
+            className="w-fit h-full"
+          >
             <TabsList className="grid grid-cols-3 p-1 rounded-lg w-fit h-full min-h-[40px]">
-              <TabsTrigger 
-                value="today" 
+              <TabsTrigger
+                value="today"
                 className="flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm h-full"
               >
                 <div className="flex items-center gap-2">
@@ -284,9 +324,9 @@ const MyTaskTable = () => {
                   </span>
                 </div>
               </TabsTrigger>
-              
-              <TabsTrigger 
-                value="upcoming" 
+
+              <TabsTrigger
+                value="upcoming"
                 className="flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-green-600 data-[state=active]:shadow-sm h-full"
               >
                 <div className="flex items-center gap-2">
@@ -297,9 +337,9 @@ const MyTaskTable = () => {
                   </span>
                 </div>
               </TabsTrigger>
-              
-              <TabsTrigger 
-                value="overdue" 
+
+              <TabsTrigger
+                value="overdue"
                 className="flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-red-600 data-[state=active]:shadow-sm h-full"
               >
                 <div className="flex items-center gap-2">
@@ -317,13 +357,17 @@ const MyTaskTable = () => {
     };
   }, []);
 
-  const mockProps = useMemo(() => ({
-    shallow: true,
-    debounceMs: 300,
-    throttleMs: 50,
-  }), []);
+  const mockProps = useMemo(
+    () => ({
+      shallow: true,
+      debounceMs: 300,
+      throttleMs: 50,
+    }),
+    []
+  );
 
-  const isInitialLoading = vendorUserTasksQuery.isLoading && !vendorUserTasksQuery.data;
+  const isInitialLoading =
+    vendorUserTasksQuery.isLoading && !vendorUserTasksQuery.data;
   const isFetching = vendorUserTasksQuery.isFetching;
 
   return (
@@ -356,12 +400,12 @@ const MyTaskTable = () => {
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
-            <DueDateTabs table={table} taskCounts={taskCounts}/>
+            <DueDateTabs table={table} taskCounts={taskCounts} />
             <DataTableSortList table={table} align="end" />
           </DataTableToolbar>
         )}
       </DataTable>
-      
+
       {/* Refetch overlay loader */}
       {isFetching && !isInitialLoading && (
         <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-40 rounded-md">
@@ -376,7 +420,7 @@ const MyTaskTable = () => {
         open={openMeasurement}
         onOpenChange={setOpenMeasurement}
         data={{
-          id: rowAction?.row.original.leadId || 0,         // ✅ leadId
+          id: rowAction?.row.original.leadId || 0, // ✅ leadId
           accountId: rowAction?.row.original.accountId || 0, // ✅ accountId
           name: rowAction?.row.original.name || "",
         }}
@@ -389,6 +433,17 @@ const MyTaskTable = () => {
           id: rowAction?.row.original.leadId || 0,
           accountId: rowAction?.row.original.accountId || 0,
           name: rowAction?.row.original.name,
+        }}
+      />
+
+      <FollowUpModal
+        open={openFollowUp}
+        onOpenChange={setOpenFollowUp}
+        data={{
+          id: rowAction?.row.original.leadId || 0,
+          accountId: rowAction?.row.original.accountId || 0,
+          taskId: rowAction?.row.original.id || 0,
+          
         }}
       />
     </div>
