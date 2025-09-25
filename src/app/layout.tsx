@@ -8,6 +8,7 @@ import { SessionLoader } from "@/components/SessionLoader"
 import { ProtectedLayout } from "@/providers/ProtectedLayout";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import Script from "next/script";
+import { Suspense } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -54,10 +55,12 @@ export default function RootLayout({
           <AppProviders>
             <SessionLoader />
             <ProtectedLayout>
-              <NuqsAdapter>
-                {children}
-                <ToastProvider />
-              </NuqsAdapter>
+              <Suspense fallback={null}>
+                <NuqsAdapter>
+                  {children}
+                  <ToastProvider />
+                </NuqsAdapter>
+              </Suspense>
             </ProtectedLayout>
           </AppProviders>
         </ThemeProvider>
