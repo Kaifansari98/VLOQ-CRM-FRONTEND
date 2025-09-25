@@ -47,9 +47,16 @@ const SelectionsTab: React.FC = () => {
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { leadId, accountId } = useDetails();
 
-  const { mutate: createSelection, isPending: isCreating } = useSubmitSelection();
-  const { mutate: editSelection, isPending: isEditing } = useEditSelectionData();
-  const { data: selectionsData, isLoading, isError, refetch } = useSelectionData(vendorId!, leadId!);
+  const { mutate: createSelection, isPending: isCreating } =
+    useSubmitSelection();
+  const { mutate: editSelection, isPending: isEditing } =
+    useEditSelectionData();
+  const {
+    data: selectionsData,
+    isLoading,
+    isError,
+    refetch,
+  } = useSelectionData(vendorId!, leadId!);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -69,9 +76,15 @@ const SelectionsTab: React.FC = () => {
 
   useEffect(() => {
     if (selectionsData?.success && Array.isArray(selectionsData?.data)) {
-      const carcasSelection = selectionsData.data.find((item) => item.type === "Carcas");
-      const shutterSelection = selectionsData.data.find((item) => item.type === "Shutter");
-      const handlesSelection = selectionsData.data.find((item) => item.type === "Handles");
+      const carcasSelection = selectionsData.data.find(
+        (item) => item.type === "Carcas"
+      );
+      const shutterSelection = selectionsData.data.find(
+        (item) => item.type === "Shutter"
+      );
+      const handlesSelection = selectionsData.data.find(
+        (item) => item.type === "Handles"
+      );
 
       setExistingSelections({
         carcas: carcasSelection,
@@ -91,7 +104,8 @@ const SelectionsTab: React.FC = () => {
   const handleCreateOrUpdate = async (type: string, desc: string) => {
     if (!desc?.trim()) return;
 
-    const existingSelection = existingSelections[type.toLowerCase() as keyof typeof existingSelections];
+    const existingSelection =
+      existingSelections[type.toLowerCase() as keyof typeof existingSelections];
 
     try {
       if (existingSelection) {
@@ -164,10 +178,10 @@ const SelectionsTab: React.FC = () => {
 
     try {
       await Promise.all(promises);
-      
+
       // Refetch data to get updated selections
       await refetch();
-      
+
       toast.success("All selections processed successfully!");
     } catch (error) {
       console.error("Error processing selections:", error);
@@ -288,16 +302,12 @@ const SelectionsTab: React.FC = () => {
           />
 
           <div className="flex gap-2 pt-4 w-1/4">
-            <Button 
-              type="submit" 
-              disabled={isPending}
-              className="flex-1"
-            >
+            <Button type="submit" disabled={isPending} className="flex-1">
               {isPending ? "Processing..." : "Save Selections"}
             </Button>
-            
-            <Button 
-              type="button" 
+
+            <Button
+              type="button"
               variant="outline"
               onClick={() => refetch()}
               disabled={isLoading}

@@ -10,6 +10,7 @@ import DesignsModal from "./pill-tabs-component/modals/designs-modal";
 import AddMeetingsModal from "./pill-tabs-component/modals/add-meetings-modal";
 import BookingModal from "./booking-modal";
 import { useAppSelector } from "@/redux/store";
+import { useDetails } from "./pill-tabs-component/details-context";
 
 type TabItemType = {
   id: string;
@@ -23,14 +24,16 @@ type PillTabsProps = {
   defaultActiveId?: string;
   onTabChange?: (id: string) => void;
   className?: string;
-  addButtons?: boolean;
+  bookingBtn?: boolean;
 };
 
 const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
   (
-    { tabs, defaultActiveId = tabs[0]?.id, onTabChange, className, addButtons },
+    { tabs, defaultActiveId = tabs[0]?.id, onTabChange, className, bookingBtn=true },
     ref
   ) => {
+    const { leadId, accountId } =
+      useDetails();
     const [activeTab, setActiveTab] = React.useState(defaultActiveId);
     const [openQuotationModal, setOpenQuotationModal] = useState(false);
     const [openDesignsModal, setOpenDesignsModal] = useState(false);
@@ -89,52 +92,50 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
 
           {/* Add Button */}
 
-          {addButtons && (
-            <div className="flex justify-start gap-2">
-              
-
-              {activeTab === "quotation" && (
-                <Button
+          <div className="flex justify-start gap-2">
+            {activeTab === "quotation" && (
+              <Button
                 size="sm"
                 variant="secondary"
-                  className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
-                  onClick={() => setOpenQuotationModal(true)}
-                >
-                  <CloudUpload size={16} className="sm:mr-1" />
-                  <span>Upload Quotations</span>
-                </Button>
-              )}
-              {activeTab === "meetings" && (
-                <Button
-                  size="sm"
-                  className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
-                  onClick={() => setOpenMeetingsModal(true)}
-                >
-                  <CloudUpload size={16} className="sm:mr-1" />
-                  <span>Upload Meetings</span>
-                </Button>
-              )}
-              {activeTab === "designs" && (
-                <Button
-                  size="sm"
-                  className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
-                  onClick={() => setOpenDesignsModal(true)}
-                >
-                  <CloudUpload size={16} className="sm:mr-1" />
-                  <span>Upload Designs</span>
-                </Button>
-              )}
-              {/* ✅ Booking Button (Always Visible) */}
-            <Button
-              size="sm"
-              className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
-              onClick={() => setOpenBookingModal(true)}
+                className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
+                onClick={() => setOpenQuotationModal(true)}
               >
-              <Plus size={16} />
-              <span>Booking Stage</span>
-            </Button>
-            </div>
-          )}
+                <CloudUpload size={16} className="sm:mr-1" />
+                <span>Upload Quotations</span>
+              </Button>
+            )}
+            {activeTab === "meetings" && (
+              <Button
+                size="sm"
+                className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
+                onClick={() => setOpenMeetingsModal(true)}
+              >
+                <CloudUpload size={16} className="sm:mr-1" />
+                <span>Upload Meetings</span>
+              </Button>
+            )}
+            {activeTab === "designs" && (
+              <Button
+                size="sm"
+                className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
+                onClick={() => setOpenDesignsModal(true)}
+              >
+                <CloudUpload size={16} className="sm:mr-1" />
+                <span>Upload Designs</span>
+              </Button>
+            )}
+
+            {bookingBtn && (
+              <Button
+                size="sm"
+                className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
+                onClick={() => setOpenBookingModal(true)}
+              >
+                <Plus size={16} />
+                <span>Booking Stage</span>
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Active Content */}
@@ -153,14 +154,11 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
           open={openMeetingsModal}
           onOpenChange={setOpenMeetingsModal}
         />
+
         <BookingModal
           open={openBookingModal}
           onOpenChange={setOpenBookingModal}
-          // data={
-          //   activeLeadId
-          // //     ? { id: activeLeadId, name: activeLeadName, accountId: activeAccountId ?? 0 }
-          //     : undefined
-          // }
+          data={{ id: leadId, accountId }}
         />
       </div>
     );

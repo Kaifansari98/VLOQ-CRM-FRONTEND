@@ -26,9 +26,8 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   data?: {
-    id: number; // leadId
-    taskId?: number; // taskId
-    name: string;
+    id: number;
+    taskId?: number;
     dueDate?: string;
     remark?: string;
   };
@@ -45,9 +44,6 @@ const formSchema = z.object({
 });
 
 const RescheduleModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
-  const modalTitle = data
-    ? `Reschedule lead for ${data.name}`
-    : "Reschedule Lead";
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const queryClient = useQueryClient();
   const rescheduleMutation = useRescheduleTask();
@@ -108,7 +104,7 @@ const RescheduleModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title={modalTitle}
+      title="Reschedule Lead"
       description="Set a new date and time for this lead follow-up."
       size="md"
     >

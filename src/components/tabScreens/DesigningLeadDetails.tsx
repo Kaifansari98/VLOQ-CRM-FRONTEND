@@ -1,9 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useLeadById } from "@/hooks/useLeadsQueries";
 import { useAppSelector } from "@/redux/store";
-import DesigningStageTable from "@/app/_components/designing-stage-table";
 import { DetailsProvider } from "../sales-executive/designing-stage/pill-tabs-component/details-context";
 import PillTabs from "../sales-executive/designing-stage/pill-tabs";
 import QuotationTab from "../sales-executive/designing-stage/pill-tabs-component/quotation";
@@ -66,7 +64,7 @@ export default function DesigningLeadsDetails({ leadId }: props) {
       >
         <DetailsProvider value={{ leadId, accountId }}>
           <PillTabs
-            addButtons={true}
+            bookingBtn={false}
             tabs={[
               {
                 id: "quotation",

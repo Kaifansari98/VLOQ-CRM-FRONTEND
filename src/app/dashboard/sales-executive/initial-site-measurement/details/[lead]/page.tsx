@@ -23,6 +23,27 @@ import { useState } from "react";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
+import {
+  CheckCircle,
+  ClipboardCheck,
+  Clock,
+  EllipsisVertical,
+  SquarePen,
+  Users,
+  XCircle,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
+import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 
 export default function SiteMeasurementLead() {
   const { lead: leadId } = useParams();
@@ -30,14 +51,10 @@ export default function SiteMeasurementLead() {
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-
-  const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
-
-  const lead = data?.data?.lead;
-  const leadStatus = lead?.statusType?.type;
-
-  // 👇 modal state
   const [assignOpen, setAssignOpen] = useState(false);
+  const [assignOpenLead, setAssignOpenLead] = useState(false);
+  const [openEditModal, setOpenEditModal] = useState(false);
+  const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
 
   if (isLoading) {
     return <p className="p-6">Loading lead details...</p>;
@@ -75,6 +92,72 @@ export default function SiteMeasurementLead() {
               Assign Task
             </Button>
             <ModeToggle />
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <EllipsisVertical size={25} />
+                </Button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="end">
+                {/* 🔹 Upload Measurement */}
+                <DropdownMenuItem onSelect={() => alert("Upload Measurement")}>
+                  <ClipboardCheck size={20} />
+                  Upload Measurement
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                  <SquarePen size={20} />
+                  Edit
+                </DropdownMenuItem>
+                {/* 🔹 Follow Up Submenu */}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="flex items-center gap-2">
+                    <ClipboardCheck size={20} />
+                    Follow Up
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-48">
+                    <DropdownMenuItem
+                      onSelect={() => alert("Completed")}
+                      className="flex items-center gap-2"
+                    >
+                      <CheckCircle size={18} />
+                      Completed
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onSelect={() => alert("Reschedule")}
+                      className="flex items-center gap-2"
+                    >
+                      <Clock size={18} />
+                      Reschedule
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator />
+
+                    <DropdownMenuItem
+                      onSelect={() => alert("Cancel")}
+                      className="flex items-center gap-2"
+                    >
+                      <XCircle size={18} />
+                      Cancel
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                  <Users size={20} />
+                  Reassign Lead
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                {/* 🔹 Delete */}
+                <DropdownMenuItem onSelect={() => alert("Delete")}>
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -83,13 +166,24 @@ export default function SiteMeasurementLead() {
         </main>
 
         {/* ✅ Render modal here */}
-      <AssignTaskSiteMeasurementForm
-        open={assignOpen}
-        onOpenChange={setAssignOpen}
-        onlyFollowUp={true}
-        data={{ id: leadIdNum, name: "" }}
-      />
+        <AssignTaskSiteMeasurementForm
+          open={assignOpen}
+          onOpenChange={setAssignOpen}
+          onlyFollowUp={true}
+          data={{ id: leadIdNum, name: "" }}
+        />
 
+        <AssignLeadModal
+          open={assignOpenLead}
+          onOpenChange={setAssignOpenLead}
+          leadData={{ id: leadIdNum }}
+        />
+
+        <EditLeadModal
+          open={openEditModal}
+          onOpenChange={setOpenEditModal}
+          leadData={{ id: leadIdNum }}
+        />
       </SidebarInset>
     </SidebarProvider>
   );
