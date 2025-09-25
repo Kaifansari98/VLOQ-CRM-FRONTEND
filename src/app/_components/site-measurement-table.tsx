@@ -363,7 +363,7 @@ const SiteMeasurementTable = () => {
   // Main render
   return (
     <>
-      <DataTable table={table} onRowClick={handleRowClick}>
+      <DataTable table={table} onRowDoubleClick={handleRowClick}>
         {enableAdvancedFilter ? (
           <>
             <DataTableAdvancedToolbar table={table}>

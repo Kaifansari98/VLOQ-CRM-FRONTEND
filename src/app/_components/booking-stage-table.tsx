@@ -203,7 +203,7 @@ const BookingStageLeadsTable = () => {
   // Render
   return (
     <>
-      <DataTable table={table} onRowClick={handleRowClick}>
+      <DataTable table={table} onRowDoubleClick={handleRowClick}>
         {enableAdvancedFilter ? (
           <DataTableAdvancedToolbar table={table}>
             <DataTableSortList table={table} align="start" />
