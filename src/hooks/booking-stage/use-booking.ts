@@ -14,6 +14,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
+import { apiClient } from "@/lib/apiClient";
 
 
 export const useMoveToBookingStage = () => {
@@ -81,5 +82,19 @@ export const useUploadBookingDoc = () => {
         queryKey: ["bookingLead", variables.lead_id],
       });
     },
+  });
+};
+
+export const useISMPaymentInfo = (leadId?: number) => {
+  return useQuery({
+    queryKey: ["ismPaymentInfo", leadId],
+    queryFn: async () => {
+      if (!leadId) return null;
+      const { data } = await apiClient.get(`/leads/initial-site-measurement/leadId/${leadId}/payment-info`);
+      return data.data; // API wraps inside { success, data }
+    },
+    enabled: !!leadId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 };

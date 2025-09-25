@@ -26,19 +26,19 @@ interface LeadViewModalProps {
   onOpenChange: (open: boolean) => void;
   data?: {
     id: number;
-    name: string;
+    name?: string;
     accountId: number;
   };
 }
 
 const formSchema = z.object({
-  finalMeasurementDoc: z
-    .custom<File>((file) => file instanceof File, {
-      message: "Final Measurement Document is required",
+  finalMeasurementDocs: z
+    .array(z.custom<File>((file) => file instanceof File))
+    .nonempty({ message: "At least one Final Measurement Document is required" })
+    .refine((files) => files.every((file) => file.type === "application/pdf"), {
+      message: "Only PDF files are allowed",
     })
-    .refine((file) => file.type === "application/pdf", {
-      message: "Only PDF file is allowed",
-    }),
+    .max(20, { message: "You can upload up to 20 PDFs only" }),
 
   currentSitePhotos: z
     .array(z.instanceof(File))
@@ -65,7 +65,7 @@ const FinalMeasurementModal = ({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      finalMeasurementDoc: undefined,
+      finalMeasurementDocs: [],
       currentSitePhotos: [],
       criticalDiscussion: "",
     },
@@ -83,7 +83,7 @@ const FinalMeasurementModal = ({
         vendor_id: vendorId!,
         created_by: userId!,
         critical_discussion_notes: values.criticalDiscussion,
-        final_measurement_doc: values.finalMeasurementDoc,
+        final_measurement_docs: values.finalMeasurementDocs,
         site_photos: values.currentSitePhotos,
       },
       {
@@ -116,16 +116,18 @@ const FinalMeasurementModal = ({
             {/* ---- PDF Upload ---- */}
             <FormField
               control={form.control}
-              name="finalMeasurementDoc"
+              name="finalMeasurementDocs"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-sm">
-                    Initial Site Measurement Document *
+                    Final Measurement Documents (max 10) *
                   </FormLabel>
                   <FormControl>
-                    <SinglePdfUploadField
+                    <FileUploadField
                       value={field.value}
                       onChange={field.onChange}
+                      accept="application/pdf"
+                      multiple // ✅ allow multiple PDFs
                     />
                   </FormControl>
                   <FormMessage />
@@ -180,7 +182,7 @@ const FinalMeasurementModal = ({
                 variant="outline"
                 onClick={() =>
                   form.reset({
-                    finalMeasurementDoc: undefined,
+                    finalMeasurementDocs: [],
                     currentSitePhotos: [],
                     criticalDiscussion: "",
                   })

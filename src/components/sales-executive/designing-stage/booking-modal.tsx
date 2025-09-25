@@ -37,6 +37,8 @@ import {
 } from "@/hooks/booking-stage/use-booking";
 import { BookingPayload } from "@/api/booking";
 import { toast } from "react-toastify";
+import { useISMPaymentInfo } from "@/hooks/booking-stage/use-booking";
+import { formatAmount } from "@/components/utils/general.utils";
 
 // ✅ Enhanced Zod schema with proper file validation
 const bookingSchema = z
@@ -87,6 +89,11 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   const leadId = data?.id;
   const accountId = data?.accountId;
   const clientId = 1;
+
+  console.log("LeadId :- ", leadId);
+  const { data: ismPaymentInfo } = useISMPaymentInfo(leadId);
+  console.log("PaymentInfo :- ", ismPaymentInfo);
+  console.log("Amount :- ", ismPaymentInfo?.amount);
 
   const { data: siteSupervisors, isLoading } = useSiteSupervisors(vendorId!);
   const vendorUser = siteSupervisors?.data?.site_supervisors || [];
@@ -268,6 +275,15 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                       )}
                     />
                   </div>
+
+                  {ismPaymentInfo?.amount && (
+                    <p className="text-sm text-gray-600">
+                      <span className="font-semibold text-black">
+                        ₹{formatAmount(ismPaymentInfo.amount)}
+                      </span>{" "}
+                      ISM amount has already been paid by the client.
+                    </p>
+                  )}
                 </div>
 
                 <FormField
@@ -276,7 +292,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm">
-                        Assign Final Measurement *
+                        Assign Lead To Site Supervisor *
                       </FormLabel>
                       <Select
                         value={field.value || ""}
@@ -327,7 +343,9 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   name="payment_text"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm">Payment Details *</FormLabel>
+                      <FormLabel className="text-sm">
+                        Payment Details *
+                      </FormLabel>
                       <FormControl>
                         <TextAreaInput
                           value={field.value}

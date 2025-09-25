@@ -30,6 +30,7 @@ interface LeadViewModalProps {
   onOpenChange: (open: boolean) => void;
   data?: {
     id: number;
+    accountId: number;
     name: string;
   };
 }
@@ -64,18 +65,20 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state: any) => state.auth.user?.id);
   const leadId = data?.id;
+  const accountId = data?.accountId;
+  
 
-  const { data: accountId } = useQuery({
-    queryKey: ["lead", leadId],
-    queryFn: () => getLeadById(leadId!, vendorId, userId),
-    select: (res) => {
-      const accountId = res?.data?.lead?.account?.id ?? res?.data?.lead?.account_id;
-      if (!accountId) {
-        console.warn("Lead missing account data:", res?.data?.lead);
-      }
-      return accountId;
-    }
-  });
+  // const { data: accountId } = useQuery({
+  //   queryKey: ["lead", leadId],
+  //   queryFn: () => getLeadById(leadId!, vendorId, userId),
+  //   select: (res) => {
+  //     const accountId = res?.data?.lead?.account?.id ?? res?.data?.lead?.account_id;
+  //     if (!accountId) {
+  //       console.warn("Lead missing account data:", res?.data?.lead);
+  //     }
+  //     return accountId;
+  //   }
+  // });
 
   const queryClient = useQueryClient();
 

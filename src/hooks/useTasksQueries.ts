@@ -21,6 +21,7 @@ export interface VendorUserTask {
   leadMaster: {
     id: number;
     name: string;
+    account_id: number;
     phone_number: string;
     site_type: string | null;
     product_type: string[];

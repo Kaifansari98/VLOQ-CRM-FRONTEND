@@ -449,66 +449,70 @@ export default function LeadsGenerationForm({
           </div>
 
           {/* Site Address */}
-<FormField
-  control={form.control}
-  name="site_address"
-  render={({ field }) => (
-    <FormItem>
-      <div className="w-full flex justify-between ">
-      <FormLabel className="text-sm">Site Address *</FormLabel>
-        <Button 
-          type="button" 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setMapOpen(true)}
-          className="flex items-center gap-1"
-        >
-          <MapPin className="h-4 w-4" />
-          {savedMapLocation ? 'Update Map' : 'Open Map'}
-        </Button>
-      </div>
-      <div className="flex gap-2">
-        <FormControl className="flex-1">
-          <TextAreaInput
-            value={field.value}
-            onChange={(value) => {
-              field.onChange(value);
-              // Clear saved location if user manually edits address
-              if (savedMapLocation && value !== savedMapLocation.address) {
-                setSavedMapLocation(null);
-              }
-            }}
-            placeholder="Enter address or use map"
-          />
-        </FormControl>
-      </div>
-      <FormMessage />
-      <MapPicker
-        open={mapOpen}
-        onClose={() => setMapOpen(false)}
-        savedLocation={savedMapLocation} // Pass saved location to remember
-        onSelect={(address, link) => {
-          // Auto-fill textarea
-          field.onChange(address);
-          
-          // Save the location for future reference
-          const coords = link.match(/q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-          if (coords) {
-            const newLocation = {
-              lat: parseFloat(coords[1]),
-              lng: parseFloat(coords[2]),
-              address: address
-            };
-            setSavedMapLocation(newLocation);
-          }
-          
-          console.log("Selected Map Link:", link);
-        }}
-      />
-    </FormItem>
-  )}
-/>
+          <FormField
+            control={form.control}
+            name="site_address"
+            render={({ field }) => (
+              <FormItem>
+                <div className="w-full flex justify-between ">
+                  <FormLabel className="text-sm">Site Address *</FormLabel>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMapOpen(true)}
+                    className="flex items-center gap-1"
+                  >
+                    <MapPin className="h-4 w-4" />
+                    {savedMapLocation ? "Update Map" : "Open Map"}
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <FormControl className="flex-1">
+                    <div className="w-full">
+                      <TextAreaInput
+                        value={field.value}
+                        onChange={(value) => {
+                          field.onChange(value);
+                          // Clear saved location if user manually edits address
+                          if (
+                            savedMapLocation &&
+                            value !== savedMapLocation.address
+                          ) {
+                            setSavedMapLocation(null);
+                          }
+                        }}
+                        placeholder="Enter address or use map"
+                      />
+                    </div>
+                  </FormControl>
+                </div>
+                <FormMessage />
+                <MapPicker
+                  open={mapOpen}
+                  onClose={() => setMapOpen(false)}
+                  savedLocation={savedMapLocation} // Pass saved location to remember
+                  onSelect={(address, link) => {
+                    // Auto-fill textarea
+                    field.onChange(address);
 
+                    // Save the location for future reference
+                    const coords = link.match(/q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+                    if (coords) {
+                      const newLocation = {
+                        lat: parseFloat(coords[1]),
+                        lng: parseFloat(coords[2]),
+                        address: address,
+                      };
+                      setSavedMapLocation(newLocation);
+                    }
+
+                    console.log("Selected Map Link:", link);
+                  }}
+                />
+              </FormItem>
+            )}
+          />
 
           {/* Priority & Source */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
