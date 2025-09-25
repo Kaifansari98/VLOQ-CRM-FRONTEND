@@ -225,7 +225,7 @@ const DesigningStageTable = () => {
 
   return (
     <>
-      <DataTable table={table} onRowClick={handleRowClick}>
+      <DataTable table={table} onRowDoubleClick={handleRowClick}>
         {enableAdvancedFilter ? (
           <>
             <DataTableAdvancedToolbar table={table}>
