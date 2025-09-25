@@ -8,7 +8,7 @@ import {
 import { Button } from "../../ui/button";
 import { Blinds } from "lucide-react";
 import { ScrollArea } from "../../ui/scroll-area";
-import InitialSiteMeasuresMent from "./initial-site-measurement-form";
+// import InitialSiteMeasuresMent from "./initial-site-measurement-form";
 import {
   sanitize,
 } from "../../utils/sanitizeCapitalize";
@@ -160,11 +160,11 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
         </ScrollArea>
       </DialogContent>
 
-      <InitialSiteMeasuresMent
+      {/* <InitialSiteMeasuresMent
         open={openModal}
         onOpenChange={setOpenModal}
         leadId={data?.id}
-      />
+      /> */}
     </Dialog>
   );
 };

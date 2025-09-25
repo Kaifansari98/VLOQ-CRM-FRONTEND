@@ -19,11 +19,11 @@ import { ModeToggle } from "@/components/ModeToggle";
 import { useParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
-import SmoothTab from "@/components/kokonutui/smooth-tab";
-import OpenLeadDetails from "@/components/tabScreens/OpenLeadDetails";
-import SiteMeasurementLeadDetails from "@/components/tabScreens/SiteMeasurementLeadDetails";
-import BookingLeadsDetails from "@/components/tabScreens/BookingLeadsDetails";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
+import AssignTaskFinalMeasurementForm from "@/components/sales-executive/Lead/assign-task-final-measurement-form";
 
 export default function BookingStageLeadsDetails() {
   const { lead: leadId } = useParams();
@@ -49,6 +49,8 @@ export default function BookingStageLeadsDetails() {
     accountId: accountId,
   };
 
+  // 👇 modal state
+  const [assignOpen, setAssignOpen] = useState(false);
 
   if (isLoading) {
     return <p className="p-6">Loading lead details...</p>;
@@ -85,15 +87,25 @@ export default function BookingStageLeadsDetails() {
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center space-x-2">
+            <Button size="sm" onClick={() => setAssignOpen(true)}>
+              Assign Task
+            </Button>
             <ModeToggle />
           </div>
         </header>
 
-        {/* Tabs */}
-        <div className="px-6 pt-4">
-          <LeadDetailsUtil leadInfo={leadInfo} status="booking" />
-        </div>
+        <main className="flex-1 px-6 pt-4">
+          <LeadDetailsUtil status="booking" leadId={leadIdNum} />
+        </main>
+
+        {/* ✅ Render modal here */}
+        <AssignTaskFinalMeasurementForm
+          open={assignOpen}
+          onOpenChange={setAssignOpen}
+          data={{ id: leadIdNum, name: "" }}
+        />
+
       </SidebarInset>
     </SidebarProvider>
   );

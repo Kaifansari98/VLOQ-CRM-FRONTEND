@@ -39,8 +39,6 @@ import { useDeleteLead } from "@/hooks/useDeleteLead";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-import { FinalMeasurementLead } from "@/types/final-measurement";
-import FinalMeasurementEditModal from "@/components/site-supervisor/final-measurement/final-measurement-edit-modal";
 import ClientDocumantationModal from "@/components/site-supervisor/final-measurement/client-documantation-modal";
 import { getClientDocumentationTableColumns } from "./client-documentation-column";
 import { useClientDocumentationLeads } from "@/hooks/client-documentation/use-clientdocumentation";
@@ -170,6 +168,7 @@ const ClientDocumentationLeadsTable = () => {
     if (rowAction.variant === "view") setOpenViewClientDocModal(true);
     if (rowAction.variant === "delete") setOpenDelete(true);
     if (rowAction.variant === "reassignlead") setAssignOpenLead(true);
+    if (rowAction.variant === "clientdoc") setOpenClientDocModal(true);
   }, [rowAction]);
 
   // Handlers

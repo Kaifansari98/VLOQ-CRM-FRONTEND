@@ -15,11 +15,16 @@ import {
 } from "@/types/designing-stage-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-export const useDesigningStageLeads = (vendorId: number, status: number) => {
+export const useDesigningStageLeads = (
+  vendorId: number,
+  userId: number,
+) => {
   return useQuery<GetDesigningStageResponse>({
-    queryKey: ["designing-stage-leads", vendorId, status],
-    queryFn: () => fetchDesigningStageLeads(vendorId, status),
-    enabled: !!vendorId && !!status, // prevent query until params available
+    queryKey: ["designing-stage-leads", vendorId, userId],
+    queryFn: () => fetchDesigningStageLeads(vendorId, userId),
+    enabled: !!vendorId && !!userId, // ✅ only fetch when all are available
+    staleTime: 5 * 60 * 1000, // cache for 5 mins
+    refetchOnWindowFocus: false,
   });
 };
 

@@ -61,6 +61,7 @@ export function getViewOpenLeadsTableColumns({
     {
       id: "actions",
       cell: ({ row }) => (
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

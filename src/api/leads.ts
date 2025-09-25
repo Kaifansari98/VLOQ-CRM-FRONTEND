@@ -199,6 +199,13 @@ export const getVendorSalesExecutiveUsers = async (vendorId: number) => {
   return response.data;
 };
 
+export const getVendorSiteSuppervisorUsers = async (vendorId: number) => {
+  const response = await apiClient.get(
+    `/leads/site-supervisor/vendor/${vendorId}`
+  );
+  return response.data;
+};
+
 export const getLeadById = async (
   leadId: number,
   vendorId: number,

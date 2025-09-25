@@ -41,7 +41,7 @@ export default function RootLayout({
       >
         {/* Load Google Maps script early */}
         <Script
-          src={`https://maps.googleapis.com/maps/api/js?key=AIzaSyC6tUtx5tsO-QGvuPqHsutAbc-a64nkZBE&libraries=places,geometry`}
+          src={`https://maps.googleapis.com/maps/api/js?key=AIzaSyC1FZNdpxsDhZvcDJcTbbxEfvjJYQUFgSg&libraries=places,geometry`}
           strategy="beforeInteractive"
         />
         
