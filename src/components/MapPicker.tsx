@@ -12,6 +12,15 @@ interface MapPickerProps {
   savedLocation?: { lat: number; lng: number; address: string } | null;
 }
 
+interface Prediction {
+  place_id: string;
+  description: string;
+  structured_formatting: {
+    main_text: string;
+    secondary_text: string;
+  };
+}
+
 export default function MapPicker({
   open,
   onClose,
@@ -21,7 +30,8 @@ export default function MapPicker({
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
-  const searchBoxRef = useRef<google.maps.places.SearchBox | null>(null);
+  const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null);
+  const placesService = useRef<google.maps.places.PlacesService | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -29,12 +39,14 @@ export default function MapPicker({
   const [mapError, setMapError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [showPredictions, setShowPredictions] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const [currentLocation, setCurrentLocation] = useState<{
     lat: number;
     lng: number;
     address: string;
   } | null>(savedLocation || null);
-  // hold pending selection, allow confirm before firing onSelect
   const [pendingSelection, setPendingSelection] = useState<{
     lat: number;
     lng: number;
@@ -81,7 +93,6 @@ export default function MapPicker({
       const link = `https://www.google.com/maps?q=${position.lat()},${position.lng()}`;
       if (status === "OK" && results?.[0]) {
         const address = results[0].formatted_address;
-        // Print Google maps link and address
         console.log("📍 Map Link:", link);
         console.log("🏠 Address:", address);
         setPendingSelection({
@@ -103,32 +114,58 @@ export default function MapPicker({
     });
   };
 
-  const initializeSearchBox = () => {
-    if (!searchInputRef.current || !mapInstance.current) return;
-    searchBoxRef.current = new google.maps.places.SearchBox(
-      searchInputRef.current
+  const initializeServices = () => {
+    if (!mapInstance.current) return;
+    
+    autocompleteService.current = new google.maps.places.AutocompleteService();
+    placesService.current = new google.maps.places.PlacesService(mapInstance.current);
+  };
+
+  const searchPlaces = async (query: string) => {
+    if (!autocompleteService.current || !query.trim()) {
+      setPredictions([]);
+      setShowPredictions(false);
+      return;
+    }
+
+    setIsSearching(true);
+    
+    autocompleteService.current.getPlacePredictions(
+      {
+        input: query,
+        bounds: mapInstance.current?.getBounds() || undefined,
+      },
+      (predictions, status) => {
+        setIsSearching(false);
+        if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+          setPredictions(predictions);
+          setShowPredictions(true);
+          setSelectedIndex(-1);
+        } else {
+          setPredictions([]);
+          setShowPredictions(false);
+        }
+      }
     );
-    mapInstance.current.addListener("bounds_changed", () => {
-      if (searchBoxRef.current && mapInstance.current) {
-        searchBoxRef.current.setBounds(mapInstance.current.getBounds()!);
+  };
+
+  const selectPlace = (placeId: string, description: string) => {
+    if (!placesService.current) return;
+
+    placesService.current.getDetails(
+      {
+        placeId: placeId,
+        fields: ['geometry', 'formatted_address', 'name']
+      },
+      (place, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && place?.geometry?.location) {
+          setSearchQuery(description);
+          setShowPredictions(false);
+          setPredictions([]);
+          placeMarkerAndGetAddress(place.geometry.location, true);
+        }
       }
-    });
-    searchBoxRef.current.addListener("places_changed", () => {
-      if (!searchBoxRef.current || !mapInstance.current) return;
-      const places = searchBoxRef.current.getPlaces();
-      if (!places || places.length === 0) {
-        setIsSearching(false);
-        return;
-      }
-      const place = places[0];
-      if (!place.geometry || !place.geometry.location) {
-        setIsSearching(false);
-        return;
-      }
-      setSearchQuery("");
-      setIsSearching(false);
-      placeMarkerAndGetAddress(place.geometry.location, true);
-    });
+    );
   };
 
   const initializeMap = async () => {
@@ -158,9 +195,9 @@ export default function MapPicker({
           animation: google.maps.Animation.DROP,
         });
       }
-      setTimeout(() => {
-        initializeSearchBox();
-      }, 100);
+
+      initializeServices();
+
       google.maps.event.addListener(mapInstance.current, "tilesloaded", () => {
         setIsLoading(false);
       });
@@ -180,13 +217,62 @@ export default function MapPicker({
     }
   };
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setSearchQuery(e.target.value);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    
+    // Debounce search
+    const timeoutId = setTimeout(() => {
+      searchPlaces(value);
+    }, 300);
 
-  // CHANGED: search button is now type="button", so form is never submitted
-  const handleSearchButtonClick = () => {
-    // No-op; SearchBox handles search via input changes/enter key.
-    // This avoids an accidental submit or reload.
+    return () => clearTimeout(timeoutId);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showPredictions || predictions.length === 0) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedIndex(prev => 
+          prev < predictions.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (selectedIndex >= 0 && selectedIndex < predictions.length) {
+          const selected = predictions[selectedIndex];
+          selectPlace(selected.place_id, selected.description);
+        }
+        break;
+      case 'Escape':
+        setShowPredictions(false);
+        setSelectedIndex(-1);
+        break;
+    }
+  };
+
+  const handlePredictionClick = (prediction: Prediction) => {
+    selectPlace(prediction.place_id, prediction.description);
+  };
+
+  const handleInputBlur = () => {
+    // Delay hiding to allow click events
+    setTimeout(() => {
+      setShowPredictions(false);
+      setSelectedIndex(-1);
+    }, 200);
+  };
+
+  const handleInputFocus = () => {
+    if (predictions.length > 0 && searchQuery.trim()) {
+      setShowPredictions(true);
+    }
   };
 
   useEffect(() => {
@@ -196,6 +282,8 @@ export default function MapPicker({
     setMapError(null);
     setSearchQuery("");
     setIsSearching(false);
+    setPredictions([]);
+    setShowPredictions(false);
     setCurrentLocation(savedLocation || null);
     setPendingSelection(null);
     const timer = setTimeout(() => {
@@ -234,7 +322,7 @@ export default function MapPicker({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] overflow-visible flex flex-col p-0">
         <DialogHeader className="p-6 pb-1 flex-shrink-0">
           <DialogTitle>Select Location on Map</DialogTitle>
           <p className="text-sm text-muted-foreground">
@@ -242,25 +330,49 @@ export default function MapPicker({
           </p>
         </DialogHeader>
         <div className="flex-1 flex flex-col px-6 pb-6 min-h-0">
-          <div className="flex gap-2 mb-4 flex-shrink-0">
+          <div className="flex gap-2 mb-4 flex-shrink-0 relative">
             <div className="flex-1 flex gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
                 <Input
                   ref={searchInputRef}
                   type="text"
                   placeholder="Search for a location..."
                   value={searchQuery}
                   onChange={handleSearchChange}
+                  onKeyDown={handleKeyDown}
+                  onBlur={handleInputBlur}
+                  onFocus={handleInputFocus}
                   className="pl-10"
                   disabled={isLoading || mapError !== null}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") e.preventDefault();
-                  }}
+                  autoComplete="off"
+                  spellCheck="false"
                 />
+                {showPredictions && predictions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto mt-1">
+                    {predictions.map((prediction, index) => (
+                      <div
+                        key={prediction.place_id}
+                        className={`px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 hover:bg-gray-50 ${
+                          index === selectedIndex ? 'bg-blue-50' : ''
+                        }`}
+                        onMouseDown={(e) => e.preventDefault()} // Prevent blur
+                        onClick={() => handlePredictionClick(prediction)}
+                        onMouseEnter={() => setSelectedIndex(index)}
+                      >
+                        <div className="text-sm font-medium text-gray-900">
+                          {prediction.structured_formatting.main_text}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {prediction.structured_formatting.secondary_text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <Button
-                type="button" // Changed from submit!
+                type="button"
                 size="sm"
                 disabled={
                   isLoading ||
@@ -268,7 +380,7 @@ export default function MapPicker({
                   !searchQuery.trim() ||
                   isSearching
                 }
-                onClick={handleSearchButtonClick}
+                onClick={() => searchPlaces(searchQuery)}
               >
                 {isSearching ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -329,11 +441,11 @@ export default function MapPicker({
             )}
             <div ref={mapRef} className="w-full h-full absolute inset-0" />
           </div>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-4 flex-shrink-0">
-                <p className="text-xs text-muted-foreground">
-                  Search above or click anywhere on the map to select that location
-                </p>
-              </div>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-4 flex-shrink-0">
+            <p className="text-xs text-muted-foreground">
+              Search above or click anywhere on the map to select that location
+            </p>
+          </div>
           {pendingSelection && (
             <div className="mt-4 flex flex-col gap-2 items-end">
               <Button size="sm" onClick={handleConfirm}>Confirm Selection</Button>

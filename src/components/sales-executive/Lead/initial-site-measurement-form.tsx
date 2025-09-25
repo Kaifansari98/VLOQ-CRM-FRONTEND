@@ -31,6 +31,7 @@ interface LeadViewModalProps {
   data?: {
     id: number;
     accountId: number;
+    name: string;
   };
 }
 
