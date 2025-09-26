@@ -39,14 +39,11 @@ const itemVariants = {
   },
 };
 
-export default function OpenLeadDetails({
-  leadId,
-}: OpenLeadDetailsProps) {
+export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data, isLoading } = useLeadById(leadId, vendorId, userId);
   const lead = data?.data?.lead;
-  console.log("lead data site link :- ", lead?.site_map_link);
   console.log("Lead Details: ", leadId);
 
   if (!lead) {
@@ -112,16 +109,33 @@ export default function OpenLeadDetails({
               value={lead.billing_name}
               icon={Building}
             />
-              <InfoField
+            <InfoField
               label="Site Address"
               value={`${lead.site_address || "No address provided"}`.trim()}
               icon={MapPin}
             />
-              <InfoField
-              label="Site Address"
-              value={`${lead.site_address || "No address provided"}`.trim()}
-              icon={MapPin}
-            />
+
+            {/* ✅ Special handling for map link */}
+            <motion.div variants={itemVariants} className="space-y-1">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-gray-400" />
+                <label className="text-sm font-medium">
+                  Site Google Maps Link
+                </label>
+              </div>
+              {lead?.site_map_link ? (
+                <a
+                  href={lead.site_map_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="pl-6 font-medium underline"
+                >
+                  View on Google Maps
+                </a>
+              ) : (
+                <p className="pl-6">No map link provided</p>
+              )}
+            </motion.div>
           </div>
         </motion.section>
 

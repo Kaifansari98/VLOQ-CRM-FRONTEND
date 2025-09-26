@@ -79,6 +79,7 @@ export interface EditLeadPayload {
   alt_contact_no?: string;
   email?: string;
   site_address?: string;
+  site_map_link?: string;
   site_type_id?: number;
   priority?: string;
   billing_name?: string;
