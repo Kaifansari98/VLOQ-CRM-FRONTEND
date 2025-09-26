@@ -29,9 +29,14 @@ import { useQueryClient } from "@tanstack/react-query";
 
 // ✅ Schema (can later extend with file type/size rules)
 const designsSchema = z.object({
-  upload_pdf: z.any().refine((files) => files && files.length > 0, {
-    message: "Please upload at least one design file.",
-  }),
+  upload_pdf: z
+    .any()
+    .refine((files) => files && files.length > 0, {
+      message: "Please upload at least one design file.",
+    })
+    .refine((files) => files.length <= 10, {
+      message: "You can upload up to 10 files only.",
+    }),
 });
 
 type DesignsFormValues = z.infer<typeof designsSchema>;
@@ -109,22 +114,22 @@ const DesignsModal: React.FC<LeadViewModalProps> = ({ open, onOpenChange }) => {
                 className="space-y-6 py-3"
               >
                 <FormField
-                  control={form.control}
-                  name="upload_pdf"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Design Documents</FormLabel>
-                      <FormControl>
-                        <DocumentsUploader
-                          value={field.value}
-                          onChange={field.onChange}
-                          accept=".pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                control={form.control}
+                name="upload_pdf"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Upload Design Files</FormLabel> {/* simplified label */}
+                    <FormControl>
+                      <DocumentsUploader
+                        value={field.value}
+                        onChange={field.onChange}
+                        accept=".pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
                 <div className="flex justify-end gap-2">
                   <Button
                     type="button"

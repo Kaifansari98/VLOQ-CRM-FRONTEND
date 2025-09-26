@@ -51,9 +51,8 @@ export function DocumentsUploader({
       .map((ext) => extToLabel[ext] || ext.toUpperCase());
   }, [accept]);
 
-  const description = `Supports ${acceptedFormats.join(
-    ", "
-  )}. Drag & drop or click below to select files.`;
+  const description =
+    "You can upload up to 10 design files (PDF, CAD or supported formats). Drag & drop or click below to select files.";
 
   // Simulated upload handler
   const onUpload: NonNullable<FileUploadProps["onUpload"]> = React.useCallback(
@@ -98,7 +97,7 @@ export function DocumentsUploader({
       onFileReject={onFileReject}
       onUpload={onUpload}
       multiple
-      accept={accept ?? ".pdf,.doc,.docx,.xls,.xlsx"}
+      accept={accept ?? ".pdf,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct"}
       className="w-full"
     >
       <FileUploadDropzone>

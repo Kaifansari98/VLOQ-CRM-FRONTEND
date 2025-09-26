@@ -46,6 +46,7 @@ export default function OpenLeadDetails({
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data, isLoading } = useLeadById(leadId, vendorId, userId);
   const lead = data?.data?.lead;
+  console.log("lead data site link :- ", lead?.site_map_link);
   console.log("Lead Details: ", leadId);
 
   if (!lead) {
@@ -110,6 +111,16 @@ export default function OpenLeadDetails({
               label="Billing Name"
               value={lead.billing_name}
               icon={Building}
+            />
+              <InfoField
+              label="Site Address"
+              value={`${lead.site_address || "No address provided"}`.trim()}
+              icon={MapPin}
+            />
+              <InfoField
+              label="Site Address"
+              value={`${lead.site_address || "No address provided"}`.trim()}
+              icon={MapPin}
             />
           </div>
         </motion.section>
@@ -178,18 +189,6 @@ export default function OpenLeadDetails({
               <div className=" border rounded-md p-2 ml-6">
                 <p className="text-sm leading-relaxed whitespace-pre-wrap">
                   {lead.designer_remark || "No remarks provided"}
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <MapPin className="w-4 h-4 " />
-                <label className="text-sm font-medium ">Site Address</label>
-              </div>
-              <div className=" border  rounded-md p-4 ml-6">
-                <p className="text-sm  leading-relaxed whitespace-pre-wrap">
-                  {lead.site_address || "No address provided"}
                 </p>
               </div>
             </div>
