@@ -214,6 +214,10 @@ export default function LeadsGenerationForm({
       designer_remark: values.designer_remark || undefined,
       vendor_id: vendorId,
       created_by: createdBy,
+      // ✅ new field
+      site_map_link: savedMapLocation 
+      ? `https://www.google.com/maps?q=${savedMapLocation.lat},${savedMapLocation.lng}`
+      : undefined,
 
       // ✅ cleanly separated
       country_code: countryCode,
