@@ -347,10 +347,10 @@ const MyTaskTable = () => {
   return (
     <div className="relative space-y-4">
       <DataTable
-        table={table}
-        // onRowClick={handleRowClick}
-        onRowDoubleClick={handleRowDoubleClick} // 👈 add this
-      >
+          table={table}
+          // onRowClick={handleRowClick}
+          onRowDoubleClick={handleRowDoubleClick}
+        >
         {enableAdvancedFilter ? (
           <DataTableAdvancedToolbar table={table}>
             <DueDateTabs table={table} taskCounts={taskCounts} />

@@ -36,6 +36,8 @@ import {
 import { updateLead, getLeadById, EditLeadPayload } from "@/api/leads";
 import { CountryCode, parsePhoneNumber } from "libphonenumber-js";
 import TextAreaInput from "@/components/origin-text-area";
+import MapPicker from "@/components/MapPicker";
+import { MapPin } from "lucide-react";
 
 // Form validation schema
 const formSchema = z.object({
@@ -66,6 +68,9 @@ const formSchema = z.object({
     .or(z.literal("")), // allow empty
   site_type_id: z.string().min(1, "Please select a site type"),
   site_address: z.string().min(1, "Site Address is required").max(2000),
+
+  site_map_link: z.string().optional().or(z.literal("")), // allow empty
+
   priority: z.string().min(1, "Please select a priority"),
   source_id: z.string().min(1, "Please select a source"),
 
@@ -120,6 +125,12 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const createdBy = useAppSelector((state) => state.auth.user?.id);
   const queryClient = useQueryClient();
+  const [mapOpen, setMapOpen] = useState(false);
+  const [savedMapLocation, setSavedMapLocation] = useState<{
+    lat: number;
+    lng: number;
+    address: string;
+  } | null>(null);
   const [primaryCountry, setPrimaryCountry] = useState<CountryCode>("IN");
   const [altCountry, setAltCountry] = useState<CountryCode>("IN");
 
@@ -156,6 +167,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       email: "",
       site_type_id: "",
       site_address: "",
+      site_map_link: "",
       priority: "",
       source_id: "",
       product_types: [],
@@ -251,6 +263,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           email: lead.email || "",
           site_type_id: lead.site_type_id ? String(lead.site_type_id) : "",
           site_address: lead.site_address || "",
+          site_map_link: lead.site_map_link || "",
           priority: lead.priority || "",
           source_id: lead.source_id ? String(lead.source_id) : "",
           product_types: productTypeIds,
@@ -259,6 +272,19 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           archetech_name: lead.archetech_name || "",
           designer_remark: lead.designer_remark || "",
         });
+
+        if (lead.site_map_link && lead.site_map_link.includes("maps?q=")) {
+          const coords = lead.site_map_link.match(
+            /q=(-?\d+\.?\d*),(-?\d+\.?\d*)/
+          );
+          if (coords) {
+            setSavedMapLocation({
+              lat: parseFloat(coords[1]),
+              lng: parseFloat(coords[2]),
+              address: lead.site_address || "",
+            });
+          }
+        }
 
         // Handle documents if they exist
         if (lead.documents && Array.isArray(lead.documents)) {
@@ -337,6 +363,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         ? Number(values.site_type_id)
         : undefined,
       site_address: values.site_address || "",
+      site_map_link: values.site_map_link || "",
       priority: values.priority || "",
       source_id: values.source_id ? Number(values.source_id) : undefined,
       product_types: (values.product_types || []).map((id) => Number(id)),
@@ -581,18 +608,56 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             name="site_address"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm">Site Address *</FormLabel>
+                <div className="w-full flex justify-between">
+                  <FormLabel className="text-sm">Site Address *</FormLabel>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMapOpen(true)}
+                    className="flex items-center gap-1"
+                  >
+                    <MapPin className="h-4 w-4" />
+                    {savedMapLocation ? "Update Map" : "Open Map"}
+                  </Button>
+                </div>
                 <FormControl>
                   <TextAreaInput
                     value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Enter your address"
+                    onChange={(value) => {
+                      field.onChange(value);
+                      if (
+                        savedMapLocation &&
+                        value !== savedMapLocation.address
+                      ) {
+                        setSavedMapLocation(null); // reset if manually edited
+                      }
+                    }}
+                    placeholder="Enter address or use map"
                   />
                 </FormControl>
-                {/* <FormDescription className="text-xs">
-                  Site address of the lead.
-                </FormDescription> */}
                 <FormMessage />
+
+                <MapPicker
+                  open={mapOpen}
+                  onClose={() => setMapOpen(false)}
+                  savedLocation={savedMapLocation}
+                  onSelect={(address, link) => {
+                    // Autofill address
+                    field.onChange(address);
+                    // Save coords
+                    const coords = link.match(/q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+                    if (coords) {
+                      setSavedMapLocation({
+                        lat: parseFloat(coords[1]),
+                        lng: parseFloat(coords[2]),
+                        address,
+                      });
+                    }
+                    // Also push into form state for site_map_link
+                    form.setValue("site_map_link", link);
+                  }}
+                />
               </FormItem>
             )}
           />

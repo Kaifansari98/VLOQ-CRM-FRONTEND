@@ -119,7 +119,7 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
                         <CustomeDatePicker
                           value={field.value}
                           onChange={field.onChange}
-                          restriction="pastOnly"
+                          restriction="pastWeekOnly"
                         />
                       </FormControl>
                       <FormMessage />

@@ -39,9 +39,7 @@ const itemVariants = {
   },
 };
 
-export default function OpenLeadDetails({
-  leadId,
-}: OpenLeadDetailsProps) {
+export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data, isLoading } = useLeadById(leadId, vendorId, userId);
@@ -111,6 +109,33 @@ export default function OpenLeadDetails({
               value={lead.billing_name}
               icon={Building}
             />
+            <InfoField
+              label="Site Address"
+              value={`${lead.site_address || "No address provided"}`.trim()}
+              icon={MapPin}
+            />
+
+            {/* ✅ Special handling for map link */}
+            <motion.div variants={itemVariants} className="space-y-1">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-gray-400" />
+                <label className="text-sm font-medium">
+                  Site Google Maps Link
+                </label>
+              </div>
+              {lead?.site_map_link ? (
+                <a
+                  href={lead.site_map_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="pl-6 font-medium underline"
+                >
+                  View on Google Maps
+                </a>
+              ) : (
+                <p className="pl-6">No map link provided</p>
+              )}
+            </motion.div>
           </div>
         </motion.section>
 
@@ -178,18 +203,6 @@ export default function OpenLeadDetails({
               <div className=" border rounded-md p-2 ml-6">
                 <p className="text-sm leading-relaxed whitespace-pre-wrap">
                   {lead.designer_remark || "No remarks provided"}
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <MapPin className="w-4 h-4 " />
-                <label className="text-sm font-medium ">Site Address</label>
-              </div>
-              <div className=" border  rounded-md p-4 ml-6">
-                <p className="text-sm  leading-relaxed whitespace-pre-wrap">
-                  {lead.site_address || "No address provided"}
                 </p>
               </div>
             </div>

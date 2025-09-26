@@ -134,7 +134,7 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
             className="w-28 bg-green-500 hover:bg-green-600 text-white"
             onClick={() => setOpenCompletedModal(true)}
           >
-            Completed
+            Complete
           </Button>
         </div>
 
@@ -193,7 +193,7 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
             >
               {completedUpdateMutation.isPending
                 ? "Processing..."
-                : "Completed"}
+                : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

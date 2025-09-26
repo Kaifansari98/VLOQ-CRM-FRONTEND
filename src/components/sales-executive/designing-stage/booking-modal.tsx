@@ -22,7 +22,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import TextAreaInput from "@/components/origin-text-area";
-import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 import { useAppSelector } from "@/redux/store";
 import {
   Select,
@@ -390,7 +389,12 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
         open={openSelectDocModal}
         onOpenChange={setOpenSelectDocModal}
         leadId={leadId!}
+        onSelectDocs={(files) => {
+          const existing = form.getValues("final_documents") || [];
+          form.setValue("final_documents", [...existing, ...files], { shouldValidate: true });
+        }}
       />
+
     </Dialog>
   );
 };
