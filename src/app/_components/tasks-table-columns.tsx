@@ -25,6 +25,8 @@ export type ProcessedTask = {
   assignedBy: number; // userLeadTask.created_by
   assignedAt: string; // userLeadTask.created_at
   assignedByName: string;
+  remark?: string;
+
 };
 
 export function getVendorLeadsTableColumns({

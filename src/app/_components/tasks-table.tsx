@@ -65,11 +65,8 @@ const MyTaskTable = () => {
   );
 
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
-  const [openDelete, setOpenDelete] = useState<boolean>(false);
-  const [openView, setOpenView] = useState<boolean>(false);
   const [assignOpenLead, setAssignOpenLead] = useState<boolean>(false);
   const [editOpenLead, setEditOpenLead] = useState<boolean>(false);
-  const deleteLeadMutation = useDeleteLead();
   const [openFollowUp, setOpenFollowUp] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
@@ -96,9 +93,6 @@ const MyTaskTable = () => {
     useState<DataTableRowAction<ProcessedTask> | null>(null);
 
   useEffect(() => {
-    if (rowAction?.variant === "delete" && rowAction.row) {
-      setOpenDelete(true);
-    }
     if (rowAction?.variant === "reassignlead" && rowAction.row) {
       console.log("Original Data row Leads: ", rowAction.row.original);
       setAssignOpenLead(true);
@@ -116,35 +110,6 @@ const MyTaskTable = () => {
     }
   }, [rowAction]);
 
-  const handleDeleteLead = useCallback(async () => {
-    if (!rowAction?.row) return;
-
-    const leadId = rowAction.row.original.id;
-
-    if (!vendorId || !userId) {
-      toast.error("Vendor or User information is missing!");
-      return;
-    }
-
-    deleteLeadMutation.mutate(
-      {
-        leadId,
-        vendorId,
-        userId,
-      },
-      {
-        onSuccess: () => {
-          toast.success("Lead deleted successfully!");
-        },
-        onError: (error: any) => {
-          toast.error(error?.message || "Failed to delete lead!");
-        },
-      }
-    );
-
-    setOpenDelete(false);
-    setRowAction(null);
-  }, [rowAction, vendorId, userId, deleteLeadMutation]);
 
   const router = useRouter();
 
@@ -196,6 +161,7 @@ const MyTaskTable = () => {
       assignedBy: task.userLeadTask.created_by,
       assignedByName: task.userLeadTask.created_by_name || "-",
       assignedAt: task.userLeadTask.created_at,
+      remark: task.userLeadTask?.remark || "",
     }));
   }, [vendorUserTasksQuery.data]);
 
@@ -294,33 +260,6 @@ const MyTaskTable = () => {
     }
   }, [table, dueDateFilterFn]);
 
-  // Memoized components to prevent re-renders
-  const DueDateFilter = useMemo(() => {
-    return ({ table }: { table: any }) => {
-      const column = table.getColumn("dueDate");
-      const currentValue = (column?.getFilterValue() as string) ?? "";
-
-      return (
-        <Select
-          value={currentValue}
-          onValueChange={(value) => {
-            column?.setFilterValue(value === "all" ? "" : value);
-          }}
-        >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Filter Due Date" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Tasks</SelectItem>
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="upcoming">Upcoming</SelectItem>
-            <SelectItem value="overdue">Overdue</SelectItem>
-          </SelectContent>
-        </Select>
-      );
-    };
-  }, []);
-
   const DueDateTabs = useMemo(() => {
     return ({
       table,
@@ -414,8 +353,9 @@ const MyTaskTable = () => {
       >
         {enableAdvancedFilter ? (
           <DataTableAdvancedToolbar table={table}>
+            <DueDateTabs table={table} taskCounts={taskCounts} />
             <DataTableSortList table={table} align="start" />
-            <DueDateFilter table={table} />
+
             {filterFlag === "advancedFilters" ? (
               <DataTableFilterList
                 table={table}
@@ -434,10 +374,18 @@ const MyTaskTable = () => {
             )}
           </DataTableAdvancedToolbar>
         ) : (
-          <DataTableToolbar table={table}>
-            <DueDateTabs table={table} taskCounts={taskCounts} />
-            <DataTableSortList table={table} align="end" />
-          </DataTableToolbar>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="shrink-0">
+              <DueDateTabs table={table} taskCounts={taskCounts} />
+            </div>
+
+            <DataTableToolbar
+              table={table}
+              className="flex items-center gap-6 md:justify-end w-full md:w-auto"
+            >
+              <DataTableSortList table={table} />
+            </DataTableToolbar>
+          </div>
         )}
       </DataTable>
 
@@ -478,7 +426,8 @@ const MyTaskTable = () => {
           id: rowAction?.row.original.leadId || 0,
           accountId: rowAction?.row.original.accountId || 0,
           taskId: rowAction?.row.original.id || 0,
-          
+          remark: rowAction?.row.original.remark,
+          dueDate: rowAction?.row.original.dueDate,
         }}
       />
     </div>

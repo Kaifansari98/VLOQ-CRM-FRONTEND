@@ -50,6 +50,8 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
   const cancelledUpdateMutation = useCancelledUpdateTask();
   const queryClient = useQueryClient();
 
+  console.log("Reschedule Remark :- ", data?.remark);
+  console.log("Reschedule DueDate :- ", data?.dueDate);
   const handleMarkCompleted = () => {
     completedUpdateMutation.mutate(
       {
@@ -119,31 +121,50 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
       description="Update the follow-up status for this lead."
       size="md"
     >
-      <div className="p-6 space-y-5">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Mark as Completed</span>
+      <div className="space-y-4 p-6">
+        {/* Mark as Completed */}
+        <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
+          <div className="flex flex-col gap-1">
+            <span className="text-base font-semibold">Mark as Completed</span>
+            <p className="text-sm text-muted-foreground">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+            </p>
+          </div>
           <Button
-            className="w-24 sm:w-28 md:w-32 lg:w-36 xl:w-40"
+            className="w-28 bg-green-500 hover:bg-green-600 text-white"
             onClick={() => setOpenCompletedModal(true)}
           >
             Completed
           </Button>
         </div>
 
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Reschedule</span>
+        {/* Reschedule */}
+        <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
+          <div className="flex flex-col gap-1">
+            <span className="text-base font-semibold">Reschedule</span>
+            <p className="text-sm text-muted-foreground">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit. Quos, id!
+            </p>
+          </div>
           <Button
-            className="w-24 sm:w-28 md:w-32 lg:w-36 xl:w-40"
+            className="w-28 bg-blue-500 hover:bg-blue-600 "
             onClick={() => setOpenRescheduleModal(true)}
           >
             Reschedule
           </Button>
         </div>
 
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Mark as Cancel</span>
+        {/* Mark as Cancel */}
+        <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
+          <div className="flex flex-col gap-1">
+            <span className="text-base font-semibold ">Mark as Cancel</span>
+            <p className="text-sm text-muted-foreground">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Accusamus, aliquid.
+            </p>
+          </div>
           <Button
-            className="w-24 sm:w-28 md:w-32 lg:w-36 xl:w-40"
+            className="w-28 bg-red-500 hover:bg-red-600 text-white"
             onClick={() => setOpenCancelModal(true)}
           >
             Cancel
@@ -202,17 +223,16 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
         </AlertDialogContent>
       </AlertDialog>
 
-
       <RescheduleModal
-              open={openRescheduleModal}
-              onOpenChange={setOpenRescheduleModal}
-              data={{
-                id:leadId!,
-                taskId:taskId,
-                remark: data?.remark,
-                dueDate: data?.dueDate,
-              }}
-            />
+        open={openRescheduleModal}
+        onOpenChange={setOpenRescheduleModal}
+        data={{
+          id: leadId!,
+          taskId: taskId,
+          remark: data?.remark,
+          dueDate: data?.dueDate,
+        }}
+      />
     </BaseModal>
   );
 };

@@ -9,6 +9,7 @@ export interface VendorUserTask {
     id: number;
     status: string;
     due_date: string;
+    remark: string;
     task_type: string;
     closed_by: number | null;
     closed_at: string | null;
@@ -17,6 +18,7 @@ export interface VendorUserTask {
     created_at: string;
     updated_by: number | null;
     updated_at: string;
+    
   };
   leadMaster: {
     id: number;
