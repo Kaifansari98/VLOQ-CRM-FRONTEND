@@ -63,6 +63,7 @@ export interface Lead {
   assignedTo: AssignTo | null;
   statusType: StatusType;
   initial_site_measurement_date: string;
+  activity_status?: string;
 }
 
 export interface AssignToPayload {

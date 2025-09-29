@@ -2,6 +2,7 @@ import {
   editSelection,
   EditSelectionPayload,
   fetchDesigningStageLeads,
+  getDesigningStageCounts,
   getDesignsDoc,
   getQuotationDoc,
   getSelectionData,
@@ -16,10 +17,7 @@ import {
 } from "@/types/designing-stage-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-export const useDesigningStageLeads = (
-  vendorId: number,
-  userId: number,
-) => {
+export const useDesigningStageLeads = (vendorId: number, userId: number) => {
   return useQuery<GetDesigningStageResponse>({
     queryKey: ["designing-stage-leads", vendorId, userId],
     queryFn: () => fetchDesigningStageLeads(vendorId, userId),
@@ -70,8 +68,8 @@ export const useSubmitSelection = () => {
     mutationFn: (payload: SubmitSelectionPayload) => submitSelection(payload),
     onSuccess: (_, variables) => {
       // Invalidate the specific selection data query
-      queryClient.invalidateQueries({ 
-        queryKey: ["getSelectionData", variables.vendor_id, variables.lead_id] 
+      queryClient.invalidateQueries({
+        queryKey: ["getSelectionData", variables.vendor_id, variables.lead_id],
       });
       // Also invalidate the general selections query as fallback
       queryClient.invalidateQueries({ queryKey: ["selections"] });
@@ -91,19 +89,23 @@ export const useEditSelectionData = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ selectionId, payload }: { selectionId: number; payload: EditSelectionPayload }) =>
-      editSelection(selectionId, payload),
+    mutationFn: ({
+      selectionId,
+      payload,
+    }: {
+      selectionId: number;
+      payload: EditSelectionPayload;
+    }) => editSelection(selectionId, payload),
     onSuccess: (_, variables) => {
       // We need to invalidate queries but we don't have vendorId/leadId in the variables
       // So invalidate all getSelectionData queries
-      queryClient.invalidateQueries({ 
-        queryKey: ["getSelectionData"] 
+      queryClient.invalidateQueries({
+        queryKey: ["getSelectionData"],
       });
       queryClient.invalidateQueries({ queryKey: ["selections"] });
     },
   });
 };
-
 
 export function useQuotationDoc(vendorId?: number, leadId?: number) {
   return useQuery({
@@ -115,5 +117,17 @@ export function useQuotationDoc(vendorId?: number, leadId?: number) {
       return getQuotationDoc(vendorId, leadId);
     },
     enabled: Boolean(vendorId && leadId),
+  });
+}
+
+export function useDesigningStageCounts(
+  vendorId: number | undefined,
+  leadId: number | undefined
+) {
+  return useQuery({
+    queryKey: ["designingStageCounts", vendorId, leadId],
+    queryFn: () => getDesigningStageCounts(vendorId!, leadId!),
+    enabled: Boolean(vendorId && leadId), // run only when both IDs are available
+    staleTime: 5 * 60 * 1000, // optional: cache for 5 minutes
   });
 }

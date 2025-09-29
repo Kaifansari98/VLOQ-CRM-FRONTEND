@@ -1,3 +1,4 @@
+import { getInitialSiteMeasurementTask } from "@/api/designingStageQueries";
 import {
   CancelledPayload,
   CancelledUpdateTheTaskIsmAndFollowUp,
@@ -74,5 +75,18 @@ export function useSiteMeasurementLeadById(leadId: number) {
     enabled: Boolean(leadId),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+  });
+}
+
+export function useInitialSiteMeasurementTask(
+  userId: number | undefined,
+  leadId: number | undefined
+) {
+  return useQuery({
+    queryKey: ["initialSiteMeasurementTask", userId, leadId],
+    queryFn: () => getInitialSiteMeasurementTask(userId!, leadId!),
+    enabled: Boolean(userId && leadId),
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
 }

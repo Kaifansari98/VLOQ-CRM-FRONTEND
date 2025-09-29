@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "@/components/ModeToggle";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { useState } from "react";
@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import {
   CheckCircle,
+  CircleArrowOutUpRight,
   ClipboardCheck,
   Clock,
   EllipsisVertical,
@@ -37,29 +38,38 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
+import { useInitialSiteMeasurementTask } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
+import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
+import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 
 export default function SiteMeasurementLead() {
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
 
+  const searchParams = useSearchParams();
+  const accountId = searchParams.get("accountId");
+
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const updateStatusMutation = useUpdateActivityStatus();
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
-  const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
-
-  if (isLoading) {
-    return <p className="p-6">Loading lead details...</p>;
-  }
-
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [activityType, setActivityType] = useState<"onHold" | "lost">("onHold");
+  const { data, isLoading, isPending } = useInitialSiteMeasurementTask(
+    userId,
+    leadIdNum
+  );
+  console.log("lead id: ", leadIdNum);
+  console.log("Site measurement Task: ", data);
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -107,44 +117,38 @@ export default function SiteMeasurementLead() {
                   Upload Measurement
                 </DropdownMenuItem>
 
+                {/* ✅ Activity Status Submenu */}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <CircleArrowOutUpRight className="mr-2 h-4 w-4" />
+                    Activity Status
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setActivityType("onHold");
+                        setActivityModalOpen(true);
+                      }}
+                    >
+                      <Clock className="h-4 w-4" />
+                      Mark On Hold
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setActivityType("lost");
+                        setActivityModalOpen(true);
+                      }}
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Mark As Lost
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen size={20} />
                   Edit
                 </DropdownMenuItem>
-                {/* 🔹 Follow Up Submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="flex items-center gap-2">
-                    <ClipboardCheck size={20} />
-                    Follow Up
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-48">
-                    <DropdownMenuItem
-                      onSelect={() => alert("Completed")}
-                      className="flex items-center gap-2"
-                    >
-                      <CheckCircle size={18} />
-                      Completed
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onSelect={() => alert("Reschedule")}
-                      className="flex items-center gap-2"
-                    >
-                      <Clock size={18} />
-                      Reschedule
-                    </DropdownMenuItem>
-
-                    <DropdownMenuSeparator />
-
-                    <DropdownMenuItem
-                      onSelect={() => alert("Cancel")}
-                      className="flex items-center gap-2"
-                    >
-                      <XCircle size={18} />
-                      Cancel
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
                 <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
                   <Users size={20} />
                   Reassign Lead
@@ -162,7 +166,11 @@ export default function SiteMeasurementLead() {
         </header>
 
         <main className="flex-1 px-6 pt-4">
-          <LeadDetailsUtil status="details" leadId={leadIdNum} />
+          <LeadDetailsUtil
+            status="details"
+            leadId={leadIdNum}
+            leadInfo={{ leadId: leadIdNum, accountId: accountId }}
+          />
         </main>
 
         {/* ✅ Render modal here */}
@@ -183,6 +191,28 @@ export default function SiteMeasurementLead() {
           open={openEditModal}
           onOpenChange={setOpenEditModal}
           leadData={{ id: leadIdNum }}
+        />
+
+        <ActivityStatusModal
+          open={activityModalOpen}
+          onOpenChange={setActivityModalOpen}
+          statusType={activityType} // "onHold" | "lost"
+          onSubmitRemark={(remark) => {
+            if (!vendorId || !userId || !accountId) return;
+
+            updateStatusMutation.mutate({
+              leadId: leadIdNum,
+              payload: {
+                vendorId,
+                accountId: Number(accountId),
+                userId,
+                status: activityType,
+                remark,
+                createdBy: userId,
+              },
+            });
+          }}
+          loading={updateStatusMutation.isPending}
         />
       </SidebarInset>
     </SidebarProvider>

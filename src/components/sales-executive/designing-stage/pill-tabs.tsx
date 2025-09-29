@@ -32,7 +32,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
     { tabs, defaultActiveId = tabs[0]?.id, onTabChange, className, bookingBtn=true },
     ref
   ) => {
-    const { leadId, accountId } =
+    const { leadId, accountId,canBook } =
       useDetails();
     const [activeTab, setActiveTab] = React.useState(defaultActiveId);
     const [openQuotationModal, setOpenQuotationModal] = useState(false);
@@ -129,6 +129,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
               <Button
                 size="sm"
                 className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
+                disabled={!canBook}
                 onClick={() => setOpenBookingModal(true)}
               >
                 <Plus size={16} />

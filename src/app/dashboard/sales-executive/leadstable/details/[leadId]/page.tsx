@@ -14,6 +14,16 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "@/components/ModeToggle";
 import { useParams } from "next/navigation";
@@ -23,6 +33,16 @@ import { useState } from "react";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda"; // ✅ import modal
 import { useAppSelector } from "@/redux/store";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
+import {
+  ClipboardCheck,
+  SquarePen,
+  Users,
+  XCircle,
+  Clock,
+  EllipsisVertical,
+} from "lucide-react";
+import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
+import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 
 export default function LeadDetails() {
   const { leadId } = useParams();
@@ -30,6 +50,11 @@ export default function LeadDetails() {
 
   // 👇 modal state
   const [assignOpen, setAssignOpen] = useState(false);
+
+  const [assignOpenLead, setAssignOpenLead] = useState(false);
+  const [openEditModal, setOpenEditModal] = useState(false);
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [activityType, setActivityType] = useState<"onHold" | "lost">("onHold");
 
   return (
     <SidebarProvider>
@@ -48,7 +73,7 @@ export default function LeadDetails() {
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbLink href="/dashboard/sales-executive/leadstable">
-                    View Leads
+                  Open Leads
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
@@ -63,6 +88,69 @@ export default function LeadDetails() {
               Assign Task
             </Button>
             <ModeToggle />
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <EllipsisVertical size={22} />
+                </Button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="end">
+                {/* 🔹 Upload Measurement */}
+                <DropdownMenuItem onSelect={() => alert("Upload Measurement")}>
+                  <ClipboardCheck className="mr-2 h-4 w-4" />
+                  Upload Measurement
+                </DropdownMenuItem>
+
+                {/* 🔹 Edit */}
+                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                  <SquarePen className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+
+                {/* 🔹 Reassign */}
+                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                  <Users className="mr-2 h-4 w-4" />
+                  Reassign Lead
+                </DropdownMenuItem>
+
+                {/* 🔹 Activity Status submenu */}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <EllipsisVertical className="mr-2 h-4 w-4" />
+                    Activity Status
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setActivityType("onHold");
+                        setActivityModalOpen(true);
+                      }}
+                    >
+                      <Clock className="h-4 w-4" />
+                      Mark On Hold
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setActivityType("lost");
+                        setActivityModalOpen(true);
+                      }}
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Mark As Lost
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+
+                <DropdownMenuSeparator />
+
+                {/* 🔹 Delete */}
+                <DropdownMenuItem onSelect={() => alert("Delete")}>
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -76,6 +164,28 @@ export default function LeadDetails() {
         open={assignOpen}
         onOpenChange={setAssignOpen}
         data={{ id: leadIdNum, name: "" }}
+      />
+
+      <AssignLeadModal
+        open={assignOpenLead}
+        onOpenChange={setAssignOpenLead}
+        leadData={{ id: leadIdNum }}
+      />
+
+      <EditLeadModal
+        open={openEditModal}
+        onOpenChange={setOpenEditModal}
+        leadData={{ id: leadIdNum }}
+      />
+
+      <ActivityStatusModal
+        open={activityModalOpen}
+        onOpenChange={setActivityModalOpen}
+        statusType={activityType}
+        onSubmitRemark={(remark) => {
+          console.log("Selected status:", activityType, "with remark:", remark);
+          // 🔹 later integrate API mutation here
+        }}
       />
     </SidebarProvider>
   );

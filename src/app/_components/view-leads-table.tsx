@@ -200,8 +200,8 @@ const ViewOpenLeadTable = () => {
 
   // Setup columns
   const columns = React.useMemo(
-    () => getViewOpenLeadsTableColumns({ setRowAction, userType }),
-    [setRowAction, userType]
+    () => getViewOpenLeadsTableColumns({ setRowAction, userType, router }),
+    [setRowAction, userType, router]
   );
 
   // Create table with direct TanStack Table

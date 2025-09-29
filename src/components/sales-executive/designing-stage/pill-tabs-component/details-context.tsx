@@ -3,6 +3,7 @@ import { createContext, useContext } from "react";
 interface DetailsContextProps {
   leadId: number;
   accountId: number;
+  canBook?: boolean;
 }
 
 const DetailsContext = createContext<DetailsContextProps | null>(null);
