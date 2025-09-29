@@ -76,9 +76,9 @@ const SelectDocumentModal: React.FC<Props> = ({
       onOpenChange={onOpenChange}
       title="Select Documents"
       description="Choose documents for the lead"
-      size="lg"
+      size="sm"
     >
-      <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+      <div className="py-4 px-5 space-y-6 max-h-[60vh] overflow-y-auto">
         {/* Quotations */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -165,12 +165,12 @@ const SelectDocumentModal: React.FC<Props> = ({
       </div>
 
       {/* Footer */}
-      <div className="flex justify-end gap-2 border-t px-6 py-3">
-        <Button variant="outline" onClick={() => setSelectedDocs([])}>
+      <div className="flex w-full justify-end items-center gap-2 border-t px-6 py-3">
+        <Button variant="outline" onClick={() => setSelectedDocs([])} className="">
           Clear
         </Button>
         <Button
-          className="w-full mt-4"
+          className=""
           onClick={async () => {
             const convertedFiles: File[] = [];
 
