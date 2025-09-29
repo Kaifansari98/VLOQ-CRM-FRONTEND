@@ -74,6 +74,9 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
             queryClient.invalidateQueries({
               queryKey: ["siteMeasurementLeads", vendorId],
             });
+            queryClient.invalidateQueries({
+              queryKey: ["vendorUserTasks", vendorId, userId],
+            });
           }
         },
         onError: (err: any) => {
@@ -81,6 +84,8 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
         },
       }
     );
+    setOpenCompletedModal(false);
+    onOpenChange(false);
   };
 
   const handleCancelLead = () => {
@@ -105,6 +110,9 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
             queryClient.invalidateQueries({
               queryKey: ["siteMeasurementLeads", vendorId],
             });
+            queryClient.invalidateQueries({
+              queryKey: ["vendorUserTasks", vendorId, userId],
+            });
           }
         },
         onError: (err: any) => {
@@ -112,66 +120,67 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
         },
       }
     );
+    setOpenCancelModal(false);
+    onOpenChange(false);
   };
   return (
-    <BaseModal
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Follow Up"
-      description="Update the follow-up status for this lead."
-      size="md"
-    >
-      <div className="space-y-4 p-6">
-        {/* Mark as Completed */}
-        <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-base font-semibold">Mark as Completed</span>
-            <p className="text-sm text-muted-foreground">
-              Lorem ipsum dolor sit amet consectetur adipisicing elit.
-            </p>
+    <>
+      <BaseModal
+        open={open}
+        onOpenChange={onOpenChange}
+        title="Follow Up"
+        description="Update the follow-up status for this lead."
+        size="md"
+      >
+        <div className="space-y-4 p-6">
+          {/* Mark as Completed */}
+          <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
+            <div className="flex flex-col gap-1">
+              <span className="text-base font-semibold">Mark as Completed</span>
+              <p className="text-sm text-muted-foreground">
+                Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              </p>
+            </div>
+            <Button
+              className="w-28"
+              onClick={() => setOpenCompletedModal(true)}
+            >
+              Complete
+            </Button>
           </div>
-          <Button
-            className="w-28 bg-green-500 hover:bg-green-600 text-white"
-            onClick={() => setOpenCompletedModal(true)}
-          >
-            Complete
-          </Button>
-        </div>
 
-        {/* Reschedule */}
-        <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-base font-semibold">Reschedule</span>
-            <p className="text-sm text-muted-foreground">
-              Lorem ipsum dolor sit amet consectetur adipisicing elit. Quos, id!
-            </p>
+          {/* Reschedule */}
+          <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
+            <div className="flex flex-col gap-1">
+              <span className="text-base font-semibold">Reschedule</span>
+              <p className="text-sm text-muted-foreground">
+                Lorem ipsum dolor sit amet consectetur adipisicing elit. Quos,
+                id!
+              </p>
+            </div>
+            <Button
+              className="w-28"
+              onClick={() => setOpenRescheduleModal(true)}
+            >
+              Reschedule
+            </Button>
           </div>
-          <Button
-            className="w-28 bg-blue-500 hover:bg-blue-600 "
-            onClick={() => setOpenRescheduleModal(true)}
-          >
-            Reschedule
-          </Button>
-        </div>
 
-        {/* Mark as Cancel */}
-        <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-base font-semibold ">Mark as Cancel</span>
-            <p className="text-sm text-muted-foreground">
-              Lorem ipsum dolor sit amet consectetur adipisicing elit.
-              Accusamus, aliquid.
-            </p>
+          {/* Mark as Cancel */}
+          <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
+            <div className="flex flex-col gap-1">
+              <span className="text-base font-semibold ">Mark as Cancel</span>
+              <p className="text-sm text-muted-foreground">
+                Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                Accusamus, aliquid.
+              </p>
+            </div>
+            <Button className="w-28" onClick={() => setOpenCancelModal(true)}>
+              Cancel
+            </Button>
           </div>
-          <Button
-            className="w-28 bg-red-500 hover:bg-red-600 text-white"
-            onClick={() => setOpenCancelModal(true)}
-          >
-            Cancel
-          </Button>
         </div>
-      </div>
-
+      </BaseModal>
       {/* Completed Modal */}
       <AlertDialog
         open={openCompletedModal}
@@ -191,9 +200,7 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
               onClick={handleMarkCompleted}
               disabled={completedUpdateMutation.isPending}
             >
-              {completedUpdateMutation.isPending
-                ? "Processing..."
-                : "Confirm"}
+              {completedUpdateMutation.isPending ? "Processing..." : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -226,6 +233,7 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
       <RescheduleModal
         open={openRescheduleModal}
         onOpenChange={setOpenRescheduleModal}
+        onRescheduleSuccess={() => onOpenChange(false)}
         data={{
           id: leadId!,
           taskId: taskId,
@@ -233,7 +241,7 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
           dueDate: data?.dueDate,
         }}
       />
-    </BaseModal>
+    </>
   );
 };
 

@@ -65,8 +65,6 @@ const MyTaskTable = () => {
   );
 
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
-  const [assignOpenLead, setAssignOpenLead] = useState<boolean>(false);
-  const [editOpenLead, setEditOpenLead] = useState<boolean>(false);
   const [openFollowUp, setOpenFollowUp] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
@@ -91,24 +89,6 @@ const MyTaskTable = () => {
 
   const [rowAction, setRowAction] =
     useState<DataTableRowAction<ProcessedTask> | null>(null);
-
-  useEffect(() => {
-    if (rowAction?.variant === "reassignlead" && rowAction.row) {
-      console.log("Original Data row Leads: ", rowAction.row.original);
-      setAssignOpenLead(true);
-    }
-    if (rowAction?.variant === "edit" && rowAction.row) {
-      console.log("Original Edit Data row Leads: ", rowAction.row.original);
-      setEditOpenLead(true);
-    }
-    if (rowAction?.variant === "uploadmeasurement" && rowAction.row) {
-      console.log("Uploading measurement for row:", rowAction.row.original);
-      setOpenMeasurement(true);
-    }
-    if (rowAction?.variant === "Follow Up" && rowAction.row) {
-      setOpenFollowUp(true);
-    }
-  }, [rowAction]);
 
 
   const router = useRouter();

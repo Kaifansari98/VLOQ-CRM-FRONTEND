@@ -351,8 +351,9 @@ const SiteMeasurementTable = () => {
 
   const handleRowClick = (row: ProcessedSiteMeasurementLead) => {
     const lead = row.id;
+    const accountId = row.accountId;
     router.push(
-      `/dashboard/sales-executive/initial-site-measurement/details/${lead}`
+      `/dashboard/sales-executive/initial-site-measurement/details/${lead}?accountId=${accountId}`
     );
   };
 
@@ -416,8 +417,8 @@ const SiteMeasurementTable = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Mark Follow Up As Completed?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to mark this follow up as completed? This action
-              can’t be undone.
+              Are you sure you want to mark this follow up as completed? This
+              action can’t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -440,8 +441,8 @@ const SiteMeasurementTable = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel Follow Up?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel this Follow Up? This action can’t be
-              undone.
+              Are you sure you want to cancel this Follow Up? This action can’t
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -463,7 +464,7 @@ const SiteMeasurementTable = () => {
         onOpenChange={setOpenMesurement}
         data={rowAction?.row.original}
       />
-      
+
       <AssignLeadModal
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}

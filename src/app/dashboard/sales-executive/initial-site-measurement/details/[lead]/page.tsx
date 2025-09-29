@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "@/components/ModeToggle";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { useState } from "react";
@@ -37,29 +37,30 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
+import { useInitialSiteMeasurementTask } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 
 export default function SiteMeasurementLead() {
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
+
+  const searchParams = useSearchParams();
+  const accountId = searchParams.get("accountId");
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
-  const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
-
-  if (isLoading) {
-    return <p className="p-6">Loading lead details...</p>;
-  }
-
+  const { data, isLoading, isPending } = useInitialSiteMeasurementTask(
+    userId,
+    leadIdNum
+  );
+  console.log("lead id: ", leadIdNum);
+  console.log("Site measurement Task: ", data);
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -111,40 +112,6 @@ export default function SiteMeasurementLead() {
                   <SquarePen size={20} />
                   Edit
                 </DropdownMenuItem>
-                {/* 🔹 Follow Up Submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="flex items-center gap-2">
-                    <ClipboardCheck size={20} />
-                    Follow Up
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-48">
-                    <DropdownMenuItem
-                      onSelect={() => alert("Completed")}
-                      className="flex items-center gap-2"
-                    >
-                      <CheckCircle size={18} />
-                      Completed
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onSelect={() => alert("Reschedule")}
-                      className="flex items-center gap-2"
-                    >
-                      <Clock size={18} />
-                      Reschedule
-                    </DropdownMenuItem>
-
-                    <DropdownMenuSeparator />
-
-                    <DropdownMenuItem
-                      onSelect={() => alert("Cancel")}
-                      className="flex items-center gap-2"
-                    >
-                      <XCircle size={18} />
-                      Cancel
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
                 <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
                   <Users size={20} />
                   Reassign Lead
@@ -162,7 +129,11 @@ export default function SiteMeasurementLead() {
         </header>
 
         <main className="flex-1 px-6 pt-4">
-          <LeadDetailsUtil status="details" leadId={leadIdNum} />
+          <LeadDetailsUtil
+            status="details"
+            leadId={leadIdNum}
+            leadInfo={{ leadId: leadIdNum, accountId: accountId }}
+          />
         </main>
 
         {/* ✅ Render modal here */}
