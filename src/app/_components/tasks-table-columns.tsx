@@ -8,6 +8,7 @@ import CustomeBadge from "@/components/origin-badge";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import { useRouter } from "next/navigation";
+import RemarkTooltip from "@/components/origin-tooltip";
 
 export type ProcessedTask = {
   id: number; // userLeadTask.id
@@ -25,6 +26,7 @@ export type ProcessedTask = {
   assignedBy: number; // userLeadTask.created_by
   assignedAt: string; // userLeadTask.created_at
   assignedByName: string;
+  remark?: string;
 };
 
 export function getVendorLeadsTableColumns({
@@ -240,6 +242,31 @@ export function getVendorLeadsTableColumns({
         if (filterValue === "upcoming") return dueDate > today;
 
         return true;
+      },
+    },
+
+    {
+      accessorKey: "remark",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Remark" />
+      ),
+      meta: {
+        label: "remark",
+      },
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+      cell: ({ row }) => {
+        const remark = row.getValue("remark") as string;
+        const maxLength = 20;
+
+        if (remark.length <= maxLength) {
+          return <span>{remark}</span>;
+        }
+
+        const truncateValue = remark.slice(0, maxLength) + "...";
+
+        return <RemarkTooltip remark={truncateValue} remarkFull={remark} />;
       },
     },
 

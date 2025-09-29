@@ -23,7 +23,7 @@ import { toast } from "react-toastify";
 import CustomeDatePicker from "@/components/date-picker";
 import TextAreaInput from "@/components/origin-text-area";
 import { SinglePdfUploadField } from "@/components/utils/single-pdf-uploader";
-import BaseModal from "@/components/utils/baseModal"; // 👈 yaha import
+import BaseModal from "@/components/utils/baseModal";
 
 interface LeadViewModalProps {
   open: boolean;

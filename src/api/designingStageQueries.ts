@@ -262,3 +262,23 @@ export const editSelection = async (
 
   return response.data;
 };
+
+export const getDesigningStageCounts = async (
+  vendorId: number,
+  leadId: number
+) => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/${vendorId}/${leadId}/design-stage-counts`
+  );
+  return data.data;
+};
+
+export const getInitialSiteMeasurementTask = async (
+  userId: number,
+  leadId: number
+) => {
+  const { data } = await apiClient.get(
+    `/leads/tasks/user/${userId}/lead/${leadId}/initial-site-measurement`
+  );
+  return data;
+};

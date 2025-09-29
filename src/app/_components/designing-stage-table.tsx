@@ -213,12 +213,6 @@ const DesigningStageTable = () => {
     setRowAction(null);
   };
 
-  useEffect(() => {
-    if (data) {
-      console.log("📦 Designing Stage Leads:", data.data.leads);
-      console.log("Row Data :", rowData);
-    }
-  }, [data]);
 
   if (isLoading) return <p>Loading...</p>;
   if (isError) return <p>Error fetching leads</p>;

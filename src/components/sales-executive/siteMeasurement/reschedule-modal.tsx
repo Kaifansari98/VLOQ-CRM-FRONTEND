@@ -25,6 +25,7 @@ import { ReschedulePayload } from "@/api/measurment-leads";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRescheduleSuccess?: (open: boolean) => void;
   data?: {
     id: number;
     taskId?: number;
@@ -43,8 +44,9 @@ const formSchema = z.object({
   remark: z.string().min(1, "Remark is required"),
 });
 
-const RescheduleModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
+const RescheduleModal: React.FC<Props> = ({ open, onOpenChange, data, onRescheduleSuccess }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
   const queryClient = useQueryClient();
   const rescheduleMutation = useRescheduleTask();
 
@@ -89,6 +91,9 @@ const RescheduleModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
             queryClient.invalidateQueries({
               queryKey: ["siteMeasurementLeads", vendorId],
             });
+            queryClient.invalidateQueries({
+              queryKey: ["vendorUserTasks", vendorId, userId],
+            });
           }
 
           onOpenChange(false);
@@ -98,6 +103,8 @@ const RescheduleModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
         },
       }
     );
+    onOpenChange(false)
+    onRescheduleSuccess?.(false);
   };
 
   return (

@@ -281,8 +281,8 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   </div>
 
                   {ismPaymentInfo?.amount && (
-                    <p className="text-sm text-gray-600">
-                      <span className="font-semibold text-black">
+                    <p className="text-sm ">
+                      <span className="font-bold">
                         ₹{formatAmount(ismPaymentInfo.amount)}
                       </span>{" "}
                       ISM amount has already been paid by the client.

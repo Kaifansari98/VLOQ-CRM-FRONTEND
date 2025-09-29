@@ -24,14 +24,24 @@ import SelectionsTab from "@/components/sales-executive/designing-stage/pill-tab
 import DesigningTab from "@/components/sales-executive/designing-stage/pill-tabs-component/designs";
 import { useSearchParams } from "next/navigation";
 import { DetailsProvider } from "@/components/sales-executive/designing-stage/pill-tabs-component/details-context";
+import { useAppSelector } from "@/redux/store";
+import { useDesigningStageCounts } from "@/hooks/designing-stage/designing-leads-hooks";
 
 function DetailsContent() {
   const searchParams = useSearchParams();
   const leadId = Number(searchParams.get("leadId") ?? 0);
   const accountId = Number(searchParams.get("accountId") ?? 0);
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
-  console.log("leadId from Click Details Button: ", leadId);
+  const { data, isLoading, isError } = useDesigningStageCounts(
+    vendorId,
+    leadId
+  );
 
+
+  const canBook = !!data && (data.QuotationDoc?? 0) > 0 && (data.SelectionData ?? 0) > 0 && (data.DesignsDoc ?? 0) > 0;
+
+  console.log("Designing stage count: ", data);
   return (
     <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
       {/* Header */}
@@ -64,14 +74,21 @@ function DetailsContent() {
 
       {/* Main */}
       <main className="flex-1 h-full w-full p-6">
-        <DetailsProvider value={{ leadId, accountId }}>
+        <DetailsProvider value={{ leadId, accountId, canBook }}>
           <PillTabs
-          bookingBtn={true}
             tabs={[
-              { id: "quotation", label: "Quotation", content: <QuotationTab /> },
+              {
+                id: "quotation",
+                label: "Quotation",
+                content: <QuotationTab />,
+              },
               { id: "meetings", label: "Meetings", content: <MettingsTab /> },
               { id: "designs", label: "Designs", content: <DesigningTab /> },
-              { id: "selections", label: "Selections", content: <SelectionsTab /> },
+              {
+                id: "selections",
+                label: "Selections",
+                content: <SelectionsTab />,
+              },
             ]}
           />
         </DetailsProvider>

@@ -78,7 +78,7 @@ const SelectDocumentModal: React.FC<Props> = ({
       description="Choose documents for the lead"
       size="lg"
     >
-      <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+      <div className="max-h-[70vh] overflow-y-auto p-6 space-y-6">
         {/* Quotations */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -164,13 +164,11 @@ const SelectDocumentModal: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="flex justify-end gap-2 border-t px-6 py-3">
+       <div className="sticky bottom-0 flex justify-end gap-2 border-t bg-background px-6 py-4">
         <Button variant="outline" onClick={() => setSelectedDocs([])}>
           Clear
         </Button>
         <Button
-          className="w-full mt-4"
           onClick={async () => {
             const convertedFiles: File[] = [];
 
@@ -178,10 +176,18 @@ const SelectDocumentModal: React.FC<Props> = ({
               // guess MIME from extension
               let mime = "application/octet-stream";
               if (doc.doc_og_name.endsWith(".pdf")) mime = "application/pdf";
-              if (doc.doc_og_name.endsWith(".jpg") || doc.doc_og_name.endsWith(".jpeg")) mime = "image/jpeg";
+              if (
+                doc.doc_og_name.endsWith(".jpg") ||
+                doc.doc_og_name.endsWith(".jpeg")
+              )
+                mime = "image/jpeg";
               if (doc.doc_og_name.endsWith(".png")) mime = "image/png";
 
-              const file = await urlToFile(doc.signedUrl, doc.doc_og_name, mime);
+              const file = await urlToFile(
+                doc.signedUrl,
+                doc.doc_og_name,
+                mime
+              );
               convertedFiles.push(file);
             }
 
