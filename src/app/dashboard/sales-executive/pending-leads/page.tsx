@@ -19,6 +19,7 @@ import { ModeToggle } from "@/components/ModeToggle";
 import PendingLeadsTable from "./pending-leads-table";
 import PendingLeadsSkeleton from "./PendingLeadsSkeleton";
 import { Suspense } from "react";
+import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
 
 export default function PendingLeadsPage() {
   return (
@@ -51,9 +52,11 @@ export default function PendingLeadsPage() {
 
         {/* Table */}
         <main className="flex-1 p-6 overflow-x-hidden">
+        <FeatureFlagsProvider>
           <Suspense fallback={<PendingLeadsSkeleton />}>
             <PendingLeadsTable tab="onHold"/>
           </Suspense>
+          </FeatureFlagsProvider>
         </main>
       </SidebarInset>
     </SidebarProvider>
