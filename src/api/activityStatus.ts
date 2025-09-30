@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/apiClient";
 import { Lead } from "./leads";
+import { vendored } from "next/dist/server/route-modules/app-page/module.compiled";
 
 export interface UpdateActivityStatusPayload {
   vendorId: number;
@@ -8,6 +9,7 @@ export interface UpdateActivityStatusPayload {
   status: string;
   remark: string;
   createdBy: number;
+  dueDate?: string;
 }
 
 export interface RevertActivityStatusPayload {
@@ -16,6 +18,22 @@ export interface RevertActivityStatusPayload {
   userId: number;
   remark: string;
   createdBy: number;
+}
+
+export interface ApiActivityStatusCounts {
+  totalOnGoing: number;
+  openOnGoing: number;
+  onHold: number;
+  lostApproval: number;
+  lost: number;
+}
+
+export interface UiActivityStatusCounts {
+  total: number;   // maps totalOnGoing
+  open: number;    // maps openOnGoing
+  onHold: number;
+  lostApproval: number;
+  lost: number;
 }
 
 export const updateLeadActivityStatus = async (
@@ -36,7 +54,9 @@ export const getOnHoldLeads = async (vendorId: number): Promise<Lead[]> => {
   return res.data.data;
 };
 
-export const getLostApprovalLeads = async (vendorId: number): Promise<Lead[]> => {
+export const getLostApprovalLeads = async (
+  vendorId: number
+): Promise<Lead[]> => {
   const res = await apiClient.get(
     `/leads/lead-activity-status/vendor/${vendorId}/leads/lostApproval`
   );
@@ -59,4 +79,21 @@ export const revertLeadToOnGoing = async (
     payload
   );
   return res.data;
+};
+
+export const getActivityStatusCounts = async (
+  vendorId: number
+): Promise<UiActivityStatusCounts> => {
+  const res = await apiClient.get(
+    `/leads/lead-activity-status/vendorId/${vendorId}/activity-status-counts`
+  );
+  const data: ApiActivityStatusCounts = res.data.data;
+
+  return {
+    total: data.totalOnGoing || 0,
+    open: data.openOnGoing || 0,
+    onHold: data.onHold || 0,
+    lostApproval: data.lostApproval || 0,
+    lost: data.lost || 0,
+  };
 };

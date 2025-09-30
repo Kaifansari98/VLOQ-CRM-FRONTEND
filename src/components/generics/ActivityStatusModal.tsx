@@ -15,17 +15,19 @@ import {
 } from "@/components/ui/form";
 import TextAreaInput from "@/components/origin-text-area";
 import { Button } from "@/components/ui/button";
+import CustomeDatePicker from "../date-picker";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   statusType: "onHold" | "lostApproval" | "lost"; // which action triggered
-  onSubmitRemark: (remark: string) => void; // callback
+  onSubmitRemark: (remark: string, dueDate?: string) => void; // callback
   loading?: boolean;
 }
 
 const formSchema = z.object({
   remark: z.string().min(1, "Remark is required"),
+  dueDate: z.string().optional(), // 👈 conditionally required below
 });
 
 const ActivityStatusModal: React.FC<Props> = ({
@@ -39,11 +41,16 @@ const ActivityStatusModal: React.FC<Props> = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       remark: "",
+      dueDate: "",
     },
   });
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    onSubmitRemark(values.remark);
+    if (statusType === "onHold" && !values.dueDate) {
+      form.setError("dueDate", { message: "Follow-up date is required" });
+      return;
+    }
+    onSubmitRemark(values.remark, values.dueDate);
     form.reset();
     onOpenChange(false);
   };
@@ -74,14 +81,33 @@ const ActivityStatusModal: React.FC<Props> = ({
       title={titles[statusType]}
       description={descriptions[statusType]}
       size="md"
-      //showCloseIcon // ✅ to show header X icon
     >
       <div className="p-6 flex flex-col gap-4">
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-5"
-          >
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-5">
+
+            {/* Date Picker only for onHold */}
+            {statusType === "onHold" && (
+              <FormField
+                control={form.control}
+                name="dueDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">Follow-up Date</FormLabel>
+                    <FormControl>
+                      <CustomeDatePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        restriction="futureOnly" // 👈 only allow future
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* Remark */}
             <FormField
               control={form.control}
               name="remark"
@@ -100,6 +126,7 @@ const ActivityStatusModal: React.FC<Props> = ({
               )}
             />
 
+            {/* Buttons */}
             <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
               <Button
                 type="button"

@@ -24,22 +24,12 @@ import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
 import InitialSiteMeasuresMent from "@/components/sales-executive/Lead/initial-site-measurement-form";
 
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select";
-
 import { useFeatureFlags } from "./feature-flags-provider";
 import type { DataTableRowAction } from "@/types/data-table";
 import {
   getVendorLeadsTableColumns,
   ProcessedTask,
 } from "./tasks-table-columns";
-import { useDeleteLead } from "@/hooks/useDeleteLead";
-import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/utils/loader";
 import { useVendorUserTasks } from "@/hooks/useTasksQueries";

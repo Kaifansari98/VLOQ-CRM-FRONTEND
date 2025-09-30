@@ -121,7 +121,7 @@ export default function SiteMeasurementLead() {
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <CircleArrowOutUpRight className="mr-2 h-4 w-4" />
-                    Activity Status
+                    Lead Status
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     <DropdownMenuItem

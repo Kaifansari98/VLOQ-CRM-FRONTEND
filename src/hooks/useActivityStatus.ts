@@ -7,6 +7,7 @@ import {
   RevertActivityStatusPayload,
   revertLeadToOnGoing,
   getLostApprovalLeads,
+  getActivityStatusCounts,
 } from "@/api/activityStatus";
 import { toast } from "react-toastify";
 
@@ -22,7 +23,7 @@ export const useUpdateActivityStatus = () => {
       payload: UpdateActivityStatusPayload;
     }) => updateLeadActivityStatus(leadId, payload),
     onSuccess: (data) => {
-      toast.success("Lead activity status updated!");
+      toast.success("Lead status updated!");
       // invalidate any related queries so UI refreshes
       queryClient.invalidateQueries({ queryKey: ["lostApprovalLeads"] });
       queryClient.invalidateQueries({ queryKey: ["leads"] });
@@ -80,5 +81,13 @@ export const useRevertActivityStatus = () => {
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to revert lead");
     },
+  });
+};
+
+export const useActivityStatusCounts = (vendorId?: number) => {
+  return useQuery({
+    queryKey: ["activityStatusCounts", vendorId],
+    queryFn: () => getActivityStatusCounts(vendorId!),
+    enabled: !!vendorId,
   });
 };
