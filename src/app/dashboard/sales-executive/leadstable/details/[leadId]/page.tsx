@@ -138,7 +138,7 @@ export default function LeadDetails() {
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <EllipsisVertical className="mr-2 h-4 w-4" />
-                    Activity Status
+                    Lead Status
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     <DropdownMenuItem
@@ -201,7 +201,7 @@ export default function LeadDetails() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType={activityType}
-        onSubmitRemark={(remark) => {
+        onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
             toast.error("Missing vendor/user info");
             return;
@@ -220,6 +220,7 @@ export default function LeadDetails() {
                 status,
                 remark,
                 createdBy: userId,
+                ...(status === "onHold" ? { dueDate } : {}), // 👈 send only for onHold
               },
             },
             {

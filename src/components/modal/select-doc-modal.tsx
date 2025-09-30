@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Download } from "lucide-react";
 import { urlToFile } from "@/utils/file.utils";
+import { format } from "date-fns";
 
 interface Props {
   open: boolean;
@@ -24,6 +25,7 @@ export interface DocItem {
   doc_og_name: string;
   signedUrl: string;
   type: "quotation" | "design";
+  created_at?: string;
 }
 
 const SelectDocumentModal: React.FC<Props> = ({
@@ -45,6 +47,7 @@ const SelectDocumentModal: React.FC<Props> = ({
       doc_og_name: doc.doc_og_name,
       signedUrl: doc.signedUrl,
       type: "quotation" as const,
+      created_at: doc.created_at,
     })) || [];
 
   const designs: DocItem[] =
@@ -53,6 +56,7 @@ const SelectDocumentModal: React.FC<Props> = ({
       doc_og_name: doc.doc_og_name,
       signedUrl: doc.signedUrl,
       type: "design" as const,
+      created_at: doc.created_at,
     })) || [];
 
   const toggleSelect = (doc: DocItem) => {
@@ -100,7 +104,18 @@ const SelectDocumentModal: React.FC<Props> = ({
                       checked={isSelected(doc.id)}
                       onCheckedChange={() => toggleSelect(doc)}
                     />
-                    <span className="text-sm">{doc.doc_og_name}</span>
+                    <div className="flex flex-col">
+                      <span className="text-sm">{doc.doc_og_name}</span>
+                      {doc.created_at && (
+                        <span className="text-xs text-gray-500">
+                          Uploaded at{" "}
+                          {format(
+                            new Date(doc.created_at),
+                            "HH:mm, dd MMM yyyy"
+                          )}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <a
                     href={doc.signedUrl}
@@ -143,7 +158,18 @@ const SelectDocumentModal: React.FC<Props> = ({
                       checked={isSelected(doc.id)}
                       onCheckedChange={() => toggleSelect(doc)}
                     />
-                    <span className="text-sm">{doc.doc_og_name}</span>
+                    <div className="flex flex-col">
+                      <span className="text-sm">{doc.doc_og_name}</span>
+                      {doc.created_at && (
+                        <span className="text-xs text-gray-500">
+                          Uploaded at{" "}
+                          {format(
+                            new Date(doc.created_at),
+                            "HH:mm, dd MMM yyyy"
+                          )}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <a
                     href={doc.signedUrl}
@@ -164,7 +190,7 @@ const SelectDocumentModal: React.FC<Props> = ({
         </div>
       </div>
 
-       <div className="sticky bottom-0 flex justify-end gap-2 border-t bg-background px-6 py-4">
+      <div className="sticky bottom-0 flex justify-end gap-2 border-t bg-background px-6 py-4">
         <Button variant="outline" onClick={() => setSelectedDocs([])}>
           Clear
         </Button>

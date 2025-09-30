@@ -1,6 +1,5 @@
 "use client";
 
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAppSelector } from "@/redux/store";
 import {
   useOnHoldLeads,
@@ -9,7 +8,21 @@ import {
   useUpdateActivityStatus,
 } from "@/hooks/useActivityStatus";
 import { DataTable } from "@/components/data-table/data-table";
-import { useReactTable, getCoreRowModel } from "@tanstack/react-table";
+import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
+import { DataTableAdvancedToolbar } from "@/components/data-table/data-table-advanced-toolbar";
+import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
+import { DataTableFilterMenu } from "@/components/data-table/data-table-filter-menu";
+import { DataTableSortList } from "@/components/data-table/data-table-sort-list";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  SortingState,
+  ColumnFiltersState,
+  VisibilityState,
+} from "@tanstack/react-table";
 import React from "react";
 import type { Lead } from "@/api/leads";
 import {
@@ -32,12 +45,19 @@ import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useQueryClient } from "@tanstack/react-query";
+import { useFeatureFlags } from "@/app/_components/feature-flags-provider";
 
-export default function PendingLeadsTable() {
+export default function PendingLeadsTable({
+  tab,
+}: {
+  tab: "onHold" | "lostApproval" | "lost";
+}) {
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const router = useRouter();
+
+  const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
 
   const { data: onHoldData = [], isLoading: onHoldLoading } = useOnHoldLeads(
     vendorId!
@@ -45,7 +65,6 @@ export default function PendingLeadsTable() {
   const { data: lostData = [], isLoading: lostLoading } = useLostLeads(
     vendorId!
   );
-
   const { data: lostApprovalData = [], isLoading: lostApprovalLoading } =
     useLostApprovalLeads(vendorId!);
 
@@ -55,21 +74,47 @@ export default function PendingLeadsTable() {
   const [openConfirm, setOpenConfirm] = React.useState(false);
   const [openRemark, setOpenRemark] = React.useState(false);
   const [openActivityStatus, setOpenActivityStatus] = React.useState(false);
-  const [activeAction, setActiveAction] = React.useState<
-    "revert" | "lost" | null
+
+  // ✅ Table state management
+  const [globalFilter, setGlobalFilter] = React.useState("");
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "createdAt", desc: true },
+  ]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    []
+  );
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = React.useState({});
+
+  const [rowAction, setRowAction] = React.useState<
+    { row: PendingLeadRow; variant: "revert" | "lost" } | null
   >(null);
 
-  const [tab, setTab] = React.useState<"onHold" | "lostApproval" | "lost">(
-    "onHold"
-  );
+  // ✅ Process rowAction and reset it
+  React.useEffect(() => {
+    if (!rowAction) return;
+
+    if (rowAction.variant === "revert") {
+      setActiveLead(rowAction.row);
+      setOpenConfirm(true);
+    }
+
+    if (rowAction.variant === "lost") {
+      setActiveLead(rowAction.row);
+      setOpenActivityStatus(true);
+    }
+
+    // Reset after processing
+    setRowAction(null);
+  }, [rowAction]);
 
   const markAsLostMutation = useUpdateActivityStatus();
-
   const revertMutation = useRevertActivityStatus();
 
   // Lead → PendingLeadRow
-  const processLeads = (leads: Lead[]): PendingLeadRow[] =>
-    leads.map((lead, index) => ({
+  const processLeads = React.useCallback((leads: Lead[]): PendingLeadRow[] => {
+    return leads.map((lead, index) => ({
       id: lead.id,
       srNo: index + 1,
       name: `${lead.firstname} ${lead.lastname}`.trim(),
@@ -94,36 +139,49 @@ export default function PendingLeadsTable() {
       altContact: lead.alt_contact_no || "",
       status: lead.statusType?.type || "",
       initial_site_measurement_date: lead.initial_site_measurement_date || "",
-      // 👇 ensure accountId is present for payload. Adjust according to your API shape.
       accountId: (lead as any).account?.id ?? (lead as any).account_id ?? 0,
     }));
+  }, []);
 
   const onHoldProcessed = React.useMemo(
     () => processLeads(onHoldData),
-    [onHoldData]
+    [onHoldData, processLeads]
   );
-  const lostProcessed = React.useMemo(() => processLeads(lostData), [lostData]);
+  const lostProcessed = React.useMemo(
+    () => processLeads(lostData),
+    [lostData, processLeads]
+  );
   const lostApprovalProcessed = React.useMemo(
     () => processLeads(lostApprovalData),
-    [lostApprovalData]
+    [lostApprovalData, processLeads]
   );
+
+  // Get data based on tab
+  const tableData = React.useMemo(() => {
+    switch (tab) {
+      case "onHold":
+        return onHoldProcessed;
+      case "lostApproval":
+        return lostApprovalProcessed;
+      case "lost":
+        return lostProcessed;
+      default:
+        return [];
+    }
+  }, [tab, onHoldProcessed, lostApprovalProcessed, lostProcessed]);
 
   const columns = React.useMemo(
     () =>
       getPendingLeadsColumns({
         tab,
         onRevert: (lead) => {
-          setActiveLead(lead);
-          setActiveAction("revert");
-          setOpenConfirm(true);
+          setRowAction({ row: lead, variant: "revert" });
         },
         onMarkAsLost: (lead) => {
-          setActiveLead(lead);
-          setActiveAction("lost");
-          setOpenActivityStatus(true);
+          setRowAction({ row: lead, variant: "lost" });
         },
       }),
-    [tab, vendorId, userId]
+    [tab]
   );
 
   const onConfirmRevert = () => {
@@ -152,122 +210,129 @@ export default function PendingLeadsTable() {
         onSuccess: () => {
           setOpenRemark(false);
           setActiveLead(null);
+          // Invalidate queries based on current tab
+          if (tab === "onHold") {
+            queryClient.invalidateQueries({ queryKey: ["onHoldLeads"] });
+          } else if (tab === "lostApproval") {
+            queryClient.invalidateQueries({ queryKey: ["lostApprovalLeads"] });
+          } else if (tab === "lost") {
+            queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
+          }
         },
       }
     );
   };
 
-  const handleRowDoubleClick = (row: PendingLeadRow) => {
-    const leadId = row.id;
-    const accountId = row.accountId;
-    router.push(
-      `/dashboard/sales-executive/pending-leads/details/${leadId}?accountId=${accountId}`
-    );
-  };
+  const handleRowDoubleClick = React.useCallback(
+    (row: PendingLeadRow) => {
+      const leadId = row.id;
+      const accountId = row.accountId;
+      router.push(
+        `/dashboard/sales-executive/pending-leads/details/${leadId}?accountId=${accountId}`
+      );
+    },
+    [router]
+  );
 
+  // ✅ Create table with proper state management
   const table = useReactTable({
-    data:
-      tab === "onHold"
-        ? onHoldProcessed
-        : tab === "lostApproval"
-        ? lostApprovalProcessed
-        : lostProcessed,
+    data: tableData,
     columns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getRowId: (row) => row.id.toString(),
+    globalFilterFn: "includesString",
+    state: {
+      sorting,
+      columnFilters,
+      rowSelection,
+      globalFilter,
+      columnVisibility,
+    },
   });
+
+  const isLoading = 
+    (tab === "onHold" && onHoldLoading) ||
+    (tab === "lostApproval" && lostApprovalLoading) ||
+    (tab === "lost" && lostLoading);
+
+  const mockProps = React.useMemo(
+    () => ({
+      shallow: true,
+      debounceMs: 300,
+      throttleMs: 50,
+    }),
+    []
+  );
+
+  if (isLoading) {
+    return <p>Loading...</p>;
+  }
 
   return (
     <>
-      <Tabs
-        value={tab}
-        onValueChange={(v) => setTab(v as "onHold" | "lostApproval" | "lost")}
-      >
-        <TabsList>
-          <TabsTrigger value="onHold">On Hold Leads</TabsTrigger>
-          <TabsTrigger value="lostApproval">Lost Approval Leads</TabsTrigger>
-          <TabsTrigger value="lost">Lost Leads</TabsTrigger>
-        </TabsList>
+      <DataTable table={table} onRowDoubleClick={handleRowDoubleClick}>
+        {enableAdvancedFilter ? (
+          <DataTableAdvancedToolbar table={table}>
+            <DataTableSortList table={table} align="start" />
+            {filterFlag === "advancedFilters" ? (
+              <DataTableFilterList
+                table={table}
+                shallow={mockProps.shallow}
+                debounceMs={mockProps.debounceMs}
+                throttleMs={mockProps.throttleMs}
+                align="start"
+              />
+            ) : (
+              <DataTableFilterMenu
+                table={table}
+                shallow={mockProps.shallow}
+                debounceMs={mockProps.debounceMs}
+                throttleMs={mockProps.throttleMs}
+              />
+            )}
+          </DataTableAdvancedToolbar>
+        ) : (
+          <DataTableToolbar table={table}>
+            <DataTableSortList table={table} />
+          </DataTableToolbar>
+        )}
+      </DataTable>
 
-        <TabsContent value="onHold">
-          {onHoldLoading ? (
-            <p>Loading...</p>
-          ) : (
-            <DataTable table={table} onRowDoubleClick={handleRowDoubleClick} />
-          )}
-        </TabsContent>
-
-        <TabsContent value="lostApproval">
-          {lostApprovalLoading ? (
-            <p>Loading...</p>
-          ) : (
-            <DataTable table={table} onRowDoubleClick={handleRowDoubleClick} />
-          )}
-        </TabsContent>
-
-        <TabsContent value="lost">
-          {lostLoading ? (
-            <p>Loading...</p>
-          ) : (
-            <DataTable table={table} onRowDoubleClick={handleRowDoubleClick} />
-          )}
-        </TabsContent>
-      </Tabs>
-
-      {/* Step 1: Confirmation Modal */}
+      {/* Confirmation Dialog */}
       <AlertDialog open={openConfirm} onOpenChange={setOpenConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Revert Lead to OnGoing?</AlertDialogTitle>
+            <AlertDialogTitle>Confirm Revert</AlertDialogTitle>
             <AlertDialogDescription>
-              This will move the lead back to OnGoing from its current
-              OnHold/Lost status.
+              Are you sure you want to revert this lead back to active status?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={onConfirmRevert}>
-              Confirm
+              Continue
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Revert Remark Modal */}
+      {/* Remark Modal */}
       <RevertRemarkModal
         open={openRemark}
         onOpenChange={setOpenRemark}
-        onSubmitRemark={(remark) => {
-          if (!activeLead || !vendorId || !userId) return;
-
-          revertMutation.mutate(
-            {
-              leadId: activeLead.id,
-              payload: {
-                vendorId,
-                accountId: activeLead.accountId || 0,
-                userId,
-                remark,
-                createdBy: userId,
-              },
-            },
-            {
-              onSuccess: () => {
-                toast.success("Lead reverted to OnGoing!");
-                setOpenRemark(false); // ✅ close modal
-                setActiveLead(null); // ✅ clear active lead
-                queryClient.invalidateQueries({ queryKey: ["onHoldLeads"] });
-                queryClient.invalidateQueries({
-                  queryKey: ["lostApprovalLeads"],
-                });
-                queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
-              },
-            }
-          );
-        }}
+        onSubmitRemark={onSubmitRemark}
         loading={revertMutation.isPending}
       />
 
-      {/* Activity Status Modal (Mark as Lost) */}
+      {/* Activity Status Modal */}
       <ActivityStatusModal
         open={openActivityStatus}
         onOpenChange={setOpenActivityStatus}
@@ -290,11 +355,9 @@ export default function PendingLeadsTable() {
             {
               onSuccess: () => {
                 toast.success("Lead marked as Lost!");
-                setOpenActivityStatus(false); // ✅ close modal
-                setActiveLead(null); // ✅ clear active lead
-                queryClient.invalidateQueries({
-                  queryKey: ["lostApprovalLeads"],
-                });
+                setOpenActivityStatus(false);
+                setActiveLead(null);
+                queryClient.invalidateQueries({ queryKey: ["lostApprovalLeads"] });
                 queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
               },
             }

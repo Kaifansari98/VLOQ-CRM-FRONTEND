@@ -6,7 +6,7 @@ import CustomeTooltip from "@/components/cutome-tooltip";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 import CustomeBadge from "@/components/origin-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
-import { Ellipsis, Text, Undo2 } from "lucide-react";
+import { CircleCheck, CircleX, Ellipsis, Text, Undo2 } from "lucide-react";
 import type { ProcessedLead } from "@/app/_components/view-tables-coloumns";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import { useMemo } from "react";
 
 export type PendingLeadRow = ProcessedLead & { accountId?: number };
 
@@ -28,6 +29,7 @@ export function getPendingLeadsColumns({
   onRevert: (lead: PendingLeadRow) => void;
   onMarkAsLost: (lead: PendingLeadRow) => void;
 }): ColumnDef<PendingLeadRow>[] {
+  
   return [
     {
       id: "actions",
@@ -54,8 +56,8 @@ export function getPendingLeadsColumns({
                   onRevert(row.original);
                 }}
               >
-                <Undo2 size={18} className="mr-2" />
-                Revert Back
+                <CircleCheck size={18} className="" />
+                Mark as active
               </DropdownMenuItem>
             )}
 
@@ -68,8 +70,8 @@ export function getPendingLeadsColumns({
                     onRevert(row.original);
                   }}
                 >
-                  <Undo2 size={18} className="mr-2" />
-                  Revert Back
+                  <CircleX size={18} className="mr-2" />
+                  Rejected
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={(e) => {
@@ -77,8 +79,8 @@ export function getPendingLeadsColumns({
                     onMarkAsLost(row.original);
                   }}
                 >
-                  <Undo2 size={18} className="mr-2" />
-                  Mark as Lost
+                  <CircleCheck size={18} className="mr-2" />
+                  Approved
                 </DropdownMenuItem>
               </>
             )}
@@ -163,12 +165,12 @@ export function getPendingLeadsColumns({
         );
       },
     },
-    {
-      accessorKey: "activity_status",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
-      ),
-    },
+    // {
+    //   accessorKey: "activity_status",
+    //   header: ({ column }) => (
+    //     <DataTableColumnHeader column={column} title="Status" />
+    //   ),
+    // },
     {
       accessorKey: "status",
       header: ({ column }) => (
