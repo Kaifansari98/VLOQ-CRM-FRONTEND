@@ -63,6 +63,7 @@ export interface Lead {
   assignedTo: AssignTo | null;
   statusType: StatusType;
   initial_site_measurement_date: string;
+  activity_status?: string;
 }
 
 export interface AssignToPayload {
@@ -250,10 +251,15 @@ export interface AssignToSiteMeasurementPayload {
   user_id: number;
   created_by: number;
 }
-export const assignToSiteMeasurement = async (leadId: number, payload: AssignToSiteMeasurementPayload) => {
+
+export const assignToSiteMeasurement = async (
+  leadId: number,
+  payload: AssignToSiteMeasurementPayload
+) => {
   const { data } = await apiClient.post(
-    `/leads/initial-site-measurement/leadId/${leadId}/tasks/assign-ism`,payload
+    `/leads/initial-site-measurement/leadId/${leadId}/tasks/assign-ism`,
+    payload
   );
 
-  return data
+  return data;
 };

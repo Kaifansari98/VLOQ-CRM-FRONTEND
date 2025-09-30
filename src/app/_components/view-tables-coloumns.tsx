@@ -42,6 +42,7 @@ export type ProcessedLead = {
   altContact?: string; // 👈 backend ke key ke sath match
   status: string;
   initial_site_measurement_date: string;
+  accountId: number;
 };
 
 interface GetVendorLeadsTableColumnsProps {
@@ -49,13 +50,14 @@ interface GetVendorLeadsTableColumnsProps {
     React.SetStateAction<DataTableRowActionOpen<ProcessedLead> | null>
   >;
   userType?: string;
+  router: ReturnType<typeof useRouter>;
 }
 
 export function getViewOpenLeadsTableColumns({
   setRowAction,
   userType,
+  router,
 }: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedLead>[] {
-  const router = useRouter();
   return [
     // Action Button
     {

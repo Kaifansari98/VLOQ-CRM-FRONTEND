@@ -75,7 +75,7 @@ export default function LeadDetailsUtil({
     details: ["details"],
     measurement: ["details", "measurement"],
     designing: ["details", "measurement", "designing"],
-    booking: ["details","measurement", "designing", "booking"],
+    booking: ["details", "measurement", "designing", "booking"],
     finalmeasurement: [
       "details",
       "measurement",

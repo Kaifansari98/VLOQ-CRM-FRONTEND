@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import {
   CheckCircle,
+  CircleArrowOutUpRight,
   ClipboardCheck,
   Clock,
   EllipsisVertical,
@@ -38,10 +39,15 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useInitialSiteMeasurementTask } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
+import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
+import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 
 export default function SiteMeasurementLead() {
   const { lead: leadId } = useParams();
@@ -52,9 +58,12 @@ export default function SiteMeasurementLead() {
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const updateStatusMutation = useUpdateActivityStatus();
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [activityType, setActivityType] = useState<"onHold" | "lostApproval">("onHold");
   const { data, isLoading, isPending } = useInitialSiteMeasurementTask(
     userId,
     leadIdNum
@@ -108,6 +117,34 @@ export default function SiteMeasurementLead() {
                   Upload Measurement
                 </DropdownMenuItem>
 
+                {/* ✅ Activity Status Submenu */}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <CircleArrowOutUpRight className="mr-2 h-4 w-4" />
+                    Activity Status
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setActivityType("onHold");
+                        setActivityModalOpen(true);
+                      }}
+                    >
+                      <Clock className="h-4 w-4" />
+                      Mark On Hold
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setActivityType("lostApproval");
+                        setActivityModalOpen(true);
+                      }}
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Mark As Lost
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen size={20} />
                   Edit
@@ -154,6 +191,28 @@ export default function SiteMeasurementLead() {
           open={openEditModal}
           onOpenChange={setOpenEditModal}
           leadData={{ id: leadIdNum }}
+        />
+
+        <ActivityStatusModal
+          open={activityModalOpen}
+          onOpenChange={setActivityModalOpen}
+          statusType={activityType} // "onHold" | "lostApproval"
+          onSubmitRemark={(remark) => {
+            if (!vendorId || !userId || !accountId) return;
+
+            updateStatusMutation.mutate({
+              leadId: leadIdNum,
+              payload: {
+                vendorId,
+                accountId: Number(accountId),
+                userId,
+                status: activityType,
+                remark,
+                createdBy: userId,
+              },
+            });
+          }}
+          loading={updateStatusMutation.isPending}
         />
       </SidebarInset>
     </SidebarProvider>

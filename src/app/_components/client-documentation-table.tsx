@@ -21,10 +21,7 @@ import { DataTableSortList } from "@/components/data-table/data-table-sort-list"
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
 import { useFeatureFlags } from "./feature-flags-provider";
-import type {
-  DataTableRowActionClientDocumentation,
-  DataTableRowActionFinalMeasurement,
-} from "@/types/data-table";
+import type { DataTableRowActionClientDocumentation } from "@/types/data-table";
 import {
   AlertDialog,
   AlertDialogAction,

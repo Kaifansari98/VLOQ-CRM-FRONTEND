@@ -167,7 +167,6 @@ const BookingStageLeadsTable = () => {
     if (rowAction.variant === "reassignlead") setAssignOpenLead(true);
     if (rowAction.variant === "edit") setEditOpenLead(true);
     if (rowAction.variant === "view") setOpenViewModal(true);
-    // if (rowAction.variant === "finalMeasu") setOpenFinalModal(true);
     if (rowAction.variant === "assignTask" && rowAction.row) setOpenFMTaskModal(true);
   }, [rowAction]);
 

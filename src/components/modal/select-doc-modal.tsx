@@ -76,7 +76,7 @@ const SelectDocumentModal: React.FC<Props> = ({
       onOpenChange={onOpenChange}
       title="Select Documents"
       description="Choose documents for the lead"
-      size="lg"
+      size="sm"
     >
       <div className="max-h-[70vh] overflow-y-auto p-6 space-y-6">
         {/* Quotations */}
