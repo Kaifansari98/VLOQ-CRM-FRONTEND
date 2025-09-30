@@ -52,7 +52,7 @@ export default function PendingLeadsPage() {
         {/* Table */}
         <main className="flex-1 p-6 overflow-x-hidden">
           <Suspense fallback={<PendingLeadsSkeleton />}>
-            <PendingLeadsTable />
+            <PendingLeadsTable tab="onHold"/>
           </Suspense>
         </main>
       </SidebarInset>
