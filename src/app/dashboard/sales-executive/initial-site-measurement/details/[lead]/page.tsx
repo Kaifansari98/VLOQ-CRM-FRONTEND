@@ -63,7 +63,7 @@ export default function SiteMeasurementLead() {
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
-  const [activityType, setActivityType] = useState<"onHold" | "lost">("onHold");
+  const [activityType, setActivityType] = useState<"onHold" | "lostApproval">("onHold");
   const { data, isLoading, isPending } = useInitialSiteMeasurementTask(
     userId,
     leadIdNum
@@ -135,7 +135,7 @@ export default function SiteMeasurementLead() {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onSelect={() => {
-                        setActivityType("lost");
+                        setActivityType("lostApproval");
                         setActivityModalOpen(true);
                       }}
                     >
@@ -196,7 +196,7 @@ export default function SiteMeasurementLead() {
         <ActivityStatusModal
           open={activityModalOpen}
           onOpenChange={setActivityModalOpen}
-          statusType={activityType} // "onHold" | "lost"
+          statusType={activityType} // "onHold" | "lostApproval"
           onSubmitRemark={(remark) => {
             if (!vendorId || !userId || !accountId) return;
 

@@ -1,5 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { updateLeadActivityStatus, UpdateActivityStatusPayload, getLostLeads, getOnHoldLeads, RevertActivityStatusPayload, revertLeadToOnGoing } from "@/api/activityStatus";
+import {
+  updateLeadActivityStatus,
+  UpdateActivityStatusPayload,
+  getLostLeads,
+  getOnHoldLeads,
+  RevertActivityStatusPayload,
+  revertLeadToOnGoing,
+  getLostApprovalLeads,
+} from "@/api/activityStatus";
 import { toast } from "react-toastify";
 
 export const useUpdateActivityStatus = () => {
@@ -9,15 +17,20 @@ export const useUpdateActivityStatus = () => {
     mutationFn: ({
       leadId,
       payload,
-    }: { leadId: number; payload: UpdateActivityStatusPayload }) =>
-      updateLeadActivityStatus(leadId, payload),
+    }: {
+      leadId: number;
+      payload: UpdateActivityStatusPayload;
+    }) => updateLeadActivityStatus(leadId, payload),
     onSuccess: (data) => {
       toast.success("Lead activity status updated!");
       // invalidate any related queries so UI refreshes
+      queryClient.invalidateQueries({ queryKey: ["lostApprovalLeads"] });
       queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "❌ Failed to update status");
+      toast.error(
+        error?.response?.data?.message || "❌ Failed to update status"
+      );
     },
   });
 };
@@ -26,6 +39,14 @@ export const useOnHoldLeads = (vendorId: number) => {
   return useQuery({
     queryKey: ["onHoldLeads", vendorId],
     queryFn: () => getOnHoldLeads(vendorId),
+    enabled: !!vendorId,
+  });
+};
+
+export const useLostApprovalLeads = (vendorId: number) => {
+  return useQuery({
+    queryKey: ["lostApprovalLeads", vendorId],
+    queryFn: () => getLostApprovalLeads(vendorId),
     enabled: !!vendorId,
   });
 };

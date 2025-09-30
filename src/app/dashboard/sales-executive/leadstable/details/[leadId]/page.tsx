@@ -26,11 +26,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "@/components/ModeToggle";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda"; // ✅ import modal
+import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda"; 
 import { useAppSelector } from "@/redux/store";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import {
@@ -43,10 +43,27 @@ import {
 } from "lucide-react";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
+import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
+import { toast } from "react-toastify";
 
 export default function LeadDetails() {
   const { leadId } = useParams();
   const leadIdNum = Number(leadId);
+
+  const searchParams = useSearchParams();
+  const accountId = Number(searchParams.get("accountId")) || 0;
+
+  console.log(
+    "[LeadDetails] leadId:",
+    leadIdNum,
+    "accountId (from query params):",
+    accountId
+  );
+
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const userId = useAppSelector((s) => s.auth.user?.id);
+
+  const updateActivityStatusMutation = useUpdateActivityStatus();
 
   // 👇 modal state
   const [assignOpen, setAssignOpen] = useState(false);
@@ -54,7 +71,9 @@ export default function LeadDetails() {
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
-  const [activityType, setActivityType] = useState<"onHold" | "lost">("onHold");
+  const [activityType, setActivityType] = useState<"onHold" | "lostApproval">(
+    "onHold"
+  );
 
   return (
     <SidebarProvider>
@@ -73,7 +92,7 @@ export default function LeadDetails() {
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbLink href="/dashboard/sales-executive/leadstable">
-                  Open Leads
+                    Open Leads
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
@@ -133,7 +152,7 @@ export default function LeadDetails() {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onSelect={() => {
-                        setActivityType("lost");
+                        setActivityType("lostApproval");
                         setActivityModalOpen(true);
                       }}
                     >
@@ -183,9 +202,39 @@ export default function LeadDetails() {
         onOpenChange={setActivityModalOpen}
         statusType={activityType}
         onSubmitRemark={(remark) => {
-          console.log("Selected status:", activityType, "with remark:", remark);
-          // 🔹 later integrate API mutation here
+          if (!vendorId || !userId) {
+            toast.error("Missing vendor/user info");
+            return;
+          }
+
+          // Map UI action → API status
+          const status = activityType === "onHold" ? "onHold" : "lostApproval";
+
+          updateActivityStatusMutation.mutate(
+            {
+              leadId: leadIdNum,
+              payload: {
+                vendorId,
+                accountId, // if you have accountId in details page, pass it here
+                userId,
+                status,
+                remark,
+                createdBy: userId,
+              },
+            },
+            {
+              onSuccess: () => {
+                toast.success(
+                  status === "onHold"
+                    ? "Lead marked as On Hold!"
+                    : "Lead sent for Lost Approval!"
+                );
+                setActivityModalOpen(false); // ✅ close modal
+              },
+            }
+          );
         }}
+        loading={updateActivityStatusMutation.isPending}
       />
     </SidebarProvider>
   );

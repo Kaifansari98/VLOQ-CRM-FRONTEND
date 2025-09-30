@@ -20,9 +20,13 @@ export type PendingLeadRow = ProcessedLead & { accountId?: number };
 
 // ✅ Columns for Pending Leads (OnHold + Lost)
 export function getPendingLeadsColumns({
+  tab,
   onRevert,
+  onMarkAsLost,
 }: {
+  tab: "onHold" | "lostApproval" | "lost";
   onRevert: (lead: PendingLeadRow) => void;
+  onMarkAsLost: (lead: PendingLeadRow) => void;
 }): ColumnDef<PendingLeadRow>[] {
   return [
     {
@@ -41,16 +45,43 @@ export function getPendingLeadsColumns({
             </Button>
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                onRevert(row.original);
-              }}
-            >
-              <Undo2 size={18} className="mr-2" />
-              Revert Back
-            </DropdownMenuItem>
+          <DropdownMenuContent align="end" className="w-44">
+            {/* OnHold + Lost → only Revert */}
+            {(tab === "onHold" || tab === "lost") && (
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  onRevert(row.original);
+                }}
+              >
+                <Undo2 size={18} className="mr-2" />
+                Revert Back
+              </DropdownMenuItem>
+            )}
+
+            {/* LostApproval → two actions */}
+            {tab === "lostApproval" && (
+              <>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    onRevert(row.original);
+                  }}
+                >
+                  <Undo2 size={18} className="mr-2" />
+                  Revert Back
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    onMarkAsLost(row.original);
+                  }}
+                >
+                  <Undo2 size={18} className="mr-2" />
+                  Mark as Lost
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),

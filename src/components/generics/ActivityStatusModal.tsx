@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  statusType: "onHold" | "lost"; // which action triggered
+  statusType: "onHold" | "lostApproval" | "lost"; // which action triggered
   onSubmitRemark: (remark: string) => void; // callback
   loading?: boolean;
 }
@@ -48,18 +48,22 @@ const ActivityStatusModal: React.FC<Props> = ({
     onOpenChange(false);
   };
 
-  const titles: Record<typeof statusType, string> = {
+  const titles: Record<Props["statusType"], string> = {
     onHold: "Mark Lead as On Hold",
+    lostApproval: "Mark Lead as Lost (Needs Approval)",
     lost: "Mark Lead as Lost",
   };
 
-  const descriptions: Record<typeof statusType, string> = {
+  const descriptions: Record<Props["statusType"], string> = {
     onHold: "Provide a reason why this lead is being put on hold.",
+    lostApproval:
+      "Provide a reason why this lead is being marked as lost (requires approval).",
     lost: "Provide a reason why this lead is being marked as lost.",
   };
 
-  const buttonText: Record<typeof statusType, string> = {
+  const buttonText: Record<Props["statusType"], string> = {
     onHold: "Confirm On Hold",
+    lostApproval: "Send for Lost Approval",
     lost: "Confirm Lost",
   };
 
@@ -70,7 +74,7 @@ const ActivityStatusModal: React.FC<Props> = ({
       title={titles[statusType]}
       description={descriptions[statusType]}
       size="md"
-    //showCloseIcon // ✅ to show header X icon
+      //showCloseIcon // ✅ to show header X icon
     >
       <div className="p-6 flex flex-col gap-4">
         <Form {...form}>

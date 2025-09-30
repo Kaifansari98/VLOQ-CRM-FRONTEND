@@ -38,7 +38,6 @@ function DetailsContent() {
     leadId
   );
 
-
   const canBook = !!data && (data.QuotationDoc?? 0) > 0 && (data.SelectionData ?? 0) > 0 && (data.DesignsDoc ?? 0) > 0;
 
   console.log("Designing stage count: ", data);

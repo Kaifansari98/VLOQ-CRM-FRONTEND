@@ -2,9 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useAppSelector } from "@/redux/store";
-import {
-  useVendorUserLeadsOpen,
-} from "@/hooks/useLeadsQueries";
+import { useVendorUserLeadsOpen } from "@/hooks/useLeadsQueries";
 import { type Lead } from "@/api/leads";
 
 import {
@@ -26,9 +24,7 @@ import { DataTableSortList } from "@/components/data-table/data-table-sort-list"
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
 import { useFeatureFlags } from "./feature-flags-provider";
-import type {
-  DataTableRowActionOpen,
-} from "@/types/data-table";
+import type { DataTableRowActionOpen } from "@/types/data-table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -68,6 +64,7 @@ export type ProcessedLead = {
   source: string;
   status: string;
   initial_site_measurement_date: string;
+  accountId: number; // ✅ added for passing to details
 };
 
 const ViewOpenLeadTable = () => {
@@ -97,6 +94,7 @@ const ViewOpenLeadTable = () => {
       productStructures: false,
       designerRemark: false,
     });
+
   // Row action state
   const [rowAction, setRowAction] =
     React.useState<DataTableRowActionOpen<ProcessedLead> | null>(null);
@@ -123,18 +121,13 @@ const ViewOpenLeadTable = () => {
 
     const leadId = rowAction.row.original.id;
 
-    // ✅ Pre-check vendorId and userId
     if (!vendorId || !userId) {
       toast.error("Vendor or User information is missing!");
       return;
     }
 
     deleteLeadMutation.mutate(
-      {
-        leadId,
-        vendorId,
-        userId,
-      },
+      { leadId, vendorId, userId },
       {
         onSuccess: () => {
           toast.success("Lead deleted successfully!");
@@ -150,8 +143,10 @@ const ViewOpenLeadTable = () => {
   };
 
   const handleRowClick = (row: ProcessedLead) => {
-    const leadId = row.id;
-    router.push(`/dashboard/sales-executive/leadstable/details/${leadId}`);
+    console.log("[handleRowClick] LeadId:", row.id, "accountId:", row.accountId);
+    router.push(
+      `/dashboard/sales-executive/leadstable/details/${row.id}?accountId=${row.accountId}`
+    );
   };
 
   // Table state
@@ -161,7 +156,6 @@ const ViewOpenLeadTable = () => {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   );
-
   const [rowSelection, setRowSelection] = React.useState({});
 
   // Process leads into table data
@@ -170,32 +164,50 @@ const ViewOpenLeadTable = () => {
 
     console.log("vendor user leads: ", vendorUserLeadsQuery.data);
 
-    return vendorUserLeadsQuery.data.map((lead: Lead, index: number) => ({
-      id: lead.id,
-      srNo: index + 1,
-      name: `${lead.firstname} ${lead.lastname}`.trim(),
-      email: lead.email || "",
-      assign_to: lead.assignedTo?.user_name || "",
-      contact: lead.country_code + " " + lead.contact_no || "",
-      priority: lead.priority || "",
-      siteAddress: lead.site_address || "",
-      billingName: lead.billing_name || "",
-      architechName: lead.archetech_name || "",
-      designerRemark: lead.designer_remark || "",
-      productTypes:
-        lead.productMappings?.map((pm) => pm.productType.type).join(", ") || "",
-      productStructures:
-        lead.leadProductStructureMapping
-          ?.map((psm) => psm.productStructure.type)
-          .join(", ") || "",
-      source: lead.source?.type || "",
-      siteType: lead.siteType?.type || "",
-      createdAt: lead.created_at || "",
-      updatedAt: lead.updated_at || "",
-      altContact: lead.alt_contact_no || "",
-      status: lead.statusType?.type || "",
-      initial_site_measurement_date: lead.initial_site_measurement_date || "",
-    }));
+    return vendorUserLeadsQuery.data.map((lead: Lead, index: number) => {
+      const accountId = lead.account?.id ?? lead.account_id ?? 0;
+
+      console.log(
+        "[rowData map] Lead:",
+        lead.id,
+        "account_id (FK):",
+        lead.account_id,
+        "account.id (relation):",
+        lead.account?.id,
+        "-> resolved accountId:",
+        accountId
+      );
+
+      return {
+        id: lead.id,
+        srNo: index + 1,
+        name: `${lead.firstname} ${lead.lastname}`.trim(),
+        email: lead.email || "",
+        assign_to: lead.assignedTo?.user_name || "",
+        contact: lead.country_code + " " + lead.contact_no || "",
+        priority: lead.priority || "",
+        siteAddress: lead.site_address || "",
+        billingName: lead.billing_name || "",
+        architechName: lead.archetech_name || "",
+        designerRemark: lead.designer_remark || "",
+        productTypes:
+          lead.productMappings?.map((pm) => pm.productType.type).join(", ") ||
+          "",
+        productStructures:
+          lead.leadProductStructureMapping
+            ?.map((psm) => psm.productStructure.type)
+            .join(", ") || "",
+        source: lead.source?.type || "",
+        siteType: lead.siteType?.type || "",
+        createdAt: lead.created_at || "",
+        updatedAt: lead.updated_at || "",
+        altContact: lead.alt_contact_no || "",
+        status: lead.statusType?.type || "",
+        initial_site_measurement_date:
+          lead.initial_site_measurement_date || "",
+        accountId, // ✅ keep accountId in row
+      };
+    });
   }, [vendorUserLeadsQuery.data]);
 
   // Setup columns
@@ -204,7 +216,7 @@ const ViewOpenLeadTable = () => {
     [setRowAction, userType, router]
   );
 
-  // Create table with direct TanStack Table
+  // Create table
   const table = useReactTable({
     data: rowData,
     columns,
@@ -228,7 +240,6 @@ const ViewOpenLeadTable = () => {
     },
   });
 
-
   if (vendorUserLeadsQuery.error) {
     return (
       <div className="p-8 text-red-600">
@@ -237,38 +248,31 @@ const ViewOpenLeadTable = () => {
     );
   }
 
-  const mockProps = {
-    shallow: true,
-    debounceMs: 300,
-    throttleMs: 50,
-  };
+  const mockProps = { shallow: true, debounceMs: 300, throttleMs: 50 };
 
-  console.log("usertypes: ", userType);
   return (
     <>
       <DataTable table={table} onRowDoubleClick={handleRowClick}>
         {enableAdvancedFilter ? (
-          <>
-            <DataTableAdvancedToolbar table={table}>
-              <DataTableSortList table={table} align="start" />
-              {filterFlag === "advancedFilters" ? (
-                <DataTableFilterList
-                  table={table}
-                  shallow={mockProps.shallow}
-                  debounceMs={mockProps.debounceMs}
-                  throttleMs={mockProps.throttleMs}
-                  align="start"
-                />
-              ) : (
-                <DataTableFilterMenu
-                  table={table}
-                  shallow={mockProps.shallow}
-                  debounceMs={mockProps.debounceMs}
-                  throttleMs={mockProps.throttleMs}
-                />
-              )}
-            </DataTableAdvancedToolbar>
-          </>
+          <DataTableAdvancedToolbar table={table}>
+            <DataTableSortList table={table} align="start" />
+            {filterFlag === "advancedFilters" ? (
+              <DataTableFilterList
+                table={table}
+                shallow={mockProps.shallow}
+                debounceMs={mockProps.debounceMs}
+                throttleMs={mockProps.throttleMs}
+                align="start"
+              />
+            ) : (
+              <DataTableFilterMenu
+                table={table}
+                shallow={mockProps.shallow}
+                debounceMs={mockProps.debounceMs}
+                throttleMs={mockProps.throttleMs}
+              />
+            )}
+          </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
             <DataTableSortList table={table} align="end" />

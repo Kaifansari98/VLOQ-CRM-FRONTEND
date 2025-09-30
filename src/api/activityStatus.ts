@@ -36,6 +36,13 @@ export const getOnHoldLeads = async (vendorId: number): Promise<Lead[]> => {
   return res.data.data;
 };
 
+export const getLostApprovalLeads = async (vendorId: number): Promise<Lead[]> => {
+  const res = await apiClient.get(
+    `/leads/lead-activity-status/vendor/${vendorId}/leads/lostApproval`
+  );
+  return res.data.data;
+};
+
 export const getLostLeads = async (vendorId: number): Promise<Lead[]> => {
   const res = await apiClient.get(
     `/leads/lead-activity-status/vendor/${vendorId}/leads/lost`
