@@ -50,117 +50,122 @@ export function getSiteMeasurementColumn({
 }: GetSiteMeasurementColumnProps): ColumnDef<ProcessedSiteMeasurementLead>[] {
   return [
     // Action Button
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              aria-label="Open menu"
-              variant="ghost"
-              className="flex size-8 p-0 data-[state=open]:bg-muted"
-            >
-              <Ellipsis className="size-4" aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "view" })}
-            >
-              <Eye size={20} />
-              <button
-                className="w-full text-left"
-                onClick={() =>
-                  router.push(
-                    `/dashboard/sales-executive/initial-site-measurement/details/${row.original.id}`
-                  )
-                }
-              >
-                View
-              </button>
-            </DropdownMenuItem>
+    // {
+    //   id: "actions",
+    //   cell: ({ row }) => (
+    //     <DropdownMenu>
+    //       <DropdownMenuTrigger asChild>
+    //         <Button
+    //           aria-label="Open menu"
+    //           variant="ghost"
+    //           className="flex size-8 p-0 data-[state=open]:bg-muted"
+    //         >
+    //           <Ellipsis className="size-4" aria-hidden="true" />
+    //         </Button>
+    //       </DropdownMenuTrigger>
+    //       <DropdownMenuContent align="end">
+    //         {/* <DropdownMenuItem
+    //           onSelect={() => setRowAction({ row, variant: "view" })}
+    //         >
+    //           <Eye size={20} />
+    //           <button
+    //             className="w-full text-left"
+    //             onClick={() =>
+    //               router.push(
+    //                 `/dashboard/sales-executive/initial-site-measurement/details/${row.original.id}`
+    //               )
+    //             }
+    //           >
+    //             View
+    //           </button>
+    //         </DropdownMenuItem> */}
 
-            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
+    //         {/* {!canDeleteLead(userType) && <DropdownMenuSeparator />} */}
 
-            <DropdownMenuItem
-              onSelect={() =>
-                setRowAction({ row, variant: "uploadmeasurement" })
-              }
-            >
-              <ClipboardCheck size={20} />
-              Upload Measurement
-            </DropdownMenuItem>
+    //         {/* <DropdownMenuItem
+    //           onSelect={() =>
+    //             setRowAction({ row, variant: "uploadmeasurement" })
+    //           }
+    //         >
+    //           <ClipboardCheck size={20} />
+    //           Upload Measurement
+    //         </DropdownMenuItem>
 
-            {row.original.followStatus === "open" && (
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger className="flex items-center gap-2">
-                  <ClipboardCheck size={20} />
-                  Follow Up
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="w-48">
-                  <DropdownMenuItem
-                    onSelect={() => setRowAction({ row, variant: "completed" })}
-                    className="flex items-center gap-2"
-                  >
-                    <CheckCircle size={18} />
-                    Completed
-                  </DropdownMenuItem>
+    //         {row.original.followStatus === "open" && (
+    //           <DropdownMenuSub>
+    //             <DropdownMenuSubTrigger className="flex items-center gap-2">
+    //               <ClipboardCheck size={20} />
+    //               Follow Up
+    //             </DropdownMenuSubTrigger>
+    //             <DropdownMenuSubContent className="w-48">
+    //               <DropdownMenuItem
+    //                 onSelect={() => setRowAction({ row, variant: "completed" })}
+    //                 className="flex items-center gap-2"
+    //               >
+    //                 <CheckCircle size={18} />
+    //                 Completed
+    //               </DropdownMenuItem>
 
-                  <DropdownMenuItem
-                    onSelect={() =>
-                      setRowAction({ row, variant: "reschedule" })
-                    }
-                    className="flex items-center gap-2"
-                  >
-                    <Clock size={18} />
-                    Reschedule
-                  </DropdownMenuItem>
+    //               <DropdownMenuItem
+    //                 onSelect={() =>
+    //                   setRowAction({ row, variant: "reschedule" })
+    //                 }
+    //                 className="flex items-center gap-2"
+    //               >
+    //                 <Clock size={18} />
+    //                 Reschedule
+    //               </DropdownMenuItem>
 
-                  <DropdownMenuSeparator />
+    //               <DropdownMenuSeparator />
 
-                  <DropdownMenuItem
-                    className="flex items-center gap-2"
-                    onSelect={() => setRowAction({ row, variant: "cancel" })}
-                  >
-                    <XCircle size={18} />
-                    Cancel
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-            )}
+    //               <DropdownMenuItem
+    //                 className="flex items-center gap-2"
+    //                 onSelect={() => setRowAction({ row, variant: "cancel" })}
+    //               >
+    //                 <XCircle size={18} />
+    //                 Cancel
+    //               </DropdownMenuItem>
+    //             </DropdownMenuSubContent>
+    //           </DropdownMenuSub>
+    //         )} */}
 
-            {canReassingLead(userType) && (
-              <DropdownMenuItem
-                onSelect={() => setRowAction({ row, variant: "reassignlead" })}
-              >
-                <Users size={20} />
-                Reassign Lead
-              </DropdownMenuItem>
-            )}
+    //         {/* {canReassingLead(userType) && (
+    //           <DropdownMenuItem
+    //             onSelect={() => setRowAction({ row, variant: "reassignlead" })}
+    //           >
+    //             <Users size={20} />
+    //             Reassign Lead
+    //           </DropdownMenuItem>
+    //         )} */}
 
-            {canDeleteLead(userType) && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onSelect={() => setRowAction({ row, variant: "delete" })}
-                >
-                  Delete
-                  <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-      enableSorting: false,
-      enableHiding: false,
-      size: 40,
-    },
+    //         {/* {canDeleteLead(userType) && (
+    //           <>
+    //             <DropdownMenuSeparator />
+    //             <DropdownMenuItem
+    //               onSelect={() => setRowAction({ row, variant: "delete" })}
+    //             >
+    //               Delete
+    //               <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
+    //             </DropdownMenuItem>
+    //           </>
+    //         )} */}
+    //       </DropdownMenuContent>
+    //     </DropdownMenu>
+    //   ),
+    //   enableSorting: false,
+    //   enableHiding: false,
+    //   size: 40,
+    // },
     // Sr NO
     {
       accessorKey: "srNo",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Sr. No." />
+      ),
+      cell: ({ row }) => (
+        <div className="w-full text-center">
+          {row.getValue("srNo")}
+        </div>
       ),
       meta: {
         label: "SrNo",
@@ -168,7 +173,7 @@ export function getSiteMeasurementColumn({
       enableSorting: true,
       enableColumnFilter: true,
       enableHiding: true,
-    },
+    },    
 
     // First name and lastname: 1
     {

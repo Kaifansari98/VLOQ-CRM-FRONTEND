@@ -88,6 +88,9 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       queryClient.invalidateQueries({
         queryKey: ["leadStats", vendorId, userId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["siteMeasurementLeads", vendorId],
+      });
       handleReset();
       onOpenChange(false);
     },
