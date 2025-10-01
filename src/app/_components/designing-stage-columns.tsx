@@ -7,14 +7,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ellipsis, Eye, Text, Info, Calendar } from "lucide-react";
+import { Ellipsis, Eye, Text } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DataTableRowAction } from "@/types/data-table";
-import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
+import { canReassingLead } from "@/components/utils/privileges";
 import CustomeBadge from "@/components/origin-badge";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeStatusBadge from "@/components/origin-status-badge";
@@ -49,19 +47,13 @@ export function getDesigningStageColumn({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "view" })}
-            >
-              <Eye size={20} />
-              View
-            </DropdownMenuItem>
 
-            <DropdownMenuItem
+            {/* <DropdownMenuItem
               onSelect={() => setRowAction({ row, variant: "booking" })}
             >
               <Calendar size={20} />
               Booking
-            </DropdownMenuItem>
+            </DropdownMenuItem> */}
 
             <DropdownMenuItem
               onSelect={() => setRowAction({ row, variant: "measurement-modal" })}
@@ -70,9 +62,9 @@ export function getDesigningStageColumn({
               Site Measurements
             </DropdownMenuItem>
 
-            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
+            {/* {!canDeleteLead(userType) && <DropdownMenuSeparator />} */}
 
-            <DropdownMenuItem asChild>
+            {/* <DropdownMenuItem asChild>
               <Link
                 href={{
                   pathname:
@@ -87,9 +79,9 @@ export function getDesigningStageColumn({
                 <Info size={20} />
                 Details
               </Link>
-            </DropdownMenuItem>
+            </DropdownMenuItem> */}
 
-            {canDeleteLead(userType) && (
+            {/* {canDeleteLead(userType) && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -99,7 +91,7 @@ export function getDesigningStageColumn({
                   <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
                 </DropdownMenuItem>
               </>
-            )}
+            )} */}
           </DropdownMenuContent>
         </DropdownMenu>
       ),

@@ -15,12 +15,14 @@ interface LeadDetailsUtilProps {
     | "clientdocumentation";
   leadId?: number;
   leadInfo?: any;
+  defaultTab?: string;
 }
 
 export default function LeadDetailsUtil({
   status,
   leadId,
   leadInfo,
+  defaultTab = "details",
 }: LeadDetailsUtilProps) {
   const allTabs = [
     {
@@ -97,5 +99,5 @@ export default function LeadDetailsUtil({
     statusFlow[status].includes(tab.id)
   );
 
-  return <SmoothTab items={visibleTabs} defaultTabId="details" />;
+  return <SmoothTab items={visibleTabs} defaultTabId={defaultTab} />;
 }

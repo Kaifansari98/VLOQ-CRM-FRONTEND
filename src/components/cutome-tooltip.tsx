@@ -7,9 +7,10 @@ import {
 } from "@/components/ui/tooltip";
 
 interface CustomeTooltipProps {
-  truncateValue: string;
+  truncateValue: React.ReactNode;
   value: string;
 }
+
 export default function CustomeTooltip({
   truncateValue,
   value,

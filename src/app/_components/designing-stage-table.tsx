@@ -49,12 +49,16 @@ const DesigningStageTable = () => {
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
   const router = useRouter();
-  const { data, isLoading, isError } = useDesigningStageLeads(vendorId!, userId!);
+  const { data, isLoading, isError } = useDesigningStageLeads(
+    vendorId!,
+    userId!
+  );
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const [openDelete, setOpenDelete] = useState<boolean>(false);
   const [openView, setOpenView] = useState<boolean>(false);
   const [bookingOpenLead, setBookingOpenLead] = useState<boolean>(false);
-  const [openMeasurementModal, setOpenMeasurementModal] = useState<boolean>(false);
+  const [openMeasurementModal, setOpenMeasurementModal] =
+    useState<boolean>(false);
   const deleteLeadMutation = useDeleteLead();
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [columnVisibility, setColumnVisibility] =
@@ -100,15 +104,15 @@ const DesigningStageTable = () => {
     if (rowAction?.variant === "measurement-modal" && rowAction.row) {
       setOpenMeasurementModal(true);
     }
-
   }, [rowAction]);
 
- const handleRowClick = (row: ProcessedDesigningStageLead) => {
-  const leadId = row.id; 
-  router.push(
-    `/dashboard/sales-executive/designing-stage/details/${leadId}`
-  );
-};
+  const handleRowClick = (row: ProcessedDesigningStageLead) => {
+    const leadId = row.id;
+    const accountId = row.accountId;
+    router.push(
+      `/dashboard/sales-executive/designing-stage/details/${leadId}?accountId=${accountId}`
+    );
+  };
 
   const rowData = useMemo<ProcessedDesigningStageLead[]>(() => {
     if (!data?.data) return [];
@@ -213,7 +217,6 @@ const DesigningStageTable = () => {
     setRowAction(null);
   };
 
-
   if (isLoading) return <p>Loading...</p>;
   if (isError) return <p>Error fetching leads</p>;
 
@@ -280,22 +283,22 @@ const DesigningStageTable = () => {
       />
 
       <SiteMesurementModal
-          open={openMeasurementModal}
-          onOpenChange={setOpenMeasurementModal}
-          data={
-            rowAction?.row.original
-              ? ({
-                  ...rowAction.row.original,
-                  documentUrl: rowAction.row.original.documentUrl.map((doc) => ({
-                    ...doc,
-                    signed_url: doc.signedUrl, // map camelCase → snake_case
-                    file_type: "unknown",      // fallback
-                    is_image: false,           // fallback
-                  })),
-                } as ProcessedSiteMeasurementLead)
-              : undefined
-          }
-        />
+        open={openMeasurementModal}
+        onOpenChange={setOpenMeasurementModal}
+        data={
+          rowAction?.row.original
+            ? ({
+                ...rowAction.row.original,
+                documentUrl: rowAction.row.original.documentUrl.map((doc) => ({
+                  ...doc,
+                  signed_url: doc.signedUrl, // map camelCase → snake_case
+                  file_type: "unknown", // fallback
+                  is_image: false, // fallback
+                })),
+              } as ProcessedSiteMeasurementLead)
+            : undefined
+        }
+      />
     </>
   );
 };
