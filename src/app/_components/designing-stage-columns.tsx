@@ -49,19 +49,13 @@ export function getDesigningStageColumn({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "view" })}
-            >
-              <Eye size={20} />
-              View
-            </DropdownMenuItem>
 
-            <DropdownMenuItem
+            {/* <DropdownMenuItem
               onSelect={() => setRowAction({ row, variant: "booking" })}
             >
               <Calendar size={20} />
               Booking
-            </DropdownMenuItem>
+            </DropdownMenuItem> */}
 
             <DropdownMenuItem
               onSelect={() => setRowAction({ row, variant: "measurement-modal" })}
@@ -70,9 +64,9 @@ export function getDesigningStageColumn({
               Site Measurements
             </DropdownMenuItem>
 
-            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
+            {/* {!canDeleteLead(userType) && <DropdownMenuSeparator />} */}
 
-            <DropdownMenuItem asChild>
+            {/* <DropdownMenuItem asChild>
               <Link
                 href={{
                   pathname:
@@ -87,9 +81,9 @@ export function getDesigningStageColumn({
                 <Info size={20} />
                 Details
               </Link>
-            </DropdownMenuItem>
+            </DropdownMenuItem> */}
 
-            {canDeleteLead(userType) && (
+            {/* {canDeleteLead(userType) && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -99,7 +93,7 @@ export function getDesigningStageColumn({
                   <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
                 </DropdownMenuItem>
               </>
-            )}
+            )} */}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
