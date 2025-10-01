@@ -3,18 +3,9 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Ellipsis, Eye, SquarePen, Users, Text, UserPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Text} from "lucide-react";
 import type { DataTableRowActionOpen } from "@/types/data-table";
-import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
+import { canReassingLead } from "@/components/utils/privileges";
 import CustomeBadge from "@/components/origin-badge";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeStatusBadge from "@/components/origin-status-badge";
@@ -39,7 +30,7 @@ export type ProcessedLead = {
   siteType: string;
   createdAt: string;
   updatedAt: string;
-  altContact?: string; // 👈 backend ke key ke sath match
+  altContact?: string;
   status: string;
   initial_site_measurement_date: string;
   accountId: number;
@@ -54,94 +45,96 @@ interface GetVendorLeadsTableColumnsProps {
 }
 
 export function getViewOpenLeadsTableColumns({
-  setRowAction,
   userType,
-  router,
 }: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedLead>[] {
   return [
     // Action Button
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              aria-label="Open menu"
-              variant="ghost"
-              className="flex size-8 p-0 data-[state=open]:bg-muted"
-            >
-              <Ellipsis className="size-4" aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem
-              data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: "view" })}
-            >
-              <Eye size={20} />
-              <button
-                className="w-full text-left"
-                onClick={() =>
-                  router.push(
-                    `/dashboard/sales-executive/leadstable/details/${row.original.id}`
-                  )
-                }
-              >
-                View
-              </button>
-            </DropdownMenuItem>
+    // {
+    //   id: "actions",
+    //   cell: ({ row }) => (
+    //     <DropdownMenu>
+    //       <DropdownMenuTrigger asChild>
+    //         <Button
+    //           aria-label="Open menu"
+    //           variant="ghost"
+    //           className="flex size-8 p-0 data-[state=open]:bg-muted"
+    //         >
+    //           <Ellipsis className="size-4" aria-hidden="true" />
+    //         </Button>
+    //       </DropdownMenuTrigger>
+    //       <DropdownMenuContent align="end" className="w-40">
+    //         {/* <DropdownMenuItem
+    //           data-slot="action-button"
+    //           onSelect={() => setRowAction({ row, variant: "view" })}
+    //         >
+    //           <Eye size={20} />
+    //           <button
+    //             className="w-full text-left"
+    //             onClick={() =>
+    //               router.push(
+    //                 `/dashboard/sales-executive/leadstable/details/${row.original.id}`
+    //               )
+    //             }
+    //           >
+    //             View
+    //           </button>
+    //         </DropdownMenuItem> */}
 
-            <DropdownMenuItem
-              data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: "assigntask" })}
-            >
-              <UserPlus size={20} />
-              Assign Task
-            </DropdownMenuItem>
-            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
+    //         {/* <DropdownMenuItem
+    //           data-slot="action-button"
+    //           onSelect={() => setRowAction({ row, variant: "assigntask" })}
+    //         >
+    //           <UserPlus size={20} />
+    //           Assign Task
+    //         </DropdownMenuItem> */}
+    //         {/* {!canDeleteLead(userType) && <DropdownMenuSeparator />} */}
 
-            <DropdownMenuItem
-              data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: "edit" })}
-            >
-              <SquarePen size={20} />
-              Edit
-            </DropdownMenuItem>
+    //         {/* <DropdownMenuItem
+    //           data-slot="action-button"
+    //           onSelect={() => setRowAction({ row, variant: "edit" })}
+    //         >
+    //           <SquarePen size={20} />
+    //           Edit
+    //         </DropdownMenuItem> */}
 
-            {canReassingLead(userType) && (
-              <DropdownMenuItem
-                data-slot="action-button"
-                onSelect={() => setRowAction({ row, variant: "reassignlead" })}
-              >
-                <Users size={20} />
-                Reassign Lead
-              </DropdownMenuItem>
-            )}
+    //         {/* {canReassingLead(userType) && (
+    //           <DropdownMenuItem
+    //             data-slot="action-button"
+    //             onSelect={() => setRowAction({ row, variant: "reassignlead" })}
+    //           >
+    //             <Users size={20} />
+    //             Reassign Lead
+    //           </DropdownMenuItem>
+    //         )} */}
 
-            {canDeleteLead(userType) && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  data-slot="action-button"
-                  onSelect={() => setRowAction({ row, variant: "delete" })}
-                >
-                  Delete
-                  <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-      enableSorting: false,
-      enableHiding: false,
-      size: 40,
-    },
-    // Sr NO
+    //         {canDeleteLead(userType) && (
+    //           <>
+    //             {/* <DropdownMenuSeparator /> */}
+    //             <DropdownMenuItem
+    //               data-slot="action-button"
+    //               onSelect={() => setRowAction({ row, variant: "delete" })}
+    //             >
+    //               Delete
+    //               <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
+    //             </DropdownMenuItem>
+    //           </>
+    //         )}
+    //       </DropdownMenuContent>
+    //     </DropdownMenu>
+    //   ),
+    //   enableSorting: false,
+    //   enableHiding: false,
+    //   size: 40,
+    // },
     {
       accessorKey: "srNo",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Sr. No." />
+        <DataTableColumnHeader column={column} title="col" />
+      ),
+      cell: ({ row }) => (
+        <div className="text-center">
+          {row.getValue("srNo")}
+        </div>
       ),
       meta: {
         label: "SrNo",
@@ -149,7 +142,7 @@ export function getViewOpenLeadsTableColumns({
       enableSorting: true,
       enableColumnFilter: true,
       enableHiding: true,
-    },
+    },    
 
     // First name and lastname: 1
     {

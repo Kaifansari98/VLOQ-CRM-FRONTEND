@@ -2,6 +2,11 @@
 
 import { AppSidebar } from "@/components/app-sidebar";
 import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
@@ -9,11 +14,33 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Separator } from "@/components/ui/separator";
+import { ModeToggle } from "@/components/ModeToggle";
+import { useParams, useSearchParams } from "next/navigation";
+import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
+import { useAppSelector } from "@/redux/store";
+import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+  SquarePen,
+  Users,
+  XCircle,
+  Clock,
+  EllipsisVertical,
+  HouseIcon,
+  PanelsTopLeftIcon,
+  BoxIcon,
+  UsersRoundIcon,
+} from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
+import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
+import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
+import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,56 +51,79 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
-import { ModeToggle } from "@/components/ModeToggle";
-import { useParams, useSearchParams } from "next/navigation";
-import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda"; 
-import { useAppSelector } from "@/redux/store";
-import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import {
-  ClipboardCheck,
-  SquarePen,
-  Users,
-  XCircle,
-  Clock,
-  EllipsisVertical,
-} from "lucide-react";
-import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
-import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
-import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
-import { toast } from "react-toastify";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useDeleteLead } from "@/hooks/useDeleteLead";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function LeadDetails() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
   const { leadId } = useParams();
   const leadIdNum = Number(leadId);
 
   const searchParams = useSearchParams();
   const accountId = Number(searchParams.get("accountId")) || 0;
 
-  console.log(
-    "[LeadDetails] leadId:",
-    leadIdNum,
-    "accountId (from query params):",
-    accountId
-  );
-
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
 
+  const [openDelete, setOpenDelete] = useState(false);
+  const deleteLeadMutation = useDeleteLead();
+
   const updateActivityStatusMutation = useUpdateActivityStatus();
 
-  // 👇 modal state
+  // modals
   const [assignOpen, setAssignOpen] = useState(false);
-
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold" | "lostApproval">(
     "onHold"
   );
+
+  const handleDeleteLead = () => {
+    if (!vendorId || !userId) {
+      toast.error("Vendor or User information is missing!");
+      return;
+    }
+
+    deleteLeadMutation.mutate(
+      { leadId: leadIdNum, vendorId, userId },
+      {
+        onSuccess: () => {
+          toast.success("Lead deleted successfully!");
+          setOpenDelete(false);
+
+          // ✅ Invalidate both queries so they refetch
+          queryClient.invalidateQueries({
+            queryKey: ["vendorUserLeadsOpen", vendorId, userId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["leadStats", vendorId, userId],
+          });
+
+          // ✅ Redirect to table after invalidation
+          router.push("/dashboard/sales-executive/leadstable");
+        },
+        onError: (error: any) => {
+          toast.error(error?.message || "Failed to delete lead!");
+        },
+      }
+    );
+  };
+
+  // 🔹 Tabs state
+  const [activeTab, setActiveTab] = useState("details");
 
   return (
     <SidebarProvider>
@@ -107,34 +157,22 @@ export default function LeadDetails() {
               Assign Task
             </Button>
             <ModeToggle />
-
+            {/* Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon">
                   <EllipsisVertical size={22} />
                 </Button>
               </DropdownMenuTrigger>
-
               <DropdownMenuContent align="end">
-                {/* 🔹 Upload Measurement */}
-                <DropdownMenuItem onSelect={() => alert("Upload Measurement")}>
-                  <ClipboardCheck className="mr-2 h-4 w-4" />
-                  Upload Measurement
-                </DropdownMenuItem>
-
-                {/* 🔹 Edit */}
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
-
-                {/* 🔹 Reassign */}
                 <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
                   <Users className="mr-2 h-4 w-4" />
                   Reassign Lead
                 </DropdownMenuItem>
-
-                {/* 🔹 Activity Status submenu */}
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <EllipsisVertical className="mr-2 h-4 w-4" />
@@ -161,11 +199,8 @@ export default function LeadDetails() {
                     </DropdownMenuItem>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
-
                 <DropdownMenuSeparator />
-
-                {/* 🔹 Delete */}
-                <DropdownMenuItem onSelect={() => alert("Delete")}>
+                <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -173,30 +208,85 @@ export default function LeadDetails() {
           </div>
         </header>
 
-        <main className="flex-1 px-6 pt-4">
-          <LeadDetailsUtil status="details" leadId={leadIdNum} />
-        </main>
+        {/* 🔹 Tabs bar above content */}
+        <Tabs
+          value={activeTab}
+          onValueChange={(val) => {
+            if (val === "projects") {
+              // instead of switching tab, open modal
+              setAssignOpen(true);
+              // stay on details tab
+              return;
+            }
+            setActiveTab(val);
+          }}
+          className="w-full px-6 pt-4"
+        >
+          <ScrollArea>
+            <TabsList className="text-foreground mb-3 h-auto gap-2 rounded-none border-b bg-transparent px-1 py-2">
+              <TabsTrigger value="details">
+                <HouseIcon size={16} className="mr-1 opacity-60" />
+                Lead Details
+              </TabsTrigger>
+              <TabsTrigger value="projects">
+                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                To-Do Task
+              </TabsTrigger>
+              <TabsTrigger value="packages">
+                <BoxIcon size={16} className="mr-1 opacity-60" />
+                Site History
+              </TabsTrigger>
+              <TabsTrigger value="team">
+                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                Payment Information
+              </TabsTrigger>
+            </TabsList>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+
+          {/* 🔹 Tab Contents */}
+          <TabsContent value="details">
+            <main className="flex-1 h-fit">
+              <LeadDetailsUtil status="details" leadId={leadIdNum} />
+            </main>
+          </TabsContent>
+
+          <TabsContent value="packages">
+            <p className="text-center text-muted-foreground py-4">
+              Site History Content
+            </p>
+          </TabsContent>
+
+          <TabsContent value="team">
+            <p className="text-center text-muted-foreground py-4">
+              Payment Information Content
+            </p>
+          </TabsContent>
+        </Tabs>
       </SidebarInset>
 
-      {/* ✅ Render modal here */}
+      {/* ✅ Modals */}
       <AssignTaskSiteMeasurementForm
         open={assignOpen}
-        onOpenChange={setAssignOpen}
+        onOpenChange={(open) => {
+          setAssignOpen(open);
+          if (!open) {
+            // when modal closes, go back to details tab
+            setActiveTab("details");
+          }
+        }}
         data={{ id: leadIdNum, name: "" }}
       />
-
       <AssignLeadModal
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}
         leadData={{ id: leadIdNum }}
       />
-
       <EditLeadModal
         open={openEditModal}
         onOpenChange={setOpenEditModal}
         leadData={{ id: leadIdNum }}
       />
-
       <ActivityStatusModal
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
@@ -206,21 +296,18 @@ export default function LeadDetails() {
             toast.error("Missing vendor/user info");
             return;
           }
-
-          // Map UI action → API status
           const status = activityType === "onHold" ? "onHold" : "lostApproval";
-
           updateActivityStatusMutation.mutate(
             {
               leadId: leadIdNum,
               payload: {
                 vendorId,
-                accountId, // if you have accountId in details page, pass it here
+                accountId,
                 userId,
                 status,
                 remark,
                 createdBy: userId,
-                ...(status === "onHold" ? { dueDate } : {}), // 👈 send only for onHold
+                ...(status === "onHold" ? { dueDate } : {}),
               },
             },
             {
@@ -230,13 +317,31 @@ export default function LeadDetails() {
                     ? "Lead marked as On Hold!"
                     : "Lead sent for Lost Approval!"
                 );
-                setActivityModalOpen(false); // ✅ close modal
+                setActivityModalOpen(false);
               },
             }
           );
         }}
         loading={updateActivityStatusMutation.isPending}
       />
+
+      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              lead from your system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteLead}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarProvider>
   );
 }

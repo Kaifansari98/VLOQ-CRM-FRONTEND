@@ -18,7 +18,6 @@ import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "@/components/ModeToggle";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
-import { useLeadById } from "@/hooks/useLeadsQueries";
 import { useState } from "react";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
@@ -48,28 +47,84 @@ import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-
 import { useInitialSiteMeasurementTask } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useDeleteLead } from "@/hooks/useDeleteLead";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
+import InitialSiteMeasuresMent from "@/components/sales-executive/Lead/initial-site-measurement-form";
 
 export default function SiteMeasurementLead() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const updateStatusMutation = useUpdateActivityStatus();
+  const deleteLeadMutation = useDeleteLead();
+
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
-
   const searchParams = useSearchParams();
   const accountId = searchParams.get("accountId");
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const updateStatusMutation = useUpdateActivityStatus();
+
+  const [openDelete, setOpenDelete] = useState(false);
+  const [openMeasurement, setOpenMeasurement] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
-  const [activityType, setActivityType] = useState<"onHold" | "lostApproval">("onHold");
+  const [activityType, setActivityType] = useState<"onHold" | "lostApproval">(
+    "onHold"
+  );
   const { data, isLoading, isPending } = useInitialSiteMeasurementTask(
     userId,
     leadIdNum
   );
-  console.log("lead id: ", leadIdNum);
-  console.log("Site measurement Task: ", data);
+
+  // console.log("lead id: ", leadIdNum);
+  // console.log("Site measurement Task: ", data);
+
+  const handleDeleteLead = () => {
+    if (!vendorId || !userId) {
+      toast.error("Vendor or User information is missing!");
+      return;
+    }
+
+    deleteLeadMutation.mutate(
+      { leadId: leadIdNum, vendorId, userId },
+      {
+        onSuccess: () => {
+          toast.success("Lead deleted successfully!");
+          setOpenDelete(false);
+
+          // ✅ Invalidate related queries
+          queryClient.invalidateQueries({
+            queryKey: ["siteMeasurementLeads", vendorId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["leadStats", vendorId, userId],
+          });
+
+          // ✅ Redirect back to site measurement table
+          router.push("/dashboard/sales-executive/initial-site-measurement");
+        },
+        onError: (error: any) => {
+          toast.error(error?.message || "Failed to delete lead!");
+        },
+      }
+    );
+  };
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -112,7 +167,7 @@ export default function SiteMeasurementLead() {
 
               <DropdownMenuContent align="end">
                 {/* 🔹 Upload Measurement */}
-                <DropdownMenuItem onSelect={() => alert("Upload Measurement")}>
+                <DropdownMenuItem onSelect={() => setOpenMeasurement(true)}>
                   <ClipboardCheck size={20} />
                   Upload Measurement
                 </DropdownMenuItem>
@@ -157,7 +212,7 @@ export default function SiteMeasurementLead() {
                 <DropdownMenuSeparator />
 
                 {/* 🔹 Delete */}
-                <DropdownMenuItem onSelect={() => alert("Delete")}>
+                <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -213,6 +268,34 @@ export default function SiteMeasurementLead() {
             });
           }}
           loading={updateStatusMutation.isPending}
+        />
+
+        <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the
+                lead from your system.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteLead}>
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <InitialSiteMeasuresMent
+          open={openMeasurement}
+          onOpenChange={setOpenMeasurement}
+          data={{
+            id: leadIdNum,
+            accountId: Number(accountId),
+            name: "", // you can pass lead name here if available
+          }}
         />
       </SidebarInset>
     </SidebarProvider>
