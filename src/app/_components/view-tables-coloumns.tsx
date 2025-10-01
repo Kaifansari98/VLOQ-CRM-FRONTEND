@@ -142,7 +142,7 @@ export function getViewOpenLeadsTableColumns({
       enableSorting: true,
       enableColumnFilter: true,
       enableHiding: true,
-    },    
+    },
 
     // First name and lastname: 1
     {

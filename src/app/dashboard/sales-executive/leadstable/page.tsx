@@ -54,13 +54,6 @@ export default function LeadsGenerationPage() {
 
           <div className="flex items-center gap-2">
             <div className="flex gap-2 items-center">
-              {/* <Button
-                onClick={() =>
-                  router.push("/dashboard/sales-executive/pending-leads")
-                }
-              >
-                OnHold/Lost Leads
-              </Button> */}
 
               <GenerateLeadFormModal
                 open={openCreateLead}

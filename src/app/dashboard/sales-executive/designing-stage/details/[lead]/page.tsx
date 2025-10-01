@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "@/components/ModeToggle";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
@@ -40,6 +40,10 @@ import {
   XCircle,
   Clock,
   ClipboardCheck,
+  HouseIcon,
+  PanelsTopLeftIcon,
+  BoxIcon,
+  UsersRoundIcon,
 } from "lucide-react";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import {
@@ -55,12 +59,14 @@ import {
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import { useRouter } from "next/navigation";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import BookingModal from "@/components/sales-executive/designing-stage/booking-modal";
-import { ProcessedSiteMeasurementLead } from "@/types/site-measrument-types";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { useDesigningStageCounts } from "@/hooks/designing-stage/designing-leads-hooks";
+import CustomeTooltip from "@/components/cutome-tooltip";
 
 export default function DesigningStageLead() {
   const router = useRouter();
@@ -76,6 +82,14 @@ export default function DesigningStageLead() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
 
+  const { data: countsData, isLoading: countsLoading } =
+    useDesigningStageCounts(vendorId, leadIdNum);
+
+  const canMoveToBooking =
+    countsData?.QuotationDoc > 0 &&
+    countsData?.DesignsDoc > 0 &&
+    countsData?.SelectionData >= 3;
+
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
 
   const [openDelete, setOpenDelete] = useState(false);
@@ -87,6 +101,9 @@ export default function DesigningStageLead() {
   const [activityType, setActivityType] = useState<"onHold" | "lostApproval">(
     "onHold"
   );
+
+  // tabs state
+  const [activeTab, setActiveTab] = useState("details");
 
   if (isLoading) {
     return <p className="p-6">Loading lead details...</p>;
@@ -165,10 +182,22 @@ export default function DesigningStageLead() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {/* Move to Booking */}
-                <DropdownMenuItem onSelect={() => setBookingOpenLead(true)}>
-                  <ClipboardCheck className="mr-2 h-4 w-4" />
-                  Move To Booking
-                </DropdownMenuItem>
+                {!canMoveToBooking ? (
+                  <CustomeTooltip
+                    truncateValue={
+                      <div className="flex items-center opacity-50 cursor-not-allowed">
+                        <ClipboardCheck className="mr-2 h-4 w-4" />
+                        Move To Booking
+                      </div>
+                    }
+                    value="Requires at least 1 Quotation, 1 Design, and 3 Selections"
+                  />
+                ) : (
+                  <DropdownMenuItem onSelect={() => setBookingOpenLead(true)}>
+                    <ClipboardCheck className="h-4 w-4" />
+                    Move To Booking
+                  </DropdownMenuItem>
+                )}
 
                 {/* Lead Status submenu */}
                 <DropdownMenuSub>
@@ -183,7 +212,7 @@ export default function DesigningStageLead() {
                         setActivityModalOpen(true);
                       }}
                     >
-                      <Clock className="mr-2 h-4 w-4" />
+                      <Clock className="h-4 w-4" />
                       Mark On Hold
                     </DropdownMenuItem>
                     <DropdownMenuItem
@@ -192,7 +221,7 @@ export default function DesigningStageLead() {
                         setActivityModalOpen(true);
                       }}
                     >
-                      <XCircle className="mr-2 h-4 w-4" />
+                      <XCircle className="h-4 w-4" />
                       Mark As Lost
                     </DropdownMenuItem>
                   </DropdownMenuSubContent>
@@ -200,13 +229,13 @@ export default function DesigningStageLead() {
 
                 {/* Reassign Lead */}
                 <DropdownMenuItem onSelect={() => setAssignOpenLead(true)}>
-                  <Users className="mr-2 h-4 w-4" />
+                  <Users className="h-4 w-4" />
                   Reassign Lead
                 </DropdownMenuItem>
 
                 {/* Edit Lead */}
                 <DropdownMenuItem onSelect={() => setOpenEditModal(true)}>
-                  <SquarePen className="mr-2 h-4 w-4" />
+                  <SquarePen className="h-4 w-4" />
                   Edit Lead
                 </DropdownMenuItem>
 
@@ -214,7 +243,7 @@ export default function DesigningStageLead() {
 
                 {/* Delete */}
                 <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
-                  <XCircle className="mr-2 h-4 w-4 text-red-500" />
+                  <XCircle className="h-4 w-4 text-red-500" />
                   Delete Lead
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -222,11 +251,65 @@ export default function DesigningStageLead() {
           </div>
         </header>
 
-        <main className="flex-1 px-6 pt-4">
-          <LeadDetailsUtil status="designing" leadId={leadIdNum} />
-        </main>
+        {/* 🔹 Tabs bar above content */}
+        <Tabs
+          value={activeTab}
+          onValueChange={(val) => {
+            if (val === "projects") {
+              // For DesigningStageLead we do nothing special
+              return;
+            }
+            setActiveTab(val);
+          }}
+          className="w-full px-6 pt-4"
+        >
+          <ScrollArea>
+            <TabsList className="text-foreground mb-3 h-auto gap-2 rounded-none border-b bg-transparent px-1 py-2">
+              <TabsTrigger value="details">
+                <HouseIcon size={16} className="mr-1 opacity-60" />
+                Lead Details
+              </TabsTrigger>
+              <TabsTrigger value="projects">
+                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                To-Do Task
+              </TabsTrigger>
+              <TabsTrigger value="packages">
+                <BoxIcon size={16} className="mr-1 opacity-60" />
+                Site History
+              </TabsTrigger>
+              <TabsTrigger value="team">
+                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                Payment Information
+              </TabsTrigger>
+            </TabsList>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
 
-        {/* ✅ Render modal here */}
+          {/* 🔹 Tab Contents */}
+          <TabsContent value="details">
+            <main className="flex-1 h-fit">
+              <LeadDetailsUtil
+                status="designing"
+                leadId={leadIdNum}
+                defaultTab="designing"
+              />
+            </main>
+          </TabsContent>
+
+          <TabsContent value="packages">
+            <p className="text-center text-muted-foreground py-4">
+              Site History Content
+            </p>
+          </TabsContent>
+
+          <TabsContent value="team">
+            <p className="text-center text-muted-foreground py-4">
+              Payment Information Content
+            </p>
+          </TabsContent>
+        </Tabs>
+
+        {/* ✅ Modals */}
         <AssignTaskSiteMeasurementForm
           open={assignOpen}
           onOpenChange={setAssignOpen}
@@ -255,13 +338,12 @@ export default function DesigningStageLead() {
         <ActivityStatusModal
           open={activityModalOpen}
           onOpenChange={setActivityModalOpen}
-          statusType={activityType} // "onHold" | "lostApproval"
+          statusType={activityType}
           onSubmitRemark={(remark, dueDate) => {
             if (!vendorId || !userId) {
               toast.error("Vendor or User info is missing!");
               return;
             }
-
             updateStatusMutation.mutate(
               {
                 leadId: leadIdNum,

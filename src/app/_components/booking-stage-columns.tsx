@@ -3,27 +3,9 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Ellipsis,
-  Eye,
-  SquarePen,
-  Users,
-  Text,
-  StretchHorizontal,
-  Ruler,
-  UserPlus,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Text } from "lucide-react";
 import type { DataTableRowActionFinalMeasurement } from "@/types/data-table";
-import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
+import { canReassingLead } from "@/components/utils/privileges";
 import CustomeBadge from "@/components/origin-badge";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeStatusBadge from "@/components/origin-status-badge";
@@ -127,6 +109,9 @@ export function getBookingLeadsTableColumns({
       accessorKey: "srNo",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Sr. No." />
+      ),
+      cell: ({ row }) => (
+        <div className="flex justify-center">{row.getValue("srNo")}</div>
       ),
       meta: {
         label: "SrNo",
