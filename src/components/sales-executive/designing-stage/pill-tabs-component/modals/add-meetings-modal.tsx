@@ -82,6 +82,11 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
       queryClient.invalidateQueries({
         queryKey: ["meetings", vendorId, leadId],
       });
+
+      // ✅ Refetch design stage counts so button enables correctly
+      queryClient.invalidateQueries({
+        queryKey: ["designingStageCounts", vendorId, leadId],
+      });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || "Failed to add meeting!");

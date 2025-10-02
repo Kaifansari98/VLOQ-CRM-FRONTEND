@@ -45,73 +45,76 @@ export function getClientDocumentationTableColumns({
   const router = useRouter();
   return [
     // Action Button
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              aria-label="Open menu"
-              variant="ghost"
-              className="flex size-8 p-0 data-[state=open]:bg-muted"
-            >
-              <Ellipsis className="size-4" aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: "view" })}
-            >
-              <Eye size={20} />
-              View
-            </DropdownMenuItem>
-            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
+    // {
+    //   id: "actions",
+    //   cell: ({ row }) => (
+    //     <DropdownMenu>
+    //       <DropdownMenuTrigger asChild>
+    //         <Button
+    //           aria-label="Open menu"
+    //           variant="ghost"
+    //           className="flex size-8 p-0 data-[state=open]:bg-muted"
+    //         >
+    //           <Ellipsis className="size-4" aria-hidden="true" />
+    //         </Button>
+    //       </DropdownMenuTrigger>
+    //       <DropdownMenuContent align="end">
+    //         <DropdownMenuItem
+    //           data-slot="action-button"
+    //           onSelect={() => setRowAction({ row, variant: "view" })}
+    //         >
+    //           <Eye size={20} />
+    //           View
+    //         </DropdownMenuItem>
+    //         {!canDeleteLead(userType) && <DropdownMenuSeparator />}
 
+    //         <DropdownMenuItem
+    //           data-slot="action-button"
+    //           onSelect={() => setRowAction({ row, variant: "clientdoc" })}
+    //         >
+    //           <FileText size={20} />
+    //           Client Documentation
+    //         </DropdownMenuItem>
 
-            <DropdownMenuItem
-              data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: "clientdoc" })}
-            >
-              <FileText size={20} />
-              Client Documentation
-            </DropdownMenuItem>
+    //         {canReassingLead(userType) && (
+    //           <DropdownMenuItem
+    //             data-slot="action-button"
+    //             onSelect={() => setRowAction({ row, variant: "reassignlead" })}
+    //           >
+    //             <Users size={20} />
+    //             Reassign Lead
+    //           </DropdownMenuItem>
+    //         )}
 
-
-            {canReassingLead(userType) && (
-              <DropdownMenuItem
-                data-slot="action-button"
-                onSelect={() => setRowAction({ row, variant: "reassignlead" })}
-              >
-                <Users size={20} />
-                Reassign Lead
-              </DropdownMenuItem>
-            )}
-
-            {canDeleteLead(userType) && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  data-slot="action-button"
-                  onSelect={() => setRowAction({ row, variant: "delete" })}
-                >
-                  Delete
-                  <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-      enableSorting: false,
-      enableHiding: false,
-      size: 40,
-    },
+    //         {canDeleteLead(userType) && (
+    //           <>
+    //             <DropdownMenuSeparator />
+    //             <DropdownMenuItem
+    //               data-slot="action-button"
+    //               onSelect={() => setRowAction({ row, variant: "delete" })}
+    //             >
+    //               Delete
+    //               <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
+    //             </DropdownMenuItem>
+    //           </>
+    //         )}
+    //       </DropdownMenuContent>
+    //     </DropdownMenu>
+    //   ),
+    //   enableSorting: false,
+    //   enableHiding: false,
+    //   size: 40,
+    // },
     // Sr NO
     {
       accessorKey: "srNo",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Sr. No." />
+        <div className="w-full text-center">
+          <DataTableColumnHeader column={column} title="Sr. No." />
+        </div>
+      ),
+      cell: ({ getValue }) => (
+        <div className="w-full text-center">{getValue<number>()}</div>
       ),
       meta: {
         label: "SrNo",

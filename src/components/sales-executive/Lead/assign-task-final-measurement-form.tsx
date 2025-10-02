@@ -29,6 +29,7 @@ import { AssignToFinalMeasurementPayload } from "@/api/final-measurement";
 import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
 import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUsers";
+import { useRouter } from "next/navigation";
 
 interface Props {
   open: boolean;
@@ -64,16 +65,17 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     isLoading: loadingUsers,
     error,
   } = useVendorSiteSupervisorUsers(vendorId!);
+  const router = useRouter();
   const leadId = data?.id!;
   const userId = useAppSelector((state) => state.auth.user?.id);
   const mutation = useAssignToFinalMeasurement(leadId);
   const queryClient = useQueryClient();
 
   const mappedData =
-  vendorUsers?.data?.site_supervisors?.map((user: any) => ({
-    id: user.id,
-    label: user.user_name,
-  })) ?? [];
+    vendorUsers?.data?.site_supervisors?.map((user: any) => ({
+      id: user.id,
+      label: user.user_name,
+    })) ?? [];
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -105,6 +107,10 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
           queryKey: ["siteMeasurementLeads", vendorId],
         });
         onOpenChange(false);
+        // ✅ Redirect conditionally
+        if (values.task_type === "Final Measurements") {
+          router.push("/dashboard/site-supervisor/final-measurement");
+        }
       },
       onError: (error: any) => {
         console.error("API Error:", error);
@@ -155,67 +161,68 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             {/* Task Type */}
-<Controller
-  control={form.control}
-  name="task_type"
-  render={({ field }) => (
-    <FormItem>
-      <FormLabel className="text-sm">Task Type</FormLabel>
-      <Select value={field.value} onValueChange={field.onChange}>
-        <FormControl>
-          <SelectTrigger className="text-sm w-full">
-            <SelectValue placeholder="Select task type" />
-          </SelectTrigger>
-        </FormControl>
-        <SelectContent>
-          <SelectItem value="Final Measurements">Final Measurements</SelectItem>
-          <SelectItem value="Follow Up">Follow Up</SelectItem>
-        </SelectContent>
-      </Select>
-      <FormMessage />
-    </FormItem>
-  )}
-/>
+            <Controller
+              control={form.control}
+              name="task_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Task Type</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger className="text-sm w-full">
+                        <SelectValue placeholder="Select task type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Final Measurements">
+                        Final Measurements
+                      </SelectItem>
+                      <SelectItem value="Follow Up">Follow Up</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-{/* Assign Lead To + Due Date */}
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <FormField
-    control={form.control}
-    name="assign_lead_to"
-    render={({ field }) => (
-      <FormItem>
-        <FormLabel className="text-sm">Select User</FormLabel>
-        <FormControl>
-          <AssignToPicker
-            data={mappedData}
-            value={field.value}
-            onChange={field.onChange}
-          />
-        </FormControl>
-        <FormMessage />
-      </FormItem>
-    )}
-  />
+            {/* Assign Lead To + Due Date */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="assign_lead_to"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">Select User</FormLabel>
+                    <FormControl>
+                      <AssignToPicker
+                        data={mappedData}
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-  <FormField
-    control={form.control}
-    name="due_date"
-    render={({ field }) => (
-      <FormItem className="w-full">
-        <FormLabel className="text-sm">Due Date</FormLabel>
-        <FormControl>
-          <CustomeDatePicker
-            value={field.value}
-            onChange={field.onChange}
-            restriction="futureOnly"
-          />
-        </FormControl>
-        <FormMessage />
-      </FormItem>
-    )}
-  />
-</div>
-
+              <FormField
+                control={form.control}
+                name="due_date"
+                render={({ field }) => (
+                  <FormItem className="w-full">
+                    <FormLabel className="text-sm">Due Date</FormLabel>
+                    <FormControl>
+                      <CustomeDatePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        restriction="futureOnly"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {/* Remark */}
             <FormField

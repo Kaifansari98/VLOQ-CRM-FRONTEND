@@ -23,6 +23,7 @@ import {
 import TextAreaInput from "@/components/origin-text-area";
 import { Button } from "@/components/ui/button";
 import { DesignSelection } from "@/types/designing-stage-types";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Zod schema for individual selections
 const formSchema = z
@@ -46,6 +47,7 @@ const SelectionsTab: React.FC = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { leadId, accountId } = useDetails();
+  const queryClient = useQueryClient();
 
   const { mutate: createSelection, isPending: isCreating } =
     useSubmitSelection();
@@ -181,6 +183,11 @@ const SelectionsTab: React.FC = () => {
 
       // Refetch data to get updated selections
       await refetch();
+
+      // ✅ Refetch design stage counts for "Move to Booking" enable logic
+      queryClient.invalidateQueries({
+        queryKey: ["designingStageCounts", vendorId, leadId],
+      });
 
       toast.success("All selections processed successfully!");
     } catch (error) {

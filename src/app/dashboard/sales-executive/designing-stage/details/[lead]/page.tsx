@@ -185,7 +185,7 @@ export default function DesigningStageLead() {
                 {!canMoveToBooking ? (
                   <CustomeTooltip
                     truncateValue={
-                      <div className="flex items-center opacity-50 cursor-not-allowed">
+                      <div className="flex items-center opacity-50 cursor-not-allowed px-2">
                         <ClipboardCheck className="mr-2 h-4 w-4" />
                         Move To Booking
                       </div>

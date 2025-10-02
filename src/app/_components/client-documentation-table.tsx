@@ -189,7 +189,7 @@ const ClientDocumentationLeadsTable = () => {
   };
 
   const handleRowClick = (row: ProcessedClientDocumentationLead) => {
-    router.push(`/dashboard/sales-executive/booking-stage/details/${row.id}`);
+    router.push(`/dashboard/site-supervisor/client-documentation/details/${row.id}`);
   };
 
   // Early returns
@@ -200,7 +200,7 @@ const ClientDocumentationLeadsTable = () => {
   // Render
   return (
     <>
-      <DataTable table={table} onRowClick={handleRowClick}>
+      <DataTable table={table} onRowDoubleClick={handleRowClick}>
         {enableAdvancedFilter ? (
           <DataTableAdvancedToolbar table={table}>
             <DataTableSortList table={table} align="start" />

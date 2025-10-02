@@ -38,7 +38,7 @@ export default function LeadsBookingPage() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Final-Measurement</BreadcrumbPage>
+                  <BreadcrumbPage>Final Measurement</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>

@@ -36,7 +36,7 @@ const FinalMeasurementEditModal = ({ open, onOpenChange, data }: Props) => {
     final_desc_note: LeadDetails?.final_desc_note ?? "",
   };
 
-  const measurementDoc = LeadDetails?.measurementDoc;
+  const measurementDocs = LeadDetails?.measurementDocs || [];
   const sitePhotos = LeadDetails?.sitePhotos || [];
 
   // 🔹 Separate Functions
@@ -69,37 +69,37 @@ const FinalMeasurementEditModal = ({ open, onOpenChange, data }: Props) => {
           </div>
 
           {/* Measurement Doc */}
-          {measurementDoc && (
+          {measurementDocs.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-base font-medium">Measurement Document</h3>
-              <div className="border rounded-md p-3 flex items-center justify-between">
-                {/* Left: PDF Icon + Info */}
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 flex items-center justify-center rounded-md bg-red-50 text-red-500 border">
-                    <FileText size={20} />
+              <h3 className="text-base font-medium">Measurement Documents</h3>
+              {measurementDocs.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="border rounded-md p-3 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 flex items-center justify-center rounded-md bg-red-50 text-red-500 border">
+                      <FileText size={20} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{doc.doc_og_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Uploaded on{" "}
+                        {new Date(doc.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">
-                      {measurementDoc.doc_og_name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Uploaded on{" "}
-                      {new Date(measurementDoc.created_at).toLocaleDateString()}
-                    </p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleViewPdf(doc.signedUrl)}
+                    >
+                      <Eye size={14} className="mr-1" /> View
+                    </Button>
                   </div>
                 </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => handleViewPdf(measurementDoc.signedUrl)}
-                  >
-                    <Eye size={14} className="mr-1" />
-                    View
-                  </Button>
-                </div>
-              </div>
+              ))}
             </div>
           )}
 

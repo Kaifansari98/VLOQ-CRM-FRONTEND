@@ -4,30 +4,10 @@ import type { ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Ellipsis,
-  Eye,
-  Users,
   Text,
-  FileText,
-  ClipboardCheck,
-  CheckCircle,
-  Clock,
-  XCircle,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import type { DataTableRowActionFinalMeasurement } from "@/types/data-table";
-import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
+import { canReassingLead } from "@/components/utils/privileges";
 import CustomeBadge from "@/components/origin-badge";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeStatusBadge from "@/components/origin-status-badge";
@@ -50,109 +30,112 @@ export function getFinalMeasurementLeadsTableColumns({
   const router = useRouter();
   return [
     // Action Button
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              aria-label="Open menu"
-              variant="ghost"
-              className="flex size-8 p-0 data-[state=open]:bg-muted"
-            >
-              <Ellipsis className="size-4" aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: "view" })}
-            >
-              <Eye size={20} />
-              View
-            </DropdownMenuItem>
-            {!canDeleteLead(userType) && <DropdownMenuSeparator />}
+    // {
+    //   id: "actions",
+    //   cell: ({ row }) => (
+    //     <DropdownMenu>
+    //       <DropdownMenuTrigger asChild>
+    //         <Button
+    //           aria-label="Open menu"
+    //           variant="ghost"
+    //           className="flex size-8 p-0 data-[state=open]:bg-muted"
+    //         >
+    //           <Ellipsis className="size-4" aria-hidden="true" />
+    //         </Button>
+    //       </DropdownMenuTrigger>
+    //       <DropdownMenuContent align="end">
+    //         {/* <DropdownMenuItem
+    //           data-slot="action-button"
+    //           onSelect={() => setRowAction({ row, variant: "view" })}
+    //         >
+    //           <Eye size={20} />
+    //           View
+    //         </DropdownMenuItem> */}
+    //         {/* {!canDeleteLead(userType) && <DropdownMenuSeparator />} */}
 
-            <DropdownMenuItem
-              data-slot="action-button"
-              onSelect={() => setRowAction({ row, variant: "finalMeasu" })}
-            >
-              <FileText size={20} />
-              Final Documentation
-            </DropdownMenuItem>
+    //         {/* <DropdownMenuItem
+    //           data-slot="action-button"
+    //           onSelect={() => setRowAction({ row, variant: "finalMeasu" })}
+    //         >
+    //           <FileText size={20} />
+    //           Final Documentation
+    //         </DropdownMenuItem> */}
 
-            {row.original.followStatus === "open" && (
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger className="flex items-center gap-2">
-                  <ClipboardCheck size={20} />
-                  Follow Up
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="w-48">
-                  <DropdownMenuItem
-                    onSelect={() => setRowAction({ row, variant: "completed" })}
-                    className="flex items-center gap-2"
-                  >
-                    <CheckCircle size={18} />
-                    Completed
-                  </DropdownMenuItem>
+    //         {row.original.followStatus === "open" && (
+    //           <DropdownMenuSub>
+    //             <DropdownMenuSubTrigger className="flex items-center gap-2">
+    //               <ClipboardCheck size={20} />
+    //               Follow Up
+    //             </DropdownMenuSubTrigger>
+    //             <DropdownMenuSubContent className="w-48">
+    //               <DropdownMenuItem
+    //                 onSelect={() => setRowAction({ row, variant: "completed" })}
+    //                 className="flex items-center gap-2"
+    //               >
+    //                 <CheckCircle size={18} />
+    //                 Completed
+    //               </DropdownMenuItem>
 
-                  <DropdownMenuItem
-                    onSelect={() =>
-                      setRowAction({ row, variant: "reschedule" })
-                    }
-                    className="flex items-center gap-2"
-                  >
-                    <Clock size={18} />
-                    Reschedule
-                  </DropdownMenuItem>
+    //               <DropdownMenuItem
+    //                 onSelect={() =>
+    //                   setRowAction({ row, variant: "reschedule" })
+    //                 }
+    //                 className="flex items-center gap-2"
+    //               >
+    //                 <Clock size={18} />
+    //                 Reschedule
+    //               </DropdownMenuItem>
 
-                  <DropdownMenuSeparator />
+    //               <DropdownMenuSeparator />
 
-                  <DropdownMenuItem
-                    className="flex items-center gap-2"
-                    onSelect={() => setRowAction({ row, variant: "cancel" })}
-                  >
-                    <XCircle size={18} />
-                    Cancel
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-            )}
+    //               <DropdownMenuItem
+    //                 className="flex items-center gap-2"
+    //                 onSelect={() => setRowAction({ row, variant: "cancel" })}
+    //               >
+    //                 <XCircle size={18} />
+    //                 Cancel
+    //               </DropdownMenuItem>
+    //             </DropdownMenuSubContent>
+    //           </DropdownMenuSub>
+    //         )}
 
-            {canReassingLead(userType) && (
-              <DropdownMenuItem
-                data-slot="action-button"
-                onSelect={() => setRowAction({ row, variant: "reassignlead" })}
-              >
-                <Users size={20} />
-                Reassign Lead
-              </DropdownMenuItem>
-            )}
+    //         {/* {canReassingLead(userType) && (
+    //           <DropdownMenuItem
+    //             data-slot="action-button"
+    //             onSelect={() => setRowAction({ row, variant: "reassignlead" })}
+    //           >
+    //             <Users size={20} />
+    //             Reassign Lead
+    //           </DropdownMenuItem>
+    //         )} */}
 
-            {canDeleteLead(userType) && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  data-slot="action-button"
-                  onSelect={() => setRowAction({ row, variant: "delete" })}
-                >
-                  Delete
-                  <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-      enableSorting: false,
-      enableHiding: false,
-      size: 40,
-    },
+    //         {/* {canDeleteLead(userType) && (
+    //           <>
+    //             <DropdownMenuSeparator />
+    //             <DropdownMenuItem
+    //               data-slot="action-button"
+    //               onSelect={() => setRowAction({ row, variant: "delete" })}
+    //             >
+    //               Delete
+    //               <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
+    //             </DropdownMenuItem>
+    //           </>
+    //         )} */}
+    //       </DropdownMenuContent>
+    //     </DropdownMenu>
+    //   ),
+    //   enableSorting: false,
+    //   enableHiding: false,
+    //   size: 40,
+    // },
     // Sr NO
     {
       accessorKey: "srNo",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Sr. No." />
+          <DataTableColumnHeader column={column} title="Sr. No." />
+      ),
+      cell: ({ getValue }) => (
+        <div className="w-full text-center">{getValue<number>()}</div>
       ),
       meta: {
         label: "SrNo",
@@ -160,7 +143,7 @@ export function getFinalMeasurementLeadsTableColumns({
       enableSorting: true,
       enableColumnFilter: true,
       enableHiding: true,
-    },
+    },    
 
     // First name and lastname: 1
     {

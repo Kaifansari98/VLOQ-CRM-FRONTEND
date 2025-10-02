@@ -11,8 +11,6 @@ const QuotationTab = () => {
   const {data, error, isLoading} = useQuotationDoc(vendorId, leadId)
 
   const designQuotationDocs = data?.data?.documents;
-  
-
 
   if (!designQuotationDocs || designQuotationDocs.length === 0) {
     return (

@@ -4,6 +4,7 @@ import OpenLeadDetails from "@/components/tabScreens/OpenLeadDetails";
 import BookingLeadsDetails from "../sales-executive/booking-stage/view-booking-modal";
 import SiteMeasurementLeadDetails from "../tabScreens/SiteMeasurementLeadDetails";
 import DesigningLeadsDetails from "../tabScreens/DesigningLeadDetails";
+import FinalMeasurementLeadDetails from "../tabScreens/FinalMeasurementDetails";
 
 interface LeadDetailsUtilProps {
   status:
@@ -11,7 +12,7 @@ interface LeadDetailsUtilProps {
     | "measurement"
     | "designing"
     | "booking"
-    | "finalmeasurement"
+    | "finalMeasurement"
     | "clientdocumentation";
   leadId?: number;
   leadInfo?: any;
@@ -50,16 +51,10 @@ export default function LeadDetailsUtil({
       cardContent: <BookingLeadsDetails leadId={leadId ?? 0} />,
     },
     {
-      id: "finalmeasurement",
+      id: "finalMeasurement",
       title: "Final Measurement",
       color: "bg-zinc-900 hover:bg-gray-600",
-      cardContent: (
-        <div className="p-4 border rounded-lg">
-          <p className="text-sm text-muted-foreground">
-            Final measurement data goes here.
-          </p>
-        </div>
-      ),
+      cardContent: <FinalMeasurementLeadDetails leadId={leadId ?? 0} />,
     },
     {
       id: "clientdocumentation",
@@ -78,19 +73,19 @@ export default function LeadDetailsUtil({
     measurement: ["details", "measurement"],
     designing: ["details", "measurement", "designing"],
     booking: ["details", "measurement", "designing", "booking"],
-    finalmeasurement: [
+    finalMeasurement: [
       "details",
       "measurement",
       "designing",
       "booking",
-      "finalmeasurement",
+      "finalMeasurement",
     ],
     clientdocumentation: [
       "details",
       "measurement",
       "designing",
       "booking",
-      "finalmeasurement",
+      "finalMeasurement",
       "clientdocumentation",
     ],
   };
