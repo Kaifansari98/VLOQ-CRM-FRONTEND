@@ -5,7 +5,9 @@ import {
   getAllSiteSuperVisors,
   getBookingLeadById,
   getBookingLeads,
+  getPaymentLogs,
   moveToBookingStage,
+  PaymentLogsResponse,
   UploadBookingDoc,
   UploadBookintPayload,
 } from "@/api/booking";
@@ -15,7 +17,7 @@ import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
 import { apiClient } from "@/lib/apiClient";
-
+import { addAdditionalPayment, AddPaymentPayload } from "@/api/booking";
 
 export const useMoveToBookingStage = () => {
   const queryClient = useQueryClient();
@@ -96,5 +98,20 @@ export const useISMPaymentInfo = (leadId?: number) => {
     enabled: !!leadId,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+  });
+};
+
+export const usePaymentLogs = (leadId: number, vendorId: number) => {
+  return useQuery<PaymentLogsResponse>({
+    queryKey: ["paymentLogs", leadId, vendorId],
+    queryFn: () => getPaymentLogs(leadId, vendorId),
+    enabled: !!leadId && !!vendorId,
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+export const useAddPayment = () => {
+  return useMutation({
+    mutationFn: (payload: AddPaymentPayload) => addAdditionalPayment(payload),
   });
 };

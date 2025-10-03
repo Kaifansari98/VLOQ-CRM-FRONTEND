@@ -9,6 +9,7 @@ import { useAppSelector } from "@/redux/store";
 import { User, IndianRupee, CreditCard, Plus } from "lucide-react";
 import { DocumentBooking } from "@/types/booking-types";
 import UploadFinalDoc from "./add-final-doc";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 interface Props {
   leadId: number;
@@ -27,14 +28,19 @@ const containerVariants = {
 
 const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
 
-  const accountId = 1;
   const [openFinalDocModal, setOpenFinalDocModal] = useState<boolean>(false);
   const {
     data: leadData,
     isLoading,
     isError,
   } = useBookingLeadById(vendorId, leadId);
+  
+  const { data, isLoading: loading } = useLeadById(leadId, vendorId, userId);
+  const lead = data?.data?.lead;
+
+  const accountId = Number(lead?.account_id);
 
   const finalDocs =
     leadData?.documents?.filter((doc) =>

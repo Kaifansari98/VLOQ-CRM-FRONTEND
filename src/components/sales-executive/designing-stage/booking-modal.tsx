@@ -39,6 +39,8 @@ import { toast } from "react-toastify";
 import { useISMPaymentInfo } from "@/hooks/booking-stage/use-booking";
 import { formatAmount } from "@/components/utils/general.utils";
 import SelectDocumentModal from "@/components/modal/select-doc-modal";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 
 // ✅ Enhanced Zod schema with proper file validation
 const bookingSchema = z
@@ -89,6 +91,8 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   const leadId = data?.id;
   const accountId = data?.accountId;
   const clientId = 1;
+  const router = useRouter();
+  const queryClient = useQueryClient();
 
   console.log("LeadId :- ", leadId);
   const { data: ismPaymentInfo } = useISMPaymentInfo(leadId);
@@ -157,8 +161,15 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     mutate(payload, {
       onSuccess: () => {
         toast.success("Booking saved successfully!");
+
+        queryClient.invalidateQueries({
+          queryKey: ["leadStats", vendorId, userId],
+        });
+
         onOpenChange(false);
         form.reset();
+
+        router.push("/dashboard/sales-executive/booking-stage");
       },
       onError: (err: any) => {
         toast.error(err?.response?.data?.message || "Failed to save booking");
@@ -391,10 +402,11 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
         leadId={leadId!}
         onSelectDocs={(files) => {
           const existing = form.getValues("final_documents") || [];
-          form.setValue("final_documents", [...existing, ...files], { shouldValidate: true });
+          form.setValue("final_documents", [...existing, ...files], {
+            shouldValidate: true,
+          });
         }}
       />
-
     </Dialog>
   );
 };

@@ -24,6 +24,7 @@ import CustomeDatePicker from "@/components/date-picker";
 import TextAreaInput from "@/components/origin-text-area";
 import { SinglePdfUploadField } from "@/components/utils/single-pdf-uploader";
 import BaseModal from "@/components/utils/baseModal";
+import { useRouter } from "next/navigation";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -53,6 +54,8 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   onOpenChange,
   data,
 }) => {
+  const router = useRouter();
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -91,8 +94,15 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       queryClient.invalidateQueries({
         queryKey: ["siteMeasurementLeads", vendorId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["designingStageLeads", vendorId], // ✅ NEW
+      });
+
       handleReset();
       onOpenChange(false);
+
+      // ✅ Redirect to Designing Stage
+      router.push("/dashboard/sales-executive/designing-stage");
     },
     onError: (error: any) => {
       const backendMessage =

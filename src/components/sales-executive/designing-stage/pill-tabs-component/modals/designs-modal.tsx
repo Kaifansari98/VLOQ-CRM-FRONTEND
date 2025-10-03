@@ -86,6 +86,11 @@ const DesignsModal: React.FC<LeadViewModalProps> = ({ open, onOpenChange }) => {
         queryKey: ["getDesignsDoc", vendorId, leadId],
       });
 
+      // ✅ Also refresh design stage counts
+      queryClient.invalidateQueries({
+        queryKey: ["designingStageCounts", vendorId, leadId],
+      });
+
       // Reset form and close modal
       form.reset();
       onOpenChange(false);
@@ -114,22 +119,23 @@ const DesignsModal: React.FC<LeadViewModalProps> = ({ open, onOpenChange }) => {
                 className="space-y-6 py-3"
               >
                 <FormField
-                control={form.control}
-                name="upload_pdf"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Upload Design Files</FormLabel> {/* simplified label */}
-                    <FormControl>
-                      <DocumentsUploader
-                        value={field.value}
-                        onChange={field.onChange}
-                        accept=".pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  control={form.control}
+                  name="upload_pdf"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Upload Design Files</FormLabel>{" "}
+                      {/* simplified label */}
+                      <FormControl>
+                        <DocumentsUploader
+                          value={field.value}
+                          onChange={field.onChange}
+                          accept=".pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <div className="flex justify-end gap-2">
                   <Button
                     type="button"

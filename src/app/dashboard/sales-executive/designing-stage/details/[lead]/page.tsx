@@ -185,7 +185,7 @@ export default function DesigningStageLead() {
                 {!canMoveToBooking ? (
                   <CustomeTooltip
                     truncateValue={
-                      <div className="flex items-center opacity-50 cursor-not-allowed">
+                      <div className="flex items-center opacity-50 cursor-not-allowed px-2">
                         <ClipboardCheck className="mr-2 h-4 w-4" />
                         Move To Booking
                       </div>
@@ -264,25 +264,48 @@ export default function DesigningStageLead() {
           className="w-full px-6 pt-4"
         >
           <ScrollArea>
-            <TabsList className="text-foreground mb-3 h-auto gap-2 rounded-none border-b bg-transparent px-1 py-2">
-              <TabsTrigger value="details">
-                <HouseIcon size={16} className="mr-1 opacity-60" />
-                Lead Details
-              </TabsTrigger>
-              <TabsTrigger value="projects">
-                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                To-Do Task
-              </TabsTrigger>
-              <TabsTrigger value="packages">
-                <BoxIcon size={16} className="mr-1 opacity-60" />
-                Site History
-              </TabsTrigger>
-              <TabsTrigger value="team">
-                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                Payment Information
-              </TabsTrigger>
-            </TabsList>
-            <ScrollBar orientation="horizontal" />
+            <div className="w-full h-full flex justify-between items-center">
+              <div>
+                <TabsList className="text-foreground mb-3 h-auto gap-2 rounded-none border-b bg-transparent px-1 py-2">
+                  <TabsTrigger value="details">
+                    <HouseIcon size={16} className="mr-1 opacity-60" />
+                    Lead Details
+                  </TabsTrigger>
+                  <TabsTrigger value="projects">
+                    <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                    To-Do Task
+                  </TabsTrigger>
+                  <TabsTrigger value="packages">
+                    <BoxIcon size={16} className="mr-1 opacity-60" />
+                    Site History
+                  </TabsTrigger>
+                  <TabsTrigger value="team">
+                    <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                    Payment Information
+                  </TabsTrigger>
+                </TabsList>
+                <ScrollBar orientation="horizontal" />
+              </div>
+              <div>
+                {/* Move to Booking */}
+                {!canMoveToBooking ? (
+                  <CustomeTooltip
+                    truncateValue={
+                      <div className="flex items-center opacity-50 cursor-not-allowed px-2">
+                        <ClipboardCheck className="mr-2 h-4 w-4" />
+                        Move To Booking
+                      </div>
+                    }
+                    value="Requires at least 1 Quotation, 1 Design, and 3 Selections"
+                  />
+                ) : (
+                  <Button onClick={() => setBookingOpenLead(true)}>
+                    <ClipboardCheck className="h-4 w-4" />
+                    Move To Booking
+                  </Button>
+                )}
+              </div>
+            </div>
           </ScrollArea>
 
           {/* 🔹 Tab Contents */}

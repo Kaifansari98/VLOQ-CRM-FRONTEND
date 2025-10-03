@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/form";
 import { useUploadClientDocumentation } from "@/hooks/final-measurement/use-final-measurement";
 import { uploadClientDocPayload } from "@/api/final-measurement";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 
 // -------------------- Props --------------------
 interface Props {
@@ -47,6 +49,9 @@ const ClientDocumentationModal: React.FC<Props> = ({
   onOpenChange,
   data,
 }) => {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const createdBy = useAppSelector((state) => state.auth.user?.id);
   const leadId = data?.id;
@@ -75,6 +80,10 @@ const ClientDocumentationModal: React.FC<Props> = ({
   const onSubmit = async (values: ClientDocFormValues) => {
     if (!leadId || !accountId || !vendorId || !createdBy) {
       toast.error("Missing required information");
+      console.log("lead id :- ", leadId);
+      console.log("account id :- ", accountId);
+      console.log("vendor id :- ", vendorId);
+      console.log("user id :- ", createdBy);
       return;
     }
 
@@ -88,9 +97,21 @@ const ClientDocumentationModal: React.FC<Props> = ({
       } as uploadClientDocPayload);
 
       toast.success("Documents uploaded successfully");
+
+      // ✅ Invalidate queries
+      queryClient.invalidateQueries({
+        queryKey: ["leadStats", vendorId, createdBy],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["clientDocumentationLeads", vendorId, createdBy],
+      });
+
       onOpenChange(false);
       form.reset({ documents: [] });
       setFiles([]);
+
+      // ✅ Redirect
+      router.push("/dashboard/site-supervisor/client-documentation");
     } catch (error) {
       console.error(error);
       toast.error("Failed to upload documents");
@@ -101,7 +122,7 @@ const ClientDocumentationModal: React.FC<Props> = ({
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title={`Client Documentation for ${data?.name || "Customer"}`}
+      title={`Client Documentation  `}
       size="md"
       description="View, upload, and manage client-related documentation in one place."
     >

@@ -143,6 +143,6 @@ export interface FinalMeasurementLeadDetails {
   final_desc_note: string;
   status_id: number;
   vendor_id: number;
-  measurementDoc?: FinalMeasurementDoc; 
+  measurementDocs?: FinalMeasurementDoc[]; 
   sitePhotos: FinalMeasurementDoc[];
 }

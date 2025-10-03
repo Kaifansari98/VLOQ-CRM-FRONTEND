@@ -38,6 +38,7 @@ import {
   PanelsTopLeftIcon,
   BoxIcon,
   UsersRoundIcon,
+  FileText,
 } from "lucide-react";
 
 import {
@@ -50,7 +51,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
 } from "@/components/ui/alert-dialog";
-import AssignTaskFinalMeasurementForm from "@/components/sales-executive/Lead/assign-task-final-measurement-form";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
@@ -62,24 +62,37 @@ import {
   TabsContent,
 } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import FinalMeasurementModal from "@/components/sales-executive/booking-stage/final-measurement-modal";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 
-export default function BookingStageLeadsDetails() {
+export default function FinalMeasurementLeadDetails() {
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
 
+  // State
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [assignOpen, setAssignOpen] = useState(false);
+  const [openFinalDocModal, setOpenFinalDocModal] = useState(false);
+  const [activeTab, setActiveTab] = useState("details");
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
 
   const lead = data?.data?.lead;
   const accountId = lead?.account_id;
+
+  const normalizedLead:
+    | { id: number; name?: string; accountId: number }
+    | undefined = lead
+    ? {
+        id: lead.id,
+        accountId: lead.account_id,
+        name: `${lead.firstname || ""} ${lead.lastname || ""}`,
+      }
+    : undefined;
 
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
@@ -100,11 +113,8 @@ export default function BookingStageLeadsDetails() {
     setOpenDelete(false);
   };
 
-  // 🔹 Tabs state
-  const [activeTab, setActiveTab] = useState("details");
-
   if (isLoading) {
-    return <p className="p-6">Loading lead details...</p>;
+    return <p className="p-6">Loading final measurement lead details...</p>;
   }
 
   return (
@@ -123,8 +133,8 @@ export default function BookingStageLeadsDetails() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard/sales-executive/booking-stage">
-                    Booking Stage
+                  <BreadcrumbLink href="/dashboard/site-supervisor/final-measurement">
+                    Final Measurement
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
@@ -137,9 +147,6 @@ export default function BookingStageLeadsDetails() {
             </Breadcrumb>
           </div>
           <div className="flex items-center space-x-2">
-            <Button size="sm" onClick={() => setAssignOpen(true)}>
-              Assign Task
-            </Button>
             <ModeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -157,6 +164,12 @@ export default function BookingStageLeadsDetails() {
                   <Users size={20} />
                   Reassign Lead
                 </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => setOpenFinalDocModal(true)}>
+                  <FileText size={20} />
+                  Final Documentation
+                </DropdownMenuItem>
+
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setOpenDelete(true)}>
                   <XCircle size={20} className="text-red-500" />
@@ -171,9 +184,9 @@ export default function BookingStageLeadsDetails() {
         <Tabs
           value={activeTab}
           onValueChange={(val) => {
-            if (val === "projects") {
-              // instead of switching tab, open modal
-              setAssignOpen(true);
+            if (val === "todo") {
+              // Instead of switching tab, open modal
+              setOpenFinalDocModal(true);
               return; // stay on details
             }
             setActiveTab(val);
@@ -186,15 +199,15 @@ export default function BookingStageLeadsDetails() {
                 <HouseIcon size={16} className="mr-1 opacity-60" />
                 Lead Details
               </TabsTrigger>
-              <TabsTrigger value="projects">
+              <TabsTrigger value="todo">
                 <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
                 To-Do Task
               </TabsTrigger>
-              <TabsTrigger value="packages">
+              <TabsTrigger value="history">
                 <BoxIcon size={16} className="mr-1 opacity-60" />
                 Site History
               </TabsTrigger>
-              <TabsTrigger value="team">
+              <TabsTrigger value="payment">
                 <UsersRoundIcon size={16} className="mr-1 opacity-60" />
                 Payment Information
               </TabsTrigger>
@@ -205,33 +218,26 @@ export default function BookingStageLeadsDetails() {
           {/* 🔹 Tab Contents */}
           <TabsContent value="details">
             <main className="flex-1 h-fit">
-              <LeadDetailsUtil status="booking" leadId={leadIdNum} defaultTab="booking" />
+              <LeadDetailsUtil
+                status="booking"
+                leadId={leadIdNum}
+                defaultTab="booking"
+              />
             </main>
           </TabsContent>
 
-          <TabsContent value="packages">
+          <TabsContent value="history">
             <p className="text-center text-muted-foreground py-4">
               Site History Content
             </p>
           </TabsContent>
 
-          <TabsContent value="team">
-          <PaymentInformation accountId={accountId}/>
+          <TabsContent value="payment">
+            <PaymentInformation accountId={accountId}/>
           </TabsContent>
         </Tabs>
 
         {/* ✅ Modals */}
-        <AssignTaskFinalMeasurementForm
-          open={assignOpen}
-          onOpenChange={(open) => {
-            setAssignOpen(open);
-            if (!open) {
-              setActiveTab("details"); // back to details tab when modal closes
-            }
-          }}
-          data={{ id: leadIdNum, name: "" }}
-        />
-
         <AssignLeadModal
           open={assignOpenLead}
           onOpenChange={setAssignOpenLead}
@@ -242,6 +248,18 @@ export default function BookingStageLeadsDetails() {
           open={openEditModal}
           onOpenChange={setOpenEditModal}
           leadData={{ id: leadIdNum }}
+        />
+
+        {/* Final Documentation Modal */}
+        <FinalMeasurementModal
+          open={openFinalDocModal}
+          onOpenChange={(open) => {
+            setOpenFinalDocModal(open);
+            if (!open) {
+              setActiveTab("details"); // go back to details when modal closes
+            }
+          }}
+          data={normalizedLead}
         />
 
         <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>

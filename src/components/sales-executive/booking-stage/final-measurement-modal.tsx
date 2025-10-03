@@ -20,6 +20,8 @@ import z from "zod";
 import { toast } from "react-toastify";
 import { useFinalMeasurement } from "@/hooks/final-measurement/use-final-measurement";
 import { useAppSelector } from "@/redux/store";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -60,6 +62,8 @@ const FinalMeasurementModal = ({
   data,
 }: LeadViewModalProps) => {
 
+  const queryClient = useQueryClient();
+  const router = useRouter();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const form = useForm<z.infer<typeof formSchema>>({
@@ -89,8 +93,14 @@ const FinalMeasurementModal = ({
       {
         onSuccess: () => {
           toast.success("Final measurement uploaded successfully!");
+          queryClient.invalidateQueries({
+            queryKey: ["leadStats", vendorId, userId],
+          });
           form.reset();
           onOpenChange(false);
+
+          // 👇 redirect to client documentation page
+          router.push("/dashboard/site-supervisor/client-documentation");
         },
         onError: (error: any) => {
           toast.error(error?.message || "Upload failed. Try again.");

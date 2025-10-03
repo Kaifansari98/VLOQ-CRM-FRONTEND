@@ -14,7 +14,7 @@ import { Calendar as CalendarIcon, X } from "lucide-react";
 interface CustomeDatePickerProps {
   value?: string; // store as "YYYY-MM-DD"
   onChange: (value?: string) => void;
-  restriction?: "none" | "pastOnly" | "futureOnly" | "pastWeekOnly"; // dynamic restriction
+  restriction?: "none" | "pastOnly" | "futureOnly" | "pastWeekOnly" | "pastMonthOnly"; 
 }
 
 export default function CustomeDatePicker({
@@ -53,19 +53,22 @@ export default function CustomeDatePicker({
 
   const disableDates = (date: Date) => {
     if (restriction === "futureOnly") {
-      return date < today; // disable past
+      return date < today;
     }
     if (restriction === "pastOnly") {
-      return date > today; // disable future
+      return date > today;
     }
     if (restriction === "pastWeekOnly") {
-      // allow only today and last 7 days
       const sevenDaysAgo = new Date(today);
       sevenDaysAgo.setDate(today.getDate() - 7);
-  
       return date < sevenDaysAgo || date > today;
     }
-    return false; // no restriction
+    if (restriction === "pastMonthOnly") {
+      const thirtyDaysAgo = new Date(today);
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      return date < thirtyDaysAgo || date > today;
+    }
+    return false;
   };
 
   return (

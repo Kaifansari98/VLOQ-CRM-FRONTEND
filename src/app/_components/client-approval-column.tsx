@@ -14,37 +14,35 @@ import {
 import {
   Ellipsis,
   Eye,
-  SquarePen,
   Users,
-  Text,
-  Ruler,
   FileText,
+  Text,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { DataTableRowActionClientDocumentation } from "@/types/data-table";
-import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
 import CustomeBadge from "@/components/origin-badge";
-import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/cutome-tooltip";
-import { useRouter } from "next/navigation";
-import { ProcessedClientDocumentationLead } from "@/types/client-documentation";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
+import type { DataTableRowActionClientDocumentation } from "@/types/data-table";
+import { ProcessedClientApprovalLead } from "@/types/client-approval";
+import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
 
-interface GetVendorLeadsTableColumnsProps {
+interface GetClientApprovalTableColumnsProps {
   setRowAction: React.Dispatch<
-    React.SetStateAction<DataTableRowActionClientDocumentation<ProcessedClientDocumentationLead> | null>
+    React.SetStateAction<
+      DataTableRowActionClientDocumentation<ProcessedClientApprovalLead> | null
+    >
   >;
   userType?: string;
 }
 
-export function getClientDocumentationTableColumns({
+export function getClientApprovalTableColumns({
   setRowAction,
   userType,
-}: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedClientDocumentationLead>[] {
-  const router = useRouter();
+}: GetClientApprovalTableColumnsProps): ColumnDef<ProcessedClientApprovalLead>[] {
   return [
-    // Action Button
+    // Actions
     // {
     //   id: "actions",
     //   cell: ({ row }) => (
@@ -66,15 +64,14 @@ export function getClientDocumentationTableColumns({
     //           <Eye size={20} />
     //           View
     //         </DropdownMenuItem>
-    //         {!canDeleteLead(userType) && <DropdownMenuSeparator />}
 
-    //         <DropdownMenuItem
+    //         {/* <DropdownMenuItem
     //           data-slot="action-button"
-    //           onSelect={() => setRowAction({ row, variant: "clientdoc" })}
+    //           onSelect={() => setRowAction({ row, variant: "clientapproval" })}
     //         >
     //           <FileText size={20} />
-    //           Client Documentation
-    //         </DropdownMenuItem>
+    //           Client Approval
+    //         </DropdownMenuItem> */}
 
     //         {canReassingLead(userType) && (
     //           <DropdownMenuItem
@@ -105,6 +102,7 @@ export function getClientDocumentationTableColumns({
     //   enableHiding: false,
     //   size: 40,
     // },
+
     // Sr NO
     {
       accessorKey: "srNo",
@@ -116,22 +114,28 @@ export function getClientDocumentationTableColumns({
       cell: ({ getValue }) => (
         <div className="w-full text-center">{getValue<number>()}</div>
       ),
-      meta: {
-        label: "SrNo",
-      },
       enableSorting: true,
       enableColumnFilter: true,
-      enableHiding: true,
     },
 
-    // First name and lastname: 1
+    // Name
     {
       accessorKey: "name",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Name" />
       ),
+      cell: ({ row }) => {
+        const name = row.getValue("name") as string;
+        const maxLength = 25;
+        if (name.length <= maxLength) return <span>{name}</span>;
+        return (
+          <CustomeTooltip
+            value={name}
+            truncateValue={name.slice(0, maxLength) + "..."}
+          />
+        );
+      },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
       meta: {
         label: "Name",
@@ -139,224 +143,116 @@ export function getClientDocumentationTableColumns({
         variant: "text",
         icon: Text,
       },
-      cell: ({ row }) => {
-        const name = row.getValue("name") as string;
-        const maxLength = 25;
-
-        // Agar name chhota hai, sirf text dikhaye
-        if (name.length <= maxLength) {
-          return <span>{name}</span>;
-        }
-
-        // Agar name bada hai, truncate + tooltip dikhaye
-        const truncateValue = name.slice(0, maxLength) + "...";
-
-        return <CustomeTooltip value={name} truncateValue={truncateValue} />;
-      },
     },
-    // contact: 2
+
+    // Contact
     {
       accessorKey: "contact",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Contact" />
       ),
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
-      meta: {
-        label: "Contact",
+      cell: ({ getValue }) => {
+        const rawValue = getValue() as string;
+        let formatted = rawValue;
+        try {
+          const phone = parsePhoneNumberFromString(rawValue);
+          if (phone) formatted = phone.formatInternational();
+        } catch {
+          formatted = rawValue;
+        }
+        return <span>{formatted}</span>;
       },
+      enableSorting: true,
+      enableColumnFilter: true,
     },
 
-    // Email : 3
+    // Email
     {
       accessorKey: "email",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Email" />
       ),
-      meta: {
-        label: "Email",
-      },
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
       cell: ({ row }) => {
         const email = row.getValue("email") as string;
         const maxLength = 20;
-
-        if (email.length <= maxLength) {
-          return <span>{email}</span>;
-        }
-
-        const truncateValue = email.slice(0, maxLength) + "...";
-
-        return <CustomeTooltip truncateValue={truncateValue} value={email} />;
+        if (email.length <= maxLength) return <span>{email}</span>;
+        return (
+          <CustomeTooltip
+            truncateValue={email.slice(0, maxLength) + "..."}
+            value={email}
+          />
+        );
       },
+      enableSorting: true,
+      enableColumnFilter: true,
     },
 
-    // Priority: 4
+    // Priority
     {
       accessorKey: "priority",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Priority" />
       ),
       cell: ({ getValue }) => {
-        const priority = getValue() as string;
-
-        // map bgColor classes for CustomeBadge
-        const priorityColors: Record<string, string> = {
+        const p = getValue() as string;
+        const colors: Record<string, string> = {
           urgent: "bg-red-500",
           high: "bg-amber-500",
           standard: "bg-emerald-500",
           low: "bg-gray-500",
         };
-
         return (
           <CustomeBadge
-            title={priority?.charAt(0).toUpperCase() + priority?.slice(1)}
-            bgColor={priorityColors[priority] || "bg-gray-400"}
+            title={p?.charAt(0).toUpperCase() + p?.slice(1)}
+            bgColor={colors[p] || "bg-gray-400"}
           />
         );
       },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
-      meta: {
-        label: "Priority",
-        variant: "multiSelect",
-        options: ["urgent", "high", "standard", "low"].map((p) => {
-          const colors: Record<string, string> = {
-            urgent: "bg-red-500",
-            high: "bg-amber-500",
-            standard: "bg-emerald-500",
-            low: "bg-gray-500",
-          };
-
-          return {
-            value: p,
-            label: (
-              <div className="flex items-center gap-2">
-                <span className={`size-2 rounded-full ${colors[p]}`} />
-                {p.charAt(0).toUpperCase() + p.slice(1)}
-              </div>
-            ),
-          };
-        }) as unknown as { value: string; label: string }[], // 👈 force cast
-      },
     },
 
-    // Status : 5
+    // Status
     {
       accessorKey: "status",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Status" />
       ),
-      meta: {
-        label: "Status",
-      },
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
-      cell: ({ row }) => {
-        const status = row.getValue("status") as string;
-
-        return (
-          <div className="flex items-center">
-            <CustomeStatusBadge title={status} />
-          </div>
-        );
-      },
-    },
-
-    // Site Type: 6
-    {
-      accessorKey: "siteType",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Site Type" />
+      cell: ({ row }) => (
+        <CustomeStatusBadge title={row.getValue("status")} />
       ),
-      meta: {
-        label: "Site Type",
-      },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
     },
 
-    // Sales Executive: 7
-    ...(canReassingLead(userType)
-      ? [
-          {
-            accessorKey: "assignedTo",
-            header: ({ column }) => (
-              <DataTableColumnHeader column={column} title="Sales Executive" />
-            ),
-            cell: ({ row }) => row.getValue("assignedTo"),
-            meta: {
-              label: "Sales Executive",
-            },
-            enableSorting: true,
-            enableHiding: true,
-            enableColumnFilter: true,
-          } as ColumnDef<ProcessedClientDocumentationLead>,
-        ]
-      : []),
-
-    // Site Address: 8
+    // Site Address
     {
       accessorKey: "siteAddress",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Site Address" />
       ),
-      meta: {
-        label: "Site Address",
-      },
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
       cell: ({ row }) => {
         const address = row.getValue("siteAddress") as string;
-        const maxLength = 30;
-
-        if (address.length <= maxLength) {
-          return <span>{address}</span>;
-        }
-
-        const truncateAddress = address.slice(0, maxLength) + "...";
-
-        return <RemarkTooltip remark={truncateAddress} remarkFull={address} />;
-      },
-    },
-
-    // ArchitechName
-    {
-      accessorKey: "architechName",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Architect Name" />
-      ),
-      meta: {
-        label: "Architech Name",
+        const truncated =
+          address.length > 30 ? address.slice(0, 30) + "..." : address;
+        return <RemarkTooltip remark={truncated} remarkFull={address} />;
       },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
     },
 
-    // Billing Name
+    // Assigned To
     {
-      accessorKey: "billingName",
+      accessorKey: "assignedTo",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Billing Name" />
+        <DataTableColumnHeader column={column} title="Assigned To" />
       ),
-      meta: {
-        label: "Billing Name", //
-      },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
     },
 
-    // Source
-    {
+     // Source
+     {
       accessorKey: "source",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Source" />
@@ -455,28 +351,6 @@ export function getClientDocumentationTableColumns({
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
-    },
-
-    // design Remark
-    {
-      accessorKey: "designerRemark",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Designer Remark" />
-      ),
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
-      meta: {
-        label: "Designer's Remark",
-      },
-      cell: ({ row }) => {
-        const fullRemark = row.getValue("designerRemark") as string;
-        const truncatedRemark =
-          fullRemark.length > 15 ? fullRemark.slice(0, 15) + "..." : fullRemark;
-        return (
-          <RemarkTooltip remark={truncatedRemark} remarkFull={fullRemark} />
-        );
-      },
     },
   ];
 }

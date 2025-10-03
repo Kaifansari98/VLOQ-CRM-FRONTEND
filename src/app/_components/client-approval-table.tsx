@@ -36,16 +36,17 @@ import { useDeleteLead } from "@/hooks/useDeleteLead";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-import ClientDocumantationModal from "@/components/site-supervisor/final-measurement/client-documantation-modal";
-import { getClientDocumentationTableColumns } from "./client-documentation-column";
-import { useClientDocumentationLeads } from "@/hooks/client-documentation/use-clientdocumentation";
-import {
-  ClientDocumentationLead,
-  ProcessedClientDocumentationLead,
-} from "@/types/client-documentation";
-import ViewClientDocumentationModal from "@/components/site-supervisor/client-documentation/view-client-documentation";
 
-const ClientDocumentationLeadsTable = () => {
+import { getClientApprovalTableColumns } from "./client-approval-column";
+import { useClientApprovalLeads } from "@/hooks/client-approval-stage/use-client-approval";
+import {
+  ClientApprovalLead,
+  ProcessedClientApprovalLead,
+} from "@/types/client-approval";
+
+// import ViewClientApprovalModal from "@/components/site-supervisor/client-approval/view-client-approval";
+
+const ClientApprovalLeadsTable = () => {
   // Redux selectors
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -57,17 +58,14 @@ const ClientDocumentationLeadsTable = () => {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const router = useRouter();
 
-  const { data, isLoading, isError } = useClientDocumentationLeads();
-  console.log("Booking Leads Data:", data);
-  // Local state
+  const { data, isLoading, isError } = useClientApprovalLeads();
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
-  const [openEditModal, setOpenEditModal] = useState<boolean>(false);
-  const [openClientDocModal, setOpenClientDocModal] = useState<boolean>(false);
-  const [openViewClientDocModal, setOpenViewClientDocModal] =
+  const [openViewApprovalModal, setOpenViewApprovalModal] =
     useState<boolean>(false);
+
   const [rowAction, setRowAction] =
-    useState<DataTableRowActionClientDocumentation<ProcessedClientDocumentationLead> | null>(
+    useState<DataTableRowActionClientDocumentation<ProcessedClientApprovalLead> | null>(
       null
     );
 
@@ -91,12 +89,11 @@ const ClientDocumentationLeadsTable = () => {
   // Mutations
   const deleteLeadMutation = useDeleteLead();
 
-  // Derived: formatted row data
-  const rowData = useMemo<ProcessedClientDocumentationLead[]>(() => {
+  // Derived row data
+  const rowData = useMemo<ProcessedClientApprovalLead[]>(() => {
     if (!data?.data) return [];
 
-    console.log("Final Measurement Leads:- ", data.data);
-    return data.data.map((lead: ClientDocumentationLead, index: number) => ({
+    return data.data.map((lead: ClientApprovalLead, index: number) => ({
       id: lead.id,
       srNo: index + 1,
       name: `${lead.firstname || ""} ${lead.lastname || ""}`.trim(),
@@ -131,7 +128,7 @@ const ClientDocumentationLeadsTable = () => {
 
   // Columns
   const columns = useMemo(
-    () => getClientDocumentationTableColumns({ setRowAction, userType }),
+    () => getClientApprovalTableColumns({ setRowAction, userType }),
     [setRowAction, userType]
   );
 
@@ -162,10 +159,9 @@ const ClientDocumentationLeadsTable = () => {
   // Effects
   useEffect(() => {
     if (!rowAction) return;
-    if (rowAction.variant === "view") setOpenViewClientDocModal(true);
+    if (rowAction.variant === "view") setOpenViewApprovalModal(true);
     if (rowAction.variant === "delete") setOpenDelete(true);
     if (rowAction.variant === "reassignlead") setAssignOpenLead(true);
-    if (rowAction.variant === "clientdoc") setOpenClientDocModal(true);
   }, [rowAction]);
 
   // Handlers
@@ -188,8 +184,8 @@ const ClientDocumentationLeadsTable = () => {
     setRowAction(null);
   };
 
-  const handleRowClick = (row: ProcessedClientDocumentationLead) => {
-    router.push(`/dashboard/site-supervisor/client-documentation/details/${row.id}`);
+  const handleRowClick = (row: ProcessedClientApprovalLead) => {
+    router.push(`/dashboard/site-supervisor/client-approval/details/${row.id}`);
   };
 
   // Early returns
@@ -197,7 +193,6 @@ const ClientDocumentationLeadsTable = () => {
   if (isLoading) return <p>Loading...</p>;
   if (isError) return <p>Error loading leads</p>;
 
-  // Render
   return (
     <>
       <DataTable table={table} onRowDoubleClick={handleRowClick}>
@@ -205,20 +200,9 @@ const ClientDocumentationLeadsTable = () => {
           <DataTableAdvancedToolbar table={table}>
             <DataTableSortList table={table} align="start" />
             {filterFlag === "advancedFilters" ? (
-              <DataTableFilterList
-                table={table}
-                shallow
-                debounceMs={300}
-                throttleMs={50}
-                align="start"
-              />
+              <DataTableFilterList table={table} shallow debounceMs={300} throttleMs={50} align="start" />
             ) : (
-              <DataTableFilterMenu
-                table={table}
-                shallow
-                debounceMs={300}
-                throttleMs={50}
-              />
+              <DataTableFilterMenu table={table} shallow debounceMs={300} throttleMs={50} />
             )}
           </DataTableAdvancedToolbar>
         ) : (
@@ -234,8 +218,7 @@ const ClientDocumentationLeadsTable = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              lead from your system.
+              This action cannot be undone. This will permanently delete the lead from your system.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -247,9 +230,9 @@ const ClientDocumentationLeadsTable = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* <ViewClientDocumentationModal
-        open={openViewClientDocModal}
-        onOpenChange={setOpenViewClientDocModal}
+      {/* <ViewClientApprovalModal
+        open={openViewApprovalModal}
+        onOpenChange={setOpenViewApprovalModal}
         data={rowAction?.row.original}
       /> */}
 
@@ -258,14 +241,8 @@ const ClientDocumentationLeadsTable = () => {
         onOpenChange={setAssignOpenLead}
         leadData={rowAction?.row.original}
       />
-
-      <ClientDocumantationModal
-        open={openClientDocModal}
-        onOpenChange={setOpenClientDocModal}
-        data={rowAction?.row.original}
-      />
     </>
   );
 };
 
-export default ClientDocumentationLeadsTable;
+export default ClientApprovalLeadsTable;

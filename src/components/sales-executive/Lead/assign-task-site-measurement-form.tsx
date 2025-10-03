@@ -28,6 +28,7 @@ import { useAssignToSiteMeasurement } from "@/hooks/useLeadsQueries";
 import { AssignToSiteMeasurementPayload } from "@/api/leads";
 import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 
 interface Props {
   open: boolean;
@@ -65,6 +66,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     isLoading: loadingUsers,
     error,
   } = useVendorSalesExecutiveUsers(vendorId!);
+  const router = useRouter();
   const leadId = data?.id!;
   const userId = useAppSelector((state) => state.auth.user?.id);
   const mutation = useAssignToSiteMeasurement(leadId);
@@ -97,7 +99,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
 
     mutation.mutate(payload, {
       onSuccess: (data) => {
-        console.log("API Response:", data); // Backend response
+        console.log("API Response:", data);
         toast.success("Task assigned successfully!");
         queryClient.invalidateQueries({
           queryKey: ["leadStats", vendorId, userId],
@@ -106,6 +108,11 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
           queryKey: ["siteMeasurementLeads", vendorId],
         });
         onOpenChange(false);
+
+        // ✅ Redirect if task type is Initial Site Measurement
+        if (values.task_type === "Initial Site Measurement") {
+          router.push("/dashboard/sales-executive/initial-site-measurement");
+        }
       },
       onError: (error: any) => {
         console.error("API Error:", error);

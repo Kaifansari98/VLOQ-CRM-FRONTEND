@@ -1,154 +1,144 @@
 "use client";
 
 import React, { useState } from "react";
-import BaseModal from "@/components/utils/baseModal";
-import { useAppSelector } from "@/redux/store";
-import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
-import { Plus } from "lucide-react";
-import UploadMoreClientDocumentationModal from "./uploadmore-client-documentaition-modal";
-import DocumentPreview from "@/components/utils/file-preview";
-import ImageCard from "@/components/utils/image-card";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Plus, Download } from "lucide-react";
+import { useAppSelector } from "@/redux/store";
+import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
+import DocumentPreview from "@/components/utils/file-preview";
+import ImageCard from "@/components/utils/image-card";
 import ImageCarouselModal from "@/components/utils/image-carousel-modal";
+import UploadMoreClientDocumentationModal from "./uploadmore-client-documentaition-modal";
 
-const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"];
-
-const getFileExtension = (filename: string): string =>
-  filename?.split(".").pop()?.toLowerCase() ?? "";
-
-const isImageExt = (ext: string): boolean => IMAGE_EXTENSIONS.includes(ext);
-
-const handleDownload = (url: string, name: string) => {
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  link.click();
+type Props = {
+  leadId: number;
+  accountId: number;
+  name?: string;
 };
 
-interface Props {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  data?: {
-    id: number;
-    name: string;
-    accountId: number;
-  };
-}
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.3, staggerChildren: 0.05 } },
+};
 
-const ViewClientDocumentationModal: React.FC<Props> = ({
-  open,
-  onOpenChange,
-  data,
-}) => {
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+};
+
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"];
+const getFileExtension = (filename: string): string =>
+  filename?.split(".").pop()?.toLowerCase() ?? "";
+const isImageExt = (ext: string): boolean => IMAGE_EXTENSIONS.includes(ext);
+
+export default function ClientDocumentationDetails({
+  leadId,
+  accountId,
+  name,
+}: Props) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const leadId = data?.id;
-  const accountId = data?.accountId;
-  const [openCarouselModal, setOpenCarouselModal] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
-
-  const leadProps = {
-    leadId: leadId ?? 0,
-    accountId: accountId ?? 0,
-  };
-  const [addMoreDoc, setAddMoreDoc] = useState<boolean>(false);
   const { data: leadDetails, isLoading } = useClientDocumentationDetails(
     vendorId!,
-    leadId!
+    leadId
   );
 
-  const allDocuments = leadDetails?.documents || [];
+  const [openCarouselModal, setOpenCarouselModal] = useState(false);
+  const [startIndex, setStartIndex] = useState(0);
+  const [addMoreDoc, setAddMoreDoc] = useState(false);
 
-  // 🔹 Images filter
+  if (isLoading) {
+    return <p className="p-6">Loading client documentation...</p>;
+  }
+
+  const allDocuments = leadDetails?.documents || [];
   const images = allDocuments.filter((doc) =>
     isImageExt(getFileExtension(doc.doc_sys_name))
   );
-
-  // 🔹 Non-images (Docs) filter
   const docs = allDocuments.filter(
     (doc) => !isImageExt(getFileExtension(doc.doc_sys_name))
   );
 
-  console.log("Lead details: ", leadDetails);
-
   return (
-    <>
-      <BaseModal
-        open={open}
-        onOpenChange={onOpenChange}
-        title={`View Client Documentation for ${data?.name || "Customer"}`}
-        size="lg"
-        description="View, upload, and manage client-related documentation in one place."
-      >
-        <div className="px-5 py-4">
-          <Card className="p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <h2 className="text-lg sm:text-xl font-semibold">
-                Client Documentation Files
-              </h2>
-              <Button
-                onClick={() => setAddMoreDoc(true)}
-                className="flex items-center text-xs sm:text-sm gap-2 h-8 sm:h-9"
-              >
-                <Plus className="h-4 w-4" />
-                Add More Files
-              </Button>
-            </div>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="border rounded-lg w-full h-full p-6 space-y-8"
+    >
+      {/* -------- Header -------- */}
+      <motion.div variants={itemVariants} className="flex justify-between">
+        <h2 className="text-xl font-semibold">
+          Client Documentation for {name || "Customer"}
+        </h2>
+        <Button
+          onClick={() => setAddMoreDoc(true)}
+          className="flex items-center gap-2"
+        >
+          <Plus size={16} /> Add More Files
+        </Button>
+      </motion.div>
 
-            {/*Images */}
-            <div className="space-y-2">
-              <h3 className="text-base sm:text-lg font-semibold">Images</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-                {images.map((img, idx) => (
-                  <ImageCard
-                    key={img.id}
-                    image={img}
-                    size="medium"
-                    onClick={() => {
-                      setStartIndex(idx);
-                      setOpenCarouselModal(true);
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Documents */}
-            <div className="space-y-2">
-              <h3 className="text-base sm:text-lg font-semibold">Documents</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-                {docs
-                  .filter(
-                    (m) => !isImageExt(getFileExtension(m.doc_sys_name || ""))
-                  )
-                  .map((doc) => (
-                    <DocumentPreview
-                      key={doc.id}
-                      file={doc}
-                      size="medium"
-                      onClick={() => console.log("Clicked Document:", doc)}
-                    />
-                  ))}
-              </div>
-            </div>
-          </Card>
+      {/* -------- Images -------- */}
+      <motion.div variants={itemVariants} className="space-y-3">
+        <h3 className="text-lg font-semibold">Images</h3>
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+          {images.length > 0 ? (
+            images.map((img, idx) => (
+              <ImageCard
+                key={img.id}
+                image={img}
+                size="medium"
+                onClick={() => {
+                  setStartIndex(idx);
+                  setOpenCarouselModal(true);
+                }}
+              />
+            ))
+          ) : (
+            <p className="text-sm text-gray-500 italic">
+              No client images uploaded yet.
+            </p>
+          )}
         </div>
-      </BaseModal>
+      </motion.div>
 
+      {/* -------- Documents -------- */}
+      <motion.div variants={itemVariants} className="space-y-3">
+        <h3 className="text-lg font-semibold">Documents</h3>
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+          {docs.length > 0 ? (
+            docs.map((doc) => (
+              <DocumentPreview
+                key={doc.id}
+                file={doc}
+                size="medium"
+                onClick={() => window.open(doc.signed_url, "_blank")}
+              />
+            ))
+          ) : (
+            <p className="text-sm text-gray-500 italic">
+              No client documents uploaded yet.
+            </p>
+          )}
+        </div>
+      </motion.div>
+
+      {/* 🔹 Add More Documentation */}
       <UploadMoreClientDocumentationModal
         open={addMoreDoc}
         onOpenChange={setAddMoreDoc}
-        data={leadProps}
+        data={{ leadId, accountId }}
       />
 
+      {/* 🔹 Image Carousel */}
       <ImageCarouselModal
         images={images}
         onClose={() => setOpenCarouselModal(false)}
         initialIndex={startIndex}
         open={openCarouselModal}
       />
-    </>
+    </motion.div>
   );
-};
-
-export default ViewClientDocumentationModal;
+}

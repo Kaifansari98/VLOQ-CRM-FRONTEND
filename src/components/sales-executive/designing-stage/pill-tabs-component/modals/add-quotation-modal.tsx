@@ -25,6 +25,7 @@ import { toast } from "react-toastify";
 import { DocumentsUploader } from "@/components/document-upload";
 import { useAppSelector } from "@/redux/store";
 import { useSubmitQuotation } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useQueryClient } from "@tanstack/react-query";
 
 // ✅ Schema (without PDF rules)
 const quotationSchema = z.object({
@@ -44,6 +45,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   open,
   onOpenChange,
 }) => {
+  const queryClient = useQueryClient();
   const { leadId, accountId } = useDetails();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id)!;
   const userId = useAppSelector((s) => s.auth.user?.id)!;
@@ -67,6 +69,11 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
         {
           onSuccess: () => {
             toast.success(`uploaded successfully!`);
+
+            // ✅ Invalidate counts so Move To Booking button re-checks conditions
+            queryClient.invalidateQueries({
+              queryKey: ["designingStageCounts", vendorId, leadId],
+            });
           },
           onError: (err: any) => {
             toast.error(err?.message || `Failed to upload ${file.name}`);

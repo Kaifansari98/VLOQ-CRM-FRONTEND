@@ -17,8 +17,9 @@ import {
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/ModeToggle";
 import { Suspense } from "react";
-import ClientDocumentationSkeleton from "@/components/site-supervisor/client-documentation/client-documentation-skeleton";
-export default function ClientDocumentationPage() {
+import ClientApprovalSkeleton from "@/components/site-supervisor/client-approval/ClientApprovalSkeleton";
+
+export default function ClientApprovalPage() {
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -38,7 +39,7 @@ export default function ClientDocumentationPage() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Client-Documentation</BreadcrumbPage>
+                  <BreadcrumbPage>Client-Approval</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -54,7 +55,7 @@ export default function ClientDocumentationPage() {
         {/* Content */}
         <main className="flex-1 p-4 pt-0 overflow-x-hidden">
           <Suspense fallback={<p>Loading...</p>}>
-            <ClientDocumentationSkeleton />
+            <ClientApprovalSkeleton />
           </Suspense>
         </main>
       </SidebarInset>
