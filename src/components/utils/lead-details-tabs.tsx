@@ -5,6 +5,8 @@ import BookingLeadsDetails from "../sales-executive/booking-stage/view-booking-m
 import SiteMeasurementLeadDetails from "../tabScreens/SiteMeasurementLeadDetails";
 import DesigningLeadsDetails from "../tabScreens/DesigningLeadDetails";
 import FinalMeasurementLeadDetails from "../tabScreens/FinalMeasurementDetails";
+import ViewClientDocumentationModal from "../site-supervisor/client-documentation/view-client-documentation";
+import ClientDocumentationDetails from "../site-supervisor/client-documentation/view-client-documentation";
 
 interface LeadDetailsUtilProps {
   status:
@@ -15,6 +17,7 @@ interface LeadDetailsUtilProps {
     | "finalMeasurement"
     | "clientdocumentation";
   leadId?: number;
+  accountId?: number;
   leadInfo?: any;
   defaultTab?: string;
 }
@@ -22,6 +25,7 @@ interface LeadDetailsUtilProps {
 export default function LeadDetailsUtil({
   status,
   leadId,
+  accountId,
   leadInfo,
   defaultTab = "details",
 }: LeadDetailsUtilProps) {
@@ -61,9 +65,11 @@ export default function LeadDetailsUtil({
       title: "Client Documentation",
       color: "bg-zinc-900 hover:bg-gray-600",
       cardContent: (
-        <div className="p-4 border rounded-lg">
-          <p className="text-sm text-muted-foreground">Client docs go here.</p>
-        </div>
+        <ClientDocumentationDetails
+          leadId={leadId ?? 0}
+          accountId={accountId ?? 0}
+          name={leadInfo?.name}
+        />
       ),
     },
   ];

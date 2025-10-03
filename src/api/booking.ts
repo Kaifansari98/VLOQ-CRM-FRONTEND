@@ -121,3 +121,69 @@ export const UploadBookingDoc = async (payload: UploadBookintPayload) => {
   );
   return data;
 };
+
+export interface PaymentLog {
+  id: number;
+  amount: number;
+  payment_text: string;
+  payment_date: string;
+  entry_date: string;
+  entered_by_id: number;
+  entered_by: string;
+  payment_file_id?: number | null;
+  payment_file?: string | null;
+}
+
+export interface PaymentOverview {
+  total_project_amount: number;
+  pending_amount: number;
+  booking_amount: number;
+}
+
+export interface PaymentLogsResponse {
+  payment_logs: PaymentLog[];
+  project_finance: PaymentOverview;
+}
+
+export const getPaymentLogs = async (leadId: number, vendorId: number): Promise<PaymentLogsResponse> => {
+  const response = await apiClient.get(`/leads/bookingStage/payment-records/leadId/${leadId}/payments?vendorId=${vendorId}`);
+  return response.data;
+};
+
+export interface ProjectFinance {
+  total_project_amount: number;
+  pending_amount: number;
+  booking_amount: number;
+}
+
+export interface AddPaymentPayload {
+  lead_id: number;
+  account_id: number;
+  vendor_id: number;
+  client_id: number; // fixed as 1 for now
+  created_by: number;
+  amount: number;
+  payment_text: string;
+  payment_date: string;
+  payment_file?: File | null;
+}
+
+export const addAdditionalPayment = async (payload: AddPaymentPayload) => {
+  const formData = new FormData();
+
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && key !== "payment_file") {
+      formData.append(key, String(value));
+    }
+  });
+
+  if (payload.payment_file) {
+    formData.append("payment_file", payload.payment_file);
+  }
+
+  const response = await apiClient.post("/leads/bookingStage/add-additional-payment", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+
+  return response.data;
+};

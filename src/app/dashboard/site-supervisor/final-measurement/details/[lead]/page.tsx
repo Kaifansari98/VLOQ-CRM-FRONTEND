@@ -63,6 +63,7 @@ import {
 } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import FinalMeasurementModal from "@/components/sales-executive/booking-stage/final-measurement-modal";
+import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 
 export default function FinalMeasurementLeadDetails() {
   const { lead: leadId } = useParams();
@@ -81,6 +82,7 @@ export default function FinalMeasurementLeadDetails() {
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
 
   const lead = data?.data?.lead;
+  const accountId = lead?.account_id;
 
   const normalizedLead:
     | { id: number; name?: string; accountId: number }
@@ -231,9 +233,7 @@ export default function FinalMeasurementLeadDetails() {
           </TabsContent>
 
           <TabsContent value="payment">
-            <p className="text-center text-muted-foreground py-4">
-              Payment Information Content
-            </p>
+            <PaymentInformation accountId={accountId}/>
           </TabsContent>
         </Tabs>
 

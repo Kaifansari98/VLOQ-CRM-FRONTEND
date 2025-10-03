@@ -110,7 +110,7 @@ const data = {
         },
         {
           title: "Client Approval",
-          url: "#",
+          url: "/dashboard/site-supervisor/client-approval",
         },
       ],
     },

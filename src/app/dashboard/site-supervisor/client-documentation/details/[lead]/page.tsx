@@ -58,6 +58,7 @@ import { toast } from "react-toastify";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ClientDocumantationModal from "@/components/site-supervisor/final-measurement/client-documantation-modal";
+import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 
 export default function ClientDocumentationLeadDetails() {
   const { lead: leadId } = useParams();
@@ -218,9 +219,7 @@ export default function ClientDocumentationLeadDetails() {
           </TabsContent>
 
           <TabsContent value="payment">
-            <p className="text-center text-muted-foreground py-4">
-              Payment Information Content
-            </p>
+            <PaymentInformation accountId={accountId}/>
           </TabsContent>
         </Tabs>
 
