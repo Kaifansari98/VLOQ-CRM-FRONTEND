@@ -1,5 +1,6 @@
 // hooks/useLeadsQueries.ts
 import {
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -8,6 +9,7 @@ import {
 import {
   assignToSiteMeasurement,
   AssignToSiteMeasurementPayload,
+  fetchLeadLogs,
   getLeadById,
   getVendorLeads,
   getVendorUserLeads,
@@ -17,6 +19,12 @@ import {
 } from "@/api/leads";
 import { toast } from "react-toastify";
 import { assignToFinalMeasurement, AssignToFinalMeasurementPayload } from "@/api/final-measurement";
+
+interface UseLeadLogsOptions {
+  leadId: number;
+  vendorId: number;
+  limit?: number;
+}
 
 // Hook for getting vendor leads
 export const useVendorLeads = (
@@ -84,5 +92,23 @@ export const useAssignToFinalMeasurement = (leadId: number) => {
   return useMutation({
     mutationFn: (payload: AssignToFinalMeasurementPayload) =>
       assignToFinalMeasurement(leadId, payload),
+  });
+};
+
+export const useLeadLogs = ({ leadId, vendorId, limit = 10 }: UseLeadLogsOptions) => {
+  return useInfiniteQuery({
+    queryKey: ["leadLogs", leadId, vendorId],
+    queryFn: async ({ pageParam }) =>
+      await fetchLeadLogs({
+        leadId,
+        vendorId,
+        limit,
+        cursor: pageParam ?? undefined, // null-safe cursor
+      }),
+    getNextPageParam: (lastPage) =>
+      lastPage?.meta?.hasMore ? lastPage.meta.nextCursor : undefined,
+    initialPageParam: undefined, // ✅ REQUIRED in v5+
+    staleTime: 60 * 1000, // 1 min cache
+    refetchOnWindowFocus: false,
   });
 };

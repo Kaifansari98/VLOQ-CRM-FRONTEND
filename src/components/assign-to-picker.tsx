@@ -36,7 +36,8 @@ export default function AssignToPicker({ data, value, onChange }: Props) {
   const [open, setOpen] = useState<boolean>(false);
 
   // Convert value to string for comparison
-  const stringValue = value !== undefined && value !== null ? String(value) : "";
+  const stringValue =
+    value !== undefined && value !== null ? String(value) : "";
   const selectedItem = data.find((item) => item.id === value);
 
   return (
@@ -50,7 +51,12 @@ export default function AssignToPicker({ data, value, onChange }: Props) {
             aria-expanded={open}
             className="bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]"
           >
-            <span className={cn("truncate", !stringValue && "text-muted-foreground")}>
+            <span
+              className={cn(
+                "truncate",
+                !stringValue && "text-muted-foreground"
+              )}
+            >
               {selectedItem ? selectedItem.label : "Select user"}
             </span>
             <ChevronDownIcon
@@ -72,15 +78,16 @@ export default function AssignToPicker({ data, value, onChange }: Props) {
                 {data.map((item) => (
                   <CommandItem
                     key={item.id}
-                    value={String(item.id)}
-                    onSelect={(currentValue) => {
-                      const newValue = currentValue === stringValue ? "" : currentValue;
+                    value={item.label.toLowerCase()} // ✅ use label for searching
+                    onSelect={() => {
                       setOpen(false);
-                      onChange?.(newValue ? Number(newValue) : null);
+                      onChange?.(item.id); // ✅ still return id
                     }}
                   >
                     {item.label}
-                    {stringValue === String(item.id) && <CheckIcon size={16} className="ml-auto" />}
+                    {value === item.id && (
+                      <CheckIcon size={16} className="ml-auto" />
+                    )}
                   </CommandItem>
                 ))}
               </CommandGroup>

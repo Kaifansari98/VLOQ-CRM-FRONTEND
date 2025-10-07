@@ -10,6 +10,12 @@ export const canDeleteLead = (userType: string | undefined) => {
   return allowDeleteRoles.includes(userType);
 };
 
+export const canCreateLead = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  return allowCreateRoles.includes(userType.toLowerCase());
+};
+
 export const formatDateTime = (dateString?: string) => {
   if (!dateString) return "N/A";
   const date = new Date(dateString);

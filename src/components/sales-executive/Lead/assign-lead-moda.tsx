@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from "../../ui/alert-dialog";
 import { toast } from "react-toastify";
+import { cn } from "@/lib/utils";
 
 const avatarColors = [
   "bg-red-500",
@@ -54,11 +55,19 @@ const avatarColors = [
   "bg-blue-700",
 ];
 
+interface User {
+  id: number;
+  user_contact?: string;
+  user_email?: string;
+  user_name?: string;
+}
+
 interface AssignLeadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   leadData?: {
     id: number;
+    assignTo?: User | null;
   };
 }
 
@@ -83,8 +92,16 @@ const AssignLeadModal = ({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const [openConfirmation, setOpenConfirmation] = useState<boolean>(false);
-  const [assignToId, setAssignToId] = useState<number | null>(null);
   const queryClient = useQueryClient();
+  const [assignToId, setAssignToId] = useState<number | null>(
+    leadData?.assignTo?.id ?? null
+  );
+  const currentAssignedId = leadData?.assignTo?.id ?? null;
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (open) setSelectedId(null);
+  }, [open, currentAssignedId]);
 
   // Fetch sales executives
   const { data, isLoading, isError } = useQuery<ApiResponse>({
@@ -114,7 +131,7 @@ const AssignLeadModal = ({
     mutationFn: (payload: AssignToPayload) =>
       assignLeadToAnotherSalesExecutive(vendorId!, leadData!.id, payload),
     onSuccess: () => {
-      toast.success("Assign Lead Successfully.")
+      toast.success("Assign Lead Successfully.");
       queryClient.invalidateQueries({
         queryKey: ["vendorUserLeads", vendorId, userId],
       });
@@ -122,26 +139,31 @@ const AssignLeadModal = ({
     },
     onError: (error: any) => {
       console.error("Failed to assign lead", error.response?.data || error);
-       toast.error("Something went wrong!")
-    }
+      toast.error("Something went wrong!");
+    },
   });
 
   // Handler function
+  // 3) Confirm: use selectedId (not currentAssignedId)
   const confrimHandleAssignLead = () => {
-    if (!vendorId || !leadData?.id || !userId) return;
+    if (!vendorId || !leadData?.id || !userId || !selectedId) return;
 
     const payload: AssignToPayload = {
-      assign_to: assignToId!,
+      assign_to: selectedId,
       assign_by: userId,
-      assignment_reason: "Assigned via modal", // required
+      assignment_reason: "Assigned via modal",
     };
 
-    console.log("Assigning lead with payload:", payload);
     assignMutation.mutate(payload);
   };
 
+  // 2) onSelect: block clicking the already-assigned user
   const handleAssignLead = (salesExecutiveId: number) => {
-    setAssignToId(salesExecutiveId);
+    if (salesExecutiveId === currentAssignedId) {
+      toast.info("This lead is already assigned to this user.");
+      return; // do nothing
+    }
+    setSelectedId(salesExecutiveId);
     setOpenConfirmation(true);
   };
 
@@ -165,31 +187,43 @@ const AssignLeadModal = ({
 
                 {Array.isArray(data?.data?.sales_executives) &&
                 data.data.sales_executives.length > 0 ? (
-                  data.data.sales_executives.map((user) => (
-                    <CommandItem
-                      key={user.id}
-                      onSelect={() => handleAssignLead(user.id)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`flex h-10 w-10 items-center justify-center rounded-full text-white font-semibold ${getColorForName(
-                            user.user_name
-                          )}`}
-                        >
-                          {getInitials(user.user_name)}
+                  data.data.sales_executives.map((user) => {
+                    const isAssigned = user.id === currentAssignedId;
+                    const isSelected = user.id === selectedId;
+                  
+                    return (
+                      <CommandItem
+                        key={user.id}
+                        onSelect={() => handleAssignLead(user.id)}
+                        className={cn(
+                          "cursor-pointer",
+                          isAssigned && "opacity-60 cursor-not-allowed bg-gray-50 dark:bg-gray-900/40",
+                          isSelected && !isAssigned && "ring-1 ring-primary/40 bg-muted"
+                        )}
+                      >
+                        <div className="flex items-center gap-3 w-full">
+                          <div className={`flex h-10 w-10 items-center justify-center rounded-full text-white font-semibold ${getColorForName(user.user_name)}`}>
+                            {getInitials(user.user_name)}
+                          </div>
+                          <div className="flex flex-col flex-1">
+                            <span className="text-sm font-medium">{user.user_name}</span>
+                            <span className="text-xs text-gray-500">{user.user_email}</span>
+                          </div>
+                  
+                          {isAssigned && (
+                            <span className="ml-auto text-xs font-semibold text-green-600">
+                              Assigned
+                            </span>
+                          )}
+                          {isSelected && !isAssigned && (
+                            <span className="ml-2 text-xs font-semibold text-blue-600">
+                              Selected
+                            </span>
+                          )}
                         </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium">
-                            {user.user_name}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {user.user_email}
-                          </span>
-                        </div>
-                      </div>
-                    </CommandItem>
-                  ))
-                ) : (
+                      </CommandItem>
+                    );
+                  })) : (
                   <div className="p-4 text-sm text-gray-500">
                     No users found.
                   </div>

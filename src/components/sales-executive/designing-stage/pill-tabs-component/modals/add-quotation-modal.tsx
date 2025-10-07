@@ -58,29 +58,27 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   });
 
   const onSubmit = (data: QuotationFormValues) => {
-    if (!data.upload_pdf || data.upload_pdf.length === 0) {
+    if (!data.upload_pdf?.length) {
       toast.error("Please upload at least one quotation file.");
       return;
     }
 
-    data.upload_pdf.forEach((file) => {
-      uploadQuotation(
-        { file, vendorId, leadId, userId, accountId },
-        {
-          onSuccess: () => {
-            toast.success(`uploaded successfully!`);
-
-            // ✅ Invalidate counts so Move To Booking button re-checks conditions
-            queryClient.invalidateQueries({
-              queryKey: ["designingStageCounts", vendorId, leadId],
-            });
-          },
-          onError: (err: any) => {
-            toast.error(err?.message || `Failed to upload ${file.name}`);
-          },
-        }
-      );
-    });
+    uploadQuotation(
+      { files: data.upload_pdf, vendorId, leadId, userId, accountId },
+      {
+        onSuccess: () => {
+          toast.success(
+            `${data.upload_pdf.length} quotation${
+              data.upload_pdf.length > 1 ? "s" : ""
+            } uploaded successfully!`
+          );
+          queryClient.invalidateQueries({
+            queryKey: ["designingStageCounts", vendorId, leadId],
+          });
+        },
+        onError: (err: any) => toast.error(err?.message || "Upload failed"),
+      }
+    );
 
     onOpenChange(false);
   };

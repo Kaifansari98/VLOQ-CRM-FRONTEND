@@ -3,14 +3,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Ellipsis, Eye, Text } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Text } from "lucide-react";
 import type { DataTableRowAction } from "@/types/data-table";
 import { canReassingLead } from "@/components/utils/privileges";
 import CustomeBadge from "@/components/origin-badge";
@@ -19,7 +12,6 @@ import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import { ProcessedDesigningStageLead } from "@/types/designing-stage-types";
-import Link from "next/link";
 
 interface GetSiteMeasurementColumnProps {
   setRowAction: React.Dispatch<
@@ -33,72 +25,72 @@ export function getDesigningStageColumn({
   userType,
 }: GetSiteMeasurementColumnProps): ColumnDef<ProcessedDesigningStageLead>[] {
   return [
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              aria-label="Open menu"
-              variant="ghost"
-              className="flex size-8 p-0 data-[state=open]:bg-muted"
-            >
-              <Ellipsis className="size-4" aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
+    // {
+    //   id: "actions",
+    //   cell: ({ row }) => (
+    //     <DropdownMenu>
+    //       <DropdownMenuTrigger asChild>
+    //         <Button
+    //           aria-label="Open menu"
+    //           variant="ghost"
+    //           className="flex size-8 p-0 data-[state=open]:bg-muted"
+    //         >
+    //           <Ellipsis className="size-4" aria-hidden="true" />
+    //         </Button>
+    //       </DropdownMenuTrigger>
+    //       <DropdownMenuContent align="end" className="w-40">
 
-            {/* <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "booking" })}
-            >
-              <Calendar size={20} />
-              Booking
-            </DropdownMenuItem> */}
+    //         {/* <DropdownMenuItem
+    //           onSelect={() => setRowAction({ row, variant: "booking" })}
+    //         >
+    //           <Calendar size={20} />
+    //           Booking
+    //         </DropdownMenuItem> */}
 
-            <DropdownMenuItem
-              onSelect={() => setRowAction({ row, variant: "measurement-modal" })}
-            >
-              <Eye size={20} />
-              Site Measurements
-            </DropdownMenuItem>
+    //         <DropdownMenuItem
+    //           onSelect={() => setRowAction({ row, variant: "measurement-modal" })}
+    //         >
+    //           <Eye size={20} />
+    //           Site Measurements
+    //         </DropdownMenuItem>
 
-            {/* {!canDeleteLead(userType) && <DropdownMenuSeparator />} */}
+    //         {/* {!canDeleteLead(userType) && <DropdownMenuSeparator />} */}
 
-            {/* <DropdownMenuItem asChild>
-              <Link
-                href={{
-                  pathname:
-                    "/dashboard/sales-executive/designing-stage/details",
-                  query: {
-                    leadId: row.original.id,
-                    accountId: row.original.accountId,
-                  },
-                }}
-                className="flex items-center gap-2"
-              >
-                <Info size={20} />
-                Details
-              </Link>
-            </DropdownMenuItem> */}
+    //         {/* <DropdownMenuItem asChild>
+    //           <Link
+    //             href={{
+    //               pathname:
+    //                 "/dashboard/sales-executive/designing-stage/details",
+    //               query: {
+    //                 leadId: row.original.id,
+    //                 accountId: row.original.accountId,
+    //               },
+    //             }}
+    //             className="flex items-center gap-2"
+    //           >
+    //             <Info size={20} />
+    //             Details
+    //           </Link>
+    //         </DropdownMenuItem> */}
 
-            {/* {canDeleteLead(userType) && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onSelect={() => setRowAction({ row, variant: "delete" })}
-                >
-                  Delete
-                  <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
-                </DropdownMenuItem>
-              </>
-            )} */}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-      enableSorting: false,
-      enableHiding: false,
-      size: 40,
-    },
+    //         {/* {canDeleteLead(userType) && (
+    //           <>
+    //             <DropdownMenuSeparator />
+    //             <DropdownMenuItem
+    //               onSelect={() => setRowAction({ row, variant: "delete" })}
+    //             >
+    //               Delete
+    //               <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
+    //             </DropdownMenuItem>
+    //           </>
+    //         )} */}
+    //       </DropdownMenuContent>
+    //     </DropdownMenu>
+    //   ),
+    //   enableSorting: false,
+    //   enableHiding: false,
+    //   size: 40,
+    // },
     // Sr NO
     {
       accessorKey: "srNo",

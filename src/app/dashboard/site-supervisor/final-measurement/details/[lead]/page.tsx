@@ -55,15 +55,12 @@ import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda"
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import { toast } from "react-toastify";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import FinalMeasurementModal from "@/components/sales-executive/booking-stage/final-measurement-modal";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
+import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
+import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 
 export default function FinalMeasurementLeadDetails() {
   const { lead: leadId } = useParams();
@@ -71,6 +68,10 @@ export default function FinalMeasurementLeadDetails() {
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type.user_type as string | undefined
+  );
 
   // State
   const [assignOpenLead, setAssignOpenLead] = useState(false);
@@ -160,21 +161,28 @@ export default function FinalMeasurementLeadDetails() {
                   <SquarePen size={20} />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
+
+                {canReassingLead(userType) && (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )}
 
                 <DropdownMenuItem onClick={() => setOpenFinalDocModal(true)}>
                   <FileText size={20} />
                   Final Documentation
                 </DropdownMenuItem>
 
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                  <XCircle size={20} className="text-red-500" />
-                  Delete
-                </DropdownMenuItem>
+                {canDeleteLead(userType) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                      <XCircle size={20} className="text-red-500" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -227,13 +235,11 @@ export default function FinalMeasurementLeadDetails() {
           </TabsContent>
 
           <TabsContent value="history">
-            <p className="text-center text-muted-foreground py-4">
-              Site History Content
-            </p>
+            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
           </TabsContent>
 
           <TabsContent value="payment">
-            <PaymentInformation accountId={accountId}/>
+            <PaymentInformation accountId={accountId} />
           </TabsContent>
         </Tabs>
 
@@ -241,7 +247,7 @@ export default function FinalMeasurementLeadDetails() {
         <AssignLeadModal
           open={assignOpenLead}
           onOpenChange={setAssignOpenLead}
-          leadData={{ id: leadIdNum }}
+          leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
         />
 
         <EditLeadModal

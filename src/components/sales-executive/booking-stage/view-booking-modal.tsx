@@ -118,7 +118,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                       </div>
                       <div>
                         <p className="text-sm font-medium ">
-                          Total Project Amount
+                          Total Booking Value
                         </p>
                         <p className="text-lg font-bold ">
                           ₹

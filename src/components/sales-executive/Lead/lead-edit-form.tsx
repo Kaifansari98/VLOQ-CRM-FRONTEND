@@ -38,6 +38,7 @@ import { CountryCode, parsePhoneNumber } from "libphonenumber-js";
 import TextAreaInput from "@/components/origin-text-area";
 import MapPicker from "@/components/MapPicker";
 import { MapPin } from "lucide-react";
+import CustomeDatePicker from "@/components/date-picker";
 
 // Form validation schema
 const formSchema = z.object({
@@ -862,12 +863,10 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                     Initial Site Measurement Date
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      type="date"
-                      className="text-sm"
-                      value={field.value || ""}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      min={new Date().toISOString().split("T")[0]}
+                    <CustomeDatePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      restriction="futureOnly" // 👈 only allow future dates
                     />
                   </FormControl>
                   <FormMessage />
