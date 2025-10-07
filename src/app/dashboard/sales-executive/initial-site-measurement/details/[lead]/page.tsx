@@ -65,6 +65,9 @@ import { toast } from "react-toastify";
 import InitialSiteMeasuresMent from "@/components/sales-executive/Lead/initial-site-measurement-form";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
+import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 
 export default function SiteMeasurementLead() {
   const router = useRouter();
@@ -80,6 +83,10 @@ export default function SiteMeasurementLead() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
 
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type.user_type as string | undefined
+  );
+
   const [openDelete, setOpenDelete] = useState(false);
 
   // Modals
@@ -88,7 +95,9 @@ export default function SiteMeasurementLead() {
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
-  const [activityType, setActivityType] = useState<"onHold" | "lostApproval">("onHold");
+  const [activityType, setActivityType] = useState<"onHold" | "lostApproval">(
+    "onHold"
+  );
 
   // Tabs
   const [activeTab, setActiveTab] = useState("details");
@@ -121,6 +130,15 @@ export default function SiteMeasurementLead() {
       }
     );
   };
+
+  const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+  const lead = data?.data?.lead;
+
+  console.log("assigned to", lead?.assignedTo?.id);
+
+  if (isLoading) {
+    return <p className="p-6">Loading lead details...</p>;
+  }
 
   return (
     <SidebarProvider>
@@ -198,16 +216,22 @@ export default function SiteMeasurementLead() {
                   <SquarePen size={20} />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
 
-                <DropdownMenuSeparator />
+                {canReassingLead(userType) && (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )}
 
-                <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
-                  Delete
-                </DropdownMenuItem>
+                {canDeleteLead(userType) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -255,9 +279,7 @@ export default function SiteMeasurementLead() {
           </TabsContent>
 
           <TabsContent value="history">
-            <p className="text-center text-muted-foreground py-4">
-              Site History Content
-            </p>
+            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
           </TabsContent>
 
           <TabsContent value="payments">
@@ -278,7 +300,7 @@ export default function SiteMeasurementLead() {
       <AssignLeadModal
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}
-        leadData={{ id: leadIdNum }}
+        leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
       />
       <EditLeadModal
         open={openEditModal}
@@ -310,12 +332,15 @@ export default function SiteMeasurementLead() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the lead.
+              This action cannot be undone. This will permanently delete the
+              lead.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteLead}>Delete</AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteLead}>
+              Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

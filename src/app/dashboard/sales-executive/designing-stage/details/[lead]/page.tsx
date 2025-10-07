@@ -67,6 +67,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useDesigningStageCounts } from "@/hooks/designing-stage/designing-leads-hooks";
 import CustomeTooltip from "@/components/cutome-tooltip";
+import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
+import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 
 export default function DesigningStageLead() {
   const router = useRouter();
@@ -85,12 +87,18 @@ export default function DesigningStageLead() {
   const { data: countsData, isLoading: countsLoading } =
     useDesigningStageCounts(vendorId, leadIdNum);
 
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type.user_type as string | undefined
+  );
+
   const canMoveToBooking =
     countsData?.QuotationDoc > 0 &&
     countsData?.DesignsDoc > 0 &&
     countsData?.SelectionData >= 3;
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+  const lead = data?.data?.lead;
+  console.log("page details :- ", lead?.assignedTo?.id);
 
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -227,11 +235,15 @@ export default function DesigningStageLead() {
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
 
-                {/* Reassign Lead */}
-                <DropdownMenuItem onSelect={() => setAssignOpenLead(true)}>
-                  <Users className="h-4 w-4" />
-                  Reassign Lead
-                </DropdownMenuItem>
+                {canReassingLead(userType) && (
+                  <>
+                    {/* Reassign Lead */}
+                    <DropdownMenuItem onSelect={() => setAssignOpenLead(true)}>
+                      <Users className="h-4 w-4" />
+                      Reassign Lead
+                    </DropdownMenuItem>
+                  </>
+                )}
 
                 {/* Edit Lead */}
                 <DropdownMenuItem onSelect={() => setOpenEditModal(true)}>
@@ -239,13 +251,16 @@ export default function DesigningStageLead() {
                   Edit Lead
                 </DropdownMenuItem>
 
-                <DropdownMenuSeparator />
-
-                {/* Delete */}
-                <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
-                  <XCircle className="h-4 w-4 text-red-500" />
-                  Delete Lead
-                </DropdownMenuItem>
+                {canDeleteLead(userType) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {/* Delete */}
+                    <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
+                      <XCircle className="h-4 w-4 text-red-500" />
+                      Delete Lead
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -319,10 +334,8 @@ export default function DesigningStageLead() {
             </main>
           </TabsContent>
 
-          <TabsContent value="packages">
-            <p className="text-center text-muted-foreground py-4">
-              Site History Content
-            </p>
+          <TabsContent value="history">
+            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
           </TabsContent>
 
           <TabsContent value="team">
@@ -349,7 +362,7 @@ export default function DesigningStageLead() {
         <AssignLeadModal
           open={assignOpenLead}
           onOpenChange={setAssignOpenLead}
-          leadData={{ id: leadIdNum }}
+          leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
         />
 
         <BookingModal

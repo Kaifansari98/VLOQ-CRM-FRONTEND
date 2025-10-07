@@ -72,29 +72,26 @@ export const getQuotationDoc = async (vendorId: number, leadId: number) => {
   );
   return data; // This should return the API response payload
 };
-// ✅ API function for file upload
+
+// ✅ API: send multiple files in one go
 export const submitQuotation = async (
-  file: File,
+  files: File[], // <--- array now
   vendorId: number,
   leadId: number,
   userId: number,
   accountId: number
 ) => {
   const formData = new FormData();
-  formData.append("file", file); // must match multer field name
+  files.forEach((file) => formData.append("files", file)); // must match multer field name
   formData.append("vendorId", vendorId.toString());
   formData.append("leadId", leadId.toString());
   formData.append("userId", userId.toString());
   formData.append("accountId", accountId.toString());
 
   const response = await apiClient.post(
-    "/leads/designing-stage/upload-quoation",
+    "/leads/designing-stage/upload-quotation",
     formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
+    { headers: { "Content-Type": "multipart/form-data" } }
   );
 
   return response.data;

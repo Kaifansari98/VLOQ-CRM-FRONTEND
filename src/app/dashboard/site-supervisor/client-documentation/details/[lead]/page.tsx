@@ -59,6 +59,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ClientDocumantationModal from "@/components/site-supervisor/final-measurement/client-documantation-modal";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
+import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
+import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 
 export default function ClientDocumentationLeadDetails() {
   const { lead: leadId } = useParams();
@@ -66,6 +68,10 @@ export default function ClientDocumentationLeadDetails() {
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type.user_type as string | undefined
+  );
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -151,16 +157,23 @@ export default function ClientDocumentationLeadDetails() {
                   <SquarePen size={20} />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
 
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                  <XCircle size={20} className="text-red-500" />
-                  Delete
-                </DropdownMenuItem>
+                {canReassingLead(userType) && (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )}
+
+                {canDeleteLead(userType) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                      <XCircle size={20} className="text-red-500" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -213,13 +226,11 @@ export default function ClientDocumentationLeadDetails() {
           </TabsContent>
 
           <TabsContent value="history">
-            <p className="text-center text-muted-foreground py-4">
-              Site History Content
-            </p>
+            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
           </TabsContent>
 
           <TabsContent value="payment">
-            <PaymentInformation accountId={accountId}/>
+            <PaymentInformation accountId={accountId} />
           </TabsContent>
         </Tabs>
 
@@ -227,7 +238,7 @@ export default function ClientDocumentationLeadDetails() {
         <AssignLeadModal
           open={assignOpenLead}
           onOpenChange={setAssignOpenLead}
-          leadData={{ id: leadIdNum }}
+          leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
         />
 
         <EditLeadModal

@@ -94,11 +94,17 @@ const SelectionsTab: React.FC = () => {
         handles: handlesSelection,
       });
 
-      const values: FormValues = {
-        carcas: carcasSelection?.desc || "",
-        shutter: shutterSelection?.desc || "",
-        handles: handlesSelection?.desc || "",
+      const normalizeDisplay = (val?: string) => {
+        if (!val || val === "NULL") return "This Field is Empty";
+        return val;
       };
+
+      const values: FormValues = {
+        carcas: normalizeDisplay(carcasSelection?.desc),
+        shutter: normalizeDisplay(shutterSelection?.desc),
+        handles: normalizeDisplay(handlesSelection?.desc),
+      };
+
       form.reset(values);
     }
   }, [selectionsData?.data, form]);
@@ -167,32 +173,92 @@ const SelectionsTab: React.FC = () => {
   const onSubmit = async (values: FormValues) => {
     const promises: Promise<void>[] = [];
 
-    // Handle each selection type
-    if (values.carcas?.trim()) {
-      promises.push(handleCreateOrUpdate("Carcas", values.carcas));
-    }
-    if (values.shutter?.trim()) {
-      promises.push(handleCreateOrUpdate("Shutter", values.shutter));
-    }
-    if (values.handles?.trim()) {
-      promises.push(handleCreateOrUpdate("Handles", values.handles));
-    }
+    // Detect dirty fields
+    const dirtyFields = form.formState.dirtyFields;
+
+    // Utility function for safe string handling
+    const normalizeValue = (val?: string) =>
+      val?.trim() && val !== "This Field is Empty" ? val.trim() : "NULL";
+
+    const tryUpdate = async (type: string, desc: string) => {
+      const existingSelection =
+        existingSelections[
+          type.toLowerCase() as keyof typeof existingSelections
+        ];
+
+      if (existingSelection) {
+        await new Promise<void>((resolve, reject) => {
+          editSelection(
+            {
+              selectionId: existingSelection.id,
+              payload: {
+                type,
+                desc: normalizeValue(desc),
+                updated_by: userId!,
+              },
+            },
+            {
+              onSuccess: () => {
+                toast.success(`${type} updated successfully`);
+                resolve();
+              },
+              onError: (error: any) => {
+                toast.error(`Failed to update ${type}: ${error.message}`);
+                reject(error);
+              },
+            }
+          );
+        });
+      } else {
+        await new Promise<void>((resolve, reject) => {
+          createSelection(
+            {
+              type,
+              desc: normalizeValue(desc),
+              vendor_id: vendorId!,
+              lead_id: leadId!,
+              user_id: userId!,
+              account_id: accountId!,
+            },
+            {
+              onSuccess: () => {
+                toast.success(`${type} created successfully`);
+                resolve();
+              },
+              onError: (error: any) => {
+                toast.error(`Failed to create ${type}: ${error.message}`);
+                reject(error);
+              },
+            }
+          );
+        });
+      }
+    };
+
+    // Process only fields that changed
+    if (dirtyFields.carcas) promises.push(tryUpdate("Carcas", values.carcas!));
+    if (dirtyFields.shutter)
+      promises.push(tryUpdate("Shutter", values.shutter!));
+    if (dirtyFields.handles)
+      promises.push(tryUpdate("Handles", values.handles!));
 
     try {
-      await Promise.all(promises);
+      if (promises.length === 0) {
+        toast.info("No changes detected");
+        return;
+      }
 
-      // Refetch data to get updated selections
+      await Promise.all(promises);
       await refetch();
 
-      // ✅ Refetch design stage counts for "Move to Booking" enable logic
       queryClient.invalidateQueries({
         queryKey: ["designingStageCounts", vendorId, leadId],
       });
 
-      toast.success("All selections processed successfully!");
+      toast.success("Selections updated successfully!");
     } catch (error) {
       console.error("Error processing selections:", error);
-      toast.error("Some selections failed to process");
+      toast.error("Some selections failed to update");
     }
   };
 

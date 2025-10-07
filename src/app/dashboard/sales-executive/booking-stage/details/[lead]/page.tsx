@@ -55,14 +55,11 @@ import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda"
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import { toast } from "react-toastify";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
+import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
+import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 
 export default function BookingStageLeadsDetails() {
   const { lead: leadId } = useParams();
@@ -75,6 +72,10 @@ export default function BookingStageLeadsDetails() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type.user_type as string | undefined
+  );
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
 
@@ -153,15 +154,25 @@ export default function BookingStageLeadsDetails() {
                   <SquarePen size={20} />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                  <XCircle size={20} className="text-red-500" />
-                  Delete
-                </DropdownMenuItem>
+
+                {canReassingLead(userType) && (
+                  <>
+                    <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                      <Users size={20} />
+                      Reassign Lead
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                {canDeleteLead(userType) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                      <XCircle size={20} className="text-red-500" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -205,18 +216,20 @@ export default function BookingStageLeadsDetails() {
           {/* 🔹 Tab Contents */}
           <TabsContent value="details">
             <main className="flex-1 h-fit">
-              <LeadDetailsUtil status="booking" leadId={leadIdNum} defaultTab="booking" />
+              <LeadDetailsUtil
+                status="booking"
+                leadId={leadIdNum}
+                defaultTab="booking"
+              />
             </main>
           </TabsContent>
 
-          <TabsContent value="packages">
-            <p className="text-center text-muted-foreground py-4">
-              Site History Content
-            </p>
+          <TabsContent value="history">
+            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
           </TabsContent>
 
           <TabsContent value="team">
-          <PaymentInformation accountId={accountId}/>
+            <PaymentInformation accountId={accountId} />
           </TabsContent>
         </Tabs>
 
@@ -235,7 +248,7 @@ export default function BookingStageLeadsDetails() {
         <AssignLeadModal
           open={assignOpenLead}
           onOpenChange={setAssignOpenLead}
-          leadData={{ id: leadIdNum }}
+          leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
         />
 
         <EditLeadModal

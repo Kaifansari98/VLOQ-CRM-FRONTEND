@@ -27,24 +27,23 @@ export const useDesigningStageLeads = (vendorId: number, userId: number) => {
   });
 };
 
+// ✅ Hook
 export const useSubmitQuotation = () => {
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: ({
-      file,
+      files,
       vendorId,
       leadId,
       userId,
       accountId,
     }: {
-      file: File;
+      files: File[];
       vendorId: number;
       leadId: number;
       userId: number;
       accountId: number;
-    }) => submitQuotation(file, vendorId, leadId, userId, accountId),
-
+    }) => submitQuotation(files, vendorId, leadId, userId, accountId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["getQuotationDoc", variables.vendorId, variables.leadId],

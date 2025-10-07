@@ -63,6 +63,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
+import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 
 export default function LeadDetails() {
   const router = useRouter();
@@ -77,8 +80,17 @@ export default function LeadDetails() {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
 
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type.user_type as string | undefined
+  );
+
   const [openDelete, setOpenDelete] = useState(false);
   const deleteLeadMutation = useDeleteLead();
+
+  const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+  const lead = data?.data?.lead;
+
+  console.log("page :- ", lead?.assignedTo?.id);
 
   const updateActivityStatusMutation = useUpdateActivityStatus();
 
@@ -169,10 +181,14 @@ export default function LeadDetails() {
                   <SquarePen className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users className="mr-2 h-4 w-4" />
-                  Reassign Lead
-                </DropdownMenuItem>
+
+                {canReassingLead(userType) && (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users className="mr-2 h-4 w-4" />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )}
+
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <EllipsisVertical className="mr-2 h-4 w-4" />
@@ -199,10 +215,14 @@ export default function LeadDetails() {
                     </DropdownMenuItem>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
-                  Delete
-                </DropdownMenuItem>
+                {canDeleteLead(userType) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -251,10 +271,8 @@ export default function LeadDetails() {
             </main>
           </TabsContent>
 
-          <TabsContent value="packages">
-            <p className="text-center text-muted-foreground py-4">
-              Site History Content
-            </p>
+          <TabsContent value="history">
+            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
           </TabsContent>
 
           <TabsContent value="team">
@@ -280,8 +298,9 @@ export default function LeadDetails() {
       <AssignLeadModal
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}
-        leadData={{ id: leadIdNum }}
+        leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
       />
+
       <EditLeadModal
         open={openEditModal}
         onOpenChange={setOpenEditModal}

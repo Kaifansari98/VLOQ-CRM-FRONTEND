@@ -201,7 +201,7 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-sm">
-                          Total Project Amount *
+                        Total Booking Value *
                         </FormLabel>
                         <FormControl>
                           <input

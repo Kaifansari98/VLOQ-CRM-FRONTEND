@@ -64,7 +64,7 @@ const bookingSchema = z
   })
   .refine((data) => data.amount_received <= data.final_booking_amount, {
     message:
-      "Booking Amount Received should not be greater than Total Project Amount",
+      "Booking Amount Received should not be greater than Total Booking Value",
     path: ["amount_received"],
   });
 
@@ -122,7 +122,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   const onSubmit: SubmitHandler<BookingFormValues> = (values) => {
     if (values.amount_received > values.final_booking_amount) {
       toast.error(
-        "Booking Amount Received should not be greater than Total Project Amount"
+        "Booking Amount Received should not be greater than Total Booking Value"
       );
       return;
     }
@@ -238,12 +238,12 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm">
-                            Total Project Amount *
+                          Total Booking Value *
                           </FormLabel>
                           <FormControl>
                             <input
                               type="number"
-                              placeholder="Enter total project amount"
+                              placeholder="Enter Total Booking Value"
                               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm "
                               {...field}
                               value={field.value || ""}

@@ -21,10 +21,15 @@ import { Button } from "@/components/ui/button";
 import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-generation-form-modal";
 import { Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAppSelector } from "@/redux/store";
+import { canCreateLead } from "@/components/utils/privileges";
 
 export default function LeadsGenerationPage() {
   const router = useRouter();
   const [openCreateLead, setOpenCreateLead] = useState(false);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type.user_type as string | undefined
+  );
 
   return (
     <SidebarProvider>
@@ -54,14 +59,15 @@ export default function LeadsGenerationPage() {
 
           <div className="flex items-center gap-2">
             <div className="flex gap-2 items-center">
-
-              <GenerateLeadFormModal
-                open={openCreateLead}
-                onOpenChange={setOpenCreateLead}
-              >
-                <Button>Add New Lead</Button>
-              </GenerateLeadFormModal>
-
+              {/* ✅ Show only for admin, super-admin, sales-executive */}
+              {canCreateLead(userType) && (
+                <GenerateLeadFormModal
+                  open={openCreateLead}
+                  onOpenChange={setOpenCreateLead}
+                >
+                  <Button>Add New Lead</Button>
+                </GenerateLeadFormModal>
+              )}
               <ModeToggle />
             </div>
           </div>

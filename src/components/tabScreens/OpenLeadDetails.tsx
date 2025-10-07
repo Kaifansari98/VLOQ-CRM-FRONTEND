@@ -44,7 +44,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data, isLoading } = useLeadById(leadId, vendorId, userId);
   const lead = data?.data?.lead;
-  console.log("Lead Details: ", leadId);
+  console.log("Lead Details: ", lead);
 
   if (!lead) {
     return (
@@ -207,6 +207,36 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               </div>
             </div>
           </div>
+        </motion.section>
+
+        {/* Site Photos */}
+        <motion.section variants={itemVariants}>
+          <h3 className="text-base font-semibold mb-4 pb-2 border-b">
+            Site Photos
+          </h3>
+          {lead.documents && lead.documents.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {lead.documents.map((doc: any) =>
+                doc.signedUrl ? (
+                  <div
+                    key={doc.id}
+                    className="border rounded-md overflow-hidden"
+                  >
+                    <img
+                      src={doc.signedUrl}
+                      alt={doc.doc_og_name}
+                      className="w-full h-40 object-cover"
+                    />
+                    <p className="text-xs px-2 py-1 truncate">
+                      {doc.doc_og_name}
+                    </p>
+                  </div>
+                ) : null
+              )}
+            </div>
+          ) : (
+            <p>No site photos uploaded.</p>
+          )}
         </motion.section>
       </div>
     </motion.div>

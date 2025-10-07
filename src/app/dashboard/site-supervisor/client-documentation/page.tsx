@@ -34,7 +34,7 @@ export default function ClientDocumentationPage() {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/dashboard">project</BreadcrumbLink>
+                  <BreadcrumbLink href="/dashboard">Project</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>

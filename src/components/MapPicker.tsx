@@ -329,7 +329,7 @@ export default function MapPicker({
             Search for a location or click on the map to select
           </p>
         </DialogHeader>
-        <div className="flex-1 flex flex-col px-6 pb-6 min-h-0">
+        <div className="flex-1 flex flex-col px-6 pb-6 min-h-0 overflow-y-scroll">
           <div className="flex gap-2 mb-4 flex-shrink-0 relative">
             <div className="flex-1 flex gap-2">
               <div className="relative flex-1">
