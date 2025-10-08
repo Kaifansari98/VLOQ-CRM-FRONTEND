@@ -290,7 +290,7 @@ export default function DesigningStageLead() {
                     <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
                     To-Do Task
                   </TabsTrigger>
-                  <TabsTrigger value="packages">
+                  <TabsTrigger value="history">
                     <BoxIcon size={16} className="mr-1 opacity-60" />
                     Site History
                   </TabsTrigger>
