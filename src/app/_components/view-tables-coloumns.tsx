@@ -3,7 +3,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Text} from "lucide-react";
+import { Text } from "lucide-react";
 import type { DataTableRowActionOpen } from "@/types/data-table";
 import { canReassingLead } from "@/components/utils/privileges";
 import CustomeBadge from "@/components/origin-badge";
@@ -19,9 +19,7 @@ export type ProcessedLead = {
   name: string;
   email: string;
   contact: string;
-  priority: string;
   siteAddress: string;
-  billingName: string;
   architechName: string;
   designerRemark: string;
   productTypes: string;
@@ -132,9 +130,7 @@ export function getViewOpenLeadsTableColumns({
         <DataTableColumnHeader column={column} title="col" />
       ),
       cell: ({ row }) => (
-        <div className="text-center">
-          {row.getValue("srNo")}
-        </div>
+        <div className="text-center">{row.getValue("srNo")}</div>
       ),
       meta: {
         label: "SrNo",
@@ -211,57 +207,6 @@ export function getViewOpenLeadsTableColumns({
         const truncateValue = email.slice(0, maxLength) + "...";
 
         return <CustomeTooltip truncateValue={truncateValue} value={email} />;
-      },
-    },
-
-    // Priority: 4
-    {
-      accessorKey: "priority",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Priority" />
-      ),
-      cell: ({ getValue }) => {
-        const priority = getValue() as string;
-
-        // map bgColor classes for CustomeBadge
-        const priorityColors: Record<string, string> = {
-          urgent: "bg-red-500",
-          high: "bg-amber-500",
-          standard: "bg-emerald-500",
-          low: "bg-gray-500",
-        };
-
-        return (
-          <CustomeBadge
-            title={priority?.charAt(0).toUpperCase() + priority?.slice(1)}
-            bgColor={priorityColors[priority] || "bg-gray-400"}
-          />
-        );
-      },
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
-      meta: {
-        label: "Priority",
-        variant: "multiSelect",
-        options: ["urgent", "high", "standard", "low"].map((p) => {
-          const colors: Record<string, string> = {
-            urgent: "bg-red-500",
-            high: "bg-amber-500",
-            standard: "bg-emerald-500",
-            low: "bg-gray-500",
-          };
-
-          return {
-            value: p,
-            label: (
-              <div className="flex items-center gap-2">
-                <span className={`size-2 rounded-full ${colors[p]}`} />
-                {p.charAt(0).toUpperCase() + p.slice(1)}
-              </div>
-            ),
-          };
-        }) as unknown as { value: string; label: string }[], // 👈 force cast
       },
     },
 
@@ -355,20 +300,6 @@ export function getViewOpenLeadsTableColumns({
       ),
       meta: {
         label: "Architech Name",
-      },
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
-    },
-
-    // Billing Name
-    {
-      accessorKey: "billingName",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Billing Name" />
-      ),
-      meta: {
-        label: "Billing Name", //
       },
       enableSorting: true,
       enableHiding: true,

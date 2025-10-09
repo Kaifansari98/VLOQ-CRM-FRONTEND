@@ -78,7 +78,6 @@ const SiteMeasurementTable = () => {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({
       architechName: false,
-      billingName: false,
       source: false,
       createdAt: false,
       altContact: false,
@@ -165,9 +164,7 @@ const SiteMeasurementTable = () => {
         name: `${lead.firstname || ""} ${lead.lastname || ""}`.trim(),
         email: lead.email || "",
         contact: `${lead.country_code || ""} ${lead.contact_no || ""}`.trim(),
-        priority: lead.priority || "",
         siteAddress: lead.site_address || "",
-        billingName: lead.billing_name || "",
         architechName: lead.archetech_name || "",
         designerRemark: lead.designer_remark || "",
         source: lead.source?.type || "",

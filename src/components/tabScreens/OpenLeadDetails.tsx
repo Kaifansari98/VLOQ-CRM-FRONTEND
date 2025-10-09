@@ -105,11 +105,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               icon={Phone}
             />
             <InfoField
-              label="Billing Name"
-              value={lead.billing_name}
-              icon={Building}
-            />
-            <InfoField
               label="Site Address"
               value={`${lead.site_address || "No address provided"}`.trim()}
               icon={MapPin}
@@ -156,11 +151,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               icon={Building}
             />
             <InfoField label="Source" value={lead.source?.type} icon={MapPin} />
-            <InfoField
-              label="Priority Level"
-              value={lead.priority}
-              icon={Package}
-            />
           </div>
         </motion.section>
 

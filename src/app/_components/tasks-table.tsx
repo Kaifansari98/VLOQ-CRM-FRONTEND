@@ -59,7 +59,6 @@ const MyTaskTable = () => {
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     architechName: false,
-    billingName: false,
     source: false,
     createdAt: false,
     altContact: false,
@@ -79,7 +78,6 @@ const MyTaskTable = () => {
 
   const [rowAction, setRowAction] =
     useState<DataTableRowAction<ProcessedTask> | null>(null);
-
 
   const router = useRouter();
 
@@ -317,10 +315,10 @@ const MyTaskTable = () => {
   return (
     <div className="relative space-y-4">
       <DataTable
-          table={table}
-          // onRowClick={handleRowClick}
-          onRowDoubleClick={handleRowDoubleClick}
-        >
+        table={table}
+        // onRowClick={handleRowClick}
+        onRowDoubleClick={handleRowDoubleClick}
+      >
         {enableAdvancedFilter ? (
           <DataTableAdvancedToolbar table={table}>
             <DueDateTabs table={table} taskCounts={taskCounts} />

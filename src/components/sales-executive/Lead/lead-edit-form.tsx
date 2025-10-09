@@ -71,12 +71,9 @@ const formSchema = z.object({
   site_address: z.string().min(1, "Site Address is required").max(2000),
 
   site_map_link: z.string().optional().or(z.literal("")), // allow empty
-
-  priority: z.string().min(1, "Please select a priority"),
   source_id: z.string().min(1, "Please select a source"),
 
   // Optional fields - fix alt_contact_no validation
-  billing_name: z.string().optional(),
   alt_contact_no: z
     .string()
     .optional()
@@ -162,14 +159,12 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     defaultValues: {
       firstname: "",
       lastname: "",
-      billing_name: "",
       contact_no: "",
       alt_contact_no: "",
       email: "",
       site_type_id: "",
       site_address: "",
       site_map_link: "",
-      priority: "",
       source_id: "",
       product_types: [],
       product_structures: [],
@@ -258,14 +253,12 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         form.reset({
           firstname: lead.firstname || "",
           lastname: lead.lastname || "",
-          billing_name: lead.billing_name || "",
           contact_no: formattedContactNo,
           alt_contact_no: formattedAltContactNo,
           email: lead.email || "",
           site_type_id: lead.site_type_id ? String(lead.site_type_id) : "",
           site_address: lead.site_address || "",
           site_map_link: lead.site_map_link || "",
-          priority: lead.priority || "",
           source_id: lead.source_id ? String(lead.source_id) : "",
           product_types: productTypeIds,
           product_structures: productStructureIds,
@@ -355,7 +348,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     const payload: EditLeadPayload = {
       firstname: values.firstname || "",
       lastname: values.lastname || "",
-      billing_name: values.billing_name || "",
       country_code,
       contact_no,
       alt_contact_no: alt_contact_no || undefined,
@@ -365,7 +357,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         : undefined,
       site_address: values.site_address || "",
       site_map_link: values.site_map_link || "",
-      priority: values.priority || "",
       source_id: values.source_id ? Number(values.source_id) : undefined,
       product_types: (values.product_types || []).map((id) => Number(id)),
       product_structures: (values.product_structures || []).map((id) =>
@@ -537,29 +528,8 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             )}
           />
 
-          {/* Billing Name & Site Type */}
+          {/* Site Type */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-            <FormField
-              control={form.control}
-              name="billing_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">Billing Name</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Enter billing name"
-                      type="text"
-                      className="text-sm"
-                      {...field}
-                    />
-                  </FormControl>
-                  {/* <FormDescription className="text-xs">
-                    Optional billing name.
-                  </FormDescription> */}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <FormField
               control={form.control}
@@ -663,40 +633,8 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             )}
           />
 
-          {/* Priority & Source */}
+          {/* Source */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <FormField
-              control={form.control}
-              name="priority"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">Priority *</FormLabel>
-                  <Select
-                    value={field.value || ""}
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="text-sm w-full">
-                        <SelectValue placeholder="Select priority" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="urgent">Urgent Priority</SelectItem>
-                      <SelectItem value="high">High Priority</SelectItem>
-                      <SelectItem value="standard">
-                        Standard Priority
-                      </SelectItem>
-                      <SelectItem value="low">Low Priority</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {/* <FormDescription className="text-xs">
-                    Lead priority level.
-                  </FormDescription> */}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <FormField
               control={form.control}

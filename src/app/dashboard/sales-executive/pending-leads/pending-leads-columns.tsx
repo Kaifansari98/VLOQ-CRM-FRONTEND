@@ -29,7 +29,6 @@ export function getPendingLeadsColumns({
   onRevert: (lead: PendingLeadRow) => void;
   onMarkAsLost: (lead: PendingLeadRow) => void;
 }): ColumnDef<PendingLeadRow>[] {
-  
   return [
     {
       id: "actions",
@@ -144,33 +143,6 @@ export function getPendingLeadsColumns({
         );
       },
     },
-    {
-      accessorKey: "priority",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Priority" />
-      ),
-      cell: ({ row }) => {
-        const priority = (row.getValue("priority") as string) || "standard";
-        const colors: Record<string, string> = {
-          urgent: "bg-red-500",
-          high: "bg-amber-500",
-          standard: "bg-emerald-500",
-          low: "bg-gray-500",
-        };
-        return (
-          <CustomeBadge
-            title={priority.charAt(0).toUpperCase() + priority.slice(1)}
-            bgColor={colors[priority] || "bg-gray-400"}
-          />
-        );
-      },
-    },
-    // {
-    //   accessorKey: "activity_status",
-    //   header: ({ column }) => (
-    //     <DataTableColumnHeader column={column} title="Status" />
-    //   ),
-    // },
     {
       accessorKey: "status",
       header: ({ column }) => (

@@ -49,113 +49,6 @@ export function getSiteMeasurementColumn({
   router,
 }: GetSiteMeasurementColumnProps): ColumnDef<ProcessedSiteMeasurementLead>[] {
   return [
-    // Action Button
-    // {
-    //   id: "actions",
-    //   cell: ({ row }) => (
-    //     <DropdownMenu>
-    //       <DropdownMenuTrigger asChild>
-    //         <Button
-    //           aria-label="Open menu"
-    //           variant="ghost"
-    //           className="flex size-8 p-0 data-[state=open]:bg-muted"
-    //         >
-    //           <Ellipsis className="size-4" aria-hidden="true" />
-    //         </Button>
-    //       </DropdownMenuTrigger>
-    //       <DropdownMenuContent align="end">
-    //         {/* <DropdownMenuItem
-    //           onSelect={() => setRowAction({ row, variant: "view" })}
-    //         >
-    //           <Eye size={20} />
-    //           <button
-    //             className="w-full text-left"
-    //             onClick={() =>
-    //               router.push(
-    //                 `/dashboard/sales-executive/initial-site-measurement/details/${row.original.id}`
-    //               )
-    //             }
-    //           >
-    //             View
-    //           </button>
-    //         </DropdownMenuItem> */}
-
-    //         {/* {!canDeleteLead(userType) && <DropdownMenuSeparator />} */}
-
-    //         {/* <DropdownMenuItem
-    //           onSelect={() =>
-    //             setRowAction({ row, variant: "uploadmeasurement" })
-    //           }
-    //         >
-    //           <ClipboardCheck size={20} />
-    //           Upload Measurement
-    //         </DropdownMenuItem>
-
-    //         {row.original.followStatus === "open" && (
-    //           <DropdownMenuSub>
-    //             <DropdownMenuSubTrigger className="flex items-center gap-2">
-    //               <ClipboardCheck size={20} />
-    //               Follow Up
-    //             </DropdownMenuSubTrigger>
-    //             <DropdownMenuSubContent className="w-48">
-    //               <DropdownMenuItem
-    //                 onSelect={() => setRowAction({ row, variant: "completed" })}
-    //                 className="flex items-center gap-2"
-    //               >
-    //                 <CheckCircle size={18} />
-    //                 Completed
-    //               </DropdownMenuItem>
-
-    //               <DropdownMenuItem
-    //                 onSelect={() =>
-    //                   setRowAction({ row, variant: "reschedule" })
-    //                 }
-    //                 className="flex items-center gap-2"
-    //               >
-    //                 <Clock size={18} />
-    //                 Reschedule
-    //               </DropdownMenuItem>
-
-    //               <DropdownMenuSeparator />
-
-    //               <DropdownMenuItem
-    //                 className="flex items-center gap-2"
-    //                 onSelect={() => setRowAction({ row, variant: "cancel" })}
-    //               >
-    //                 <XCircle size={18} />
-    //                 Cancel
-    //               </DropdownMenuItem>
-    //             </DropdownMenuSubContent>
-    //           </DropdownMenuSub>
-    //         )} */}
-
-    //         {/* {canReassingLead(userType) && (
-    //           <DropdownMenuItem
-    //             onSelect={() => setRowAction({ row, variant: "reassignlead" })}
-    //           >
-    //             <Users size={20} />
-    //             Reassign Lead
-    //           </DropdownMenuItem>
-    //         )} */}
-
-    //         {/* {canDeleteLead(userType) && (
-    //           <>
-    //             <DropdownMenuSeparator />
-    //             <DropdownMenuItem
-    //               onSelect={() => setRowAction({ row, variant: "delete" })}
-    //             >
-    //               Delete
-    //               <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
-    //             </DropdownMenuItem>
-    //           </>
-    //         )} */}
-    //       </DropdownMenuContent>
-    //     </DropdownMenu>
-    //   ),
-    //   enableSorting: false,
-    //   enableHiding: false,
-    //   size: 40,
-    // },
     // Sr NO
     {
       accessorKey: "srNo",
@@ -242,57 +135,6 @@ export function getSiteMeasurementColumn({
         const truncateValue = email.slice(0, maxLength) + "...";
 
         return <CustomeTooltip truncateValue={truncateValue} value={email} />;
-      },
-    },
-
-    // Priority: 4
-    {
-      accessorKey: "priority",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Priority" />
-      ),
-      cell: ({ getValue }) => {
-        const priority = getValue() as string;
-
-        // map bgColor classes for CustomeBadge
-        const priorityColors: Record<string, string> = {
-          urgent: "bg-red-500",
-          high: "bg-amber-500",
-          standard: "bg-emerald-500",
-          low: "bg-gray-500",
-        };
-
-        return (
-          <CustomeBadge
-            title={priority?.charAt(0).toUpperCase() + priority?.slice(1)}
-            bgColor={priorityColors[priority] || "bg-gray-400"}
-          />
-        );
-      },
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
-      meta: {
-        label: "Priority",
-        variant: "multiSelect",
-        options: ["urgent", "high", "standard", "low"].map((p) => {
-          const colors: Record<string, string> = {
-            urgent: "bg-red-500",
-            high: "bg-amber-500",
-            standard: "bg-emerald-500",
-            low: "bg-gray-500",
-          };
-
-          return {
-            value: p,
-            label: (
-              <div className="flex items-center gap-2">
-                <span className={`size-2 rounded-full ${colors[p]}`} />
-                {p.charAt(0).toUpperCase() + p.slice(1)}
-              </div>
-            ),
-          };
-        }) as unknown as { value: string; label: string }[], // 👈 force cast
       },
     },
 
@@ -389,20 +231,6 @@ export function getSiteMeasurementColumn({
       ),
       meta: {
         label: "Architech Name",
-      },
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
-    },
-
-    // Billing Name
-    {
-      accessorKey: "billingName",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Billing Name" />
-      ),
-      meta: {
-        label: "Billing Name", //
       },
       enableSorting: true,
       enableHiding: true,

@@ -21,14 +21,12 @@ interface LeadViewModalProps {
     name: string;
     email: string;
     contact: string;
-    billingName: string;
     architechName: string;
     productStructures: string;
     productTypes: string;
     source: string;
     siteType: string;
     createdAt: string;
-    priority: string;
     siteAddress: string;
     designerRemark: string;
     status: string;
@@ -104,11 +102,6 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
                 </div>
 
                 <div className="flex flex-col">
-                  <p className="text-sm font-medium">Billing Name</p>
-                  <p>{data?.billingName}</p>
-                </div>
-
-                <div className="flex flex-col">
                   <p className="text-sm font-medium">Architect Name</p>
                   <p>{data?.architechName}</p>
                 </div>
@@ -131,10 +124,6 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
                 <div className="flex flex-col">
                   <p className="text-sm font-medium">Site Type</p>
                   <p>{data?.siteType}</p>
-                </div>
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium">Priority</p>
-                  <p>{data?.priority}</p>
                 </div>
               </div>
 
