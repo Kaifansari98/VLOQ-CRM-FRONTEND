@@ -6,24 +6,13 @@ import CustomeTooltip from "@/components/cutome-tooltip";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 import CustomeBadge from "@/components/origin-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
-import { CircleCheck, CircleX, Ellipsis, Text, Undo2 } from "lucide-react";
+import { Text } from "lucide-react";
 import type { ProcessedLead } from "@/app/_components/view-tables-coloumns";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
-import { useMemo } from "react";
 
 export type PendingLeadRow = ProcessedLead & { accountId?: number };
 
 // ✅ Columns for Pending Leads (OnHold + Lost)
 export function getPendingLeadsColumns({
-  tab,
-  onRevert,
-  onMarkAsLost,
 }: {
   tab: "onHold" | "lostApproval" | "lost";
   onRevert: (lead: PendingLeadRow) => void;
