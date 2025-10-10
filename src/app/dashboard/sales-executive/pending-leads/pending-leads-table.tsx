@@ -87,9 +87,10 @@ export default function PendingLeadsTable({
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
-  const [rowAction, setRowAction] = React.useState<
-    { row: PendingLeadRow; variant: "revert" | "lost" } | null
-  >(null);
+  const [rowAction, setRowAction] = React.useState<{
+    row: PendingLeadRow;
+    variant: "revert" | "lost";
+  } | null>(null);
 
   // ✅ Process rowAction and reset it
   React.useEffect(() => {
@@ -226,7 +227,7 @@ export default function PendingLeadsTable({
       const leadId = row.id;
       const accountId = row.accountId;
       router.push(
-        `/dashboard/sales-executive/pending-leads/details/${leadId}?accountId=${accountId}`
+        `/dashboard/sales-executive/pending-leads/details/${leadId}?accountId=${accountId}&tab=${tab}`
       );
     },
     [router]
@@ -256,7 +257,7 @@ export default function PendingLeadsTable({
     },
   });
 
-  const isLoading = 
+  const isLoading =
     (tab === "onHold" && onHoldLoading) ||
     (tab === "lostApproval" && lostApprovalLoading) ||
     (tab === "lost" && lostLoading);
@@ -355,7 +356,9 @@ export default function PendingLeadsTable({
                 toast.success("Lead marked as Lost!");
                 setOpenActivityStatus(false);
                 setActiveLead(null);
-                queryClient.invalidateQueries({ queryKey: ["lostApprovalLeads"] });
+                queryClient.invalidateQueries({
+                  queryKey: ["lostApprovalLeads"],
+                });
                 queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
               },
             }
