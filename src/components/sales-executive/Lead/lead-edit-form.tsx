@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -172,7 +171,15 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       designer_remark: "",
       initial_site_measurement_date: "",
     },
+    mode: "onChange",
   });
+
+  const {
+    handleSubmit,
+    control,
+    reset,
+    formState: { dirtyFields },
+  } = form;
 
   useEffect(() => {
     console.log("LeadID: ", leadData.id);
@@ -186,16 +193,12 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         const response = await getLeadById(leadData.id, vendorId, createdBy);
         const lead = response.data.lead;
 
-        // Extract product type IDs from the nested structure
         const productTypeIds =
-          lead.productMappings?.map((mapping: any) =>
-            String(mapping.product_type_id)
-          ) || [];
-
-        // Extract product structure IDs from the nested structure
+          lead.productMappings?.map((m: any) => String(m.product_type_id)) ||
+          [];
         const productStructureIds =
-          lead.leadProductStructureMapping?.map((mapping: any) =>
-            String(mapping.product_structure_id)
+          lead.leadProductStructureMapping?.map((m: any) =>
+            String(m.product_structure_id)
           ) || [];
 
         // Set country codes for phone inputs
@@ -214,40 +217,60 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         // For alternate contact, try to detect country from the number itself
         if (lead.alt_contact_no) {
           try {
-            const altPhoneToCheck = lead.alt_contact_no.startsWith("+")
-              ? lead.alt_contact_no
-              : `+${lead.alt_contact_no}`;
-            const parsedAltPhone = parsePhoneNumber(altPhoneToCheck);
+            let parsedAltPhone;
+
+            // If alt number starts with +, parse directly
+            if (lead.alt_contact_no.startsWith("+")) {
+              parsedAltPhone = parsePhoneNumber(lead.alt_contact_no);
+            } else {
+              // Otherwise parse using primary country as fallback (e.g., "IN")
+              parsedAltPhone = parsePhoneNumber(
+                lead.alt_contact_no,
+                primaryCountry
+              );
+            }
+
             if (parsedAltPhone?.country) {
               setAltCountry(parsedAltPhone.country);
-            }
-          } catch (error) {
-            console.log("Error parsing alternate phone:", error);
-            // Fallback to same country as primary if primary exists
-            if (primaryCountry !== "IN") {
+            } else {
+              // fallback to primary country if parser can't detect
               setAltCountry(primaryCountry);
             }
+          } catch (error) {
+            console.warn("⚠️ Error parsing alternate phone:", error);
+            setAltCountry(primaryCountry);
           }
         }
 
-        // Format phone numbers to E.164 format
-        let formattedContactNo = "";
-        let formattedAltContactNo = "";
+        // ✅ Format phone numbers to E.164 format
+        const formattedContactNo = lead.country_code
+          ? `${lead.country_code}${lead.contact_no || ""}`
+          : lead.contact_no || "";
 
-        // Format primary contact number
-        if (lead.contact_no && lead.country_code) {
-          formattedContactNo = `${lead.country_code}${lead.contact_no}`;
-        }
+        const formattedAltContactNo = lead.alt_contact_no
+          ? lead.alt_contact_no.startsWith("+")
+            ? lead.alt_contact_no
+            : `${lead.country_code || "+91"}${lead.alt_contact_no}`
+          : "";
+
+        setPrimaryCountry((prev) => prev || "IN");
+        setAltCountry((prev) => prev || "IN");
 
         // Format alternate contact number
-        if (lead.alt_contact_no) {
-          if (lead.alt_contact_no.startsWith("+")) {
-            formattedAltContactNo = lead.alt_contact_no;
-          } else {
-            // If no + prefix, try to add it
-            formattedAltContactNo = `+${lead.alt_contact_no}`;
-          }
-        }
+        // if (lead.alt_contact_no) {
+        //   let alt = lead.alt_contact_no.trim();
+        //   if (!alt.startsWith("+") && lead.country_code) {
+        //     alt = `${lead.country_code}${alt}`;
+        //   }
+        //   formattedAltContactNo = alt;
+        // }
+
+        // Format date for input (YYYY-MM-DD)
+        const formattedDate = lead.initial_site_measurement_date
+          ? new Date(lead.initial_site_measurement_date)
+              .toISOString()
+              .split("T")[0]
+          : "";
 
         // Update the form.reset call in useEffect to exclude documents
         form.reset({
@@ -265,6 +288,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           // REMOVE THIS LINE: documents: lead.documents || "",
           archetech_name: lead.archetech_name || "",
           designer_remark: lead.designer_remark || "",
+          initial_site_measurement_date: formattedDate,
         });
 
         if (lead.site_map_link && lead.site_map_link.includes("maps?q=")) {
@@ -306,108 +330,88 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   const onSubmit = async (values: FormValues) => {
     console.log("🚀 Update button clicked - Form submission started");
     console.log("📋 Form values received:", values);
+    console.log("🧩 Dirty fields:", dirtyFields);
 
     if (!vendorId || !createdBy) {
-      console.error("❌ Missing authentication:", { vendorId, createdBy });
       toast.error("User authentication required");
       return;
     }
 
-    // Primary contact number split
-    let country_code = "";
-    let contact_no = "";
-    if (values.contact_no) {
+    // Build payload only with changed fields
+    const payload: Partial<EditLeadPayload> = {};
+
+    // Helper: check if a field was changed
+    const isDirty = (field: keyof FormValues) => !!dirtyFields[field];
+
+    // Handle each field conditionally
+    if (isDirty("firstname")) payload.firstname = values.firstname;
+    if (isDirty("lastname")) payload.lastname = values.lastname;
+
+    if (isDirty("contact_no")) {
       try {
         const parsed = parsePhoneNumber(values.contact_no);
         if (parsed) {
-          country_code = `+${parsed.countryCallingCode}`;
-          contact_no = parsed.nationalNumber.toString();
+          payload.country_code = `+${parsed.countryCallingCode}`;
+          payload.contact_no = parsed.nationalNumber.toString();
         }
       } catch (error) {
-        console.error("❌ Error parsing primary phone:", error);
         toast.error("Invalid primary phone number format");
         return;
       }
     }
 
-    let alt_country_code = "";
-    let alt_contact_no = "";
-    if (values.alt_contact_no && values.alt_contact_no.trim()) {
+    if (isDirty("alt_contact_no") && values.alt_contact_no?.trim()) {
       try {
         const parsedAlt = parsePhoneNumber(values.alt_contact_no);
         if (parsedAlt) {
-          alt_country_code = `+${parsedAlt.countryCallingCode}`;
-          alt_contact_no = parsedAlt.nationalNumber.toString();
+          payload.alt_contact_no = parsedAlt.nationalNumber.toString();
         }
-      } catch (error) {
-        console.error("⚠️ Error parsing alt phone:", error);
-        alt_contact_no = values.alt_contact_no.replace(/\D/g, "");
+      } catch {
+        payload.alt_contact_no = values.alt_contact_no.replace(/\D/g, "");
       }
     }
 
-    const payload: EditLeadPayload = {
-      firstname: values.firstname || "",
-      lastname: values.lastname || "",
-      country_code,
-      contact_no,
-      alt_contact_no: alt_contact_no || undefined,
-      email: values.email || "",
-      site_type_id: values.site_type_id
-        ? Number(values.site_type_id)
-        : undefined,
-      site_address: values.site_address || "",
-      site_map_link: values.site_map_link || "",
-      source_id: values.source_id ? Number(values.source_id) : undefined,
-      product_types: (values.product_types || []).map((id) => Number(id)),
-      product_structures: (values.product_structures || []).map((id) =>
-        Number(id)
-      ),
-      archetech_name: values.archetech_name || "",
-      designer_remark: values.designer_remark || "",
-      updated_by: createdBy!,
-      initial_site_measurement_date: values.initial_site_measurement_date
-        ? new Date(values.initial_site_measurement_date).toISOString()
-        : undefined,
-      // NO documents field in payload
-    };
+    if (isDirty("email")) payload.email = values.email || "";
+    if (isDirty("site_type_id"))
+      payload.site_type_id = Number(values.site_type_id);
+    if (isDirty("source_id")) payload.source_id = Number(values.source_id);
+    if (isDirty("site_address")) payload.site_address = values.site_address;
+    if (isDirty("site_map_link")) payload.site_map_link = values.site_map_link;
+    payload.product_types = values.product_types.map(Number);
+    payload.product_structures = values.product_structures.map(Number);
+    if (isDirty("archetech_name"))
+      payload.archetech_name = values.archetech_name || "";
+    if (isDirty("designer_remark"))
+      payload.designer_remark = values.designer_remark || "";
+    if (
+      isDirty("initial_site_measurement_date") &&
+      values.initial_site_measurement_date
+    ) {
+      payload.initial_site_measurement_date = new Date(
+        values.initial_site_measurement_date
+      ).toISOString();
+    }
+
+    // Always include updated_by
+    payload.updated_by = createdBy!;
+
+    // If no changes detected
+    if (Object.keys(payload).length <= 1) {
+      toast.info("No changes made");
+      return;
+    }
 
     console.log("📤 Final Payload being sent:", payload);
-    console.log("🔗 API call details:", {
-      leadId: leadData.id,
-      userId: createdBy,
-      endpoint: `/leads/update/${leadData.id}/userId/${createdBy}`,
-    });
 
     try {
-      // Call the mutation
-      const result = await updateLeadMutation.mutateAsync(payload);
+      const result = await updateLeadMutation.mutateAsync(
+        payload as EditLeadPayload
+      );
+
       console.log("✅ Update successful:", result);
     } catch (error: any) {
-      console.error("❌ Update failed:", {
-        error: error,
-        response: error.response?.data,
-        status: error.response?.status,
-        message: error.message,
-      });
-
-      // More detailed error handling
-      if (error.response) {
-        console.error(
-          "Server responded with error:",
-          error.response.status,
-          error.response.data
-        );
-        toast.error(
-          error.response.data?.message ||
-            `Server error: ${error.response.status}`
-        );
-      } else if (error.request) {
-        console.error("No response received:", error.request);
-        toast.error("Network error: Unable to reach server");
-      } else {
-        console.error("Request setup error:", error.message);
-        toast.error("Request failed: " + error.message);
-      }
+      console.error("❌ Update failed:", error);
+      toast.error(error?.response?.data?.message || "Failed to update lead");
     }
   };
 
@@ -528,9 +532,72 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             )}
           />
 
-          {/* Site Type */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+          {/* Site Address */}
+          <FormField
+            control={form.control}
+            name="site_address"
+            render={({ field }) => (
+              <FormItem>
+                <div className="w-full flex justify-between">
+                  <FormLabel className="text-sm">Site Address *</FormLabel>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMapOpen(true)}
+                    className="flex items-center gap-1"
+                  >
+                    <MapPin className="h-4 w-4" />
+                    {savedMapLocation ? "Update Map" : "Open Map"}
+                  </Button>
+                </div>
+                <FormControl>
+                  <TextAreaInput
+                    value={field.value}
+                    onChange={(value) => {
+                      field.onChange(value);
+                      // Don't reset map link when manually editing
+                      if (
+                        savedMapLocation &&
+                        value !== savedMapLocation.address
+                      ) {
+                        // just update address text, keep link
+                        setSavedMapLocation((prev) =>
+                          prev ? { ...prev, address: value } : null
+                        );
+                      }
+                    }}
+                    placeholder="Enter address or use map"
+                  />
+                </FormControl>
+                <FormMessage />
 
+                <MapPicker
+                  open={mapOpen}
+                  onClose={() => setMapOpen(false)}
+                  savedLocation={savedMapLocation}
+                  onSelect={(address, link) => {
+                    // Autofill address
+                    field.onChange(address);
+                    // Save coords
+                    const coords = link.match(/q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+                    if (coords) {
+                      setSavedMapLocation({
+                        lat: parseFloat(coords[1]),
+                        lng: parseFloat(coords[2]),
+                        address,
+                      });
+                    }
+                    // Also push into form state for site_map_link
+                    form.setValue("site_map_link", link);
+                  }}
+                />
+              </FormItem>
+            )}
+          />
+
+          {/* Site Type & Source */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
             <FormField
               control={form.control}
               name="site_type_id"
@@ -571,70 +638,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                 );
               }}
             />
-          </div>
-
-          {/* Site Address */}
-          <FormField
-            control={form.control}
-            name="site_address"
-            render={({ field }) => (
-              <FormItem>
-                <div className="w-full flex justify-between">
-                  <FormLabel className="text-sm">Site Address *</FormLabel>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setMapOpen(true)}
-                    className="flex items-center gap-1"
-                  >
-                    <MapPin className="h-4 w-4" />
-                    {savedMapLocation ? "Update Map" : "Open Map"}
-                  </Button>
-                </div>
-                <FormControl>
-                  <TextAreaInput
-                    value={field.value}
-                    onChange={(value) => {
-                      field.onChange(value);
-                      if (
-                        savedMapLocation &&
-                        value !== savedMapLocation.address
-                      ) {
-                        setSavedMapLocation(null); // reset if manually edited
-                      }
-                    }}
-                    placeholder="Enter address or use map"
-                  />
-                </FormControl>
-                <FormMessage />
-
-                <MapPicker
-                  open={mapOpen}
-                  onClose={() => setMapOpen(false)}
-                  savedLocation={savedMapLocation}
-                  onSelect={(address, link) => {
-                    // Autofill address
-                    field.onChange(address);
-                    // Save coords
-                    const coords = link.match(/q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-                    if (coords) {
-                      setSavedMapLocation({
-                        lat: parseFloat(coords[1]),
-                        lng: parseFloat(coords[2]),
-                        address,
-                      });
-                    }
-                    // Also push into form state for site_map_link
-                    form.setValue("site_map_link", link);
-                  }}
-                />
-              </FormItem>
-            )}
-          />
-
-          {/* Source */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
             <FormField
               control={form.control}

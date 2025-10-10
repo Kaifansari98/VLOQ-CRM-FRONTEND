@@ -104,12 +104,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               }
               icon={Phone}
             />
-            <InfoField
-              label="Site Address"
-              value={`${lead.site_address || "No address provided"}`.trim()}
-              icon={MapPin}
-            />
-
             {/* ✅ Special handling for map link */}
             <motion.div variants={itemVariants} className="space-y-1">
               <div className="flex items-center gap-2">
@@ -131,6 +125,12 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 <p className="pl-6">No map link provided</p>
               )}
             </motion.div>
+            <InfoField
+              label="Site Address"
+              value={`${lead.site_address || "No address provided"}`.trim()}
+              icon={MapPin}
+            />
+
           </div>
         </motion.section>
 

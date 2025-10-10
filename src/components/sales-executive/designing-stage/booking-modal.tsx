@@ -49,7 +49,12 @@ const bookingSchema = z
       .array(z.any())
       .max(20, "You can upload up to 20 documents"),
 
-    amount_received: z.number().positive("Amount must be greater than 0"),
+    amount_received: z
+      .union([
+        z.number().positive("Amount must be greater than 0"),
+        z.literal(0),
+      ])
+      .transform((val) => (val === undefined ? 0 : val)),
 
     final_booking_amount: z
       .number()
@@ -238,7 +243,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm">
-                          Total Booking Value *
+                            Total Booking Value *
                           </FormLabel>
                           <FormControl>
                             <input

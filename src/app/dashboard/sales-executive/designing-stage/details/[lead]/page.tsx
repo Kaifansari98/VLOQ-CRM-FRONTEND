@@ -93,8 +93,7 @@ export default function DesigningStageLead() {
 
   const canMoveToBooking =
     countsData?.QuotationDoc > 0 &&
-    countsData?.DesignsDoc > 0 &&
-    countsData?.SelectionData >= 3;
+    countsData?.DesignsDoc > 0
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -198,7 +197,7 @@ export default function DesigningStageLead() {
                         Move To Booking
                       </div>
                     }
-                    value="Requires at least 1 Quotation, 1 Design, and 3 Selections"
+                    value="Requires at least 1 Quotation and 1 Design"
                   />
                 ) : (
                   <DropdownMenuItem onSelect={() => setBookingOpenLead(true)}>
@@ -311,7 +310,7 @@ export default function DesigningStageLead() {
                         Move To Booking
                       </div>
                     }
-                    value="Requires at least 1 Quotation, 1 Design, and 3 Selections"
+                    value="Requires at least 1 Quotation and 1 Design"
                   />
                 ) : (
                   <Button onClick={() => setBookingOpenLead(true)}>

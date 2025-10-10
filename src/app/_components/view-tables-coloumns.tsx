@@ -6,7 +6,6 @@ import { DataTableColumnHeader } from "@/components/data-table/data-table-column
 import { Text } from "lucide-react";
 import type { DataTableRowActionOpen } from "@/types/data-table";
 import { canReassingLead } from "@/components/utils/privileges";
-import CustomeBadge from "@/components/origin-badge";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
@@ -127,7 +126,7 @@ export function getViewOpenLeadsTableColumns({
     {
       accessorKey: "srNo",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="col" />
+        <DataTableColumnHeader column={column} title="Sr. No." />
       ),
       cell: ({ row }) => (
         <div className="text-center">{row.getValue("srNo")}</div>

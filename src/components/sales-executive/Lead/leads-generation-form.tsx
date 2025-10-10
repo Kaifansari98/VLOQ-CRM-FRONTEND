@@ -208,9 +208,9 @@ export default function LeadsGenerationForm({
       vendor_id: vendorId,
       created_by: createdBy,
       // ✅ new field
-      site_map_link: savedMapLocation 
-      ? `https://www.google.com/maps?q=${savedMapLocation.lat},${savedMapLocation.lng}`
-      : undefined,
+      site_map_link: savedMapLocation
+        ? `https://www.google.com/maps?q=${savedMapLocation.lat},${savedMapLocation.lng}`
+        : undefined,
 
       // ✅ cleanly separated
       country_code: countryCode,
@@ -381,7 +381,6 @@ export default function LeadsGenerationForm({
 
           {/* Site Type */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-
             <FormField
               control={form.control}
               name="site_type_id"
@@ -450,12 +449,12 @@ export default function LeadsGenerationForm({
                         value={field.value}
                         onChange={(value) => {
                           field.onChange(value);
-                          // Clear saved location if user manually edits address
-                          if (
-                            savedMapLocation &&
-                            value !== savedMapLocation.address
-                          ) {
-                            setSavedMapLocation(null);
+
+                          // ✅ Preserve the lat/lng even if user edits text
+                          if (savedMapLocation) {
+                            setSavedMapLocation((prev) =>
+                              prev ? { ...prev, address: value } : prev
+                            );
                           }
                         }}
                         placeholder="Enter address or use map"
@@ -492,7 +491,6 @@ export default function LeadsGenerationForm({
 
           {/* Source */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-
             <FormField
               control={form.control}
               name="source_id"
