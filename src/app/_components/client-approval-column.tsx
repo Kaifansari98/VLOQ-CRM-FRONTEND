@@ -187,31 +187,6 @@ export function getClientApprovalTableColumns({
       enableColumnFilter: true,
     },
 
-    // Priority
-    {
-      accessorKey: "priority",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Priority" />
-      ),
-      cell: ({ getValue }) => {
-        const p = getValue() as string;
-        const colors: Record<string, string> = {
-          urgent: "bg-red-500",
-          high: "bg-amber-500",
-          standard: "bg-emerald-500",
-          low: "bg-gray-500",
-        };
-        return (
-          <CustomeBadge
-            title={p?.charAt(0).toUpperCase() + p?.slice(1)}
-            bgColor={colors[p] || "bg-gray-400"}
-          />
-        );
-      },
-      enableSorting: true,
-      enableColumnFilter: true,
-    },
-
     // Status
     {
       accessorKey: "status",

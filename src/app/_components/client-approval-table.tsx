@@ -77,7 +77,6 @@ const ClientApprovalLeadsTable = () => {
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     architechName: false,
-    billingName: false,
     source: false,
     createdAt: false,
     altContact: false,
@@ -99,9 +98,7 @@ const ClientApprovalLeadsTable = () => {
       name: `${lead.firstname || ""} ${lead.lastname || ""}`.trim(),
       email: lead.email || "",
       contact: `${lead.country_code || ""} ${lead.contact_no || ""}`.trim(),
-      priority: lead.priority || "",
       siteAddress: lead.site_address || "",
-      billingName: lead.billing_name || "",
       architechName: lead.archetech_name || "",
       designerRemark: lead.designer_remark || "",
       source: lead.source?.type || "",

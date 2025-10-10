@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Download } from "lucide-react";
 import { urlToFile } from "@/utils/file.utils";
 import { format } from "date-fns";
+import { Loader2 } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -40,6 +41,7 @@ const SelectDocumentModal: React.FC<Props> = ({
   const { data: designData } = useDesignsDoc(vendorId!, leadId);
 
   const [selectedDocs, setSelectedDocs] = useState<DocItem[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const quotations: DocItem[] =
     quotationData?.data?.documents.map((doc: any) => ({
@@ -190,38 +192,56 @@ const SelectDocumentModal: React.FC<Props> = ({
         </div>
       </div>
 
+      {/* Footer */}
       <div className="sticky bottom-0 flex justify-end gap-2 border-t bg-background px-6 py-4">
-        <Button variant="outline" onClick={() => setSelectedDocs([])}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setSelectedDocs([]);
+          }}
+          disabled={loading} // 👈 disable while loading
+        >
           Clear
         </Button>
+
         <Button
+          disabled={loading || selectedDocs.length === 0}
           onClick={async () => {
-            const convertedFiles: File[] = [];
+            setLoading(true); // 👈 start loader
+            try {
+              const convertedFiles: File[] = [];
 
-            for (const doc of selectedDocs) {
-              // guess MIME from extension
-              let mime = "application/octet-stream";
-              if (doc.doc_og_name.endsWith(".pdf")) mime = "application/pdf";
-              if (
-                doc.doc_og_name.endsWith(".jpg") ||
-                doc.doc_og_name.endsWith(".jpeg")
-              )
-                mime = "image/jpeg";
-              if (doc.doc_og_name.endsWith(".png")) mime = "image/png";
+              for (const doc of selectedDocs) {
+                let mime = "application/octet-stream";
+                if (doc.doc_og_name.endsWith(".pdf")) mime = "application/pdf";
+                if (doc.doc_og_name.match(/\.(jpg|jpeg)$/)) mime = "image/jpeg";
+                if (doc.doc_og_name.endsWith(".png")) mime = "image/png";
 
-              const file = await urlToFile(
-                doc.signedUrl,
-                doc.doc_og_name,
-                mime
-              );
-              convertedFiles.push(file);
+                const file = await urlToFile(
+                  doc.signedUrl,
+                  doc.doc_og_name,
+                  mime
+                );
+                convertedFiles.push(file);
+              }
+
+              onSelectDocs?.(convertedFiles);
+              onOpenChange(false);
+            } catch (err) {
+              console.error("Error converting docs:", err);
+            } finally {
+              setLoading(false); // 👈 stop loader
             }
-
-            onSelectDocs?.(convertedFiles); // 👈 send to parent
-            onOpenChange(false);
           }}
         >
-          Select
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Loading...
+            </>
+          ) : (
+            "Select"
+          )}
         </Button>
       </div>
     </BaseModal>

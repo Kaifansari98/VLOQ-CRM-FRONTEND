@@ -102,8 +102,6 @@ export interface SiteMeasurmentLead {
   alt_contact_no?: string | null;
   email: string;
   site_address: string;
-  priority: string;
-  billing_name: string;
   archetech_name: string;
   designer_remark: string;
   documents: Document[];
@@ -145,9 +143,7 @@ export type ProcessedSiteMeasurementLead = {
   name: string;
   email: string;
   contact: string;
-  priority: string;
   siteAddress: string;
-  billingName: string;
   architechName: string;
   designerRemark: string;
   productTypes: string;

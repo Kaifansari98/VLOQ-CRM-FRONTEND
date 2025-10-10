@@ -123,11 +123,6 @@ export default function MyTaskLeadDetails() {
                 </div>
 
                 <div className="flex flex-col">
-                  <p className="text-sm font-medium">Billing Name</p>
-                  <p>{lead.billing_name}</p>
-                </div>
-
-                <div className="flex flex-col">
                   <p className="text-sm font-medium">Architect Name</p>
                   <p>{lead.archetech_name}</p>
                 </div>
@@ -160,10 +155,6 @@ export default function MyTaskLeadDetails() {
                   <p>{lead.siteType?.type}</p>
                 </div>
 
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium">Priority</p>
-                  <p>{lead.priority}</p>
-                </div>
               </div>
 
               {/* Remarks */}

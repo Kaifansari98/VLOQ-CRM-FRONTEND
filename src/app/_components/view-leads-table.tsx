@@ -50,9 +50,7 @@ export type ProcessedLead = {
   name: string;
   email: string;
   contact: string;
-  priority: string;
   siteAddress: string;
-  billingName: string;
   architechName: string;
   designerRemark: string;
   productTypes: string;
@@ -86,7 +84,6 @@ const ViewOpenLeadTable = () => {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({
       architechName: false,
-      billingName: false,
       source: false,
       createdAt: false,
       altContact: false,
@@ -143,7 +140,12 @@ const ViewOpenLeadTable = () => {
   };
 
   const handleRowClick = (row: ProcessedLead) => {
-    console.log("[handleRowClick] LeadId:", row.id, "accountId:", row.accountId);
+    console.log(
+      "[handleRowClick] LeadId:",
+      row.id,
+      "accountId:",
+      row.accountId
+    );
     router.push(
       `/dashboard/sales-executive/leadstable/details/${row.id}?accountId=${row.accountId}`
     );
@@ -185,9 +187,7 @@ const ViewOpenLeadTable = () => {
         email: lead.email || "",
         assign_to: lead.assignedTo?.user_name || "",
         contact: lead.country_code + " " + lead.contact_no || "",
-        priority: lead.priority || "",
         siteAddress: lead.site_address || "",
-        billingName: lead.billing_name || "",
         architechName: lead.archetech_name || "",
         designerRemark: lead.designer_remark || "",
         productTypes:
@@ -203,8 +203,7 @@ const ViewOpenLeadTable = () => {
         updatedAt: lead.updated_at || "",
         altContact: lead.alt_contact_no || "",
         status: lead.statusType?.type || "",
-        initial_site_measurement_date:
-          lead.initial_site_measurement_date || "",
+        initial_site_measurement_date: lead.initial_site_measurement_date || "",
         accountId, // ✅ keep accountId in row
       };
     });

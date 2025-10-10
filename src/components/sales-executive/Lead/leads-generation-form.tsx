@@ -50,7 +50,6 @@ const createFormSchema = (userType: string | undefined) => {
   return z.object({
     firstname: z.string().min(1, "First name is required").max(300),
     lastname: z.string().min(1, "Last name is required").max(300),
-    billing_name: z.string().optional(),
     contact_no: z.string().min(1, "This Contact number isn't valid").max(20),
     alt_contact_no: z.string().optional().or(z.literal("")),
     email: z
@@ -60,7 +59,6 @@ const createFormSchema = (userType: string | undefined) => {
       .or(z.literal("")),
     site_type_id: z.string().min(1, "Please select a site type"),
     site_address: z.string().min(1, "Site Address is required").max(2000),
-    priority: z.string().min(1, "Please select a priority"),
     source_id: z.string().min(1, "Please select a source"),
     product_types: z
       .array(z.string())
@@ -153,13 +151,11 @@ export default function LeadsGenerationForm({
     defaultValues: {
       firstname: "",
       lastname: "",
-      billing_name: "",
       contact_no: "",
       alt_contact_no: "",
       email: "",
       site_type_id: "",
       site_address: "",
-      priority: "",
       source_id: "",
       product_types: [],
       product_structures: [],
@@ -175,7 +171,6 @@ export default function LeadsGenerationForm({
     form.reset();
     setFiles([]);
     setSavedMapLocation(null);
-    form.setValue("priority", "");
     form.setValue("source_id", "");
     form.setValue("site_type_id", "");
   };
@@ -204,20 +199,18 @@ export default function LeadsGenerationForm({
     const payload = {
       firstname: values.firstname,
       lastname: values.lastname,
-      billing_name: values.billing_name || undefined,
       email: values.email,
       site_address: values.site_address,
       site_type_id: Number(values.site_type_id),
-      priority: values.priority,
       source_id: Number(values.source_id),
       archetech_name: values.archetech_name || undefined,
       designer_remark: values.designer_remark || undefined,
       vendor_id: vendorId,
       created_by: createdBy,
       // ✅ new field
-      site_map_link: savedMapLocation 
-      ? `https://www.google.com/maps?q=${savedMapLocation.lat},${savedMapLocation.lng}`
-      : undefined,
+      site_map_link: savedMapLocation
+        ? `https://www.google.com/maps?q=${savedMapLocation.lat},${savedMapLocation.lng}`
+        : undefined,
 
       // ✅ cleanly separated
       country_code: countryCode,
@@ -386,30 +379,8 @@ export default function LeadsGenerationForm({
             )}
           />
 
-          {/* Billing Name & Site Type */}
+          {/* Site Type */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-            <FormField
-              control={form.control}
-              name="billing_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">Billing Name</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Enter billing name"
-                      type="text"
-                      className="text-sm"
-                      {...field}
-                    />
-                  </FormControl>
-                  {/* <FormDescription className="text-xs">
-                    Optional billing name.
-                  </FormDescription> */}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <FormField
               control={form.control}
               name="site_type_id"
@@ -478,12 +449,12 @@ export default function LeadsGenerationForm({
                         value={field.value}
                         onChange={(value) => {
                           field.onChange(value);
-                          // Clear saved location if user manually edits address
-                          if (
-                            savedMapLocation &&
-                            value !== savedMapLocation.address
-                          ) {
-                            setSavedMapLocation(null);
+
+                          // ✅ Preserve the lat/lng even if user edits text
+                          if (savedMapLocation) {
+                            setSavedMapLocation((prev) =>
+                              prev ? { ...prev, address: value } : prev
+                            );
                           }
                         }}
                         placeholder="Enter address or use map"
@@ -518,41 +489,8 @@ export default function LeadsGenerationForm({
             )}
           />
 
-          {/* Priority & Source */}
+          {/* Source */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <FormField
-              control={form.control}
-              name="priority"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">Priority *</FormLabel>
-                  <Select
-                    value={field.value || ""}
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="text-sm w-full">
-                        <SelectValue placeholder="Select priority" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="urgent">Urgent Priority</SelectItem>
-                      <SelectItem value="high">High Priority</SelectItem>
-                      <SelectItem value="standard">
-                        Standard Priority
-                      </SelectItem>
-                      <SelectItem value="low">Low Priority</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {/* <FormDescription className="text-xs">
-                    Lead priority level.
-                  </FormDescription> */}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <FormField
               control={form.control}
               name="source_id"

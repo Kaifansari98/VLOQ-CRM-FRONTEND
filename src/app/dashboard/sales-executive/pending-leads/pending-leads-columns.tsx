@@ -29,68 +29,67 @@ export function getPendingLeadsColumns({
   onRevert: (lead: PendingLeadRow) => void;
   onMarkAsLost: (lead: PendingLeadRow) => void;
 }): ColumnDef<PendingLeadRow>[] {
-  
   return [
-    {
-      id: "actions",
-      header: () => <span className="sr-only">Actions</span>,
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              aria-label="Open menu"
-              variant="ghost"
-              className="flex size-8 p-0 data-[state=open]:bg-muted"
-            >
-              <Ellipsis className="size-4" aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
+    // {
+    //   id: "actions",
+    //   header: () => <span className="sr-only">Actions</span>,
+    //   cell: ({ row }) => (
+    //     <DropdownMenu>
+    //       <DropdownMenuTrigger asChild>
+    //         <Button
+    //           type="button"
+    //           aria-label="Open menu"
+    //           variant="ghost"
+    //           className="flex size-8 p-0 data-[state=open]:bg-muted"
+    //         >
+    //           <Ellipsis className="size-4" aria-hidden="true" />
+    //         </Button>
+    //       </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="end" className="w-44">
-            {/* OnHold + Lost → only Revert */}
-            {(tab === "onHold" || tab === "lost") && (
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  onRevert(row.original);
-                }}
-              >
-                <CircleCheck size={18} className="" />
-                Mark as active
-              </DropdownMenuItem>
-            )}
+    //       <DropdownMenuContent align="end" className="w-44">
+    //         {/* OnHold + Lost → only Revert */}
+    //         {(tab === "onHold" || tab === "lost") && (
+    //           <DropdownMenuItem
+    //             onSelect={(e) => {
+    //               e.preventDefault();
+    //               onRevert(row.original);
+    //             }}
+    //           >
+    //             <CircleCheck size={18} className="" />
+    //             Mark as active
+    //           </DropdownMenuItem>
+    //         )}
 
-            {/* LostApproval → two actions */}
-            {tab === "lostApproval" && (
-              <>
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    onRevert(row.original);
-                  }}
-                >
-                  <CircleX size={18} className="mr-2" />
-                  Rejected
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    onMarkAsLost(row.original);
-                  }}
-                >
-                  <CircleCheck size={18} className="mr-2" />
-                  Approved
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-      enableSorting: false,
-      enableHiding: false,
-      size: 40,
-    },
+    //         {/* LostApproval → two actions */}
+    //         {tab === "lostApproval" && (
+    //           <>
+    //             <DropdownMenuItem
+    //               onSelect={(e) => {
+    //                 e.preventDefault();
+    //                 onRevert(row.original);
+    //               }}
+    //             >
+    //               <CircleX size={18} className="mr-2" />
+    //               Rejected
+    //             </DropdownMenuItem>
+    //             <DropdownMenuItem
+    //               onSelect={(e) => {
+    //                 e.preventDefault();
+    //                 onMarkAsLost(row.original);
+    //               }}
+    //             >
+    //               <CircleCheck size={18} className="mr-2" />
+    //               Approved
+    //             </DropdownMenuItem>
+    //           </>
+    //         )}
+    //       </DropdownMenuContent>
+    //     </DropdownMenu>
+    //   ),
+    //   enableSorting: false,
+    //   enableHiding: false,
+    //   size: 40,
+    // },
     {
       accessorKey: "srNo",
       header: ({ column }) => (
@@ -144,33 +143,6 @@ export function getPendingLeadsColumns({
         );
       },
     },
-    {
-      accessorKey: "priority",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Priority" />
-      ),
-      cell: ({ row }) => {
-        const priority = (row.getValue("priority") as string) || "standard";
-        const colors: Record<string, string> = {
-          urgent: "bg-red-500",
-          high: "bg-amber-500",
-          standard: "bg-emerald-500",
-          low: "bg-gray-500",
-        };
-        return (
-          <CustomeBadge
-            title={priority.charAt(0).toUpperCase() + priority.slice(1)}
-            bgColor={colors[priority] || "bg-gray-400"}
-          />
-        );
-      },
-    },
-    // {
-    //   accessorKey: "activity_status",
-    //   header: ({ column }) => (
-    //     <DataTableColumnHeader column={column} title="Status" />
-    //   ),
-    // },
     {
       accessorKey: "status",
       header: ({ column }) => (

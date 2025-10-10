@@ -5,9 +5,7 @@ export type ProcessedClientApprovalLead = {
   email: string;
   contact: string;
   altContact?: string;
-  priority: string;
   siteAddress: string;
-  billingName: string;
   architechName: string;
   designerRemark: string;
   productTypes: string;
@@ -33,8 +31,6 @@ export interface ClientApprovalLead {
   site_address: string;
   site_type_id: number;
   status_id: number;
-  priority: string;
-  billing_name: string;
   source_id: number;
   account_id: number;
   archetech_name: string;

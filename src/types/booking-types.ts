@@ -145,8 +145,6 @@ export interface BookingLead {
   alt_contact_no?: string | null;
   email: string;
   site_address: string;
-  priority: string;
-  billing_name: string;
   archetech_name: string;
   designer_remark: string;
   final_booking_amt: number;
@@ -211,9 +209,7 @@ export type ProcessedBookingLead = {
   name: string;
   email: string;
   contact: string;
-  priority: string;
   siteAddress: string;
-  billingName: string;
   architechName: string;
   designerRemark: string;
   productTypes: string;

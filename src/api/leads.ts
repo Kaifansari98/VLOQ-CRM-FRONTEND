@@ -19,8 +19,6 @@ export interface CreateLeadPayload {
   email?: string;
   site_address: string;
   site_type_id: number;
-  priority: string;
-  billing_name?: string;
   source_id: number;
   archetech_name?: string;
   designer_remark?: string;
@@ -40,8 +38,6 @@ export interface Lead {
   email: string;
   site_address: string;
   site_type_id: number;
-  priority: string;
-  billing_name: string;
   source_id: number;
   account_id: number;
   archetech_name: string;
@@ -82,8 +78,6 @@ export interface EditLeadPayload {
   site_address?: string;
   site_map_link?: string;
   site_type_id?: number;
-  priority?: string;
-  billing_name?: string;
   source_id?: number;
   archetech_name?: string;
   designer_remark?: string;
