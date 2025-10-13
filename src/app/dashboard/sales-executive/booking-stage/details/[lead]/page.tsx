@@ -82,6 +82,9 @@ export default function BookingStageLeadsDetails() {
   const lead = data?.data?.lead;
   const accountId = lead?.account_id;
 
+  const leadCode = lead?.lead_code ?? "";
+  const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
+
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -131,7 +134,10 @@ export default function BookingStageLeadsDetails() {
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbPage>
-                    {lead?.firstname} {lead?.lastname} Details
+                    <p className="font-bold">
+                      {leadCode || "Loading…"}
+                      {leadCode && (clientName ? ` - ${clientName}` : "")}
+                    </p>
                   </BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>

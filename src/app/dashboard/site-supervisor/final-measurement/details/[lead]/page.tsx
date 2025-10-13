@@ -85,6 +85,9 @@ export default function FinalMeasurementLeadDetails() {
   const lead = data?.data?.lead;
   const accountId = lead?.account_id;
 
+  const leadCode = lead?.lead_code ?? "";
+  const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
+
   const normalizedLead:
     | { id: number; name?: string; accountId: number }
     | undefined = lead
@@ -141,7 +144,10 @@ export default function FinalMeasurementLeadDetails() {
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbPage>
-                    {lead?.firstname} {lead?.lastname} Details
+                    <p className="font-bold">
+                      {leadCode || "Loading…"}
+                      {leadCode && (clientName ? ` - ${clientName}` : "")}
+                    </p>
                   </BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>

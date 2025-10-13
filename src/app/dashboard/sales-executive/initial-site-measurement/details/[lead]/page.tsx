@@ -134,6 +134,9 @@ export default function SiteMeasurementLead() {
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
 
+  const leadCode = lead?.lead_code ?? "";
+  const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
+
   console.log("assigned to", lead?.assignedTo?.id);
 
   if (isLoading) {
@@ -160,9 +163,18 @@ export default function SiteMeasurementLead() {
                     Site Measurement
                   </BreadcrumbLink>
                 </BreadcrumbItem>
-                <BreadcrumbSeparator />
+                {/* <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbPage>Details</BreadcrumbPage>
+                </BreadcrumbItem> */}
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>
+                    <p className="font-bold">
+                      {leadCode || "Loading…"}
+                      {leadCode && (clientName ? ` - ${clientName}` : "")}
+                    </p>
+                  </BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>

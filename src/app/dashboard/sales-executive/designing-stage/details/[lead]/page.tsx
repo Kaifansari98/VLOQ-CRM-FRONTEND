@@ -98,6 +98,9 @@ export default function DesigningStageLead() {
   const lead = data?.data?.lead;
   console.log("page details :- ", lead?.assignedTo?.id);
 
+  const leadCode = lead?.lead_code ?? "";
+  const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
+
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -168,7 +171,12 @@ export default function DesigningStageLead() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Leads Details</BreadcrumbPage>
+                  <BreadcrumbPage>
+                    <p className="font-bold">
+                      {leadCode || "Loading…"}
+                      {leadCode && (clientName ? ` - ${clientName}` : "")}
+                    </p>
+                  </BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>

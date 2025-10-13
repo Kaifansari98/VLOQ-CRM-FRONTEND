@@ -83,6 +83,9 @@ export default function ClientApprovalLeadDetails() {
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
 
+  const leadCode = lead?.lead_code ?? "";
+  const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
+
   const accountId = Number(lead?.account_id);
 
   console.log("account id :- ", accountId);
@@ -133,7 +136,10 @@ export default function ClientApprovalLeadDetails() {
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbPage>
-                    {lead?.firstname} {lead?.lastname} Details
+                    <p className="font-bold">
+                      {leadCode || "Loading…"}
+                      {leadCode && (clientName ? ` - ${clientName}` : "")}
+                    </p>
                   </BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
