@@ -20,6 +20,7 @@ import { DataTableFilterList } from "@/components/data-table/data-table-filter-l
 import { DataTableFilterMenu } from "@/components/data-table/data-table-filter-menu";
 import { DataTableSortList } from "@/components/data-table/data-table-sort-list";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
+import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
 
 import { useFeatureFlags } from "./feature-flags-provider";
 import type { DataTableRowActionSiteMeasurement } from "@/types/data-table";
@@ -96,12 +97,27 @@ const SiteMeasurementTable = () => {
     []
   );
   const [rowSelection, setRowSelection] = React.useState({});
+  const [viewType, setViewType] = useState<"my" | "overall">("my");
 
   // Query hooks - always called, but conditionally with null/undefined params
-  const { data, error, isLoading, isError } = useInitialSiteMeasurement(
-    vendorId || 0,
-    userId || 0
-  );
+  const {
+    data: myLeadsData,
+    error,
+    isLoading: isMyLoading,
+    isError,
+  } = useInitialSiteMeasurement(vendorId || 0, userId || 0);
+
+  const { data: overallLeadsData, isLoading: isOverallLeadsLoading } =
+    useVendorOverallLeads(vendorId!, "Type 2", userId!);
+
+  const isLoading = viewType === "my" ? isMyLoading : isOverallLeadsLoading;
+
+  const activeData =
+    viewType === "my" ? myLeadsData?.data || [] : overallLeadsData?.data || [];
+
+  const { data: vendorOverallLeadsQuery, isLoading: isOverallLoading } =
+    useVendorOverallLeads(vendorId!, "Type 2", userId!);
+
   const completedUpdateMutation = useCompletedUpdateTask();
   const cancelledUpdateMutation = useCancelledUpdateTask();
   const queryClient = useQueryClient();
@@ -138,9 +154,9 @@ const SiteMeasurementTable = () => {
 
   // Memoized values
   const rowData = useMemo<ProcessedSiteMeasurementLead[]>(() => {
-    if (!data?.data) return [];
+    if (!activeData) return [];
 
-    return data.data.map((lead: SiteMeasurmentLead, index: number) => {
+    return activeData.map((lead: SiteMeasurmentLead, index: number) => {
       const allDocumentUrls: Document[] = Array.isArray(lead.documents)
         ? lead.documents
             .filter(
@@ -178,12 +194,12 @@ const SiteMeasurementTable = () => {
         productStructures: "",
         documentUrl: allDocumentUrls,
         paymentInfo:
-          lead.uploads.find((item: Upload) => item.paymentInfo !== null)
+          lead.uploads?.find((item: Upload) => item.paymentInfo !== null)
             ?.paymentInfo || null,
         accountId: lead.account.id || "",
       };
     });
-  }, [data]);
+  }, [activeData]);
 
   const columns = React.useMemo(
     () => getSiteMeasurementColumn({ setRowAction, userType, router }),
@@ -232,7 +248,11 @@ const SiteMeasurementTable = () => {
   }
 
   if (isLoading) {
-    return <p>Loading...</p>;
+    return (
+      <div className="p-4 text-gray-600">
+        Loading {viewType === "my" ? "My" : "Overall"} Site Measurement Leads...
+      </div>
+    );
   }
 
   if (isError) {
@@ -358,6 +378,41 @@ const SiteMeasurementTable = () => {
   return (
     <>
       <DataTable table={table} onRowDoubleClick={handleRowClick}>
+        {/* 🧭 My Leads / Overall Leads Tabs */}
+        <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+          <button
+            onClick={() => setViewType("my")}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+              viewType === "my"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-muted text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            My Leads
+            {myLeadsData?.count && (
+              <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500">
+                {myLeadsData.count}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setViewType("overall")}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+              viewType === "overall"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-muted text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            Overall Leads
+            {overallLeadsData?.count && (
+              <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500">
+                {overallLeadsData.count}
+              </span>
+            )}
+          </button>
+        </div>
+
         {enableAdvancedFilter ? (
           <>
             <DataTableAdvancedToolbar table={table}>

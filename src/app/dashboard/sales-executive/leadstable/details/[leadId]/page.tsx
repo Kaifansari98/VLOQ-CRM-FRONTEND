@@ -90,7 +90,13 @@ export default function LeadDetails() {
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
-  const isDraftLead = lead?.is_draft === true;
+  const isDraftLead = !!lead?.is_draft;
+  const leadCode = lead?.lead_code ?? "";
+  const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
+  // console.log("Lead Code :-", leadCode);
+  // console.log(`${lead.firstname || ""} ${lead.lastname || ""}`.trim());
+
+  const uiDisabled = isLoading || !lead;
 
   const updateActivityStatusMutation = useUpdateActivityStatus();
 
@@ -159,7 +165,12 @@ export default function LeadDetails() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Details</BreadcrumbPage>
+                  <BreadcrumbPage>
+                    <p className="font-bold">
+                      {leadCode || "Loading…"}
+                      {leadCode && (clientName ? ` - ${clientName}` : "")}
+                    </p>
+                  </BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -175,7 +186,11 @@ export default function LeadDetails() {
                 value="This action cannot be performed because the lead is still in Draft mode."
               />
             ) : (
-              <Button size="sm" onClick={() => setAssignOpen(true)}>
+              <Button
+                size="sm"
+                onClick={() => setAssignOpen(true)}
+                disabled={uiDisabled}
+              >
                 Assign Task
               </Button>
             )}
@@ -206,7 +221,8 @@ export default function LeadDetails() {
                     <EllipsisVertical className="mr-2 h-4 w-4" />
                     Lead Status
                   </DropdownMenuSubTrigger>
-                  {!isDraftLead && (
+
+                  {!isDraftLead && !uiDisabled && (
                     <DropdownMenuSubContent>
                       <DropdownMenuItem
                         onSelect={() => {
@@ -232,12 +248,16 @@ export default function LeadDetails() {
                 {canDeleteLead(userType) && (
                   <>
                     <DropdownMenuSeparator />
-                    {isDraftLead ? (
+                    {isDraftLead || uiDisabled ? (
                       <CustomeTooltip
                         truncateValue={
                           <DropdownMenuItem disabled>Delete</DropdownMenuItem>
                         }
-                        value="This action cannot be performed because the lead is still in Draft mode."
+                        value={
+                          isDraftLead
+                            ? "This action cannot be performed because the lead is still in Draft mode."
+                            : "Please wait while the lead loads."
+                        }
                       />
                     ) : (
                       <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
@@ -256,9 +276,8 @@ export default function LeadDetails() {
           value={activeTab}
           onValueChange={(val) => {
             if (val === "projects") {
-              // instead of switching tab, open modal
+              if (isDraftLead || uiDisabled) return; // ✅ block in draft/loading
               setAssignOpen(true);
-              // stay on details tab
               return;
             }
             setActiveTab(val);
@@ -271,15 +290,32 @@ export default function LeadDetails() {
                 <HouseIcon size={16} className="mr-1 opacity-60" />
                 Lead Details
               </TabsTrigger>
-              <TabsTrigger value="projects">
-                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                To-Do Task
-              </TabsTrigger>
-              <TabsTrigger value="history">
+
+              {isDraftLead ? (
+                <CustomeTooltip
+                  truncateValue={
+                    <TabsTrigger value="projects" disabled>
+                      <PanelsTopLeftIcon
+                        size={16}
+                        className="mr-1 opacity-60"
+                      />
+                      To-Do Task
+                    </TabsTrigger>
+                  }
+                  value="This action cannot be performed because the lead is still in Draft mode."
+                />
+              ) : (
+                <TabsTrigger value="projects" disabled={uiDisabled}>
+                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                  To-Do Task
+                </TabsTrigger>
+              )}
+
+              <TabsTrigger value="history" disabled={uiDisabled}>
                 <BoxIcon size={16} className="mr-1 opacity-60" />
                 Site History
               </TabsTrigger>
-              <TabsTrigger value="team">
+              <TabsTrigger value="team" disabled={uiDisabled}>
                 <UsersRoundIcon size={16} className="mr-1 opacity-60" />
                 Payment Information
               </TabsTrigger>

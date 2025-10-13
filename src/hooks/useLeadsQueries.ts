@@ -14,16 +14,31 @@ import {
   getVendorLeads,
   getVendorUserLeads,
   getVendorUserLeadsOpen,
+  Lead,
   VendorLeadsResponse,
   VendorUserLeadsResponse,
 } from "@/api/leads";
 import { toast } from "react-toastify";
-import { assignToFinalMeasurement, AssignToFinalMeasurementPayload } from "@/api/final-measurement";
+import {
+  assignToFinalMeasurement,
+  AssignToFinalMeasurementPayload,
+} from "@/api/final-measurement";
+import { apiClient } from "@/lib/apiClient";
 
 interface UseLeadLogsOptions {
   leadId: number;
   vendorId: number;
   limit?: number;
+}
+
+export interface VendorOverallLeadsResponse {
+  count: number;
+  data: Lead[];
+}
+
+export interface VendorUserLeadsOpenResponse {
+  count: number;
+  data: Lead[];
 }
 
 // Hook for getting vendor leads
@@ -59,12 +74,41 @@ export const useVendorUserLeads = (
 export const useVendorUserLeadsOpen = (
   vendorId: number,
   userId: number
-): UseQueryResult<VendorUserLeadsResponse, Error> => {
+): UseQueryResult<VendorUserLeadsOpenResponse, Error> => {
   return useQuery({
     queryKey: ["vendorUserLeadsOpen", vendorId, userId],
     queryFn: () => getVendorUserLeadsOpen(vendorId, userId),
-    enabled: !!vendorId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!vendorId && !!userId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+// ✅ Get all vendor leads (Overall Leads) for a given tag (e.g. Type 1)
+export const getVendorOverallLeads = async (
+  vendorId: number,
+  tag: string,
+  userId: number,
+): Promise<VendorOverallLeadsResponse> => {
+  const response = await apiClient.get(
+    `/leads/bookingStage/vendorId/${vendorId}/all-leads`,
+    {
+      params: { tag, userId },
+    }
+  );
+  return response.data; // keep full shape: { count, data }
+};
+
+export const useVendorOverallLeads = (
+  vendorId: number,
+  tag: string,
+  userId: number
+): UseQueryResult<VendorOverallLeadsResponse, Error> => {
+  return useQuery({
+    queryKey: ["vendorOverallLeads", vendorId, tag],
+    queryFn: () => getVendorOverallLeads(vendorId, tag, userId),
+    enabled: !!vendorId && !!tag,
+    staleTime: 5 * 60 * 1000, // cache 5min
     refetchOnWindowFocus: false,
   });
 };
@@ -95,7 +139,11 @@ export const useAssignToFinalMeasurement = (leadId: number) => {
   });
 };
 
-export const useLeadLogs = ({ leadId, vendorId, limit = 10 }: UseLeadLogsOptions) => {
+export const useLeadLogs = ({
+  leadId,
+  vendorId,
+  limit = 10,
+}: UseLeadLogsOptions) => {
   return useInfiniteQuery({
     queryKey: ["leadLogs", leadId, vendorId],
     queryFn: async ({ pageParam }) =>

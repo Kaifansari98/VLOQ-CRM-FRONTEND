@@ -376,7 +376,9 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       payload.site_type_id = Number(values.site_type_id);
     if (isDirty("source_id")) payload.source_id = Number(values.source_id);
     if (isDirty("site_address")) payload.site_address = values.site_address;
-    if (isDirty("site_map_link")) payload.site_map_link = values.site_map_link;
+    if (values.site_map_link && values.site_map_link.trim() !== "") {
+      payload.site_map_link = values.site_map_link.trim();
+    }
     payload.product_types = values.product_types.map(Number);
     payload.product_structures = values.product_structures.map(Number);
     if (isDirty("archetech_name"))
@@ -515,7 +517,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm">Email *</FormLabel>
+                <FormLabel className="text-sm">Email</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Enter email address"
@@ -590,6 +592,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                     }
                     // Also push into form state for site_map_link
                     form.setValue("site_map_link", link);
+                    form.trigger("site_map_link"); // ensures validation + marks as touched
                   }}
                 />
               </FormItem>
@@ -700,7 +703,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
 
                 return (
                   <FormItem>
-                    <FormLabel className="text-sm">Furniture Type</FormLabel>
+                    <FormLabel className="text-sm">Furniture Type *</FormLabel>
                     <FormControl>
                       <MultipleSelector
                         value={selectedOptions} // Pass Option[] with proper labels
@@ -746,7 +749,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                 return (
                   <FormItem>
                     <FormLabel className="text-sm">
-                      Furniture Structure
+                      Furniture Structure *
                     </FormLabel>
                     <FormControl>
                       <MultipleSelector
@@ -827,7 +830,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                   <TextAreaInput
                     value={field.value}
                     onChange={field.onChange}
-                    placeholder="Enter ysiteur Remark"
+                    placeholder="Enter Designer's Remark"
                   />
                 </FormControl>
                 {/* <FormDescription className="text-xs">

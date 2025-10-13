@@ -1,3 +1,4 @@
+import { VendorUserLeadsOpenResponse } from "@/hooks/useLeadsQueries";
 import { apiClient } from "@/lib/apiClient";
 import {
   Account,
@@ -60,6 +61,7 @@ export interface Lead {
   statusType: StatusType;
   initial_site_measurement_date: string;
   activity_status?: string;
+  count?: number;
 }
 
 export interface AssignToPayload {
@@ -180,12 +182,12 @@ export const getVendorUserLeads = async (
 export const getVendorUserLeadsOpen = async (
   vendorId: number,
   userId: number
-): Promise<Lead[]> => {
+): Promise<VendorUserLeadsOpenResponse> => {
   const response = await apiClient.get(
     `/leads/bookingStage/status1-leads/vendorId/${vendorId}`,
     { params: { userId } }
   );
-  return response.data.data;
+  return response.data;
 };
 
 export const deleteLead = async (leadId: number, userId: number) => {

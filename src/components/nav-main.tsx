@@ -21,6 +21,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
 interface NavItem {
   title: string;
@@ -34,7 +35,8 @@ interface NavItem {
     | "total_designing_stage_leads"
     | "total_booking_stage_leads"
     | "total_final_measurement_leads"
-    | "total_client_documentation_leads";
+    | "total_client_documentation_leads"
+    | "total_my_tasks";
   items?: {
     title: string;
     url: string;
@@ -45,7 +47,8 @@ interface NavItem {
       | "total_designing_stage_leads"
       | "total_booking_stage_leads"
       | "total_final_measurement_leads"
-      | "total_client_documentation_leads";
+      | "total_client_documentation_leads"
+      | "total_my_tasks";
   }[];
 }
 
@@ -57,7 +60,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
 
   const getCountForItem = (showCount?: string) => {
     if (!leadStats?.data || !showCount) return undefined;
-  
+
     switch (showCount) {
       case "total_leads":
         return leadStats.data.total_leads;
@@ -69,14 +72,16 @@ export function NavMain({ items }: { items: NavItem[] }) {
         return leadStats.data.total_designing_stage_leads;
       case "total_booking_stage_leads":
         return leadStats.data.total_booking_stage_leads;
-      case "total_final_measurement_leads": // ✅ new
+      case "total_final_measurement_leads":
         return leadStats.data.total_final_measurement_leads;
-      case "total_client_documentation_leads": // ✅ new
+      case "total_client_documentation_leads":
         return leadStats.data.total_client_documentation_leads;
+      case "total_my_tasks":
+        return leadStats.data.total_my_tasks;
       default:
         return undefined;
     }
-  };  
+  };
 
   return (
     <SidebarGroup>
@@ -104,7 +109,11 @@ export function NavMain({ items }: { items: NavItem[] }) {
                         </div>
                         {item.showCount && (
                           <Badge
-                            className="ml-2"
+                            className={cn(
+                              "ml-2 rounded-full",
+                              item.showCount === "total_my_tasks" &&
+                                "bg-blue-100 text-blue-600"
+                            )}
                           >
                             {isLoading
                               ? "…"
@@ -127,9 +136,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                               {subItem.showCount &&
                                 (getCountForItem(subItem.showCount) ?? 0) >
                                   0 && (
-                                  <Badge
-                                    className="ml-2 rounded-full"
-                                  >
+                                  <Badge className="ml-2 rounded-full">
                                     {isLoading
                                       ? "…"
                                       : getCountForItem(subItem.showCount)}
@@ -144,11 +151,28 @@ export function NavMain({ items }: { items: NavItem[] }) {
                 </div>
               </Collapsible>
             ) : (
-              // Agar items nahi hain to simple clickable button
+              // Agar items nahi hain to simple clickable button (with badge support)
               <SidebarMenuButton asChild tooltip={item.title}>
-                <a href={item.url} className="flex items-center gap-2 w-full">
-                  {item.icon && <item.icon />}
-                  <span>{item.title}</span>
+                <a
+                  href={item.url}
+                  className="flex items-center justify-between w-full gap-2"
+                >
+                  <div className="flex items-center gap-2">
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                  </div>
+
+                  {item.showCount && (
+                    <Badge
+                      className={cn(
+                        "ml-2 rounded-full",
+                        item.showCount === "total_my_tasks" &&
+                          "bg-blue-100 text-blue-600"
+                      )}
+                    >
+                      {isLoading ? "…" : getCountForItem(item.showCount) ?? 0}
+                    </Badge>
+                  )}
                 </a>
               </SidebarMenuButton>
             )}
