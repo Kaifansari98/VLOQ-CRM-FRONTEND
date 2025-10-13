@@ -63,6 +63,12 @@ const SiteMeasurementTable = () => {
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
 
+  const isAdmin =
+    userType?.toLowerCase() === "admin" ||
+    userType?.toLowerCase() === "super_admin";
+
+  console.log("Admin :- ", isAdmin);
+
   // Feature flags
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const router = useRouter();
@@ -379,39 +385,41 @@ const SiteMeasurementTable = () => {
     <>
       <DataTable table={table} onRowDoubleClick={handleRowClick}>
         {/* 🧭 My Leads / Overall Leads Tabs */}
-        <div className="ml-auto flex items-center gap-1.5 flex-wrap">
-          <button
-            onClick={() => setViewType("my")}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
-              viewType === "my"
-                ? "bg-blue-600 text-white shadow-sm"
-                : "bg-muted text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            My Leads
-            {myLeadsData?.count && (
-              <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500">
-                {myLeadsData.count}
-              </span>
-            )}
-          </button>
+        {!isAdmin && (
+          <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+            <button
+              onClick={() => setViewType("my")}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                viewType === "my"
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "bg-muted text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              My Leads
+              {myLeadsData?.count && (
+                <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500">
+                  {myLeadsData.count}
+                </span>
+              )}
+            </button>
 
-          <button
-            onClick={() => setViewType("overall")}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
-              viewType === "overall"
-                ? "bg-blue-600 text-white shadow-sm"
-                : "bg-muted text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            Overall Leads
-            {overallLeadsData?.count && (
-              <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500">
-                {overallLeadsData.count}
-              </span>
-            )}
-          </button>
-        </div>
+            <button
+              onClick={() => setViewType("overall")}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                viewType === "overall"
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "bg-muted text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              Overall Leads
+              {overallLeadsData?.count && (
+                <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500">
+                  {overallLeadsData.count}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
 
         {enableAdvancedFilter ? (
           <>

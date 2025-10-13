@@ -19,7 +19,8 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
-  const [loginType, setLoginType] = useState<"phone" | "email">("phone");
+  // 🟢 Email first by default
+  const [loginType, setLoginType] = useState<"email" | "phone">("email");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
 
@@ -77,27 +78,11 @@ export function LoginForm({
         onValueChange={(val) => setLoginType(val as any)}
         className="w-full"
       >
+        {/* 🧭 Email first */}
         <TabsList className="grid w-full grid-cols-2 mb-4">
-          <TabsTrigger value="phone">Login with Number</TabsTrigger>
           <TabsTrigger value="email">Login with Email</TabsTrigger>
+          <TabsTrigger value="phone">Login with Number</TabsTrigger>
         </TabsList>
-
-        {/* 🔹 Phone Login Tab */}
-        <TabsContent value="phone">
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <PhoneInput
-                defaultCountry="IN"
-                id="phone"
-                placeholder="Enter phone number"
-                value={identifier}
-                onChange={(value) => setIdentifier(value)}
-                required
-              />
-            </div>
-          </div>
-        </TabsContent>
 
         {/* 🔹 Email Login Tab */}
         <TabsContent value="email">
@@ -110,6 +95,23 @@ export function LoginForm({
                 placeholder="Enter your email address"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* 🔹 Phone Login Tab */}
+        <TabsContent value="phone">
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <PhoneInput
+                defaultCountry="IN"
+                id="phone"
+                placeholder="Enter phone number"
+                value={identifier}
+                onChange={(value) => setIdentifier(value)}
                 required
               />
             </div>

@@ -84,6 +84,12 @@ const ViewOpenLeadTable = () => {
     userId!
   );
 
+  const isAdmin =
+    userType?.toLowerCase() === "admin" ||
+    userType?.toLowerCase() === "super_admin";
+
+  console.log("Admin :- ", isAdmin);
+
   const router = useRouter();
 
   // 🆕 Select which data to use
@@ -289,64 +295,81 @@ const ViewOpenLeadTable = () => {
             )}
 
             {/* 🧭 My Leads / Overall Leads Tabs — before View */}
-            <div className="ml-auto flex items-center gap-1.5 flex-wrap">
-              <button
-                onClick={() => setViewType("my")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
-                  viewType === "my"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "bg-muted text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                My Leads
-              </button>
-              <button
-                onClick={() => setViewType("overall")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
-                  viewType === "overall"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "bg-muted text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                Overall Leads
-              </button>
-            </div>
+            {!isAdmin && (
+              <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+                <button
+                  onClick={() => setViewType("my")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                    viewType === "my"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  My Leads
+                  {vendorUserLeadsQuery.data && (
+                    <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
+                      {vendorUserLeadsQuery.data?.count}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setViewType("overall")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                    viewType === "overall"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Overall Leads
+                  {vendorOverallLeadsQuery.data && (
+                    <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
+                      {vendorOverallLeadsQuery.data?.count}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
-            {/* // Show count in tab */}
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setViewType("my")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
-                  viewType === "my"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "bg-muted text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                My Leads
-                {vendorUserLeadsQuery.data && (
-                  <span className="ml-3 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
-                    {vendorUserLeadsQuery.data?.count}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setViewType("overall")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
-                  viewType === "overall"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "bg-muted text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                Overall Leads
-                {vendorOverallLeadsQuery.data && (
-                  <span className="ml-3 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
-                    {vendorOverallLeadsQuery.data?.count}
-                  </span>
-                )}
-              </button>
-            </div>
+            {/* 🧭 My Leads / Overall Leads Tabs */}
+            {!isAdmin && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setViewType("my")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                    viewType === "my"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  My Leads
+                  {vendorUserLeadsQuery.data && (
+                    <span className="ml-3 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
+                      {vendorUserLeadsQuery.data?.count}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setViewType("overall")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                    viewType === "overall"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Overall Leads
+                  {vendorOverallLeadsQuery.data && (
+                    <span className="ml-3 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
+                      {vendorOverallLeadsQuery.data?.count}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+
             <DataTableSortList table={table} align="end" />
           </DataTableToolbar>
         )}
