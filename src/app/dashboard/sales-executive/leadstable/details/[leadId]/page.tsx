@@ -66,6 +66,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
+import CustomeTooltip from "@/components/cutome-tooltip";
 
 export default function LeadDetails() {
   const router = useRouter();
@@ -89,8 +90,7 @@ export default function LeadDetails() {
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
-
-  console.log("page :- ", lead?.assignedTo?.id);
+  const isDraftLead = lead?.is_draft === true;
 
   const updateActivityStatusMutation = useUpdateActivityStatus();
 
@@ -165,9 +165,21 @@ export default function LeadDetails() {
             </Breadcrumb>
           </div>
           <div className="flex items-center space-x-2">
-            <Button size="sm" onClick={() => setAssignOpen(true)}>
-              Assign Task
-            </Button>
+            {isDraftLead ? (
+              <CustomeTooltip
+                truncateValue={
+                  <Button size="sm" disabled>
+                    Assign Task
+                  </Button>
+                }
+                value="This action cannot be performed because the lead is still in Draft mode."
+              />
+            ) : (
+              <Button size="sm" onClick={() => setAssignOpen(true)}>
+                Assign Task
+              </Button>
+            )}
+
             <ModeToggle />
             {/* Dropdown */}
             <DropdownMenu>
@@ -194,33 +206,44 @@ export default function LeadDetails() {
                     <EllipsisVertical className="mr-2 h-4 w-4" />
                     Lead Status
                   </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        setActivityType("onHold");
-                        setActivityModalOpen(true);
-                      }}
-                    >
-                      <Clock className="h-4 w-4" />
-                      Mark On Hold
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        setActivityType("lostApproval");
-                        setActivityModalOpen(true);
-                      }}
-                    >
-                      <XCircle className="h-4 w-4" />
-                      Mark As Lost
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
+                  {!isDraftLead && (
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          setActivityType("onHold");
+                          setActivityModalOpen(true);
+                        }}
+                      >
+                        <Clock className="h-4 w-4" />
+                        Mark On Hold
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          setActivityType("lostApproval");
+                          setActivityModalOpen(true);
+                        }}
+                      >
+                        <XCircle className="h-4 w-4" />
+                        Mark As Lost
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  )}
                 </DropdownMenuSub>
                 {canDeleteLead(userType) && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
-                      Delete
-                    </DropdownMenuItem>
+                    {isDraftLead ? (
+                      <CustomeTooltip
+                        truncateValue={
+                          <DropdownMenuItem disabled>Delete</DropdownMenuItem>
+                        }
+                        value="This action cannot be performed because the lead is still in Draft mode."
+                      />
+                    ) : (
+                      <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
+                        Delete
+                      </DropdownMenuItem>
+                    )}
                   </>
                 )}
               </DropdownMenuContent>

@@ -42,7 +42,19 @@ import TextAreaInput from "@/components/origin-text-area";
 import CustomeDatePicker from "@/components/date-picker";
 import MapPicker from "@/components/MapPicker";
 import { MapPin } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
+// Schema for Create Lead - all fields required as per business logic
 const createFormSchema = (userType: string | undefined) => {
   const isAdminOrSuperAdmin =
     userType === "admin" || userType === "super_admin";
@@ -63,11 +75,9 @@ const createFormSchema = (userType: string | undefined) => {
     product_types: z
       .array(z.string())
       .min(1, "Please select at least one product type"),
-
     product_structures: z
       .array(z.string())
       .min(1, "Please select at least one product structure"),
-    // Dynamic validation based on user role
     assign_to: isAdminOrSuperAdmin
       ? z.string().min(1, "Please select an assignee")
       : z.string().optional(),
@@ -75,6 +85,35 @@ const createFormSchema = (userType: string | undefined) => {
     documents: z.string().optional(),
     archetech_name: z.string().max(300).optional(),
     designer_remark: z.string().max(2000).optional(),
+    initial_site_measurement_date: z.string().optional(),
+  });
+};
+
+// Schema for Draft - only name, contact, and assign_to (for admin) required
+const draftFormSchema = (userType: string | undefined) => {
+  const isAdminOrSuperAdmin =
+    userType === "admin" || userType === "super_admin";
+
+  return z.object({
+    firstname: z.string().min(1, "First name is required").max(300),
+    lastname: z.string().min(1, "Last name is required").max(300),
+    contact_no: z.string().min(1, "Contact number is required").max(20),
+    // Admin must assign even in draft
+    assign_to: isAdminOrSuperAdmin
+      ? z.string().min(1, "Please select an assignee")
+      : z.string().optional(),
+    // All other fields are optional for draft
+    alt_contact_no: z.string().optional().or(z.literal("")),
+    email: z.string().optional().or(z.literal("")),
+    site_type_id: z.string().optional().or(z.literal("")),
+    site_address: z.string().optional().or(z.literal("")),
+    source_id: z.string().optional().or(z.literal("")),
+    product_types: z.array(z.string()).optional(),
+    product_structures: z.array(z.string()).optional(),
+    assigned_by: z.string().optional(),
+    documents: z.string().optional(),
+    archetech_name: z.string().optional(),
+    designer_remark: z.string().optional(),
     initial_site_measurement_date: z.string().optional(),
   });
 };
@@ -90,6 +129,8 @@ export default function LeadsGenerationForm({
   const userId = useAppSelector((state) => state.auth.user?.id);
   const createdBy = useAppSelector((state: any) => state.auth.user?.id);
   const [mapOpen, setMapOpen] = useState(false);
+  const [openDraftModal, setOpenDraftModal] = useState(false);
+
   const [savedMapLocation, setSavedMapLocation] = useState<{
     lat: number;
     lng: number;
@@ -99,8 +140,30 @@ export default function LeadsGenerationForm({
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
 
-  const formSchema = createFormSchema(userType);
-  type FormValues = z.infer<typeof formSchema>;
+  const form = useForm({
+    resolver: zodResolver(createFormSchema(userType)), // Always use create schema initially
+    defaultValues: {
+      firstname: "",
+      lastname: "",
+      contact_no: "",
+      alt_contact_no: "",
+      email: "",
+      site_type_id: "",
+      site_address: "",
+      source_id: "",
+      product_types: [],
+      product_structures: [],
+      documents: "",
+      archetech_name: "",
+      designer_remark: "",
+      assign_to: "",
+      assigned_by: "",
+    },
+    mode: "onSubmit",
+    reValidateMode: "onSubmit",
+  });
+
+  type FormValues = z.infer<ReturnType<typeof createFormSchema>>;
 
   const queryClient = useQueryClient();
 
@@ -146,42 +209,33 @@ export default function LeadsGenerationForm({
     },
   });
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      firstname: "",
-      lastname: "",
-      contact_no: "",
-      alt_contact_no: "",
-      email: "",
-      site_type_id: "",
-      site_address: "",
-      source_id: "",
-      product_types: [],
-      product_structures: [],
-      documents: "",
-      archetech_name: "",
-      designer_remark: "",
-      assign_to: "",
-      assigned_by: "",
+  const saveDraftMutation = useMutation({
+    mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
+      createLead(payload, files),
+    onSuccess: (data) => {
+      toast.success("Lead saved as draft!");
+      queryClient.invalidateQueries({
+        queryKey: ["leadStats", vendorId, userId],
+      });
+      form.reset();
+      setFiles([]);
+      onClose();
+    },
+    onError: (error: any) => {
+      console.error("Draft save error:", error);
+      const errorMessage =
+        error?.response?.data?.details ||
+        error?.response?.data?.error ||
+        "Failed to save draft";
+      toast.error(errorMessage);
     },
   });
-
-  const handleResetform = () => {
-    form.reset();
-    setFiles([]);
-    setSavedMapLocation(null);
-    form.setValue("source_id", "");
-    form.setValue("site_type_id", "");
-  };
 
   function onSubmit(values: FormValues) {
     if (!vendorId || !createdBy) {
       toast.error("User authentication required");
       return;
     }
-
-    // console.log("[DEBUG] Form values before processing:", values);
 
     // Parse phone number properly
     const phone = values.contact_no
@@ -237,8 +291,6 @@ export default function LeadsGenerationForm({
           }),
     };
 
-    // console.log("[DEBUG] Processed payload:", payload);
-
     createLeadMutation.mutate(
       { payload, files },
       {
@@ -250,6 +302,79 @@ export default function LeadsGenerationForm({
         },
       }
     );
+  }
+
+  async function handleSaveAsDraft() {
+    // Temporarily switch to draft schema for validation
+    const draftSchema = draftFormSchema(userType);
+    const values = form.getValues();
+
+    // Validate against draft schema
+    const result = draftSchema.safeParse(values);
+
+    if (!result.success) {
+      // Show validation errors
+      const errors = result.error.flatten().fieldErrors;
+      Object.entries(errors).forEach(([field, messages]) => {
+        form.setError(field as any, {
+          type: "manual",
+          message: messages?.[0] || "Invalid value",
+        });
+      });
+      toast.error("Please fill required fields for draft");
+      return;
+    }
+
+    if (!vendorId || !createdBy) {
+      toast.error("User authentication required");
+      return;
+    }
+
+    const phone = values.contact_no
+      ? parsePhoneNumberFromString(values.contact_no)
+      : null;
+    const countryCode = phone?.countryCallingCode
+      ? `+${phone.countryCallingCode}`
+      : "";
+    const phoneNumber = phone?.nationalNumber || "";
+
+    const payload = {
+      firstname: values.firstname,
+      lastname: values.lastname,
+      email: values.email || undefined,
+      site_address: values.site_address || undefined,
+      site_type_id: values.site_type_id
+        ? Number(values.site_type_id)
+        : undefined,
+      source_id: values.source_id ? Number(values.source_id) : undefined,
+      archetech_name: values.archetech_name || undefined,
+      designer_remark: values.designer_remark || undefined,
+      vendor_id: vendorId,
+      created_by: createdBy,
+      site_map_link: savedMapLocation
+        ? `https://www.google.com/maps?q=${savedMapLocation.lat},${savedMapLocation.lng}`
+        : undefined,
+      country_code: countryCode,
+      contact_no: phoneNumber,
+      alt_contact_no: values.alt_contact_no || undefined,
+      product_types: values.product_types || [],
+      product_structures: values.product_structures || [],
+      initial_site_measurement_date: values.initial_site_measurement_date
+        ? new Date(values.initial_site_measurement_date).toISOString()
+        : undefined,
+      ...(canReassingLead(userType)
+        ? {
+            assign_to: values.assign_to ? Number(values.assign_to) : undefined,
+            assigned_by: createdBy,
+          }
+        : {
+            assign_to: createdBy,
+            assigned_by: createdBy,
+          }),
+      is_draft: true,
+    };
+
+    saveDraftMutation.mutate({ payload, files });
   }
 
   return (
@@ -386,10 +511,6 @@ export default function LeadsGenerationForm({
               name="site_type_id"
               render={({ field }) => {
                 const { data: siteTypes, isLoading, error } = useSiteTypes();
-
-                useEffect(() => {
-                  // console.log("🔍 siteTypes response:", siteTypes);
-                }, [siteTypes]);
 
                 return (
                   <FormItem>
@@ -733,14 +854,42 @@ export default function LeadsGenerationForm({
           />
 
           <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              className="text-sm"
-              onClick={handleResetform}
-            >
-              Reset
-            </Button>
+            {/* Save as Draft */}
+            <AlertDialog open={openDraftModal} onOpenChange={setOpenDraftModal}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="text-sm"
+                  disabled={saveDraftMutation.isPending}
+                >
+                  {saveDraftMutation.isPending ? "Saving..." : "Save as Draft"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Save Lead as Draft?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Only the name and contact number will be required. You can
+                    fill the rest later.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      setOpenDraftModal(false);
+                      handleSaveAsDraft();
+                    }}
+                    className="bg-primary"
+                  >
+                    Confirm Save
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Create Lead */}
             <Button
               type="submit"
               className="text-sm"
