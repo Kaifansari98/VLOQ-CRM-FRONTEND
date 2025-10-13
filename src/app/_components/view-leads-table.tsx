@@ -2,7 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useAppSelector } from "@/redux/store";
-import { useVendorUserLeadsOpen } from "@/hooks/useLeadsQueries";
+import {
+  useVendorOverallLeads,
+  useVendorUserLeadsOpen,
+} from "@/hooks/useLeadsQueries";
 import { type Lead } from "@/api/leads";
 
 import {
@@ -72,8 +75,28 @@ const ViewOpenLeadTable = () => {
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
 
+  const [viewType, setViewType] = useState<"my" | "overall">("my");
+
   const vendorUserLeadsQuery = useVendorUserLeadsOpen(vendorId!, userId!);
+  const vendorOverallLeadsQuery = useVendorOverallLeads(
+    vendorId!,
+    "Type 1",
+    userId!
+  );
+
   const router = useRouter();
+
+  // 🆕 Select which data to use
+  const activeData =
+    viewType === "my"
+      ? vendorUserLeadsQuery.data?.data || []
+      : vendorOverallLeadsQuery.data?.data || [];
+
+  const isLoading =
+    viewType === "my"
+      ? vendorUserLeadsQuery.isLoading
+      : vendorOverallLeadsQuery.isLoading;
+
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const [openDelete, setOpenDelete] = useState<boolean>(false);
   const [openAssignTask, setOpenAssignTak] = useState<boolean>(false);
@@ -160,25 +183,14 @@ const ViewOpenLeadTable = () => {
   );
   const [rowSelection, setRowSelection] = React.useState({});
 
-  // Process leads into table data
+  // 🆕 Process active data (from selected tab)
   const rowData = useMemo<ProcessedLead[]>(() => {
-    if (!vendorUserLeadsQuery.data) return [];
+    if (!Array.isArray(activeData)) return [];
 
-    console.log("vendor user leads: ", vendorUserLeadsQuery.data);
+    console.log(`${viewType === "my" ? "My" : "Overall"} leads:`, activeData);
 
-    return vendorUserLeadsQuery.data.map((lead: Lead, index: number) => {
+    return activeData.map((lead: Lead, index: number) => {
       const accountId = lead.account?.id ?? lead.account_id ?? 0;
-
-      console.log(
-        "[rowData map] Lead:",
-        lead.id,
-        "account_id (FK):",
-        lead.account_id,
-        "account.id (relation):",
-        lead.account?.id,
-        "-> resolved accountId:",
-        accountId
-      );
 
       return {
         id: lead.id,
@@ -204,10 +216,10 @@ const ViewOpenLeadTable = () => {
         altContact: lead.alt_contact_no || "",
         status: lead.statusType?.type || "",
         initial_site_measurement_date: lead.initial_site_measurement_date || "",
-        accountId, // ✅ keep accountId in row
+        accountId,
       };
     });
-  }, [vendorUserLeadsQuery.data]);
+  }, [activeData, viewType]);
 
   // Setup columns
   const columns = React.useMemo(
@@ -247,6 +259,10 @@ const ViewOpenLeadTable = () => {
     );
   }
 
+  if (isLoading) {
+    return <div className="p-4 text-gray-600">Loading {viewType} leads...</div>;
+  }
+
   const mockProps = { shallow: true, debounceMs: 300, throttleMs: 50 };
 
   return (
@@ -271,9 +287,66 @@ const ViewOpenLeadTable = () => {
                 throttleMs={mockProps.throttleMs}
               />
             )}
+
+            {/* 🧭 My Leads / Overall Leads Tabs — before View */}
+            <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+              <button
+                onClick={() => setViewType("my")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                  viewType === "my"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-muted text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                My Leads
+              </button>
+              <button
+                onClick={() => setViewType("overall")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                  viewType === "overall"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-muted text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                Overall Leads
+              </button>
+            </div>
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
+            {/* // Show count in tab */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setViewType("my")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                  viewType === "my"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-muted text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                My Leads
+                {vendorUserLeadsQuery.data && (
+                  <span className="ml-3 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
+                    {vendorUserLeadsQuery.data?.count}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setViewType("overall")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                  viewType === "overall"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-muted text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                Overall Leads
+                {vendorOverallLeadsQuery.data && (
+                  <span className="ml-3 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
+                    {vendorOverallLeadsQuery.data?.count}
+                  </span>
+                )}
+              </button>
+            </div>
             <DataTableSortList table={table} align="end" />
           </DataTableToolbar>
         )}

@@ -66,6 +66,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
+import CustomeTooltip from "@/components/cutome-tooltip";
 
 export default function LeadDetails() {
   const router = useRouter();
@@ -89,8 +90,13 @@ export default function LeadDetails() {
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
+  const isDraftLead = !!lead?.is_draft;
+  const leadCode = lead?.lead_code ?? "";
+  const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
+  // console.log("Lead Code :-", leadCode);
+  // console.log(`${lead.firstname || ""} ${lead.lastname || ""}`.trim());
 
-  console.log("page :- ", lead?.assignedTo?.id);
+  const uiDisabled = isLoading || !lead;
 
   const updateActivityStatusMutation = useUpdateActivityStatus();
 
@@ -159,15 +165,36 @@ export default function LeadDetails() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Details</BreadcrumbPage>
+                  <BreadcrumbPage>
+                    <p className="font-bold">
+                      {leadCode || "Loading…"}
+                      {leadCode && (clientName ? ` - ${clientName}` : "")}
+                    </p>
+                  </BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
           </div>
           <div className="flex items-center space-x-2">
-            <Button size="sm" onClick={() => setAssignOpen(true)}>
-              Assign Task
-            </Button>
+            {isDraftLead ? (
+              <CustomeTooltip
+                truncateValue={
+                  <Button size="sm" disabled>
+                    Assign Task
+                  </Button>
+                }
+                value="This action cannot be performed because the lead is still in Draft mode."
+              />
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => setAssignOpen(true)}
+                disabled={uiDisabled}
+              >
+                Assign Task
+              </Button>
+            )}
+
             <ModeToggle />
             {/* Dropdown */}
             <DropdownMenu>
@@ -194,33 +221,49 @@ export default function LeadDetails() {
                     <EllipsisVertical className="mr-2 h-4 w-4" />
                     Lead Status
                   </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        setActivityType("onHold");
-                        setActivityModalOpen(true);
-                      }}
-                    >
-                      <Clock className="h-4 w-4" />
-                      Mark On Hold
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        setActivityType("lostApproval");
-                        setActivityModalOpen(true);
-                      }}
-                    >
-                      <XCircle className="h-4 w-4" />
-                      Mark As Lost
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
+
+                  {!isDraftLead && !uiDisabled && (
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          setActivityType("onHold");
+                          setActivityModalOpen(true);
+                        }}
+                      >
+                        <Clock className="h-4 w-4" />
+                        Mark On Hold
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          setActivityType("lostApproval");
+                          setActivityModalOpen(true);
+                        }}
+                      >
+                        <XCircle className="h-4 w-4" />
+                        Mark As Lost
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  )}
                 </DropdownMenuSub>
                 {canDeleteLead(userType) && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
-                      Delete
-                    </DropdownMenuItem>
+                    {isDraftLead || uiDisabled ? (
+                      <CustomeTooltip
+                        truncateValue={
+                          <DropdownMenuItem disabled>Delete</DropdownMenuItem>
+                        }
+                        value={
+                          isDraftLead
+                            ? "This action cannot be performed because the lead is still in Draft mode."
+                            : "Please wait while the lead loads."
+                        }
+                      />
+                    ) : (
+                      <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
+                        Delete
+                      </DropdownMenuItem>
+                    )}
                   </>
                 )}
               </DropdownMenuContent>
@@ -233,9 +276,8 @@ export default function LeadDetails() {
           value={activeTab}
           onValueChange={(val) => {
             if (val === "projects") {
-              // instead of switching tab, open modal
+              if (isDraftLead || uiDisabled) return; // ✅ block in draft/loading
               setAssignOpen(true);
-              // stay on details tab
               return;
             }
             setActiveTab(val);
@@ -248,15 +290,32 @@ export default function LeadDetails() {
                 <HouseIcon size={16} className="mr-1 opacity-60" />
                 Lead Details
               </TabsTrigger>
-              <TabsTrigger value="projects">
-                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                To-Do Task
-              </TabsTrigger>
-              <TabsTrigger value="history">
+
+              {isDraftLead ? (
+                <CustomeTooltip
+                  truncateValue={
+                    <TabsTrigger value="projects" disabled>
+                      <PanelsTopLeftIcon
+                        size={16}
+                        className="mr-1 opacity-60"
+                      />
+                      To-Do Task
+                    </TabsTrigger>
+                  }
+                  value="This action cannot be performed because the lead is still in Draft mode."
+                />
+              ) : (
+                <TabsTrigger value="projects" disabled={uiDisabled}>
+                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                  To-Do Task
+                </TabsTrigger>
+              )}
+
+              <TabsTrigger value="history" disabled={uiDisabled}>
                 <BoxIcon size={16} className="mr-1 opacity-60" />
                 Site History
               </TabsTrigger>
-              <TabsTrigger value="team">
+              <TabsTrigger value="team" disabled={uiDisabled}>
                 <UsersRoundIcon size={16} className="mr-1 opacity-60" />
                 Payment Information
               </TabsTrigger>

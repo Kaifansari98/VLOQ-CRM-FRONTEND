@@ -11,6 +11,7 @@ interface LeadStatsResponse {
     total_booking_stage_leads: number;
     total_final_measurement_leads: number;
     total_client_documentation_leads: number;
+    total_my_tasks: number;
   };
 }
 

@@ -56,9 +56,9 @@ const data = {
     {
       title: "My Task",
       url: "/dashboard/my-tasks",
-      icon: CalendarCheck2, // ya koi aur icon chahiye ho
+      icon: CalendarCheck2,
       isActive: false,
-      showCount: "total_leads" as const,
+      showCount: "total_my_tasks" as const,
     },
     {
       title: "Leads",
