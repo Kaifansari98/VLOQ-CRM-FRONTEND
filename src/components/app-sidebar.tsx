@@ -114,78 +114,78 @@ const data = {
         },
       ],
     },
-    {
-      title: "Production",
-      url: "#",
-      icon: BookOpen,
-      items: [
-        {
-          title: "Tech Check",
-          url: "#",
-        },
-        {
-          title: "Order Login",
-          url: "#",
-        },
-        {
-          title: "Production",
-          url: "#",
-        },
-        {
-          title: "Ready To Dispatch",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Installation",
-      url: "#",
-      icon: Settings2,
-      items: [
-        {
-          title: "Site Readiness",
-          url: "#",
-        },
-        {
-          title: "Dispatch",
-          url: "#",
-        },
-        {
-          title: "Installation Planning",
-          url: "#",
-        },
-        {
-          title: "Under Installation",
-          url: "#",
-        },
-        {
-          title: "Final Handover",
-          url: "#",
-        },
-        {
-          title: "Servicing",
-          url: "#",
-        },
-      ],
-    },
+    // {
+    //   title: "Production",
+    //   url: "#",
+    //   icon: BookOpen,
+    //   items: [
+    //     {
+    //       title: "Tech Check",
+    //       url: "#",
+    //     },
+    //     {
+    //       title: "Order Login",
+    //       url: "#",
+    //     },
+    //     {
+    //       title: "Production",
+    //       url: "#",
+    //     },
+    //     {
+    //       title: "Ready To Dispatch",
+    //       url: "#",
+    //     },
+    //   ],
+    // },
+    // {
+    //   title: "Installation",
+    //   url: "#",
+    //   icon: Settings2,
+    //   items: [
+    //     {
+    //       title: "Site Readiness",
+    //       url: "#",
+    //     },
+    //     {
+    //       title: "Dispatch",
+    //       url: "#",
+    //     },
+    //     {
+    //       title: "Installation Planning",
+    //       url: "#",
+    //     },
+    //     {
+    //       title: "Under Installation",
+    //       url: "#",
+    //     },
+    //     {
+    //       title: "Final Handover",
+    //       url: "#",
+    //     },
+    //     {
+    //       title: "Servicing",
+    //       url: "#",
+    //     },
+    //   ],
+    // },
   ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: Frame,
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChart,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: Map,
-    },
-  ],
+  // projects: [
+  //   // {
+  //   //   name: "Design Engineering",
+  //   //   url: "#",
+  //   //   icon: Frame,
+  //   // },
+  //   // {
+  //   //   name: "Sales & Marketing",
+  //   //   url: "#",
+  //   //   icon: PieChart,
+  //   // },
+  //   // {
+  //   //   name: "Travel",
+  //   //   url: "#",
+  //   //   icon: Map,
+  //   // },
+  // ],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -217,7 +217,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+        {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />
