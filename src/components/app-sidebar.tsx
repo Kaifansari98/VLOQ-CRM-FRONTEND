@@ -111,6 +111,7 @@ const data = {
         {
           title: "Client Approval",
           url: "/dashboard/site-supervisor/client-approval",
+          showCount: "total_client_approval_leads" as const, // ✅ added
         },
       ],
     },

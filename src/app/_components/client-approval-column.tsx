@@ -3,36 +3,17 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Ellipsis,
-  Eye,
-  Users,
-  FileText,
-  Text,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import CustomeBadge from "@/components/origin-badge";
+import { Text } from "lucide-react";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import type { DataTableRowActionClientDocumentation } from "@/types/data-table";
 import { ProcessedClientApprovalLead } from "@/types/client-approval";
-import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
 
 interface GetClientApprovalTableColumnsProps {
   setRowAction: React.Dispatch<
-    React.SetStateAction<
-      DataTableRowActionClientDocumentation<ProcessedClientApprovalLead> | null
-    >
+    React.SetStateAction<DataTableRowActionClientDocumentation<ProcessedClientApprovalLead> | null>
   >;
   userType?: string;
 }
@@ -184,24 +165,17 @@ export function getClientApprovalTableColumns({
       enableColumnFilter: true,
     },
 
-    // Email
+    // Product Types
     {
-      accessorKey: "email",
+      accessorKey: "productTypes",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Email" />
+        <DataTableColumnHeader column={column} title="Product Types" />
       ),
-      cell: ({ row }) => {
-        const email = row.getValue("email") as string;
-        const maxLength = 20;
-        if (email.length <= maxLength) return <span>{email}</span>;
-        return (
-          <CustomeTooltip
-            truncateValue={email.slice(0, maxLength) + "..."}
-            value={email}
-          />
-        );
+      meta: {
+        label: "Product Types",
       },
       enableSorting: true,
+      enableHiding: true,
       enableColumnFilter: true,
     },
 
@@ -211,9 +185,7 @@ export function getClientApprovalTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Status" />
       ),
-      cell: ({ row }) => (
-        <CustomeStatusBadge title={row.getValue("status")} />
-      ),
+      cell: ({ row }) => <CustomeStatusBadge title={row.getValue("status")} />,
       enableSorting: true,
       enableColumnFilter: true,
     },
@@ -244,8 +216,8 @@ export function getClientApprovalTableColumns({
       enableColumnFilter: true,
     },
 
-     // Source
-     {
+    // Source
+    {
       accessorKey: "source",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Source" />
@@ -318,17 +290,24 @@ export function getClientApprovalTableColumns({
       },
     },
 
-    // Product Types
+    // Email
     {
-      accessorKey: "productTypes",
+      accessorKey: "email",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Product Types" />
+        <DataTableColumnHeader column={column} title="Email" />
       ),
-      meta: {
-        label: "Product Types",
+      cell: ({ row }) => {
+        const email = row.getValue("email") as string;
+        const maxLength = 20;
+        if (email.length <= maxLength) return <span>{email}</span>;
+        return (
+          <CustomeTooltip
+            truncateValue={email.slice(0, maxLength) + "..."}
+            value={email}
+          />
+        );
       },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
     },
 

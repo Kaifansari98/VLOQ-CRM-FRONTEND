@@ -118,7 +118,7 @@ const ViewOpenLeadTable = () => {
       source: false,
       createdAt: false,
       altContact: false,
-      productTypes: false,
+      productTypes: true,
       productStructures: false,
       designerRemark: false,
     });

@@ -54,6 +54,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import InitialSiteMeasuresMent from "@/components/sales-executive/Lead/initial-site-measurement-form";
 import RescheduleModal from "@/components/sales-executive/siteMeasurement/reschedule-modal";
+import { email } from "zod";
 
 const SiteMeasurementTable = () => {
   // Redux selectors
@@ -88,9 +89,10 @@ const SiteMeasurementTable = () => {
       source: false,
       createdAt: false,
       altContact: false,
-      productTypes: false,
+      productTypes: true,
       productStructures: false,
       designerRemark: false,
+      email: false,
     });
   const [rowAction, setRowAction] =
     React.useState<DataTableRowActionSiteMeasurement<ProcessedSiteMeasurementLead> | null>(
@@ -197,8 +199,14 @@ const SiteMeasurementTable = () => {
         altContact: lead.alt_contact_no || "",
         status: lead.statusType?.type || "",
         assignedTo: lead.assignedTo?.user_name || "Unassigned",
-        productTypes: "",
-        productStructures: "",
+        productTypes:
+          lead.productMappings?.map((pm) => pm.productType.type).join(", ") ||
+          "",
+        productStructures:
+          lead.leadProductStructureMapping
+            ?.map((psm) => psm.productStructure.type)
+            .join(", ") || "",
+
         documentUrl: allDocumentUrls,
         paymentInfo:
           lead.uploads?.find((item: Upload) => item.paymentInfo !== null)

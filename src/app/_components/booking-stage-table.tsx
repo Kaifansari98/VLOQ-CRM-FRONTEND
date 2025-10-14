@@ -79,8 +79,9 @@ const BookingStageLeadsTable = () => {
     source: false,
     createdAt: false,
     altContact: false,
-    productTypes: false,
+    productTypes: true,
     productStructures: false,
+    email: false,
     designerRemark: false,
   });
 

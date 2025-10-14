@@ -80,7 +80,8 @@ const ClientApprovalLeadsTable = () => {
     source: false,
     createdAt: false,
     altContact: false,
-    productTypes: false,
+    productTypes: true,
+    email: false,
     productStructures: false,
     designerRemark: false,
   });
