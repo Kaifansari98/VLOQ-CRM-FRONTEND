@@ -138,6 +138,7 @@ export interface ProductStructureMapping {
 // ─────────── Main Booking Lead ───────────
 export interface BookingLead {
   id: number;
+  lead_code: string;
   firstname: string;
   lastname: string;
   country_code: string;

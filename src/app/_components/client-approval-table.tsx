@@ -80,7 +80,8 @@ const ClientApprovalLeadsTable = () => {
     source: false,
     createdAt: false,
     altContact: false,
-    productTypes: false,
+    productTypes: true,
+    email: false,
     productStructures: false,
     designerRemark: false,
   });
@@ -95,6 +96,7 @@ const ClientApprovalLeadsTable = () => {
     return data.data.map((lead: ClientApprovalLead, index: number) => ({
       id: lead.id,
       srNo: index + 1,
+      lead_code: lead.lead_code,
       name: `${lead.firstname || ""} ${lead.lastname || ""}`.trim(),
       email: lead.email || "",
       contact: `${lead.country_code || ""} ${lead.contact_no || ""}`.trim(),

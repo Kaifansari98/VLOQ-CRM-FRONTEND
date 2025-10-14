@@ -93,7 +93,8 @@ const FinalMeasurementLeadsTable = () => {
     source: false,
     createdAt: false,
     altContact: false,
-    productTypes: false,
+    productTypes: true,
+    email: false,
     productStructures: false,
     designerRemark: false,
   });
@@ -113,6 +114,7 @@ const FinalMeasurementLeadsTable = () => {
   
       return {
       id: lead.id,
+      lead_code: lead.lead_code,
       taskId: lead.tasks?.[0]?.id ?? 0,
       srNo: index + 1,
       name: `${lead.firstname || ""} ${lead.lastname || ""}`.trim(),

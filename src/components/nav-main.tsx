@@ -36,6 +36,7 @@ interface NavItem {
     | "total_booking_stage_leads"
     | "total_final_measurement_leads"
     | "total_client_documentation_leads"
+    | "total_client_approval_leads"
     | "total_my_tasks";
   items?: {
     title: string;
@@ -48,6 +49,7 @@ interface NavItem {
       | "total_booking_stage_leads"
       | "total_final_measurement_leads"
       | "total_client_documentation_leads"
+      | "total_client_approval_leads"
       | "total_my_tasks";
   }[];
 }
@@ -76,6 +78,8 @@ export function NavMain({ items }: { items: NavItem[] }) {
         return leadStats.data.total_final_measurement_leads;
       case "total_client_documentation_leads":
         return leadStats.data.total_client_documentation_leads;
+      case "total_client_approval_leads":
+        return leadStats.data.total_client_approval_leads;
       case "total_my_tasks":
         return leadStats.data.total_my_tasks;
       default:

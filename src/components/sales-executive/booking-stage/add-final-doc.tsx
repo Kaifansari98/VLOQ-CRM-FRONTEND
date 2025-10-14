@@ -86,7 +86,7 @@ const UploadFinalDoc: React.FC<LeadViewModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] md:max-w-2xl p-0 gap-0">
         <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle>Upload Final Document</DialogTitle>
+          <DialogTitle>Upload Booking Document</DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[calc(90vh-100px)]">
           <div className="px-6">
@@ -101,7 +101,7 @@ const UploadFinalDoc: React.FC<LeadViewModalProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm">
-                        Final Documents (Quotations + Design) *
+                        Booking Documents (Quotations + Design) *
                       </FormLabel>
                       <FormControl>
                         <FileUploadField

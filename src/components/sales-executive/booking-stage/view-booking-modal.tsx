@@ -143,7 +143,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
             <div className="space-y-4 mb-2">
               <div className="space-y-2">
                 <h1 className="text-sm font-medium">
-                  Final Documents (Quotations + Design)
+                  Booking Documents (Quotations + Design)
                 </h1>
 
                 <div className="flex flex-wrap gap-3">

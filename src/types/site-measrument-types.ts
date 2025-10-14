@@ -93,8 +93,27 @@ export interface Upload {
   created_at: string;
 }
 
+export interface ProductType {
+  id: number;
+  type: string;
+}
+
+export interface ProductStructure {
+  id: number;
+  type: string;
+}
+
+export interface ProductMapping {
+  productType: ProductType;
+}
+
+export interface LeadProductStructureMapping {
+  productStructure: ProductStructure;
+}
+
 export interface SiteMeasurmentLead {
   id: number;
+  lead_code: string;
   firstname: string;
   lastname: string;
   country_code: string;
@@ -123,6 +142,8 @@ export interface SiteMeasurmentLead {
     totalProductMappings: number;
   };
   uploads: Upload[];
+  productMappings: ProductMapping[];
+  leadProductStructureMapping: LeadProductStructureMapping[];
 }
 
 export interface EditPayload {
@@ -182,7 +203,7 @@ export interface SiteMeasurementLeadData {
 
 export interface SiteMeasurementFile {
   id: number;
-  type: string; 
+  type: string;
   originalName: string;
   s3Key: string;
   signedUrl: string;

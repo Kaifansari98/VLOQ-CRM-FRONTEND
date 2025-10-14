@@ -3,9 +3,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import {
-  Text,
-} from "lucide-react";
+import { Text } from "lucide-react";
 import type { DataTableRowActionFinalMeasurement } from "@/types/data-table";
 import { canReassingLead } from "@/components/utils/privileges";
 import CustomeBadge from "@/components/origin-badge";
@@ -129,21 +127,39 @@ export function getFinalMeasurementLeadsTableColumns({
     //   size: 40,
     // },
     // Sr NO
+    // {
+    //   accessorKey: "srNo",
+    //   header: ({ column }) => (
+    //       <DataTableColumnHeader column={column} title="Sr. No." />
+    //   ),
+    //   cell: ({ getValue }) => (
+    //     <div className="w-full text-center">{getValue<number>()}</div>
+    //   ),
+    //   meta: {
+    //     label: "SrNo",
+    //   },
+    //   enableSorting: true,
+    //   enableColumnFilter: true,
+    //   enableHiding: true,
+    // },
+
     {
-      accessorKey: "srNo",
+      accessorKey: "lead_code",
       header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Sr. No." />
+        <DataTableColumnHeader column={column} title="Lead Code" />
       ),
-      cell: ({ getValue }) => (
-        <div className="w-full text-center">{getValue<number>()}</div>
+      cell: ({ row }) => (
+        <div className="text-center font-medium text-gray-700">
+          {row.getValue("lead_code")}
+        </div>
       ),
       meta: {
-        label: "SrNo",
+        label: "Lead Code",
       },
       enableSorting: true,
       enableColumnFilter: true,
       enableHiding: true,
-    },    
+    },
 
     // First name and lastname: 1
     {
@@ -189,30 +205,18 @@ export function getFinalMeasurementLeadsTableColumns({
       },
     },
 
-    // Email : 3
+    // Product Types
     {
-      accessorKey: "email",
+      accessorKey: "productTypes",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Email" />
+        <DataTableColumnHeader column={column} title="Product Types" />
       ),
       meta: {
-        label: "Email",
+        label: "Product Types",
       },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
-      cell: ({ row }) => {
-        const email = row.getValue("email") as string;
-        const maxLength = 20;
-
-        if (email.length <= maxLength) {
-          return <span>{email}</span>;
-        }
-
-        const truncateValue = email.slice(0, maxLength) + "...";
-
-        return <CustomeTooltip truncateValue={truncateValue} value={email} />;
-      },
     },
 
     // Status : 5
@@ -385,18 +389,30 @@ export function getFinalMeasurementLeadsTableColumns({
       },
     },
 
-    // Product Types
+    // Email : 3
     {
-      accessorKey: "productTypes",
+      accessorKey: "email",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Product Types" />
+        <DataTableColumnHeader column={column} title="Email" />
       ),
       meta: {
-        label: "Product Types",
+        label: "Email",
       },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
+      cell: ({ row }) => {
+        const email = row.getValue("email") as string;
+        const maxLength = 20;
+
+        if (email.length <= maxLength) {
+          return <span>{email}</span>;
+        }
+
+        const truncateValue = email.slice(0, maxLength) + "...";
+
+        return <CustomeTooltip truncateValue={truncateValue} value={email} />;
+      },
     },
 
     // Product Structures

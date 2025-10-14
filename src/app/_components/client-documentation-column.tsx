@@ -106,18 +106,36 @@ export function getClientDocumentationTableColumns({
     //   size: 40,
     // },
     // Sr NO
+    // {
+    //   accessorKey: "srNo",
+    //   header: ({ column }) => (
+    //     <div className="w-full text-center">
+    //       <DataTableColumnHeader column={column} title="Sr. No." />
+    //     </div>
+    //   ),
+    //   cell: ({ getValue }) => (
+    //     <div className="w-full text-center">{getValue<number>()}</div>
+    //   ),
+    //   meta: {
+    //     label: "SrNo",
+    //   },
+    //   enableSorting: true,
+    //   enableColumnFilter: true,
+    //   enableHiding: true,
+    // },
+
     {
-      accessorKey: "srNo",
+      accessorKey: "lead_code",
       header: ({ column }) => (
-        <div className="w-full text-center">
-          <DataTableColumnHeader column={column} title="Sr. No." />
+        <DataTableColumnHeader column={column} title="Lead Code" />
+      ),
+      cell: ({ row }) => (
+        <div className="text-center font-medium text-gray-700">
+          {row.getValue("lead_code")}
         </div>
       ),
-      cell: ({ getValue }) => (
-        <div className="w-full text-center">{getValue<number>()}</div>
-      ),
       meta: {
-        label: "SrNo",
+        label: "Lead Code",
       },
       enableSorting: true,
       enableColumnFilter: true,
@@ -168,30 +186,18 @@ export function getClientDocumentationTableColumns({
       },
     },
 
-    // Email : 3
+    // Product Types
     {
-      accessorKey: "email",
+      accessorKey: "productTypes",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Email" />
+        <DataTableColumnHeader column={column} title="Product Types" />
       ),
       meta: {
-        label: "Email",
+        label: "Product Types",
       },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
-      cell: ({ row }) => {
-        const email = row.getValue("email") as string;
-        const maxLength = 20;
-
-        if (email.length <= maxLength) {
-          return <span>{email}</span>;
-        }
-
-        const truncateValue = email.slice(0, maxLength) + "...";
-
-        return <CustomeTooltip truncateValue={truncateValue} value={email} />;
-      },
     },
 
     // Status : 5
@@ -364,18 +370,30 @@ export function getClientDocumentationTableColumns({
       },
     },
 
-    // Product Types
+    // Email : 3
     {
-      accessorKey: "productTypes",
+      accessorKey: "email",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Product Types" />
+        <DataTableColumnHeader column={column} title="Email" />
       ),
       meta: {
-        label: "Product Types",
+        label: "Email",
       },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
+      cell: ({ row }) => {
+        const email = row.getValue("email") as string;
+        const maxLength = 20;
+
+        if (email.length <= maxLength) {
+          return <span>{email}</span>;
+        }
+
+        const truncateValue = email.slice(0, maxLength) + "...";
+
+        return <CustomeTooltip truncateValue={truncateValue} value={email} />;
+      },
     },
 
     // Product Structures

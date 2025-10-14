@@ -50,23 +50,39 @@ export function getSiteMeasurementColumn({
 }: GetSiteMeasurementColumnProps): ColumnDef<ProcessedSiteMeasurementLead>[] {
   return [
     // Sr NO
+    // {
+    //   accessorKey: "srNo",
+    //   header: ({ column }) => (
+    //     <DataTableColumnHeader column={column} title="Sr. No." />
+    //   ),
+    //   cell: ({ row }) => (
+    //     <div className="w-full text-center">{row.getValue("srNo")}</div>
+    //   ),
+    //   meta: {
+    //     label: "SrNo",
+    //   },
+    //   enableSorting: true,
+    //   enableColumnFilter: true,
+    //   enableHiding: true,
+    // },
+
     {
-      accessorKey: "srNo",
+      accessorKey: "lead_code",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Sr. No." />
+        <DataTableColumnHeader column={column} title="Lead Code" />
       ),
       cell: ({ row }) => (
-        <div className="w-full text-center">
-          {row.getValue("srNo")}
+        <div className="text-center font-medium text-gray-700">
+          {row.getValue("lead_code")}
         </div>
       ),
       meta: {
-        label: "SrNo",
+        label: "Lead Code",
       },
       enableSorting: true,
       enableColumnFilter: true,
       enableHiding: true,
-    },    
+    },
 
     // First name and lastname: 1
     {
@@ -112,30 +128,18 @@ export function getSiteMeasurementColumn({
       },
     },
 
-    // Email : 3
+    // Product Types
     {
-      accessorKey: "email",
+      accessorKey: "productTypes",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Email" />
+        <DataTableColumnHeader column={column} title="Product Types" />
       ),
       meta: {
-        label: "Email",
+        label: "Product Types",
       },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
-      cell: ({ row }) => {
-        const email = row.getValue("email") as string;
-        const maxLength = 20;
-
-        if (email.length <= maxLength) {
-          return <span>{email}</span>;
-        }
-
-        const truncateValue = email.slice(0, maxLength) + "...";
-
-        return <CustomeTooltip truncateValue={truncateValue} value={email} />;
-      },
     },
 
     // Status : 5
@@ -314,19 +318,31 @@ export function getSiteMeasurementColumn({
       enableColumnFilter: true,
     },
 
-    // Product Types
-    // {
-    //   accessorKey: "productTypes",
-    //   header: ({ column }) => (
-    //     <DataTableColumnHeader column={column} title="Product Types" />
-    //   ),
-    //   meta: {
-    //     label: "Product Types",
-    //   },
-    //   enableSorting: true,
-    //   enableHiding: true,
-    //   enableColumnFilter: true,
-    // },
+    // Email : 3
+    {
+      accessorKey: "email",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Email" />
+      ),
+      meta: {
+        label: "Email",
+      },
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+      cell: ({ row }) => {
+        const email = row.getValue("email") as string;
+        const maxLength = 20;
+
+        if (email.length <= maxLength) {
+          return <span>{email}</span>;
+        }
+
+        const truncateValue = email.slice(0, maxLength) + "...";
+
+        return <CustomeTooltip truncateValue={truncateValue} value={email} />;
+      },
+    },
 
     // Product Structures
     // {
