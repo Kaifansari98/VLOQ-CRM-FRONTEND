@@ -103,6 +103,8 @@ const ViewOpenLeadTable = () => {
       ? vendorUserLeadsQuery.isLoading
       : vendorOverallLeadsQuery.isLoading;
 
+  console.log("-------->>>>", activeData);
+
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const [openDelete, setOpenDelete] = useState<boolean>(false);
   const [openAssignTask, setOpenAssignTak] = useState<boolean>(false);
@@ -201,6 +203,7 @@ const ViewOpenLeadTable = () => {
       return {
         id: lead.id,
         srNo: index + 1,
+        lead_code: lead.lead_code,
         name: `${lead.firstname} ${lead.lastname}`.trim(),
         email: lead.email || "",
         assign_to: lead.assignedTo?.user_name || "",

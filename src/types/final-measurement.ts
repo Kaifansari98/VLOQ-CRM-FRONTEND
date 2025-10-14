@@ -49,6 +49,7 @@ export  interface TaskDetails {
 
 export interface FinalMeasurementLead {
   id: number;
+  lead_code: string;
   firstname: string;
   lastname: string;
   country_code: string;

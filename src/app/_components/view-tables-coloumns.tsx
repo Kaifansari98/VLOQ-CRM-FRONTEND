@@ -123,16 +123,34 @@ export function getViewOpenLeadsTableColumns({
     //   enableHiding: false,
     //   size: 40,
     // },
+    // {
+    //   accessorKey: "srNo",
+    //   header: ({ column }) => (
+    //     <DataTableColumnHeader column={column} title="Sr. No." />
+    //   ),
+    //   cell: ({ row }) => (
+    //     <div className="text-center">{row.getValue("srNo")}</div>
+    //   ),
+    //   meta: {
+    //     label: "SrNo",
+    //   },
+    //   enableSorting: true,
+    //   enableColumnFilter: true,
+    //   enableHiding: true,
+    // },
+
     {
-      accessorKey: "srNo",
+      accessorKey: "lead_code",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Sr. No." />
+        <DataTableColumnHeader column={column} title="Lead Code" />
       ),
       cell: ({ row }) => (
-        <div className="text-center">{row.getValue("srNo")}</div>
+        <div className="text-center font-medium text-gray-700">
+          {row.getValue("lead_code")}
+        </div>
       ),
       meta: {
-        label: "SrNo",
+        label: "Lead Code",
       },
       enableSorting: true,
       enableColumnFilter: true,

@@ -129,21 +129,39 @@ export function getFinalMeasurementLeadsTableColumns({
     //   size: 40,
     // },
     // Sr NO
+    // {
+    //   accessorKey: "srNo",
+    //   header: ({ column }) => (
+    //       <DataTableColumnHeader column={column} title="Sr. No." />
+    //   ),
+    //   cell: ({ getValue }) => (
+    //     <div className="w-full text-center">{getValue<number>()}</div>
+    //   ),
+    //   meta: {
+    //     label: "SrNo",
+    //   },
+    //   enableSorting: true,
+    //   enableColumnFilter: true,
+    //   enableHiding: true,
+    // },    
+
     {
-      accessorKey: "srNo",
+      accessorKey: "lead_code",
       header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Sr. No." />
+        <DataTableColumnHeader column={column} title="Lead Code" />
       ),
-      cell: ({ getValue }) => (
-        <div className="w-full text-center">{getValue<number>()}</div>
+      cell: ({ row }) => (
+        <div className="text-center font-medium text-gray-700">
+          {row.getValue("lead_code")}
+        </div>
       ),
       meta: {
-        label: "SrNo",
+        label: "Lead Code",
       },
       enableSorting: true,
       enableColumnFilter: true,
       enableHiding: true,
-    },    
+    },
 
     // First name and lastname: 1
     {

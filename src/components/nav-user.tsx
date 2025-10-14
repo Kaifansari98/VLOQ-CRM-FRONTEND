@@ -35,13 +35,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 import { useState } from "react";
-
 import { useDispatch } from "react-redux";
-import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { logout } from "@/redux/slices/authSlice";
 
@@ -56,22 +53,24 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar();
   const dispatch = useDispatch();
-  const router = useRouter();
-  const [open, setOpen] = useState(false); // 🔹 manage modal manually
+  const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = () => {
-    // Clear Redux state
-    dispatch(logout());
+    setIsLoggingOut(true);
+    setMenuOpen(false);
+    setOpen(false);
 
-    // Clear any localStorage/sessionStorage tokens if used
-    localStorage.removeItem("token");
-
-    // Redirect to login
-    router.push("/login");
-
-    // Toast notification
+    // ✅ Notify user first
     toast.success("You have been logged out 👋");
+
+    // ✅ Clear Redux + LocalStorage (ProtectedLayout will redirect)
+    setTimeout(() => {
+      dispatch(logout());
+      localStorage.removeItem("token");
+      setIsLoggingOut(false);
+    }, 200);
   };
 
   return (
@@ -95,6 +94,7 @@ export function NavUser({
                 <ChevronsUpDown className="ml-auto size-4" />
               </SidebarMenuButton>
             </DropdownMenuTrigger>
+
             <DropdownMenuContent
               className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
               side={isMobile ? "bottom" : "right"}
@@ -113,14 +113,18 @@ export function NavUser({
                   </div>
                 </div>
               </DropdownMenuLabel>
+
               <DropdownMenuSeparator />
+
               <DropdownMenuGroup>
                 <DropdownMenuItem>
                   <Sparkles />
                   Upgrade to Pro
                 </DropdownMenuItem>
               </DropdownMenuGroup>
+
               <DropdownMenuSeparator />
+
               <DropdownMenuGroup>
                 <DropdownMenuItem>
                   <BadgeCheck />
@@ -135,13 +139,15 @@ export function NavUser({
                   Notifications
                 </DropdownMenuItem>
               </DropdownMenuGroup>
+
               <DropdownMenuSeparator />
-              {/* 🔹 Just open modal here */}
+
+              {/* 🔹 Open logout confirmation */}
               <DropdownMenuItem
                 onSelect={(e) => {
-                  e.preventDefault(); // prevent Radix auto close behavior
-                  setMenuOpen(false); // manually close dropdown
-                  setTimeout(() => setOpen(true), 0); // open modal AFTER dropdown unmounts
+                  e.preventDefault();
+                  setMenuOpen(false);
+                  setTimeout(() => setOpen(true), 0);
                 }}
                 className="cursor-pointer"
               >
@@ -152,7 +158,8 @@ export function NavUser({
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
-      {/* 🔹 AlertDialog outside so it's not unmounted */}
+
+      {/* 🔹 Logout confirmation dialog */}
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -164,8 +171,8 @@ export function NavUser({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleLogout}>
-              Log out
+            <AlertDialogAction onClick={handleLogout} disabled={isLoggingOut}>
+              {isLoggingOut ? "Logging out..." : "Log out"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

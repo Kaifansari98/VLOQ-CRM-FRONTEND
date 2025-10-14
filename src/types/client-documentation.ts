@@ -8,6 +8,7 @@ export interface ClientDocumentationResponse {
 // Single lead item
 export interface ClientDocumentationLead {
   id: number;
+  lead_code: string;
   firstname: string;
   lastname: string;
   country_code: string;

@@ -94,6 +94,7 @@ const BookingStageLeadsTable = () => {
     return data.data.map((lead: BookingLead, index: number) => ({
       id: lead.id,
       srNo: index + 1,
+      lead_code: lead.lead_code,
       name: `${lead.firstname || ""} ${lead.lastname || ""}`.trim(),
       email: lead.email || "",
       contact: `${lead.country_code || ""} ${lead.contact_no || ""}`.trim(),
@@ -107,7 +108,6 @@ const BookingStageLeadsTable = () => {
       altContact: lead.alt_contact_no || "",
       status: lead.statusType?.type || "",
       assignedTo: lead.assignedTo?.user_name || "",
-
       siteSupervisor: lead.siteSupervisors?.[0]?.user_name || "-",
       siteSupervisorId: lead.siteSupervisors?.[0]?.id,
       bookingAmount: lead.payments?.[0].amount || 0,

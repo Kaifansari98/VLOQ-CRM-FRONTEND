@@ -180,6 +180,7 @@ export interface LeadProductStructureMapping {
 // Main Lead interface
 export interface DesigningLead {
   id: number;
+  lead_code: string;
   firstname: string;
   lastname: string;
   country_code: string;

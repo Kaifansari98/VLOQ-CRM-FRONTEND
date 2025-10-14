@@ -95,6 +95,7 @@ export interface Upload {
 
 export interface SiteMeasurmentLead {
   id: number;
+  lead_code: string,
   firstname: string;
   lastname: string;
   country_code: string;

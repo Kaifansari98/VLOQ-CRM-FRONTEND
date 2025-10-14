@@ -104,18 +104,36 @@ export function getClientApprovalTableColumns({
     // },
 
     // Sr NO
+    // {
+    //   accessorKey: "srNo",
+    //   header: ({ column }) => (
+    //     <div className="w-full text-center">
+    //       <DataTableColumnHeader column={column} title="Sr. No." />
+    //     </div>
+    //   ),
+    //   cell: ({ getValue }) => (
+    //     <div className="w-full text-center">{getValue<number>()}</div>
+    //   ),
+    //   enableSorting: true,
+    //   enableColumnFilter: true,
+    // },
+
     {
-      accessorKey: "srNo",
+      accessorKey: "lead_code",
       header: ({ column }) => (
-        <div className="w-full text-center">
-          <DataTableColumnHeader column={column} title="Sr. No." />
+        <DataTableColumnHeader column={column} title="Lead Code" />
+      ),
+      cell: ({ row }) => (
+        <div className="text-center font-medium text-gray-700">
+          {row.getValue("lead_code")}
         </div>
       ),
-      cell: ({ getValue }) => (
-        <div className="w-full text-center">{getValue<number>()}</div>
-      ),
+      meta: {
+        label: "Lead Code",
+      },
       enableSorting: true,
       enableColumnFilter: true,
+      enableHiding: true,
     },
 
     // Name

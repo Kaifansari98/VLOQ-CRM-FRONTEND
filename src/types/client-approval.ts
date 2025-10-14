@@ -22,6 +22,7 @@ export type ProcessedClientApprovalLead = {
 
 export interface ClientApprovalLead {
   id: number;
+  lead_code: string;
   firstname: string;
   lastname: string;
   country_code: string;

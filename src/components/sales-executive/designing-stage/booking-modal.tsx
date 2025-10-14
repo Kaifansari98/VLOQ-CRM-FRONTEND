@@ -215,7 +215,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm flex  justify-between">
-                        Final Documents (Quotations + Design) *
+                        Booking Documents (Quotations + Design) *
                         <Button
                           type="button"
                           onClick={() => setOpenSelectDocModal(true)}
@@ -271,7 +271,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm">
-                            Booking Amount Received *
+                            Booking Amount Received
                           </FormLabel>
                           <FormControl>
                             <input
