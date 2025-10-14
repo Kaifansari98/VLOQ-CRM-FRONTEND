@@ -132,7 +132,7 @@ export default function FinalMeasurementLeadDetails() {
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumb>
               <BreadcrumbList>
-                <BreadcrumbItem>
+                {/* <BreadcrumbItem>
                   <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
@@ -141,7 +141,7 @@ export default function FinalMeasurementLeadDetails() {
                     Final Measurement
                   </BreadcrumbLink>
                 </BreadcrumbItem>
-                <BreadcrumbSeparator />
+                <BreadcrumbSeparator /> */}
                 <BreadcrumbItem>
                   <BreadcrumbPage>
                     <p className="font-bold">

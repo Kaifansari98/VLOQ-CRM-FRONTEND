@@ -1,7 +1,7 @@
 import axios from "axios";
 
 export const apiClient = axios.create({
-  // baseURL: "https://api.vloq.com/api",
+  // baseURL: "https://api.furnixcrm.com/api",
   baseURL: "http://localhost:7777/api",
   headers: {
     "Content-Type": "application/json",

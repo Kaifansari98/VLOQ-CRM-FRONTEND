@@ -154,7 +154,7 @@ export default function SiteMeasurementLead() {
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumb>
               <BreadcrumbList>
-                <BreadcrumbItem>
+                {/* <BreadcrumbItem>
                   <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
@@ -162,12 +162,12 @@ export default function SiteMeasurementLead() {
                   <BreadcrumbLink href="/dashboard/sales-executive/initial-site-measurement">
                     Site Measurement
                   </BreadcrumbLink>
-                </BreadcrumbItem>
+                </BreadcrumbItem> */}
                 {/* <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbPage>Details</BreadcrumbPage>
                 </BreadcrumbItem> */}
-                <BreadcrumbSeparator />
+                {/* <BreadcrumbSeparator /> */}
                 <BreadcrumbItem>
                   <BreadcrumbPage>
                     <p className="font-bold">

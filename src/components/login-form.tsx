@@ -65,12 +65,12 @@ export function LoginForm({
       className={cn("flex flex-col gap-6", className)}
       {...props}
     >
-      <div className="flex flex-col items-center gap-2 text-center">
+      {/* <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-bold">Login to your account</h1>
         <p className="text-muted-foreground text-sm text-balance">
           Enter your credentials below to login to your Furnix dashboard.
         </p>
-      </div>
+      </div> */}
 
       {/* 🔹 Tabs for Email / Phone selection */}
       <Tabs
@@ -137,12 +137,7 @@ export function LoginForm({
       >
         {loginMutation.isPending ? "Logging in..." : "Login"}
       </Button>
-    </form>
-  );
-}
-
-{
-  /* <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
+   {/* <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
     <span className="bg-background text-muted-foreground relative z-10 px-2">
       Or continue with
     </span>
@@ -178,5 +173,10 @@ export function LoginForm({
   <a href="#" className="underline underline-offset-4">
     Sign up
   </a>
-</div> */
+</div> */}
+    </form>
+  );
+}
+
+{
 }

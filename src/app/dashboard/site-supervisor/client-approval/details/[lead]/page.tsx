@@ -124,7 +124,7 @@ export default function ClientApprovalLeadDetails() {
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumb>
               <BreadcrumbList>
-                <BreadcrumbItem>
+                {/* <BreadcrumbItem>
                   <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
@@ -133,7 +133,7 @@ export default function ClientApprovalLeadDetails() {
                     Client Approval
                   </BreadcrumbLink>
                 </BreadcrumbItem>
-                <BreadcrumbSeparator />
+                <BreadcrumbSeparator /> */}
                 <BreadcrumbItem>
                   <BreadcrumbPage>
                     <p className="font-bold">
