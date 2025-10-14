@@ -4,7 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AppProviders } from "@/redux/provider";
 import { ToastProvider } from "@/providers/ToastProvider";
-import { SessionLoader } from "@/components/SessionLoader"
+import { SessionLoader } from "@/components/SessionLoader";
 import { ProtectedLayout } from "@/providers/ProtectedLayout";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import Script from "next/script";
@@ -21,8 +21,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Furnix",
-  description: "Furniture CRM Platform",
+  title: "Shambhala • CRM Platform",
+  description:
+    "A modern furniture CRM platform for managing leads, vendors, and projects efficiently.",
 };
 
 export default function RootLayout({
@@ -45,7 +46,7 @@ export default function RootLayout({
           src={`https://maps.googleapis.com/maps/api/js?key=AIzaSyC1FZNdpxsDhZvcDJcTbbxEfvjJYQUFgSg&libraries=places,geometry`}
           strategy="beforeInteractive"
         />
-        
+
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
