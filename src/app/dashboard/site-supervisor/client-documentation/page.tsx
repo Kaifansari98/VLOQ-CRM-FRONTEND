@@ -19,6 +19,7 @@ import { ModeToggle } from "@/components/ModeToggle";
 import { Suspense } from "react";
 import ClientDocumentationSkeleton from "@/components/site-supervisor/client-documentation/client-documentation-skeleton";
 export default function ClientDocumentationPage() {
+
   return (
     <SidebarProvider>
       <AppSidebar />
