@@ -130,7 +130,7 @@ export function getClientDocumentationTableColumns({
         <DataTableColumnHeader column={column} title="Lead Code" />
       ),
       cell: ({ row }) => (
-        <div className="text-center font-medium text-gray-700">
+        <div className="text-center font-medium">
           {row.getValue("lead_code")}
         </div>
       ),
