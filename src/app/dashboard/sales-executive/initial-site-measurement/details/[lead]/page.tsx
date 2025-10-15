@@ -260,7 +260,7 @@ export default function SiteMeasurementLead() {
           className="w-full px-6 pt-4"
         >
           <ScrollArea>
-            <TabsList className="mb-3 h-auto gap-2 rounded-none border-b bg-transparent px-1 py-2">
+            <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
               <TabsTrigger value="details">
                 <HouseIcon size={16} className="mr-1 opacity-60" />
                 Lead Details

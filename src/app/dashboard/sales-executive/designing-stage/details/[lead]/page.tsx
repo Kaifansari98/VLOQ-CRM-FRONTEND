@@ -293,7 +293,7 @@ export default function DesigningStageLead() {
           <ScrollArea>
             <div className="w-full h-full flex justify-between items-center">
               <div>
-                <TabsList className="text-foreground mb-3 h-auto gap-2 rounded-none border-b bg-transparent px-1 py-2">
+                <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
                   <TabsTrigger value="details">
                     <HouseIcon size={16} className="mr-1 opacity-60" />
                     Lead Details
