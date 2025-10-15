@@ -51,7 +51,7 @@ export default function LoginPage() {
       {/* Right Section */}
       <div className="bg-muted relative hidden lg:block">
         <Image
-          src="/image.png"
+          src="/Shambhala-Login-Page-Image.png"
           alt="Background Image"
           className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
           fill
