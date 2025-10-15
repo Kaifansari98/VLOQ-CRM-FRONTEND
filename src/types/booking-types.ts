@@ -102,7 +102,6 @@ export interface BookingUpload {
   created_at: string;
 }
 
-
 export interface ProductType {
   id: number;
   type: string;
@@ -116,7 +115,6 @@ export interface ProductStructure {
   id: number;
   type: string;
 }
-
 
 export interface SiteSuperVisor {
   id: number;
@@ -132,8 +130,6 @@ export interface PaymentDetails {
 export interface ProductStructureMapping {
   productStructure: ProductStructure;
 }
-
-
 
 // ─────────── Main Booking Lead ───────────
 export interface BookingLead {
@@ -168,7 +164,6 @@ export interface BookingLead {
   updated_at: string;
 }
 
-
 export interface BookingLeadById {
   id: number;
   firstname: string;
@@ -186,8 +181,11 @@ export interface BookingLeadById {
 export interface BookingLeadResponse {
   success: boolean;
   message: string;
-  data: BookingLead[];
-  pagination: Pagination;
+  data: {
+    leads: BookingLead[];
+    count: number;
+  };
+  pagination?: Pagination;
 }
 
 // ─────────── Edit Payload for Booking ───────────
@@ -231,5 +229,3 @@ export type ProcessedBookingLead = {
   siteSupervisorId: number;
   accountId: number;
 };
-
-

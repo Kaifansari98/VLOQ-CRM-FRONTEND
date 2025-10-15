@@ -111,7 +111,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                 onClick={() => setOpenMeetingsModal(true)}
               >
                 <CloudUpload size={16} className="sm:mr-1" />
-                <span>Upload Meetings</span>
+                <span>Add Meetings</span>
               </Button>
             )}
             {activeTab === "designs" && (

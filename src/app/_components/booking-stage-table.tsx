@@ -38,7 +38,10 @@ import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { BookingLead, ProcessedBookingLead } from "@/types/booking-types";
 import { getBookingLeadsTableColumns } from "./booking-stage-columns";
-import { useBookingLeads } from "@/hooks/booking-stage/use-booking";
+import {
+  useBookingLeads,
+  useVendorBookingLeads,
+} from "@/hooks/booking-stage/use-booking";
 import BookingEditModal from "@/components/sales-executive/booking-stage/bookint-edit-form";
 import AssignTaskFinalMeasurementForm from "@/components/sales-executive/Lead/assign-task-final-measurement-form";
 
@@ -55,8 +58,34 @@ const BookingStageLeadsTable = () => {
   const router = useRouter();
 
   // React Query hook
-  const { data, error, isLoading, isError } = useBookingLeads(vendorId!, userId!);
-  console.log("Booking Leads Data:", data);
+  // ✅ Add after router declaration
+  const [viewType, setViewType] = useState<"my" | "overall">("my");
+
+  // 🟢 My Leads (Assigned)
+  const {
+    data: myLeadsData,
+    isLoading: isMyLoading,
+    isError: isMyError,
+  } = useBookingLeads(vendorId!, userId!);
+
+  // 🔵 Overall Leads (All Booking Stage)
+  const {
+    data: overallLeadsData,
+    isLoading: isOverallLoading,
+    isError: isOverallError,
+  } = useVendorBookingLeads(vendorId!, userId!);
+
+  const isLoading = viewType === "my" ? isMyLoading : isOverallLoading;
+  const isError = viewType === "my" ? isMyError : isOverallError;
+
+  // ✅ Counts
+  const myLeadsCount = myLeadsData?.data?.count ?? 0;
+  const overallLeadsCount = overallLeadsData?.count ?? 0;
+
+  // ✅ Active dataset
+  const activeData =
+    viewType === "my" ? myLeadsData?.data?.leads || [] : overallLeadsData?.data || [];
+
   // Local state
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
@@ -90,9 +119,9 @@ const BookingStageLeadsTable = () => {
 
   // Derived: formatted row data
   const rowData = useMemo<ProcessedBookingLead[]>(() => {
-    if (!data?.data) return [];
+    if (!activeData || !Array.isArray(activeData)) return [];
 
-    return data.data.map((lead: BookingLead, index: number) => ({
+    return (activeData as BookingLead[]).map((lead, index: number) => ({
       id: lead.id,
       srNo: index + 1,
       lead_code: lead.lead_code,
@@ -126,7 +155,7 @@ const BookingStageLeadsTable = () => {
           .filter(Boolean)
           .join(", ") || "-",
     }));
-  }, [data]);
+  }, [activeData]);
 
   // Columns
   const columns = useMemo(
@@ -165,7 +194,8 @@ const BookingStageLeadsTable = () => {
     if (rowAction.variant === "reassignlead") setAssignOpenLead(true);
     if (rowAction.variant === "edit") setEditOpenLead(true);
     if (rowAction.variant === "view") setOpenViewModal(true);
-    if (rowAction.variant === "assignTask" && rowAction.row) setOpenFMTaskModal(true);
+    if (rowAction.variant === "assignTask" && rowAction.row)
+      setOpenFMTaskModal(true);
   }, [rowAction]);
 
   // Handlers
@@ -223,6 +253,40 @@ const BookingStageLeadsTable = () => {
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
+            {!["admin", "super_admin"].includes(
+              userType?.toLowerCase() || ""
+            ) && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setViewType("my")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                    viewType === "my"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  My Leads
+                  <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500">
+                    {myLeadsCount}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setViewType("overall")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                    viewType === "overall"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Overall Leads
+                  <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500">
+                    {overallLeadsCount}
+                  </span>
+                </button>
+              </div>
+            )}
+
             <DataTableSortList table={table} align="end" />
           </DataTableToolbar>
         )}
@@ -258,8 +322,6 @@ const BookingStageLeadsTable = () => {
         onOpenChange={setEditOpenLead}
         data={rowAction?.row.original}
       />
-
-  
 
       <AssignTaskFinalMeasurementForm
         open={openFMTaskModal}

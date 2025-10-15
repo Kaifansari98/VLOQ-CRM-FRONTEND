@@ -246,17 +246,25 @@ const SiteMeasurementTable = () => {
   });
 
   // Effect for logging
+  // useEffect(() => {
+  //   console.log("📌 RowData:", rowData);
+  //   console.log(
+  //     "📌 Extracted Documents:",
+  //     rowData.map((row) => ({
+  //       id: row.id,
+  //       name: row.name,
+  //       documentUrls: row.documentUrl,
+  //     }))
+  //   );
+  // }, [rowData]);
+
+  const myLeadsCount = myLeadsData?.count ?? 0;
+  const overallLeadsCount = overallLeadsData?.count ?? 0;
+
   useEffect(() => {
-    console.log("📌 RowData:", rowData);
-    console.log(
-      "📌 Extracted Documents:",
-      rowData.map((row) => ({
-        id: row.id,
-        name: row.name,
-        documentUrls: row.documentUrl,
-      }))
-    );
-  }, [rowData]);
+    console.log("🧩 My Leads API Response:", myLeadsData);
+    console.log("🧩 Overall Leads API Response:", overallLeadsData);
+  }, [myLeadsData, overallLeadsData]);
 
   if (!vendorId) {
     return <p>No vendor selected</p>;
@@ -394,66 +402,93 @@ const SiteMeasurementTable = () => {
     <>
       <DataTable table={table} onRowDoubleClick={handleRowClick}>
         {/* 🧭 My Leads / Overall Leads Tabs */}
-        {!isAdmin && (
-          <div className="ml-auto flex items-center gap-1.5 flex-wrap">
-            <button
-              onClick={() => setViewType("my")}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
-                viewType === "my"
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "bg-muted text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              My Leads
-              {myLeadsData?.count && (
-                <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500">
-                  {myLeadsData.count}
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setViewType("overall")}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
-                viewType === "overall"
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "bg-muted text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              Overall Leads
-              {overallLeadsData?.count && (
-                <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500">
-                  {overallLeadsData.count}
-                </span>
-              )}
-            </button>
-          </div>
-        )}
-
         {enableAdvancedFilter ? (
-          <>
-            <DataTableAdvancedToolbar table={table}>
-              <DataTableSortList table={table} align="start" />
-              {filterFlag === "advancedFilters" ? (
-                <DataTableFilterList
-                  table={table}
-                  shallow={mockProps.shallow}
-                  debounceMs={mockProps.debounceMs}
-                  throttleMs={mockProps.throttleMs}
-                  align="start"
-                />
-              ) : (
-                <DataTableFilterMenu
-                  table={table}
-                  shallow={mockProps.shallow}
-                  debounceMs={mockProps.debounceMs}
-                  throttleMs={mockProps.throttleMs}
-                />
-              )}
-            </DataTableAdvancedToolbar>
-          </>
+          <DataTableAdvancedToolbar table={table}>
+            <DataTableSortList table={table} align="start" />
+            {filterFlag === "advancedFilters" ? (
+              <DataTableFilterList
+                table={table}
+                shallow={mockProps.shallow}
+                debounceMs={mockProps.debounceMs}
+                throttleMs={mockProps.throttleMs}
+                align="start"
+              />
+            ) : (
+              <DataTableFilterMenu
+                table={table}
+                shallow={mockProps.shallow}
+                debounceMs={mockProps.debounceMs}
+                throttleMs={mockProps.throttleMs}
+              />
+            )}
+
+            {/* 🧭 My Leads / Overall Leads Tabs — SAME AS ViewOpenLeadTable */}
+            {!isAdmin && (
+              <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+                <button
+                  onClick={() => setViewType("my")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                    viewType === "my"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  My Leads
+                  <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500">
+                    {myLeadsCount}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setViewType("overall")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                    viewType === "overall"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Overall Leads
+                  <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500">
+                    {overallLeadsCount}
+                  </span>
+                </button>
+              </div>
+            )}
+          </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
+            {!isAdmin && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setViewType("my")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                    viewType === "my"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  My Leads
+                  <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
+                    {myLeadsCount}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setViewType("overall")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                    viewType === "overall"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Overall Leads
+                  <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
+                    {overallLeadsCount}
+                  </span>
+                </button>
+              </div>
+            )}
+
             <DataTableSortList table={table} align="end" />
           </DataTableToolbar>
         )}

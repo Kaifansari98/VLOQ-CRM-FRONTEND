@@ -229,6 +229,7 @@ export interface Pagination {
 export interface LeadsData {
   leads: DesigningLead[];
   pagination: Pagination;
+  count: number;
 }
 
 // Complete API response interface

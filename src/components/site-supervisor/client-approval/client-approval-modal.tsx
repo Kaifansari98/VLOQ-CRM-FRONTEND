@@ -36,6 +36,7 @@ import {
 } from "@/api/client-approval";
 import { toast } from "react-toastify";
 import CustomeDatePicker from "@/components/date-picker";
+import { Input } from "@/components/ui/input";
 
 // ✅ Zod schema
 // ✅ Zod schema (only two required)
@@ -161,14 +162,14 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
                     <FormItem>
                       <FormLabel className="text-sm">Amount Paid</FormLabel>
                       <FormControl>
-                        <input
+                        <Input
                           type="number"
-                          className="w-full border px-3 py-2 rounded"
                           {...field}
                           value={field.value || ""}
                           onChange={(e) =>
                             field.onChange(Number(e.target.value) || undefined)
                           }
+                          placeholder="Enter amount"
                         />
                       </FormControl>
                       <FormMessage />

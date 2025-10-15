@@ -16,6 +16,7 @@ import {
   GetDesignsResponse,
 } from "@/types/designing-stage-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
 
 export const useDesigningStageLeads = (vendorId: number, userId: number) => {
   return useQuery<GetDesigningStageResponse>({
@@ -130,3 +131,7 @@ export function useDesigningStageCounts(
     staleTime: 5 * 60 * 1000, // optional: cache for 5 minutes
   });
 }
+
+export const useVendorDesigningLeads = (vendorId: number, userId: number) => {
+  return useVendorOverallLeads(vendorId, "Type 3", userId);
+};

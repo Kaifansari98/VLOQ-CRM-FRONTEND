@@ -18,6 +18,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
 import { apiClient } from "@/lib/apiClient";
 import { addAdditionalPayment, AddPaymentPayload } from "@/api/booking";
+import { useVendorOverallLeads } from "../useLeadsQueries";
 
 export const useMoveToBookingStage = () => {
   const queryClient = useQueryClient();
@@ -114,4 +115,8 @@ export const useAddPayment = () => {
   return useMutation({
     mutationFn: (payload: AddPaymentPayload) => addAdditionalPayment(payload),
   });
+};
+
+export const useVendorBookingLeads = (vendorId: number, userId: number) => {
+  return useVendorOverallLeads(vendorId, "Type 4", userId);
 };

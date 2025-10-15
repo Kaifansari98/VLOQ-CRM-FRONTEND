@@ -11,8 +11,12 @@ import {
   UploadClientDocumantation,
   UploadFinalMeasurement,
 } from "@/api/final-measurement";
-import { FinalMeasurementLeadDetails, FinalMeasurementLeadsResponse } from "@/types/final-measurement";
+import {
+  FinalMeasurementLeadDetails,
+  FinalMeasurementLeadsResponse,
+} from "@/types/final-measurement";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useVendorOverallLeads } from "../useLeadsQueries";
 
 export const useFinalMeasurement = () => {
   return useMutation({
@@ -44,7 +48,7 @@ export const useFinalMeasurementLeadById = (
   return useQuery<FinalMeasurementLeadDetails>({
     queryKey: ["finalMeasurementLead", vendorId, leadId],
     queryFn: () => getFinalMeasurmentLeadById(vendorId, leadId),
-    enabled: !!vendorId && !!leadId, 
+    enabled: !!vendorId && !!leadId,
   });
 };
 
@@ -67,4 +71,11 @@ export const useAddFinalMeasurementDoc = () => {
     mutationFn: (payload: addFinalMeasurmentDocPayload) =>
       addFinalMeasurmentDoc(payload),
   });
+};
+
+export const useVendorOverallFinalMeasurementLeads = (
+  vendorId: number,
+  userId: number
+) => {
+  return useVendorOverallLeads(vendorId, "Type 5", userId);
 };
