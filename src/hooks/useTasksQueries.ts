@@ -18,7 +18,7 @@ export interface VendorUserTask {
     created_at: string;
     updated_by: number | null;
     updated_at: string;
-    
+    lead_code: string;
   };
   leadMaster: {
     id: number;

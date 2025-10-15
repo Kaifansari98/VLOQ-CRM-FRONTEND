@@ -12,6 +12,7 @@ import RemarkTooltip from "@/components/origin-tooltip";
 
 export type ProcessedTask = {
   id: number; // userLeadTask.id
+  lead_code?: string;
   accountId: number;
   leadId: number;
   srNo: number; // serial number in table
@@ -99,13 +100,13 @@ export function getVendorLeadsTableColumns({
     //   size: 40,
     // },
     // Sr No
-    {
-      accessorKey: "srNo",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Sr. No." />
-      ),
-      enableSorting: true,
-    },
+    // {
+    //   accessorKey: "srNo",
+    //   header: ({ column }) => (
+    //     <DataTableColumnHeader column={column} title="Sr. No." />
+    //   ),
+    //   enableSorting: true,
+    // },
 
     // Lead name
     {

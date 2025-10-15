@@ -38,7 +38,10 @@ import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 
 import { getClientApprovalTableColumns } from "./client-approval-column";
-import { useClientApprovalLeads } from "@/hooks/client-approval-stage/use-client-approval";
+import {
+  useClientApprovalLeads,
+  useVendorOverallClientApprovalLeads,
+} from "@/hooks/client-approval-stage/use-client-approval";
 import {
   ClientApprovalLead,
   ProcessedClientApprovalLead,
@@ -58,7 +61,35 @@ const ClientApprovalLeadsTable = () => {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const router = useRouter();
 
-  const { data, isLoading, isError } = useClientApprovalLeads();
+  const isAdmin =
+    userType?.toLowerCase() === "admin" ||
+    userType?.toLowerCase() === "super_admin";
+
+  // 🟢 My / Overall tab
+  const [viewType, setViewType] = useState<"my" | "overall">("my");
+
+  // Queries
+  const myLeadsQuery = useClientApprovalLeads();
+  const overallLeadsQuery = useVendorOverallClientApprovalLeads(
+    vendorId!,
+    userId!
+  );
+
+  // Derived data
+  const activeData =
+    viewType === "my"
+      ? myLeadsQuery.data?.data || []
+      : overallLeadsQuery.data?.data || [];
+
+  const myCount = myLeadsQuery.data?.count ?? 0;
+  const overallCount = overallLeadsQuery.data?.count ?? 0;
+
+  const isLoading =
+    viewType === "my" ? myLeadsQuery.isLoading : overallLeadsQuery.isLoading;
+  const isError =
+    viewType === "my" ? myLeadsQuery.isError : overallLeadsQuery.isError;
+
+  // const { data, isLoading, isError } = useClientApprovalLeads();
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openViewApprovalModal, setOpenViewApprovalModal] =
@@ -91,9 +122,8 @@ const ClientApprovalLeadsTable = () => {
 
   // Derived row data
   const rowData = useMemo<ProcessedClientApprovalLead[]>(() => {
-    if (!data?.data) return [];
-
-    return data.data.map((lead: ClientApprovalLead, index: number) => ({
+    if (!Array.isArray(activeData)) return [];
+    return (activeData as ClientApprovalLead[]).map((lead, index) => ({
       id: lead.id,
       srNo: index + 1,
       lead_code: lead.lead_code,
@@ -123,7 +153,7 @@ const ClientApprovalLeadsTable = () => {
           .filter(Boolean)
           .join(", ") || "-",
     }));
-  }, [data]);
+  }, [activeData]);
 
   // Columns
   const columns = useMemo(
@@ -199,13 +229,61 @@ const ClientApprovalLeadsTable = () => {
           <DataTableAdvancedToolbar table={table}>
             <DataTableSortList table={table} align="start" />
             {filterFlag === "advancedFilters" ? (
-              <DataTableFilterList table={table} shallow debounceMs={300} throttleMs={50} align="start" />
+              <DataTableFilterList
+                table={table}
+                shallow
+                debounceMs={300}
+                throttleMs={50}
+                align="start"
+              />
             ) : (
-              <DataTableFilterMenu table={table} shallow debounceMs={300} throttleMs={50} />
+              <DataTableFilterMenu
+                table={table}
+                shallow
+                debounceMs={300}
+                throttleMs={50}
+              />
             )}
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
+            {/* 🧭 My Leads / Overall Leads Tabs */}
+            {!isAdmin && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setViewType("my")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                    viewType === "my"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  My Leads
+                  {myLeadsQuery.data && (
+                    <span className="ml-3 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
+                      {myCount}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setViewType("overall")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                    viewType === "overall"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Overall Leads
+                  {overallLeadsQuery.data && (
+                    <span className="ml-3 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
+                      {overallCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+
             <DataTableSortList table={table} align="end" />
           </DataTableToolbar>
         )}
@@ -217,7 +295,8 @@ const ClientApprovalLeadsTable = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the lead from your system.
+              This action cannot be undone. This will permanently delete the
+              lead from your system.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

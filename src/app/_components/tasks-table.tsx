@@ -115,6 +115,7 @@ const MyTaskTable = () => {
 
     return vendorUserTasksQuery.data.map((task, index) => ({
       id: task.userLeadTask.id,
+      lead_code: task.userLeadTask.lead_code,
       leadId: task.leadMaster.id,
       accountId: task.leadMaster.account_id,
       srNo: index + 1,

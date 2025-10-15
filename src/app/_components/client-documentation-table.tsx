@@ -38,12 +38,14 @@ import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import ClientDocumantationModal from "@/components/site-supervisor/final-measurement/client-documantation-modal";
 import { getClientDocumentationTableColumns } from "./client-documentation-column";
-import { useClientDocumentationLeads } from "@/hooks/client-documentation/use-clientdocumentation";
+import {
+  useClientDocumentationLeads,
+  useVendorOverallClientDocumentationLeads,
+} from "@/hooks/client-documentation/use-clientdocumentation";
 import {
   ClientDocumentationLead,
   ProcessedClientDocumentationLead,
 } from "@/types/client-documentation";
-import ViewClientDocumentationModal from "@/components/site-supervisor/client-documentation/view-client-documentation";
 
 const ClientDocumentationLeadsTable = () => {
   // Redux selectors
@@ -57,8 +59,36 @@ const ClientDocumentationLeadsTable = () => {
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const router = useRouter();
 
-  const { data, isLoading, isError } = useClientDocumentationLeads();
-  console.log("Booking Leads Data:", data);
+  const isAdmin =
+    userType?.toLowerCase() === "admin" ||
+    userType?.toLowerCase() === "super_admin";
+
+  // 🟢 My / Overall tab
+  const [viewType, setViewType] = useState<"my" | "overall">("my");
+
+  // Queries
+  const myLeadsQuery = useClientDocumentationLeads();
+  const overallLeadsQuery = useVendorOverallClientDocumentationLeads(
+    vendorId!,
+    userId!
+  );
+
+  const activeData =
+    viewType === "my"
+      ? myLeadsQuery.data?.data || []
+      : overallLeadsQuery.data?.data || [];
+
+  const myCount = myLeadsQuery.data?.count ?? 0;
+  const overallCount = overallLeadsQuery.data?.count ?? 0;
+
+  const isLoading =
+    viewType === "my" ? myLeadsQuery.isLoading : overallLeadsQuery.isLoading;
+  const isError =
+    viewType === "my" ? myLeadsQuery.isError : overallLeadsQuery.isError;
+
+  // const { data, isLoading, isError } = useClientDocumentationLeads();
+  // console.log("Booking Leads Data:", data);
+
   // Local state
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
@@ -93,10 +123,10 @@ const ClientDocumentationLeadsTable = () => {
 
   // Derived: formatted row data
   const rowData = useMemo<ProcessedClientDocumentationLead[]>(() => {
-    if (!data?.data) return [];
+    if (!Array.isArray(activeData)) return [];
+    console.log("Client Documentation Leads:", activeData);
 
-    console.log("Final Measurement Leads:- ", data.data);
-    return data.data.map((lead: ClientDocumentationLead, index: number) => ({
+    return (activeData as ClientDocumentationLead[]).map((lead, index) => ({
       id: lead.id,
       srNo: index + 1,
       lead_code: lead.lead_code,
@@ -126,7 +156,7 @@ const ClientDocumentationLeadsTable = () => {
           .filter(Boolean)
           .join(", ") || "-",
     }));
-  }, [data]);
+  }, [activeData]);
 
   // Columns
   const columns = useMemo(
@@ -188,7 +218,9 @@ const ClientDocumentationLeadsTable = () => {
   };
 
   const handleRowClick = (row: ProcessedClientDocumentationLead) => {
-    router.push(`/dashboard/site-supervisor/client-documentation/details/${row.id}`);
+    router.push(
+      `/dashboard/site-supervisor/client-documentation/details/${row.id}`
+    );
   };
 
   // Early returns
@@ -222,6 +254,43 @@ const ClientDocumentationLeadsTable = () => {
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
+            {/* 🧭 My Leads / Overall Leads Tabs */}
+            {!isAdmin && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setViewType("my")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                    viewType === "my"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  My Leads
+                  {myLeadsQuery.data && (
+                    <span className="ml-3 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
+                      {myCount}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setViewType("overall")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                    viewType === "overall"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Overall Leads
+                  {overallLeadsQuery.data && (
+                    <span className="ml-3 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
+                      {overallCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+
             <DataTableSortList table={table} align="end" />
           </DataTableToolbar>
         )}

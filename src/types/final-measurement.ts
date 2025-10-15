@@ -120,6 +120,7 @@ export interface FinalMeasurementLeadsResponse {
   success: boolean;
   message: string;
   data: FinalMeasurementLead[];
+  count: number;
 }
 
 {

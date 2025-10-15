@@ -21,7 +21,10 @@ import { DataTableSortList } from "@/components/data-table/data-table-sort-list"
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useCompletedUpdateTask, useCancelledUpdateTask } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
+import {
+  useCompletedUpdateTask,
+  useCancelledUpdateTask,
+} from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 
 import { useFeatureFlags } from "./feature-flags-provider";
 import type { DataTableRowActionFinalMeasurement } from "@/types/data-table";
@@ -44,7 +47,10 @@ import {
   FinalMeasurementLead,
   ProcessedFinalMeasurementLead,
 } from "@/types/final-measurement";
-import { useFinalMeasurementLeads } from "@/hooks/final-measurement/use-final-measurement";
+import {
+  useFinalMeasurementLeads,
+  useVendorOverallFinalMeasurementLeads,
+} from "@/hooks/final-measurement/use-final-measurement";
 import FinalMeasurementEditModal from "@/components/site-supervisor/final-measurement/final-measurement-edit-modal";
 import FinalMeasurementModal from "@/components/sales-executive/booking-stage/final-measurement-modal";
 import RescheduleModal from "@/components/sales-executive/siteMeasurement/reschedule-modal";
@@ -57,15 +63,42 @@ const FinalMeasurementLeadsTable = () => {
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
 
+  const isAdmin =
+    userType?.toLowerCase() === "admin" ||
+    userType?.toLowerCase() === "super_admin";
+
+  // 🟢 My / Overall tab
+  const [viewType, setViewType] = useState<"my" | "overall">("my");
+
+  // Queries
+  const myLeadsQuery = useFinalMeasurementLeads(vendorId!, userId!);
+  const overallLeadsQuery = useVendorOverallFinalMeasurementLeads(
+    vendorId!,
+    userId!
+  );
+
+  const activeData =
+    viewType === "my"
+      ? myLeadsQuery.data?.data || []
+      : overallLeadsQuery.data?.data || [];
+
+  const myCount = myLeadsQuery.data?.count ?? 0;
+  const overallCount = overallLeadsQuery.data?.count ?? 0;
+
+  const isLoading =
+    viewType === "my" ? myLeadsQuery.isLoading : overallLeadsQuery.isLoading;
+  const isError =
+    viewType === "my" ? myLeadsQuery.isError : overallLeadsQuery.isError;
+
   // Feature flags
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const router = useRouter();
 
-  const { data, isLoading, isError } = useFinalMeasurementLeads(
-    vendorId!,
-    userId!
-  );
-  console.log("Booking Leads Data:", data);
+  // const { data, isLoading, isError } = useFinalMeasurementLeads(
+  //   vendorId!,
+  //   userId!
+  // );
+  // console.log("Booking Leads Data:", data);
   // Local state
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
@@ -104,48 +137,48 @@ const FinalMeasurementLeadsTable = () => {
 
   // Derived: formatted row data
   const rowData = useMemo<ProcessedFinalMeasurementLead[]>(() => {
-    if (!data?.data) return [];
-  
-    console.log("Final Measurement Leads:- ", data.data);
-  
-    return data.data.map((lead: FinalMeasurementLead, index: number) => {
+    if (!Array.isArray(activeData)) return [];
+
+    console.log("Final Measurement Leads:- ", activeData);
+
+    return (activeData as FinalMeasurementLead[]).map((lead, index) => {
       const followStatus = lead.tasks?.[0]?.status ?? "";
       console.log(`Lead ID: ${lead.id}, followStatus:`, followStatus);
-  
+
       return {
-      id: lead.id,
-      lead_code: lead.lead_code,
-      taskId: lead.tasks?.[0]?.id ?? 0,
-      srNo: index + 1,
-      name: `${lead.firstname || ""} ${lead.lastname || ""}`.trim(),
-      email: lead.email || "",
-      contact: `${lead.country_code || ""} ${lead.contact_no || ""}`.trim(),
-      siteAddress: lead.site_address || "",
-      architechName: lead.archetech_name || "",
-      designerRemark: lead.designer_remark || "",
-      source: lead.source?.type || "",
-      siteType: lead.siteType?.type || "",
-      createdAt: lead.created_at || "",
-      updatedAt: lead.updated_at || "",
-      altContact: lead.alt_contact_no || "",
-      status: lead.statusType?.type || "",
-      assignedTo: lead.assignedTo?.user_name || "",
-      final_booking_amt: lead.final_booking_amt,
-      accountId: lead.account_id,
-      followStatus,
-      productTypes:
-        lead.productMappings
-          ?.map((pm) => pm.productType?.type)
-          .filter(Boolean)
-          .join(", ") || "-",
-      productStructures:
-        lead.leadProductStructureMapping
-          ?.map((ps) => ps.productStructure?.type)
-          .filter(Boolean)
-          .join(", ") || "-",
-        };
-      });
-    }, [data]);
+        id: lead.id,
+        lead_code: lead.lead_code,
+        taskId: lead.tasks?.[0]?.id ?? 0,
+        srNo: index + 1,
+        name: `${lead.firstname || ""} ${lead.lastname || ""}`.trim(),
+        email: lead.email || "",
+        contact: `${lead.country_code || ""} ${lead.contact_no || ""}`.trim(),
+        siteAddress: lead.site_address || "",
+        architechName: lead.archetech_name || "",
+        designerRemark: lead.designer_remark || "",
+        source: lead.source?.type || "",
+        siteType: lead.siteType?.type || "",
+        createdAt: lead.created_at || "",
+        updatedAt: lead.updated_at || "",
+        altContact: lead.alt_contact_no || "",
+        status: lead.statusType?.type || "",
+        assignedTo: lead.assignedTo?.user_name || "",
+        final_booking_amt: lead.final_booking_amt,
+        accountId: lead.account_id,
+        followStatus,
+        productTypes:
+          lead.productMappings
+            ?.map((pm) => pm.productType?.type)
+            .filter(Boolean)
+            .join(", ") || "-",
+        productStructures:
+          lead.leadProductStructureMapping
+            ?.map((ps) => ps.productStructure?.type)
+            .filter(Boolean)
+            .join(", ") || "-",
+      };
+    });
+  }, [activeData]);
 
   // Columns
   const columns = useMemo(
@@ -291,7 +324,9 @@ const FinalMeasurementLeadsTable = () => {
   };
 
   const handleRowClick = (row: ProcessedFinalMeasurementLead) => {
-    router.push(`/dashboard/site-supervisor/final-measurement/details/${row.id}`);
+    router.push(
+      `/dashboard/site-supervisor/final-measurement/details/${row.id}`
+    );
   };
 
   // Early returns
@@ -325,6 +360,43 @@ const FinalMeasurementLeadsTable = () => {
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
+            {/* 🧭 My Leads / Overall Leads Tabs */}
+            {!isAdmin && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setViewType("my")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                    viewType === "my"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  My Leads
+                  {myLeadsQuery.data && (
+                    <span className="ml-3 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
+                      {myCount}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setViewType("overall")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                    viewType === "overall"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Overall Leads
+                  {overallLeadsQuery.data && (
+                    <span className="ml-3 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
+                      {overallCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+
             <DataTableSortList table={table} align="end" />
           </DataTableToolbar>
         )}

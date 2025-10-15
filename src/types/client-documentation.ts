@@ -3,6 +3,7 @@ export interface ClientDocumentationResponse {
   success: boolean;
   message: string;
   data: ClientDocumentationLead[];
+  count: number;
 }
 
 // Single lead item

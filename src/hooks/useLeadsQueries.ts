@@ -3,7 +3,6 @@ import {
   useInfiniteQuery,
   useMutation,
   useQuery,
-  useQueryClient,
   UseQueryResult,
 } from "@tanstack/react-query";
 import {
@@ -18,7 +17,6 @@ import {
   VendorLeadsResponse,
   VendorUserLeadsResponse,
 } from "@/api/leads";
-import { toast } from "react-toastify";
 import {
   assignToFinalMeasurement,
   AssignToFinalMeasurementPayload,

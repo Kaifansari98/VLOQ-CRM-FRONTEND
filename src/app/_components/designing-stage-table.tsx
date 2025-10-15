@@ -1,4 +1,7 @@
-import { useDesigningStageLeads } from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  useDesigningStageLeads,
+  useVendorDesigningLeads,
+} from "@/hooks/designing-stage/designing-leads-hooks";
 import { useAppSelector } from "@/redux/store";
 import React, { useEffect, useMemo, useState } from "react";
 import { useFeatureFlags } from "./feature-flags-provider";
@@ -49,10 +52,25 @@ const DesigningStageTable = () => {
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
   const router = useRouter();
-  const { data, isLoading, isError } = useDesigningStageLeads(
-    vendorId!,
-    userId!
-  );
+  const [viewType, setViewType] = useState<"my" | "overall">("my");
+
+  // 🟢 Fetch My Leads
+  const {
+    data: myLeadsData,
+    isLoading: isMyLoading,
+    isError: isMyError,
+  } = useDesigningStageLeads(vendorId!, userId!);
+
+  // 🔵 Fetch Overall Leads (Type 3)
+  const {
+    data: overallLeadsData,
+    isLoading: isOverallLoading,
+    isError: isOverallError,
+  } = useVendorDesigningLeads(vendorId!, userId!);
+
+  const isLoading = viewType === "my" ? isMyLoading : isOverallLoading;
+  const isError = viewType === "my" ? isMyError : isOverallError;
+
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const [openDelete, setOpenDelete] = useState<boolean>(false);
   const [openView, setOpenView] = useState<boolean>(false);
@@ -113,11 +131,23 @@ const DesigningStageTable = () => {
       `/dashboard/sales-executive/designing-stage/details/${leadId}?accountId=${accountId}`
     );
   };
+  // ✅ Counts for My and Overall Leads
+  const myLeadsCount = myLeadsData?.data?.count ?? 0;
+  const overallLeadsCount = overallLeadsData?.count ?? 0;
 
+  console.log("myLeadsCount, overallLeadsCount :-  ",myLeadsCount, overallLeadsCount);
+
+  // ✅ Determine which dataset to use
+  const activeData =
+    viewType === "my"
+      ? myLeadsData?.data?.leads || [] // My Leads API shape
+      : overallLeadsData?.data || []; // Overall Leads API shape
+
+  // ✅ Map to ProcessedDesigningStageLead[]
   const rowData = useMemo<ProcessedDesigningStageLead[]>(() => {
-    if (!data?.data) return [];
+    if (!activeData || !Array.isArray(activeData)) return [];
 
-    return data.data.leads.map((lead: DesigningLead, index: number) => ({
+    return (activeData as DesigningLead[]).map((lead, index) => ({
       id: lead.id,
       srNo: index + 1,
       lead_code: lead.lead_code,
@@ -140,16 +170,16 @@ const DesigningStageTable = () => {
       altContact: lead.alt_contact_no || "",
       status: lead.statusType?.type || "",
 
-      // 👇 FIX: must be string in ProcessedDesigningStageLead
-      assignedTo: lead.assignedTo?.user_name || "",
+      // 👇 Must be string in ProcessedDesigningStageLead
+      assignedTo: lead.assignedTo?.user_name || "Unassigned",
 
-      // 👇 FIX: required fields
+      // 👇 Common relational data
       documentUrl: lead.documents || [],
-      paymentInfo: lead.payments?.[0] || null, // or decide how you want to map
+      paymentInfo: lead.payments?.[0] || null, // first payment (optional)
       accountId: lead.account_id,
       initial_site_measurement_date: lead.initial_site_measurement_date || "",
     }));
-  }, [data?.data]);
+  }, [activeData]);
 
   const columns = React.useMemo(
     () => getDesigningStageColumn({ setRowAction, userType }),
@@ -246,6 +276,40 @@ const DesigningStageTable = () => {
           </>
         ) : (
           <DataTableToolbar table={table}>
+            {!["admin", "super_admin"].includes(
+              userType?.toLowerCase() || ""
+            ) && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setViewType("my")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                    viewType === "my"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  My Leads
+                  <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
+                    {myLeadsCount}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setViewType("overall")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                    viewType === "overall"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-muted text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Overall Leads
+                  <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
+                    {overallLeadsCount}
+                  </span>
+                </button>
+              </div>
+            )}
+
             <DataTableSortList table={table} align="end" />
           </DataTableToolbar>
         )}
