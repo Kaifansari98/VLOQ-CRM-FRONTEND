@@ -144,7 +144,7 @@ export default function ProjectFinanceSummary({ leadId, accountId }: ProjectFina
   return (
     <motion.div
       variants={itemVariants}
-      className="border rounded-lg p-6 shadow-sm bg-card flex flex-col gap-6 max-h-[calc(100vh-200px)] overflow-y-auto"
+      className="h-fit rounded-lg p-4 bg-card flex flex-col gap-4 overflow-y-auto"
     >
       {/* 🔹 Project Finance Summary */}
       <Card className="p-4 shadow-sm text-center">

@@ -135,7 +135,7 @@ export default function PaymentLogs() {
       </motion.div> */}
 
       {/* Scrollable container for cards */}
-      <div className="max-h-[calc(100vh-200px)] overflow-y-auto pr-4">
+      <div className="overflow-y-auto pr-4">
         <motion.div
           variants={containerVariants}
           initial="hidden"
