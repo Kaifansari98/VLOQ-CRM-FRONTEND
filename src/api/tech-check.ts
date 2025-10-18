@@ -102,3 +102,41 @@ export const useRejectTechCheck = () => {
     },
   });
 };
+
+// ✅ --- Approve Multiple Documents ---
+export const approveMultipleDocuments = async ({
+  vendorId,
+  leadId,
+  userId,
+  approvedDocs,
+}: {
+  vendorId: number;
+  leadId: number;
+  userId: number;
+  approvedDocs: number[];
+}) => {
+  const { data } = await apiClient.post(
+    `/leads/production/tech-check/leadId/${leadId}/vendorId/${vendorId}/userId/${userId}/documents/approve`,
+    { approvedDocs }
+  );
+  return data;
+};
+
+export const useApproveMultipleDocuments = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: approveMultipleDocuments,
+    onSuccess: async (_, variables) => {
+      toast.success("Selected documents approved successfully!");
+      // Refresh the tech-check leads and client-doc details
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["techCheckLeads"] }),
+        queryClient.invalidateQueries({ queryKey: ["clientDocumentationDetails"] }),
+      ]);
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Document approval failed");
+    },
+  });
+};

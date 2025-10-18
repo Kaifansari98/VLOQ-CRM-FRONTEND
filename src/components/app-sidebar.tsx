@@ -120,6 +120,7 @@ const data = {
         {
           title: "Tech Check",
           url: "/dashboard/production/tech-check",
+          showCount: "total_tech_check_leads" as const,
         },
         {
           title: "Order Login",

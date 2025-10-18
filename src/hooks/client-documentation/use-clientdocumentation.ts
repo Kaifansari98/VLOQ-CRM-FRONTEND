@@ -18,6 +18,8 @@ export interface ClientDoc {
   doc_og_name: string;
   doc_sys_name: string;
   signed_url: string;
+  tech_check_status: string;
+  created_at: string;
 }
 
 export interface ClientDocDetailsResponse {

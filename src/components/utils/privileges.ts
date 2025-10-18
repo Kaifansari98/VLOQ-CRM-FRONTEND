@@ -27,3 +27,15 @@ export const formatDateTime = (dateString?: string) => {
     minute: "2-digit",
   });
 };
+
+export const canTechCheck = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowedRoles = ["super_admin", "admin", "tech-check"];
+  return allowedRoles.includes(userType.toLowerCase());
+};
+
+export const canMoveToOrderLogin = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowedRoles = ["super_admin", "admin", "tech-check"];
+  return allowedRoles.includes(userType.toLowerCase());
+};
