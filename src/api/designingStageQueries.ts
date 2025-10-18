@@ -61,7 +61,7 @@ export const fetchDesigningStageLeads = async (
   limit: number = 10
 ): Promise<GetDesigningStageResponse> => {
   const { data } = await apiClient.get<GetDesigningStageResponse>(
-    `/leads/designing-stage/get-all-leads/vendor/${vendorId}?userId=${userId}`
+    `/leads/designing-stage/get-all-leads/vendor/${vendorId}?userId=${userId}&page=${page}&limit=${limit}`
   );
   return data;
 };

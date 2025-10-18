@@ -22,23 +22,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import TextAreaInput from "@/components/origin-text-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAppSelector } from "@/redux/store";
 import {
-  useBackendUsers,
   useSubmitClientApproval,
 } from "@/api/client-approval";
 import { toast } from "react-toastify";
 import CustomeDatePicker from "@/components/date-picker";
 import { Input } from "@/components/ui/input";
 
-// ✅ Zod schema
 // ✅ Zod schema (only two required)
 const schema = z.object({
   approvalScreenshots: z
@@ -49,7 +40,6 @@ const schema = z.object({
   payment_files: z.array(z.any()).max(1).optional(),
 
   payment_text: z.string().optional(),
-  assign_lead_to: z.string().min(1, "Please select a backend user"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -72,7 +62,6 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
   const userId = useAppSelector((state) => state.auth.user?.id);
   const clientId = 1;
 
-  const { data: backendUsers, isLoading } = useBackendUsers(vendorId!);
   const { mutate, isPending } = useSubmitClientApproval();
 
   const form = useForm<FormValues>({
@@ -83,7 +72,6 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
       advance_payment_date: "",
       payment_files: [],
       payment_text: "",
-      assign_lead_to: "",
     },
   });
 
@@ -106,7 +94,6 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
     if (values.payment_text) {
       formData.append("payment_text", values.payment_text);
     }
-    formData.append("assign_lead_to", values.assign_lead_to);
 
     values.approvalScreenshots.forEach((file: any) =>
       formData.append("approvalScreenshots", file)
@@ -232,38 +219,6 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
                         placeholder="Enter transaction ID or remarks"
                       />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Assign to backend (Mandatory) */}
-              <FormField
-                control={form.control}
-                name="assign_lead_to"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm">
-                      Assign Lead To Backend *
-                    </FormLabel>
-                    <Select
-                      value={field.value || ""}
-                      onValueChange={field.onChange}
-                      disabled={isLoading}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="text-sm w-full">
-                          <SelectValue placeholder="Select Backend User" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {backendUsers?.map((user: any) => (
-                          <SelectItem key={user.id} value={String(user.id)}>
-                            {user.user_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

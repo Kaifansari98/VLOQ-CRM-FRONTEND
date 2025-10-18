@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import BaseModal from "@/components/utils/baseModal";
 import { useAppSelector } from "@/redux/store";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,16 +16,17 @@ import {
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { z } from "zod";
-import { useUploadMoreClientDocumentation } from "@/hooks/client-documentation/use-clientdocumentation";
 import { FileUploadField } from "@/components/custom/file-upload";
+import { useUploadMoreClientDocumentation } from "@/hooks/client-documentation/use-clientdocumentation";
 
-export const uploadMoreDocsSchema = z.object({
-  documents: z
-    .array(z.instanceof(File))
-    .min(1, "Please upload at least one document"),
+const uploadMoreDocsSchema = z.object({
+  pptDocuments: z.array(z.instanceof(File)).default([]),
+  pythaDocuments: z.array(z.instanceof(File)).default([]),
 });
 
-export type UploadMoreDocsForm = z.infer<typeof uploadMoreDocsSchema>;
+type UploadMoreDocsForm = z.output<typeof uploadMoreDocsSchema>; // ✅ fixed
+
+
 
 interface Props {
   open: boolean;
@@ -45,20 +46,32 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
   const createdBy = useAppSelector((state) => state.auth.user?.id);
   const leadId = data?.leadId ?? 0;
   const accountId = data?.accountId ?? 0;
-
-  const [files, setFiles] = useState<File[]>([]);
-
+  
   const form = useForm<UploadMoreDocsForm>({
-    resolver: zodResolver(uploadMoreDocsSchema),
+    resolver: zodResolver(uploadMoreDocsSchema) as any, // ✅ prevents generic mismatch errors
     defaultValues: {
-      documents: [],
+      pptDocuments: [],
+      pythaDocuments: [],
     },
   });
+  const [pptFiles, setPptFiles] = useState<File[]>([]);
+  const [pythaFiles, setPythaFiles] = useState<File[]>([]);
 
   const { mutate: uploadDocs, isPending } = useUploadMoreClientDocumentation();
 
   const onSubmit = (values: UploadMoreDocsForm) => {
     if (!vendorId || !createdBy) return;
+
+    if (
+      (!values.pptDocuments || values.pptDocuments.length === 0) &&
+      (!values.pythaDocuments || values.pythaDocuments.length === 0)
+    ) {
+      form.setError("pptDocuments", {
+        type: "manual",
+        message: "Please upload at least one PPT or Pytha file",
+      });
+      return;
+    }
 
     uploadDocs(
       {
@@ -66,17 +79,27 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
         accountId,
         vendorId,
         createdBy,
-        documents: values.documents,
+        pptDocuments: values.pptDocuments,
+        pythaDocuments: values.pythaDocuments,
       },
       {
         onSuccess: () => {
-          form.reset();
-          setFiles([]);
+          form.reset({ pptDocuments: [], pythaDocuments: [] });
+          setPptFiles([]);
+          setPythaFiles([]);
           onOpenChange(false);
         },
       }
     );
   };
+
+  useEffect(() => {
+    if (!open) {
+      form.reset({ pptDocuments: [], pythaDocuments: [] });
+      setPptFiles([]);
+      setPythaFiles([]);
+    }
+  }, [open]);
 
   return (
     <BaseModal
@@ -84,30 +107,55 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       onOpenChange={onOpenChange}
       title="Upload More Client Documentation"
       size="lg"
-      description="Upload additional documents for this client."
+      description="Upload additional PPT or Pytha files for this client."
     >
       <div className="px-5 py-4">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-            {/* File Upload */}
+            {/* PPT Section */}
             <FormField
               control={form.control}
-              name="documents"
+              name="pptDocuments"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm">Client Documents</FormLabel>
+                  <FormLabel className="text-sm">PPT Documents</FormLabel>
                   <FormControl>
                     <FileUploadField
-                      value={files}
+                      value={pptFiles}
                       onChange={(newFiles: File[]) => {
-                        setFiles(newFiles);
+                        setPptFiles(newFiles);
                         field.onChange(newFiles);
                       }}
-                      accept=".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx,.pyo"
+                      accept=".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx"
                     />
                   </FormControl>
                   <FormDescription className="text-xs">
-                    Upload photos, PDFs, or documents related to the client.
+                    Upload PPT or related documents (PDF, DOC, DOCX, images).
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Pytha Section */}
+            <FormField
+              control={form.control}
+              name="pythaDocuments"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Pytha Files</FormLabel>
+                  <FormControl>
+                    <FileUploadField
+                      value={pythaFiles}
+                      onChange={(newFiles: File[]) => {
+                        setPythaFiles(newFiles);
+                        field.onChange(newFiles);
+                      }}
+                      accept=".pyo,.pytha,.pdf"
+                    />
+                  </FormControl>
+                  <FormDescription className="text-xs">
+                    Upload Pytha project files (.pyo).
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

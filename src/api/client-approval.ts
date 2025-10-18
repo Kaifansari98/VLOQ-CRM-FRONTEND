@@ -19,9 +19,21 @@ export const getClientApprovalDetails = async (
   leadId: number
 ) => {
   const { data } = await apiClient.get(
-    `/leads/client-approval/vendorId/${vendorId}/leadId/${leadId}`
+    `/leads/client-approval/details/vendorId/${vendorId}/leadId/${leadId}`
   );
   return data.data;
+};
+
+// ✅ Hook: useClientApprovalDetails
+export const useClientApprovalDetails = (
+  vendorId?: number,
+  leadId?: number
+) => {
+  return useQuery({
+    queryKey: ["clientApprovalDetails", vendorId, leadId],
+    queryFn: () => getClientApprovalDetails(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
 };
 
 // Optional: upload more approval docs
@@ -54,6 +66,7 @@ export const uploadMoreClientApprovalDocs = async (
   return data;
 };
 
+// ✅ Backend users
 export const useBackendUsers = (vendorId: number) => {
   return useQuery({
     queryKey: ["backendUsers", vendorId],
@@ -67,6 +80,7 @@ export const useBackendUsers = (vendorId: number) => {
   });
 };
 
+// ✅ Submit client approval
 export const useSubmitClientApproval = () => {
   return useMutation({
     mutationFn: async (formData: FormData) => {
@@ -89,5 +103,56 @@ export const useSubmitClientApproval = () => {
         err?.response?.data?.message || "Failed to submit client approval"
       );
     },
+  });
+};
+
+// ✅ Request to Tech Check
+export const useRequestToTechCheck = () => {
+  return useMutation({
+    mutationFn: async ({
+      vendorId,
+      leadId,
+      accountId,
+      assign_to_user_id,
+      created_by,
+    }: {
+      vendorId: number;
+      leadId: number;
+      accountId: number;
+      assign_to_user_id: number;
+      created_by: number;
+    }) => {
+      const { data } = await apiClient.post(
+        `/leads/client-approval/vendorId/${vendorId}/leadId/${leadId}/request-to-tech-check`,
+        {
+          account_id: accountId,
+          assign_to_user_id,
+          created_by,
+        }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Request to Tech Check submitted successfully!");
+    },
+    onError: (err: any) => {
+      toast.error(
+        err?.response?.data?.message || "Failed to request Tech Check"
+      );
+    },
+  });
+};
+
+// ✅ Fetch tech-check users
+export const useTechCheckUsers = (vendorId: number) => {
+  return useQuery({
+    queryKey: ["techCheckUsers", vendorId],
+    queryFn: async () => {
+      const { data } = await apiClient.get(
+        `/leads/client-approval/tech-check-users/vendorId/${vendorId}`
+      );
+      return data?.data?.tech_check_users || [];
+    },
+    enabled: !!vendorId,
   });
 };

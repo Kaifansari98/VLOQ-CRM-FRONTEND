@@ -4,10 +4,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import {
   SidebarInset,
@@ -57,12 +55,12 @@ import { useDeleteLead } from "@/hooks/useDeleteLead";
 import { toast } from "react-toastify";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import ClientApprovalModal from "@/components/site-supervisor/client-approval/client-approval-modal";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
-import RequestToTechCheckModal from "@/components/site-supervisor/client-approval/request-to-tech-check-modal";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import { useApproveTechCheck, useRejectTechCheck } from "@/api/tech-check";
+import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
+import BaseModal from "@/components/utils/baseModal";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -75,12 +73,34 @@ export default function ClientApprovalLeadDetails() {
     (state) => state.auth?.user?.user_type.user_type as string | undefined
   );
 
+  const { mutate: approveTechCheckMutate, isPending: approving } =
+    useApproveTechCheck();
+  const { mutate: rejectTechCheckMutate, isPending: rejecting } =
+    useRejectTechCheck();
+
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
   const [openClientApprovalModal, setOpenClientApprovalModal] = useState(false);
   const [prevTab, setPrevTab] = useState("details");
+
+  const [openTechCheckConfirm, setOpenTechCheckConfirm] = useState(false);
+  const [openFinalApproveConfirm, setOpenFinalApproveConfirm] = useState(false);
+  const [openRejectDocsModal, setOpenRejectDocsModal] = useState(false);
+  const [selectedDocs, setSelectedDocs] = useState<number[]>([]);
+  const [openRemarkModal, setOpenRemarkModal] = useState(false);
+  const [remark, setRemark] = useState("");
+  const [openFinalRejectConfirm, setOpenFinalRejectConfirm] = useState(false);
+
+  const { data: clientDocsData } = useClientDocumentationDetails(
+    vendorId!,
+    leadIdNum
+  );
+  const docs = [
+    ...(clientDocsData?.documents?.ppt ?? []),
+    ...(clientDocsData?.documents?.pytha ?? []),
+  ];
 
   const [openRequestToTechCheckModal, setOpenRequestToTechCheckModal] =
     useState(false);
@@ -155,33 +175,16 @@ export default function ClientApprovalLeadDetails() {
             </Breadcrumb>
           </div>
           <div className="flex items-center space-x-2">
-            {/* ✅ Request To Tech Check button (always visible) */}
-            {!is_client_approval_submitted ? (
-              // Show disabled with tooltip before client approval
-              <CustomeTooltip
-                truncateValue={
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled
-                    className="opacity-60 cursor-not-allowed"
-                  >
-                    Request To Tech Check
-                  </Button>
-                }
-                value="Submit Client Approval first to enable Tech Check"
-              />
-            ) : (
-              // Show active button once approval is submitted
-              <Button
-                size="sm"
-                onClick={() => setOpenRequestToTechCheckModal(true)}
-              >
-                Request To Tech Check
-              </Button>
-            )}
-
             <ModeToggle />
+
+            {/* ✅ Tech Check Button */}
+            <Button
+              variant="default"
+              onClick={() => setOpenTechCheckConfirm(true)}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+            >
+              Tech Check
+            </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -191,22 +194,6 @@ export default function ClientApprovalLeadDetails() {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end">
-                {!is_client_approval_submitted ? (
-                  <DropdownMenuItem
-                    onClick={() => setOpenClientApprovalModal(true)}
-                  >
-                    <FileText size={20} />
-                    Client Approval
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem
-                    onClick={() => setOpenRequestToTechCheckModal(true)}
-                  >
-                    <FileText size={20} />
-                    Request To Tech Check
-                  </DropdownMenuItem>
-                )}
-
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen size={20} />
                   Edit
@@ -275,10 +262,10 @@ export default function ClientApprovalLeadDetails() {
           <TabsContent value="details">
             <main className="flex-1 h-fit">
               <LeadDetailsUtil
-                status="clientdocumentation"
+                status="techcheck"
                 leadId={leadIdNum}
                 accountId={accountId}
-                defaultTab="clientdocumentation"
+                defaultTab="techcheck"
               />
             </main>
           </TabsContent>
@@ -305,18 +292,6 @@ export default function ClientApprovalLeadDetails() {
           leadData={{ id: leadIdNum }}
         />
 
-        <ClientApprovalModal
-          open={openClientApprovalModal}
-          onOpenChange={setOpenClientApprovalModal}
-          data={{ id: leadIdNum, accountId }}
-        />
-
-        <RequestToTechCheckModal
-          open={openRequestToTechCheckModal}
-          onOpenChange={setOpenRequestToTechCheckModal}
-          data={{ id: leadIdNum, accountId }}
-        />
-
         <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -330,6 +305,203 @@ export default function ClientApprovalLeadDetails() {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteLead}>
                 Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* 🪟 (A) First Modal — Tech Check main action modal */}
+        <AlertDialog
+          open={openTechCheckConfirm}
+          onOpenChange={setOpenTechCheckConfirm}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Proceed with Tech Check?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Choose whether to approve or reject this lead’s client
+                documentation.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex justify-end gap-3">
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  setOpenTechCheckConfirm(false);
+                  setOpenRejectDocsModal(true);
+                }}
+              >
+                Reject
+              </Button>
+              <Button
+                onClick={() => {
+                  setOpenTechCheckConfirm(false);
+                  setOpenFinalApproveConfirm(true);
+                }}
+              >
+                Approve
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* 🪟 (B) Approve Final Confirmation */}
+        <AlertDialog
+          open={openFinalApproveConfirm}
+          onOpenChange={setOpenFinalApproveConfirm}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Approval</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to approve this Tech Check? The lead will
+                move to Order Login stage.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  approveTechCheckMutate({
+                    vendorId: vendorId!,
+                    leadId: leadIdNum,
+                    userId: userId!,
+                  });
+
+                  setOpenFinalApproveConfirm(false);
+                }}
+                disabled={approving}
+              >
+                {approving ? "Approving..." : "Confirm"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* 🪟 (C) Reject Docs Modal (list all client docs) */}
+        <BaseModal
+          open={openRejectDocsModal}
+          onOpenChange={setOpenRejectDocsModal}
+          title="Reject Client Documentation"
+          size="lg"
+          description="Select the documents that need to be re-uploaded or corrected."
+        >
+          <div className="space-y-4">
+            {docs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No client documentation found.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {docs.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className={`p-3 rounded-md border cursor-pointer ${
+                      selectedDocs.includes(doc.id)
+                        ? "border-red-500 bg-red-50"
+                        : "hover:bg-muted"
+                    }`}
+                    onClick={() =>
+                      setSelectedDocs((prev) =>
+                        prev.includes(doc.id)
+                          ? prev.filter((d) => d !== doc.id)
+                          : [...prev, doc.id]
+                      )
+                    }
+                  >
+                    <FileText className="inline-block mr-2" size={18} />
+                    {doc.doc_og_name}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button
+                onClick={() => {
+                  if (selectedDocs.length === 0) {
+                    toast.error(
+                      "Please select at least one document to reject."
+                    );
+                    return;
+                  }
+                  setOpenRejectDocsModal(false);
+                  setOpenRemarkModal(true);
+                }}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </BaseModal>
+
+        {/* 🪟 (D) Remark Input Modal */}
+        <BaseModal
+          open={openRemarkModal}
+          onOpenChange={setOpenRemarkModal}
+          title="Add Remark for Rejection"
+          size="md"
+        >
+          <div className="space-y-3">
+            <textarea
+              className="w-full p-3 border rounded-md text-sm"
+              rows={3}
+              placeholder="Enter rejection remark..."
+              value={remark}
+              onChange={(e) => setRemark(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setOpenRemarkModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!remark.trim()) {
+                    toast.error("Remark is required.");
+                    return;
+                  }
+                  setOpenRemarkModal(false);
+                  setOpenFinalRejectConfirm(true);
+                }}
+              >
+                Confirm
+              </Button>
+            </div>
+          </div>
+        </BaseModal>
+
+        {/* 🪟 (E) Final Confirmation Modal for Reject */}
+        <AlertDialog
+          open={openFinalRejectConfirm}
+          onOpenChange={setOpenFinalRejectConfirm}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Final Confirmation</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to reject the selected documents?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  rejectTechCheckMutate({
+                    vendorId: vendorId!,
+                    leadId: leadIdNum,
+                    userId: userId!,
+                    payload: { rejectedDocs: selectedDocs, remark },
+                  });
+
+                  setOpenFinalRejectConfirm(false);
+                  setSelectedDocs([]);
+                  setRemark("");
+                }}
+                disabled={rejecting}
+              >
+                {rejecting ? "Rejecting..." : "Confirm"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

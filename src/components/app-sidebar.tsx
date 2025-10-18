@@ -6,17 +6,13 @@ import {
   BookOpen,
   Bot,
   Command,
-  Frame,
   GalleryVerticalEnd,
-  Map,
-  PieChart,
   Settings2,
   CalendarCheck2,
   BookOpenCheck,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
-import { NavProjects } from "@/components/nav-projects";
 import { NavUser } from "@/components/nav-user";
 import { TeamSwitcher } from "@/components/team-switcher";
 import {
@@ -119,10 +115,11 @@ const data = {
       title: "Production",
       url: "#",
       icon: BookOpen,
+      isActive: true,
       items: [
         {
           title: "Tech Check",
-          url: "#",
+          url: "/dashboard/production/tech-check",
         },
         {
           title: "Order Login",

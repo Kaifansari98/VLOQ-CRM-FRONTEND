@@ -18,12 +18,16 @@ export interface AssignToFinalMeasurementPayload {
   created_by: number;
 }
 
-export const assignToFinalMeasurement = async (leadId: number, payload: AssignToFinalMeasurementPayload) => {
+export const assignToFinalMeasurement = async (
+  leadId: number,
+  payload: AssignToFinalMeasurementPayload
+) => {
   const { data } = await apiClient.post(
-    `/leads/final-measurement/leadId/${leadId}/tasks/assign-fm`,payload
+    `/leads/final-measurement/leadId/${leadId}/tasks/assign-fm`,
+    payload
   );
 
-  return data
+  return data;
 };
 
 export const UploadFinalMeasurement = async (
@@ -45,7 +49,7 @@ export const UploadFinalMeasurement = async (
       formData.append("final_measurement_doc", file); // ✅ multiple files with same field name
     });
   }
-    
+
   payload.site_photos.forEach((file) => {
     formData.append("site_photos", file);
   });
@@ -68,7 +72,7 @@ export const getAllFinalMeasurementLeads = async (
   userId: number
 ) => {
   const { data } = await apiClient.get(
-    `/leads/final-measurement/all/${vendorId}`, 
+    `/leads/final-measurement/all/${vendorId}`,
     { params: { userId } } // ✅ send userId as query param
   );
   return data;
@@ -79,7 +83,8 @@ export interface uploadClientDocPayload {
   accountId: number;
   vendorId: number;
   createdBy: number;
-  documents: File[];
+  pptDocuments: File[];
+  pythaDocuments: File[];
 }
 
 export const UploadClientDocumantation = async (
@@ -90,18 +95,19 @@ export const UploadClientDocumantation = async (
   formData.append("account_id", payload.accountId.toString());
   formData.append("vendor_id", payload.vendorId.toString());
   formData.append("created_by", payload.createdBy.toString());
-  payload.documents.forEach((file) => {
-    formData.append("documents", file);
+
+  payload.pptDocuments.forEach((file) => {
+    formData.append("client_documentations_ppt", file);
+  });
+
+  payload.pythaDocuments.forEach((file) => {
+    formData.append("client_documentations_pytha", file);
   });
 
   const { data } = await apiClient.post(
     `/leads/client-documentation/submit-documents`,
     formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
+    { headers: { "Content-Type": "multipart/form-data" } }
   );
 
   return data;
