@@ -7,6 +7,8 @@ import DesigningLeadsDetails from "../tabScreens/DesigningLeadDetails";
 import FinalMeasurementLeadDetails from "../tabScreens/FinalMeasurementDetails";
 import ViewClientDocumentationModal from "../site-supervisor/client-documentation/view-client-documentation";
 import ClientDocumentationDetails from "../site-supervisor/client-documentation/view-client-documentation";
+import ClientApprovalDetails from "../site-supervisor/client-approval/client-approval-details";
+import TechCheckDetails from "../production/tech-check-stage/TechCheckDetails";
 
 interface LeadDetailsUtilProps {
   status:
@@ -15,7 +17,9 @@ interface LeadDetailsUtilProps {
     | "designing"
     | "booking"
     | "finalMeasurement"
-    | "clientdocumentation";
+    | "clientdocumentation"
+    | "clientApproval"
+    | "techcheck";
   leadId?: number;
   accountId?: number;
   leadInfo?: any;
@@ -72,6 +76,24 @@ export default function LeadDetailsUtil({
         />
       ),
     },
+    {
+      id: "clientApproval",
+      title: "Client Approval",
+      color: "bg-zinc-900 hover:bg-gray-600",
+      cardContent: <ClientApprovalDetails leadId={leadId ?? 0} />,
+    },
+    {
+      id: "techcheck",
+      title: "Tech Check",
+      color: "bg-zinc-900 hover:bg-gray-600",
+      cardContent: (
+        <TechCheckDetails
+          leadId={leadId ?? 0}
+          accountId={accountId ?? 0}
+          name={leadInfo?.name}
+        />
+      ),
+    },
   ];
 
   const statusFlow: Record<LeadDetailsUtilProps["status"], string[]> = {
@@ -93,6 +115,25 @@ export default function LeadDetailsUtil({
       "booking",
       "finalMeasurement",
       "clientdocumentation",
+    ],
+    clientApproval: [
+      "details",
+      "measurement",
+      "designing",
+      "booking",
+      "finalMeasurement",
+      "clientdocumentation",
+      "clientApproval",
+    ],
+    techcheck: [
+      "details",
+      "measurement",
+      "designing",
+      "booking",
+      "finalMeasurement",
+      "clientdocumentation",
+      "clientApproval",
+      "techcheck",
     ],
   };
 

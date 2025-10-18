@@ -61,6 +61,8 @@ import ClientApprovalModal from "@/components/site-supervisor/client-approval/cl
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
+import RequestToTechCheckModal from "@/components/site-supervisor/client-approval/request-to-tech-check-modal";
+import CustomeTooltip from "@/components/cutome-tooltip";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -80,6 +82,9 @@ export default function ClientApprovalLeadDetails() {
   const [openClientApprovalModal, setOpenClientApprovalModal] = useState(false);
   const [prevTab, setPrevTab] = useState("details");
 
+  const [openRequestToTechCheckModal, setOpenRequestToTechCheckModal] =
+    useState(false);
+
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
 
@@ -87,6 +92,10 @@ export default function ClientApprovalLeadDetails() {
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
 
   const accountId = Number(lead?.account_id);
+
+  const is_client_approval_submitted = lead?.is_client_approval_submitted;
+
+  console.log("is_client_approval_submitted :- ", is_client_approval_submitted);
 
   console.log("account id :- ", accountId);
 
@@ -146,7 +155,34 @@ export default function ClientApprovalLeadDetails() {
             </Breadcrumb>
           </div>
           <div className="flex items-center space-x-2">
+            {/* ✅ Request To Tech Check button (always visible) */}
+            {!is_client_approval_submitted ? (
+              // Show disabled with tooltip before client approval
+              <CustomeTooltip
+                truncateValue={
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled
+                    className="opacity-60 cursor-not-allowed"
+                  >
+                    Request To Tech Check
+                  </Button>
+                }
+                value="Submit Client Approval first to enable Tech Check"
+              />
+            ) : (
+              // Show active button once approval is submitted
+              <Button
+                size="sm"
+                onClick={() => setOpenRequestToTechCheckModal(true)}
+              >
+                Request To Tech Check
+              </Button>
+            )}
+
             <ModeToggle />
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon">
@@ -155,12 +191,22 @@ export default function ClientApprovalLeadDetails() {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => setOpenClientApprovalModal(true)}
-                >
-                  <FileText size={20} />
-                  Client Approval
-                </DropdownMenuItem>
+                {!is_client_approval_submitted ? (
+                  <DropdownMenuItem
+                    onClick={() => setOpenClientApprovalModal(true)}
+                  >
+                    <FileText size={20} />
+                    Client Approval
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={() => setOpenRequestToTechCheckModal(true)}
+                  >
+                    <FileText size={20} />
+                    Request To Tech Check
+                  </DropdownMenuItem>
+                )}
+
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen size={20} />
                   Edit
@@ -192,8 +238,12 @@ export default function ClientApprovalLeadDetails() {
           value={activeTab}
           onValueChange={(val) => {
             if (val === "todo") {
+              if (!is_client_approval_submitted) {
+                setOpenClientApprovalModal(true);
+              } else {
+                setOpenRequestToTechCheckModal(true);
+              }
               setPrevTab(activeTab);
-              setOpenClientApprovalModal(true);
               return;
             }
             setActiveTab(val);
@@ -258,6 +308,12 @@ export default function ClientApprovalLeadDetails() {
         <ClientApprovalModal
           open={openClientApprovalModal}
           onOpenChange={setOpenClientApprovalModal}
+          data={{ id: leadIdNum, accountId }}
+        />
+
+        <RequestToTechCheckModal
+          open={openRequestToTechCheckModal}
+          onOpenChange={setOpenRequestToTechCheckModal}
           data={{ id: leadIdNum, accountId }}
         />
 

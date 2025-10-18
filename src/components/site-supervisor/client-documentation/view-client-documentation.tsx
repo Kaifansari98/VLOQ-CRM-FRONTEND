@@ -3,14 +3,13 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Plus, Download } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
 import DocumentPreview from "@/components/utils/file-preview";
 import ImageCard from "@/components/utils/image-card";
 import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import UploadMoreClientDocumentationModal from "./uploadmore-client-documentaition-modal";
+import { Plus } from "lucide-react";
 
 type Props = {
   leadId: number;
@@ -52,11 +51,14 @@ export default function ClientDocumentationDetails({
     return <p className="p-6">Loading client documentation...</p>;
   }
 
-  const allDocuments = leadDetails?.documents || [];
-  const images = allDocuments.filter((doc) =>
+  const pptDocs = leadDetails?.documents?.ppt || [];
+  const pythaDocs = leadDetails?.documents?.pytha || [];
+
+  // Extract images and non-image docs from PPT docs
+  const images = pptDocs.filter((doc) =>
     isImageExt(getFileExtension(doc.doc_sys_name))
   );
-  const docs = allDocuments.filter(
+  const otherDocs = pptDocs.filter(
     (doc) => !isImageExt(getFileExtension(doc.doc_sys_name))
   );
 
@@ -82,7 +84,7 @@ export default function ClientDocumentationDetails({
 
       {/* -------- Images -------- */}
       <motion.div variants={itemVariants} className="space-y-3">
-        <h3 className="text-lg font-semibold">Images</h3>
+        <h3 className="text-lg font-semibold">Client Images (PPT)</h3>
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
           {images.length > 0 ? (
             images.map((img, idx) => (
@@ -104,12 +106,14 @@ export default function ClientDocumentationDetails({
         </div>
       </motion.div>
 
-      {/* -------- Documents -------- */}
+      {/* -------- Documents (PPT, PDF, DOCX, etc.) -------- */}
       <motion.div variants={itemVariants} className="space-y-3">
-        <h3 className="text-lg font-semibold">Documents</h3>
+        <h3 className="text-lg font-semibold">
+          Client Documents (PPT, PDF, DOCX)
+        </h3>
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
-          {docs.length > 0 ? (
-            docs.map((doc) => (
+          {otherDocs.length > 0 ? (
+            otherDocs.map((doc) => (
               <DocumentPreview
                 key={doc.id}
                 file={doc}
@@ -120,6 +124,27 @@ export default function ClientDocumentationDetails({
           ) : (
             <p className="text-sm text-gray-500 italic">
               No client documents uploaded yet.
+            </p>
+          )}
+        </div>
+      </motion.div>
+
+      {/* -------- PYTHA Files -------- */}
+      <motion.div variants={itemVariants} className="space-y-3">
+        <h3 className="text-lg font-semibold">Client Pytha Files (.pyo)</h3>
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+          {pythaDocs.length > 0 ? (
+            pythaDocs.map((doc) => (
+              <DocumentPreview
+                key={doc.id}
+                file={doc}
+                size="medium"
+                onClick={() => window.open(doc.signed_url, "_blank")}
+              />
+            ))
+          ) : (
+            <p className="text-sm text-gray-500 italic">
+              No Pytha files uploaded yet.
             </p>
           )}
         </div>

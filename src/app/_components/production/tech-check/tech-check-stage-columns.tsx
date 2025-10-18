@@ -6,28 +6,27 @@ import { DataTableColumnHeader } from "@/components/data-table/data-table-column
 import { Text } from "lucide-react";
 import type { DataTableRowActionFinalMeasurement } from "@/types/data-table";
 import { canReassingLead } from "@/components/utils/privileges";
-import CustomeBadge from "@/components/origin-badge";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/cutome-tooltip";
-import { useRouter } from "next/navigation";
 import { ProcessedBookingLead } from "@/types/booking-types";
 
-interface GetVendorLeadsTableColumnsProps {
+interface GetTechCheckTableColumnsProps {
   setRowAction: React.Dispatch<
-    React.SetStateAction<DataTableRowActionFinalMeasurement<ProcessedBookingLead> | null>
+    React.SetStateAction<
+      DataTableRowActionFinalMeasurement<ProcessedBookingLead> | null
+    >
   >;
   userType?: string;
 }
 
-export function getBookingLeadsTableColumns({
+export function getTechCheckTableColumns({
   setRowAction,
   userType,
-}: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedBookingLead>[] {
-  const router = useRouter();
+}: GetTechCheckTableColumnsProps): ColumnDef<ProcessedBookingLead>[] {
   return [
-
+    // Lead Code
     {
       accessorKey: "lead_code",
       header: ({ column }) => (
@@ -38,56 +37,41 @@ export function getBookingLeadsTableColumns({
           {row.getValue("lead_code")}
         </div>
       ),
-      meta: {
-        label: "Lead Code",
-      },
+      meta: { label: "Lead Code" },
       enableSorting: true,
       enableColumnFilter: true,
       enableHiding: true,
     },
 
-    // First name and lastname: 1
+    // Name
     {
       accessorKey: "name",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Name" />
+        <DataTableColumnHeader column={column} title="Client Name" />
       ),
+      meta: { label: "Name", variant: "text", icon: Text },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
-      meta: {
-        label: "Name",
-        placeholder: "Search names...",
-        variant: "text",
-        icon: Text,
-      },
+      enableHiding: true,
       cell: ({ row }) => {
         const name = row.getValue("name") as string;
-        const maxLength = 25;
-
-        // Agar name chhota hai, sirf text dikhaye
-        if (name.length <= maxLength) {
-          return <span>{name}</span>;
-        }
-
-        // Agar name bada hai, truncate + tooltip dikhaye
-        const truncateValue = name.slice(0, maxLength) + "...";
-
-        return <CustomeTooltip value={name} truncateValue={truncateValue} />;
+        const max = 25;
+        if (name.length <= max) return <span>{name}</span>;
+        const trunc = name.slice(0, max) + "...";
+        return <CustomeTooltip value={name} truncateValue={trunc} />;
       },
     },
-    // contact: 2
+
+    // Contact
     {
       accessorKey: "contact",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Contact" />
       ),
+      meta: { label: "Contact" },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
-      meta: {
-        label: "Contact",
-      },
+      enableHiding: true,
     },
 
     // Product Types
@@ -96,108 +80,87 @@ export function getBookingLeadsTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Product Types" />
       ),
-      meta: {
-        label: "Product Types",
-      },
+      meta: { label: "Product Types" },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
+      enableHiding: true,
     },
 
-    // Status : 5
+    // Status
     {
       accessorKey: "status",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Status" />
       ),
-      meta: {
-        label: "Status",
-      },
+      meta: { label: "Status" },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
-      cell: ({ row }) => {
-        const status = row.getValue("status") as string;
-
-        return (
-          <div className="flex items-center">
-            <CustomeStatusBadge title={status} />
-          </div>
-        );
-      },
+      enableHiding: true,
+      cell: ({ row }) => (
+        <div className="flex items-center">
+          <CustomeStatusBadge title={row.getValue("status")} />
+        </div>
+      ),
     },
 
-    // Site Type: 6
+    // Site Type
     {
       accessorKey: "siteType",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Site Type" />
       ),
-      meta: {
-        label: "Site Type",
-      },
+      meta: { label: "Site Type" },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
+      enableHiding: true,
     },
 
-    // Sales Executive: 7
+    // Assigned User
     ...(canReassingLead(userType)
       ? [
           {
             accessorKey: "assignedTo",
             header: ({ column }) => (
-              <DataTableColumnHeader column={column} title="Sales Executive" />
+              <DataTableColumnHeader column={column} title="Assigned To" />
             ),
             cell: ({ row }) => row.getValue("assignedTo"),
-            meta: {
-              label: "Sales Executive",
-            },
+            meta: { label: "Assigned To" },
             enableSorting: true,
-            enableHiding: true,
             enableColumnFilter: true,
+            enableHiding: true,
           } as ColumnDef<ProcessedBookingLead>,
         ]
       : []),
 
-    // Site Address: 8
+    // Site Address
     {
       accessorKey: "siteAddress",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Site Address" />
       ),
-      meta: {
-        label: "Site Address",
-      },
+      meta: { label: "Site Address" },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
+      enableHiding: true,
       cell: ({ row }) => {
         const address = row.getValue("siteAddress") as string;
-        const maxLength = 30;
-
-        if (address.length <= maxLength) {
-          return <span>{address}</span>;
-        }
-
-        const truncateAddress = address.slice(0, maxLength) + "...";
-
-        return <RemarkTooltip remark={truncateAddress} remarkFull={address} />;
+        const max = 30;
+        if (address.length <= max) return <span>{address}</span>;
+        const trunc = address.slice(0, max) + "...";
+        return <RemarkTooltip remark={trunc} remarkFull={address} />;
       },
     },
 
-    // ArchitechName
+    // Architect Name
     {
       accessorKey: "architechName",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Architect Name" />
       ),
-      meta: {
-        label: "Architech Name",
-      },
+      meta: { label: "Architect Name" },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
+      enableHiding: true,
     },
 
     // Source
@@ -206,23 +169,26 @@ export function getBookingLeadsTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Source" />
       ),
-      meta: {
-        label: "Source",
-      },
+      meta: { label: "Source" },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
+      enableHiding: true,
     },
-    // Create At
+
+    // Created At
     {
       accessorKey: "createdAt",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Created At" />
       ),
+      meta: { label: "Created At" },
+      enableSorting: true,
+      enableColumnFilter: true,
+      enableHiding: true,
       cell: ({ getValue }) => {
-        const dateValue = getValue() as string;
-        if (!dateValue) return "";
-        const date = new Date(dateValue);
+        const val = getValue() as string;
+        if (!val) return "";
+        const date = new Date(val);
         return (
           <span className="text-gray-700">
             {date.toLocaleDateString("en-IN", {
@@ -233,16 +199,9 @@ export function getBookingLeadsTableColumns({
           </span>
         );
       },
-
-      meta: {
-        label: "Created At",
-      },
-
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
     },
-    // Alt contact
+
+    // Alt Contact
     {
       accessorKey: "altContact",
       header: ({ column }) => (
@@ -250,53 +209,41 @@ export function getBookingLeadsTableColumns({
           <DataTableColumnHeader column={column} title="Alt Contact" />
         </div>
       ),
-      meta: {
-        label: "Alt Contact",
-      },
+      meta: { label: "Alt Contact" },
+      enableSorting: true,
+      enableColumnFilter: true,
+      enableHiding: true,
       cell: ({ getValue }) => {
-        const rawValue = getValue() as string | null;
-
+        const raw = getValue() as string | null;
         let formatted = "–";
-        if (rawValue) {
+        if (raw) {
           try {
-            const phone = parsePhoneNumberFromString(rawValue); // ✅ correct method
-            if (phone) {
-              formatted = phone.formatInternational(); // e.g. +91 98765 43210
-            } else {
-              formatted = rawValue;
-            }
+            const phone = parsePhoneNumberFromString(raw);
+            formatted = phone ? phone.formatInternational() : raw;
           } catch {
-            formatted = rawValue; // fallback
+            formatted = raw;
           }
         }
-
         return <div className="w-full text-center">{formatted}</div>;
       },
     },
 
-    // Email : 3
+    // Email
     {
       accessorKey: "email",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Email" />
       ),
-      meta: {
-        label: "Email",
-      },
+      meta: { label: "Email" },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
+      enableHiding: true,
       cell: ({ row }) => {
         const email = row.getValue("email") as string;
-        const maxLength = 20;
-
-        if (email.length <= maxLength) {
-          return <span>{email}</span>;
-        }
-
-        const truncateValue = email.slice(0, maxLength) + "...";
-
-        return <CustomeTooltip truncateValue={truncateValue} value={email} />;
+        const max = 22;
+        if (email.length <= max) return <span>{email}</span>;
+        const trunc = email.slice(0, max) + "...";
+        return <CustomeTooltip value={email} truncateValue={trunc} />;
       },
     },
 
@@ -306,33 +253,27 @@ export function getBookingLeadsTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Product Structures" />
       ),
-      meta: {
-        label: "Product Structures",
-      },
+      meta: { label: "Product Structures" },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
+      enableHiding: true,
     },
 
-    // design Remark
+    // Designer Remark
     {
       accessorKey: "designerRemark",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Designer Remark" />
       ),
+      meta: { label: "Designer Remark" },
       enableSorting: true,
-      enableHiding: true,
       enableColumnFilter: true,
-      meta: {
-        label: "Designer's Remark",
-      },
+      enableHiding: true,
       cell: ({ row }) => {
-        const fullRemark = row.getValue("designerRemark") as string;
-        const truncatedRemark =
-          fullRemark.length > 15 ? fullRemark.slice(0, 15) + "..." : fullRemark;
-        return (
-          <RemarkTooltip remark={truncatedRemark} remarkFull={fullRemark} />
-        );
+        const full = row.getValue("designerRemark") as string;
+        const short =
+          full.length > 15 ? full.slice(0, 15) + "..." : full;
+        return <RemarkTooltip remark={short} remarkFull={full} />;
       },
     },
   ];

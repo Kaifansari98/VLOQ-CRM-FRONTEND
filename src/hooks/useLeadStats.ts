@@ -12,6 +12,7 @@ interface LeadStatsResponse {
     total_final_measurement_leads: number;
     total_client_documentation_leads: number;
     total_client_approval_leads: number;
+    total_tech_check_leads: number;
     total_my_tasks: number;
   };
 }

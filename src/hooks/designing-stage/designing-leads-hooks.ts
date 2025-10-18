@@ -18,12 +18,17 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
 
-export const useDesigningStageLeads = (vendorId: number, userId: number) => {
+export const useDesigningStageLeads = (
+  vendorId: number,
+  userId: number,
+  page: number = 1,
+  limit: number = 10
+) => {
   return useQuery<GetDesigningStageResponse>({
-    queryKey: ["designing-stage-leads", vendorId, userId],
-    queryFn: () => fetchDesigningStageLeads(vendorId, userId),
-    enabled: !!vendorId && !!userId, // ✅ only fetch when all are available
-    staleTime: 5 * 60 * 1000, // cache for 5 mins
+    queryKey: ["designing-stage-leads", vendorId, userId, page, limit],
+    queryFn: () => fetchDesigningStageLeads(vendorId, userId, page, limit),
+    enabled: !!vendorId && !!userId,
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 };

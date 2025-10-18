@@ -36,9 +36,12 @@ interface Props {
 
 // -------------------- Form Validation Schema --------------------
 const clientDocSchema = z.object({
-  documents: z
+  pptDocuments: z
     .array(z.instanceof(File))
-    .min(1, "Please upload at least one document"),
+    .min(1, "Please upload at least one PPT file"),
+  pythaDocuments: z
+    .array(z.instanceof(File))
+    .min(1, "Please upload at least one Pytha file"),
 });
 
 type ClientDocFormValues = z.infer<typeof clientDocSchema>;
@@ -59,20 +62,25 @@ const ClientDocumentationModal: React.FC<Props> = ({
 
   const [files, setFiles] = useState<File[]>([]);
 
+  const [pptFiles, setPptFiles] = useState<File[]>([]);
+  const [pythaFiles, setPythaFiles] = useState<File[]>([]);
+
   const { mutateAsync, isPending } = useUploadClientDocumentation();
 
   const form = useForm<ClientDocFormValues>({
     resolver: zodResolver(clientDocSchema),
     defaultValues: {
-      documents: [],
+      pptDocuments: [],
+      pythaDocuments: [],
     },
   });
 
   // Reset form & files when modal closes or data changes
   useEffect(() => {
     if (!open) {
-      form.reset({ documents: [] });
-      setFiles([]);
+      form.reset({ pptDocuments: [], pythaDocuments: [] });
+      setPptFiles([]);
+      setPythaFiles([]);
     }
   }, [open, form]);
 
@@ -93,8 +101,9 @@ const ClientDocumentationModal: React.FC<Props> = ({
         accountId,
         vendorId,
         createdBy,
-        documents: values.documents,
-      } as uploadClientDocPayload);
+        pptDocuments: values.pptDocuments,
+        pythaDocuments: values.pythaDocuments,
+      });
 
       toast.success("Documents uploaded successfully");
 
@@ -107,8 +116,9 @@ const ClientDocumentationModal: React.FC<Props> = ({
       });
 
       onOpenChange(false);
-      form.reset({ documents: [] });
-      setFiles([]);
+      form.reset({ pptDocuments: [], pythaDocuments: [] });
+      setPptFiles([]);
+      setPythaFiles([]);
 
       // ✅ Redirect
       router.push("/dashboard/site-supervisor/client-documentation");
@@ -131,22 +141,50 @@ const ClientDocumentationModal: React.FC<Props> = ({
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="documents"
+              name="pptDocuments"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm">Client Documents</FormLabel>
+                  <FormLabel className="text-sm">
+                    Client Documentation – PPT File
+                  </FormLabel>
                   <FormControl>
                     <FileUploadField
-                      value={files}
+                      value={pptFiles}
                       onChange={(newFiles: File[]) => {
-                        setFiles(newFiles);
+                        setPptFiles(newFiles);
                         field.onChange(newFiles);
                       }}
-                      accept=".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx,.pyo"
+                      accept=".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx"
                     />
                   </FormControl>
                   <FormDescription className="text-xs">
-                    Upload photos, PDFs, or documents related to the client.
+                    Upload PPT or related files for client documentation.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="pythaDocuments"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">
+                    Client Documentation – Pytha File
+                  </FormLabel>
+                  <FormControl>
+                    <FileUploadField
+                      value={pythaFiles}
+                      onChange={(newFiles: File[]) => {
+                        setPythaFiles(newFiles);
+                        field.onChange(newFiles);
+                      }}
+                      accept=".pyo,.pdf,.pytha"
+                    />
+                  </FormControl>
+                  <FormDescription className="text-xs">
+                    Upload Pytha files (.pyo) for client documentation.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

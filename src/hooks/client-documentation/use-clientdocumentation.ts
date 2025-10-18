@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
 import {
-  ClientDocDetailsResponse,
+  // ClientDocDetailsResponse,
   ClientDocumentationResponse,
 } from "@/types/client-documentation";
 import {
@@ -12,6 +12,25 @@ import {
 } from "@/api/client-documentation";
 import { toast } from "react-toastify";
 import { useVendorOverallLeads } from "../useLeadsQueries";
+
+export interface ClientDoc {
+  id: number;
+  doc_og_name: string;
+  doc_sys_name: string;
+  signed_url: string;
+  tech_check_status: string;
+  created_at: string;
+}
+
+export interface ClientDocDetailsResponse {
+  id: number;
+  vendor_id: number;
+  status_id: number;
+  documents: {
+    ppt: ClientDoc[];
+    pytha: ClientDoc[];
+  };
+}
 
 export const useClientDocumentationLeads = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -63,6 +82,9 @@ export const useUploadMoreClientDocumentation = () => {
   });
 };
 
-export const useVendorOverallClientDocumentationLeads = (vendorId: number, userId: number) => {
+export const useVendorOverallClientDocumentationLeads = (
+  vendorId: number,
+  userId: number
+) => {
   return useVendorOverallLeads(vendorId, "Type 6", userId);
 };

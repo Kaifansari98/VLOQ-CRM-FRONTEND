@@ -204,6 +204,7 @@ export interface BookingEditPayload {
 // ─────────── Processed Booking Lead (UI Table) ───────────
 export type ProcessedBookingLead = {
   id: number;
+  lead_code: string;
   srNo: number;
   name: string;
   email: string;
