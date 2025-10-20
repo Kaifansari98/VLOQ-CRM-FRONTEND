@@ -8,7 +8,10 @@ import CustomeDatePicker from "@/components/date-picker";
 import { FileUploadField } from "@/components/custom/file-upload";
 import TextAreaInput from "@/components/origin-text-area";
 import { toast } from "react-toastify";
-import { useAddPayment, usePaymentLogs } from "@/hooks/booking-stage/use-booking";
+import {
+  useAddPayment,
+  usePaymentLogs,
+} from "@/hooks/booking-stage/use-booking";
 import { useAppSelector } from "@/redux/store";
 import { Loader2 } from "lucide-react";
 import { useMemo } from "react";
@@ -28,14 +31,17 @@ interface ProjectFinanceSummaryProps {
 
 type FormValues = {
   amount: number;
-  payment_date: string;       // ISO string from your CustomeDatePicker
+  payment_date: string; // ISO string from your CustomeDatePicker
   payment_text: string;
-  payment_file: File[];       // we’ll take only [0] on submit
+  payment_file: File[]; // we’ll take only [0] on submit
 };
 
-export default function ProjectFinanceSummary({ leadId, accountId }: ProjectFinanceSummaryProps) {
+export default function ProjectFinanceSummary({
+  leadId,
+  accountId,
+}: ProjectFinanceSummaryProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
-  const userId   = useAppSelector((s) => s.auth.user?.id) || 0;
+  const userId = useAppSelector((s) => s.auth.user?.id) || 0;
 
   // 🔹 Fetch finance info (also used to refetch after successful add)
   const { data, isLoading, refetch } = usePaymentLogs(leadId, vendorId);
@@ -156,12 +162,15 @@ export default function ProjectFinanceSummary({ leadId, accountId }: ProjectFina
               ₹{projectFinance.total_project_amount.toLocaleString()}
             </p>
           </div>
-          <div>
-            <p className="text-muted-foreground text-sm">Booking Amount</p>
-            <p className="font-bold text-lg">
-              ₹{projectFinance.booking_amount.toLocaleString()}
-            </p>
-          </div>
+          {projectFinance.booking_amount > 0 && (
+            <div>
+              <p className="text-muted-foreground text-sm">Booking Amount</p>
+              <p className="font-bold text-lg">
+                ₹{projectFinance.booking_amount.toLocaleString()}
+              </p>
+            </div>
+          )}
+
           <div>
             <p className="text-muted-foreground text-sm">Pending Amount</p>
             <p className="font-bold text-lg text-red-500">
@@ -196,7 +205,11 @@ export default function ProjectFinanceSummary({ leadId, accountId }: ProjectFina
             <div>
               <CustomeDatePicker
                 value={watch("payment_date")}
-                onChange={(value?: string) => setValue("payment_date", value ?? "", { shouldValidate: true })}
+                onChange={(value?: string) =>
+                  setValue("payment_date", value ?? "", {
+                    shouldValidate: true,
+                  })
+                }
                 restriction="pastOnly"
               />
               {errors.payment_date && (
@@ -211,7 +224,9 @@ export default function ProjectFinanceSummary({ leadId, accountId }: ProjectFina
           <div>
             <FileUploadField
               value={watch("payment_file")}
-              onChange={(files) => setValue("payment_file", files, { shouldValidate: true })}
+              onChange={(files) =>
+                setValue("payment_file", files, { shouldValidate: true })
+              }
               accept=".jpg,.jpeg,.png"
               multiple={false}
             />
@@ -226,7 +241,9 @@ export default function ProjectFinanceSummary({ leadId, accountId }: ProjectFina
           <div>
             <TextAreaInput
               value={watch("payment_text")}
-              onChange={(val) => setValue("payment_text", val, { shouldValidate: true })}
+              onChange={(val) =>
+                setValue("payment_text", val, { shouldValidate: true })
+              }
               placeholder="Enter payment description"
             />
             {errors.payment_text && (
@@ -241,7 +258,9 @@ export default function ProjectFinanceSummary({ leadId, accountId }: ProjectFina
               type="submit"
               disabled={addPaymentMutation.isPending || isSubmitting}
             >
-              {addPaymentMutation.isPending ? "Submitting..." : "Submit Payment"}
+              {addPaymentMutation.isPending
+                ? "Submitting..."
+                : "Submit Payment"}
             </Button>
           </div>
         </form>
