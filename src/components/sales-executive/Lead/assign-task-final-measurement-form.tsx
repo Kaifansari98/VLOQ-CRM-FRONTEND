@@ -40,19 +40,33 @@ interface Props {
   };
 }
 
-const formSchema = z.object({
-  assign_lead_to: z.number().min(1, "Assign lead to is required"),
-  task_type: z.enum(["Final Measurements", "Follow Up"], {
-    message: "Task Type is required",
-  }),
-  due_date: z
-    .string()
-    .min(1, "Due Date is required")
-    .refine((val) => !isNaN(Date.parse(val)), {
-      message: "Invalid date format",
+const formSchema = z
+  .object({
+    assign_lead_to: z.number().min(1, "Assign lead to is required"),
+    task_type: z.enum(["Final Measurements", "Follow Up"], {
+      message: "Task Type is required",
     }),
-  remark: z.string().min(1, "Remark is required"),
-});
+    due_date: z
+      .string()
+      .min(1, "Due Date is required")
+      .refine((val) => !isNaN(Date.parse(val)), {
+        message: "Invalid date format",
+      }),
+    remark: z.string().optional(), // ✅ Make remark optional
+  })
+  .refine(
+    (data) => {
+      // ✅ Make remark required ONLY if task type is Follow Up
+      if (data.task_type === "Follow Up") {
+        return data.remark && data.remark.trim().length > 0;
+      }
+      return true;
+    },
+    {
+      message: "Remark is required for Follow Up",
+      path: ["remark"], // ✅ Attach validation error to remark field
+    }
+  );
 
 const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   open,

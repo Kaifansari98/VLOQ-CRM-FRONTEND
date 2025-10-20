@@ -25,6 +25,7 @@ import TextAreaInput from "@/components/origin-text-area";
 import { SinglePdfUploadField } from "@/components/utils/single-pdf-uploader";
 import BaseModal from "@/components/utils/baseModal";
 import { useRouter } from "next/navigation";
+import CurrencyInput from "@/components/custom/CurrencyInput";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -228,17 +229,12 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                       Initial Site Measurement Payable Amount
                     </FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="Enter payable amount"
-                        value={field.value ?? ""}
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value === ""
-                              ? undefined
-                              : parseFloat(e.target.value)
-                          )
+                      <CurrencyInput
+                        value={field.value}
+                        onChange={(val) =>
+                          field.onChange(val === undefined ? undefined : val)
                         }
+                        placeholder="Enter payable amount"
                       />
                     </FormControl>
                     <FormMessage />

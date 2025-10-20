@@ -1,4 +1,6 @@
 import {
+  addMeetingDocs,
+  AddMeetingDocsPayload,
   editSelection,
   EditSelectionPayload,
   fetchDesigningStageLeads,
@@ -139,4 +141,15 @@ export function useDesigningStageCounts(
 
 export const useVendorDesigningLeads = (vendorId: number, userId: number) => {
   return useVendorOverallLeads(vendorId, "Type 3", userId);
+};
+
+export const useAddMeetingDocs = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: AddMeetingDocsPayload) => addMeetingDocs(payload),
+    onSuccess: (_, { vendorId, leadId }) => {
+      queryClient.invalidateQueries({ queryKey: ["meetings", vendorId, leadId] });
+      queryClient.invalidateQueries({ queryKey: ["designingStageCounts", vendorId, leadId] });
+    }
+  });
 };

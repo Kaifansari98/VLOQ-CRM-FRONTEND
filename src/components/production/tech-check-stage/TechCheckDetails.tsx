@@ -58,20 +58,22 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
 
   const pptDocs = clientDocs?.documents?.ppt ?? [];
   const pythaDocs = clientDocs?.documents?.pytha ?? [];
-  const images = pptDocs.filter((d) => isImg(getExt(d.doc_sys_name)));
+  const allDocs = [...pptDocs, ...pythaDocs];
   const otherDocs = pptDocs.filter((d) => !isImg(getExt(d.doc_sys_name)));
 
-  const currentSitePhotos = siteMeasurement?.current_site_photos ?? [];
+  const ismDocs = siteMeasurement?.initial_site_measurement_documents ?? [];
   const finalDocs = finalMeasurement?.measurementDocs ?? [];
 
-  // Calculate stats
-  const approvedDocs = pptDocs.filter(
+  console.log(" ISM Docs :- ", ismDocs);
+
+  // Calculate stats from ALL docs (ppt + pytha)
+  const approvedDocs = allDocs.filter(
     (d) => d.tech_check_status === "APPROVED"
   ).length;
-  const rejectedDocs = pptDocs.filter(
+  const rejectedDocs = allDocs.filter(
     (d) => d.tech_check_status === "REJECTED"
   ).length;
-  const pendingDocs = pptDocs.filter(
+  const pendingDocs = allDocs.filter(
     (d) => !d.tech_check_status || d.tech_check_status === "PENDING"
   ).length;
 
@@ -96,7 +98,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
                   Total Docs
                 </p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {pptDocs.length + pythaDocs.length}
+                  {allDocs.length}
                 </p>
               </div>
             </div>
@@ -413,83 +415,29 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
 
           return (
             <>
-              {/* PPT Images */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-sky-600 shadow-md shadow-blue-500/30">
-                      <ImageIcon className="text-white" size={20} />
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-bold text-gray-900 dark:text-white">
-                        Client Images
-                      </h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Visual documentation and references
-                      </p>
-                    </div>
-                  </div>
-                  <span className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <ImageIcon size={14} />
-                    {images.length} files
-                  </span>
-                </div>
-
-                {images.length ? (
-                  <div className="flex flex-wrap gap-3">
-                    {images.map((img, i) =>
-                      renderCard(img, () => {
-                        setCarouselImages(images);
-                        setStartIndex(i);
-                        setOpenCarousel(true);
-                      })
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/50 dark:to-gray-800/30 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="p-4 rounded-2xl bg-gray-200 dark:bg-gray-800">
-                        <ImageIcon
-                          className="text-gray-400 dark:text-gray-600"
-                          size={40}
-                        />
+              {/* Other Docs */}
+              {otherDocs.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md shadow-indigo-500/30">
+                        <File className="text-white" size={20} />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
-                          No images found
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                          Images will appear here once uploaded
+                        <h4 className="text-lg font-bold text-gray-900 dark:text-white">
+                          Client Documents
+                        </h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          PDFs, presentations, and other files
                         </p>
                       </div>
                     </div>
+                    <span className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700">
+                      <File size={14} />
+                      {otherDocs.length} files
+                    </span>
                   </div>
-                )}
-              </div>
 
-              {/* Other Docs */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md shadow-indigo-500/30">
-                      <File className="text-white" size={20} />
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-bold text-gray-900 dark:text-white">
-                        Client Documents
-                      </h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        PDFs, presentations, and other files
-                      </p>
-                    </div>
-                  </div>
-                  <span className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <File size={14} />
-                    {otherDocs.length} files
-                  </span>
-                </div>
-
-                {otherDocs.length ? (
                   <div className="flex flex-wrap gap-3">
                     {otherDocs.map((doc) =>
                       renderCard(doc, () =>
@@ -497,51 +445,32 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
                       )
                     )}
                   </div>
-                ) : (
-                  <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/50 dark:to-gray-800/30 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="p-4 rounded-2xl bg-gray-200 dark:bg-gray-800">
-                        <File
-                          className="text-gray-400 dark:text-gray-600"
-                          size={40}
-                        />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
-                          No documents found
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                          Documents will appear here once uploaded
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Pytha Files */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-md shadow-violet-500/30">
-                      <FileText className="text-white" size={20} />
+              {pythaDocs.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-md shadow-violet-500/30">
+                        <FileText className="text-white" size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-bold text-gray-900 dark:text-white">
+                          Design Files
+                        </h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          3D design and modeling files
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-lg font-bold text-gray-900 dark:text-white">
-                        Design Files
-                      </h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        3D design and modeling files
-                      </p>
-                    </div>
+                    <span className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700">
+                      <FileText size={14} />
+                      {pythaDocs.length} files
+                    </span>
                   </div>
-                  <span className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <FileText size={14} />
-                    {pythaDocs.length} files
-                  </span>
-                </div>
 
-                {pythaDocs.length ? (
                   <div className="flex flex-wrap gap-3">
                     {pythaDocs.map((doc) =>
                       renderCard(doc, () =>
@@ -549,137 +478,348 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
                       )
                     )}
                   </div>
-                ) : (
-                  <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/50 dark:to-gray-800/30 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="p-4 rounded-2xl bg-gray-200 dark:bg-gray-800">
-                        <FileText
-                          className="text-gray-400 dark:text-gray-600"
-                          size={40}
-                        />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
-                          No Pytha files found
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                          Pytha files will appear here once uploaded
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </>
           );
         })()}
       </motion.div>
 
-      {/* ========== SITE PHOTOS AT THE TIME OF INITIAL SITE MEASUREMENT ========== */}
-      <motion.div variants={itemVariants} className="space-y-4">
-        <div className="flex items-center gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center">
-            <Camera className="text-white" size={20} />
+      {/* ========== INITIAL SITE MEASUREMENT DOCUMENTS ========== */}
+      {ismDocs.length > 0 && (
+        <motion.div variants={itemVariants} className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-md shadow-cyan-500/30">
+                <Camera className="text-white" size={20} />
+              </div>
+              <div>
+                <h4 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Initial Site Measurement Documents
+                </h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Documents captured during initial site visit
+                </p>
+              </div>
+            </div>
+            <span className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700">
+              <Camera size={14} />
+              {ismDocs.length} files
+            </span>
           </div>
-          <div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-              Initial Site Measurement Photos
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Photos taken during site visit
-            </p>
-          </div>
-          <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full ml-auto">
-            {currentSitePhotos.length} photos
-          </span>
-        </div>
 
-        {currentSitePhotos.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3">
-            {currentSitePhotos.map((photo, idx) => (
-              <ImageCard
-                key={photo.id}
-                image={{
-                  id: photo.id,
-                  signed_url: photo.signedUrl,
-                  doc_og_name: photo.originalName,
-                }}
-                size="medium"
-                onClick={() => {
-                  setCarouselImages(
-                    currentSitePhotos.map((p) => ({
-                      id: p.id,
-                      signed_url: p.signedUrl,
-                      doc_og_name: p.originalName,
-                    }))
-                  );
-                  setStartIndex(idx);
-                  setOpenCarousel(true);
-                }}
-              />
-            ))}
+          <div className="flex flex-wrap gap-3">
+            {ismDocs.map((doc) => {
+              const isImage = [
+                "jpg",
+                "jpeg",
+                "png",
+                "gif",
+                "webp",
+                "svg",
+              ].includes(
+                doc.originalName?.split(".").pop()?.toLowerCase() || ""
+              );
+
+              return (
+                <motion.div
+                  key={doc.id}
+                  onClick={() => {
+                    if (isImage) {
+                      setCarouselImages(
+                        ismDocs
+                          .filter((d) =>
+                            [
+                              "jpg",
+                              "jpeg",
+                              "png",
+                              "gif",
+                              "webp",
+                              "svg",
+                            ].includes(
+                              d.originalName?.split(".").pop()?.toLowerCase() ||
+                                ""
+                            )
+                          )
+                          .map((p) => ({
+                            id: p.id,
+                            signed_url: p.signedUrl,
+                            doc_og_name: p.originalName,
+                          }))
+                      );
+                      setStartIndex(
+                        ismDocs
+                          .filter((d) =>
+                            [
+                              "jpg",
+                              "jpeg",
+                              "png",
+                              "gif",
+                              "webp",
+                              "svg",
+                            ].includes(
+                              d.originalName?.split(".").pop()?.toLowerCase() ||
+                                ""
+                            )
+                          )
+                          .findIndex((d) => d.id === doc.id)
+                      );
+                      setOpenCarousel(true);
+                    } else {
+                      window.open(doc.signedUrl, "_blank");
+                    }
+                  }}
+                  whileTap={{ scale: 0.98 }}
+                  className="group relative flex items-center gap-4 w-fit min-w-[320px] max-w-md rounded-xl p-3 border-2 backdrop-blur-sm transition-all duration-300 cursor-pointer overflow-hidden bg-gradient-to-r from-cyan-50/80 via-sky-50/50 to-cyan-50/30 dark:from-cyan-950/40 dark:via-sky-950/30 dark:to-cyan-950/20 border-cyan-300/50 dark:border-cyan-700/50"
+                >
+                  {/* Decorative Background Pattern */}
+                  <div className="absolute inset-0 opacity-5 dark:opacity-10">
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/10 to-transparent"></div>
+                  </div>
+
+                  {/* File Thumbnail/Extension - Left Side */}
+                  <div className="relative flex-shrink-0 w-20 h-20 rounded-lg bg-white/50 dark:bg-black/20 p-1.5 overflow-hidden">
+                    {isImage ? (
+                      <img
+                        src={
+                          doc.signedUrl ||
+                          "https://via.placeholder.com/80x80?text=No+Preview"
+                        }
+                        alt={doc.originalName}
+                        className="w-full h-full rounded-md object-cover"
+                      />
+                    ) : (
+                      <div className="relative w-full h-full flex items-center justify-center">
+                        <div className="relative w-14 h-16 rounded-md shadow-md transition-transform duration-300 group-hover:scale-110 bg-gradient-to-br from-cyan-500 to-cyan-600">
+                          <div className="absolute top-0 right-0 w-0 h-0 border-l-[12px] border-l-transparent border-t-[12px] border-t-white/30 rounded-tr-md"></div>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <FileText className="text-white/90" size={24} />
+                          </div>
+                          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-white/95 dark:bg-white/90 rounded">
+                            <span className="text-[8px] font-black tracking-wider text-cyan-600">
+                              .
+                              {doc.originalName
+                                ?.split(".")
+                                .pop()
+                                ?.toUpperCase() || "FILE"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* File Info */}
+                  <div className="flex-1 min-w-0 pr-2">
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <p
+                        className="text-sm font-bold text-gray-900 dark:text-white truncate leading-tight"
+                        title={doc.originalName}
+                      >
+                        {doc.originalName}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                      <span className="font-medium">Site Visit</span>
+                    </div>
+                  </div>
+
+                  {/* Hover Glow Effect */}
+                  <div
+                    className="absolute inset-0 rounded-xl opacity-0 transition-opacity duration-300 pointer-events-none"
+                    style={{
+                      background:
+                        "radial-gradient(circle at 20% 50%, rgba(6, 182, 212, 0.08), transparent 70%)",
+                    }}
+                  ></div>
+                </motion.div>
+              );
+            })}
           </div>
-        ) : (
-          <div className="text-center py-12 bg-gray-50 dark:bg-gray-900/50 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700">
-            <Camera
-              className="mx-auto text-gray-400 dark:text-gray-600 mb-3"
-              size={40}
-            />
-            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-              No site photos available
-            </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-              Photos will appear here after site measurement
-            </p>
-          </div>
-        )}
-      </motion.div>
+        </motion.div>
+      )}
 
       {/* ========== FINAL MEASUREMENT DOCS ========== */}
-      <motion.div variants={itemVariants} className="space-y-4">
-        <div className="flex items-center gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
-            <FileText className="text-white" size={20} />
+      {(finalDocs?.length || 0) > 0 && (
+        <motion.div variants={itemVariants} className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-md shadow-emerald-500/30">
+                <FileText className="text-white" size={20} />
+              </div>
+              <div>
+                <h4 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Final Measurement Documents
+                </h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Final measurements and documentation
+                </p>
+              </div>
+            </div>
+            <span className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700">
+              <FileText size={14} />
+              {finalDocs?.length || 0} files
+            </span>
           </div>
-          <div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-              Final Measurement Documents
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Final measurements and documentation
-            </p>
-          </div>
-          <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full ml-auto">
-            {finalDocs?.length || 0} files
-          </span>
-        </div>
 
-        {finalDocs?.length > 0 ? (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-            {finalDocs.map((doc: any) => (
-              <DocumentPreview
-                key={doc.id}
-                file={doc}
-                size="medium"
-                onClick={() => window.open(doc.signed_url, "_blank")}
-              />
-            ))}
+          <div className="flex flex-wrap gap-3">
+            {finalDocs.map((doc: any) => {
+              const isImage = [
+                "jpg",
+                "jpeg",
+                "png",
+                "gif",
+                "webp",
+                "svg",
+              ].includes(
+                doc.doc_og_name?.split(".").pop()?.toLowerCase() || ""
+              );
+
+              return (
+                <motion.div
+                  key={doc.id}
+                  onClick={() => {
+                    if (isImage) {
+                      setCarouselImages(
+                        finalDocs
+                          .filter((d: any) =>
+                            [
+                              "jpg",
+                              "jpeg",
+                              "png",
+                              "gif",
+                              "webp",
+                              "svg",
+                            ].includes(
+                              d.doc_og_name?.split(".").pop()?.toLowerCase() ||
+                                ""
+                            )
+                          )
+                          .map((p: any) => ({
+                            id: p.id,
+                            signed_url: p.signed_url,
+                            doc_og_name: p.doc_og_name,
+                          }))
+                      );
+                      setStartIndex(
+                        finalDocs
+                          .filter((d: any) =>
+                            [
+                              "jpg",
+                              "jpeg",
+                              "png",
+                              "gif",
+                              "webp",
+                              "svg",
+                            ].includes(
+                              d.doc_og_name?.split(".").pop()?.toLowerCase() ||
+                                ""
+                            )
+                          )
+                          .findIndex((d: any) => d.id === doc.id)
+                      );
+                      setOpenCarousel(true);
+                    } else {
+                      window.open(doc.signed_url, "_blank");
+                    }
+                  }}
+                  whileTap={{ scale: 0.98 }}
+                  className="group relative flex items-center gap-4 w-fit min-w-[320px] max-w-md rounded-xl p-3 border-2 backdrop-blur-sm transition-all duration-300 cursor-pointer overflow-hidden bg-gradient-to-r from-emerald-50/80 via-green-50/50 to-emerald-50/30 dark:from-emerald-950/40 dark:via-green-950/30 dark:to-emerald-950/20 border-emerald-300/50 dark:border-emerald-700/50"
+                >
+                  {/* Decorative Background Pattern */}
+                  <div className="absolute inset-0 opacity-5 dark:opacity-10">
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/10 to-transparent"></div>
+                  </div>
+
+                  {/* File Thumbnail/Extension - Left Side */}
+                  <div className="relative flex-shrink-0 w-20 h-20 rounded-lg bg-white/50 dark:bg-black/20 p-1.5 overflow-hidden">
+                    {isImage ? (
+                      <img
+                        src={
+                          doc.signed_url ||
+                          "https://via.placeholder.com/80x80?text=No+Preview"
+                        }
+                        alt={doc.doc_og_name}
+                        className="w-full h-full rounded-md object-cover"
+                      />
+                    ) : (
+                      <div className="relative w-full h-full flex items-center justify-center">
+                        <div className="relative w-14 h-16 rounded-md shadow-md transition-transform duration-300 group-hover:scale-110 bg-gradient-to-br from-emerald-500 to-emerald-600">
+                          <div className="absolute top-0 right-0 w-0 h-0 border-l-[12px] border-l-transparent border-t-[12px] border-t-white/30 rounded-tr-md"></div>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <FileText className="text-white/90" size={24} />
+                          </div>
+                          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-white/95 dark:bg-white/90 rounded">
+                            <span className="text-[8px] font-black tracking-wider text-emerald-600">
+                              .
+                              {doc.doc_og_name
+                                ?.split(".")
+                                .pop()
+                                ?.toUpperCase() || "FILE"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* File Info */}
+                  <div className="flex-1 min-w-0 pr-2">
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <p
+                        className="text-sm font-bold text-gray-900 dark:text-white truncate leading-tight"
+                        title={doc.doc_og_name}
+                      >
+                        {doc.doc_og_name}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                      <span className="font-medium">Final Measurement</span>
+                    </div>
+                  </div>
+
+                  {/* Hover Glow Effect */}
+                  <div
+                    className="absolute inset-0 rounded-xl opacity-0 transition-opacity duration-300 pointer-events-none"
+                    style={{
+                      background:
+                        "radial-gradient(circle at 20% 50%, rgba(16, 185, 129, 0.08), transparent 70%)",
+                    }}
+                  ></div>
+                </motion.div>
+              );
+            })}
           </div>
-        ) : (
-          <div className="text-center py-12 bg-gray-50 dark:bg-gray-900/50 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700">
-            <FileText
-              className="mx-auto text-gray-400 dark:text-gray-600 mb-3"
-              size={40}
-            />
-            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-              No final measurement documents
-            </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-              Documents will appear here after final measurement
-            </p>
-          </div>
-        )}
-      </motion.div>
+        </motion.div>
+      )}
 
       {/* Image Preview Modal */}
       <ImageCarouselModal

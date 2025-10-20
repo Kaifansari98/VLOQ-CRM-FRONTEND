@@ -18,6 +18,8 @@ import { useMemo } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import CurrencyInput from "../custom/CurrencyInput";
+import { formatCurrencyINR } from "@/utils/formatCurrency";
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -153,28 +155,33 @@ export default function ProjectFinanceSummary({
       className="h-fit rounded-lg p-4 bg-card flex flex-col gap-4 overflow-y-auto"
     >
       {/* 🔹 Project Finance Summary */}
+      {/* 🔹 Project Finance Summary */}
       <Card className="p-4 shadow-sm text-center">
         <h2 className="text-lg font-semibold mb-4">Project Finance Summary</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* ✅ Total Project */}
           <div>
             <p className="text-muted-foreground text-sm">Total Project</p>
             <p className="font-bold text-lg">
-              ₹{projectFinance.total_project_amount.toLocaleString()}
+              {formatCurrencyINR(projectFinance.total_project_amount)}
             </p>
           </div>
+
+          {/* ✅ Booking Amount (only if greater than 0) */}
           {projectFinance.booking_amount > 0 && (
             <div>
               <p className="text-muted-foreground text-sm">Booking Amount</p>
               <p className="font-bold text-lg">
-                ₹{projectFinance.booking_amount.toLocaleString()}
+                {formatCurrencyINR(projectFinance.booking_amount)}
               </p>
             </div>
           )}
 
+          {/* ✅ Pending Amount */}
           <div>
             <p className="text-muted-foreground text-sm">Pending Amount</p>
             <p className="font-bold text-lg text-red-500">
-              ₹{projectFinance.pending_amount.toLocaleString()}
+              {formatCurrencyINR(projectFinance.pending_amount)}
             </p>
           </div>
         </div>
@@ -188,12 +195,15 @@ export default function ProjectFinanceSummary({
           {/* Amount + Date */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Input
-                type="number"
+              <CurrencyInput
+                value={watch("amount")}
+                onChange={(val) =>
+                  setValue("amount", val ?? 0, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  })
+                }
                 placeholder="Enter payment amount"
-                {...register("amount", {
-                  valueAsNumber: true, // ensure number
-                })}
               />
               {errors.amount && (
                 <p className="text-xs text-red-500 mt-1">

@@ -41,6 +41,8 @@ import { formatAmount } from "@/components/utils/general.utils";
 import SelectDocumentModal from "@/components/modal/select-doc-modal";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { formatCurrencyINR } from "@/utils/formatCurrency";
+import CurrencyInput from "@/components/custom/CurrencyInput";
 
 // ✅ Enhanced Zod schema with proper file validation
 const bookingSchema = z
@@ -246,25 +248,19 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                             Total Booking Value *
                           </FormLabel>
                           <FormControl>
-                            <input
-                              type="number"
+                            <CurrencyInput
+                              value={field.value}
+                              onChange={
+                                (val) => field.onChange(val ?? 0) // fallback to 0 if undefined
+                              }
                               placeholder="Enter Total Booking Value"
-                              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm "
-                              {...field}
-                              value={field.value || ""}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                field.onChange(
-                                  value === "" ? 0 : Number(value)
-                                );
-                              }}
-                              min="1"
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+
                     <FormField
                       control={form.control}
                       name="amount_received"
@@ -274,20 +270,10 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                             Booking Amount Received
                           </FormLabel>
                           <FormControl>
-                            <input
-                              type="number"
+                            <CurrencyInput
+                              value={field.value}
+                              onChange={(val) => field.onChange(val ?? 0)}
                               placeholder="Enter received amount"
-                              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                              {...field}
-                              value={field.value || ""}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                field.onChange(
-                                  value === "" ? 0 : Number(value)
-                                );
-                              }}
-                              min="1"
-                              step="0.01"
                             />
                           </FormControl>
                           <FormMessage />
@@ -297,9 +283,9 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   </div>
 
                   {ismPaymentInfo?.amount && (
-                    <p className="text-sm ">
+                    <p className="text-sm">
                       <span className="font-bold">
-                        ₹{formatAmount(ismPaymentInfo.amount)}
+                        {formatCurrencyINR(ismPaymentInfo.amount)}
                       </span>{" "}
                       ISM amount has already been paid by the client.
                     </p>

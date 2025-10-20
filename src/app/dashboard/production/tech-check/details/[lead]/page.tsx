@@ -19,7 +19,7 @@ import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,8 +39,6 @@ import {
   FileText,
   CheckCircle2,
   AlertCircle,
-  CircleCheck,
-  CircleAlert,
   CircleCheckBig,
   Settings2,
 } from "lucide-react";
@@ -103,9 +101,16 @@ export default function ClientApprovalLeadDetails() {
   const [openClientApprovalModal, setOpenClientApprovalModal] = useState(false);
   const [prevTab, setPrevTab] = useState("details");
 
-  const [openTechCheckConfirm, setOpenTechCheckConfirm] = useState(false);
   const [openFinalApproveConfirm, setOpenFinalApproveConfirm] = useState(false);
   const [openRejectDocsModal, setOpenRejectDocsModal] = useState(false);
+
+  // ✅ Auto-open To-Do modal when screen loads (only for allowed roles)
+  useEffect(() => {
+    if (canTechCheck(userType)) {
+      setOpenRejectDocsModal(true);
+    }
+  }, [userType]);
+
   const [selectedDocs, setSelectedDocs] = useState<number[]>([]);
   const [openRemarkModal, setOpenRemarkModal] = useState(false);
   const [remark, setRemark] = useState("");
@@ -120,10 +125,10 @@ export default function ClientApprovalLeadDetails() {
     leadIdNum
   );
 
-  const docs = [
-    ...(clientDocsData?.documents?.ppt ?? []),
-    ...(clientDocsData?.documents?.pytha ?? []),
-  ];
+  const pptDocs = clientDocsData?.documents?.ppt ?? [];
+  const pythaDocs = clientDocsData?.documents?.pytha ?? [];
+
+  const docs = [...pptDocs, ...pythaDocs];
 
   const [openRequestToTechCheckModal, setOpenRequestToTechCheckModal] =
     useState(false);
@@ -250,12 +255,9 @@ export default function ClientApprovalLeadDetails() {
           value={activeTab}
           onValueChange={(val) => {
             if (val === "todo") {
-              if (!is_client_approval_submitted) {
-                setOpenClientApprovalModal(true);
-              } else {
-                setOpenRequestToTechCheckModal(true);
-              }
-              setPrevTab(activeTab);
+              // ✅ Open Approve/Reject Docs Modal instead of switching tabs
+              setOpenRejectDocsModal(true);
+              setPrevTab(activeTab); // store current tab
               return;
             }
             setActiveTab(val);

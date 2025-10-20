@@ -19,7 +19,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useUploadClientDocumentation } from "@/hooks/final-measurement/use-final-measurement";
-import { uploadClientDocPayload } from "@/api/final-measurement";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -121,7 +120,7 @@ const ClientDocumentationModal: React.FC<Props> = ({
       setPythaFiles([]);
 
       // ✅ Redirect
-      router.push("/dashboard/site-supervisor/client-documentation");
+      router.push("/dashboard/site-supervisor/client-approval");
     } catch (error) {
       console.error(error);
       toast.error("Failed to upload documents");
@@ -145,7 +144,7 @@ const ClientDocumentationModal: React.FC<Props> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-sm">
-                    Client Documentation – PPT File
+                    Client Documentation – Project Files
                   </FormLabel>
                   <FormControl>
                     <FileUploadField
@@ -157,9 +156,9 @@ const ClientDocumentationModal: React.FC<Props> = ({
                       accept=".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx"
                     />
                   </FormControl>
-                  <FormDescription className="text-xs">
+                  {/* <FormDescription className="text-xs">
                     Upload PPT or related files for client documentation.
-                  </FormDescription>
+                  </FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -171,7 +170,7 @@ const ClientDocumentationModal: React.FC<Props> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-sm">
-                    Client Documentation – Pytha File
+                    Client Documentation – Design Files
                   </FormLabel>
                   <FormControl>
                     <FileUploadField
@@ -183,9 +182,9 @@ const ClientDocumentationModal: React.FC<Props> = ({
                       accept=".pyo,.pdf,.pytha"
                     />
                   </FormControl>
-                  <FormDescription className="text-xs">
+                  {/* <FormDescription className="text-xs">
                     Upload Pytha files (.pyo) for client documentation.
-                  </FormDescription>
+                  </FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}

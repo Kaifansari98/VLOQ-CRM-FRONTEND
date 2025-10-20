@@ -21,7 +21,7 @@ const QuotationTab = () => {
           </div>
           <h3 className="font-semibold text-xl mb-3">No quotations found</h3>
           <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-            You don't have any design quotations uploaded yet. Quotation
+            You don't have any quotations uploaded yet. Quotation
             documents will appear here once they are added.
           </p>
         </div>

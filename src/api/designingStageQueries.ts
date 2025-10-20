@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 import {
   DesignSelectionsResponse,
@@ -277,5 +277,36 @@ export const getInitialSiteMeasurementTask = async (
   const { data } = await apiClient.get(
     `/leads/tasks/user/${userId}/lead/${leadId}/initial-site-measurement`
   );
+  return data;
+};
+
+// ✅ API: Add more documents to an existing meeting
+export interface AddMeetingDocsPayload {
+  meetingId: number;
+  leadId: number;
+  vendorId: number;
+  userId: number;
+  accountId: number;
+  files: File[];
+}
+
+export const addMeetingDocs = async (payload: AddMeetingDocsPayload) => {
+  const formData = new FormData();
+  formData.append("meetingId", payload.meetingId.toString());
+  formData.append("leadId", payload.leadId.toString());
+  formData.append("vendorId", payload.vendorId.toString());
+  formData.append("userId", payload.userId.toString());
+  formData.append("accountId", payload.accountId.toString());
+
+  payload.files.forEach((file) => formData.append("files", file));
+
+  const { data } = await apiClient.post(
+    "/leads/designing-stage/add-meeting-docs",
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    }
+  );
+
   return data;
 };

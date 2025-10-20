@@ -13,7 +13,7 @@ export interface FinalMeasurementPayload {
 export interface AssignToFinalMeasurementPayload {
   task_type: string;
   due_date: string;
-  remark: string;
+  remark?: string;
   user_id: number;
   created_by: number;
 }

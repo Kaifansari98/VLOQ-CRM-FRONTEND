@@ -21,7 +21,7 @@ import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -67,7 +67,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useDesigningStageCounts } from "@/hooks/designing-stage/designing-leads-hooks";
 import CustomeTooltip from "@/components/cutome-tooltip";
-import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
+import {
+  canReassingLead,
+  canDeleteLead,
+  canMoveToBookingStage,
+} from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 
 export default function DesigningStageLead() {
@@ -97,6 +101,12 @@ export default function DesigningStageLead() {
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
   console.log("page details :- ", lead?.assignedTo?.id);
+
+  useEffect(() => {
+    if (!isLoading && canMoveToBookingStage(userType) && canMoveToBooking) {
+      setBookingOpenLead(true);
+    }
+  }, [isLoading, userType, canMoveToBooking]);
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
@@ -161,7 +171,7 @@ export default function DesigningStageLead() {
             <Breadcrumb>
               <BreadcrumbList>
                 {/* <BreadcrumbItem> */}
-                  {/* <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
+                {/* <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
@@ -196,7 +206,12 @@ export default function DesigningStageLead() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {/* Move to Booking */}
-                {!canMoveToBooking ? (
+                {canMoveToBookingStage(userType) && canMoveToBooking ? (
+                  <Button onClick={() => setBookingOpenLead(true)}>
+                    <ClipboardCheck className="h-4 w-4" />
+                    Move To Booking
+                  </Button>
+                ) : (
                   <CustomeTooltip
                     truncateValue={
                       <div className="flex items-center opacity-50 cursor-not-allowed px-2">
@@ -204,13 +219,12 @@ export default function DesigningStageLead() {
                         Move To Booking
                       </div>
                     }
-                    value="Requires at least 1 Quotation and 1 Design"
+                    value={
+                      !canMoveToBooking
+                        ? "Requires at least 1 Quotation and 1 Design"
+                        : "You don't have permission to move this lead to booking stage"
+                    }
                   />
-                ) : (
-                  <DropdownMenuItem onSelect={() => setBookingOpenLead(true)}>
-                    <ClipboardCheck className="h-4 w-4" />
-                    Move To Booking
-                  </DropdownMenuItem>
                 )}
 
                 {/* Lead Status submenu */}

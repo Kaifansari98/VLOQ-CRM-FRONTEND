@@ -167,8 +167,7 @@ const MeetingsTab = () => {
           </div>
           <h3 className="font-semibold text-xl mb-3">No meetings found</h3>
           <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-            You don't have any meetings scheduled yet. Meetings will appear here
-            once they are created.
+            Meetings will appear here once they are created.
           </p>
         </div>
       </div>

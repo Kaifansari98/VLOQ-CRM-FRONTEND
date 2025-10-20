@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "@/components/ModeToggle";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
@@ -64,8 +64,13 @@ import InitialSiteMeasuresMent from "@/components/sales-executive/Lead/initial-s
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useLeadById } from "@/hooks/useLeadsQueries";
-import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
+import {
+  canReassingLead,
+  canDeleteLead,
+  canUploadISM,
+} from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
+import CustomeTooltip from "@/components/cutome-tooltip";
 
 export default function SiteMeasurementLead() {
   const router = useRouter();
@@ -97,8 +102,24 @@ export default function SiteMeasurementLead() {
     "onHold"
   );
 
+  const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+  const lead = data?.data?.lead;
+
   // Tabs
   const [activeTab, setActiveTab] = useState("details");
+
+  useEffect(() => {
+    // ✅ 1. Wait until data finishes loading
+    if (isLoading) return;
+
+    // ✅ 2. Ensure lead data is available
+    if (!lead) return;
+
+    // ✅ 3. Only open modal if lead is NOT draft and user has permission to upload ISM
+    if (!lead.is_draft && canUploadISM(userType)) {
+      setOpenMeasurement(true); // Open Assign Task Modal
+    }
+  }, [isLoading, lead?.is_draft, userType]);
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -128,9 +149,6 @@ export default function SiteMeasurementLead() {
       }
     );
   };
-
-  const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
-  const lead = data?.data?.lead;
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
@@ -190,10 +208,25 @@ export default function SiteMeasurementLead() {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => setOpenMeasurement(true)}>
-                  <ClipboardCheck size={20} />
-                  Upload Measurement
-                </DropdownMenuItem>
+                {canUploadISM(userType) && !lead?.is_draft ? (
+                  <DropdownMenuItem onSelect={() => setOpenMeasurement(true)}>
+                    <ClipboardCheck size={20} />
+                    Upload Measurement
+                  </DropdownMenuItem>
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <ClipboardCheck size={20} /> Upload Measurement
+                      </DropdownMenuItem>
+                    }
+                    value={
+                      lead?.is_draft
+                        ? "This action cannot be performed because the lead is still in Draft mode."
+                        : "You don't have permission to upload measurements."
+                    }
+                  />
+                )}
 
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>

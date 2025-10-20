@@ -217,6 +217,12 @@ export default function LeadsGenerationForm({
       queryClient.invalidateQueries({
         queryKey: ["leadStats", vendorId, userId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["vendorUserLeadsOpen", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["vendorUserLeads", vendorId, userId],
+      });
       form.reset();
       setFiles([]);
       onClose();

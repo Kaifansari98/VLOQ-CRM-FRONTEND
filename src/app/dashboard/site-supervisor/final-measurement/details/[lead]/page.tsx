@@ -4,10 +4,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import {
   SidebarInset,
@@ -21,7 +19,7 @@ import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,8 +57,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import FinalMeasurementModal from "@/components/sales-executive/booking-stage/final-measurement-modal";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
-import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
+import {
+  canReassingLead,
+  canDeleteLead,
+  canUploadFinalMeasurements,
+} from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
+import CustomeTooltip from "@/components/cutome-tooltip";
 
 export default function FinalMeasurementLeadDetails() {
   const { lead: leadId } = useParams();
@@ -77,8 +80,15 @@ export default function FinalMeasurementLeadDetails() {
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [openFinalDocModal, setOpenFinalDocModal] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
+  const [openFinalDocModal, setOpenFinalDocModal] = useState(false);
+
+  // ✅ Auto-trigger To-Do Task only for allowed roles
+  useEffect(() => {
+    if (canUploadFinalMeasurements(userType)) {
+      setOpenFinalDocModal(true); // Open modal directly
+    }
+  }, [userType]);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
 
@@ -175,10 +185,23 @@ export default function FinalMeasurementLeadDetails() {
                   </DropdownMenuItem>
                 )}
 
-                <DropdownMenuItem onClick={() => setOpenFinalDocModal(true)}>
-                  <FileText size={20} />
-                  Final Documentation
-                </DropdownMenuItem>
+                {/* ✅ Final Documentation - With Permission & Tooltip */}
+                {canUploadFinalMeasurements(userType) ? (
+                  <DropdownMenuItem onClick={() => setOpenFinalDocModal(true)}>
+                    <FileText size={20} />
+                    Final Documentation
+                  </DropdownMenuItem>
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5">
+                        <FileText size={18} className="mr-2" />
+                        Final Documentation
+                      </div>
+                    }
+                    value="You don't have permission to upload final documentation."
+                  />
+                )}
 
                 {canDeleteLead(userType) && (
                   <>
@@ -263,16 +286,16 @@ export default function FinalMeasurementLeadDetails() {
         />
 
         {/* Final Documentation Modal */}
-        <FinalMeasurementModal
-          open={openFinalDocModal}
-          onOpenChange={(open) => {
-            setOpenFinalDocModal(open);
-            if (!open) {
-              setActiveTab("details"); // go back to details when modal closes
-            }
-          }}
-          data={normalizedLead}
-        />
+        {canUploadFinalMeasurements(userType) && (
+          <FinalMeasurementModal
+            open={openFinalDocModal}
+            onOpenChange={(open) => {
+              setOpenFinalDocModal(open);
+              if (!open) setActiveTab("details");
+            }}
+            data={normalizedLead}
+          />
+        )}
 
         <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
           <AlertDialogContent>

@@ -9,17 +9,15 @@ import {
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "@/components/ModeToggle";
 import { useParams, useSearchParams } from "next/navigation";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { useAppSelector } from "@/redux/store";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
@@ -64,7 +62,7 @@ import {
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLeadById } from "@/hooks/useLeadsQueries";
-import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
+import { canReassingLead, canDeleteLead, canAssignISM } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
 
@@ -93,8 +91,6 @@ export default function LeadDetails() {
   const isDraftLead = !!lead?.is_draft;
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
-  // console.log("Lead Code :-", leadCode);
-  // console.log(`${lead.firstname || ""} ${lead.lastname || ""}`.trim());
 
   const uiDisabled = isLoading || !lead;
 
@@ -139,6 +135,20 @@ export default function LeadDetails() {
       }
     );
   };
+
+  useEffect(() => {
+    // ✅ Wait until loading is finished
+    if (isLoading) return;
+
+    // ✅ Wait until lead data is available
+    if (!lead) return;
+
+    // ✅ Now check draft status & user permissions
+    if (lead.is_draft === false && canAssignISM(userType)) {
+      setAssignOpen(true); // Open Assign Task Modal
+      setActiveTab("projects"); // Highlight To-Do Task tab
+    }
+  }, [isLoading, lead?.is_draft, userType]);
 
   // 🔹 Tabs state
   const [activeTab, setActiveTab] = useState("details");
@@ -222,7 +232,7 @@ export default function LeadDetails() {
                     Lead Status
                   </DropdownMenuSubTrigger>
 
-                  {!isDraftLead && !uiDisabled && (
+                  {!uiDisabled && (
                     <DropdownMenuSubContent>
                       <DropdownMenuItem
                         onSelect={() => {
@@ -248,16 +258,12 @@ export default function LeadDetails() {
                 {canDeleteLead(userType) && (
                   <>
                     <DropdownMenuSeparator />
-                    {isDraftLead || uiDisabled ? (
+                    {uiDisabled ? (
                       <CustomeTooltip
                         truncateValue={
                           <DropdownMenuItem disabled>Delete</DropdownMenuItem>
                         }
-                        value={
-                          isDraftLead
-                            ? "This action cannot be performed because the lead is still in Draft mode."
-                            : "Please wait while the lead loads."
-                        }
+                        value="Please wait while the lead loads."
                       />
                     ) : (
                       <DropdownMenuItem onSelect={() => setOpenDelete(true)}>

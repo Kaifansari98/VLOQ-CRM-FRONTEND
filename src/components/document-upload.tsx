@@ -52,7 +52,7 @@ export function DocumentsUploader({
   }, [accept]);
 
   const description =
-    "You can upload up to 10 design files (PDF, CAD or supported formats). Drag & drop or click below to select files.";
+    "You can upload up to 10 files (PDF or any supported formats). Drag & drop or click below to select files.";
 
   // Simulated upload handler
   const onUpload: NonNullable<FileUploadProps["onUpload"]> = React.useCallback(
