@@ -96,7 +96,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
             {activeTab === "quotation" && (
               <Button
                 size="sm"
-                variant="secondary"
+                variant="default"
                 className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
                 onClick={() => setOpenQuotationModal(true)}
               >

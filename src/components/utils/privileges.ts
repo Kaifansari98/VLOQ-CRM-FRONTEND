@@ -16,6 +16,30 @@ export const canCreateLead = (userType: string | undefined) => {
   return allowCreateRoles.includes(userType.toLowerCase());
 };
 
+export const canAssignISM = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  return allowCreateRoles.includes(userType.toLowerCase());
+};
+
+export const canAssignFM = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  return allowCreateRoles.includes(userType.toLowerCase());
+};
+
+export const canUploadISM = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  return allowCreateRoles.includes(userType.toLowerCase());
+};
+
+export const canMoveToBookingStage = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  return allowCreateRoles.includes(userType.toLowerCase());
+};
+
 export const formatDateTime = (dateString?: string) => {
   if (!dateString) return "N/A";
   const date = new Date(dateString);
@@ -37,5 +61,29 @@ export const canTechCheck = (userType: string | undefined) => {
 export const canMoveToOrderLogin = (userType: string | undefined) => {
   if (!userType) return false;
   const allowedRoles = ["super_admin", "admin", "tech-check"];
+  return allowedRoles.includes(userType.toLowerCase());
+};
+
+export const canUploadFinalMeasurements = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowedRoles = ["super_admin", "admin", "site-supervisor"];
+  return allowedRoles.includes(userType.toLowerCase());
+};
+
+export const canUploadClientDocumentation = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  return allowedRoles.includes(userType.toLowerCase());
+};
+
+export const canUploadClientApproval = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  return allowedRoles.includes(userType.toLowerCase());
+};
+
+export const canRequestToTeckCheck = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowedRoles = ["super_admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };

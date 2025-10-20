@@ -18,31 +18,19 @@ import {
   FormLabel,
   FormMessage,
   FormControl,
+  FormDescription,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import TextAreaInput from "@/components/origin-text-area";
 import { useAppSelector } from "@/redux/store";
-import {
-  useSubmitClientApproval,
-} from "@/api/client-approval";
+import { useSubmitClientApproval } from "@/api/client-approval";
 import { toast } from "react-toastify";
 import CustomeDatePicker from "@/components/date-picker";
 import { Input } from "@/components/ui/input";
-
-// ✅ Zod schema (only two required)
-const schema = z.object({
-  approvalScreenshots: z
-    .array(z.any())
-    .min(1, "At least one client approval screenshot is required"),
-  amount_paid: z.number().optional(),
-  advance_payment_date: z.string().optional(),
-  payment_files: z.array(z.any()).max(1).optional(),
-
-  payment_text: z.string().optional(),
-});
-
-type FormValues = z.infer<typeof schema>;
+import { usePaymentLogs } from "@/hooks/booking-stage/use-booking";
+import { formatCurrencyINR } from "@/utils/formatCurrency";
+import CurrencyInput from "@/components/custom/CurrencyInput";
 
 interface ClientApprovalModalProps {
   open: boolean;
@@ -64,6 +52,43 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
 
   const { mutate, isPending } = useSubmitClientApproval();
 
+  const { data: paymentData, isLoading: isFinanceLoading } = usePaymentLogs(
+    data?.id || 0,
+    vendorId || 0
+  );
+
+  const projectFinance = paymentData?.project_finance ?? {
+    total_project_amount: 0,
+    pending_amount: 0,
+    booking_amount: 0,
+  };
+
+  // ✅ Zod schema (only two required)
+  const schema = z
+    .object({
+      approvalScreenshots: z
+        .array(z.any())
+        .min(1, "At least one client approval screenshot is required"),
+      amount_paid: z.number().optional(),
+      advance_payment_date: z.string().optional(),
+      payment_files: z.array(z.any()).max(1).optional(),
+      payment_text: z.string().optional(),
+    })
+    .superRefine((values, ctx) => {
+      if (
+        values.amount_paid &&
+        projectFinance.pending_amount !== undefined &&
+        values.amount_paid > projectFinance.pending_amount
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Amount cannot exceed pending amount`,
+          path: ["amount_paid"],
+        });
+      }
+    });
+  type FormValues = z.infer<typeof schema>;
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -74,6 +99,10 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
       payment_text: "",
     },
   });
+
+  // ✅ Console the values
+  console.log("Total Project Amount:", projectFinance.total_project_amount);
+  console.log("Pending Amount:", projectFinance.pending_amount);
 
   const onSubmit: SubmitHandler<FormValues> = (values) => {
     if (!vendorId || !userId || !data?.id || !data?.accountId) {
@@ -140,22 +169,19 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
                 )}
               />
 
-              {/* Amount + Date in one row (Optional now) */}
+              {/* ✅ Amount + Date (Perfectly Aligned Layout) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Amount Field */}
                 <FormField
                   control={form.control}
                   name="amount_paid"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="flex flex-col">
                       <FormLabel className="text-sm">Amount Paid</FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(e) =>
-                            field.onChange(Number(e.target.value) || undefined)
-                          }
+                        <CurrencyInput
+                          value={field.value}
+                          onChange={field.onChange}
                           placeholder="Enter amount"
                         />
                       </FormControl>
@@ -164,11 +190,12 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
                   )}
                 />
 
+                {/* Date Field */}
                 <FormField
                   control={form.control}
                   name="advance_payment_date"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="flex flex-col">
                       <FormLabel className="text-sm">
                         Advance Payment Date
                       </FormLabel>
@@ -183,6 +210,16 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
                     </FormItem>
                   )}
                 />
+              </div>
+
+              {/* ✅ Remaining Amount (Placed Uniformly Below Both Fields) */}
+              <div className="mt-1">
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-bold text-zinc-900">
+                    {formatCurrencyINR(projectFinance.pending_amount)}
+                  </span>{" "}
+                  is the remaining amount.
+                </p>
               </div>
 
               {/* Payment Proof (Optional) */}

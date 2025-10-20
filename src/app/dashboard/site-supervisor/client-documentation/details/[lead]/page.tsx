@@ -21,7 +21,7 @@ import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,8 +59,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ClientDocumantationModal from "@/components/site-supervisor/final-measurement/client-documantation-modal";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
-import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
+import {
+  canReassingLead,
+  canDeleteLead,
+  canUploadClientDocumentation,
+} from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
+import CustomeTooltip from "@/components/cutome-tooltip";
 
 export default function ClientDocumentationLeadDetails() {
   const { lead: leadId } = useParams();
@@ -79,6 +84,13 @@ export default function ClientDocumentationLeadDetails() {
   const [activeTab, setActiveTab] = useState("details");
   const [openClientDocModal, setOpenClientDocModal] = useState(false);
   const [prevTab, setPrevTab] = useState("details");
+
+  // ✅ Only auto-open if user has permission
+  useEffect(() => {
+    if (canUploadClientDocumentation(userType)) {
+      setOpenClientDocModal(true);
+    }
+  }, [userType]);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
 
@@ -155,10 +167,24 @@ export default function ClientDocumentationLeadDetails() {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setOpenClientDocModal(true)}>
-                  <FileText size={20} />
-                  Client Documentation
-                </DropdownMenuItem>
+                {/* ✅ Client Documentation Permission-Based Rendering */}
+                {canUploadClientDocumentation(userType) ? (
+                  <DropdownMenuItem onClick={() => setOpenClientDocModal(true)}>
+                    <FileText size={20} />
+                    Client Documentation
+                  </DropdownMenuItem>
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5">
+                        <FileText size={18} className="mr-2" />
+                        Client Documentation
+                      </div>
+                    }
+                    value="You don’t have permission to upload client documentation."
+                  />
+                )}
+
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen size={20} />
                   Edit

@@ -4,10 +4,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import {
   SidebarInset,
@@ -21,7 +19,7 @@ import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,7 +57,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ClientApprovalModal from "@/components/site-supervisor/client-approval/client-approval-modal";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
-import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
+import {
+  canReassingLead,
+  canDeleteLead,
+  canRequestToTeckCheck,
+  canUploadClientApproval,
+} from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import RequestToTechCheckModal from "@/components/site-supervisor/client-approval/request-to-tech-check-modal";
 import CustomeTooltip from "@/components/cutome-tooltip";
@@ -94,6 +97,17 @@ export default function ClientApprovalLeadDetails() {
   const accountId = Number(lead?.account_id);
 
   const is_client_approval_submitted = lead?.is_client_approval_submitted;
+
+  // 🔹 Auto-open Client Approval Modal only if user has access
+  useEffect(() => {
+    if (
+      !isLoading &&
+      !is_client_approval_submitted &&
+      canUploadClientApproval(userType)
+    ) {
+      setOpenClientApprovalModal(true);
+    }
+  }, [userType, is_client_approval_submitted]);
 
   console.log("is_client_approval_submitted :- ", is_client_approval_submitted);
 
@@ -156,8 +170,8 @@ export default function ClientApprovalLeadDetails() {
           </div>
           <div className="flex items-center space-x-2">
             {/* ✅ Request To Tech Check button (always visible) */}
+            {/* ✅ Request To Tech Check button (Check both client approval & privilege) */}
             {!is_client_approval_submitted ? (
-              // Show disabled with tooltip before client approval
               <CustomeTooltip
                 truncateValue={
                   <Button
@@ -171,14 +185,27 @@ export default function ClientApprovalLeadDetails() {
                 }
                 value="Submit Client Approval first to enable Tech Check"
               />
-            ) : (
-              // Show active button once approval is submitted
+            ) : canRequestToTeckCheck(userType) ? (
               <Button
                 size="sm"
                 onClick={() => setOpenRequestToTechCheckModal(true)}
               >
                 Request To Tech Check
               </Button>
+            ) : (
+              <CustomeTooltip
+                truncateValue={
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled
+                    className="opacity-60 cursor-not-allowed"
+                  >
+                    Request To Tech Check
+                  </Button>
+                }
+                value="You don’t have permission for Tech Check request"
+              />
             )}
 
             <ModeToggle />
@@ -191,20 +218,43 @@ export default function ClientApprovalLeadDetails() {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end">
+                {/* ✅ Client Approval Access Control */}
                 {!is_client_approval_submitted ? (
-                  <DropdownMenuItem
-                    onClick={() => setOpenClientApprovalModal(true)}
-                  >
-                    <FileText size={20} />
-                    Client Approval
-                  </DropdownMenuItem>
-                ) : (
+                  canUploadClientApproval(userType) ? (
+                    <DropdownMenuItem
+                      onClick={() => setOpenClientApprovalModal(true)}
+                    >
+                      <FileText size={20} />
+                      Client Approval
+                    </DropdownMenuItem>
+                  ) : (
+                    <CustomeTooltip
+                      truncateValue={
+                        <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5">
+                          <FileText size={18} className="mr-2" />
+                          Client Approval
+                        </div>
+                      }
+                      value="You don’t have permission for Client Approval"
+                    />
+                  )
+                ) : canRequestToTeckCheck(userType) ? (
                   <DropdownMenuItem
                     onClick={() => setOpenRequestToTechCheckModal(true)}
                   >
                     <FileText size={20} />
                     Request To Tech Check
                   </DropdownMenuItem>
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5">
+                        <FileText size={18} className="mr-2" />
+                        Request To Tech Check
+                      </div>
+                    }
+                    value="You don’t have permission to request Tech Check"
+                  />
                 )}
 
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
@@ -274,12 +324,21 @@ export default function ClientApprovalLeadDetails() {
 
           <TabsContent value="details">
             <main className="flex-1 h-fit">
-              <LeadDetailsUtil
-                status="clientdocumentation"
-                leadId={leadIdNum}
-                accountId={accountId}
-                defaultTab="clientdocumentation"
-              />
+              {is_client_approval_submitted ? (
+                <LeadDetailsUtil
+                  status="clientApproval"
+                  leadId={leadIdNum}
+                  accountId={accountId}
+                  defaultTab="clientApproval"
+                />
+              ) : (
+                <LeadDetailsUtil
+                  status="clientdocumentation"
+                  leadId={leadIdNum}
+                  accountId={accountId}
+                  defaultTab="clientdocumentation"
+                />
+              )}
             </main>
           </TabsContent>
 

@@ -139,6 +139,12 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     onSuccess: (data) => {
       console.log("✅ Mutation onSuccess:", data);
       toast.success("Lead updated successfully!");
+
+      // ✅ Refresh specific lead details
+      queryClient.invalidateQueries({
+        queryKey: ["lead", leadData.id, vendorId, createdBy],
+      });
+
       queryClient.invalidateQueries({
         queryKey: ["vendorUserLeadsOpen", vendorId],
       });

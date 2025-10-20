@@ -14,6 +14,7 @@ import BaseModal from "@/components/utils/baseModal";
 import DocumentPreview from "@/components/utils/file-preview";
 import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import ImageCard from "@/components/utils/image-card";
+import AddMeetingFilesModal from "../../add-meeting-files-modal";
 
 interface MeetingDetailProps {
   open: boolean;
@@ -29,6 +30,8 @@ const MeetingDetailsModal = ({
   const meetings = meeting.designMeetingDocsMapping;
   const [openCarouselModal, setOpenCarouselModal] = useState(false);
   const [startIndex, setStartIndex] = useState(0);
+
+  const [openAddFilesModal, setOpenAddFilesModal] = useState(false);
 
   const formatDateOnly = (dateString: string): string =>
     new Date(dateString).toLocaleDateString("en-IN", {
@@ -126,7 +129,7 @@ const MeetingDetailsModal = ({
                 Meeting Files And Images
               </h2>
               <Button
-                onClick={() => console.log("Add More Files clicked")}
+                onClick={() => setOpenAddFilesModal(true)}
                 className="flex items-center text-xs sm:text-sm gap-2 h-8 sm:h-9"
               >
                 <Plus className="h-4 w-4" />
@@ -171,6 +174,12 @@ const MeetingDetailsModal = ({
         initialIndex={startIndex}
         images={meetingImages}
         onClose={() => setOpenCarouselModal(false)}
+      />
+
+      <AddMeetingFilesModal
+        open={openAddFilesModal}
+        onOpenChange={setOpenAddFilesModal}
+        meetingId={meeting.id}
       />
     </>
   );

@@ -21,7 +21,7 @@ import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,8 +58,13 @@ import { toast } from "react-toastify";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
-import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
+import {
+  canReassingLead,
+  canDeleteLead,
+  canAssignFM,
+} from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
+import CustomeTooltip from "@/components/cutome-tooltip";
 
 export default function BookingStageLeadsDetails() {
   const { lead: leadId } = useParams();
@@ -71,13 +76,19 @@ export default function BookingStageLeadsDetails() {
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(true);
 
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+
+  useEffect(() => {
+    if (canAssignFM(userType)) {
+      setAssignOpen(true);
+    }
+  }, [userType]);
 
   const lead = data?.data?.lead;
   const accountId = lead?.account_id;
@@ -144,9 +155,21 @@ export default function BookingStageLeadsDetails() {
             </Breadcrumb>
           </div>
           <div className="flex items-center space-x-2">
-            <Button size="sm" onClick={() => setAssignOpen(true)}>
-              Assign Task
-            </Button>
+            {canAssignFM(userType) ? (
+              <Button size="sm" onClick={() => setAssignOpen(true)}>
+                Assign Task
+              </Button>
+            ) : (
+              <CustomeTooltip
+                truncateValue={
+                  <Button size="sm" disabled>
+                    Assign Task
+                  </Button>
+                }
+                value="You don't have permission to assign Final Measurement tasks."
+              />
+            )}
+
             <ModeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

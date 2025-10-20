@@ -36,7 +36,17 @@ const designsSchema = z.object({
     })
     .refine((files) => files.length <= 10, {
       message: "You can upload up to 10 files only.",
-    }),
+    })
+    .refine((files: File[]) =>
+      files.every((f) =>
+        /\.(pdf|zip|pyo|pytha|dwg|dxf|stl|step|stp|iges|igs|3ds|obj|skp|sldprt|sldasm|prt|catpart|catproduct)$/i.test(
+          f.name
+        )
+      ),
+      {
+        message: "Only PDF, ZIP or supported design formats are allowed.",
+      }
+    ),
 });
 
 type DesignsFormValues = z.infer<typeof designsSchema>;
@@ -129,7 +139,7 @@ const DesignsModal: React.FC<LeadViewModalProps> = ({ open, onOpenChange }) => {
                         <DocumentsUploader
                           value={field.value}
                           onChange={field.onChange}
-                          accept=".pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct"
+                          accept=".pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
                         />
                       </FormControl>
                       <FormMessage />
