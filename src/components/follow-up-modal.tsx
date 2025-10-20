@@ -138,7 +138,7 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
             <div className="flex flex-col gap-1">
               <span className="text-base font-semibold">Mark as Completed</span>
               <p className="text-sm text-muted-foreground">
-                Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                If your follow up is completed, you can mark it as completed.
               </p>
             </div>
             <Button
@@ -154,8 +154,8 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
             <div className="flex flex-col gap-1">
               <span className="text-base font-semibold">Reschedule</span>
               <p className="text-sm text-muted-foreground">
-                Lorem ipsum dolor sit amet consectetur adipisicing elit. Quos,
-                id!
+                If the client has pushed the meeting date, you can reschedule
+                it.
               </p>
             </div>
             <Button
@@ -171,8 +171,7 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
             <div className="flex flex-col gap-1">
               <span className="text-base font-semibold ">Mark as Cancel</span>
               <p className="text-sm text-muted-foreground">
-                Lorem ipsum dolor sit amet consectetur adipisicing elit.
-                Accusamus, aliquid.
+                If this follow up is cancelled, you can mark it as cancelled.
               </p>
             </div>
             <Button className="w-28" onClick={() => setOpenCancelModal(true)}>
