@@ -37,7 +37,7 @@ import {
   useRequestToTechCheck,
 } from "@/api/client-approval";
 import AssignToPicker from "@/components/assign-to-picker";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 
 const schema = z.object({
   assign_to_user_id: z.number().min(1, "Please select a Tech Check user"),

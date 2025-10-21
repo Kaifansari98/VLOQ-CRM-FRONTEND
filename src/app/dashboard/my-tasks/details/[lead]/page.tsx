@@ -21,7 +21,6 @@ import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import InitialSiteMeasuresMent from "@/components/sales-executive/Lead/initial-site-measurement-form";
 
 export default function MyTaskLeadDetails() {
   const { leadId } = useParams();
@@ -40,7 +39,6 @@ export default function MyTaskLeadDetails() {
 
   const lead = data?.data?.lead;
   const leadStatus = lead?.statusType?.type;
-
 
   const formatDateTime = (dateString?: string) => {
     if (!dateString) return "N/A";
