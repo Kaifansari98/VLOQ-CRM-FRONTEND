@@ -145,13 +145,13 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
       <motion.div variants={itemVariants} className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Final Measurement Note</h3>
-          <Button
+          {/* <Button
             size="sm"
             className="gap-1"
             onClick={() => setOpenEditNoteModal(true)}
           >
             <Edit2 size={14} /> Edit
-          </Button>
+          </Button> */}
         </div>
         <div className="bg-muted border rounded-md p-3 text-sm min-h-[60px]">
           {final_desc_note || "No description provided."}
