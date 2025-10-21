@@ -103,11 +103,13 @@ export default function ClientApprovalLeadDetails() {
     if (
       !isLoading &&
       !is_client_approval_submitted &&
-      canUploadClientApproval(userType)
+      canUploadClientApproval(userType) &&
+      userType?.toLowerCase() !== "admin" &&
+      userType?.toLowerCase() !== "super-admin"
     ) {
       setOpenClientApprovalModal(true);
     }
-  }, [userType, is_client_approval_submitted]);
+  }, [isLoading, userType, is_client_approval_submitted]);
 
   console.log("is_client_approval_submitted :- ", is_client_approval_submitted);
 

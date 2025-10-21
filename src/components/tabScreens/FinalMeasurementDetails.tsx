@@ -81,7 +81,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
           )}
 
           {/* Add Button as last grid item */}
-          <div
+          {/* <div
             onClick={() => setOpenAddPhotosModal(true)}
             className="flex flex-col items-center justify-center h-32 w-full border-2 border-dashed border-gray-300 dark:bg-[#262626] rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 group bg-[#f5f5f5]"
           >
@@ -92,7 +92,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
             <span className="text-xs font-medium text-gray-500 group-hover:text-blue-600">
               Add Photo
             </span>
-          </div>
+          </div> */}
         </div>
       </motion.div>
 

@@ -131,7 +131,7 @@ export default function ClientDocumentationDetails({
 
       {/* -------- PYTHA Files -------- */}
       <motion.div variants={itemVariants} className="space-y-3">
-        <h3 className="text-lg font-semibold">Client Pytha Files (.pyo)</h3>
+        <h3 className="text-lg font-semibold">Design Files</h3>
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
           {pythaDocs.length > 0 ? (
             pythaDocs.map((doc) => (
@@ -144,7 +144,7 @@ export default function ClientDocumentationDetails({
             ))
           ) : (
             <p className="text-sm text-gray-500 italic">
-              No Pytha files uploaded yet.
+              No Design files uploaded yet.
             </p>
           )}
         </div>

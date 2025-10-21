@@ -362,6 +362,7 @@ export interface DesignsData {
   document_type: string;
   total_documents: number;
   documents: DesignsDocument[];
+  leadStage: string;
 }
 
 export interface GetDesignsResponse {
@@ -369,6 +370,7 @@ export interface GetDesignsResponse {
   message: string;
   logs: string[];
   data: DesignsData;
+  leadStage?: string;
 }
 
 {

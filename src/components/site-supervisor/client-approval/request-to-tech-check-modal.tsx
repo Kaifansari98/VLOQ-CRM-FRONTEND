@@ -37,6 +37,7 @@ import {
   useRequestToTechCheck,
 } from "@/api/client-approval";
 import AssignToPicker from "@/components/assign-to-picker";
+import { useRouter } from "next/router";
 
 const schema = z.object({
   assign_to_user_id: z.number().min(1, "Please select a Tech Check user"),
@@ -58,6 +59,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
   onOpenChange,
   data,
 }) => {
+  const router = useRouter();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
 
@@ -112,6 +114,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
       {
         onSuccess: () => {
           toast.success("Lead moved to Tech Check stage successfully!");
+          router.push("/dashboard/production/tech-check");
           form.reset();
           setConfirmOpen(false);
           onOpenChange(false);

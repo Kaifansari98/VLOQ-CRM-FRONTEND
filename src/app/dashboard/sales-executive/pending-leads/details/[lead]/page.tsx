@@ -224,7 +224,7 @@ export default function PendingLeadDetails() {
 
                   // ✅ Redirect back to Lost Approval tab
                   router.push(
-                    "/dashboard/sales-executive/pending-leads/leadstable"
+                    "/dashboard/sales-executive/leadstable"
                   );
                 },
                 onError: (err: any) => {

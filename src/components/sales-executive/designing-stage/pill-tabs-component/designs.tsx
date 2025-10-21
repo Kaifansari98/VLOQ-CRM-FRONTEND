@@ -11,10 +11,10 @@ const DesigningTab = () => {
 
   const { data, error, isLoading } = useDesignsDoc(vendorId!, leadId);
   const designsDoc = data?.data.documents;
-
+  const leadStage = data?.data?.leadStage;
 
   return (
-    <div className="p-4">
+    <div className="">
       {isLoading && <p>Loading...</p>}
       {error && <p>Error loading lead data.</p>}
       {designsDoc?.length ? (
@@ -43,7 +43,7 @@ const DesigningTab = () => {
                     <div className="flex items-center justify-center w-full h-40 bg-muted rounded border border-border mb-2">
                       {doc.doc_og_name.toLowerCase().endsWith(".pytha") ? (
                         <img
-                          src="/pythaLogo.png" // ✅ apne logo ka path
+                          src="/pythaLogo.png" 
                           alt="Pytha Logo"
                           className="max-h-40 /object-contain"
                         />

@@ -143,7 +143,7 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
               name="pythaDocuments"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm">Pytha Files</FormLabel>
+                  <FormLabel className="text-sm">Design Files</FormLabel>
                   <FormControl>
                     <FileUploadField
                       value={pythaFiles}
@@ -151,7 +151,7 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
                         setPythaFiles(newFiles);
                         field.onChange(newFiles);
                       }}
-                      accept=".pyo,.pytha,.pdf"
+                      accept=".pyo,.pytha,.pdf,.zip"
                     />
                   </FormControl>
                   <FormDescription className="text-xs">

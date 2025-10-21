@@ -85,7 +85,12 @@ export default function BookingStageLeadsDetails() {
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
 
   useEffect(() => {
-    if (canAssignFM(userType)) {
+    // ✅ Only auto-open if user can assign AND not admin/super-admin
+    if (
+      canAssignFM(userType) &&
+      userType?.toLowerCase() !== "admin" &&
+      userType?.toLowerCase() !== "super-admin"
+    ) {
       setAssignOpen(true);
     }
   }, [userType]);

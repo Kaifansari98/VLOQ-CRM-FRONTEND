@@ -106,7 +106,11 @@ export default function ClientApprovalLeadDetails() {
 
   // ✅ Auto-open To-Do modal when screen loads (only for allowed roles)
   useEffect(() => {
-    if (canTechCheck(userType)) {
+    if (
+      canTechCheck(userType) &&
+      userType?.toLowerCase() !== "admin" &&
+      userType?.toLowerCase() !== "super-admin"
+    ) {
       setOpenRejectDocsModal(true);
     }
   }, [userType]);
@@ -127,6 +131,10 @@ export default function ClientApprovalLeadDetails() {
 
   const pptDocs = clientDocsData?.documents?.ppt ?? [];
   const pythaDocs = clientDocsData?.documents?.pytha ?? [];
+
+  console.log("PPT docs", pptDocs);
+  console.log("Pytha docs", pythaDocs);
+  console.log("All docs", clientDocsData?.documents);
 
   const docs = [...pptDocs, ...pythaDocs];
 
