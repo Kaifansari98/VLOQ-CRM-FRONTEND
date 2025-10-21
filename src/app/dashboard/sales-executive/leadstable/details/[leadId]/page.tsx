@@ -62,7 +62,11 @@ import {
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLeadById } from "@/hooks/useLeadsQueries";
-import { canReassingLead, canDeleteLead, canAssignISM } from "@/components/utils/privileges";
+import {
+  canReassingLead,
+  canDeleteLead,
+  canAssignISM,
+} from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
 
@@ -91,6 +95,8 @@ export default function LeadDetails() {
   const isDraftLead = !!lead?.is_draft;
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
+  const LeadStage = lead?.statusType?.type;
+  console.log("Lead Stage :- ",LeadStage);
 
   const uiDisabled = isLoading || !lead;
 
@@ -137,16 +143,20 @@ export default function LeadDetails() {
   };
 
   useEffect(() => {
-    // ✅ Wait until loading is finished
-    if (isLoading) return;
+    if (isLoading || !lead) return;
 
-    // ✅ Wait until lead data is available
-    if (!lead) return;
-
-    // ✅ Now check draft status & user permissions
-    if (lead.is_draft === false && canAssignISM(userType)) {
-      setAssignOpen(true); // Open Assign Task Modal
-      setActiveTab("projects"); // Highlight To-Do Task tab
+    // ✅ Open modal only if:
+    // - Lead is not draft
+    // - User can assign ISM
+    // - User is NOT admin or super-admin
+    if (
+      !lead.is_draft &&
+      canAssignISM(userType) &&
+      userType?.toLowerCase() !== "admin" &&
+      userType?.toLowerCase() !== "super-admin"
+    ) {
+      setAssignOpen(true);
+      setActiveTab("projects");
     }
   }, [isLoading, lead?.is_draft, userType]);
 

@@ -102,8 +102,19 @@ export default function DesigningStageLead() {
   const lead = data?.data?.lead;
   console.log("page details :- ", lead?.assignedTo?.id);
 
+  const LeadStage = lead?.statusType?.type;
+  console.log("Lead Stage :- ", LeadStage);
+
   useEffect(() => {
-    if (!isLoading && canMoveToBookingStage(userType) && canMoveToBooking) {
+    if (isLoading) return;
+
+    // ✅ Only auto-open if user can move to booking, but not admin/super-admin
+    if (
+      canMoveToBookingStage(userType) &&
+      canMoveToBooking &&
+      userType?.toLowerCase() !== "admin" &&
+      userType?.toLowerCase() !== "super-admin"
+    ) {
       setBookingOpenLead(true);
     }
   }, [isLoading, userType, canMoveToBooking]);

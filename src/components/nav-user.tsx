@@ -116,31 +116,31 @@ export function NavUser({
 
               <DropdownMenuSeparator />
 
-              <DropdownMenuGroup>
+              {/* <DropdownMenuGroup>
                 <DropdownMenuItem>
                   <Sparkles />
                   Upgrade to Pro
                 </DropdownMenuItem>
-              </DropdownMenuGroup>
+              </DropdownMenuGroup> */}
 
-              <DropdownMenuSeparator />
+              {/* <DropdownMenuSeparator /> */}
 
-              <DropdownMenuGroup>
-                <DropdownMenuItem>
+              {/* <DropdownMenuGroup> */}
+                {/* <DropdownMenuItem>
                   <BadgeCheck />
                   Account
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <CreditCard />
                   Payment
-                </DropdownMenuItem>
-                <DropdownMenuItem>
+                </DropdownMenuItem> */}
+                {/* <DropdownMenuItem>
                   <Bell />
                   Notifications
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
+                </DropdownMenuItem> */}
+              {/* </DropdownMenuGroup> */}
 
-              <DropdownMenuSeparator />
+              {/* <DropdownMenuSeparator /> */}
 
               {/* 🔹 Open logout confirmation */}
               <DropdownMenuItem

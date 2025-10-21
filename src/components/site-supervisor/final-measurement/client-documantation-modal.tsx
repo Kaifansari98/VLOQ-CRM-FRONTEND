@@ -40,7 +40,7 @@ const clientDocSchema = z.object({
     .min(1, "Please upload at least one PPT file"),
   pythaDocuments: z
     .array(z.instanceof(File))
-    .min(1, "Please upload at least one Pytha file"),
+    .min(1, "Please upload at least one Design file"),
 });
 
 type ClientDocFormValues = z.infer<typeof clientDocSchema>;
@@ -179,7 +179,7 @@ const ClientDocumentationModal: React.FC<Props> = ({
                         setPythaFiles(newFiles);
                         field.onChange(newFiles);
                       }}
-                      accept=".pyo,.pdf,.pytha"
+                      accept=".pyo,.pdf,.pytha,.zip"
                     />
                   </FormControl>
                   {/* <FormDescription className="text-xs">

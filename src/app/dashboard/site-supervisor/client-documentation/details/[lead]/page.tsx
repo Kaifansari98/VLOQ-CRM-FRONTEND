@@ -87,7 +87,11 @@ export default function ClientDocumentationLeadDetails() {
 
   // ✅ Only auto-open if user has permission
   useEffect(() => {
-    if (canUploadClientDocumentation(userType)) {
+    if (
+      canUploadClientDocumentation(userType) &&
+      userType?.toLowerCase() !== "admin" &&
+      userType?.toLowerCase() !== "super-admin"
+    ) {
       setOpenClientDocModal(true);
     }
   }, [userType]);

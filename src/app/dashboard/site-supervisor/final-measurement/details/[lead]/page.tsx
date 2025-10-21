@@ -85,8 +85,13 @@ export default function FinalMeasurementLeadDetails() {
 
   // ✅ Auto-trigger To-Do Task only for allowed roles
   useEffect(() => {
-    if (canUploadFinalMeasurements(userType)) {
-      setOpenFinalDocModal(true); // Open modal directly
+    // ✅ Only auto-open if user has permission AND is not admin/super-admin
+    if (
+      canUploadFinalMeasurements(userType) &&
+      userType?.toLowerCase() !== "admin" &&
+      userType?.toLowerCase() !== "super-admin"
+    ) {
+      setOpenFinalDocModal(true);
     }
   }, [userType]);
 

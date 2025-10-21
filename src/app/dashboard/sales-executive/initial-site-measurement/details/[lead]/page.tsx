@@ -109,15 +109,19 @@ export default function SiteMeasurementLead() {
   const [activeTab, setActiveTab] = useState("details");
 
   useEffect(() => {
-    // ✅ 1. Wait until data finishes loading
-    if (isLoading) return;
+    if (isLoading || !lead) return;
 
-    // ✅ 2. Ensure lead data is available
-    if (!lead) return;
-
-    // ✅ 3. Only open modal if lead is NOT draft and user has permission to upload ISM
-    if (!lead.is_draft && canUploadISM(userType)) {
-      setOpenMeasurement(true); // Open Assign Task Modal
+    // ✅ Only open automatically if:
+    // - Lead is not draft
+    // - User has upload permission
+    // - User is NOT admin or super-admin
+    if (
+      !lead.is_draft &&
+      canUploadISM(userType) &&
+      userType?.toLowerCase() !== "admin" &&
+      userType?.toLowerCase() !== "super-admin"
+    ) {
+      setOpenMeasurement(true);
     }
   }, [isLoading, lead?.is_draft, userType]);
 

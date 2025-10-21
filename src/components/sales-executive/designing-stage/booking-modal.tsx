@@ -49,14 +49,13 @@ const bookingSchema = z
   .object({
     final_documents: z
       .array(z.any())
-      .max(20, "You can upload up to 20 documents"),
+      .max(20, "You can upload up to 20 documents")
+      .default([]),
 
     amount_received: z
-      .union([
-        z.number().positive("Amount must be greater than 0"),
-        z.literal(0),
-      ])
-      .transform((val) => (val === undefined ? 0 : val)),
+      .number()
+      .nonnegative("Amount cannot be negative")
+      .default(0),
 
     final_booking_amount: z
       .number()
@@ -64,19 +63,57 @@ const bookingSchema = z
 
     payment_details_document: z
       .array(z.any())
-      .max(20, "You can upload up to 20 documents"),
+      .max(20, "You can upload up to 20 documents")
+      .default([]),
 
-    payment_text: z.string().min(1, "Payment details are required"),
+    payment_text: z.string().default(""), // ✅ fixed here
+
     assign_to: z.string().min(1, "Please select an assignee"),
   })
+  // 🔹 Rule 1
   .refine((data) => data.amount_received <= data.final_booking_amount, {
     message:
       "Booking Amount Received should not be greater than Total Booking Value",
     path: ["amount_received"],
-  });
+  })
+  // 🔹 Rule 2
+  .refine(
+    (data) => {
+      const hasPaymentInfo =
+        !!data.payment_text.trim() ||
+        (data.payment_details_document &&
+          data.payment_details_document.length > 0);
+      if (hasPaymentInfo && data.amount_received <= 0) return false;
+      return true;
+    },
+    {
+      message:
+        "Booking Amount Received is required when entering payment details or uploading payment document.",
+      path: ["amount_received"],
+    }
+  )
+  // 🔹 Rule 3
+  .refine(
+    (data) => {
+      if (data.amount_received > 0) {
+        return (
+          !!data.payment_text.trim() &&
+          data.payment_details_document &&
+          data.payment_details_document.length > 0
+        );
+      }
+      return true;
+    },
+    {
+      message:
+        "Payment Details and Payment Document are required when Booking Amount Received is entered.",
+      path: ["payment_text"],
+    }
+  );
 
 // ✅ Proper type inference from schema
 type BookingFormValues = z.infer<typeof bookingSchema>;
+const bookingResolver = zodResolver(bookingSchema) as unknown as any;
 
 interface LeadViewModalProps {
   open: boolean;
@@ -110,7 +147,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   const vendorUser = siteSupervisors?.data?.site_supervisors || [];
   const { mutate, isPending } = useMoveToBookingStage();
   const form = useForm<BookingFormValues>({
-    resolver: zodResolver(bookingSchema),
+    resolver: bookingResolver,
     defaultValues: {
       final_documents: [],
       amount_received: 0,
@@ -119,7 +156,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       payment_text: "",
       assign_to: "",
     },
-    mode: "onChange", // Real-time validation
+    mode: "onChange",
   });
 
   if (isLoading) {
@@ -229,7 +266,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                         <FileUploadField
                           value={field.value}
                           onChange={field.onChange}
-                          accept=".pptx., .ppt, .pdf, .jpg, .jpeg, .png, .pyo"
+                          accept=".pptx.,.ppt, .pdf, .jpg, .jpeg, .png, .pyo"
                         />
                       </FormControl>
                       <FormMessage />
@@ -272,7 +309,9 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                           <FormControl>
                             <CurrencyInput
                               value={field.value}
-                              onChange={(val) => field.onChange(val ?? 0)}
+                              onChange={(val) =>
+                                field.onChange(val ? Number(val) : 0)
+                              }
                               placeholder="Enter received amount"
                             />
                           </FormControl>
