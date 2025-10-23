@@ -75,18 +75,67 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
       payment_text: z.string().optional(),
     })
     .superRefine((values, ctx) => {
+      const hasAmount = !!values.amount_paid && values.amount_paid > 0;
+      const hasPaymentText = !!values.payment_text?.trim();
+      const hasPaymentFile =
+        Array.isArray(values.payment_files) && values.payment_files.length > 0;
+      const hasPaymentDate = !!values.advance_payment_date;
+      const anyPaymentField =
+        hasAmount || hasPaymentText || hasPaymentFile || hasPaymentDate;
+
+      // ✅ Rule 1: Amount should not exceed pending
       if (
-        values.amount_paid &&
+        hasAmount &&
         projectFinance.pending_amount !== undefined &&
-        values.amount_paid > projectFinance.pending_amount
+        values.amount_paid! > projectFinance.pending_amount
       ) {
         ctx.addIssue({
           code: "custom",
-          message: `Amount cannot exceed pending amount`,
           path: ["amount_paid"],
+          message: `Amount cannot exceed remaining pending amount (${formatCurrencyINR(
+            projectFinance.pending_amount
+          )}).`,
         });
       }
+
+      // ✅ Rule 2: If any payment info is filled but amount is missing
+      if (!hasAmount && (hasPaymentText || hasPaymentFile || hasPaymentDate)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["amount_paid"],
+          message: "Amount is required when entering payment details.",
+        });
+      }
+
+      // ✅ Rule 3: If amount entered but other fields missing
+      if (hasAmount) {
+        if (!hasPaymentDate) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["advance_payment_date"],
+            message: "Advance payment date is required when amount is entered.",
+          });
+        }
+
+        if (!hasPaymentFile) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["payment_files"],
+            message: "Payment proof image is required when amount is entered.",
+          });
+        }
+
+        if (!hasPaymentText) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["payment_text"],
+            message:
+              "Transaction ID or remarks are required when amount is entered.",
+          });
+        }
+      }
     });
+
   type FormValues = z.infer<typeof schema>;
 
   const form = useForm<FormValues>({

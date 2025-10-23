@@ -9,7 +9,6 @@ const QuotationTab = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
   const {data, error, isLoading} = useQuotationDoc(vendorId, leadId)
-
   const designQuotationDocs = data?.data?.documents;
 
   if (!designQuotationDocs || designQuotationDocs.length === 0) {

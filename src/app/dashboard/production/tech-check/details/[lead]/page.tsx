@@ -82,6 +82,7 @@ import { cn } from "@/lib/utils";
 import TextAreaInput from "@/components/origin-text-area";
 import ClientDocumentationModal from "@/components/site-supervisor/final-measurement/client-documantation-modal";
 import UploadMoreClientDocumentationModal from "@/components/site-supervisor/client-documentation/uploadmore-client-documentaition-modal";
+import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -104,6 +105,7 @@ export default function ClientApprovalLeadDetails() {
   const [openDelete, setOpenDelete] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
   const [prevTab, setPrevTab] = useState("details");
+  const [assignOpen, setAssignOpen] = useState(false);
 
   const [openFinalApproveConfirm, setOpenFinalApproveConfirm] = useState(false);
   const [openRejectDocsModal, setOpenRejectDocsModal] = useState(false);
@@ -223,6 +225,10 @@ export default function ClientApprovalLeadDetails() {
                 Tech Check
               </Button>
             )}
+
+            <Button size="sm" onClick={() => setAssignOpen(true)}>
+              Assign Task
+            </Button>
 
             <ModeToggle />
 
@@ -354,13 +360,51 @@ export default function ClientApprovalLeadDetails() {
                 {/* ✅ Move To Order Login Button (Role & Status Based) */}
                 {canMoveToOrderLogin(userType) &&
                   (() => {
-                    const approvedCount = docs.filter(
+                    const approvedPPT = pptDocs.filter(
                       (d) => d.tech_check_status === "APPROVED"
                     ).length;
 
-                    const isDisabled = approvedCount === 0;
+                    const approvedPytha = pythaDocs.filter(
+                      (d) => d.tech_check_status === "APPROVED"
+                    ).length;
+
+                    const approvedCount = approvedPPT + approvedPytha;
+
+                    const pendingCount = docs.filter(
+                      (d) =>
+                        !d.tech_check_status ||
+                        d.tech_check_status === "PENDING"
+                    ).length;
+
+                    // Disabled if:
+                    // 1. No approved docs
+                    // 2. Still some pending docs
+                    // 3. No PPT approved
+                    // 4. No Pytha approved
+                    const isDisabled =
+                      approvedCount === 0 ||
+                      pendingCount > 0 ||
+                      approvedPPT === 0 ||
+                      approvedPytha === 0;
 
                     if (isDisabled) {
+                      let tooltipMsg = "";
+
+                      if (approvedCount === 0) {
+                        tooltipMsg =
+                          "At least one client documentation must be approved before moving to Order Login.";
+                      } else if (approvedPPT === 0) {
+                        tooltipMsg =
+                          "At least one PPT file must be approved before moving to Order Login.";
+                      } else if (approvedPytha === 0) {
+                        tooltipMsg =
+                          "At least one Pytha file must be approved before moving to Order Login.";
+                      } else if (pendingCount > 0) {
+                        tooltipMsg = `You still have ${pendingCount} pending document${
+                          pendingCount > 1 ? "s" : ""
+                        }. Please review all before proceeding.`;
+                      }
+
                       return (
                         <CustomeTooltip
                           truncateValue={
@@ -372,7 +416,7 @@ export default function ClientApprovalLeadDetails() {
                               Move To Order Login
                             </Button>
                           }
-                          value="At least one client documentation needs to be approved"
+                          value={tooltipMsg}
                         />
                       );
                     }
@@ -1017,6 +1061,13 @@ export default function ClientApprovalLeadDetails() {
             leadId: leadIdNum,
             accountId: accountId,
           }}
+        />
+
+        <AssignTaskSiteMeasurementForm
+          open={assignOpen}
+          onOpenChange={setAssignOpen}
+          onlyFollowUp
+          data={{ id: leadIdNum, name: "" }}
         />
       </SidebarInset>
     </SidebarProvider>

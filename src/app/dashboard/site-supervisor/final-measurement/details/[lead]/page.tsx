@@ -64,6 +64,7 @@ import {
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
+import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 
 export default function FinalMeasurementLeadDetails() {
   const { lead: leadId } = useParams();
@@ -82,6 +83,7 @@ export default function FinalMeasurementLeadDetails() {
   const [openDelete, setOpenDelete] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
   const [openFinalDocModal, setOpenFinalDocModal] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
 
   // ✅ Auto-trigger To-Do Task only for allowed roles
   useEffect(() => {
@@ -169,6 +171,9 @@ export default function FinalMeasurementLeadDetails() {
             </Breadcrumb>
           </div>
           <div className="flex items-center space-x-2">
+            <Button size="sm" onClick={() => setAssignOpen(true)}>
+              Assign Task
+            </Button>
             <ModeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -301,6 +306,13 @@ export default function FinalMeasurementLeadDetails() {
             data={normalizedLead}
           />
         )}
+
+        <AssignTaskSiteMeasurementForm
+          open={assignOpen}
+          onOpenChange={setAssignOpen}
+          onlyFollowUp
+          data={{ id: leadIdNum, name: "" }}
+        />
 
         <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
           <AlertDialogContent>

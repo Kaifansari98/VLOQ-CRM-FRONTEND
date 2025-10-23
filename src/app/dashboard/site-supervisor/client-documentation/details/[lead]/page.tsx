@@ -66,6 +66,7 @@ import {
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
+import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 
 export default function ClientDocumentationLeadDetails() {
   const { lead: leadId } = useParams();
@@ -79,6 +80,7 @@ export default function ClientDocumentationLeadDetails() {
   );
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
@@ -162,6 +164,9 @@ export default function ClientDocumentationLeadDetails() {
             </Breadcrumb>
           </div>
           <div className="flex items-center space-x-2">
+            <Button size="sm" onClick={() => setAssignOpen(true)}>
+              Assign Task
+            </Button>
             <ModeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -292,6 +297,13 @@ export default function ClientDocumentationLeadDetails() {
             }
           }}
           data={{ id: leadIdNum, ...lead, accountId }} // ✅ pass same shape as in table
+        />
+
+        <AssignTaskSiteMeasurementForm
+          open={assignOpen}
+          onOpenChange={setAssignOpen}
+          onlyFollowUp
+          data={{ id: leadIdNum, name: "" }}
         />
 
         <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>

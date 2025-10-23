@@ -310,3 +310,11 @@ export const addMeetingDocs = async (payload: AddMeetingDocsPayload) => {
 
   return data;
 };
+
+// ✅ Get Lead Status (Designing Stage)
+export const getLeadStatus = async (leadId: number, vendorId: number) => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/status/leadId/${leadId}/vendorId/${vendorId}`
+  );
+  return data?.data; // returns { lead_id, status_type_id, status, status_tag }
+};

@@ -6,6 +6,7 @@ import {
   fetchDesigningStageLeads,
   getDesigningStageCounts,
   getDesignsDoc,
+  getLeadStatus,
   getQuotationDoc,
   getSelectionData,
   submitQuotation,
@@ -148,8 +149,21 @@ export const useAddMeetingDocs = () => {
   return useMutation({
     mutationFn: (payload: AddMeetingDocsPayload) => addMeetingDocs(payload),
     onSuccess: (_, { vendorId, leadId }) => {
-      queryClient.invalidateQueries({ queryKey: ["meetings", vendorId, leadId] });
-      queryClient.invalidateQueries({ queryKey: ["designingStageCounts", vendorId, leadId] });
-    }
+      queryClient.invalidateQueries({
+        queryKey: ["meetings", vendorId, leadId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["designingStageCounts", vendorId, leadId],
+      });
+    },
+  });
+};
+
+export const useLeadStatus = (leadId?: number, vendorId?: number) => {
+  return useQuery({
+    queryKey: ["lead-status", leadId, vendorId],
+    queryFn: () => getLeadStatus(leadId!, vendorId!),
+    enabled: !!leadId && !!vendorId,
+    staleTime: 5 * 60 * 1000, // optional: cache for 5 min
   });
 };

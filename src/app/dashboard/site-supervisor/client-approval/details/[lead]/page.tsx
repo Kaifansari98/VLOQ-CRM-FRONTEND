@@ -66,6 +66,7 @@ import {
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import RequestToTechCheckModal from "@/components/site-supervisor/client-approval/request-to-tech-check-modal";
 import CustomeTooltip from "@/components/cutome-tooltip";
+import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -84,6 +85,7 @@ export default function ClientApprovalLeadDetails() {
   const [activeTab, setActiveTab] = useState("details");
   const [openClientApprovalModal, setOpenClientApprovalModal] = useState(false);
   const [prevTab, setPrevTab] = useState("details");
+  const [assignOpen, setAssignOpen] = useState(false);
 
   const [openRequestToTechCheckModal, setOpenRequestToTechCheckModal] =
     useState(false);
@@ -207,6 +209,10 @@ export default function ClientApprovalLeadDetails() {
                 value="You don’t have permission for Tech Check request"
               />
             )}
+
+            <Button size="sm" onClick={() => setAssignOpen(true)}>
+              Assign Task
+            </Button>
 
             <ModeToggle />
 
@@ -374,6 +380,13 @@ export default function ClientApprovalLeadDetails() {
           open={openRequestToTechCheckModal}
           onOpenChange={setOpenRequestToTechCheckModal}
           data={{ id: leadIdNum, accountId }}
+        />
+
+        <AssignTaskSiteMeasurementForm
+          open={assignOpen}
+          onOpenChange={setAssignOpen}
+          onlyFollowUp
+          data={{ id: leadIdNum, name: "" }}
         />
 
         <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>

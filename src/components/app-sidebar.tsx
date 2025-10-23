@@ -72,7 +72,7 @@ const data = {
           showCount: "total_open_leads" as const,
         },
         {
-          title: "Site Measurement",
+          title: "ISM Leads",
           url: "/dashboard/sales-executive/initial-site-measurement",
           showCount: "total_initial_site_measurement_leads" as const,
         },
@@ -82,7 +82,7 @@ const data = {
           showCount: "total_designing_stage_leads" as const,
         },
         {
-          title: "Booking Stage",
+          title: "Booking Done",
           url: "/dashboard/sales-executive/booking-stage",
           showCount: "total_booking_stage_leads" as const,
         },
