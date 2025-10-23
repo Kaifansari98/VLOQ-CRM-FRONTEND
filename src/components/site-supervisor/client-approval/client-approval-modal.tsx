@@ -177,7 +177,7 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
                   name="amount_paid"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel className="text-sm">Amount Paid</FormLabel>
+                      <FormLabel className="text-sm">Amount Received</FormLabel>
                       <FormControl>
                         <CurrencyInput
                           value={field.value}

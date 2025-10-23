@@ -213,7 +213,7 @@ export default function PaymentLogs() {
                       <div className="flex items-center gap-4 mb-2">
                         <div>
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                            Amount Paid
+                            Amount Received
                           </p>
                           <div className="flex items-baseline gap-2">
                             <span className="text-2xl font-bold text-primary">

@@ -68,6 +68,7 @@ import {
   canDeleteLead,
   canTechCheck,
   canUploadRevisedClientDocumentationFiles,
+  canViewThreeVerticalDocsOptionInTechCheck,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import {
@@ -225,37 +226,39 @@ export default function ClientApprovalLeadDetails() {
 
             <ModeToggle />
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <EllipsisVertical size={25} />
-                </Button>
-              </DropdownMenuTrigger>
+            {canViewThreeVerticalDocsOptionInTechCheck(userType) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <EllipsisVertical size={25} />
+                  </Button>
+                </DropdownMenuTrigger>
 
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
-
-                {canReassingLead(userType) && (
-                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                    <Users size={20} />
-                    Reassign Lead
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
                   </DropdownMenuItem>
-                )}
 
-                {canDeleteLead(userType) && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                      <XCircle size={20} className="text-red-500" />
-                      Delete
+                  {canReassingLead(userType) && (
+                    <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                      <Users size={20} />
+                      Reassign Lead
                     </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  )}
+
+                  {canDeleteLead(userType) && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                        <XCircle size={20} className="text-red-500" />
+                        Delete
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </header>
         {/* Tabs */}

@@ -76,17 +76,21 @@ export const canUploadClientDocumentation = (userType: string | undefined) => {
   return allowedRoles.includes(userType.toLowerCase());
 };
 
-export const canUploadMoreClientDocumentationFiles = (userType: string | undefined) => {
-  if(!userType) return false;
+export const canUploadMoreClientDocumentationFiles = (
+  userType: string | undefined
+) => {
+  if (!userType) return false;
   const allowedRoles = ["super-admin", "admin"];
   return allowedRoles.includes(userType.toLowerCase());
-}
+};
 
-export const canUploadRevisedClientDocumentationFiles = (userType: string | undefined) => {
-  if(!userType) return false;
+export const canUploadRevisedClientDocumentationFiles = (
+  userType: string | undefined
+) => {
+  if (!userType) return false;
   const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
-}
+};
 
 export const canUploadClientApproval = (userType: string | undefined) => {
   if (!userType) return false;
@@ -95,6 +99,14 @@ export const canUploadClientApproval = (userType: string | undefined) => {
 };
 
 export const canRequestToTeckCheck = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  return allowedRoles.includes(userType.toLowerCase());
+};
+
+export const canViewThreeVerticalDocsOptionInTechCheck = (
+  userType: string | undefined
+) => {
   if (!userType) return false;
   const allowedRoles = ["super_admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());

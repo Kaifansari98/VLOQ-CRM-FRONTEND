@@ -117,7 +117,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
                 <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-1.5">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Amount Paid
+                      Amount Received
                     </p>
                     <p className="text-2xl font-bold text-primary">
                       ₹{formatCurrency(paymentInfo.amount)}
