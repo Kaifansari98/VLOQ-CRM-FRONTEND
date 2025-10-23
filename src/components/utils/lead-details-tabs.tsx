@@ -54,7 +54,7 @@ export default function LeadDetailsUtil({
     },
     {
       id: "booking",
-      title: "Booking Stage",
+      title: "Booking Done",
       color: "bg-zinc-900 hover:bg-gray-600",
       cardContent: <BookingLeadsDetails leadId={leadId ?? 0} />,
     },

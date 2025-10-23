@@ -52,38 +52,57 @@ const formSchema = z
     payment_image: z.any().optional(),
     payment_text: z.string().optional(),
   })
-  .refine(
-    (data) => {
-      const hasAmount = !!data.amount;
-      const hasAnyPaymentField =
-        !!data.payment_date ||
-        (Array.isArray(data.payment_image) && data.payment_image.length > 0) ||
-        !!data.payment_text?.trim();
+  // ✅ Replaced .refine() with granular .superRefine()
+  .superRefine((data, ctx) => {
+    const hasAmount = !!data.amount;
+    const hasPaymentDate = !!data.payment_date;
+    const hasPaymentText = !!data.payment_text?.trim();
+    const hasPaymentImage =
+      Array.isArray(data.payment_image) && data.payment_image.length > 0;
 
-      // If user filled amount -> all payment fields required
-      if (hasAmount) {
-        return (
-          !!data.payment_date &&
-          !!data.payment_text?.trim() &&
-          Array.isArray(data.payment_image) &&
-          data.payment_image.length > 0
-        );
+    const anyFieldFilled =
+      hasAmount || hasPaymentDate || hasPaymentText || hasPaymentImage;
+
+    if (anyFieldFilled) {
+      // 💰 Amount missing
+      if (!hasAmount) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["amount"],
+          message: "Amount is required when adding payment details.",
+        });
       }
 
-      // If user filled any payment field -> amount required
-      if (hasAnyPaymentField && !hasAmount) {
-        return false;
+      // 📅 Payment date missing
+      if (!hasPaymentDate) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["payment_date"],
+          message: "Payment date is required when adding payment details.",
+        });
       }
 
-      // Otherwise fine
-      return true;
-    },
-    {
-      message:
-        "If you fill any payment field, please complete all payment fields (Amount, Date, Details, and Image).",
-      path: ["amount"], // shows under amount field
+      // 📝 Payment text missing
+      if (!hasPaymentText) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["payment_text"],
+          message:
+            "Payment details text is required when adding payment details.",
+        });
+      }
+
+      // 🖼️ Payment image missing
+      if (!hasPaymentImage) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["payment_image"],
+          message:
+            "At least one payment image is required when adding payment details.",
+        });
+      }
     }
-  );
+  });
 
 const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   open,

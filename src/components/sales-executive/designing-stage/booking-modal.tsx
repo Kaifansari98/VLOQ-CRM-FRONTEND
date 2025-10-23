@@ -66,50 +66,57 @@ const bookingSchema = z
       .max(20, "You can upload up to 20 documents")
       .default([]),
 
-    payment_text: z.string().default(""), // ✅ fixed here
+    payment_text: z.string().default(""),
 
     assign_to: z.string().min(1, "Please select an assignee"),
   })
-  // 🔹 Rule 1
-  .refine((data) => data.amount_received <= data.final_booking_amount, {
-    message:
-      "Booking Amount Received should not be greater than Total Booking Value",
-    path: ["amount_received"],
-  })
-  // 🔹 Rule 2
-  .refine(
-    (data) => {
-      const hasPaymentInfo =
-        !!data.payment_text.trim() ||
-        (data.payment_details_document &&
-          data.payment_details_document.length > 0);
-      if (hasPaymentInfo && data.amount_received <= 0) return false;
-      return true;
-    },
-    {
-      message:
-        "Booking Amount Received is required when entering payment details or uploading payment document.",
-      path: ["amount_received"],
+  .superRefine((data, ctx) => {
+    const hasPaymentText = !!data.payment_text.trim();
+    const hasPaymentDoc =
+      Array.isArray(data.payment_details_document) &&
+      data.payment_details_document.length > 0;
+    const hasPaymentInfo = hasPaymentText || hasPaymentDoc;
+
+    // ✅ Rule 1
+    if (data.amount_received > data.final_booking_amount) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["amount_received"],
+        message:
+          "Booking Amount Received should not be greater than Total Booking Value.",
+      });
     }
-  )
-  // 🔹 Rule 3
-  .refine(
-    (data) => {
-      if (data.amount_received > 0) {
-        return (
-          !!data.payment_text.trim() &&
-          data.payment_details_document &&
-          data.payment_details_document.length > 0
-        );
+
+    // ✅ Rule 2
+    if (hasPaymentInfo && data.amount_received <= 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["amount_received"],
+        message:
+          "Booking Amount Received is required when entering payment details or uploading payment document.",
+      });
+    }
+
+    // ✅ Rule 3
+    if (data.amount_received > 0) {
+      if (!hasPaymentText) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["payment_text"],
+          message:
+            "Payment details text is required when Booking Amount Received is entered.",
+        });
       }
-      return true;
-    },
-    {
-      message:
-        "Payment Details and Payment Document are required when Booking Amount Received is entered.",
-      path: ["payment_text"],
+      if (!hasPaymentDoc) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["payment_details_document"],
+          message:
+            "At least one payment document is required when Booking Amount Received is entered.",
+        });
+      }
     }
-  );
+  });
 
 // ✅ Proper type inference from schema
 type BookingFormValues = z.infer<typeof bookingSchema>;

@@ -362,7 +362,9 @@ export default function LeadsGenerationForm({
         : undefined,
       country_code: countryCode,
       contact_no: phoneNumber,
-      alt_contact_no: values.alt_contact_no || undefined,
+      alt_contact_no: values.alt_contact_no
+        ? values.alt_contact_no.replace(/\D/g, "") // remove + or non-digits
+        : undefined,
       product_types: values.product_types || [],
       product_structures: values.product_structures || [],
       initial_site_measurement_date: values.initial_site_measurement_date
@@ -691,6 +693,7 @@ export default function LeadsGenerationForm({
                           field.onChange(selectedIds);
                         }}
                         options={options}
+                        maxSelected={1}
                         placeholder="Select furniture types"
                         disabled={isLoading}
                         hidePlaceholderWhenSelected
@@ -738,6 +741,7 @@ export default function LeadsGenerationForm({
                           field.onChange(selectedIds);
                         }}
                         options={options}
+                        maxSelected={1}
                         placeholder="Select furniture structures"
                         disabled={isLoading}
                         hidePlaceholderWhenSelected

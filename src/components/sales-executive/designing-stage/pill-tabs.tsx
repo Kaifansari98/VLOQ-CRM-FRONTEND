@@ -152,7 +152,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                     onClick={() => setOpenBookingModal(true)}
                   >
                     <Plus size={16} />
-                    <span>Booking Stage</span>
+                    <span>Booking Done</span>
                   </Button>
                 )}
               </>
