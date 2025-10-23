@@ -6,8 +6,6 @@ import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
 import { useSiteMeasurementLeadById } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import { useFinalMeasurementLeadById } from "@/hooks/final-measurement/use-final-measurement";
-import DocumentPreview from "@/components/utils/file-preview";
-import ImageCard from "@/components/utils/image-card";
 import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import {
   FileText,
@@ -36,10 +34,6 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
 };
 
-const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"];
-const getExt = (f: string) => f?.split(".").pop()?.toLowerCase() ?? "";
-const isImg = (ext: string) => IMAGE_EXTENSIONS.includes(ext);
-
 export default function TechCheckDetails({ leadId, accountId, name }: Props) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)!;
 
@@ -59,12 +53,10 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
   const pptDocs = clientDocs?.documents?.ppt ?? [];
   const pythaDocs = clientDocs?.documents?.pytha ?? [];
   const allDocs = [...pptDocs, ...pythaDocs];
-  const otherDocs = pptDocs.filter((d) => !isImg(getExt(d.doc_sys_name)));
+  const otherDocs = pptDocs;
 
   const ismDocs = siteMeasurement?.initial_site_measurement_documents ?? [];
   const finalDocs = finalMeasurement?.measurementDocs ?? [];
-
-  console.log(" ISM Docs :- ", ismDocs);
 
   // Calculate stats from ALL docs (ppt + pytha)
   const approvedDocs = allDocs.filter(
@@ -434,7 +426,8 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
                     </div>
                     <span className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700">
                       <File size={14} />
-                      {otherDocs.length} files
+                      {otherDocs.length}{" "}
+                      {otherDocs.length === 1 ? "file" : "files"}
                     </span>
                   </div>
 
@@ -467,7 +460,8 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
                     </div>
                     <span className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700">
                       <FileText size={14} />
-                      {pythaDocs.length} files
+                      {pythaDocs.length}{" "}
+                      {pythaDocs.length === 1 ? "file" : "files"}
                     </span>
                   </div>
 
@@ -503,8 +497,8 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
               </div>
             </div>
             <span className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700">
-              <Camera size={14} />
-              {ismDocs.length} files
+              <FileText size={14} />
+              {ismDocs.length} {ismDocs.length === 1 ? "file" : "files"}
             </span>
           </div>
 
@@ -634,7 +628,9 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
                           d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                         />
                       </svg>
-                      <span className="font-medium">Initial Site Measurement</span>
+                      <span className="font-medium">
+                        Initial Site Measurement
+                      </span>
                     </div>
                   </div>
 
@@ -672,7 +668,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
             </div>
             <span className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700">
               <FileText size={14} />
-              {finalDocs?.length || 0} files
+              {finalDocs?.length} {finalDocs?.length === 1 ? "file" : "files"}
             </span>
           </div>
 

@@ -113,8 +113,6 @@ export default function ClientApprovalLeadDetails() {
 
   console.log("is_client_approval_submitted :- ", is_client_approval_submitted);
 
-  console.log("account id :- ", accountId);
-
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {

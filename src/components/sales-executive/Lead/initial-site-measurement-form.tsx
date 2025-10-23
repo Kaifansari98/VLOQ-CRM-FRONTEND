@@ -37,18 +37,53 @@ interface LeadViewModalProps {
   };
 }
 
-const formSchema = z.object({
-  current_site_photos: z.any().optional(),
-  upload_pdf: z
-    .instanceof(File, { message: "Please upload a PDF" })
-    .refine((file) => file.type === "application/pdf", {
-      message: "Only PDF file is allowed",
-    }),
-  amount: z.number("Amount must be a number").optional(),
-  payment_date: z.string().optional(),
-  payment_image: z.any().optional(),
-  payment_text: z.string().optional(),
-});
+const formSchema = z
+  .object({
+    current_site_photos: z.any().optional(),
+
+    upload_pdf: z
+      .instanceof(File, { message: "Please upload a PDF" })
+      .refine((file) => file.type === "application/pdf", {
+        message: "Only PDF file is allowed",
+      }),
+
+    amount: z.number().optional(),
+    payment_date: z.string().optional(),
+    payment_image: z.any().optional(),
+    payment_text: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      const hasAmount = !!data.amount;
+      const hasAnyPaymentField =
+        !!data.payment_date ||
+        (Array.isArray(data.payment_image) && data.payment_image.length > 0) ||
+        !!data.payment_text?.trim();
+
+      // If user filled amount -> all payment fields required
+      if (hasAmount) {
+        return (
+          !!data.payment_date &&
+          !!data.payment_text?.trim() &&
+          Array.isArray(data.payment_image) &&
+          data.payment_image.length > 0
+        );
+      }
+
+      // If user filled any payment field -> amount required
+      if (hasAnyPaymentField && !hasAmount) {
+        return false;
+      }
+
+      // Otherwise fine
+      return true;
+    },
+    {
+      message:
+        "If you fill any payment field, please complete all payment fields (Amount, Date, Details, and Image).",
+      path: ["amount"], // shows under amount field
+    }
+  );
 
 const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   open,

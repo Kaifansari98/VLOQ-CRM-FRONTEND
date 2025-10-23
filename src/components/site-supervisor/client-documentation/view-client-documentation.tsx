@@ -10,6 +10,7 @@ import ImageCard from "@/components/utils/image-card";
 import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import UploadMoreClientDocumentationModal from "./uploadmore-client-documentaition-modal";
 import { Plus } from "lucide-react";
+import { canUploadMoreClientDocumentationFiles } from "@/components/utils/privileges";
 
 type Props = {
   leadId: number;
@@ -43,6 +44,10 @@ export default function ClientDocumentationDetails({
     leadId
   );
 
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type.user_type
+  );
+
   const [openCarouselModal, setOpenCarouselModal] = useState(false);
   const [startIndex, setStartIndex] = useState(0);
   const [addMoreDoc, setAddMoreDoc] = useState(false);
@@ -71,15 +76,14 @@ export default function ClientDocumentationDetails({
     >
       {/* -------- Header -------- */}
       <motion.div variants={itemVariants} className="flex justify-between">
-        <h2 className="text-xl font-semibold">
-          Client Documentation for {name || "Customer"}
-        </h2>
-        <Button
-          onClick={() => setAddMoreDoc(true)}
-          className="flex items-center gap-2"
-        >
-          <Plus size={16} /> Add More Files
-        </Button>
+        {canUploadMoreClientDocumentationFiles(userType) && (
+          <Button
+            onClick={() => setAddMoreDoc(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus size={16} /> Add More Files
+          </Button>
+        )}
       </motion.div>
 
       {/* -------- Images -------- */}

@@ -1,6 +1,7 @@
 import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 
 // ✅ --- Fetch Tech-Check Leads (paginated) ---
@@ -77,11 +78,14 @@ export const rejectTechCheck = async ({
 
 export const useApproveTechCheck = () => {
   const queryClient = useQueryClient();
+  const router = useRouter();
   return useMutation({
     mutationFn: approveTechCheck,
     onSuccess: async (_, variables) => {
       toast.success("Tech Check approved successfully!");
       await queryClient.invalidateQueries({ queryKey: ["techCheckLeads"] });
+      router.push(`/dashboard/production/tech-check`);
+      await queryClient.invalidateQueries({ queryKey: ["leadStats"] });
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Approval failed");
@@ -96,6 +100,7 @@ export const useRejectTechCheck = () => {
     onSuccess: async (_, variables) => {
       toast.success("Tech Check rejected successfully!");
       await queryClient.invalidateQueries({ queryKey: ["techCheckLeads"] });
+      await queryClient.invalidateQueries({ queryKey: ["clientDocumentationDetails"] });
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Rejection failed");
@@ -132,7 +137,9 @@ export const useApproveMultipleDocuments = () => {
       // Refresh the tech-check leads and client-doc details
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["techCheckLeads"] }),
-        queryClient.invalidateQueries({ queryKey: ["clientDocumentationDetails"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["clientDocumentationDetails"],
+        }),
       ]);
     },
     onError: (error: any) => {
