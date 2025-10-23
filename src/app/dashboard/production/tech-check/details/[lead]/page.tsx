@@ -41,6 +41,7 @@ import {
   AlertCircle,
   CircleCheckBig,
   Settings2,
+  UploadIcon,
 } from "lucide-react";
 import CustomeTooltip from "@/components/cutome-tooltip";
 
@@ -66,6 +67,7 @@ import {
   canReassingLead,
   canDeleteLead,
   canTechCheck,
+  canUploadRevisedClientDocumentationFiles,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import {
@@ -77,6 +79,8 @@ import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-
 import BaseModal from "@/components/utils/baseModal";
 import { cn } from "@/lib/utils";
 import TextAreaInput from "@/components/origin-text-area";
+import ClientDocumentationModal from "@/components/site-supervisor/final-measurement/client-documantation-modal";
+import UploadMoreClientDocumentationModal from "@/components/site-supervisor/client-documentation/uploadmore-client-documentaition-modal";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -98,11 +102,12 @@ export default function ClientApprovalLeadDetails() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
-  const [openClientApprovalModal, setOpenClientApprovalModal] = useState(false);
   const [prevTab, setPrevTab] = useState("details");
 
   const [openFinalApproveConfirm, setOpenFinalApproveConfirm] = useState(false);
   const [openRejectDocsModal, setOpenRejectDocsModal] = useState(false);
+
+  const [openUploadDocsModal, setOpenUploadDocsModal] = useState(false);
 
   // ✅ Auto-open To-Do modal when screen loads (only for allowed roles)
   useEffect(() => {
@@ -138,8 +143,9 @@ export default function ClientApprovalLeadDetails() {
 
   const docs = [...pptDocs, ...pythaDocs];
 
-  const [openRequestToTechCheckModal, setOpenRequestToTechCheckModal] =
-    useState(false);
+  const hasRejectedDocs = docs.some((d) => d.tech_check_status === "REJECTED");
+
+  console.log("hasRejectedDocs :-", hasRejectedDocs);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -148,12 +154,6 @@ export default function ClientApprovalLeadDetails() {
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
 
   const accountId = Number(lead?.account_id);
-
-  const is_client_approval_submitted = lead?.is_client_approval_submitted;
-
-  console.log("is_client_approval_submitted :- ", is_client_approval_submitted);
-
-  console.log("account id :- ", accountId);
 
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
@@ -294,16 +294,14 @@ export default function ClientApprovalLeadDetails() {
                 </TabsTrigger>
               </TabsList>
 
-              {/* ✅ Move To Order Login Button (Role & Status Based) */}
-              {canMoveToOrderLogin(userType) &&
-                (() => {
-                  const approvedCount = docs.filter(
-                    (d) => d.tech_check_status === "APPROVED"
-                  ).length;
+              <div className="flex items-center justify-between gap-2">
+                {/* ✅ Upload Revised Docs Button (Role & Rejection Status Based) */}
+                {(() => {
+                  const canUpload =
+                    canUploadRevisedClientDocumentationFiles(userType);
 
-                  const isDisabled = approvedCount === 0;
-
-                  if (isDisabled) {
+                  // Case 1: User doesn’t have permission
+                  if (!canUpload) {
                     return (
                       <CustomeTooltip
                         truncateValue={
@@ -311,25 +309,82 @@ export default function ClientApprovalLeadDetails() {
                             disabled
                             className="bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-300 dark:border-gray-700 cursor-not-allowed flex items-center gap-2"
                           >
-                            <CircleCheckBig size={16} />
-                            Move To Order Login
+                            <UploadIcon size={16} />
+                            Upload Revised Docs
                           </Button>
                         }
-                        value="At least one client documentation needs to be approved"
+                        value="You don’t have permission to upload revised client documentation. Contact your administrator for access."
                       />
                     );
                   }
 
+                  // Case 2: User has permission but no rejected files
+                  if (!hasRejectedDocs) {
+                    return (
+                      <CustomeTooltip
+                        truncateValue={
+                          <Button
+                            disabled
+                            className="bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-300 dark:border-gray-700 cursor-not-allowed flex items-center gap-2"
+                          >
+                            <UploadIcon size={16} />
+                            Upload Revised Docs
+                          </Button>
+                        }
+                        value="No rejected client documentation found — only rejected files can be re-uploaded."
+                      />
+                    );
+                  }
+
+                  // Case 3: User has permission and rejected files exist
                   return (
                     <Button
-                      onClick={() => setOpenFinalApproveConfirm(true)}
-                      className="bg-green-500/10 text-green-500 border-green-500 border hover:bg-green-500/15 flex items-center gap-2"
+                      onClick={() => setOpenUploadDocsModal(true)}
+                      className="bg-blue-50 border border-blue-500 text-blue-500 hover:bg-blue-100 flex items-center gap-2"
                     >
-                      <CircleCheckBig size={16} />
-                      Move To Order Login
+                      <UploadIcon size={16} />
+                      Upload Revised Docs
                     </Button>
                   );
                 })()}
+
+                {/* ✅ Move To Order Login Button (Role & Status Based) */}
+                {canMoveToOrderLogin(userType) &&
+                  (() => {
+                    const approvedCount = docs.filter(
+                      (d) => d.tech_check_status === "APPROVED"
+                    ).length;
+
+                    const isDisabled = approvedCount === 0;
+
+                    if (isDisabled) {
+                      return (
+                        <CustomeTooltip
+                          truncateValue={
+                            <Button
+                              disabled
+                              className="bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-300 dark:border-gray-700 cursor-not-allowed flex items-center gap-2"
+                            >
+                              <CircleCheckBig size={16} />
+                              Move To Order Login
+                            </Button>
+                          }
+                          value="At least one client documentation needs to be approved"
+                        />
+                      );
+                    }
+
+                    return (
+                      <Button
+                        onClick={() => setOpenFinalApproveConfirm(true)}
+                        className="bg-green-500/10 text-green-500 border-green-500 border hover:bg-green-500/15 flex items-center gap-2"
+                      >
+                        <CircleCheckBig size={16} />
+                        Move To Order Login
+                      </Button>
+                    );
+                  })()}
+              </div>
             </div>
 
             <ScrollBar orientation="horizontal" />
@@ -951,6 +1006,15 @@ export default function ClientApprovalLeadDetails() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <UploadMoreClientDocumentationModal
+          open={openUploadDocsModal}
+          onOpenChange={setOpenUploadDocsModal}
+          data={{
+            leadId: leadIdNum,
+            accountId: accountId,
+          }}
+        />
       </SidebarInset>
     </SidebarProvider>
   );
