@@ -144,7 +144,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
       {/* -------- Description Note -------- */}
       <motion.div variants={itemVariants} className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Final Measurement Note</h3>
+          <h3 className="text-lg font-semibold">Critical Discussion Notes</h3>
           {/* <Button
             size="sm"
             className="gap-1"
