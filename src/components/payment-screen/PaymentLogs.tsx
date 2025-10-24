@@ -255,9 +255,9 @@ export default function PaymentLogs() {
                             <p className="text-sm font-medium">
                               {formatDate(log.payment_date).full}
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            {/* <p className="text-xs text-muted-foreground">
                               {formatDate(log.payment_date).time}
-                            </p>
+                            </p> */}
                           </div>
                         </motion.div>
 

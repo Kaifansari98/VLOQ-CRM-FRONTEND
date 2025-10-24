@@ -272,9 +272,13 @@ export default function ClientApprovalLeadDetails() {
           value={activeTab}
           onValueChange={(val) => {
             if (val === "todo") {
-              // ✅ Open Approve/Reject Docs Modal instead of switching tabs
+              if (!canTechCheck(userType)) {
+                toast.error("You don’t have permission to access To-Do Tasks");
+                return; // 🚫 block unauthorized users
+              }
+
               setOpenRejectDocsModal(true);
-              setPrevTab(activeTab); // store current tab
+              setPrevTab(activeTab);
               return;
             }
             setActiveTab(val);
@@ -289,10 +293,26 @@ export default function ClientApprovalLeadDetails() {
                   <HouseIcon size={16} className="mr-1 opacity-60" />
                   Lead Details
                 </TabsTrigger>
-                <TabsTrigger value="todo">
-                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                  To-Do Task
-                </TabsTrigger>
+                {canTechCheck(userType) ? (
+                  <TabsTrigger value="todo">
+                    <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                    To-Do Task
+                  </TabsTrigger>
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                        <PanelsTopLeftIcon
+                          size={16}
+                          className="mr-1 opacity-60"
+                        />
+                        To-Do Task
+                      </div>
+                    }
+                    value="You don’t have permission to access To-Do Tasks."
+                  />
+                )}
+
                 <TabsTrigger value="history">
                   <BoxIcon size={16} className="mr-1 opacity-60" />
                   Site History
@@ -322,7 +342,7 @@ export default function ClientApprovalLeadDetails() {
                             Upload Revised Docs
                           </Button>
                         }
-                        value="You don’t have permission to upload revised client documentation. Contact your administrator for access."
+                        value="You don’t have permission to upload revised client documentation."
                       />
                     );
                   }

@@ -1,6 +1,7 @@
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
+import { useQueryClient } from "@tanstack/react-query";
 
 // ✅ Fetch all client approval leads
 export const getClientApprovalLeads = async (
@@ -82,6 +83,7 @@ export const useBackendUsers = (vendorId: number) => {
 
 // ✅ Submit client approval
 export const useSubmitClientApproval = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (formData: FormData) => {
       const { data } = await apiClient.post(
@@ -97,6 +99,7 @@ export const useSubmitClientApproval = () => {
     },
     onSuccess: () => {
       toast.success("Client Approval submitted successfully!");
+      queryClient.invalidateQueries({ queryKey: ["clientApprovalDetails"] });
     },
     onError: (err: any) => {
       toast.error(
