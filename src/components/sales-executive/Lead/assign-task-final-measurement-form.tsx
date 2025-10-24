@@ -97,7 +97,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       assign_lead_to: undefined,
       task_type: "Final Measurements",
       due_date: "",
-      remark: "",
+      remark: "N/A",
     },
   });
 

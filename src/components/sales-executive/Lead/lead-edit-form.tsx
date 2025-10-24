@@ -769,7 +769,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                           field.onChange(selectedIds);
                         }}
                         options={options}
-                        maxSelected={1}
                         placeholder="Select furniture structures"
                         disabled={isLoading}
                         hidePlaceholderWhenSelected

@@ -97,7 +97,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       assign_lead_to: undefined,
       task_type: onlyFollowUp ? "Follow Up" : "Initial Site Measurement", // ✅
       due_date: "",
-      remark: "",
+      remark: "N/A",
     },
   });
 
