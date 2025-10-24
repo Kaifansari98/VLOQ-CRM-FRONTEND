@@ -294,11 +294,17 @@ export default function ClientApprovalLeadDetails() {
           value={activeTab}
           onValueChange={(val) => {
             if (val === "todo") {
+              if (!canRequestToTeckCheck(userType)) {
+                toast.error("You don’t have permission to access To-Do Tasks");
+                return; // 🚫 block tab change
+              }
+          
               if (!is_client_approval_submitted) {
                 setOpenClientApprovalModal(true);
               } else {
                 setOpenRequestToTechCheckModal(true);
               }
+          
               setPrevTab(activeTab);
               return;
             }
@@ -312,10 +318,26 @@ export default function ClientApprovalLeadDetails() {
                 <HouseIcon size={16} className="mr-1 opacity-60" />
                 Lead Details
               </TabsTrigger>
-              <TabsTrigger value="todo">
-                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                To-Do Task
-              </TabsTrigger>
+              {canRequestToTeckCheck(userType) ? (
+                <TabsTrigger value="todo">
+                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                  To-Do Task
+                </TabsTrigger>
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                      <PanelsTopLeftIcon
+                        size={16}
+                        className="mr-1 opacity-60"
+                      />
+                      To-Do Task
+                    </div>
+                  }
+                  value="Only Admin, Super-Admin or Sales-Executive can access To-Do Tasks."
+                />
+              )}
+
               <TabsTrigger value="history">
                 <BoxIcon size={16} className="mr-1 opacity-60" />
                 Site History
