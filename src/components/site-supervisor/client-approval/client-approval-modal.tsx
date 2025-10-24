@@ -180,8 +180,14 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
 
     mutate(formData, {
       onSuccess: () => {
+        toast.success("Client Approval submitted successfully!");
         onOpenChange(false);
         form.reset();
+
+        // ✅ reload page after short delay to let toast show
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       },
     });
   };

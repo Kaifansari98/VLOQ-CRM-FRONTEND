@@ -298,13 +298,13 @@ export default function ClientApprovalLeadDetails() {
                 toast.error("You don’t have permission to access To-Do Tasks");
                 return; // 🚫 block tab change
               }
-          
+
               if (!is_client_approval_submitted) {
                 setOpenClientApprovalModal(true);
               } else {
                 setOpenRequestToTechCheckModal(true);
               }
-          
+
               setPrevTab(activeTab);
               return;
             }
@@ -334,7 +334,7 @@ export default function ClientApprovalLeadDetails() {
                       To-Do Task
                     </div>
                   }
-                  value="Only Admin, Super-Admin or Sales-Executive can access To-Do Tasks."
+                  value="You don’t have permission to view To-Do Tasks."
                 />
               )}
 
