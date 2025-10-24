@@ -71,7 +71,7 @@ const FinalMeasurementModal = ({
     defaultValues: {
       finalMeasurementDocs: [],
       currentSitePhotos: [],
-      criticalDiscussion: "",
+      criticalDiscussion: "N/A",
     },
   });
 
