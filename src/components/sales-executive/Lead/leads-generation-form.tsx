@@ -155,7 +155,7 @@ export default function LeadsGenerationForm({
       product_structures: [],
       documents: "",
       archetech_name: "",
-      designer_remark: "",
+      designer_remark: "N/A",
       assign_to: "",
       assigned_by: "",
     },
@@ -741,7 +741,6 @@ export default function LeadsGenerationForm({
                           field.onChange(selectedIds);
                         }}
                         options={options}
-                        maxSelected={1}
                         placeholder="Select furniture structures"
                         disabled={isLoading}
                         hidePlaceholderWhenSelected

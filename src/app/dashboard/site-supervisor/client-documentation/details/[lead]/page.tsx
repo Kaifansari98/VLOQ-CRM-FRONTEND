@@ -4,10 +4,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import {
   SidebarInset,
@@ -225,9 +223,13 @@ export default function ClientDocumentationLeadDetails() {
           value={activeTab}
           onValueChange={(val) => {
             if (val === "todo") {
-              setPrevTab(activeTab); // remember where we were
-              setOpenClientDocModal(true); // open modal
-              return; // don’t switch tab
+              if (!canUploadClientDocumentation(userType)) {
+                toast.error("You don’t have permission to access To-Do Tasks");
+                return; // 🚫 block tab change
+              }
+              setPrevTab(activeTab);
+              setOpenClientDocModal(true);
+              return;
             }
             setActiveTab(val);
           }}
@@ -239,10 +241,26 @@ export default function ClientDocumentationLeadDetails() {
                 <HouseIcon size={16} className="mr-1 opacity-60" />
                 Lead Details
               </TabsTrigger>
-              <TabsTrigger value="todo">
-                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                To-Do Task
-              </TabsTrigger>
+              {canUploadClientDocumentation(userType) ? (
+                <TabsTrigger value="todo">
+                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                  To-Do Task
+                </TabsTrigger>
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                      <PanelsTopLeftIcon
+                        size={16}
+                        className="mr-1 opacity-60"
+                      />
+                      To-Do Task
+                    </div>
+                  }
+                  value="You don’t have permission to view To-Do Tasks."
+                />
+              )}
+
               <TabsTrigger value="history">
                 <BoxIcon size={16} className="mr-1 opacity-60" />
                 Site History

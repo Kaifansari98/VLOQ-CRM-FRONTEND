@@ -18,7 +18,6 @@ import {
   FormLabel,
   FormMessage,
   FormControl,
-  FormDescription,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
@@ -27,7 +26,6 @@ import { useAppSelector } from "@/redux/store";
 import { useSubmitClientApproval } from "@/api/client-approval";
 import { toast } from "react-toastify";
 import CustomeDatePicker from "@/components/date-picker";
-import { Input } from "@/components/ui/input";
 import { usePaymentLogs } from "@/hooks/booking-stage/use-booking";
 import { formatCurrencyINR } from "@/utils/formatCurrency";
 import CurrencyInput from "@/components/custom/CurrencyInput";
