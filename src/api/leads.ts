@@ -10,6 +10,8 @@ import {
   StatusType,
   User,
 } from "@/types/comman-types";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
 
 export interface CreateLeadPayload {
   firstname: string;
@@ -268,7 +270,6 @@ export const assignToSiteMeasurement = async (
   return data;
 };
 
-
 export const fetchLeadLogs = async ({
   leadId,
   vendorId,
@@ -293,4 +294,37 @@ export const fetchLeadLogs = async ({
     data: response.data.data, // logs array
     meta: response.data.meta, // pagination info
   };
+};
+
+/**
+ * Soft delete a document (LeadDocuments)
+ */
+export const useDeleteDocument = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      vendorId,
+      documentId,
+      deleted_by,
+    }: {
+      vendorId: number;
+      documentId: number;
+      deleted_by: number;
+    }) => {
+      const { data } = await apiClient.delete(
+        `/leads/delete-doc/vendorId/${vendorId}/documentId/${documentId}`,
+        { data: { deleted_by } }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Document deleted successfully!");
+      // ✅ refresh correct query
+      queryClient.invalidateQueries({ queryKey: ["lead"] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || "Failed to delete document");
+    },
+  });
 };
