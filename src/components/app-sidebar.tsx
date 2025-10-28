@@ -124,7 +124,8 @@ const data = {
         },
         {
           title: "Order Login",
-          url: "#",
+          url: "/dashboard/production/order-login",
+          showCount: "total_order_login_leads" as const, // ✅ added
         },
         {
           title: "Production",

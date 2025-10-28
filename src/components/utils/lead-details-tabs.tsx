@@ -9,6 +9,7 @@ import ViewClientDocumentationModal from "../site-supervisor/client-documentatio
 import ClientDocumentationDetails from "../site-supervisor/client-documentation/view-client-documentation";
 import ClientApprovalDetails from "../site-supervisor/client-approval/client-approval-details";
 import TechCheckDetails from "../production/tech-check-stage/TechCheckDetails";
+import OrderLoginDetails from "../production/order-login-stage/OrderLoginDetails";
 
 interface LeadDetailsUtilProps {
   status:
@@ -19,7 +20,8 @@ interface LeadDetailsUtilProps {
     | "finalMeasurement"
     | "clientdocumentation"
     | "clientApproval"
-    | "techcheck";
+    | "techcheck"
+    | "orderLogin";
   leadId?: number;
   accountId?: number;
   leadInfo?: any;
@@ -94,6 +96,18 @@ export default function LeadDetailsUtil({
         />
       ),
     },
+    {
+      id: "orderLogin",
+      title: "Order Login",
+      color: "bg-zinc-900 hover:bg-gray-600",
+      cardContent: (
+        <OrderLoginDetails
+          leadId={leadId ?? 0}
+          accountId={accountId ?? 0}
+          name={leadInfo?.name}
+        />
+      ),
+    },
   ];
 
   const statusFlow: Record<LeadDetailsUtilProps["status"], string[]> = {
@@ -134,6 +148,17 @@ export default function LeadDetailsUtil({
       "clientdocumentation",
       "clientApproval",
       "techcheck",
+    ],
+    orderLogin: [
+      "details",
+      "measurement",
+      "designing",
+      "booking",
+      "finalMeasurement",
+      "clientdocumentation",
+      "clientApproval",
+      "techcheck",
+      "orderLogin",
     ],
   };
 
