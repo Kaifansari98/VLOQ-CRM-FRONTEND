@@ -38,6 +38,7 @@ interface NavItem {
     | "total_client_documentation_leads"
     | "total_client_approval_leads"
     | "total_tech_check_leads"
+    | "total_order_login_leads"
     | "total_my_tasks";
   items?: {
     title: string;
@@ -52,6 +53,7 @@ interface NavItem {
       | "total_client_documentation_leads"
       | "total_client_approval_leads"
       | "total_tech_check_leads"
+      | "total_order_login_leads"
       | "total_my_tasks";
   }[];
 }
