@@ -116,6 +116,6 @@ export const canOrderLogin = (
   userType: string | undefined
 ) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "backend"];
+  const allowedRoles = ["super_admin", "admin", "backend", "tech-check"];
   return allowedRoles.includes(userType.toLowerCase());
 };
