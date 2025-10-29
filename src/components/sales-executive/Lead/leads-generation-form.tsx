@@ -550,6 +550,43 @@ export default function LeadsGenerationForm({
                 );
               }}
             />
+
+            <FormField
+              control={form.control}
+              name="source_id"
+              render={({ field }) => {
+                const { data: sourceTypes, isLoading } = useSourceTypes();
+
+                return (
+                  <FormItem>
+                    <FormLabel className="text-sm">Source *</FormLabel>
+                    <Select
+                      value={field.value || ""}
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      disabled={isLoading}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="text-sm w-full">
+                          <SelectValue placeholder="Select source" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {sourceTypes?.data?.map((source: any) => (
+                          <SelectItem key={source.id} value={String(source.id)}>
+                            {source.type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {/* <FormDescription className="text-xs">
+                      Lead source.
+                    </FormDescription> */}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
           </div>
 
           {/* Site Address */}
@@ -617,46 +654,6 @@ export default function LeadsGenerationForm({
               </FormItem>
             )}
           />
-
-          {/* Source */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <FormField
-              control={form.control}
-              name="source_id"
-              render={({ field }) => {
-                const { data: sourceTypes, isLoading } = useSourceTypes();
-
-                return (
-                  <FormItem>
-                    <FormLabel className="text-sm">Source *</FormLabel>
-                    <Select
-                      value={field.value || ""}
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      disabled={isLoading}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="text-sm w-full">
-                          <SelectValue placeholder="Select source" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {sourceTypes?.data?.map((source: any) => (
-                          <SelectItem key={source.id} value={String(source.id)}>
-                            {source.type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {/* <FormDescription className="text-xs">
-                      Lead source.
-                    </FormDescription> */}
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-          </div>
 
           {/* Product Types & Structures */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
