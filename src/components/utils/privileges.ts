@@ -111,3 +111,11 @@ export const canViewThreeVerticalDocsOptionInTechCheck = (
   const allowedRoles = ["super_admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
+
+export const canOrderLogin = (
+  userType: string | undefined
+) => {
+  if (!userType) return false;
+  const allowedRoles = ["super_admin", "admin", "backend"];
+  return allowedRoles.includes(userType.toLowerCase());
+};

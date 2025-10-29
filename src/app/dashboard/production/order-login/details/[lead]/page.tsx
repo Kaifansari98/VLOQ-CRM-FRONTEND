@@ -57,7 +57,11 @@ import { toast } from "react-toastify";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
-import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
+import {
+  canReassingLead,
+  canDeleteLead,
+  canOrderLogin,
+} from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
@@ -283,7 +287,9 @@ export default function OrderLoginLeadDetails() {
                 status="orderLogin"
                 leadId={leadIdNum}
                 accountId={accountId}
-                defaultTab="orderLogin"
+                defaultTab={
+                  canOrderLogin(userType) ? "orderLogin" : "techcheck"
+                }
               />
             </main>
           </TabsContent>
