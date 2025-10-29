@@ -25,6 +25,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const { data: companyVendors } = useCompanyVendors(vendorId);
   const { data: orderLoginData } = useOrderLoginByLead(vendorId, leadId);
   const queryClient = useQueryClient();
+  const userType = useAppSelector((state) => state.auth.user?.user_type.user_type);
 
   const users =
     companyVendors?.map((vendor: any) => ({
@@ -61,16 +62,11 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   );
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="py-4 px-2 space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-xl font-semibold">File BreakUps</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage file breakup responsibilities for different material
-            categories. Assign company vendors, leave notes, and submit updates
-            for each section.
-          </p>
+          <h2 className="text-xl font-semibold">Order login</h2>
         </div>
 
         <div className="flex items-center justify-end gap-2">
