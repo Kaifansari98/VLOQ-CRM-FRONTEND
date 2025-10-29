@@ -69,8 +69,12 @@ export function NavUser({
     setTimeout(() => {
       dispatch(logout());
       localStorage.removeItem("token");
+
+      // ✅ Just refresh the current page
+      window.location.reload();
+
       setIsLoggingOut(false);
-    }, 200);
+    }, 300);
   };
 
   return (
@@ -126,7 +130,7 @@ export function NavUser({
               {/* <DropdownMenuSeparator /> */}
 
               {/* <DropdownMenuGroup> */}
-                {/* <DropdownMenuItem>
+              {/* <DropdownMenuItem>
                   <BadgeCheck />
                   Account
                 </DropdownMenuItem>
@@ -134,7 +138,7 @@ export function NavUser({
                   <CreditCard />
                   Payment
                 </DropdownMenuItem> */}
-                {/* <DropdownMenuItem>
+              {/* <DropdownMenuItem>
                   <Bell />
                   Notifications
                 </DropdownMenuItem> */}
