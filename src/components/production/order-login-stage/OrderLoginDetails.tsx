@@ -25,7 +25,6 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const { data: companyVendors } = useCompanyVendors(vendorId);
   const { data: orderLoginData } = useOrderLoginByLead(vendorId, leadId);
   const queryClient = useQueryClient();
-  const userType = useAppSelector((state) => state.auth.user?.user_type.user_type);
 
   const users =
     companyVendors?.map((vendor: any) => ({
@@ -62,7 +61,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   );
 
   return (
-    <div className="py-4 px-2 space-y-6">
+    <div className="py-4 px-2 space-y-6 overflow-y-scroll h-full">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -87,7 +86,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       </div>
 
       {/* Cards: 7 defaults always, then API extras */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 gap-4">
         {/* 7 defaults (always rendered) */}
         {defaultCards.map(({ title, existingData }) => (
           <FileBreakUpField

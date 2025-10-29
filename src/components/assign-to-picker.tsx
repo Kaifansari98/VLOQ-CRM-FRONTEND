@@ -2,7 +2,6 @@
 
 import { useId, useState } from "react";
 import { CheckIcon, ChevronDownIcon } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +12,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -29,13 +27,18 @@ interface Props {
   data: SelectData[];
   value?: number;
   onChange?: (selectedId: number | null) => void;
+  placeholder?: string; // ✅ optional placeholder prop
 }
 
-export default function AssignToPicker({ data, value, onChange }: Props) {
+export default function AssignToPicker({
+  data,
+  value,
+  onChange,
+  placeholder = "Search user...", // ✅ default fallback
+}: Props) {
   const id = useId();
   const [open, setOpen] = useState<boolean>(false);
 
-  // Convert value to string for comparison
   const stringValue =
     value !== undefined && value !== null ? String(value) : "";
   const selectedItem = data.find((item) => item.id === value);
@@ -71,17 +74,18 @@ export default function AssignToPicker({ data, value, onChange }: Props) {
           align="start"
         >
           <Command>
-            <CommandInput placeholder="Search user..." />
+            {/* ✅ Use custom or default placeholder */}
+            <CommandInput placeholder={placeholder} />
             <CommandList>
               <CommandEmpty>No user found.</CommandEmpty>
               <CommandGroup>
                 {data.map((item) => (
                   <CommandItem
                     key={item.id}
-                    value={item.label.toLowerCase()} // ✅ use label for searching
+                    value={item.label.toLowerCase()}
                     onSelect={() => {
                       setOpen(false);
-                      onChange?.(item.id); // ✅ still return id
+                      onChange?.(item.id);
                     }}
                   >
                     {item.label}
