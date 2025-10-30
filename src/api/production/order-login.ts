@@ -1,6 +1,7 @@
 import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { toast } from "react-toastify";
 
 // ✅ --- Fetch Order-Login Leads (paginated) ---
 export const getOrderLoginLeads = async (
@@ -278,3 +279,52 @@ export const useUpdateMultipleOrderLogins = (
     mutationFn: (updates: any[]) =>
       updateMultipleOrderLogins(vendorId!, leadId!, updates),
   });
+
+// ✅ --- Request To Production Stage ---
+export const useRequestToProduction = () => {
+  return useMutation({
+    mutationFn: async ({
+      vendorId,
+      leadId,
+      accountId,
+      assign_to_user_id,
+      created_by,
+    }: {
+      vendorId: number;
+      leadId: number;
+      accountId: number;
+      assign_to_user_id: number;
+      created_by: number;
+    }) => {
+      const { data } = await apiClient.put(
+        `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/move-to-production-stage`,
+        {
+          account_id: accountId,
+          user_id: created_by,
+          assign_to_user_id,
+        }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Lead successfully moved to Production Stage!");
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || "Failed to move lead.");
+    },
+  });
+};
+
+// ✅ --- Fetch Factory Users ---
+export const useFactoryUsers = (vendorId: number) => {
+  return useQuery({
+    queryKey: ["factoryUsers", vendorId],
+    queryFn: async () => {
+      const { data } = await apiClient.get(
+        `/leads/production/order-login/factory-users/vendorId/${vendorId}`
+      );
+      return data?.data?.factory_users || [];
+    },
+    enabled: !!vendorId,
+  });
+};

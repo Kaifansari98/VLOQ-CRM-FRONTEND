@@ -236,7 +236,6 @@ export default function OrderLoginLeadDetails() {
                 </TabsList>
               </div>
               <div className="flex items-center justify-end gap-2">
-
                 {/* ✅ Move to Production Button (gated by readiness) */}
                 {canMove ? (
                   <Button
@@ -244,7 +243,6 @@ export default function OrderLoginLeadDetails() {
                     variant="default"
                     className="flex items-center gap-1"
                     onClick={() => setOpenMoveToProduction(true)}
-                    disabled={readinessLoading} // brief guard while checking
                   >
                     <ArrowUpRight size={16} />
                     Move to Production
@@ -312,8 +310,7 @@ export default function OrderLoginLeadDetails() {
         <MoveToProductionModal
           open={openMoveToProduction}
           onOpenChange={setOpenMoveToProduction}
-          leadId={leadIdNum}
-          accountId={accountId}
+          data={{ id: Number(leadId), accountId }}
         />
 
         <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>

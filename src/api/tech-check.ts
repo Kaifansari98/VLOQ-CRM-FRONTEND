@@ -147,3 +147,26 @@ export const useApproveMultipleDocuments = () => {
     },
   });
 };
+
+// ✅ --- Fetch Client Required Completion Date ---
+export const getClientRequiredCompletionDate = async (
+  vendorId: number,
+  leadId: number
+) => {
+  const { data } = await apiClient.get(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/client-required-completion-date`
+  );
+  return data?.data;
+};
+
+// ✅ --- React Query Hook ---
+export const useClientRequiredCompletionDate = (
+  vendorId: number | undefined,
+  leadId: number | undefined
+) => {
+  return useQuery({
+    queryKey: ["clientRequiredCompletionDate", vendorId, leadId],
+    queryFn: () => getClientRequiredCompletionDate(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
+};

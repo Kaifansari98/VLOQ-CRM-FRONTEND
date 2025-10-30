@@ -40,12 +40,13 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
           {isMandatory && <span className="text-red-500">*</span>}
         </p>
 
-        <div className="w-full sm:w-1/4">
+        <div className="w-full sm:w-1/2">
           <AssignToPicker
             data={users}
             value={value.company_vendor_id ?? undefined}
             onChange={(id) => onChange(title, "company_vendor_id", id)}
             placeholder="Search vendor..."
+            emptyLabel="Select a vendor"
           />
         </div>
       </div>
