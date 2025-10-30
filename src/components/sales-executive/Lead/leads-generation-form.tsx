@@ -53,6 +53,7 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
+import AssignToPicker from "@/components/assign-to-picker";
 
 // Schema for Create Lead - all fields required as per business logic
 const createFormSchema = (userType: string | undefined) => {
@@ -518,33 +519,72 @@ export default function LeadsGenerationForm({
               control={form.control}
               name="site_type_id"
               render={({ field }) => {
-                const { data: siteTypes, isLoading, error } = useSiteTypes();
+                const { data: siteTypes, isLoading } = useSiteTypes();
+
+                // ✅ Transform API data into AssignToPicker format
+                const pickerData =
+                  siteTypes?.data?.map((site: any) => ({
+                    id: site.id,
+                    label: site.type, // Display field
+                  })) || [];
 
                 return (
                   <FormItem>
                     <FormLabel className="text-sm">Site Type *</FormLabel>
-                    <Select
-                      value={field.value || ""}
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      disabled={isLoading}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="text-sm w-full">
-                          <SelectValue placeholder="Select site type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {siteTypes?.data?.map((site: any) => (
-                          <SelectItem key={site.id} value={String(site.id)}>
-                            {site.type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {/* <FormDescription className="text-xs">
-                      Type of site/property.
-                    </FormDescription> */}
+
+                    {isLoading ? (
+                      <p className="text-xs text-muted-foreground">
+                        Loading site types...
+                      </p>
+                    ) : (
+                      <AssignToPicker
+                        data={pickerData}
+                        value={field.value ? Number(field.value) : undefined}
+                        onChange={(selectedId: number | null) => {
+                          field.onChange(selectedId ? String(selectedId) : ""); // ✅ cast to string
+                        }}
+                        placeholder="Search site type..."
+                      />
+                    )}
+
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+
+            <FormField
+              control={form.control}
+              name="source_id"
+              render={({ field }) => {
+                const { data: sourceTypes, isLoading } = useSourceTypes();
+
+                // Convert backend data to AssignToPicker format
+                const pickerData =
+                  sourceTypes?.data?.map((source: any) => ({
+                    id: source.id,
+                    label: source.type, // or whatever field you want to show
+                  })) || [];
+
+                return (
+                  <FormItem>
+                    <FormLabel className="text-sm">Source *</FormLabel>
+
+                    {isLoading ? (
+                      <p className="text-xs text-muted-foreground">
+                        Loading sources...
+                      </p>
+                    ) : (
+                      <AssignToPicker
+                        data={pickerData}
+                        value={field.value ? Number(field.value) : undefined}
+                        onChange={(selectedId: number | null) => {
+                          field.onChange(selectedId ? String(selectedId) : "");
+                        }}
+                        placeholder="Search source..."
+                      />
+                    )}
+
                     <FormMessage />
                   </FormItem>
                 );
@@ -617,46 +657,6 @@ export default function LeadsGenerationForm({
               </FormItem>
             )}
           />
-
-          {/* Source */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <FormField
-              control={form.control}
-              name="source_id"
-              render={({ field }) => {
-                const { data: sourceTypes, isLoading } = useSourceTypes();
-
-                return (
-                  <FormItem>
-                    <FormLabel className="text-sm">Source *</FormLabel>
-                    <Select
-                      value={field.value || ""}
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      disabled={isLoading}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="text-sm w-full">
-                          <SelectValue placeholder="Select source" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {sourceTypes?.data?.map((source: any) => (
-                          <SelectItem key={source.id} value={String(source.id)}>
-                            {source.type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {/* <FormDescription className="text-xs">
-                      Lead source.
-                    </FormDescription> */}
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-          </div>
 
           {/* Product Types & Structures */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">

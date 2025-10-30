@@ -38,6 +38,7 @@ import TextAreaInput from "@/components/origin-text-area";
 import MapPicker from "@/components/MapPicker";
 import { MapPin } from "lucide-react";
 import CustomeDatePicker from "@/components/date-picker";
+import AssignToPicker from "@/components/assign-to-picker";
 
 // Form validation schema
 const formSchema = z.object({
@@ -539,6 +540,88 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
               </FormItem>
             )}
           />
+          
+          {/* Site Type & Source */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+            {/* 🔹 Site Type Picker */}
+            <FormField
+              control={form.control}
+              name="site_type_id"
+              render={({ field }) => {
+                const { data: siteTypes, isLoading } = useSiteTypes();
+
+                // Transform API response → Picker data format
+                const pickerData =
+                  siteTypes?.data?.map((site: any) => ({
+                    id: site.id,
+                    label: site.type,
+                  })) || [];
+
+                return (
+                  <FormItem>
+                    <FormLabel className="text-sm">Site Type *</FormLabel>
+
+                    {isLoading ? (
+                      <p className="text-xs text-muted-foreground">
+                        Loading site types...
+                      </p>
+                    ) : (
+                      <AssignToPicker
+                        data={pickerData}
+                        value={field.value ? Number(field.value) : undefined}
+                        onChange={(selectedId: number | null) => {
+                          // ✅ Convert number → string for form
+                          field.onChange(selectedId ? String(selectedId) : "");
+                        }}
+                        placeholder="Search site type..."
+                      />
+                    )}
+
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+
+            {/* 🔹 Source Picker */}
+            <FormField
+              control={form.control}
+              name="source_id"
+              render={({ field }) => {
+                const { data: sourceTypes, isLoading } = useSourceTypes();
+
+                const pickerData =
+                  sourceTypes?.data?.map((source: any) => ({
+                    id: source.id,
+                    label: source.type,
+                  })) || [];
+
+                return (
+                  <FormItem>
+                    <FormLabel className="text-sm">Source *</FormLabel>
+
+                    {isLoading ? (
+                      <p className="text-xs text-muted-foreground">
+                        Loading sources...
+                      </p>
+                    ) : (
+                      <AssignToPicker
+                        data={pickerData}
+                        value={field.value ? Number(field.value) : undefined}
+                        onChange={(selectedId: number | null) => {
+                          // ✅ Convert number → string for form
+                          field.onChange(selectedId ? String(selectedId) : "");
+                        }}
+                        placeholder="Search source..."
+                      />
+                    )}
+
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+          </div>
 
           {/* Site Address */}
           <FormField
@@ -604,87 +687,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
               </FormItem>
             )}
           />
-
-          {/* Site Type & Source */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-            <FormField
-              control={form.control}
-              name="site_type_id"
-              render={({ field }) => {
-                const { data: siteTypes, isLoading, error } = useSiteTypes();
-
-                useEffect(() => {
-                  // console.log("🔍 siteTypes response:", siteTypes);
-                }, [siteTypes]);
-
-                return (
-                  <FormItem>
-                    <FormLabel className="text-sm">Site Type *</FormLabel>
-                    <Select
-                      value={field.value || ""}
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      disabled={isLoading}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="text-sm w-full">
-                          <SelectValue placeholder="Select site type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {siteTypes?.data?.map((site: any) => (
-                          <SelectItem key={site.id} value={String(site.id)}>
-                            {site.type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {/* <FormDescription className="text-xs">
-                      Type of site/property.
-                    </FormDescription> */}
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-
-            <FormField
-              control={form.control}
-              name="source_id"
-              render={({ field }) => {
-                const { data: sourceTypes, isLoading } = useSourceTypes();
-
-                return (
-                  <FormItem>
-                    <FormLabel className="text-sm">Source *</FormLabel>
-                    <Select
-                      value={field.value || ""}
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      disabled={isLoading}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="text-sm w-full">
-                          <SelectValue placeholder="Select source" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {sourceTypes?.data?.map((source: any) => (
-                          <SelectItem key={source.id} value={String(source.id)}>
-                            {source.type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {/* <FormDescription className="text-xs">
-                      Lead source.
-                    </FormDescription> */}
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-          </div>
 
           {/* Product Types & Structures */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
