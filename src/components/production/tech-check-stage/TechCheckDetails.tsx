@@ -17,6 +17,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useClientRequiredCompletionDate } from "@/api/tech-check";
 
 type Props = {
   leadId: number;
@@ -43,6 +44,13 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
   const { data: finalMeasurement } = useFinalMeasurementLeadById(
     vendorId,
     leadId
+  );
+
+  const { data, isLoading } = useClientRequiredCompletionDate(vendorId, leadId);
+
+  console.log(
+    "akdjfhasdkjfhadsj :- ",
+    data?.client_required_order_login_complition_date
   );
 
   // ✅ State for image preview
@@ -76,10 +84,65 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
       animate="visible"
       className="w-full h-full space-y-8 overflow-y-scroll"
     >
+      <motion.div
+        className=" w-full flex items-center justify-start gap-2"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        {/* Animated green circle */}
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="w-full h-full space-y-8 overflow-y-scroll"
+        >
+          {/* 🔹 Client Required Completion Section */}
+          <motion.div 
+            className="flex items-center gap-3 bg-muted/40 border border-border rounded-lg px-4 py-2"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            {/* ✅ Animated green status dot */}
+            <motion.div
+              className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"
+              animate={{
+                scale: [1, 1.25, 1],
+                opacity: [0.8, 1, 0.8],
+              }}
+              transition={{
+                repeat: Infinity,
+                duration: 1.6,
+                ease: "easeInOut",
+              }}
+            />
+
+            {/* ✅ Text + Date */}
+            <div className="flex flex-col">
+              <p className="text-xs font-semibold text-muted-foreground tracking-wide">
+                Client Order Login Completion Date
+              </p>
+              <span className="text-sm font-medium text-foreground mt-0.5">
+                {data?.client_required_order_login_complition_date
+                  ? new Date(
+                      data.client_required_order_login_complition_date
+                    ).toLocaleDateString("en-GB", {
+                      weekday: "long",
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    })
+                  : "Not specified"}
+              </span>
+            </div>
+          </motion.div>
+        </motion.div>
+      </motion.div>
       {/* Header with Stats */}
-      <motion.div variants={itemVariants} className="space-y-4">
+      <motion.div variants={itemVariants} className="space-y-4 -mt-5">
         {/* Stats Overview */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-blue-500 dark:bg-blue-600 flex items-center justify-center">

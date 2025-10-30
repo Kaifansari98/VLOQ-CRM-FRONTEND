@@ -37,11 +37,15 @@ import {
   useRequestToTechCheck,
 } from "@/api/client-approval";
 import AssignToPicker from "@/components/assign-to-picker";
+import CustomeDatePicker from "@/components/date-picker";
 import { useRouter } from "next/navigation";
-import { QueryClient, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 
 const schema = z.object({
   assign_to_user_id: z.number().min(1, "Please select a Tech Check user"),
+  client_required_order_login_complition_date: z
+    .string()
+    .min(1, "Please select a date"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -62,15 +66,15 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
 }) => {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const userId = useAppSelector((state) => state.auth.user?.id);
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const userId = useAppSelector((s) => s.auth.user?.id);
 
   const { data: techCheckUsers, isLoading } = useTechCheckUsers(vendorId!);
   const { mutate, isPending } = useRequestToTechCheck();
 
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [showSingleUserConfirm, setShowSingleUserConfirm] = useState(false);
+  const [singleUserDate, setSingleUserDate] = useState<string | undefined>("");
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   const mappedUsers =
     techCheckUsers?.map((user: any) => ({
@@ -80,28 +84,36 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { assign_to_user_id: 0 },
+    defaultValues: {
+      assign_to_user_id: 0,
+      client_required_order_login_complition_date: "",
+    },
   });
 
-  // ✅ Auto-open confirmation if there’s only one user
+  // Check if single user and show confirmation directly
   useEffect(() => {
     if (open && techCheckUsers && techCheckUsers.length === 1) {
       const singleUser = techCheckUsers[0];
-      console.log("Auto-selected Tech Check user:", singleUser);
       form.setValue("assign_to_user_id", singleUser.id);
-      setSelectedUserId(singleUser.id);
       setSelectedUserName(singleUser.user_name);
-      onOpenChange(false); // close main modal
-      setConfirmOpen(true); // open confirmation modal directly
+      setShowSingleUserConfirm(true);
+    } else if (open) {
+      setShowSingleUserConfirm(false);
+      setSingleUserDate("");
     }
-  }, [open, techCheckUsers, form, onOpenChange]);
+  }, [open, techCheckUsers, form]);
 
-  // ✅ Handle confirm submit
-  const handleConfirmSubmit = () => {
-    const assign_to_user_id =
-      selectedUserId || form.getValues("assign_to_user_id");
+  // Handle single user confirmation with date
+  const handleSingleUserSubmit = () => {
+    if (!singleUserDate) {
+      toast.error("Please select a completion date");
+      return;
+    }
+
+    const assign_to_user_id = form.getValues("assign_to_user_id");
+
     if (!vendorId || !userId || !assign_to_user_id) {
-      toast.error("Missing information!");
+      toast.error("Missing required information");
       return;
     }
 
@@ -112,6 +124,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
         accountId: data.accountId,
         assign_to_user_id,
         created_by: userId,
+        client_required_order_login_complition_date: singleUserDate,
       },
       {
         onSuccess: () => {
@@ -119,110 +132,178 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
           router.push("/dashboard/production/tech-check");
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
           form.reset();
-          setConfirmOpen(false);
+          setSingleUserDate("");
+          setShowSingleUserConfirm(false);
           onOpenChange(false);
         },
       }
     );
   };
 
-  // ✅ Multi-user flow: show form + confirmation
+  // Handle multiple users flow
   const onSubmit: SubmitHandler<FormValues> = (values) => {
-    const selectedUser = mappedUsers.find(
-      (u: any) => u.id === values.assign_to_user_id
+    if (!vendorId || !userId) {
+      toast.error("Missing required information");
+      return;
+    }
+
+    mutate(
+      {
+        vendorId,
+        leadId: data.id,
+        accountId: data.accountId,
+        assign_to_user_id: values.assign_to_user_id,
+        created_by: userId,
+        client_required_order_login_complition_date:
+          values.client_required_order_login_complition_date,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Lead moved to Tech Check stage successfully!");
+          router.push("/dashboard/production/tech-check");
+          queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+          form.reset();
+          onOpenChange(false);
+        },
+      }
     );
-    setSelectedUserName(selectedUser?.label || null);
-    setSelectedUserId(values.assign_to_user_id);
-    setConfirmOpen(true);
   };
 
-  return (
-    <>
-      {/* Main Modal — only shows if more than one Tech-Check user */}
-      {techCheckUsers?.length !== 1 && (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="max-w-md w-full">
-            <DialogHeader>
-              <DialogTitle>Request To Tech Check</DialogTitle>
-            </DialogHeader>
-            <ScrollArea className="pt-4 max-h-[60vh]">
-              {isLoading ? (
-                <div className="p-6 text-center text-muted-foreground">
-                  Loading tech check users...
-                </div>
-              ) : (
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit(onSubmit)}
-                    className="space-y-6"
-                  >
-                    <FormField
-                      control={form.control}
-                      name="assign_to_user_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm">
-                            Assign To Tech Check User
-                          </FormLabel>
-                          <FormControl>
-                            <AssignToPicker
-                              data={mappedUsers}
-                              value={field.value}
-                              onChange={(value) =>
-                                field.onChange(Number(value) || 0)
-                              }
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="flex justify-end gap-2 pt-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => onOpenChange(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={isPending}>
-                        {isPending ? "Requesting..." : "Submit Request"}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              )}
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* ✅ Confirmation Dialog */}
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+  // Single user confirmation dialog
+  if (showSingleUserConfirm && techCheckUsers?.length === 1) {
+    return (
+      <AlertDialog
+        open={showSingleUserConfirm}
+        onOpenChange={(open) => {
+          setShowSingleUserConfirm(open);
+          if (!open) {
+            onOpenChange(false);
+            setSingleUserDate("");
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Tech Check Request</AlertDialogTitle>
             <AlertDialogDescription>
-              {selectedUserName
-                ? `Are you sure you want to assign this lead to ${selectedUserName} for Tech Check?`
-                : `Are you sure you want to move this lead to Tech Check stage?`}
+              Assign this lead to <strong>{selectedUserName}</strong> for Tech
+              Check.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          <div className="py-4">
+            <label className="text-sm font-medium mb-2 block">
+              Client Required Completion Date
+            </label>
+            <CustomeDatePicker
+              value={singleUserDate}
+              onChange={(value) => setSingleUserDate(value || "")}
+              restriction="futureOnly"
+            />
+          </div>
+
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>
+            <AlertDialogCancel
+              disabled={isPending}
+              onClick={() => {
+                setSingleUserDate("");
+                setShowSingleUserConfirm(false);
+                onOpenChange(false);
+              }}
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleConfirmSubmit}
-              disabled={isPending}
+              onClick={handleSingleUserSubmit}
+              disabled={isPending || !singleUserDate}
             >
               {isPending ? "Submitting..." : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    );
+  }
+
+  // Multiple users - show full form
+  return (
+    <Dialog open={open && !showSingleUserConfirm} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md w-full">
+        <DialogHeader>
+          <DialogTitle>Request To Tech Check</DialogTitle>
+        </DialogHeader>
+
+        <ScrollArea className="pt-4 max-h-[60vh]">
+          {isLoading ? (
+            <div className="p-6 text-center text-muted-foreground">
+              Loading tech check users...
+            </div>
+          ) : (
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-6"
+              >
+                <FormField
+                  control={form.control}
+                  name="assign_to_user_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">
+                        Assign To Tech Check User
+                      </FormLabel>
+                      <FormControl>
+                        <AssignToPicker
+                          data={mappedUsers}
+                          value={field.value}
+                          onChange={(value) =>
+                            field.onChange(Number(value) || 0)
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="client_required_order_login_complition_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">
+                        Client Required Completion Date
+                      </FormLabel>
+                      <FormControl>
+                        <CustomeDatePicker
+                          value={field.value}
+                          onChange={field.onChange}
+                          restriction="futureOnly"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => onOpenChange(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isPending}>
+                    {isPending ? "Requesting..." : "Submit Request"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          )}
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   );
 };
 

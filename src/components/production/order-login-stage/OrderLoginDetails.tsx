@@ -16,6 +16,9 @@ import { Button } from "@/components/ui/button";
 import ProductionFilesSection from "./ProductionFilesModal";
 import ApprovedDocsSection from "./ApprovedDocsModal";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
+import { Plus } from "lucide-react";
+import { motion } from "framer-motion";
+import { useClientRequiredCompletionDate } from "@/api/tech-check";
 
 interface OrderLoginDetailsProps {
   leadId: number;
@@ -60,6 +63,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   );
   const { mutateAsync: uploadMultiple, isPending } =
     useUploadMultipleFileBreakupsByLead(vendorId, leadId, accountId);
+
+  const { data, isLoading } = useClientRequiredCompletionDate(vendorId, leadId);
 
   // 🧩 Vendors for dropdowns
   const users =
@@ -155,16 +160,83 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       queryClient.invalidateQueries({
         queryKey: ["orderLoginByLead", vendorId, leadId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["leadProductionReadiness", vendorId, leadId],
+      });
     } catch (err: any) {
       console.error("❌ Error processing order login:", err);
       toast.error(err?.response?.data?.message || "Something went wrong");
     }
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { duration: 0.3, staggerChildren: 0.05 },
+    },
+  };
+
   return (
-    <div className=" space-y-6 overflow-y-scroll h-full">
+    <div className="space-y-6 overflow-y-scroll h-full">
+      <motion.div
+        className=" w-full flex items-center justify-start gap-2"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        {/* Animated green circle */}
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="w-full h-full space-y-8 overflow-y-scroll"
+        >
+          {/* 🔹 Client Required Completion Section */}
+          <motion.div
+            className="flex items-center gap-3 bg-muted/40 border border-border rounded-lg px-4 py-2"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            {/* ✅ Animated green status dot */}
+            <motion.div
+              className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"
+              animate={{
+                scale: [1, 1.25, 1],
+                opacity: [0.8, 1, 0.8],
+              }}
+              transition={{
+                repeat: Infinity,
+                duration: 1.6,
+                ease: "easeInOut",
+              }}
+            />
+
+            {/* ✅ Text + Date */}
+            <div className="flex flex-col">
+              <p className="text-xs font-semibold text-muted-foreground tracking-wide">
+                Client Order Login Completion Date
+              </p>
+              <span className="text-sm font-medium text-foreground mt-0.5">
+                {data?.client_required_order_login_complition_date
+                  ? new Date(
+                      data.client_required_order_login_complition_date
+                    ).toLocaleDateString("en-GB", {
+                      weekday: "long",
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    })
+                  : "Not specified"}
+              </span>
+            </div>
+          </motion.div>
+        </motion.div>
+      </motion.div>
       <SmoothTab
         defaultTabId="approved-docs"
+        className="-mt-3"
         items={[
           {
             id: "approved-docs",
@@ -186,39 +258,35 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                   <div>
                     <h2 className="text-xl font-semibold">Order Login</h2>
                   </div>
-          
+
                   <div className="flex items-center justify-end gap-2">
-                    <AddSectionModal
-                      users={users}
-                      leadId={leadId}
-                      accountId={accountId}
-                      onSectionAdded={() => {
-                        queryClient.invalidateQueries({
-                          queryKey: ["orderLoginByLead", vendorId, leadId],
-                        });
-                      }}
-                    />
-          
-                    <Button size="sm" onClick={handleSubmitAll} disabled={isPending}>
+                    <Button
+                      size="sm"
+                      onClick={handleSubmitAll}
+                      disabled={isPending}
+                    >
                       {isPending ? "Processing..." : "Save Order Login"}
                     </Button>
                   </div>
                 </div>
-          
-                <div className="grid grid-cols-1 gap-4">
+
+                <div className="grid grid-cols-3 gap-4">
                   {defaultCards.map(({ title }) => (
                     <FileBreakUpField
                       key={`default-${title}`}
                       title={title}
                       users={users}
                       value={
-                        breakups[title] || { item_desc: "", company_vendor_id: null }
+                        breakups[title] || {
+                          item_desc: "",
+                          company_vendor_id: null,
+                        }
                       }
                       onChange={handleFieldChange}
                       isMandatory={mandatoryTitles.includes(title)}
                     />
                   ))}
-          
+
                   {extraFromApi.map((item: any) => (
                     <FileBreakUpField
                       key={`extra-${item.id ?? item.item_type}`}
@@ -234,6 +302,31 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                       isMandatory={false}
                     />
                   ))}
+
+                  {/* Add More Section Card */}
+                  <div className="rounded-xl border-2 border-dashed border-primary/30 p-4 bg-primary/5 hover:bg-primary/10 transition-colors flex flex-col items-center justify-center gap-3 min-h-[180px] cursor-pointer group">
+                    <div className="rounded-full bg-primary/10 p-3 group-hover:bg-primary/20 transition-colors">
+                      <Plus className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="text-center">
+                      <p className="font-medium text-sm text-primary mb-1">
+                        Add New Section
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Create custom breakup category
+                      </p>
+                    </div>
+                    <AddSectionModal
+                      users={users}
+                      leadId={leadId}
+                      accountId={accountId}
+                      onSectionAdded={() => {
+                        queryClient.invalidateQueries({
+                          queryKey: ["orderLoginByLead", vendorId, leadId],
+                        });
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             ),
