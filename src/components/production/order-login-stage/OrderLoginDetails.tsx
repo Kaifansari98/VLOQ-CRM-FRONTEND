@@ -164,12 +164,12 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   return (
     <div className=" space-y-6 overflow-y-scroll h-full">
       <SmoothTab
-        defaultTabId="order-login"
+        defaultTabId="approved-docs"
         items={[
           {
             id: "approved-docs",
             title: "Approved Documents",
-            color: "bg-purple-500 hover:bg-purple-600",
+            color: "bg-blue-500 hover:bg-purple-600",
             cardContent: (
               <div>
                 <ApprovedDocsSection leadId={leadId} />
@@ -179,9 +179,9 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           {
             id: "order-login",
             title: "Order Login",
-            color: "bg-blue-500 hover:bg-blue-600",
+            color: "bg-green-500 hover:bg-blue-600",
             cardContent: (
-              <div className="h-[calc(100vh-200px)] overflow-y-auto space-y-6 p-4">
+              <div className="h-[calc(100vh-200px)] overflow-y-auto space-y-6">
                 <div className="flex items-start justify-between">
                   <div>
                     <h2 className="text-xl font-semibold">Order Login</h2>
@@ -241,7 +241,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           {
             id: "production-files",
             title: "Production Files",
-            color: "bg-emerald-500 hover:bg-emerald-600",
+            color: "bg-purple-500 hover:bg-emerald-600",
             cardContent: (
               <div>
                 <ProductionFilesSection leadId={leadId} accountId={accountId} />
