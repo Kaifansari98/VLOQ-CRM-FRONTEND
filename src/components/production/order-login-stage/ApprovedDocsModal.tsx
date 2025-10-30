@@ -1,97 +1,115 @@
 "use client";
 
-import React, { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import React from "react";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useApprovedTechCheckDocuments } from "@/api/production/order-login";
 import { useAppSelector } from "@/redux/store";
+import {
+  RefreshCcw,
+  FileText,
+  ExternalLink,
+  FolderOpen,
+  Loader2,
+} from "lucide-react";
 
-interface ApprovedDocsModalProps {
+interface ApprovedDocsSectionProps {
   leadId: number;
 }
 
-const ApprovedDocsModal: React.FC<ApprovedDocsModalProps> = ({ leadId }) => {
+export default function ApprovedDocsSection({
+  leadId,
+}: ApprovedDocsSectionProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
-  const [open, setOpen] = useState(false);
+  const { data, isLoading, isError, refetch, isFetching } =
+    useApprovedTechCheckDocuments(vendorId, leadId);
 
-  // ✅ Run query only after modal is opened (better UX)
-  const { data, isLoading, isError, refetch } = useApprovedTechCheckDocuments(
-    vendorId,
-    leadId
-  );
-
-  // When modal opens, refetch data
-  const handleOpenChange = (val: boolean) => {
-    setOpen(val);
-    if (val && vendorId && leadId) {
-      refetch();
-    }
-  };
+  const hasDocs = Array.isArray(data) && data.length > 0;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          View Approved Docs
+    <div className="border rounded-lg overflow-hidden bg-background">
+      {/* Header */}
+      <div className="px-6 py-4 border-b bg-muted/20 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <FolderOpen className="w-5 h-5 text-primary" />
+          <h2 className="text-lg font-semibold">
+            Approved Tech-Check Documents
+          </h2>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="flex items-center gap-2"
+        >
+          {isFetching ? (
+            <Loader2 className="animate-spin size-4" />
+          ) : (
+            <RefreshCcw size={16} />
+          )}
+          Refresh
         </Button>
-      </DialogTrigger>
+      </div>
 
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Approved Tech Check Documents</DialogTitle>
-        </DialogHeader>
-
-        {/* --- Status Handling --- */}
-        {isLoading && (
-          <p className="text-sm text-muted-foreground">Loading documents...</p>
-        )}
-        {isError && (
-          <p className="text-sm text-red-500">
-            Failed to fetch approved documents.
-          </p>
-        )}
-
-        {!isLoading && (!data || data.length === 0) && (
-          <p className="text-sm text-muted-foreground">
-            No approved documents found.
-          </p>
-        )}
-
-        {/* --- Documents List --- */}
-        {data && data.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-            {data.map((doc: any) => (
-              <div
-                key={doc.id}
-                className="border rounded-lg p-3 shadow-sm hover:shadow-md transition"
-              >
-                <p className="font-medium text-sm truncate">
-                  {doc.doc_og_name}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Uploaded on {new Date(doc.created_at).toLocaleDateString()}
-                </p>
-                <a
-                  href={doc.signed_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 inline-block text-primary text-xs underline"
-                >
-                  View / Download
-                </a>
-              </div>
-            ))}
+      {/* Body */}
+      <div className="p-6">
+        {isLoading ? (
+          <div className="flex justify-center py-10 text-sm text-muted-foreground">
+            <Loader2 className="animate-spin mr-2 size-4" />
+            Loading documents...
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-};
+        ) : isError ? (
+          <div className="p-8 border border-dashed rounded-lg text-center bg-muted/30">
+            <p className="text-sm text-red-500">
+              Failed to fetch approved documents.
+            </p>
+          </div>
+        ) : !hasDocs ? (
+          <div className="p-8 border border-dashed rounded-lg flex flex-col items-center justify-center text-center bg-muted/30">
+            <FolderOpen className="w-10 h-10 text-muted-foreground mb-2" />
+            <p className="text-sm font-medium text-muted-foreground">
+              No approved documents found.
+            </p>
+          </div>
+        ) : (
+          <ScrollArea className="max-h-[480px] pr-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {data.map((doc: any) => (
+                <div
+                  key={doc.id}
+                  className="group border rounded-lg p-3 bg-card shadow-sm hover:shadow-md transition-all duration-200"
+                >
+                  <div className="flex items-start gap-2">
+                    <FileText
+                      size={20}
+                      className="text-primary shrink-0 group-hover:scale-110 transition-transform"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">
+                        {doc.doc_og_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Uploaded on{" "}
+                        {new Date(doc.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
 
-export default ApprovedDocsModal;
+                  <a
+                    href={doc.signed_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-500 hover:text-blue-600 hover:underline inline-flex items-center gap-1 mt-2 font-medium"
+                  >
+                    <ExternalLink size={14} /> View / Download
+                  </a>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        )}
+      </div>
+    </div>
+  );
+}
