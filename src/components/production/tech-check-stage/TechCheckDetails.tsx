@@ -78,8 +78,8 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
     >
       {/* Header with Stats */}
       <motion.div variants={itemVariants} className="space-y-4">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+        {/* Stats Overview */}cols
+        <div className="grid grid--2 sm:grid-cols-4 gap-3 mt-4">
           <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-blue-500 dark:bg-blue-600 flex items-center justify-center">
