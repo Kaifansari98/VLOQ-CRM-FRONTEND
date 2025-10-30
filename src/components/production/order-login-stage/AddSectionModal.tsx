@@ -65,7 +65,7 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
           </div>
 
           {/* Render FileBreakUpField only when title entered */}
-          {newTitle.trim() !== "" && (
+          {/* {newTitle.trim() !== "" && (
             <FileBreakUpField
               title={newTitle}
               users={users}
@@ -73,7 +73,7 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
               accountId={accountId}
               onSuccess={handleSectionCreated} // ✅ callback on success
             />
-          )}
+          )} */}
         </div>
 
         <DialogDescription className="text-muted-foreground text-xs">
