@@ -167,16 +167,26 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         defaultTabId="order-login"
         items={[
           {
+            id: "approved-docs",
+            title: "Approved Documents",
+            color: "bg-purple-500 hover:bg-purple-600",
+            cardContent: (
+              <div>
+                <ApprovedDocsSection leadId={leadId} />
+              </div>
+            ),
+          },
+          {
             id: "order-login",
             title: "Order Login",
             color: "bg-blue-500 hover:bg-blue-600",
             cardContent: (
-              <div className="space-y-6">
+              <div className="h-[calc(100vh-200px)] overflow-y-auto space-y-6 p-4">
                 <div className="flex items-start justify-between">
                   <div>
                     <h2 className="text-xl font-semibold">Order Login</h2>
                   </div>
-
+          
                   <div className="flex items-center justify-end gap-2">
                     <AddSectionModal
                       users={users}
@@ -188,17 +198,13 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                         });
                       }}
                     />
-
-                    <Button
-                      size="sm"
-                      onClick={handleSubmitAll}
-                      disabled={isPending}
-                    >
+          
+                    <Button size="sm" onClick={handleSubmitAll} disabled={isPending}>
                       {isPending ? "Processing..." : "Save Order Login"}
                     </Button>
                   </div>
                 </div>
-
+          
                 <div className="grid grid-cols-1 gap-4">
                   {defaultCards.map(({ title }) => (
                     <FileBreakUpField
@@ -206,16 +212,13 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                       title={title}
                       users={users}
                       value={
-                        breakups[title] || {
-                          item_desc: "",
-                          company_vendor_id: null,
-                        }
+                        breakups[title] || { item_desc: "", company_vendor_id: null }
                       }
                       onChange={handleFieldChange}
                       isMandatory={mandatoryTitles.includes(title)}
                     />
                   ))}
-
+          
                   {extraFromApi.map((item: any) => (
                     <FileBreakUpField
                       key={`extra-${item.id ?? item.item_type}`}
@@ -240,18 +243,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             title: "Production Files",
             color: "bg-emerald-500 hover:bg-emerald-600",
             cardContent: (
-              <div className="p-4">
+              <div>
                 <ProductionFilesSection leadId={leadId} accountId={accountId} />
-              </div>
-            ),
-          },
-          {
-            id: "approved-docs",
-            title: "Approved Documents",
-            color: "bg-purple-500 hover:bg-purple-600",
-            cardContent: (
-              <div className="p-4">
-                <ApprovedDocsSection leadId={leadId} />
               </div>
             ),
           },
