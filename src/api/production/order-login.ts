@@ -227,3 +227,54 @@ export const useLeadProductionReadiness = (
     queryFn: () => getLeadProductionReadiness(vendorId!, leadId!),
     enabled: !!vendorId && !!leadId,
   });
+
+// ✅ --- Upload Multiple File Breakups ---
+export const uploadMultipleFileBreakupsByLead = async (
+  vendorId: number,
+  leadId: number,
+  accountId: number,
+  breakups: any[]
+) => {
+  const { data } = await apiClient.post(
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/accountId/${accountId}/upload-multiple-file-breakups`,
+    { breakups }
+  );
+  return data;
+};
+
+export const useUploadMultipleFileBreakupsByLead = (
+  vendorId: number | undefined,
+  leadId: number | undefined,
+  accountId: number | undefined
+) =>
+  useMutation({
+    mutationFn: (breakups: any[]) =>
+      uploadMultipleFileBreakupsByLead(
+        vendorId!,
+        leadId!,
+        accountId!,
+        breakups
+      ),
+  });
+
+// ✅ --- Update Multiple Order Logins ---
+export const updateMultipleOrderLogins = async (
+  vendorId: number,
+  leadId: number,
+  updates: any[]
+) => {
+  const { data } = await apiClient.put(
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/update-multiple`,
+    { updates }
+  );
+  return data;
+};
+
+export const useUpdateMultipleOrderLogins = (
+  vendorId: number | undefined,
+  leadId: number | undefined
+) =>
+  useMutation({
+    mutationFn: (updates: any[]) =>
+      updateMultipleOrderLogins(vendorId!, leadId!, updates),
+  });

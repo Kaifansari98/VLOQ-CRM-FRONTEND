@@ -36,7 +36,6 @@ import {
   PanelsTopLeftIcon,
   BoxIcon,
   UsersRoundIcon,
-  BoxesIcon,
   ArrowUpRight,
 } from "lucide-react";
 
@@ -65,8 +64,6 @@ import {
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
-import ProductionFilesModal from "@/components/production/order-login-stage/ProductionFilesModal";
-import { FolderOpen } from "lucide-react";
 import MoveToProductionModal from "@/components/production/order-login-stage/MoveToProductionModal";
 import { useLeadProductionReadiness } from "@/api/production/order-login";
 
@@ -102,7 +99,6 @@ export default function OrderLoginLeadDetails() {
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
-  const [openProductionModal, setOpenProductionModal] = useState(false);
   const [openMoveToProduction, setOpenMoveToProduction] = useState(false);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
@@ -240,16 +236,6 @@ export default function OrderLoginLeadDetails() {
                 </TabsList>
               </div>
               <div className="flex items-center justify-end gap-2">
-                {/* ✅ Production Files Button */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setOpenProductionModal(true)}
-                  className="flex items-center gap-1"
-                >
-                  <FolderOpen size={16} />
-                  Production Files
-                </Button>
 
                 {/* ✅ Move to Production Button (gated by readiness) */}
                 {canMove ? (
@@ -321,13 +307,6 @@ export default function OrderLoginLeadDetails() {
           onOpenChange={setAssignOpen}
           onlyFollowUp
           data={{ id: leadIdNum, name: "" }}
-        />
-
-        <ProductionFilesModal
-          open={openProductionModal}
-          onOpenChange={setOpenProductionModal}
-          leadId={leadIdNum}
-          accountId={accountId}
         />
 
         <MoveToProductionModal

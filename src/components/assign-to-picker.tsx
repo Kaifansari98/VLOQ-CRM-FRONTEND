@@ -60,7 +60,7 @@ export default function AssignToPicker({
                 !stringValue && "text-muted-foreground"
               )}
             >
-              {selectedItem ? selectedItem.label : "Select user"}
+              {selectedItem ? selectedItem.label : "Select an option"}
             </span>
             <ChevronDownIcon
               size={16}
