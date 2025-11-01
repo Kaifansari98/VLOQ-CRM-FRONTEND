@@ -140,18 +140,15 @@ export default function ClientApprovalLeadDetails() {
   const pptDocs = clientDocsData?.documents?.ppt ?? [];
   const pythaDocs = clientDocsData?.documents?.pytha ?? [];
 
-  console.log("PPT docs", pptDocs);
-  console.log("Pytha docs", pythaDocs);
-  console.log("All docs", clientDocsData?.documents);
-
   const docs = [...pptDocs, ...pythaDocs];
 
   const hasRejectedDocs = docs.some((d) => d.tech_check_status === "REJECTED");
 
-  console.log("hasRejectedDocs :-", hasRejectedDocs);
-
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
+
+  const no_of_client_documents_initially_submitted =
+    lead?.no_of_client_documents_initially_submitted;
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
@@ -402,7 +399,8 @@ export default function ClientApprovalLeadDetails() {
                     // 3. No PPT approved
                     // 4. No Pytha approved
                     const isDisabled =
-                      approvedCount === 0 ||
+                      approvedCount <
+                        (no_of_client_documents_initially_submitted || 0) ||
                       pendingCount > 0 ||
                       approvedPPT === 0 ||
                       approvedPytha === 0;
@@ -410,9 +408,12 @@ export default function ClientApprovalLeadDetails() {
                     if (isDisabled) {
                       let tooltipMsg = "";
 
-                      if (approvedCount === 0) {
-                        tooltipMsg =
-                          "At least one client documentation must be approved before moving to Order Login.";
+                      if (
+                        no_of_client_documents_initially_submitted &&
+                        approvedCount <
+                          no_of_client_documents_initially_submitted
+                      ) {
+                        tooltipMsg = `You must approve all initially submitted client documents (${no_of_client_documents_initially_submitted}) before moving to Order Login.`;
                       } else if (approvedPPT === 0) {
                         tooltipMsg =
                           "At least one PPT file must be approved before moving to Order Login.";
