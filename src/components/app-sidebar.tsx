@@ -130,6 +130,7 @@ const data = {
         {
           title: "Production",
           url: "/dashboard/production/pre-post-prod",
+          showCount: "total_production_stage_leads" as const, // ✅ Added
         },
         {
           title: "Ready To Dispatch",
