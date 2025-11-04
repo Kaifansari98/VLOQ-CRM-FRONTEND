@@ -15,6 +15,7 @@ interface LeadStatsResponse {
     total_tech_check_leads: number;
     total_order_login_leads: number;
     total_my_tasks: number;
+    total_production_stage_leads: number;
   };
 }
 
