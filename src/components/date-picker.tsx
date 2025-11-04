@@ -10,17 +10,27 @@ import {
 } from "@/components/ui/popover";
 import { format, parseISO } from "date-fns";
 import { Calendar as CalendarIcon, X } from "lucide-react";
+import CustomeTooltip from "./cutome-tooltip";
 
 interface CustomeDatePickerProps {
-  value?: string; // store as "YYYY-MM-DD"
+  value?: string;
   onChange: (value?: string) => void;
-  restriction?: "none" | "pastOnly" | "futureOnly" | "pastWeekOnly" | "pastMonthOnly"; 
+  restriction?:
+    | "none"
+    | "pastOnly"
+    | "futureOnly"
+    | "pastWeekOnly"
+    | "pastMonthOnly";
+  minDate?: string; // ✅ new
+  disabledReason?: string; // ✅ new
 }
 
 export default function CustomeDatePicker({
   value,
   onChange,
   restriction = "none",
+  minDate,
+  disabledReason,
 }: CustomeDatePickerProps) {
   const [date, setDate] = React.useState<Date | undefined>(
     value ? parseISO(value) : undefined
@@ -53,8 +63,13 @@ export default function CustomeDatePicker({
 
   const disableDates = (date: Date) => {
     if (restriction === "futureOnly") {
+      if (minDate) {
+        const min = parseISO(minDate);
+        return date < min; // block dates before minDate
+      }
       return date < today;
     }
+
     if (restriction === "pastOnly") {
       return date > today;
     }
@@ -70,6 +85,27 @@ export default function CustomeDatePicker({
     }
     return false;
   };
+
+  if (disabledReason) {
+    return (
+      <CustomeTooltip
+        value={disabledReason}
+        truncateValue={
+          <div className="opacity-60 cursor-not-allowed">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-start"
+              disabled
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              <span>Date selection unavailable</span>
+            </Button>
+          </div>
+        }
+      />
+    );
+  }
 
   return (
     <Popover>

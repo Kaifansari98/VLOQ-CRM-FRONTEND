@@ -18,6 +18,7 @@ import {
 import { ModeToggle } from "@/components/ModeToggle";
 import { Suspense } from "react";
 import TechCheckStageSkeleton from "@/components/production/tech-check-stage/tech-check-skeleton";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function TechCheckStagePage() {
   return (
@@ -46,7 +47,7 @@ export default function TechCheckStagePage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <ModeToggle />
+          <AnimatedThemeToggler />
           </div>
         </header>
 

@@ -66,6 +66,7 @@ import CustomeTooltip from "@/components/cutome-tooltip";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import MoveToProductionModal from "@/components/production/order-login-stage/MoveToProductionModal";
 import { useLeadProductionReadiness } from "@/api/production/order-login";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function OrderLoginLeadDetails() {
   const { lead: leadId } = useParams();
@@ -103,6 +104,8 @@ export default function OrderLoginLeadDetails() {
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
+
+  const client_required_order_login_complition_date = lead?.client_required_order_login_complition_date;
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
@@ -160,7 +163,7 @@ export default function OrderLoginLeadDetails() {
               Assign Task
             </Button>
 
-            <ModeToggle />
+            <AnimatedThemeToggler />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -311,6 +314,7 @@ export default function OrderLoginLeadDetails() {
           open={openMoveToProduction}
           onOpenChange={setOpenMoveToProduction}
           data={{ id: Number(leadId), accountId }}
+          client_required_order_login_complition_date={client_required_order_login_complition_date}
         />
 
         <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>

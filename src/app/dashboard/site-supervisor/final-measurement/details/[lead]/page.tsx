@@ -65,6 +65,7 @@ import {
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function FinalMeasurementLeadDetails() {
   const { lead: leadId } = useParams();
@@ -174,7 +175,7 @@ export default function FinalMeasurementLeadDetails() {
             <Button size="sm" onClick={() => setAssignOpen(true)}>
               Assign Task
             </Button>
-            <ModeToggle />
+            <AnimatedThemeToggler />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon">

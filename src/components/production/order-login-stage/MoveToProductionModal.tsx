@@ -53,12 +53,14 @@ interface MoveToProductionModalProps {
     id: number;
     accountId: number;
   };
+  client_required_order_login_complition_date? : string;
 }
 
 export default function MoveToProductionModal({
   open,
   onOpenChange,
   data,
+  client_required_order_login_complition_date,
 }: MoveToProductionModalProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -104,6 +106,11 @@ export default function MoveToProductionModal({
       return;
     }
 
+    if (!client_required_order_login_complition_date) {
+      toast.error("Client required completion date missing!");
+      return;
+    }
+
     mutate(
       {
         vendorId,
@@ -111,6 +118,7 @@ export default function MoveToProductionModal({
         accountId: data.accountId,
         assign_to_user_id,
         created_by: userId,
+        client_required_order_login_complition_date,
       },
       {
         onSuccess: () => {

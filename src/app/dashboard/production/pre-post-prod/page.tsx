@@ -2,37 +2,34 @@
 
 import { AppSidebar } from "@/components/app-sidebar";
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { Separator } from "@/components/ui/separator";
-import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+  BreadcrumbLink,
+} from "@/components/ui/breadcrumb";
 import { ModeToggle } from "@/components/ModeToggle";
 import { Suspense } from "react";
-import ClientDocumentationSkeleton from "@/components/site-supervisor/client-documentation/client-documentation-skeleton";
-import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
-export default function ClientDocumentationPage() {
+import ProductionTable from "@/components/production/pre-production-stage/ProductionTable";
+import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
 
+export default function ProductionPage() {
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
         {/* Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
+            <Separator orientation="vertical" className="h-4 mr-2" />
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
@@ -40,23 +37,23 @@ export default function ClientDocumentationPage() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Client-Documentation</BreadcrumbPage>
+                  <BreadcrumbPage>Production</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex gap-2 items-center">
-            <AnimatedThemeToggler />
-            </div>
+            <ModeToggle />
           </div>
         </header>
 
         {/* Content */}
         <main className="flex-1 p-4 pt-0 overflow-x-hidden">
-          <Suspense fallback={<p>Loading...</p>}>
-            <ClientDocumentationSkeleton />
+          <Suspense fallback={<p>Loading Production Leads...</p>}>
+            <FeatureFlagsProvider>
+              <ProductionTable />
+            </FeatureFlagsProvider>
           </Suspense>
         </main>
       </SidebarInset>

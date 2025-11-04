@@ -73,6 +73,7 @@ import {
   canMoveToBookingStage,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function DesigningStageLead() {
   const router = useRouter();
@@ -206,7 +207,7 @@ export default function DesigningStageLead() {
             <Button size="sm" onClick={() => setAssignOpen(true)}>
               Assign Task
             </Button>
-            <ModeToggle />
+            <AnimatedThemeToggler />
 
             {/* 🔹 Dropdown for actions */}
             <DropdownMenu>

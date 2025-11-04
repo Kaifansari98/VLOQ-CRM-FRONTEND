@@ -19,6 +19,7 @@ import { ModeToggle } from "@/components/ModeToggle";
 import { Suspense } from "react";
 import OrderLoginTable from "@/components/production/order-login-stage/OrderLoginTable";
 import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function OrderLoginPage() {
   return (
@@ -44,7 +45,7 @@ export default function OrderLoginPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <ModeToggle />
+          <AnimatedThemeToggler />
           </div>
         </header>
 

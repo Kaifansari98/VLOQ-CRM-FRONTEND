@@ -83,6 +83,7 @@ import TextAreaInput from "@/components/origin-text-area";
 import ClientDocumentationModal from "@/components/site-supervisor/final-measurement/client-documantation-modal";
 import UploadMoreClientDocumentationModal from "@/components/site-supervisor/client-documentation/uploadmore-client-documentaition-modal";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -227,7 +228,7 @@ export default function ClientApprovalLeadDetails() {
               Assign Task
             </Button>
 
-            <ModeToggle />
+            <AnimatedThemeToggler />
 
             {canViewThreeVerticalDocsOptionInTechCheck(userType) && (
               <DropdownMenu>

@@ -129,7 +129,7 @@ const data = {
         },
         {
           title: "Production",
-          url: "#",
+          url: "/dashboard/production/pre-post-prod",
         },
         {
           title: "Ready To Dispatch",

@@ -21,6 +21,7 @@ import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function MyTaskLeadDetails() {
   const { leadId } = useParams();
@@ -85,7 +86,7 @@ export default function MyTaskLeadDetails() {
                 Assign Task
               </Button>
             )}
-            <ModeToggle />
+            <AnimatedThemeToggler />
           </div>
         </header>
 
