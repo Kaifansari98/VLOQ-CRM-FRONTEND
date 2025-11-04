@@ -18,14 +18,14 @@ import { ModeToggle } from "@/components/ModeToggle";
 import { useAppSelector } from "@/redux/store";
 import InitialSiteSkeleton from "@/components/sales-executive/siteMeasurement/measurement-skeleton";
 import { Suspense, useEffect } from "react";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function InitialSiteMeasurement() {
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
-                <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator
@@ -45,7 +45,7 @@ export default function InitialSiteMeasurement() {
             </Breadcrumb>
           </div>
           <div className="flex items-center gap-2 pr-4">
-            <ModeToggle />
+            <AnimatedThemeToggler />
           </div>
         </header>
         <main className="flex-1 p-4 pt-0 overflow-x-hidden">

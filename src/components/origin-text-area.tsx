@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 interface TextAreaInputProps {
   value?: string;
@@ -10,6 +11,7 @@ interface TextAreaInputProps {
   placeholder: string;
   readOnly?: boolean;
   disabled?: boolean;
+  className?: string;
 }
 
 export default function TextAreaInput({
@@ -19,6 +21,7 @@ export default function TextAreaInput({
   placeholder,
   readOnly = false,
   disabled = false,
+  className,
 }: TextAreaInputProps) {
   const id = useId();
   const characterCount = value?.length || 0;
@@ -35,6 +38,7 @@ export default function TextAreaInput({
         rows={2}
         readOnly={readOnly}
         disabled={disabled}
+        className={cn("", className)}
       />
       <p
         id={`${id}-description`}

@@ -18,6 +18,7 @@ import {
 import { ModeToggle } from "@/components/ModeToggle";
 import { Suspense } from "react";
 import FinalMeasurementSkeleton from "@/components/site-supervisor/final-measurement/final-measurement-skeleton";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 export default function LeadsBookingPage() {
   return (
     <SidebarProvider>
@@ -46,7 +47,7 @@ export default function LeadsBookingPage() {
 
           <div className="flex items-center gap-2">
             <div className="flex gap-2 items-center">
-              <ModeToggle />
+            <AnimatedThemeToggler />
             </div>
           </div>
         </header>

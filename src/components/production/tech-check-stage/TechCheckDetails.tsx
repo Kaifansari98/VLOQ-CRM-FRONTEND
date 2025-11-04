@@ -48,11 +48,6 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
 
   const { data, isLoading } = useClientRequiredCompletionDate(vendorId, leadId);
 
-  console.log(
-    "akdjfhasdkjfhadsj :- ",
-    data?.client_required_order_login_complition_date
-  );
-
   // ✅ State for image preview
   const [openCarousel, setOpenCarousel] = useState(false);
   const [startIndex, setStartIndex] = useState(0);

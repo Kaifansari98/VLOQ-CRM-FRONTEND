@@ -5,11 +5,11 @@ import BookingLeadsDetails from "../sales-executive/booking-stage/view-booking-m
 import SiteMeasurementLeadDetails from "../tabScreens/SiteMeasurementLeadDetails";
 import DesigningLeadsDetails from "../tabScreens/DesigningLeadDetails";
 import FinalMeasurementLeadDetails from "../tabScreens/FinalMeasurementDetails";
-import ViewClientDocumentationModal from "../site-supervisor/client-documentation/view-client-documentation";
 import ClientDocumentationDetails from "../site-supervisor/client-documentation/view-client-documentation";
 import ClientApprovalDetails from "../site-supervisor/client-approval/client-approval-details";
 import TechCheckDetails from "../production/tech-check-stage/TechCheckDetails";
 import OrderLoginDetails from "../production/order-login-stage/OrderLoginDetails";
+import LeadDetailsProductionUtil from "../production/pre-production-stage/lead-details-production-tabs";
 
 interface LeadDetailsUtilProps {
   status:
@@ -21,7 +21,8 @@ interface LeadDetailsUtilProps {
     | "clientdocumentation"
     | "clientApproval"
     | "techcheck"
-    | "orderLogin";
+    | "orderLogin"
+    | "production";
   leadId?: number;
   accountId?: number;
   leadInfo?: any;
@@ -108,6 +109,17 @@ export default function LeadDetailsUtil({
         />
       ),
     },
+    {
+      id: "production",
+      title: "Production Stage",
+      color: "bg-zinc-900 hover:bg-gray-600",
+      cardContent: (
+        <LeadDetailsProductionUtil
+          leadId={leadId ?? 0}
+          accountId={accountId ?? 0}
+        />
+      ),
+    },
   ];
 
   const statusFlow: Record<LeadDetailsUtilProps["status"], string[]> = {
@@ -159,6 +171,18 @@ export default function LeadDetailsUtil({
       "clientApproval",
       "techcheck",
       "orderLogin",
+    ],
+    production: [
+      "details",
+      "measurement",
+      "designing",
+      "booking",
+      "finalMeasurement",
+      "clientdocumentation",
+      "clientApproval",
+      "techcheck",
+      "orderLogin",
+      "production", // ✅ new
     ],
   };
 

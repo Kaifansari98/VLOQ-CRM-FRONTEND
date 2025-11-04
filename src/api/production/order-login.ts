@@ -289,12 +289,14 @@ export const useRequestToProduction = () => {
       accountId,
       assign_to_user_id,
       created_by,
+      client_required_order_login_complition_date, // ✅ ADD THIS
     }: {
       vendorId: number;
       leadId: number;
       accountId: number;
       assign_to_user_id: number;
       created_by: number;
+      client_required_order_login_complition_date: string; // ✅ ADD THIS
     }) => {
       const { data } = await apiClient.put(
         `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/move-to-production-stage`,
@@ -302,6 +304,7 @@ export const useRequestToProduction = () => {
           account_id: accountId,
           user_id: created_by,
           assign_to_user_id,
+          client_required_order_login_complition_date, // ✅ ADD THIS
         }
       );
       return data;
