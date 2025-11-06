@@ -187,7 +187,7 @@ export default function PostProductionDetails({
 
               <div className="flex flex-col">
                 <p className="text-xs font-semibold text-muted-foreground tracking-wide">
-                  Client Order Login Completion Date
+                Client required delivery date
                 </p>
                 <span className="text-sm font-medium text-foreground mt-0.5">
                   {clientRequiredCompletionDateData?.client_required_order_login_complition_date
@@ -265,8 +265,8 @@ export default function PostProductionDetails({
           </DialogHeader>
 
           <div className="py-1 space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">
-              Enter number of boxes:
+            <label className="text-sm font-medium text-muted-foreground mb-2">
+              Enter number of boxes packed
             </label>
             <Input
               type="number"

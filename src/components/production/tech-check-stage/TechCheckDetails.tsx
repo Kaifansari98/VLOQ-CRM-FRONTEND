@@ -93,7 +93,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
           className="w-full h-full space-y-8 overflow-y-scroll"
         >
           {/* 🔹 Client Required Completion Section */}
-          <motion.div 
+          <motion.div
             className="flex items-center gap-3 bg-muted/40 border border-border rounded-lg px-4 py-2"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -116,7 +116,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
             {/* ✅ Text + Date */}
             <div className="flex flex-col">
               <p className="text-xs font-semibold text-muted-foreground tracking-wide">
-                Client Order Login Completion Date
+                Client required delivery date
               </p>
               <span className="text-sm font-medium text-foreground mt-0.5">
                 {data?.client_required_order_login_complition_date

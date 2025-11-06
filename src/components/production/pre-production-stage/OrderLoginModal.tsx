@@ -197,6 +197,9 @@ export default function OrderLoginModal({
       queryClient.invalidateQueries({
         queryKey: ["latestOrderLogin", vendorId, leadId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["postProductionReady", vendorId, leadId],
+      });
     } catch (err: any) {
       toast.error(err?.message || "Failed to update production ready date");
     }

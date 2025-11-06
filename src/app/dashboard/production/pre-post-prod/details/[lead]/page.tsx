@@ -19,7 +19,7 @@ import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,10 +63,13 @@ import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/ass
 import CustomeDatePicker from "@/components/date-picker";
 import {
   useLatestOrderLoginByLead,
+  usePostProductionCompleteness,
   useUpdateExpectedOrderLoginReadyDate,
 } from "@/api/production/production-api";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { useCheckPostProductionReady } from "@/api/production/production-api";
+import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 
 export default function ProductionLeadDetails() {
   const { lead: leadId } = useParams();
@@ -103,6 +106,17 @@ export default function ProductionLeadDetails() {
   const queryClient = useQueryClient();
   const { mutateAsync: updateExpectedDate } =
     useUpdateExpectedOrderLoginReadyDate();
+
+  // 🔍 Check Post Production Readiness
+  const { data: postProductionStatus } = useCheckPostProductionReady(
+    vendorId,
+    leadIdNum
+  );
+
+  const { data: completeness } = usePostProductionCompleteness(
+    vendorId,
+    leadIdNum
+  );
 
   const handleExpectedDateChange = async (newDate?: string) => {
     if (!newDate || !vendorId || !userId || !leadIdNum) return;
@@ -267,25 +281,32 @@ export default function ProductionLeadDetails() {
                 <div className="w-60 flex flex-col">
                   <label className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1 ml-1">
                     <CalendarCheck2 size={12} />
-                    Expected Order Login Ready Date
+                    Expected Ready Date of Order
                   </label>
                   <CustomeDatePicker
                     value={
                       lead?.expected_order_login_ready_date ||
-                      (latestOrderLoginDate
-                        ? latestOrderLoginDate.split("T")[0]
+                      (postProductionStatus?.all_order_login_dates_added &&
+                      latestOrderLoginDate
+                        ? (() => {
+                            const baseDate = new Date(latestOrderLoginDate);
+                            baseDate.setDate(baseDate.getDate() + 3); // ⏱ Add 3-day buffer
+                            return baseDate.toISOString().split("T")[0];
+                          })()
                         : undefined)
                     }
                     onChange={handleExpectedDateChange}
                     restriction="futureOnly"
                     minDate={
                       latestOrderLoginDate
-                        ? latestOrderLoginDate.split("T")[0]
+                        ? latestOrderLoginDate.split("T")[0] // ✅ user can only pick dates >= latest order login date
                         : undefined
                     }
                     disabledReason={
-                      !latestOrderLoginDate
-                        ? "Please complete at least one order login with an estimated completion date before setting this."
+                      completeness?.any_exists
+                        ? "Cannot change the date because lead is currently in post-production."
+                        : !postProductionStatus?.all_order_login_dates_added
+                        ? "Please ensure all Order Login expected completion dates are added before setting this."
                         : undefined
                     }
                   />
@@ -298,11 +319,11 @@ export default function ProductionLeadDetails() {
           {/* 🔹 Details Tab */}
           <TabsContent value="details">
             <main className="flex-1 h-fit">
-              <LeadDetailsUtil
-                status="production"
+              <LeadDetailsGrouped
+                status="production" // or omit if you pass defaultTab directly
+                defaultTab="production" // opens Production > Tech Check directly
                 leadId={leadIdNum}
                 accountId={accountId}
-                defaultTab="production"
               />
             </main>
           </TabsContent>

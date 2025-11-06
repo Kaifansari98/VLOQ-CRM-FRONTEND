@@ -346,3 +346,26 @@ export const useGetNoOfBoxes = (vendorId?: number, leadId?: number) => {
     enabled: !!vendorId && !!leadId,
   });
 };
+
+// ✅ --- Check Post-Production Completeness ---
+export const getPostProductionCompleteness = async (
+  vendorId: number,
+  leadId: number
+) => {
+  const { data } = await apiClient.get(
+    `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/check-post-production-completeness`
+  );
+  return data?.data;
+};
+
+// ✅ --- React Query Hook: Post-Production Completeness ---
+export const usePostProductionCompleteness = (
+  vendorId?: number,
+  leadId?: number
+) => {
+  return useQuery({
+    queryKey: ["postProductionCompleteness", vendorId, leadId],
+    queryFn: () => getPostProductionCompleteness(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
+};

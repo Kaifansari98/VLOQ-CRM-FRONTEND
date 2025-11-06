@@ -20,6 +20,7 @@ import TextAreaInput from "@/components/origin-text-area";
 
 import {
   useGetWoodworkPackingDetails,
+  usePostProductionCompleteness,
   useUploadWoodworkPackingDetails,
 } from "@/api/production/production-api";
 
@@ -45,6 +46,9 @@ export default function WoodworkPackingDetailsSection({
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [remark, setRemark] = useState(packingDetails?.remark || "");
+
+  const { data: completeness, refetch: refetchCompleteness } =
+  usePostProductionCompleteness(vendorId, leadId);
 
   useEffect(() => {
     if (packingDetails?.remark) setRemark(packingDetails.remark);
@@ -75,6 +79,10 @@ export default function WoodworkPackingDetailsSection({
       queryClient.invalidateQueries({
         queryKey: ["woodworkPackingDetails", vendorId, leadId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["postProductionCompleteness", vendorId, leadId],
+      });
+      await refetchCompleteness();
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ||

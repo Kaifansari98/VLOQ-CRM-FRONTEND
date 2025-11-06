@@ -76,8 +76,18 @@ const ProductionTable = () => {
     designerRemark: false,
   });
 
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
   // 🔹 Fetch Data
-  const { data, isLoading, isError } = useProductionLeads(vendorId!, userId!);
+  const { data, isLoading, isError } = useProductionLeads(
+    vendorId!,
+    userId!,
+    pagination.pageIndex + 1,
+    pagination.pageSize
+  );
 
   const deleteLeadMutation = useDeleteLead();
 
@@ -146,24 +156,28 @@ const ProductionTable = () => {
   const table = useReactTable({
     data: rowData,
     columns,
+    pageCount: Math.ceil((data?.total || 0) / pagination.pageSize),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getRowId: (row) => row.id.toString(),
     globalFilterFn: "includesString",
     state: {
+      pagination,
       sorting,
       columnFilters,
       rowSelection,
       globalFilter,
       columnVisibility,
     },
+    onPaginationChange: setPagination,
+    manualPagination: true,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const handleDeleteLead = () => {

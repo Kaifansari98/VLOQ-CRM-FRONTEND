@@ -216,7 +216,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             {/* ✅ Text + Date */}
             <div className="flex flex-col">
               <p className="text-xs font-semibold text-muted-foreground tracking-wide">
-                Client Order Login Completion Date
+                Client required delivery date
               </p>
               <span className="text-sm font-medium text-foreground mt-0.5">
                 {data?.client_required_order_login_complition_date

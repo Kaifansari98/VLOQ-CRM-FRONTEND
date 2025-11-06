@@ -99,7 +99,11 @@ export default function CustomeDatePicker({
               disabled
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
-              <span>Date selection unavailable</span>
+              {date ? (
+                <span>{format(date, "PPP")}</span>
+              ) : (
+                <span>Date selection unavailable</span>
+              )}
             </Button>
           </div>
         }
