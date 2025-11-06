@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { toast } from "react-toastify";
-import { useQcPhotos, useUploadQcPhotos } from "@/api/production/production-api";
+import { usePostProductionCompleteness, useQcPhotos, useUploadQcPhotos } from "@/api/production/production-api";
 
 interface PostProductionQcPhotosSectionProps {
   leadId: number;
@@ -35,6 +35,9 @@ export default function PostProductionQcPhotosSection({
     vendorId,
     leadId
   );
+
+  const { data: completeness, refetch: refetchCompleteness } =
+  usePostProductionCompleteness(vendorId, leadId);
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const hasFiles = Array.isArray(qcPhotos) && qcPhotos.length > 0;
@@ -58,6 +61,10 @@ export default function PostProductionQcPhotosSection({
       queryClient.invalidateQueries({
         queryKey: ["qcPhotos", vendorId, leadId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["postProductionCompleteness", vendorId, leadId],
+      });
+      await refetchCompleteness();
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Failed to upload QC photos.");
     }
@@ -81,7 +88,7 @@ export default function PostProductionQcPhotosSection({
         <FileUploadField
           value={selectedFiles}
           onChange={setSelectedFiles}
-          accept=".jpg,.jpeg,.png,.webp,.heic"
+          accept=".jpg,.jpeg,.png,.pdf,.zip"
           multiple
         />
 

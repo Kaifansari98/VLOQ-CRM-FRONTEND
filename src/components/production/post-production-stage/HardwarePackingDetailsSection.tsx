@@ -21,6 +21,7 @@ import TextAreaInput from "@/components/origin-text-area";
 // 🔹 API hooks (replace with your actual API hook names)
 import {
   useGetHardwarePackingDetails,
+  usePostProductionCompleteness,
   useUploadHardwarePackingDetails,
 } from "@/api/production/production-api";
 
@@ -43,6 +44,9 @@ export default function HardwarePackingDetailsSection({
   );
   const { mutateAsync: uploadPackingDetails, isPending } =
     useUploadHardwarePackingDetails(vendorId, leadId);
+
+    const { data: completeness, refetch: refetchCompleteness } =
+  usePostProductionCompleteness(vendorId, leadId);
 
   console.log(packingDetails);
 
@@ -78,6 +82,10 @@ export default function HardwarePackingDetailsSection({
       queryClient.invalidateQueries({
         queryKey: ["hardwarePackingDetails", vendorId, leadId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["postProductionCompleteness", vendorId, leadId],
+      });
+      await refetchCompleteness();
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ||

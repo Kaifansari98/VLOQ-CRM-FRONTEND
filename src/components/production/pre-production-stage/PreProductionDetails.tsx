@@ -4,7 +4,7 @@ import { useAppSelector } from "@/redux/store";
 import { useOrderLoginByLead } from "@/api/production/order-login";
 import OrderLoginCard from "./OrderLoginCard";
 import { useClientRequiredCompletionDate } from "@/api/tech-check";
-import {motion} from "framer-motion";
+import { motion } from "framer-motion";
 
 interface PreProductionDetailsProps {
   leadId?: number;
@@ -83,12 +83,12 @@ export default function PreProductionDetails({
             {/* ✅ Text + Date */}
             <div className="flex flex-col">
               <p className="text-xs font-semibold text-muted-foreground tracking-wide">
-                Client Order Login Completion Date
+                Client required delivery date
               </p>
               <span className="text-sm font-medium text-foreground mt-0.5">
                 {ClientRequiredCompletionDate?.client_required_order_login_complition_date
                   ? new Date(
-                    ClientRequiredCompletionDate.client_required_order_login_complition_date
+                      ClientRequiredCompletionDate.client_required_order_login_complition_date
                     ).toLocaleDateString("en-GB", {
                       weekday: "long",
                       day: "2-digit",

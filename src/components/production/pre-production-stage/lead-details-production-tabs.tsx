@@ -5,7 +5,7 @@ import PreProductionDetails from "./PreProductionDetails";
 import PostProductionDetails from "./PostProductionDetails";
 import { useCheckPostProductionReady } from "@/api/production/production-api";
 import { useAppSelector } from "@/redux/store";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 interface LeadDetailsProductionUtilProps {
   leadId?: number;
@@ -18,7 +18,7 @@ export default function LeadDetailsProductionUtil({
 }: LeadDetailsProductionUtilProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
 
-  const { data, isLoading } = useCheckPostProductionReady(vendorId, leadId);
+  const { data } = useCheckPostProductionReady(vendorId, leadId);
 
   const readyForPostProduction = data?.readyForPostProduction ?? false;
 
@@ -38,7 +38,6 @@ export default function LeadDetailsProductionUtil({
       disabled: !readyForPostProduction,
       disabledReason:
         "You can access Post Production only after completing Pre-Production.",
-
       cardContent: (
         <PostProductionDetails leadId={leadId} accountId={accountId} />
       ),
