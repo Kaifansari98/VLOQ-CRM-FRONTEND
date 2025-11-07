@@ -12,6 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import FileBreakUpField from "./FileBreakUpField";
 import { toast } from "react-toastify";
+import { useUploadFileBreakup } from "@/api/production/order-login";
+import { useAppSelector } from "@/redux/store";
 
 interface AddSectionModalProps {
   users: { id: number; label: string }[];
@@ -28,19 +30,71 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [sectionData, setSectionData] = useState({
+    company_vendor_id: null,
+    item_desc: "",
+  });
 
-  const handleSectionCreated = () => {
-    toast.success(`${newTitle} section added successfully`);
-    onSectionAdded({ title: newTitle });
-    setOpen(false);
-    setNewTitle("");
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
+
+  // Initialize mutation
+  const { mutateAsync: uploadFileBreakup, isPending } =
+    useUploadFileBreakup(vendorId);
+
+  const handleFieldChange = (title: string, field: string, value: any) => {
+    setSectionData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleSectionCreated = async () => {
+    if (!newTitle.trim()) {
+      toast.error("Please enter a section name");
+      return;
+    }
+
+    if (!sectionData.item_desc?.trim()) {
+      toast.error("Please add a description before saving");
+      return;
+    }
+
+    try {
+      const payload = {
+        lead_id: leadId,
+        account_id: accountId,
+        item_type: newTitle.trim(),
+        item_desc: sectionData.item_desc,
+        company_vendor_id: sectionData.company_vendor_id,
+        created_by: userId,
+      };
+
+      // 🚀 Call the API
+      await uploadFileBreakup(payload);
+
+      toast.success(`${newTitle} section added successfully ✅`);
+
+      // 🔁 Notify parent to refresh sections
+      onSectionAdded({ title: newTitle });
+
+      // Reset state
+      setOpen(false);
+      setNewTitle("");
+      setSectionData({ company_vendor_id: null, item_desc: "" });
+    } catch (err: any) {
+      console.error("❌ Error uploading file breakup:", err);
+      toast.error(
+        err?.response?.data?.message || "Failed to add file breakup section"
+      );
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="default" size="sm">
-          Add More Section
+          Click Here
         </Button>
       </DialogTrigger>
 
@@ -69,18 +123,24 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
             <FileBreakUpField
               title={newTitle}
               users={users}
-              leadId={leadId}
-              accountId={accountId}
-              onSuccess={handleSectionCreated} // ✅ callback on success
+              value={sectionData}
+              onChange={handleFieldChange}
             />
           )}
+
+          <Button
+            onClick={handleSectionCreated}
+            disabled={!newTitle.trim() || isPending}
+          >
+            {isPending ? "Saving..." : "Save Section"}
+          </Button>
         </div>
 
         <DialogDescription className="text-muted-foreground text-xs">
-            Create an additional file breakup section for this lead.  
-            You can define a new category (e.g., Metal Accessories or Custom Hardware),  
-            assign a vendor, and add a short description before submitting.
-          </DialogDescription>
+          Create an additional file breakup section for this lead. You can
+          define a new category (e.g., Metal Accessories or Custom Hardware),
+          assign a vendor, and add a short description before submitting.
+        </DialogDescription>
       </DialogContent>
     </Dialog>
   );

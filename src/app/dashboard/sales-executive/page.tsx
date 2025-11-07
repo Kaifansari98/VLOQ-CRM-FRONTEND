@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/ModeToggle";
 import { Card } from "@/components/ui/card";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function LeadsGenerationPage() {
   return (
@@ -32,9 +33,7 @@ export default function LeadsGenerationPage() {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/dashboard">
-                    Leads
-                  </BreadcrumbLink>
+                  <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
@@ -45,7 +44,7 @@ export default function LeadsGenerationPage() {
           </div>
 
           <div className="flex items-center gap-2 pr-4">
-            <ModeToggle />
+            <AnimatedThemeToggler />
           </div>
         </header>
 

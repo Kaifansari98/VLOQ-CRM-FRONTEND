@@ -23,6 +23,7 @@ import { Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { canCreateLead } from "@/components/utils/privileges";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function LeadsGenerationPage() {
   const router = useRouter();
@@ -68,7 +69,7 @@ export default function LeadsGenerationPage() {
                   <Button>Add New Lead</Button>
                 </GenerateLeadFormModal>
               )}
-              <ModeToggle />
+              <AnimatedThemeToggler />
             </div>
           </div>
         </header>

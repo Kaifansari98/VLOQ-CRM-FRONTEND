@@ -36,7 +36,6 @@ import {
   PanelsTopLeftIcon,
   BoxIcon,
   UsersRoundIcon,
-  BoxesIcon,
   ArrowUpRight,
 } from "lucide-react";
 
@@ -65,10 +64,9 @@ import {
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
-import ProductionFilesModal from "@/components/production/order-login-stage/ProductionFilesModal";
-import { FolderOpen } from "lucide-react";
 import MoveToProductionModal from "@/components/production/order-login-stage/MoveToProductionModal";
 import { useLeadProductionReadiness } from "@/api/production/order-login";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function OrderLoginLeadDetails() {
   const { lead: leadId } = useParams();
@@ -102,11 +100,12 @@ export default function OrderLoginLeadDetails() {
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
-  const [openProductionModal, setOpenProductionModal] = useState(false);
   const [openMoveToProduction, setOpenMoveToProduction] = useState(false);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
+
+  const client_required_order_login_complition_date = lead?.client_required_order_login_complition_date;
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
@@ -164,7 +163,7 @@ export default function OrderLoginLeadDetails() {
               Assign Task
             </Button>
 
-            <ModeToggle />
+            <AnimatedThemeToggler />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -240,17 +239,6 @@ export default function OrderLoginLeadDetails() {
                 </TabsList>
               </div>
               <div className="flex items-center justify-end gap-2">
-                {/* ✅ Production Files Button */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setOpenProductionModal(true)}
-                  className="flex items-center gap-1"
-                >
-                  <FolderOpen size={16} />
-                  Production Files
-                </Button>
-
                 {/* ✅ Move to Production Button (gated by readiness) */}
                 {canMove ? (
                   <Button
@@ -258,7 +246,6 @@ export default function OrderLoginLeadDetails() {
                     variant="default"
                     className="flex items-center gap-1"
                     onClick={() => setOpenMoveToProduction(true)}
-                    disabled={readinessLoading} // brief guard while checking
                   >
                     <ArrowUpRight size={16} />
                     Move to Production
@@ -323,18 +310,11 @@ export default function OrderLoginLeadDetails() {
           data={{ id: leadIdNum, name: "" }}
         />
 
-        <ProductionFilesModal
-          open={openProductionModal}
-          onOpenChange={setOpenProductionModal}
-          leadId={leadIdNum}
-          accountId={accountId}
-        />
-
         <MoveToProductionModal
           open={openMoveToProduction}
           onOpenChange={setOpenMoveToProduction}
-          leadId={leadIdNum}
-          accountId={accountId}
+          data={{ id: Number(leadId), accountId }}
+          client_required_order_login_complition_date={client_required_order_login_complition_date}
         />
 
         <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>

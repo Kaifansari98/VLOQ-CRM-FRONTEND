@@ -18,6 +18,7 @@ import {
 import { ModeToggle } from "@/components/ModeToggle";
 import { Suspense } from "react";
 import ClientDocumentationSkeleton from "@/components/site-supervisor/client-documentation/client-documentation-skeleton";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 export default function ClientDocumentationPage() {
 
   return (
@@ -47,7 +48,7 @@ export default function ClientDocumentationPage() {
 
           <div className="flex items-center gap-2">
             <div className="flex gap-2 items-center">
-              <ModeToggle />
+            <AnimatedThemeToggler />
             </div>
           </div>
         </header>

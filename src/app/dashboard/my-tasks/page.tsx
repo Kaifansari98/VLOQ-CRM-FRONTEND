@@ -19,6 +19,7 @@ import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
 import MyTaskTable from "@/app/_components/tasks-table";
 import { Shell } from "@/components/ui/shell";
 import { TableLoader } from "@/components/utils/table-skeleton";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function MyTaskLeadPage() {
   const [openCreateLead, setOpenCreateLead] = useState(false);
@@ -44,7 +45,7 @@ export default function MyTaskLeadPage() {
             </Breadcrumb>
           </div>
 
-            <ModeToggle />
+          <AnimatedThemeToggler />
         </header>
 
         <Shell className="flex-1 overflow-y-auto px-2 sm:px-4 lg:px-6 gap-2">

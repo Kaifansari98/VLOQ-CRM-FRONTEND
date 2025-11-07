@@ -17,6 +17,7 @@ import {
 import { ModeToggle } from "@/components/ModeToggle";
 import { Suspense } from "react";
 import DesigningStageSkeleton from "@/components/sales-executive/designing-stage/designing-stage-skeleton";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 export default function DesigningStage() {
   return (
     <SidebarProvider>
@@ -42,7 +43,7 @@ export default function DesigningStage() {
             </Breadcrumb>
           </div>
           <div className="flex items-center gap-2 pr-4">
-            <ModeToggle />
+            <AnimatedThemeToggler />
           </div>
         </header>
         <main className="flex-1 p-4 pt-0 overflow-x-hidden">

@@ -67,6 +67,7 @@ import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import RequestToTechCheckModal from "@/components/site-supervisor/client-approval/request-to-tech-check-modal";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -214,7 +215,7 @@ export default function ClientApprovalLeadDetails() {
               Assign Task
             </Button>
 
-            <ModeToggle />
+            <AnimatedThemeToggler />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

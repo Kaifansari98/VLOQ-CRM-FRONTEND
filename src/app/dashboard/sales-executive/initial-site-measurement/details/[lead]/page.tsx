@@ -71,6 +71,7 @@ import {
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function SiteMeasurementLead() {
   const router = useRouter();
@@ -202,7 +203,7 @@ export default function SiteMeasurementLead() {
             <Button size="sm" onClick={() => setAssignOpen(true)}>
               Assign Task
             </Button>
-            <ModeToggle />
+            <AnimatedThemeToggler />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon">

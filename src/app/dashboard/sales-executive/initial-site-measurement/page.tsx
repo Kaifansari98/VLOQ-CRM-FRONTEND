@@ -18,6 +18,7 @@ import { ModeToggle } from "@/components/ModeToggle";
 import { useAppSelector } from "@/redux/store";
 import InitialSiteSkeleton from "@/components/sales-executive/siteMeasurement/measurement-skeleton";
 import { Suspense, useEffect } from "react";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function InitialSiteMeasurement() {
   return (
@@ -44,7 +45,7 @@ export default function InitialSiteMeasurement() {
             </Breadcrumb>
           </div>
           <div className="flex items-center gap-2 pr-4">
-            <ModeToggle />
+            <AnimatedThemeToggler />
           </div>
         </header>
         <main className="flex-1 p-4 pt-0 overflow-x-hidden">

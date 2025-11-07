@@ -20,21 +20,23 @@ import {
 
 interface SelectData {
   id: number;
-  label: string; // yaha aap user_name bhejoge
+  label: string; // e.g., user_name
 }
 
 interface Props {
   data: SelectData[];
   value?: number;
   onChange?: (selectedId: number | null) => void;
-  placeholder?: string; // ✅ optional placeholder prop
+  placeholder?: string; // for search input
+  emptyLabel?: string; // ✅ NEW — text shown when nothing is selected
 }
 
 export default function AssignToPicker({
   data,
   value,
   onChange,
-  placeholder = "Search user...", // ✅ default fallback
+  placeholder = "Search user...", // default for search bar
+  emptyLabel = "Select an option", // ✅ default for dropdown display
 }: Props) {
   const id = useId();
   const [open, setOpen] = useState<boolean>(false);
@@ -45,7 +47,7 @@ export default function AssignToPicker({
 
   return (
     <div className="*:not-first:mt-2">
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover modal={false} open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             id={id}
@@ -60,7 +62,7 @@ export default function AssignToPicker({
                 !stringValue && "text-muted-foreground"
               )}
             >
-              {selectedItem ? selectedItem.label : "Select user"}
+              {selectedItem ? selectedItem.label : emptyLabel}
             </span>
             <ChevronDownIcon
               size={16}
@@ -69,15 +71,15 @@ export default function AssignToPicker({
             />
           </Button>
         </PopoverTrigger>
+
         <PopoverContent
           className="border-input w-full min-w-[var(--radix-popper-anchor-width)] p-0"
           align="start"
         >
           <Command>
-            {/* ✅ Use custom or default placeholder */}
             <CommandInput placeholder={placeholder} />
             <CommandList>
-              <CommandEmpty>No user found.</CommandEmpty>
+              <CommandEmpty>No options found.</CommandEmpty>
               <CommandGroup>
                 {data.map((item) => (
                   <CommandItem

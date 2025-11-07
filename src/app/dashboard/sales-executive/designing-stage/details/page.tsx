@@ -26,6 +26,7 @@ import { useSearchParams } from "next/navigation";
 import { DetailsProvider } from "@/components/sales-executive/designing-stage/pill-tabs-component/details-context";
 import { useAppSelector } from "@/redux/store";
 import { useDesigningStageCounts } from "@/hooks/designing-stage/designing-leads-hooks";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 function DetailsContent() {
   const searchParams = useSearchParams();
@@ -38,7 +39,11 @@ function DetailsContent() {
     leadId
   );
 
-  const canBook = !!data && (data.QuotationDoc?? 0) > 0 && (data.SelectionData ?? 0) > 0 && (data.DesignsDoc ?? 0) > 0;
+  const canBook =
+    !!data &&
+    (data.QuotationDoc ?? 0) > 0 &&
+    (data.SelectionData ?? 0) > 0 &&
+    (data.DesignsDoc ?? 0) > 0;
 
   console.log("Designing stage count: ", data);
   return (
@@ -67,7 +72,7 @@ function DetailsContent() {
           </Breadcrumb>
         </div>
         <div className="flex items-center gap-2">
-          <ModeToggle />
+          <AnimatedThemeToggler />
         </div>
       </header>
 

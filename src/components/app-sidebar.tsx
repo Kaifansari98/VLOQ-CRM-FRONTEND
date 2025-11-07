@@ -129,11 +129,13 @@ const data = {
         },
         {
           title: "Production",
-          url: "#",
+          url: "/dashboard/production/pre-post-prod",
+          showCount: "total_production_stage_leads" as const, // ✅ Added
         },
         {
           title: "Ready To Dispatch",
-          url: "#",
+          url: "/dashboard/production/ready-to-dispatch",
+          showCount: "total_ready_to_dispatch_leads" as const,
         },
       ],
     },

@@ -20,6 +20,7 @@ import PendingLeadsTable from "./pending-leads-table";
 import PendingLeadsSkeleton from "./PendingLeadsSkeleton";
 import { Suspense } from "react";
 import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function PendingLeadsPage() {
   return (
@@ -47,7 +48,7 @@ export default function PendingLeadsPage() {
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          <ModeToggle />
+          <AnimatedThemeToggler />
         </header>
 
         {/* Table */}

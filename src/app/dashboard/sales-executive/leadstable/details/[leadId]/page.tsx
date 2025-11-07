@@ -69,6 +69,7 @@ import {
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function LeadDetails() {
   const router = useRouter();
@@ -215,7 +216,8 @@ export default function LeadDetails() {
               </Button>
             )}
 
-            <ModeToggle />
+            <AnimatedThemeToggler />
+            
             {/* Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -109,7 +109,7 @@ export const useSubmitClientApproval = () => {
   });
 };
 
-// ✅ Request to Tech Check
+// ✅ Request to Tech Check (with date)
 export const useRequestToTechCheck = () => {
   return useMutation({
     mutationFn: async ({
@@ -118,12 +118,14 @@ export const useRequestToTechCheck = () => {
       accountId,
       assign_to_user_id,
       created_by,
+      client_required_order_login_complition_date, // 👈 new field
     }: {
       vendorId: number;
       leadId: number;
       accountId: number;
       assign_to_user_id: number;
       created_by: number;
+      client_required_order_login_complition_date: string;
     }) => {
       const { data } = await apiClient.post(
         `/leads/client-approval/vendorId/${vendorId}/leadId/${leadId}/request-to-tech-check`,
@@ -131,20 +133,17 @@ export const useRequestToTechCheck = () => {
           account_id: accountId,
           assign_to_user_id,
           created_by,
+          client_required_order_login_complition_date,
         }
       );
       return data;
     },
-    onSuccess: () => {
-      toast.success("Request to Tech Check submitted successfully!");
-    },
-    onError: (err: any) => {
-      toast.error(
-        err?.response?.data?.message || "Failed to request Tech Check"
-      );
-    },
+    onSuccess: () => toast.success("Request to Tech Check submitted successfully!"),
+    onError: (err: any) =>
+      toast.error(err?.response?.data?.message || "Failed to request Tech Check"),
   });
 };
+
 
 // ✅ Fetch tech-check users
 export const useTechCheckUsers = (vendorId: number) => {
