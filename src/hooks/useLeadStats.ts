@@ -14,8 +14,9 @@ interface LeadStatsResponse {
     total_client_approval_leads: number;
     total_tech_check_leads: number;
     total_order_login_leads: number;
-    total_my_tasks: number;
     total_production_stage_leads: number;
+    total_ready_to_dispatch_leads: number;
+    total_my_tasks: number;
   };
 }
 
