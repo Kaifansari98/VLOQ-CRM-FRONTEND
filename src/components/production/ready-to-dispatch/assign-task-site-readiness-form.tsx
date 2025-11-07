@@ -171,8 +171,16 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Assign Task for Site Readiness"
-      description="Use this form to assign a task to a Site Supervisor for Site Readiness."
+      title={
+        form.watch("task_type") === "Follow Up" || !isAllowedToAssignSR
+          ? "Assign Task for Follow Up"
+          : "Assign Task for Site Readiness"
+      }
+      description={
+        form.watch("task_type") === "Follow Up" || !isAllowedToAssignSR
+          ? "Use this form to assign a follow up task."
+          : "Use this form to assign a task to a Site Supervisor for Site Readiness."
+      }
       size="smd"
     >
       <div className="px-6 py-6 space-y-8">
