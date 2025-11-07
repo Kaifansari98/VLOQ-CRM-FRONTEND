@@ -158,6 +158,11 @@ export default function OrderLoginModal({
     }
   };
 
+  const isProductionDateReached = productionReadyDate
+    ? new Date().setHours(0, 0, 0, 0) >=
+      new Date(productionReadyDate).setHours(0, 0, 0, 0)
+    : false;
+
   const initial =
     companyVendorName && companyVendorName.length > 0
       ? companyVendorName.charAt(0).toUpperCase()
@@ -359,7 +364,11 @@ export default function OrderLoginModal({
                       >
                         <Button
                           onClick={handleMarkAsCompleted}
-                          disabled={isCompleted || !productionReadyDate}
+                          disabled={
+                            isCompleted ||
+                            !productionReadyDate ||
+                            !isProductionDateReached
+                          }
                           className={`w-full flex items-center justify-center gap-2 ${
                             isCompleted
                               ? "bg-green-500 hover:bg-green-600"
@@ -367,7 +376,9 @@ export default function OrderLoginModal({
                           }`}
                         >
                           <CheckCircle2 className="w-4 h-4" />
-                          {isCompleted ? "Marked as Completed" : "Mark as Completed"}
+                          {isCompleted
+                            ? "Marked as Completed"
+                            : "Mark as Completed"}
                         </Button>
                       </div>
                     }
@@ -376,6 +387,8 @@ export default function OrderLoginModal({
                         ? "This order-login is already completed."
                         : !productionReadyDate
                         ? "Please set the Production Ready Date before marking as completed."
+                        : !isProductionDateReached
+                        ? "You can mark as completed only once the Production Ready Date has arrived."
                         : "Mark this order-login as completed."
                     }
                   />

@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/apiClient";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // ✅ --- Fetch Production (Pre-Production) Leads (paginated) ---
 export const getProductionLeads = async (
@@ -326,9 +326,17 @@ export const updateNoOfBoxes = async (
 
 // ✅ React Query Hook
 export const useUpdateNoOfBoxes = (vendorId?: number, leadId?: number) => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (formData: FormData) =>
       updateNoOfBoxes(vendorId!, leadId!, formData),
+    onSuccess: async () => {
+      // ♻️ Invalidate relevant queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["noOfBoxes"] }),
+        queryClient.invalidateQueries({ queryKey: ["lead", leadId] }),
+      ]);
+    },
   });
 };
 

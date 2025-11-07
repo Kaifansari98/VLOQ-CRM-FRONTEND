@@ -96,28 +96,81 @@ export default function ProductionLeadDetails() {
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
 
+  // 🔍 Check Post Production Readiness
+  const { data: postProductionStatus } = useCheckPostProductionReady(
+    vendorId,
+    leadIdNum
+  );
+
+  const { data: latestOrderLoginData, isLoading: latestOrderLoginLoading } =
+    useLatestOrderLoginByLead(vendorId, Number(leadIdNum));
+
+  const latestOrderLoginDate =
+    latestOrderLoginData?.data?.estimated_completion_date;
+
+  useEffect(() => {
+    if (
+      !latestOrderLoginDate ||
+      !postProductionStatus?.all_order_login_dates_added ||
+      !lead?.id // ✅ Wait for lead data to be loaded
+    )
+      return;
+
+    // 1️⃣ Compute 3-day buffered date (day precision only)
+    const baseDate = new Date(latestOrderLoginDate);
+    baseDate.setDate(baseDate.getDate() + 3);
+    const computedDate = baseDate.toISOString().split("T")[0];
+
+    // 2️⃣ Normalize expected date and latest order login date to day strings
+    const expectedDate = lead?.expected_order_login_ready_date
+      ? new Date(lead.expected_order_login_ready_date)
+          .toISOString()
+          .split("T")[0]
+      : undefined;
+
+    const latestDate = new Date(latestOrderLoginDate)
+      .toISOString()
+      .split("T")[0];
+
+    // 3️⃣ Hit API ONLY in these specific cases:
+    const shouldHitApi =
+      // Case 1: Expected date is missing → set by buffer
+      !expectedDate ||
+      // Case 2: Expected date < latest order login date → update to latest
+      (expectedDate && new Date(expectedDate) < new Date(latestDate));
+
+    // ✅ REMOVED Case 3 (expectedDate === computedDate) because this causes repeated API calls
+
+    if (shouldHitApi) {
+      // Determine the correct date to set
+      const dateToSet = !expectedDate
+        ? computedDate // If missing, set 3-day buffer
+        : latestDate; // If smaller, set to latest order login date
+
+      handleExpectedDateChange(dateToSet);
+    }
+
+    // ✅ Only depend on the actual data values, not the lead object itself
+  }, [
+    latestOrderLoginDate,
+    postProductionStatus?.all_order_login_dates_added,
+    lead?.expected_order_login_ready_date, // ✅ Only this specific field
+    lead?.id, // ✅ To ensure lead is loaded
+  ]);
+
   const expected_order_login_ready_date = lead?.expected_order_login_ready_date;
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = Number(lead?.account_id);
 
-  const { data: latestOrderLoginData, isLoading: latestOrderLoginLoading } =
-    useLatestOrderLoginByLead(vendorId, Number(leadIdNum));
-  const latestOrderLoginDate =
-    latestOrderLoginData?.data?.estimated_completion_date;
+  const noOfBoxes = lead?.no_of_boxes;
 
   const deleteLeadMutation = useDeleteLead();
 
   const queryClient = useQueryClient();
   const { mutateAsync: updateExpectedDate } =
     useUpdateExpectedOrderLoginReadyDate();
-
-  // 🔍 Check Post Production Readiness
-  const { data: postProductionStatus } = useCheckPostProductionReady(
-    vendorId,
-    leadIdNum
-  );
 
   const { data: completeness } = usePostProductionCompleteness(
     vendorId,
@@ -134,21 +187,6 @@ export default function ProductionLeadDetails() {
         expected_order_login_ready_date: newDate,
         updated_by: userId,
       });
-
-      // ✅ Immediately trigger update again with latestOrderLoginDate
-      if (
-        latestOrderLoginDate &&
-        (!expected_order_login_ready_date ||
-          new Date(latestOrderLoginDate) >
-            new Date(expected_order_login_ready_date))
-      ) {
-        await updateExpectedDate({
-          vendorId,
-          leadId: leadIdNum,
-          expected_order_login_ready_date: latestOrderLoginDate,
-          updated_by: userId,
-        });
-      }
 
       toast.success("Expected Order Login Ready Date updated successfully!");
       queryClient.invalidateQueries({ queryKey: ["leadById", leadIdNum] });
@@ -206,14 +244,36 @@ export default function ProductionLeadDetails() {
           </div>
 
           <div className="flex items-center space-x-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              className="bg-green-600 hover:bg-green-700 text-white"
-              onClick={() => setOpenReadyToDispatch(true)}
-            >
-              Ready To Dispatch
-            </Button>
+            {completeness?.any_exists && lead?.no_of_boxes > 0 ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => setOpenReadyToDispatch(true)}
+              >
+                Ready To Dispatch
+              </Button>
+            ) : (
+              <CustomeTooltip
+                truncateValue={
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled
+                    className="bg-gray-400 cursor-not-allowed text-white"
+                  >
+                    Ready To Dispatch
+                  </Button>
+                }
+                value={
+                  !completeness?.any_exists
+                    ? "Cannot move yet — production tasks are incomplete."
+                    : !lead?.no_of_boxes || lead?.no_of_boxes <= 0
+                    ? "Add number of boxes before dispatch."
+                    : "Action unavailable."
+                }
+              />
+            )}
 
             <Button size="sm" onClick={() => setAssignOpen(true)}>
               Assign Task
@@ -438,7 +498,7 @@ export default function ProductionLeadDetails() {
                     // ✅ Redirect after a short delay for smooth UX
                     setTimeout(() => {
                       router.push("/dashboard/production/ready-to-dispatch");
-                    }, 800);
+                    }, 400);
                   } catch (err: any) {
                     toast.error(
                       err?.message || "Failed to move lead to Ready-To-Dispatch"

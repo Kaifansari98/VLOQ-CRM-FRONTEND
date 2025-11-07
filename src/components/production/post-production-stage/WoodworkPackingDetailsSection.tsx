@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Upload,
   Loader2,
+  Paperclip,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
@@ -180,7 +181,7 @@ export default function WoodworkPackingDetailsSection({
                 disabled={!remark.trim()}
                 className="flex items-center gap-2"
               >
-                <Upload size={16} />
+                <Paperclip size={16} />
                 {packingDetails?.remark ? "Update Remark" : "Add Remark"}
               </Button>
             </div>
