@@ -187,7 +187,7 @@ export default function PostProductionDetails({
 
               <div className="flex flex-col">
                 <p className="text-xs font-semibold text-muted-foreground tracking-wide">
-                Client required delivery date
+                  Client required delivery date
                 </p>
                 <span className="text-sm font-medium text-foreground mt-0.5">
                   {clientRequiredCompletionDateData?.client_required_order_login_complition_date
@@ -238,12 +238,18 @@ export default function PostProductionDetails({
                 </Card>
               ) : (
                 <Button
-                  variant="outline"
-                  className="flex items-center gap-2"
                   onClick={() => setOpen(true)}
+                  className={`
+    flex items-center gap-2 rounded-md px-4 py-2.5
+    bg-gradient-to-r from-blue-500/90 to-blue-600
+    dark:from-primary/80 dark:to-primary
+    text-white dark:text-zinc-900 font-medium shadow-sm
+    hover:shadow-md hover:brightness-[1.05]
+    transition-all duration-300
+  `}
                 >
-                  <PackagePlus size={16} />
-                  Set No Of Boxes
+                  <PackagePlus className="h-4 w-4" />
+                  <span>Set No Of Boxes</span>
                 </Button>
               )}
             </div>

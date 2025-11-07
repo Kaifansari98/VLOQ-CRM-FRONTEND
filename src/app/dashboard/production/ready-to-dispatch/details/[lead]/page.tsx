@@ -54,7 +54,11 @@ import { toast } from "react-toastify";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
-import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
+import {
+  canReassingLead,
+  canDeleteLead,
+  canAssignSR,
+} from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
@@ -87,6 +91,7 @@ export default function ReadyToDispatchLeadDetails() {
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
+  const [previousTab, setPreviousTab] = useState("details");
 
   const moveLeadMutation = useMoveLeadToReadyToDispatch();
 
@@ -224,23 +229,61 @@ export default function ReadyToDispatchLeadDetails() {
         {/* Tabs */}
         <Tabs
           value={activeTab}
-          onValueChange={(val) => setActiveTab(val)}
+          onValueChange={(val) => {
+            if (val === "todo") {
+              // store current tab before opening modal
+              setPreviousTab(activeTab);
+              setAssignOpen(true); // open Assign Task modal
+              return; // don't switch tab
+            }
+            setActiveTab(val);
+          }}
           className="w-full px-6 pt-4"
         >
           <ScrollArea>
             <div className="w-full h-full flex justify-between items-center mb-4">
               <div className="w-full flex items-center gap-2 justify-between">
                 <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
+                  {/* ✅ Ready To Dispatch Details */}
                   <TabsTrigger value="details">
                     <Truck size={16} className="mr-1 opacity-60" />
                     Ready To Dispatch Details
                   </TabsTrigger>
 
+                  {/* ✅ To-Do Task (Conditional Access) */}
+                  {canAssignSR(userType) ? (
+                    <TabsTrigger
+                      value="todo"
+                      onClick={() => setAssignOpen(true)}
+                    >
+                      <PanelsTopLeftIcon
+                        size={16}
+                        className="mr-1 opacity-60"
+                      />
+                      To-Do Task
+                    </TabsTrigger>
+                  ) : (
+                    <CustomeTooltip
+                      truncateValue={
+                        <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                          <PanelsTopLeftIcon
+                            size={16}
+                            className="mr-1 opacity-60"
+                          />
+                          To-Do Task
+                        </div>
+                      }
+                      value="Only Admin or Sales Executive can access this tab"
+                    />
+                  )}
+
+                  {/* ✅ Site History */}
                   <TabsTrigger value="history">
                     <BoxIcon size={16} className="mr-1 opacity-60" />
                     Site History
                   </TabsTrigger>
 
+                  {/* ✅ Payment Info */}
                   <TabsTrigger value="payment">
                     <UsersRoundIcon size={16} className="mr-1 opacity-60" />
                     Payment Information
@@ -308,8 +351,12 @@ export default function ReadyToDispatchLeadDetails() {
 
         <AssignTaskSiteReadinessForm
           open={assignOpen}
-          onOpenChange={setAssignOpen}
+          onOpenChange={(open) => {
+            setAssignOpen(open);
+            if (!open) setActiveTab(previousTab);
+          }}
           data={{ id: leadIdNum, name: "" }}
+          userType={userType}
         />
 
         {/* Delete Dialog */}

@@ -20,7 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import BaseModal from "@/components/utils/baseModal";
-import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 import { useAppSelector } from "@/redux/store";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
@@ -29,19 +28,12 @@ import z from "zod";
 import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useAssignToSiteReadiness } from "@/api/production/useReadyToDispatchLeads"; // 🔹 Create a matching hook later
-import { AssignToSiteReadinessPayload } from "@/api/production/useReadyToDispatchLeads"; // 🔹 Create interface same as Site Measurement one
+import { useAssignToSiteReadiness } from "@/api/production/useReadyToDispatchLeads";
+import { AssignToSiteReadinessPayload } from "@/api/production/useReadyToDispatchLeads";
+import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUsers"; // ✅ now using supervisors
+import { canAssignSR } from "@/components/utils/privileges";
 
-interface Props {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  data?: {
-    id: number;
-    name: string;
-  };
-  onlyFollowUp?: boolean;
-}
-
+// ✅ Validation schema
 const formSchema = z
   .object({
     assign_lead_to: z.number().min(1, "Assign lead to is required"),
@@ -69,27 +61,41 @@ const formSchema = z
     }
   );
 
+interface Props {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  data?: {
+    id: number;
+    name: string;
+  };
+  onlyFollowUp?: boolean;
+  userType?: string; // ✅ add this line
+}
+
 const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   open,
   onOpenChange,
   data,
   onlyFollowUp,
+  userType,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const {
-    data: vendorUsers,
-    isLoading: loadingUsers,
-    error,
-  } = useVendorSalesExecutiveUsers(vendorId!);
-
   const router = useRouter();
   const leadId = data?.id!;
   const mutation = useAssignToSiteReadiness(leadId);
   const queryClient = useQueryClient();
+  const isAllowedToAssignSR = canAssignSR(userType);
+
+  // ✅ Fetch vendor site supervisors
+  const {
+    data: vendorUsers,
+    isLoading: loadingUsers,
+    error,
+  } = useVendorSiteSupervisorUsers(vendorId!);
 
   const mappedData =
-    vendorUsers?.data?.sales_executives?.map((user: any) => ({
+    vendorUsers?.data?.site_supervisors?.map((user: any) => ({
       id: user.id,
       label: user.user_name,
     })) ?? [];
@@ -98,7 +104,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       assign_lead_to: undefined,
-      task_type: onlyFollowUp ? "Follow Up" : "Site Readiness",
+      task_type: isAllowedToAssignSR ? "Site Readiness" : "Follow Up",
       due_date: "",
       remark: "N/A",
     },
@@ -143,7 +149,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
         title="Loading..."
         size="lg"
       >
-        <div className="p-6">Loading...</div>
+        <div className="p-6">Loading Site Supervisors...</div>
       </BaseModal>
     );
   }
@@ -166,7 +172,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       open={open}
       onOpenChange={onOpenChange}
       title="Assign Task for Site Readiness"
-      description="Use this form to assign a task for Site Readiness."
+      description="Use this form to assign a task to a Site Supervisor for Site Readiness."
       size="smd"
     >
       <div className="px-6 py-6 space-y-8">
@@ -186,12 +192,16 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {!onlyFollowUp && (
-                        <SelectItem value="Site Readiness">
-                          Site Readiness
-                        </SelectItem>
+                      {isAllowedToAssignSR ? (
+                        <>
+                          <SelectItem value="Site Readiness">
+                            Site Readiness
+                          </SelectItem>
+                          <SelectItem value="Follow Up">Follow Up</SelectItem>
+                        </>
+                      ) : (
+                        <SelectItem value="Follow Up">Follow Up</SelectItem>
                       )}
-                      <SelectItem value="Follow Up">Follow Up</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -206,7 +216,9 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                 name="assign_lead_to"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm">Select User</FormLabel>
+                    <FormLabel className="text-sm">
+                      Select Site Supervisor
+                    </FormLabel>
                     <FormControl>
                       <AssignToPicker
                         data={mappedData}
