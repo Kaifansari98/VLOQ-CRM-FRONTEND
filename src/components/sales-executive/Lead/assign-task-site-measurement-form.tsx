@@ -168,8 +168,16 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Assign Task for Initial Site Measurement"
-      description="Use this form to assign a site measurement task."
+      title={
+        form.watch("task_type") === "Follow Up" || onlyFollowUp
+          ? "Assign Task for Follow Up"
+          : "Assign Task for Initial Site Measurement"
+      }
+      description={
+        form.watch("task_type") === "Follow Up" || onlyFollowUp
+          ? "Use this form to assign a follow up task."
+          : "Use this form to assign a site measurement task."
+      }
       size="smd"
     >
       <div className="px-6 py-6 space-y-8">
