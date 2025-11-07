@@ -17,11 +17,11 @@ import {
 } from "@/components/ui/breadcrumb";
 import { ModeToggle } from "@/components/ModeToggle";
 import { Suspense } from "react";
-import ProductionTable from "@/components/production/pre-production-stage/ProductionTable";
+import ReadyToDispatchTable from "@/components/production/ready-to-dispatch/ReadyToDispatchTable";
 import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
-export default function ProductionPage() {
+export default function ReadyToDispatchPage() {
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -38,7 +38,7 @@ export default function ProductionPage() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Production</BreadcrumbPage>
+                  <BreadcrumbPage>Ready To Dispatch</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -51,9 +51,9 @@ export default function ProductionPage() {
 
         {/* Content */}
         <main className="flex-1 p-4 pt-0 overflow-x-hidden">
-          <Suspense fallback={<p>Loading Production Leads...</p>}>
+          <Suspense fallback={<p>Loading Ready-To-Dispatch Leads...</p>}>
             <FeatureFlagsProvider>
-              <ProductionTable />
+              <ReadyToDispatchTable />
             </FeatureFlagsProvider>
           </Suspense>
         </main>

@@ -134,7 +134,8 @@ const data = {
         },
         {
           title: "Ready To Dispatch",
-          url: "#",
+          url: "/dashboard/production/ready-to-dispatch",
+          showCount: "total_ready_to_dispatch_leads" as const,
         },
       ],
     },

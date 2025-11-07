@@ -13,13 +13,11 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { ModeToggle } from "@/components/ModeToggle";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
-import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,7 +33,7 @@ import {
   PanelsTopLeftIcon,
   BoxIcon,
   UsersRoundIcon,
-  Factory,
+  Truck,
   CalendarCheck2,
 } from "lucide-react";
 
@@ -71,9 +69,9 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { useCheckPostProductionReady } from "@/api/production/production-api";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import { useMoveLeadToReadyToDispatch } from "@/api/production/useReadyToDispatchLeads";
-import { useRouter } from "next/navigation";
+import AssignTaskSiteReadinessForm from "@/components/production/ready-to-dispatch/assign-task-site-readiness-form";
 
-export default function ProductionLeadDetails() {
+export default function ReadyToDispatchLeadDetails() {
   const router = useRouter();
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
@@ -89,36 +87,32 @@ export default function ProductionLeadDetails() {
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
-  const [openReadyToDispatch, setOpenReadyToDispatch] = useState(false);
 
   const moveLeadMutation = useMoveLeadToReadyToDispatch();
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
 
-  const expected_order_login_ready_date = lead?.expected_order_login_ready_date;
-
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = Number(lead?.account_id);
 
-  const { data: latestOrderLoginData, isLoading: latestOrderLoginLoading } =
-    useLatestOrderLoginByLead(vendorId, Number(leadIdNum));
+  const { data: latestOrderLoginData } = useLatestOrderLoginByLead(
+    vendorId,
+    Number(leadIdNum)
+  );
   const latestOrderLoginDate =
     latestOrderLoginData?.data?.estimated_completion_date;
 
   const deleteLeadMutation = useDeleteLead();
-
   const queryClient = useQueryClient();
   const { mutateAsync: updateExpectedDate } =
     useUpdateExpectedOrderLoginReadyDate();
 
-  // 🔍 Check Post Production Readiness
   const { data: postProductionStatus } = useCheckPostProductionReady(
     vendorId,
     leadIdNum
   );
-
   const { data: completeness } = usePostProductionCompleteness(
     vendorId,
     leadIdNum
@@ -134,27 +128,8 @@ export default function ProductionLeadDetails() {
         expected_order_login_ready_date: newDate,
         updated_by: userId,
       });
-
-      // ✅ Immediately trigger update again with latestOrderLoginDate
-      if (
-        latestOrderLoginDate &&
-        (!expected_order_login_ready_date ||
-          new Date(latestOrderLoginDate) >
-            new Date(expected_order_login_ready_date))
-      ) {
-        await updateExpectedDate({
-          vendorId,
-          leadId: leadIdNum,
-          expected_order_login_ready_date: latestOrderLoginDate,
-          updated_by: userId,
-        });
-      }
-
       toast.success("Expected Order Login Ready Date updated successfully!");
       queryClient.invalidateQueries({ queryKey: ["leadById", leadIdNum] });
-      queryClient.invalidateQueries({
-        queryKey: ["postProductionReady", vendorId, leadIdNum],
-      });
     } catch (err: any) {
       toast.error(err?.message || "Failed to update expected order login date");
     }
@@ -179,7 +154,7 @@ export default function ProductionLeadDetails() {
   };
 
   if (isLoading) {
-    return <p className="p-6">Loading production lead details...</p>;
+    return <p className="p-6">Loading Ready-To-Dispatch lead details...</p>;
   }
 
   return (
@@ -206,15 +181,6 @@ export default function ProductionLeadDetails() {
           </div>
 
           <div className="flex items-center space-x-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              className="bg-green-600 hover:bg-green-700 text-white"
-              onClick={() => setOpenReadyToDispatch(true)}
-            >
-              Ready To Dispatch
-            </Button>
-
             <Button size="sm" onClick={() => setAssignOpen(true)}>
               Assign Task
             </Button>
@@ -266,22 +232,9 @@ export default function ProductionLeadDetails() {
               <div className="w-full flex items-center gap-2 justify-between">
                 <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
                   <TabsTrigger value="details">
-                    <Factory size={16} className="mr-1 opacity-60" />
-                    Production Details
+                    <Truck size={16} className="mr-1 opacity-60" />
+                    Ready To Dispatch Details
                   </TabsTrigger>
-
-                  <CustomeTooltip
-                    truncateValue={
-                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                        <PanelsTopLeftIcon
-                          size={16}
-                          className="mr-1 opacity-60"
-                        />
-                        To-Do Task
-                      </div>
-                    }
-                    value="Under Development"
-                  />
 
                   <TabsTrigger value="history">
                     <BoxIcon size={16} className="mr-1 opacity-60" />
@@ -293,35 +246,24 @@ export default function ProductionLeadDetails() {
                     Payment Information
                   </TabsTrigger>
                 </TabsList>
+
                 <div className="w-60 flex flex-col">
                   <label className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1 ml-1">
                     <CalendarCheck2 size={12} />
-                    Expected Ready Date of Order
+                    Expected Dispatch Date
                   </label>
                   <CustomeDatePicker
-                    value={
-                      lead?.expected_order_login_ready_date ||
-                      (postProductionStatus?.all_order_login_dates_added &&
-                      latestOrderLoginDate
-                        ? (() => {
-                            const baseDate = new Date(latestOrderLoginDate);
-                            baseDate.setDate(baseDate.getDate() + 3); // ⏱ Add 3-day buffer
-                            return baseDate.toISOString().split("T")[0];
-                          })()
-                        : undefined)
-                    }
+                    value={lead?.expected_order_login_ready_date}
                     onChange={handleExpectedDateChange}
                     restriction="futureOnly"
                     minDate={
                       latestOrderLoginDate
-                        ? latestOrderLoginDate.split("T")[0] // ✅ user can only pick dates >= latest order login date
+                        ? latestOrderLoginDate.split("T")[0]
                         : undefined
                     }
                     disabledReason={
                       completeness?.any_exists
-                        ? "Cannot change the date because lead is currently in post-production."
-                        : !postProductionStatus?.all_order_login_dates_added
-                        ? "Please ensure all Order Login expected completion dates are added before setting this."
+                        ? "Cannot change date as the lead is already in dispatch."
                         : undefined
                     }
                   />
@@ -331,24 +273,21 @@ export default function ProductionLeadDetails() {
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
 
-          {/* 🔹 Details Tab */}
           <TabsContent value="details">
             <main className="flex-1 h-fit">
               <LeadDetailsGrouped
-                status="production" // or omit if you pass defaultTab directly
-                defaultTab="production" // opens Production > Tech Check directly
+                status="readyToDispatch"
+                defaultTab="readyToDispatch"
                 leadId={leadIdNum}
                 accountId={accountId}
               />
             </main>
           </TabsContent>
 
-          {/* 🔹 Site History */}
           <TabsContent value="history">
             <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
           </TabsContent>
 
-          {/* 🔹 Payment */}
           <TabsContent value="payment">
             <PaymentInformation accountId={accountId} />
           </TabsContent>
@@ -367,10 +306,9 @@ export default function ProductionLeadDetails() {
           leadData={{ id: leadIdNum }}
         />
 
-        <AssignTaskSiteMeasurementForm
+        <AssignTaskSiteReadinessForm
           open={assignOpen}
           onOpenChange={setAssignOpen}
-          onlyFollowUp
           data={{ id: leadIdNum, name: "" }}
         />
 
@@ -388,62 +326,6 @@ export default function ProductionLeadDetails() {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteLead}>
                 Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* ✅ Ready To Dispatch Confirmation */}
-        <AlertDialog
-          open={openReadyToDispatch}
-          onOpenChange={setOpenReadyToDispatch}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Move to Ready To Dispatch?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will move the lead from Production to the Ready-To-Dispatch
-                stage. Are you sure you want to continue?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={async () => {
-                  if (!vendorId || !userId || !leadIdNum) {
-                    toast.error("Missing vendor or user information!");
-                    return;
-                  }
-
-                  try {
-                    await moveLeadMutation.mutateAsync({
-                      vendorId,
-                      leadId: leadIdNum,
-                      updated_by: userId,
-                    });
-
-                    toast.success(
-                      "Lead moved to Ready-To-Dispatch successfully!"
-                    );
-                    setOpenReadyToDispatch(false);
-
-                    // ✅ Refetch relevant queries
-                    queryClient.invalidateQueries({
-                      queryKey: ["leadById", leadIdNum],
-                    });
-
-                    // ✅ Redirect after a short delay for smooth UX
-                    setTimeout(() => {
-                      router.push("/dashboard/production/ready-to-dispatch");
-                    }, 800);
-                  } catch (err: any) {
-                    toast.error(
-                      err?.message || "Failed to move lead to Ready-To-Dispatch"
-                    );
-                  }
-                }}
-              >
-                Confirm
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

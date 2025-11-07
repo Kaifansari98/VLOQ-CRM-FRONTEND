@@ -12,6 +12,7 @@ import OrderLoginDetails from "@/components/production/order-login-stage/OrderLo
 import LeadDetailsProductionUtil from "@/components/production/pre-production-stage/lead-details-production-tabs";
 
 import GroupedSmoothTab from "./grouped-smooth-tab";
+import ReadyToDispatchDetails from "../production/ready-to-dispatch/ReadyToDispatchDetails";
 
 type StageId =
   | "details"
@@ -23,7 +24,8 @@ type StageId =
   | "clientApproval"
   | "techcheck"
   | "orderLogin"
-  | "production";
+  | "production"
+  | "readyToDispatch";
 
 type StatusKey = StageId;
 
@@ -43,7 +45,7 @@ export interface LeadDetailsGroupedProps {
 const GROUPS = {
   leads: ["details", "measurement", "designing", "booking"] as StageId[],
   project: ["finalMeasurement", "clientdocumentation", "clientApproval"] as StageId[],
-  production: ["techcheck", "orderLogin", "production"] as StageId[],
+  production: ["techcheck", "orderLogin", "production", "readyToDispatch"] as StageId[],
 };
 
 const STATUS_TO_DEFAULT: Record<StatusKey, StageId> = {
@@ -57,6 +59,7 @@ const STATUS_TO_DEFAULT: Record<StatusKey, StageId> = {
   techcheck: "techcheck",
   orderLogin: "orderLogin",
   production: "production",
+  readyToDispatch: "readyToDispatch",
 };
 
 export default function LeadDetailsGrouped({
@@ -107,6 +110,17 @@ export default function LeadDetailsGrouped({
         id: "production",
         title: "Production Stage",
         component: <LeadDetailsProductionUtil leadId={leadId} accountId={accountId} />,
+      },
+      {
+        id: "readyToDispatch",
+        title: "Ready To Dispatch",
+        component: (
+          <ReadyToDispatchDetails
+            leadId={leadId}
+            accountId={accountId}
+            name={leadName}
+          />
+        ),
       },
     ],
   } as const;

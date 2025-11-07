@@ -16,7 +16,8 @@ type StageId =
   | "clientApproval"
   | "techcheck"
   | "orderLogin"
-  | "production";
+  | "production"
+  | "readyToDispatch";
 
 type GroupKey = "leads" | "project" | "production";
 
