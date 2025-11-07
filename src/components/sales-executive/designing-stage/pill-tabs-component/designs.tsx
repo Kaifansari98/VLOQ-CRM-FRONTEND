@@ -1,98 +1,165 @@
-import React, { useEffect } from "react";
+"use client";
+
+import React, { useState } from "react";
 import { useDetails } from "./details-context";
 import { useAppSelector } from "@/redux/store";
-import { useDesignsDoc } from "@/hooks/designing-stage/designing-leads-hooks";
-import { DesignsDocument } from "@/types/designing-stage-types";
-import { File, Palette } from "lucide-react";
+import { Palette, Ban, Images, RefreshCcw } from "lucide-react";
+import {
+  useLeadStatus,
+  useDesignsDoc,
+} from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useDeleteDocument } from "@/api/leads";
+import DocumentCard from "@/components/utils/documentCard";
+import Loader from "@/components/utils/loader";
+import { Button } from "@/components/ui/button";
 
 const DesigningTab = () => {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const { leadId } = useDetails();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type.user_type
+  );
+  const userId = useAppSelector((state) => state.auth.user?.id);
 
+  // ✅ Fetch lead status
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
+
+  // ✅ Fetch design documents
   const { data, error, isLoading } = useDesignsDoc(vendorId!, leadId);
-  const designsDoc = data?.data.documents;
-  const leadStage = data?.data?.leadStage;
+  const designDocs = data?.data?.documents || [];
 
+  // ✅ Delete document mutation
+  const { mutate: deleteDocument, isPending: deleting } =
+    useDeleteDocument(leadId);
+
+  const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
+
+  // ✅ Handle confirm delete
+  const handleConfirmDelete = () => {
+    if (confirmDelete) {
+      deleteDocument({
+        vendorId: vendorId!,
+        documentId: confirmDelete,
+        deleted_by: userId!,
+      });
+      setConfirmDelete(null);
+    }
+  };
+
+  // ✅ Loader (full screen)
+  if (isLoading) {
+    return <Loader size={250} message="Loading Design Documents..." />;
+  }
+
+  // ✅ Error State
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[80vh] px-4">
+        <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+          <Palette size={32} className="text-destructive" />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Error loading design documents. Please try again later.
+        </p>
+      </div>
+    );
+  }
+
+  // ✅ Empty State
+  if (!designDocs || designDocs.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[80vh] px-4">
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+          <Palette size={32} className="text-muted-foreground" />
+        </div>
+        <h3 className="font-semibold text-lg mb-2">No Design Documents</h3>
+        <p className="text-xs text-muted-foreground text-center max-w-sm">
+          Design files will appear here once they are uploaded.
+        </p>
+      </div>
+    );
+  }
+
+  // ✅ Permission Logic (same as QuotationTab)
+  const canDelete =
+    userType === "admin" ||
+    userType === "super-admin" ||
+    (userType === "sales-executive" && leadStatus === "designing-stage");
+
+  // ✅ Render Design Documents using DocumentCard
   return (
     <div className="">
-      {isLoading && <p>Loading...</p>}
-      {error && <p>Error loading lead data.</p>}
-      {designsDoc?.length ? (
-        <div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {designsDoc.map((doc: DesignsDocument) => {
-              return (
-                <div
-                  key={doc.id}
-                  className="border border-border bg-card rounded-lg w-full p-3 flex flex-col items-center shadow-sm hover:shadow-md transition-shadow duration-200"
-                >
-                  {/* File Name + Type */}
-                  <div className="w-full flex items-center gap-2 mb-2">
-                    <span
-                      className="truncate text-xs font-medium text-foreground flex-1"
-                      title={doc.doc_og_name}
-                    >
-                      {doc.doc_og_name}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {doc.doc_og_name.split(".").pop()?.toUpperCase()}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col items-center w-full">
-                    <div className="flex items-center justify-center w-full h-40 bg-muted rounded border border-border mb-2">
-                      {doc.doc_og_name.toLowerCase().endsWith(".pytha") ? (
-                        <img
-                          src="/pythaLogo.png" 
-                          alt="Pytha Logo"
-                          className="max-h-40 /object-contain"
-                        />
-                      ) : (
-                        <File size={50} />
-                      )}
-                    </div>
-
-                    <a
-                      href={doc.signedUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary underline text-sm font-medium hover:opacity-80 transition"
-                    >
-                      View Document
-                    </a>
-                  </div>
-
-                  {/* Meta Info */}
-                  <div className="mt-3 w-full flex flex-col sm:flex-row justify-between text-xs text-muted-foreground">
-                    <span>
-                      Uploaded:{" "}
-                      {doc.created_at
-                        ? new Date(doc.created_at).toLocaleDateString()
-                        : "N/A"}
-                    </span>
-                    <span>By: {doc.createdBy?.user_name || "Unknown"}</span>
-                  </div>
-                </div>
-              );
-            })}
+      <div className="border rounded-xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between bg-muted px-4 py-2 border-b">
+          <div className="flex items-center gap-2">
+            <Images size={20} />
+            <h1 className="text-base font-semibold flex items-center gap-1">
+              Designs
+              <span className="text-xs font-medium text-muted-foreground">
+                ({designDocs.length}{" "}
+                {designDocs.length === 1 ? "Document" : "Documents"})
+              </span>
+            </h1>
           </div>
+
+          <Button variant="outline" size="sm">
+            <RefreshCcw size={15} />
+            Refresh
+          </Button>
         </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-16 space-y-6">
-          <div className="text-center flex flex-col justify-center items-center">
-            <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-6">
-              <Palette size={40} className="text-muted-foreground" />
-            </div>
-            <h3 className="font-semibold text-xl mb-3">
-              No design documents uploaded
-            </h3>
-            <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-              Once you upload your design files, they will be listed here for
-              easy access and reference.
-            </p>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 p-4  gap-3">
+          {designDocs.map((doc: any) => (
+            <DocumentCard
+              key={doc.id}
+              doc={{
+                id: doc.id,
+                originalName: doc.doc_og_name,
+                created_at: doc.created_at,
+                signedUrl: doc.signedUrl,
+              }}
+              canDelete={canDelete}
+              onDelete={(id) => setConfirmDelete(id)}
+            />
+          ))}
         </div>
-      )}
+      </div>
+
+      {/* ✅ Confirmation Dialog */}
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={() => setConfirmDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The selected design document will be
+              permanently removed from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

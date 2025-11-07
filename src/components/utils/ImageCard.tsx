@@ -7,7 +7,7 @@ interface DocumentCardProps {
     id: number | string;
     doc_og_name: string;
     signedUrl: string;
-    created_at: string;
+    created_at?: string;
   };
   index?: number;
   canDelete?: boolean; // ✅ now controlled from parent
@@ -22,8 +22,10 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
   onView,
   onDelete,
 }) => {
-  return  (
-    <div className="relative flex items-center gap-4 p-3 border rounded-xl">
+
+  
+  return (
+    <div className="relative flex items-center gap-4 p-3 border rounded-xl max-w-[310px]">
       {/* ✅ Delete Button - conditional via prop */}
       {canDelete && (
         <button
@@ -55,7 +57,7 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             Uploaded on{" "}
-            {new Date(doc.created_at).toLocaleDateString("en-IN", {
+            {new Date(doc.created_at!).toLocaleDateString("en-IN", {
               day: "numeric",
               month: "short",
               year: "numeric",

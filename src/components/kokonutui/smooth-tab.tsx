@@ -1,15 +1,5 @@
 "use client";
 
-/**
- * @author: @dorian_baffier
- * @description: Smooth Tab
- * @version: 1.0.0
- * @date: 2025-06-26
- * @license: MIT
- * @website: https://kokonutui.com
- * @github: https://github.com/kokonut-labs/kokonutui
- */
-
 import * as React from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";

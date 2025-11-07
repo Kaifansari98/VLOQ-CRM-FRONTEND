@@ -328,6 +328,22 @@ export const useDeleteDocument = (leadId?: number) => {
         queryClient.invalidateQueries({
           queryKey: ["siteMeasurementLeadDetails", leadId],
         });
+
+        queryClient.invalidateQueries({
+          queryKey: ["getQuotationDoc", leadId],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["meetings", leadId],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["getDesignsDoc", leadId],
+        });
+
+         queryClient.invalidateQueries({
+          queryKey: ["clientApprovalDetails"],
+        });
       }
     },
     onError: (err: any) => {

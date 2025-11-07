@@ -138,6 +138,10 @@ export default function FinalMeasurementLeadDetails() {
     return <p className="p-6">Loading final measurement lead details...</p>;
   }
 
+  console.log(
+    "Can Upload Final Measurement: ",
+    canUploadFinalMeasurements(userType)
+  );
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -246,10 +250,26 @@ export default function FinalMeasurementLeadDetails() {
                 <HouseIcon size={16} className="mr-1 opacity-60" />
                 Lead Details
               </TabsTrigger>
-              <TabsTrigger value="todo">
-                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                To-Do Task
-              </TabsTrigger>
+              {canUploadFinalMeasurements(userType) ? (
+                <TabsTrigger value="todo">
+                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                  To-Do Task
+                </TabsTrigger>
+              ) : (
+                <CustomeTooltip
+                  value="You don't have permission to upload final documentation."
+                  truncateValue={
+                    <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 rounded-md">
+                      <PanelsTopLeftIcon
+                        size={16}
+                        className="mr-1 opacity-60"
+                      />
+                      To-Do Task
+                    </div>
+                  }
+                />
+              )}
+
               <TabsTrigger value="history">
                 <BoxIcon size={16} className="mr-1 opacity-60" />
                 Site History
