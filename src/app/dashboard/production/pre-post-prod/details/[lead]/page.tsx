@@ -431,6 +431,9 @@ export default function ProductionLeadDetails() {
                     queryClient.invalidateQueries({
                       queryKey: ["leadById", leadIdNum],
                     });
+                    queryClient.invalidateQueries({
+                      queryKey: ["leadStats", vendorId, userId],
+                    });
 
                     // ✅ Redirect after a short delay for smooth UX
                     setTimeout(() => {
