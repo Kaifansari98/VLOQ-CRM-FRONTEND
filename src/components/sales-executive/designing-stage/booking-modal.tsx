@@ -375,7 +375,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm">
-                        Booking Amount Payment Details Document *
+                        Booking Amount Payment Details Document
                       </FormLabel>
                       <FormControl>
                         <FileUploadField
@@ -396,7 +396,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm">
-                        Payment Details *
+                        Payment Details
                       </FormLabel>
                       <FormControl>
                         <TextAreaInput
