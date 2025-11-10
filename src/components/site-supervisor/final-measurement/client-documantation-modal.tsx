@@ -144,7 +144,7 @@ const ClientDocumentationModal: React.FC<Props> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-sm">
-                    Client Documentation – Project Files
+                    Client Documentation – Project Files *
                   </FormLabel>
                   <FormControl>
                     <FileUploadField
@@ -170,7 +170,7 @@ const ClientDocumentationModal: React.FC<Props> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-sm">
-                    Client Documentation – Design Files
+                    Client Documentation – Design Files *
                   </FormLabel>
                   <FormControl>
                     <FileUploadField

@@ -144,7 +144,7 @@ export default function OrderLoginModal({
         hour12: true,
       });
 
-      toast.success(`Marked as completed at ${formattedTime}`);
+      toast.success(`Marked as ready at ${formattedTime}`);
       setIsCompleted(true);
 
       queryClient.invalidateQueries({
@@ -289,7 +289,7 @@ export default function OrderLoginModal({
                   }
                   value={
                     isCompleted
-                      ? "You cannot change the vendor after this order-login is marked as completed."
+                      ? "You cannot change the vendor after this order-login is marked as ready."
                       : "Select a factory vendor."
                   }
                 />
@@ -337,7 +337,7 @@ export default function OrderLoginModal({
                     }
                     value={
                       isCompleted
-                        ? "You cannot change the date after this order-login is marked as completed."
+                        ? "You cannot change the date after this order-login is marked as ready."
                         : "Select a production ready date."
                     }
                   />
@@ -377,8 +377,8 @@ export default function OrderLoginModal({
                         >
                           <CheckCircle2 className="w-4 h-4" />
                           {isCompleted
-                            ? "Marked as Completed"
-                            : "Mark as Completed"}
+                            ? "Marked as Ready"
+                            : "Mark as Ready"}
                         </Button>
                       </div>
                     }
@@ -397,7 +397,7 @@ export default function OrderLoginModal({
                     <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 space-y-1">
                       <p className="flex items-center gap-1">
                         <CheckCircle2 size={12} className="text-green-500" />
-                        This order-login has been marked as completed.
+                        This order-login has been marked as ready.
                       </p>
                       {formattedCompletedDate && (
                         <p className="pl-5 text-gray-400">
