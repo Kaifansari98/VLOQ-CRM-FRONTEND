@@ -146,7 +146,8 @@ const data = {
       items: [
         {
           title: "Site Readiness",
-          url: "#",
+          url: "/dashboard/installation/site-readiness",
+          showCount: "total_site_readiness_stage_leads" as const,
         },
         {
           title: "Dispatch",

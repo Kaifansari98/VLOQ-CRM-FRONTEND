@@ -20,6 +20,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import CurrencyInput from "../custom/CurrencyInput";
 import { formatCurrencyINR } from "@/utils/formatCurrency";
+import { Label } from "../ui/label";
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -105,7 +106,7 @@ export default function ProjectFinanceSummary({
     defaultValues: {
       amount: undefined as unknown as number,
       payment_date: "",
-      payment_text: "",
+      payment_text: "N/A",
       payment_file: [],
     },
   });
@@ -195,6 +196,7 @@ export default function ProjectFinanceSummary({
           {/* Amount + Date */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
+              <Label className="mb-2">Payment Amount</Label>
               <CurrencyInput
                 value={watch("amount")}
                 onChange={(val) =>
@@ -213,6 +215,7 @@ export default function ProjectFinanceSummary({
             </div>
 
             <div>
+              <Label className="mb-2">Payment Date</Label>
               <CustomeDatePicker
                 value={watch("payment_date")}
                 onChange={(value?: string) =>
@@ -232,6 +235,7 @@ export default function ProjectFinanceSummary({
 
           {/* Payment File (optional) */}
           <div>
+            <Label className="mb-2">Payment Receipt (optional)</Label>
             <FileUploadField
               value={watch("payment_file")}
               onChange={(files) =>
@@ -249,6 +253,7 @@ export default function ProjectFinanceSummary({
 
           {/* Payment Text */}
           <div>
+            <Label className="mb-2">Payment Description</Label>
             <TextAreaInput
               value={watch("payment_text")}
               onChange={(val) =>

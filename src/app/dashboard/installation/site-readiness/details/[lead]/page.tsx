@@ -4,10 +4,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import {
   SidebarInset,
@@ -15,13 +13,11 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { ModeToggle } from "@/components/ModeToggle";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
-import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,10 +30,10 @@ import {
   SquarePen,
   Users,
   XCircle,
-  HouseIcon,
   PanelsTopLeftIcon,
   BoxIcon,
   UsersRoundIcon,
+  Truck,
 } from "lucide-react";
 
 import {
@@ -46,11 +42,10 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogTitle,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import AssignTaskFinalMeasurementForm from "@/components/sales-executive/Lead/assign-task-final-measurement-form";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
@@ -61,45 +56,41 @@ import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen
 import {
   canReassingLead,
   canDeleteLead,
-  canAssignFM,
+  canAssignSR,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
+import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 
-export default function BookingStageLeadsDetails() {
+export default function ReadyToDispatchLeadDetails() {
+  const router = useRouter();
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userType = useAppSelector(
+    (state) => state.auth?.user?.user_type.user_type as string | undefined
+  );
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [assignOpen, setAssignOpen] = useState(true);
-
-  const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type as string | undefined
-  );
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("details");
+  const [previousTab, setPreviousTab] = useState("details");
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
-
-  useEffect(() => {
-    if (userType?.toLowerCase() === "sales-executive") {
-      setAssignOpen(true);
-    } else {
-      setAssignOpen(false);
-    }
-  }, [userType]);
-
   const lead = data?.data?.lead;
-  const accountId = lead?.account_id;
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
+  const accountId = Number(lead?.account_id);
 
   const deleteLeadMutation = useDeleteLead();
+
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
       toast.error("Missing vendor or user info!");
@@ -118,11 +109,8 @@ export default function BookingStageLeadsDetails() {
     setOpenDelete(false);
   };
 
-  // 🔹 Tabs state
-  const [activeTab, setActiveTab] = useState("details");
-
   if (isLoading) {
-    return <p className="p-6">Loading lead details...</p>;
+    return <p className="p-6">Loading Ready-To-Dispatch lead details...</p>;
   }
 
   return (
@@ -136,16 +124,6 @@ export default function BookingStageLeadsDetails() {
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumb>
               <BreadcrumbList>
-                {/* <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard/sales-executive/booking-stage">
-                    Booking Stage
-                  </BreadcrumbLink>
-                </BreadcrumbItem> */}
-                {/* <BreadcrumbSeparator /> */}
                 <BreadcrumbItem>
                   <BreadcrumbPage>
                     <p className="font-bold">
@@ -157,23 +135,14 @@ export default function BookingStageLeadsDetails() {
               </BreadcrumbList>
             </Breadcrumb>
           </div>
+
           <div className="flex items-center space-x-2">
-            {canAssignFM(userType) ? (
-              <Button size="sm" onClick={() => setAssignOpen(true)}>
-                Assign Task
-              </Button>
-            ) : (
-              <CustomeTooltip
-                truncateValue={
-                  <Button size="sm" disabled>
-                    Assign Task
-                  </Button>
-                }
-                value="You don't have permission to assign Final Measurement tasks."
-              />
-            )}
+            <Button size="sm" onClick={() => setAssignOpen(true)}>
+              Assign Task
+            </Button>
 
             <AnimatedThemeToggler />
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon">
@@ -188,12 +157,10 @@ export default function BookingStageLeadsDetails() {
                 </DropdownMenuItem>
 
                 {canReassingLead(userType) && (
-                  <>
-                    <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                      <Users size={20} />
-                      Reassign Lead
-                    </DropdownMenuItem>
-                  </>
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
+                  </DropdownMenuItem>
                 )}
 
                 {canDeleteLead(userType) && (
@@ -210,48 +177,82 @@ export default function BookingStageLeadsDetails() {
           </div>
         </header>
 
-        {/* 🔹 Tabs bar above content */}
+        {/* Tabs */}
         <Tabs
           value={activeTab}
           onValueChange={(val) => {
-            if (val === "projects") {
-              // instead of switching tab, open modal
-              setAssignOpen(true);
-              return; // stay on details
+            if (val === "todo") {
+              // store current tab before opening modal
+              setPreviousTab(activeTab);
+              setAssignOpen(true); // open Assign Task modal
+              return; // don't switch tab
             }
             setActiveTab(val);
           }}
           className="w-full px-6 pt-4"
         >
           <ScrollArea>
-            <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-              <TabsTrigger value="details">
-                <HouseIcon size={16} className="mr-1 opacity-60" />
-                Lead Details
-              </TabsTrigger>
-              <TabsTrigger value="projects">
-                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                To-Do Task
-              </TabsTrigger>
-              <TabsTrigger value="history">
-                <BoxIcon size={16} className="mr-1 opacity-60" />
-                Site History
-              </TabsTrigger>
-              <TabsTrigger value="team">
-                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                Payment Information
-              </TabsTrigger>
-            </TabsList>
+            <div className="w-full h-full flex justify-between items-center mb-4">
+              <div className="w-full flex items-center gap-2 justify-between">
+                <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
+                  {/* ✅ Site Readiness Details */}
+                  <TabsTrigger value="details">
+                    <Truck size={16} className="mr-1 opacity-60" />
+                    Site Readiness Details
+                  </TabsTrigger>
+
+                  {/* ✅ To-Do Task (Conditional Access) */}
+                  {canAssignSR(userType) ? (
+                    <TabsTrigger
+                      value="todo"
+                      onClick={() => setAssignOpen(true)}
+                    >
+                      <PanelsTopLeftIcon
+                        size={16}
+                        className="mr-1 opacity-60"
+                      />
+                      To-Do Task
+                    </TabsTrigger>
+                  ) : (
+                    <CustomeTooltip
+                      truncateValue={
+                        <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                          <PanelsTopLeftIcon
+                            size={16}
+                            className="mr-1 opacity-60"
+                          />
+                          To-Do Task
+                        </div>
+                      }
+                      value="Only Admin or Sales Executive can access this tab"
+                    />
+                  )}
+
+                  {/* ✅ Site History */}
+                  <TabsTrigger value="history">
+                    <BoxIcon size={16} className="mr-1 opacity-60" />
+                    Site History
+                  </TabsTrigger>
+
+                  {/* ✅ Payment Info */}
+                  <TabsTrigger value="payment">
+                    <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                    Payment Information
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            </div>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
 
-          {/* 🔹 Tab Contents */}
           <TabsContent value="details">
             <main className="flex-1 h-fit">
-              <LeadDetailsUtil
-                status="booking"
+              <LeadDetailsGrouped
+                status="readyToDispatch"
+                defaultTab="readyToDispatch"
                 leadId={leadIdNum}
-                defaultTab="booking"
+                accountId={accountId}
+                maxVisibleStage="readyToDispatch"
               />
             </main>
           </TabsContent>
@@ -260,23 +261,12 @@ export default function BookingStageLeadsDetails() {
             <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
           </TabsContent>
 
-          <TabsContent value="team">
+          <TabsContent value="payment">
             <PaymentInformation accountId={accountId} />
           </TabsContent>
         </Tabs>
 
-        {/* ✅ Modals */}
-        <AssignTaskFinalMeasurementForm
-          open={assignOpen}
-          onOpenChange={(open) => {
-            setAssignOpen(open);
-            if (!open) {
-              setActiveTab("details"); // back to details tab when modal closes
-            }
-          }}
-          data={{ id: leadIdNum, name: "" }}
-        />
-
+        {/* Modals */}
         <AssignLeadModal
           open={assignOpenLead}
           onOpenChange={setAssignOpenLead}
@@ -289,6 +279,14 @@ export default function BookingStageLeadsDetails() {
           leadData={{ id: leadIdNum }}
         />
 
+        <AssignTaskSiteMeasurementForm
+          open={assignOpen}
+          onOpenChange={setAssignOpen}
+          onlyFollowUp={true}
+          data={{ id: leadIdNum, name: "" }}
+        />
+
+        {/* Delete Dialog */}
         <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
           <AlertDialogContent>
             <AlertDialogHeader>

@@ -40,6 +40,8 @@ interface NavItem {
     | "total_tech_check_leads"
     | "total_order_login_leads"
     | "total_production_stage_leads"
+    | "total_ready_to_dispatch_leads"
+    | "total_site_readiness_stage_leads"
     | "total_my_tasks";
   items?: {
     title: string;
@@ -57,6 +59,7 @@ interface NavItem {
       | "total_order_login_leads"
       | "total_production_stage_leads"
       | "total_ready_to_dispatch_leads"
+      | "total_site_readiness_stage_leads"
       | "total_my_tasks";
   }[];
 }
