@@ -399,6 +399,7 @@ export default function ProductionLeadDetails() {
                 defaultTab="production" // opens Production > Tech Check directly
                 leadId={leadIdNum}
                 accountId={accountId}
+                maxVisibleStage="production"
               />
             </main>
           </TabsContent>

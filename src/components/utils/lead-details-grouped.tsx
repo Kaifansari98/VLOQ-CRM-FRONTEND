@@ -40,6 +40,7 @@ export interface LeadDetailsGroupedProps {
   onChangeTab?: (tabId: StageId) => void;
   /** optional: pass a display name if your screens use it */
   leadName?: string;
+  maxVisibleStage?: StageId;
 }
 
 const GROUPS = {
@@ -69,6 +70,7 @@ export default function LeadDetailsGrouped({
   accountId,
   onChangeTab,
   leadName,
+  maxVisibleStage,
 }: LeadDetailsGroupedProps) {
   const initialTab: StageId =
     defaultTab ?? (status ? STATUS_TO_DEFAULT[status] : "details");
@@ -130,6 +132,7 @@ export default function LeadDetailsGrouped({
       groups={groups}
       defaultTabId={initialTab}
       onChange={onChangeTab}
+      maxVisibleStage={maxVisibleStage}
     />
   );
 }

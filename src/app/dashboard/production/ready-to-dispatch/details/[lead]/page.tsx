@@ -323,6 +323,7 @@ export default function ReadyToDispatchLeadDetails() {
                 defaultTab="readyToDispatch"
                 leadId={leadIdNum}
                 accountId={accountId}
+                maxVisibleStage="readyToDispatch"
               />
             </main>
           </TabsContent>
