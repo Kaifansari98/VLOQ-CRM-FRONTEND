@@ -156,3 +156,27 @@ export const useAssignSiteReadinessTask = (leadId: number) => {
 export const useAssignToSiteReadiness = (leadId: number) => {
   return useAssignSiteReadinessTask(leadId);
 };
+
+// ✅ --- Get Current Site Photos COUNT + Flag (Ready-To-Dispatch)
+export const getCurrentSitePhotosCount = async (
+  vendorId: number,
+  leadId: number
+): Promise<{ count: number; hasPhotos: boolean }> => {
+  const { data } = await apiClient.get(
+    `/leads/production/ready-to-dispatch/vendorId/${vendorId}/leadId/${leadId}/current-site-photos/count`
+  );
+
+  return data?.data || { count: 0, hasPhotos: false };
+};
+
+// ✅ --- React Query Hook
+export const useCurrentSitePhotosCount = (
+  vendorId?: number,
+  leadId?: number
+) => {
+  return useQuery({
+    queryKey: ["currentSitePhotosCount", vendorId, leadId],
+    queryFn: () => getCurrentSitePhotosCount(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
+};

@@ -60,6 +60,9 @@ export default function CurrentSitePhotosSection({
       queryClient.invalidateQueries({
         queryKey: ["currentSitePhotos", vendorId, leadId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["currentSitePhotosCount", vendorId, leadId],
+      });
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Failed to upload photos.");
     }

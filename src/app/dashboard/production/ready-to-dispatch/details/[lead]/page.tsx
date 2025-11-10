@@ -93,8 +93,6 @@ export default function ReadyToDispatchLeadDetails() {
   const [activeTab, setActiveTab] = useState("details");
   const [previousTab, setPreviousTab] = useState("details");
 
-  const moveLeadMutation = useMoveLeadToReadyToDispatch();
-
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
 
@@ -113,11 +111,7 @@ export default function ReadyToDispatchLeadDetails() {
   const queryClient = useQueryClient();
   const { mutateAsync: updateExpectedDate } =
     useUpdateExpectedOrderLoginReadyDate();
-
-  const { data: postProductionStatus } = useCheckPostProductionReady(
-    vendorId,
-    leadIdNum
-  );
+    
   const { data: completeness } = usePostProductionCompleteness(
     vendorId,
     leadIdNum

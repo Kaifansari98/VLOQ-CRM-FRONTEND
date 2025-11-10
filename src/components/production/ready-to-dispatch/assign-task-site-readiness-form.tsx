@@ -29,9 +29,13 @@ import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAssignToSiteReadiness } from "@/api/production/useReadyToDispatchLeads";
-import { AssignToSiteReadinessPayload } from "@/api/production/useReadyToDispatchLeads";
+import {
+  AssignToSiteReadinessPayload,
+  useCurrentSitePhotosCount,
+} from "@/api/production/useReadyToDispatchLeads";
 import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUsers"; // ✅ now using supervisors
 import { canAssignSR } from "@/components/utils/privileges";
+import CustomeTooltip from "@/components/cutome-tooltip";
 
 // ✅ Validation schema
 const formSchema = z
@@ -87,6 +91,13 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const queryClient = useQueryClient();
   const isAllowedToAssignSR = canAssignSR(userType);
 
+  const {
+    data: currentSitePhotosCount,
+    isLoading: isLoadingCurrentSitePhotosCount,
+  } = useCurrentSitePhotosCount(vendorId, leadId);
+
+  const hasCurrentSitePhotos = currentSitePhotosCount?.hasPhotos === true;
+
   // ✅ Fetch vendor site supervisors
   const {
     data: vendorUsers,
@@ -109,6 +120,21 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       remark: "N/A",
     },
   });
+
+  // ✅ Auto-select "Follow Up" if Site Readiness is disabled
+  React.useEffect(() => {
+    if (isLoadingCurrentSitePhotosCount || !isAllowedToAssignSR) return;
+
+    form.setValue(
+      "task_type",
+      hasCurrentSitePhotos ? "Site Readiness" : "Follow Up"
+    );
+  }, [
+    isAllowedToAssignSR,
+    hasCurrentSitePhotos,
+    isLoadingCurrentSitePhotosCount,
+    form,
+  ]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const payload: AssignToSiteReadinessPayload = {
@@ -202,9 +228,26 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                     <SelectContent>
                       {isAllowedToAssignSR ? (
                         <>
-                          <SelectItem value="Site Readiness">
-                            Site Readiness
-                          </SelectItem>
+                          {/* 🔹 If API says site photos missing → disable + tooltip */}
+                          {hasCurrentSitePhotos ? (
+                            <SelectItem value="Site Readiness">
+                              Site Readiness
+                            </SelectItem>
+                          ) : (
+                            <CustomeTooltip
+                              value="Please upload current site photos before moving this lead to Site Readiness."
+                              truncateValue={
+                                <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                  <span>Site Readiness</span>
+                                  <span className="text-xs italic text-muted-foreground ml-1">
+                                    (locked)
+                                  </span>
+                                </div>
+                              }
+                            />
+                          )}
+
+                          {/* Always allow Follow Up */}
                           <SelectItem value="Follow Up">Follow Up</SelectItem>
                         </>
                       ) : (
