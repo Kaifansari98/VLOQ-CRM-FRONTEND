@@ -129,7 +129,7 @@ export default function GroupedSmoothTab({
               <Button
                 variant="ghost"
                 className={cn(
-                  "relative px-4 h-10 rounded-none border-b-2 transition-all duration-200",
+                  "relative px-4 h-10 rounded-none border-b-0.5 transition-all duration-200",
                   isActive
                     ? "border-primary text-foreground font-semibold after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2px] after:bg-primary after:rounded-full after:transition-all after:duration-300"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
