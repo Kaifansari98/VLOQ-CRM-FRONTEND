@@ -151,7 +151,7 @@ const data = {
         },
         {
           title: "Dispatch Planning",
-          url: "#",
+          url: "/dashboard/installation/dispatch-planning",
         },
         {
           title: "Dispatch",

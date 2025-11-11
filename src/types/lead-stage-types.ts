@@ -10,4 +10,5 @@ export type StageId =
   | "orderLogin"
   | "production"
   | "readyToDispatch"
-  | "siteReadiness";
+  | "siteReadiness"
+  | "dispatchPlanning"; 

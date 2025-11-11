@@ -127,3 +127,11 @@ export const canAssignSR = (
   const allowedRoles = ["super_admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
+
+export const canDoDispatchPlanning = (
+  userType: string | undefined
+) => {
+  if (!userType) return false;
+  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  return allowedRoles.includes(userType.toLowerCase());
+};
