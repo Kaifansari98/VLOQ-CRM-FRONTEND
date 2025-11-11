@@ -152,6 +152,7 @@ const data = {
         {
           title: "Dispatch Planning",
           url: "/dashboard/installation/dispatch-planning",
+          showCount: "total_dispatch_planning_stage_leads" as const,
         },
         {
           title: "Dispatch",

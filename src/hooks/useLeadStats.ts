@@ -17,6 +17,7 @@ interface LeadStatsResponse {
     total_production_stage_leads: number;
     total_ready_to_dispatch_leads: number;
     total_site_readiness_stage_leads: number;
+    total_dispatch_planning_stage_leads: number;
     total_my_tasks: number;
   };
 }
