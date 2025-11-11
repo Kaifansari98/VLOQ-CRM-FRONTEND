@@ -35,7 +35,6 @@ import {
   UsersRoundIcon,
   Truck,
 } from "lucide-react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,11 +62,17 @@ import CustomeTooltip from "@/components/cutome-tooltip";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
+import {
+  useDispatchReadinessStatus,
+  useMoveLeadToDispatch,
+} from "@/api/installation/useDispatchPlanning";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function DispatchPlanningLeadDetails() {
   const router = useRouter();
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
+  const queryClient = useQueryClient();
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -81,6 +86,14 @@ export default function DispatchPlanningLeadDetails() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
   const [previousTab, setPreviousTab] = useState("details");
+  const [openMoveConfirm, setOpenMoveConfirm] = useState(false);
+
+  const { data: readinessStatus, isLoading: readinessLoading } =
+    useDispatchReadinessStatus(vendorId, leadIdNum);
+  const moveMutation = useMoveLeadToDispatch();
+
+  const isReadyForDispatch = readinessStatus?.is_ready_for_dispatch ?? false;
+  const missingFields = readinessStatus?.missing_fields ?? [];
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -137,10 +150,40 @@ export default function DispatchPlanningLeadDetails() {
           </div>
 
           <div className="flex items-center space-x-2">
-            {/* Assign Task Button */}
-            <Button size="sm" onClick={() => setAssignOpen(true)}>
-              Assign Task
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Move to Dispatch Button */}
+              {isReadyForDispatch ? (
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => setOpenMoveConfirm(true)}
+                  disabled={moveMutation.isPending}
+                  className="bg-green-600 text-white hover:bg-green-700 cursor-pointer"
+                >
+                  {moveMutation.isPending ? "Moving..." : "Move to Dispatch"}
+                </Button>
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <Button size="sm" variant="secondary" disabled>
+                      Move to Dispatch
+                    </Button>
+                  }
+                  value={
+                    readinessLoading
+                      ? "Checking dispatch readiness..."
+                      : `Cannot move yet. Missing: ${
+                          missingFields.join(", ") || "data"
+                        }`
+                  }
+                />
+              )}
+
+              {/* Assign Task Button */}
+              <Button size="sm" onClick={() => setAssignOpen(true)}>
+                Assign Task
+              </Button>
+            </div>
 
             <AnimatedThemeToggler />
 
@@ -300,6 +343,47 @@ export default function DispatchPlanningLeadDetails() {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteLead}>
                 Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* ✅ Move to Dispatch Confirmation Modal */}
+        <AlertDialog open={openMoveConfirm} onOpenChange={setOpenMoveConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Move to Dispatch</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to move this lead to the Dispatch stage?
+                <br />
+                Once moved, this action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  try {
+                    await moveMutation.mutateAsync({
+                      vendorId: vendorId!,
+                      leadId: leadIdNum,
+                      payload: { updated_by: userId! },
+                    });
+                    toast.success(
+                      "Lead successfully moved to Dispatch stage 🚚"
+                    );
+                    queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+                    router.push("/dashboard/installation/dispatch-planning/");
+                    setOpenMoveConfirm(false);
+                  } catch (err: any) {
+                    toast.error(
+                      err?.response?.data?.message ||
+                        "Failed to move lead to Dispatch stage"
+                    );
+                  }
+                }}
+              >
+                Confirm & Move
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

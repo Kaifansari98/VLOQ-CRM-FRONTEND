@@ -23,6 +23,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { useAppSelector } from "@/redux/store";
+import { isAction } from "@reduxjs/toolkit";
 
 // Updated navigation data with showCount properties
 const data = {
@@ -143,6 +144,7 @@ const data = {
       title: "Installation",
       url: "#",
       icon: Settings2,
+      isActive: true,
       items: [
         {
           title: "Site Readiness",

@@ -189,6 +189,7 @@ export default function DispatchPlanningDetails({
       });
 
       toast.success("Dispatch planning info saved successfully");
+      queryClient.invalidateQueries({ queryKey: ["dispatchReadinessStatus"] });
       setInfoSaved(true);
       queryClient.invalidateQueries({ queryKey: ["dispatchPlanningLeads"] });
       refetchDispatchInfo();
