@@ -191,3 +191,64 @@ export const usePendingProjectAmount = (vendorId?: number, leadId?: number) => {
     enabled: !!vendorId && !!leadId,
   });
 };
+
+/* ==========================================================
+   🔹 7️⃣ GET Check Dispatch Readiness
+   @route GET /leads/installation/dispatch-planning/vendorId/:vendorId/leadId/:leadId/check-dispatch-readiness
+   ========================================================== */
+export const getDispatchReadinessStatus = async (
+  vendorId: number,
+  leadId: number
+) => {
+  const { data } = await apiClient.get(
+    `/leads/installation/dispatch-planning/vendorId/${vendorId}/leadId/${leadId}/check-dispatch-readiness`
+  );
+  return data?.data;
+};
+
+/**
+ * ✅ React Query Hook for Dispatch Readiness
+ */
+export const useDispatchReadinessStatus = (
+  vendorId?: number,
+  leadId?: number
+) => {
+  return useQuery({
+    queryKey: ["dispatchReadinessStatus", vendorId, leadId],
+    queryFn: () => getDispatchReadinessStatus(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
+};
+
+/* ==========================================================
+   🔹 8️⃣ PUT Move Lead to Dispatch Stage
+   @route PUT /leads/installation/dispatch-planning/vendorId/:vendorId/leadId/:leadId/move-to-dispatch
+   ========================================================== */
+export const moveLeadToDispatch = async (
+  vendorId: number,
+  leadId: number,
+  payload: { updated_by: number }
+) => {
+  const { data } = await apiClient.put(
+    `/leads/installation/dispatch-planning/vendorId/${vendorId}/leadId/${leadId}/move-to-dispatch`,
+    payload
+  );
+  return data;
+};
+
+/**
+ * ✅ React Query Mutation for Moving Lead to Dispatch
+ */
+export const useMoveLeadToDispatch = () => {
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      payload,
+    }: {
+      vendorId: number;
+      leadId: number;
+      payload: { updated_by: number };
+    }) => moveLeadToDispatch(vendorId, leadId, payload),
+  });
+};
