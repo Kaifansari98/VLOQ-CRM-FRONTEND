@@ -13,19 +13,11 @@ import LeadDetailsProductionUtil from "@/components/production/pre-production-st
 
 import GroupedSmoothTab from "./grouped-smooth-tab";
 import ReadyToDispatchDetails from "../production/ready-to-dispatch/ReadyToDispatchDetails";
+import SiteReadinessDetails from "../installation/site-readiness/SiteReadinessDetails";
+import { StageId } from "@/types/lead-stage-types";
+import SiteReadinessTabs from "../installation/site-readiness/SiteReadinessTabs";
 
-type StageId =
-  | "details"
-  | "measurement"
-  | "designing"
-  | "booking"
-  | "finalMeasurement"
-  | "clientdocumentation"
-  | "clientApproval"
-  | "techcheck"
-  | "orderLogin"
-  | "production"
-  | "readyToDispatch";
+
 
 type StatusKey = StageId;
 
@@ -47,6 +39,7 @@ const GROUPS = {
   leads: ["details", "measurement", "designing", "booking"] as StageId[],
   project: ["finalMeasurement", "clientdocumentation", "clientApproval"] as StageId[],
   production: ["techcheck", "orderLogin", "production", "readyToDispatch"] as StageId[],
+  installation: ["siteReadiness"] as StageId[],
 };
 
 const STATUS_TO_DEFAULT: Record<StatusKey, StageId> = {
@@ -61,6 +54,7 @@ const STATUS_TO_DEFAULT: Record<StatusKey, StageId> = {
   orderLogin: "orderLogin",
   production: "production",
   readyToDispatch: "readyToDispatch",
+  siteReadiness: "siteReadiness",
 };
 
 export default function LeadDetailsGrouped({
@@ -123,6 +117,13 @@ export default function LeadDetailsGrouped({
             name={leadName}
           />
         ),
+      },
+    ],
+    installation: [
+      {
+        id: "siteReadiness",
+        title: "Site Readiness",
+        component: <SiteReadinessTabs leadId={leadId} accountId={accountId} name={leadName} />,
       },
     ],
   } as const;

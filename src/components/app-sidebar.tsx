@@ -150,11 +150,11 @@ const data = {
           showCount: "total_site_readiness_stage_leads" as const,
         },
         {
-          title: "Dispatch",
+          title: "Dispatch Planning",
           url: "#",
         },
         {
-          title: "Installation Planning",
+          title: "Dispatch",
           url: "#",
         },
         {
