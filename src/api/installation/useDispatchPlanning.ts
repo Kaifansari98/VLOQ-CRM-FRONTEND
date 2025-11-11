@@ -166,3 +166,28 @@ export const useSaveDispatchPlanningPayment = () => {
     }) => saveDispatchPlanningPayment(vendorId, leadId, formData),
   });
 };
+
+/* ==========================================================
+   🔹 6️⃣ GET Pending Project Amount
+   @route GET /leads/installation/dispatch-planning/pending-project-amount/vendorId/:vendorId/leadId/:leadId
+   ========================================================== */
+export const getPendingProjectAmount = async (
+  vendorId: number,
+  leadId: number
+) => {
+  const { data } = await apiClient.get(
+    `/leads/installation/dispatch-planning/pending-project-amount/vendorId/${vendorId}/leadId/${leadId}`
+  );
+  return data?.data;
+};
+
+/**
+ * ✅ React Query Hook for Pending Project Amount
+ */
+export const usePendingProjectAmount = (vendorId?: number, leadId?: number) => {
+  return useQuery({
+    queryKey: ["pendingProjectAmount", vendorId, leadId],
+    queryFn: () => getPendingProjectAmount(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
+};

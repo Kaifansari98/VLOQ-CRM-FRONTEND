@@ -9,6 +9,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import CustomeDatePicker from "@/components/date-picker";
 import { FileUploadField } from "@/components/custom/file-upload";
 import {
@@ -20,10 +30,21 @@ import {
   CreditCard,
   Loader2,
   CheckCircle2,
+  ExternalLink,
+  FileCheck,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { apiClient } from "@/lib/apiClient";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  useDispatchPlanningInfo,
+  useDispatchPlanningPayment,
+  useSaveDispatchPlanningInfo,
+  useSaveDispatchPlanningPayment,
+  usePendingProjectAmount,
+} from "@/api/installation/useDispatchPlanning";
+import { useAppSelector } from "@/redux/store";
+import CurrencyInput from "@/components/custom/CurrencyInput";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 interface DispatchPlanningDetailsProps {
   leadId: number;
@@ -35,8 +56,8 @@ export default function DispatchPlanningDetails({
   accountId,
 }: DispatchPlanningDetailsProps) {
   const queryClient = useQueryClient();
-  const vendorId = 1; // Get from your auth context
-  const userId = 1; // Get from your auth context
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
+  const userId = useAppSelector((state) => state.auth.user?.id) || 0;
 
   // State for Dispatch Planning Info
   const [dispatchInfo, setDispatchInfo] = useState({
@@ -54,90 +75,88 @@ export default function DispatchPlanningDetails({
     payment_proof_file: [] as File[],
   });
 
-  const [loadingInfo, setLoadingInfo] = useState(false);
-  const [loadingPayment, setLoadingPayment] = useState(false);
-  const [fetchingData, setFetchingData] = useState(true);
   const [infoSaved, setInfoSaved] = useState(false);
   const [paymentSaved, setPaymentSaved] = useState(false);
+  const [existingPaymentDoc, setExistingPaymentDoc] = useState<{
+    id: number;
+    doc_og_name: string;
+    signed_url?: string;
+  } | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  // Queries
+  const {
+    data: dispatchInfoData,
+    isLoading: loadingDispatchInfo,
+    refetch: refetchDispatchInfo,
+  } = useDispatchPlanningInfo(vendorId, leadId);
+
+  const {
+    data: paymentData,
+    isLoading: loadingPaymentInfo,
+    refetch: refetchPaymentInfo,
+  } = useDispatchPlanningPayment(vendorId, leadId);
+
+  const { data: pendingAmountData } = usePendingProjectAmount(vendorId, leadId);
+  const project_pending_amount = pendingAmountData?.pending_amount ?? 0;
+
+  // Mutations
+  const saveInfoMutation = useSaveDispatchPlanningInfo();
+  const savePaymentMutation = useSaveDispatchPlanningPayment();
 
   // Calculate minimum date based on current time
   const getMinimumDate = () => {
     const now = new Date();
     const currentHour = now.getHours();
-
-    // If after 3 PM, add 3 days, otherwise add 2 days
     const daysToAdd = currentHour >= 15 ? 3 : 2;
-
     const minDate = new Date();
     minDate.setDate(minDate.getDate() + daysToAdd);
     minDate.setHours(0, 0, 0, 0);
-
     return minDate.toISOString().split("T")[0];
   };
 
-  // Fetch existing data on mount
+  // Load dispatch info data
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setFetchingData(true);
+    if (dispatchInfoData) {
+      setDispatchInfo({
+        required_date_for_dispatch: dispatchInfoData.required_date_for_dispatch
+          ? new Date(dispatchInfoData.required_date_for_dispatch)
+              .toISOString()
+              .split("T")[0]
+          : "",
+        onsite_contact_person_name:
+          dispatchInfoData.onsite_contact_person_name || "",
+        onsite_contact_person_number:
+          dispatchInfoData.onsite_contact_person_number || "",
+        material_lift_availability:
+          dispatchInfoData.material_lift_availability || false,
+        dispatch_planning_remark:
+          dispatchInfoData.dispatch_planning_remark || "",
+      });
+      setInfoSaved(true);
+    }
+  }, [dispatchInfoData]);
 
-        // Fetch dispatch planning info
-        try {
-          const { data: infoData } = await apiClient.get(
-            `/leads/installation/dispatch-planning/info/vendorId/${vendorId}/leadId/${leadId}`
-          );
+  // Load payment info data
+  useEffect(() => {
+    if (paymentData) {
+      setPaymentInfo({
+        pending_payment: paymentData.amount?.toString() || "",
+        pending_payment_details: paymentData.payment_text || "",
+        payment_proof_file: [],
+      });
+      setPaymentSaved(true);
 
-          if (infoData?.data) {
-            setDispatchInfo({
-              required_date_for_dispatch: infoData.data
-                .required_date_for_dispatch
-                ? new Date(infoData.data.required_date_for_dispatch)
-                    .toISOString()
-                    .split("T")[0]
-                : "",
-              onsite_contact_person_name:
-                infoData.data.onsite_contact_person_name || "",
-              onsite_contact_person_number:
-                infoData.data.onsite_contact_person_number || "",
-              material_lift_availability:
-                infoData.data.material_lift_availability || false,
-              dispatch_planning_remark:
-                infoData.data.dispatch_planning_remark || "",
-            });
-            setInfoSaved(true);
-          }
-        } catch (error: any) {
-          if (error?.response?.status !== 404) {
-            console.error("Error fetching dispatch info:", error);
-          }
-        }
-
-        // Fetch payment info
-        try {
-          const { data: paymentData } = await apiClient.get(
-            `/leads/installation/dispatch-planning/payment/vendorId/${vendorId}/leadId/${leadId}`
-          );
-
-          if (paymentData?.data) {
-            setPaymentInfo({
-              pending_payment: paymentData.data.amount?.toString() || "",
-              pending_payment_details: paymentData.data.payment_text || "",
-              payment_proof_file: [],
-            });
-            setPaymentSaved(true);
-          }
-        } catch (error: any) {
-          if (error?.response?.status !== 404) {
-            console.error("Error fetching payment info:", error);
-          }
-        }
-      } finally {
-        setFetchingData(false);
+      // Set existing payment document
+      if (paymentData.document) {
+        setExistingPaymentDoc({
+          id: paymentData.document.id,
+          doc_og_name: paymentData.document.doc_og_name,
+          signed_url: paymentData.document.signed_url,
+        });
       }
-    };
-
-    fetchData();
-  }, [leadId, vendorId]);
+    }
+  }, [paymentData]);
 
   // Handle Save Dispatch Planning Info
   const handleSaveInfo = async () => {
@@ -156,8 +175,6 @@ export default function DispatchPlanningDetails({
         return;
       }
 
-      setLoadingInfo(true);
-
       const payload = {
         ...dispatchInfo,
         material_lift_availability:
@@ -165,25 +182,51 @@ export default function DispatchPlanningDetails({
         created_by: userId,
       };
 
-      await apiClient.post(
-        `/leads/installation/dispatch-planning/info/vendorId/${vendorId}/leadId/${leadId}`,
-        payload
-      );
+      await saveInfoMutation.mutateAsync({
+        vendorId,
+        leadId,
+        payload,
+      });
 
       toast.success("Dispatch planning info saved successfully");
       setInfoSaved(true);
       queryClient.invalidateQueries({ queryKey: ["dispatchPlanningLeads"] });
+      refetchDispatchInfo();
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ||
           "Failed to save dispatch planning info"
       );
-    } finally {
-      setLoadingInfo(false);
     }
   };
 
-  // Handle Save Payment Info
+  // Validate payment fields
+  const validatePaymentFields = () => {
+    const hasAmount = paymentInfo.pending_payment.trim() !== "";
+    const hasDetails = paymentInfo.pending_payment_details.trim() !== "";
+    const hasFile =
+      paymentInfo.payment_proof_file.length > 0 || existingPaymentDoc !== null;
+
+    // If any field is filled, all fields must be filled
+    if (hasAmount || hasDetails || hasFile) {
+      if (!hasAmount) {
+        toast.error("Pending payment amount is required");
+        return false;
+      }
+      if (!hasDetails) {
+        toast.error("Pending payment details are required");
+        return false;
+      }
+      if (!hasFile) {
+        toast.error("Payment proof file is required");
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // Handle Save Payment Info (after confirmation)
   const handleSavePayment = async () => {
     try {
       if (!infoSaved) {
@@ -191,7 +234,21 @@ export default function DispatchPlanningDetails({
         return;
       }
 
-      setLoadingPayment(true);
+      if (!validatePaymentFields()) {
+        return;
+      }
+
+      // 🚫 Restrict entering amount > project pending amount
+      const pendingAmt = Number(paymentInfo.pending_payment);
+      if (
+        project_pending_amount !== undefined &&
+        pendingAmt > project_pending_amount
+      ) {
+        toast.error(
+          `Entered amount ₹${pendingAmt} cannot exceed pending project amount ₹${project_pending_amount}`
+        );
+        return;
+      }
 
       const formData = new FormData();
       formData.append("pending_payment", paymentInfo.pending_payment || "0");
@@ -209,29 +266,40 @@ export default function DispatchPlanningDetails({
         );
       }
 
-      await apiClient.post(
-        `/leads/installation/dispatch-planning/payment/vendorId/${vendorId}/leadId/${leadId}`,
+      await savePaymentMutation.mutateAsync({
+        vendorId,
+        leadId,
         formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      });
 
       toast.success("Payment info saved successfully");
       setPaymentSaved(true);
+      setShowConfirmDialog(false);
       queryClient.invalidateQueries({ queryKey: ["dispatchPlanningLeads"] });
+      refetchPaymentInfo();
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message || "Failed to save payment info"
       );
-    } finally {
-      setLoadingPayment(false);
+      setShowConfirmDialog(false);
     }
   };
 
-  if (fetchingData) {
+  // Handle payment save button click (show confirmation)
+  const handlePaymentSaveClick = () => {
+    if (!infoSaved) {
+      toast.error("Please save dispatch planning info first");
+      return;
+    }
+
+    if (!validatePaymentFields()) {
+      return;
+    }
+
+    setShowConfirmDialog(true);
+  };
+
+  if (loadingDispatchInfo && loadingPaymentInfo) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -259,31 +327,6 @@ export default function DispatchPlanningDetails({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Required Date for Dispatch */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                Required Date For Dispatch
-                <span className="text-red-500">*</span>
-              </Label>
-              <CustomeDatePicker
-                value={dispatchInfo.required_date_for_dispatch}
-                onChange={(value) =>
-                  setDispatchInfo({
-                    ...dispatchInfo,
-                    required_date_for_dispatch: value || "",
-                  })
-                }
-                restriction="futureOnly"
-                minDate={getMinimumDate()}
-              />
-              <p className="text-xs text-muted-foreground">
-                {new Date().getHours() >= 15
-                  ? "After 3 PM: minimum 3 days ahead"
-                  : "Minimum 2 days ahead"}
-              </p>
-            </div>
-
             {/* Onsite Contact Person Name */}
             <div className="space-y-2">
               <Label className="flex items-center gap-1">
@@ -313,17 +356,42 @@ export default function DispatchPlanningDetails({
                 Onsite Contact Person Number
                 <span className="text-red-500">*</span>
               </Label>
-              <Input
-                type="tel"
+              <PhoneInput
                 placeholder="Enter contact number"
+                defaultCountry="IN"
                 value={dispatchInfo.onsite_contact_person_number}
-                onChange={(e) =>
+                onChange={(value) =>
                   setDispatchInfo({
                     ...dispatchInfo,
-                    onsite_contact_person_number: e.target.value,
+                    onsite_contact_person_number: value || "",
                   })
                 }
               />
+            </div>
+
+            {/* Required Date for Dispatch */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                Required Date For Dispatch
+                <span className="text-red-500">*</span>
+              </Label>
+              <CustomeDatePicker
+                value={dispatchInfo.required_date_for_dispatch}
+                onChange={(value) =>
+                  setDispatchInfo({
+                    ...dispatchInfo,
+                    required_date_for_dispatch: value || "",
+                  })
+                }
+                restriction="futureAfterTwoDays"
+              />
+
+              <p className="text-xs text-muted-foreground">
+                {new Date().getHours() >= 15
+                  ? "After 3 PM: minimum 3 days ahead"
+                  : "Minimum 2 days ahead"}
+              </p>
             </div>
 
             {/* Material Lift Availability */}
@@ -333,23 +401,43 @@ export default function DispatchPlanningDetails({
                 Material Lift Availability
                 <span className="text-red-500">*</span>
               </Label>
-              <div className="flex items-center space-x-2 pt-2">
-                <Checkbox
-                  id="material-lift"
-                  checked={dispatchInfo.material_lift_availability}
-                  onCheckedChange={(checked) =>
+
+              <div className="flex w-1/2 gap-3">
+                <Button
+                  type="button"
+                  variant={
+                    dispatchInfo.material_lift_availability
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={() =>
                     setDispatchInfo({
                       ...dispatchInfo,
-                      material_lift_availability: !!checked,
+                      material_lift_availability: true,
                     })
                   }
-                />
-                <label
-                  htmlFor="material-lift"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  className="w-full md:w-1/2"
                 >
-                  Material lift available at site
-                </label>
+                  Available
+                </Button>
+
+                <Button
+                  type="button"
+                  variant={
+                    !dispatchInfo.material_lift_availability
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={() =>
+                    setDispatchInfo({
+                      ...dispatchInfo,
+                      material_lift_availability: false,
+                    })
+                  }
+                  className="w-full md:w-1/2"
+                >
+                  Not Available
+                </Button>
               </div>
             </div>
           </div>
@@ -375,10 +463,10 @@ export default function DispatchPlanningDetails({
 
           <Button
             onClick={handleSaveInfo}
-            disabled={loadingInfo}
+            disabled={saveInfoMutation.isPending}
             className="w-full md:w-auto"
           >
-            {loadingInfo ? (
+            {saveInfoMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Saving...
@@ -417,26 +505,50 @@ export default function DispatchPlanningDetails({
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Pending Payment */}
             <div className="space-y-2">
-              <Label>Pending Payment</Label>
-              <Input
-                type="number"
-                placeholder="Enter amount"
-                value={paymentInfo.pending_payment}
-                onChange={(e) =>
+              <Label>
+                Pending Payment
+                {(paymentInfo.pending_payment_details ||
+                  paymentInfo.payment_proof_file.length > 0 ||
+                  existingPaymentDoc) && (
+                  <span className="text-red-500 ml-1">*</span>
+                )}
+              </Label>
+
+              <CurrencyInput
+                value={
+                  paymentInfo.pending_payment
+                    ? Number(paymentInfo.pending_payment)
+                    : undefined
+                }
+                onChange={(val) =>
                   setPaymentInfo({
                     ...paymentInfo,
-                    pending_payment: e.target.value,
+                    pending_payment: val?.toString() || "",
                   })
                 }
-                disabled={!infoSaved}
+                placeholder="Enter amount"
+                disabled={!infoSaved || existingPaymentDoc !== null}
               />
+
+              {!paymentData && (
+                <p className="text-xs text-muted-foreground">
+                  Project Pending Amount:{" "}
+                  <strong>₹{project_pending_amount ?? 0}</strong>
+                </p>
+              )}
             </div>
 
             {/* Pending Payment Details */}
             <div className="space-y-2">
-              <Label>Pending Payment Details</Label>
+              <Label>
+                Pending Payment Details
+                {(paymentInfo.pending_payment ||
+                  paymentInfo.payment_proof_file.length > 0 ||
+                  existingPaymentDoc) && (
+                  <span className="text-red-500 ml-1">*</span>
+                )}
+              </Label>
               <Input
                 placeholder="Enter payment details"
                 value={paymentInfo.pending_payment_details}
@@ -446,30 +558,90 @@ export default function DispatchPlanningDetails({
                     pending_payment_details: e.target.value,
                   })
                 }
-                disabled={!infoSaved}
+                disabled={!infoSaved || existingPaymentDoc !== null}
               />
             </div>
           </div>
 
           {/* Payment Screenshot */}
           <div className="space-y-2">
-            <Label>Payment Screenshot</Label>
-            <FileUploadField
-              value={paymentInfo.payment_proof_file}
-              onChange={(files) =>
-                setPaymentInfo({ ...paymentInfo, payment_proof_file: files })
-              }
-              accept=".jpg,.jpeg,.png,.pdf"
-              multiple={false}
-            />
+            <Label>
+              Payment Screenshot
+              {(paymentInfo.pending_payment ||
+                paymentInfo.pending_payment_details) && (
+                <span className="text-red-500 ml-1">*</span>
+              )}
+            </Label>
+
+            {/* Show existing document if uploaded */}
+            {existingPaymentDoc ? (
+              <div className="border rounded-lg p-4 bg-muted/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded">
+                      <FileCheck className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">
+                        {existingPaymentDoc.doc_og_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Already uploaded
+                      </p>
+                    </div>
+                  </div>
+                  {existingPaymentDoc.signed_url && (
+                    <Button variant="outline" size="sm" asChild>
+                      <a
+                        href={existingPaymentDoc.signed_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="gap-2"
+                      >
+                        View
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Payment proof has been uploaded. You cannot change it.
+                </p>
+              </div>
+            ) : (
+              <FileUploadField
+                value={paymentInfo.payment_proof_file}
+                onChange={(files) =>
+                  setPaymentInfo({
+                    ...paymentInfo,
+                    payment_proof_file: files,
+                  })
+                }
+                accept=".jpg,.jpeg,.png,.pdf"
+                multiple={false}
+              />
+            )}
           </div>
 
+          {(paymentInfo.pending_payment ||
+            paymentInfo.pending_payment_details ||
+            paymentInfo.payment_proof_file.length > 0) && (
+            <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+              <strong>Note:</strong> If you fill any payment field, all three
+              fields (Amount, Details, and Screenshot) become mandatory.
+            </p>
+          )}
+
           <Button
-            onClick={handleSavePayment}
-            disabled={loadingPayment || !infoSaved}
+            onClick={handlePaymentSaveClick}
+            disabled={
+              savePaymentMutation.isPending ||
+              !infoSaved ||
+              existingPaymentDoc !== null
+            }
             className="w-full md:w-auto"
           >
-            {loadingPayment ? (
+            {savePaymentMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Saving...
@@ -480,6 +652,47 @@ export default function DispatchPlanningDetails({
           </Button>
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Payment Information</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>Please review the payment information before saving:</p>
+              <div className="bg-muted p-3 rounded-lg space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="font-medium">Amount:</span>
+                  <span>₹{paymentInfo.pending_payment || "0"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Details:</span>
+                  <span className="text-right max-w-[200px] truncate">
+                    {paymentInfo.pending_payment_details || "N/A"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Proof:</span>
+                  <span>
+                    {paymentInfo.payment_proof_file.length > 0
+                      ? paymentInfo.payment_proof_file[0].name
+                      : "Existing file"}
+                  </span>
+                </div>
+              </div>
+              <p className="text-red-500 text-xs pt-2">
+                Warning: Once saved, you cannot change the payment proof file.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSavePayment}>
+              Confirm & Save
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -207,6 +207,7 @@ export interface SiteMeasurementFile {
   originalName: string;
   s3Key: string;
   signedUrl: string;
+  uploadedAt: string;
 }
 
 export interface PaymentInfo {
@@ -215,4 +216,5 @@ export interface PaymentInfo {
   payment_date: string;
   payment_text: string;
   payment_file_id: number | null;
+  uploadedAt: string;
 }

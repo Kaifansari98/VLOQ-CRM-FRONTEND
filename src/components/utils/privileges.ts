@@ -112,9 +112,7 @@ export const canViewThreeVerticalDocsOptionInTechCheck = (
   return allowedRoles.includes(userType.toLowerCase());
 };
 
-export const canOrderLogin = (
-  userType: string | undefined
-) => {
+export const canOrderLogin = (userType: string | undefined) => {
   if (!userType) return false;
   const allowedRoles = ["super_admin", "admin", "backend", "tech-check"];
   return allowedRoles.includes(userType.toLowerCase());
@@ -127,6 +125,30 @@ export const canAssignSR = (
   const allowedRoles = ["super_admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
+
+// utils/privilege.ts
+export function canUploadOrDeleteBookingDone(
+  role: string,
+  stage: string
+): boolean {
+  return (
+    role === "admin" ||
+    role === "super-admin" ||
+    (role === "sales-executive" && stage === "booking-stage")
+  );
+}
+
+export function canUploadOrDeleteOrderLogin(
+  role: string,
+  stage: string
+): boolean {
+  return (
+    role === "admin" ||
+    role === "super-admin" ||
+    (role === "tech-check" && stage === "order-login-stage")
+  );
+}
+
 
 export const canDoDispatchPlanning = (
   userType: string | undefined

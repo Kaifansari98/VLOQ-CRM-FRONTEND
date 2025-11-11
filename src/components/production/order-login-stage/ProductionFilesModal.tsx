@@ -19,6 +19,20 @@ import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
+import { useDeleteDocument } from "@/api/leads";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import DocumentCard from "@/components/utils/documentCard";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { canUploadOrDeleteOrderLogin } from "@/components/utils/privileges";
 
 interface ProductionFilesSectionProps {
   leadId: number;
@@ -30,7 +44,12 @@ export default function ProductionFilesSection({
   accountId,
 }: ProductionFilesSectionProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
+  const { data: leadData, error } = useLeadStatus(leadId, vendorId);
+  const { mutate: deleteDocument, isPending: deleting } =
+    useDeleteDocument(leadId);
   const queryClient = useQueryClient();
 
   const { data: productionFiles, isLoading } = useProductionFiles(
@@ -41,6 +60,8 @@ export default function ProductionFilesSection({
     vendorId,
     leadId
   );
+
+  const leadStatus = leadData?.status;
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const hasFiles = Array.isArray(productionFiles) && productionFiles.length > 0;
@@ -73,6 +94,22 @@ export default function ProductionFilesSection({
     }
   };
 
+  const handleConfirmDelete = () => {
+    if (confirmDelete) {
+      deleteDocument({
+        vendorId: vendorId!,
+        documentId: confirmDelete,
+        deleted_by: userId!,
+      });
+      setConfirmDelete(null);
+    }
+  };
+
+  // ✅ Permission logic for delete
+  console.log("UserType: ", userType);
+  console.log("Lead Status", leadStatus);
+  const canDelete = canUploadOrDeleteOrderLogin(userType, leadStatus);
+
   return (
     <div className="border rounded-lg overflow-hidden bg-background">
       {/* Header */}
@@ -87,35 +124,37 @@ export default function ProductionFilesSection({
       </div>
 
       {/* Upload Section */}
-      <div className="p-6 border-b space-y-4">
-        <FileUploadField
-          value={selectedFiles}
-          onChange={setSelectedFiles}
-          accept=".pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
-          multiple
-        />
+      {canDelete && (
+        <div className="p-6 border-b space-y-4">
+          <FileUploadField
+            value={selectedFiles}
+            onChange={setSelectedFiles}
+            accept=".pdf,.pyo,.pytha,.dwg,.dxf,.zip"
+            multiple
+          />
 
-        <div className="flex justify-end">
-          <Button
-            size="sm"
-            onClick={handleUpload}
-            disabled={isPending || selectedFiles.length === 0}
-            className="flex items-center gap-2"
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="animate-spin size-4" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Upload size={16} />
-                Upload Files
-              </>
-            )}
-          </Button>
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={handleUpload}
+              disabled={isPending || selectedFiles.length === 0}
+              className="flex items-center gap-2"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="animate-spin size-4" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload size={16} />
+                  Upload Files
+                </>
+              )}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Files List */}
       <div className="p-6">
@@ -145,43 +184,46 @@ export default function ProductionFilesSection({
           </div>
         ) : (
           <ScrollArea className="max-h-[400px] mt-2 pr-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-2">
               {productionFiles.map((doc: any) => (
-                <div
-                  key={doc.id}
-                  className="group border rounded-lg p-3 flex flex-col justify-between bg-card shadow-sm hover:shadow-md transition-all duration-200"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <FileText
-                        size={20}
-                        className="text-primary shrink-0 group-hover:scale-110 transition-transform"
-                      />
-                      <p className="font-medium text-sm line-clamp-2">
-                        {doc.doc_og_name}
-                      </p>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Uploaded on{" "}
-                    {format(new Date(doc.created_at), "dd MMM yyyy")}
-                  </p>
-
-                  <a
-                    href={doc.signed_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-1 mt-2 font-medium"
-                  >
-                    <ExternalLink size={14} /> View / Download
-                  </a>
-                </div>
+                <DocumentCard
+                  doc={{
+                    id: doc.id,
+                    originalName: doc.doc_og_name,
+                    signedUrl: doc.signedUrl,
+                  }}
+                  onDelete={(id) => setConfirmDelete(id)}
+                  canDelete={canDelete}
+                />
               ))}
             </div>
           </ScrollArea>
         )}
       </div>
+
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={() => setConfirmDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The selected document will be
+              permanently removed from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

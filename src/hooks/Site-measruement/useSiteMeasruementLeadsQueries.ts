@@ -69,7 +69,7 @@ export const useRescheduleTask = () => {
 };
 
 export function useSiteMeasurementLeadById(leadId: number) {
-  return useQuery<SiteMeasurementLeadData>({
+  return useQuery({
     queryKey: ["siteMeasurementLeadDetails", leadId],
     queryFn: () => getSiteMeasurmentLeadById(leadId),
     enabled: Boolean(leadId),

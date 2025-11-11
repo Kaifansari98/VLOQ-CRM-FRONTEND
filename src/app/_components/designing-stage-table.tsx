@@ -49,7 +49,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import ViewLeadModal from "@/components/sales-executive/Lead/view-lead-moda";
+import ViewLeadModal from "@/components/sales-executive/Lead/view-lead-modal";
 import BookingModal from "@/components/sales-executive/designing-stage/booking-modal";
 import SiteMesurementModal from "@/components/sales-executive/siteMeasurement/site-mesurement-modal";
 
