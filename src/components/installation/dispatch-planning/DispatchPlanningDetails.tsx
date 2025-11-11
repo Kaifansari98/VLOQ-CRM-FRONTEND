@@ -345,9 +345,6 @@ export default function DispatchPlanningDetails({
                   })
                 }
               />
-              <p className="text-xs text-muted-foreground">
-                Client person or client himself
-              </p>
             </div>
 
             {/* Onsite Contact Person Number */}
@@ -374,7 +371,7 @@ export default function DispatchPlanningDetails({
             <div className="space-y-2">
               <Label className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                Required Date For Dispatch
+                Required OnSite Delivery Date
                 <span className="text-red-500">*</span>
               </Label>
               <CustomeDatePicker
@@ -388,11 +385,11 @@ export default function DispatchPlanningDetails({
                 restriction="futureAfterTwoDays"
               />
 
-              <p className="text-xs text-muted-foreground">
+              {/* <p className="text-xs text-muted-foreground">
                 {new Date().getHours() >= 15
                   ? "After 3 PM: minimum 3 days ahead"
                   : "Minimum 2 days ahead"}
-              </p>
+              </p> */}
             </div>
 
             {/* Material Lift Availability */}
