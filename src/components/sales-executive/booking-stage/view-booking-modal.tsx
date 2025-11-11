@@ -36,6 +36,7 @@ import { ImageComponent } from "@/components/utils/ImageCard";
 import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import Loader from "@/components/utils/loader";
 import SectionHeader from "@/utils/sectionHeader";
+import { canUploadOrDeleteBookingDone } from "@/components/utils/privileges";
 
 interface Props {
   leadId: number;
@@ -75,13 +76,12 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     isError,
   } = useBookingLeadById(vendorId, leadId);
   const { data, isLoading: loading } = useLeadById(leadId, vendorId, userId);
-  const { data: LeadStatusData, error } = useLeadStatus(leadId, vendorId);
+  const { data: leadStatus, error } = useLeadStatus(leadId, vendorId);
 
   if (isLoading || loading)
     return <Loader size={250} message="Loading Booking Lead Details..." />;
 
   const lead = data?.data?.lead;
-  const leadStatus = LeadStatusData?.status;
   const accountId = Number(lead?.account_id);
 
   const finalDocs =
@@ -94,8 +94,12 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       doc.s3Key.includes("booking-amount-payment-details")
     ) || [];
 
+  const status = leadStatus?.status;
   // 🧩 Permissions
-  const canDelete = userType === "admin" || userType === "super-admin";
+  console.log("userType: ", userType);
+  console.log("status: ", status);
+  const canDelete = canUploadOrDeleteBookingDone(userType, status);
+  console.log("CandDelete or upload: ", canDelete);
 
   // 🧩 Delete handler
   const handleConfirmDelete = () => {
@@ -231,15 +235,17 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                   ))}
 
                   {/* Add Button */}
-                  <div
-                    className="flex items-center justify-center min-h-[105px] w-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition"
-                    onClick={() => setOpenFinalDocModal(true)}
-                  >
-                    <div className="flex flex-col items-center text-gray-400">
-                      <Plus size={40} />
-                      <span className="text-xs mt-1">Add File</span>
+                  {canDelete && (
+                    <div
+                      className="flex items-center justify-center min-h-[105px] w-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition"
+                      onClick={() => setOpenFinalDocModal(true)}
+                    >
+                      <div className="flex flex-col items-center text-gray-400">
+                        <Plus size={40} />
+                        <span className="text-xs mt-1">Add File</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 

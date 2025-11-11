@@ -13,7 +13,16 @@ import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import UploadMoreClientDocumentationModal from "./uploadmore-client-documentaition-modal";
 import { canUploadMoreClientDocumentationFiles } from "@/components/utils/privileges";
 import Loader from "@/components/utils/loader";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useDeleteDocument } from "@/api/leads";
 
 type Props = {
@@ -57,11 +66,7 @@ export default function ClientDocumentationDetails({
 
   if (isLoading)
     return (
-      <Loader
-        fullScreen
-        size={250}
-        message="Loading Client Documentation..."
-      />
+      <Loader fullScreen size={250} message="Loading Client Documentation..." />
     );
 
   const pptDocs = leadDetails?.documents?.ppt || [];
@@ -144,11 +149,13 @@ export default function ClientDocumentationDetails({
                     key={img.id}
                     doc={{
                       id: img.id,
-                      doc_og_name: img.doc_sys_name,
+                      doc_og_name: img.doc_og_name,
                       signedUrl: img.signed_url,
                       created_at: img.created_at,
                     }}
                     index={idx}
+                    
+                    
                     canDelete={canDelete}
                     onView={(i) => {
                       setStartIndex(i);
@@ -177,7 +184,7 @@ export default function ClientDocumentationDetails({
                     key={doc.id}
                     doc={{
                       id: doc.id,
-                      originalName: doc.doc_sys_name,
+                      originalName: doc.doc_og_name,
                       signedUrl: doc.signed_url,
                       created_at: doc.created_at,
                     }}
@@ -214,7 +221,7 @@ export default function ClientDocumentationDetails({
                   key={doc.id}
                   doc={{
                     id: doc.id,
-                    originalName: doc.doc_sys_name,
+                    originalName: doc.doc_og_name,
                     signedUrl: doc.signed_url,
                     created_at: doc.created_at,
                   }}
@@ -245,7 +252,7 @@ export default function ClientDocumentationDetails({
         images={imageDocs.map((photo) => ({
           id: photo.id,
           signed_url: photo.signed_url,
-          doc_og_name: photo.doc_sys_name,
+          doc_og_name: photo.doc_og_name,
         }))}
       />
 

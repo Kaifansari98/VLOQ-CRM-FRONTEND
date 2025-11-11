@@ -341,8 +341,16 @@ export const useDeleteDocument = (leadId?: number) => {
           queryKey: ["getDesignsDoc", leadId],
         });
 
-         queryClient.invalidateQueries({
+        queryClient.invalidateQueries({
           queryKey: ["clientApprovalDetails"],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["bookingLead"],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["clientDocumentationDetails"],
         });
       }
     },

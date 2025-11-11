@@ -1,115 +1,202 @@
 "use client";
 
-import React from "react";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useApprovedTechCheckDocuments } from "@/api/production/order-login";
+import React, { useState } from "react";
+import { motion } from "framer-motion";
 import { useAppSelector } from "@/redux/store";
+import { useApprovedTechCheckDocuments } from "@/api/production/order-login";
+import { useDeleteDocument } from "@/api/leads";
+
+import SectionHeader from "@/utils/sectionHeader";
+import { ImageComponent } from "@/components/utils/ImageCard";
+import DocumentCard from "@/components/utils/documentCard";
+import ImageCarouselModal from "@/components/utils/image-carousel-modal";
+import { Ban } from "lucide-react";
 import {
-  RefreshCcw,
-  FileText,
-  ExternalLink,
-  FolderOpen,
-  Loader2,
-} from "lucide-react";
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 interface ApprovedDocsSectionProps {
   leadId: number;
 }
 
-export default function ApprovedDocsSection({
-  leadId,
-}: ApprovedDocsSectionProps) {
+export default function ApprovedDocsSection({ leadId }: ApprovedDocsSectionProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
-  const { data, isLoading, isError, refetch, isFetching } =
-    useApprovedTechCheckDocuments(vendorId, leadId);
+  const userId = useAppSelector((s) => s.auth.user?.id);
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
 
-  const hasDocs = Array.isArray(data) && data.length > 0;
+  // ✅ Fetch approved docs
+  const { data, isLoading, isError } = useApprovedTechCheckDocuments(vendorId, leadId);
+  const { mutate: deleteDocument, isPending: deleting } = useDeleteDocument(leadId);
+
+  // ✅ Image Preview State
+  const [openCarousel, setOpenCarousel] = useState(false);
+  const [startIndex, setStartIndex] = useState(0);
+  const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
+
+  // ✅ File type separation
+  const imageExtensions = ["jpg", "jpeg", "png"];
+  const documentExtensions = ["pdf", "zip"];
+
+  const approvedImages =
+    data?.filter((file: any) =>
+      imageExtensions.includes(file.doc_og_name?.split(".").pop()?.toLowerCase() || "")
+    ) || [];
+
+  const approvedDocuments =
+    data?.filter((file: any) =>
+      documentExtensions.includes(file.doc_og_name?.split(".").pop()?.toLowerCase() || "")
+    ) || [];
+
+  const handleConfirmDelete = () => {
+    if (confirmDelete) {
+      deleteDocument({
+        vendorId: vendorId!,
+        documentId: confirmDelete,
+        deleted_by: userId!,
+      });
+      setConfirmDelete(null);
+    }
+  };
+
+  const canDelete = userType === "admin" || userType === "super-admin";
+
+  // ✅ UI States
+  if (isLoading) {
+    return (
+      <div className="border rounded-lg bg-background p-6 flex justify-center">
+        <p className="text-muted-foreground text-sm animate-pulse">
+          Loading approved documents...
+        </p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="border rounded-lg bg-background p-6 flex justify-center">
+        <p className="text-red-500 text-sm">Failed to load approved documents.</p>
+      </div>
+    );
+  }
+
+  const totalDocs = approvedImages.length + approvedDocuments.length;
 
   return (
-    <div className="border rounded-lg overflow-hidden bg-background">
-      {/* Header */}
-      <div className="px-6 py-4 border-b bg-muted/20 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <FolderOpen className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold">
-            Approved Tech-Check Documents
-          </h2>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="border rounded-xl bg-background overflow-hidden"
+    >
+      {/* ✅ Main Header */}
+      <SectionHeader title="Approved Documents" docCount={totalDocs} />
+
+      {/* ✅ No Data State */}
+      {totalDocs === 0 ? (
+        <div className="flex flex-col items-center justify-center h-[40vh] px-4">
+          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+            <Ban size={32} className="text-muted-foreground" />
+          </div>
+          <h3 className="font-semibold text-lg mb-2">
+            No Approved Documents Found
+          </h3>
+          <p className="text-xs text-muted-foreground text-center max-w-sm">
+            Once documents are approved, they will appear here for download or
+            preview.
+          </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="flex items-center gap-2"
-        >
-          {isFetching ? (
-            <Loader2 className="animate-spin size-4" />
-          ) : (
-            <RefreshCcw size={16} />
-          )}
-          Refresh
-        </Button>
-      </div>
-
-      {/* Body */}
-      <div className="p-6">
-        {isLoading ? (
-          <div className="flex justify-center py-10 text-sm text-muted-foreground">
-            <Loader2 className="animate-spin mr-2 size-4" />
-            Loading documents...
-          </div>
-        ) : isError ? (
-          <div className="p-8 border border-dashed rounded-lg text-center bg-muted/30">
-            <p className="text-sm text-red-500">
-              Failed to fetch approved documents.
-            </p>
-          </div>
-        ) : !hasDocs ? (
-          <div className="p-8 border border-dashed rounded-lg flex flex-col items-center justify-center text-center bg-muted/30">
-            <FolderOpen className="w-10 h-10 text-muted-foreground mb-2" />
-            <p className="text-sm font-medium text-muted-foreground">
-              No approved documents found.
-            </p>
-          </div>
-        ) : (
-          <ScrollArea className="max-h-[480px] pr-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {data.map((doc: any) => (
-                <div
-                  key={doc.id}
-                  className="group border rounded-lg p-3 bg-card shadow-sm hover:shadow-md transition-all duration-200"
-                >
-                  <div className="flex items-start gap-2">
-                    <FileText
-                      size={20}
-                      className="text-primary shrink-0 group-hover:scale-110 transition-transform"
-                    />
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm truncate">
-                        {doc.doc_og_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Uploaded on{" "}
-                        {new Date(doc.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-
-                  <a
-                    href={doc.signed_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-500 hover:text-blue-600 hover:underline inline-flex items-center gap-1 mt-2 font-medium"
-                  >
-                    <ExternalLink size={14} /> View / Download
-                  </a>
-                </div>
-              ))}
+      ) : (
+        <div className="p-4 space-y-8">
+          {/* ✅ Approved Images Section */}
+          {approvedImages.length > 0 && (
+            <div className="border rounded-xl overflow-hidden">
+              <SectionHeader
+                title="Approved Images"
+                docCount={approvedImages.length}
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3">
+                {approvedImages.map((doc: any, index: number) => (
+                  <ImageComponent
+                    key={doc.id}
+                    doc={{
+                      id: doc.id,
+                      doc_og_name: doc.doc_og_name,
+                      signedUrl: doc.signed_url,
+                      created_at: doc.created_at,
+                    }}
+                    index={index}
+                    canDelete={canDelete}
+                    onView={(i) => {
+                      setStartIndex(i);
+                      
+                      setOpenCarousel(true);
+                    }}
+                    onDelete={(id) => setConfirmDelete(Number(id))}
+                  />
+                ))}
+              </div>
             </div>
-          </ScrollArea>
-        )}
-      </div>
-    </div>
+          )}
+
+          {/* ✅ Approved Documents Section */}
+          {approvedDocuments.length > 0 && (
+            <div className="border rounded-xl overflow-hidden">
+              <SectionHeader
+                title="Approved Files"
+                docCount={approvedDocuments.length}
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3">
+                {approvedDocuments.map((doc: any) => (
+                  <DocumentCard
+                    key={doc.id}
+                    doc={{
+                      id: doc.id,
+                      originalName: doc.doc_og_name,
+                      signedUrl: doc.signed_url,
+                      created_at: doc.created_at,
+                    }}
+                    canDelete={canDelete}
+                    onDelete={(id) => setConfirmDelete(id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ✅ Delete Confirmation Modal */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The selected document will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} disabled={deleting}>
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ✅ Image Preview Modal */}
+      <ImageCarouselModal
+        images={approvedImages}
+        open={openCarousel}
+        initialIndex={startIndex}
+        onClose={() => setOpenCarousel(false)}
+      />
+    </motion.div>
   );
 }

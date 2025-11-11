@@ -24,6 +24,7 @@ interface DocumentCardProps {
   doc: DocumentData;
   canDelete?: boolean;
   onDelete?: (id: number) => void;
+  status?: "APPROVED" | "REJECTED" | "PENDING" | string;
 }
 
 const getFileIcon = (ext: string) => {
@@ -54,9 +55,49 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   doc,
   canDelete = false,
   onDelete,
+  status,
 }) => {
   const fileExt = doc.originalName?.split(".").pop()?.toLowerCase() || "file";
   const { icon: Icon, color } = getFileIcon(fileExt);
+
+  const getCardStyle = () => {
+    switch (status?.toUpperCase()) {
+      case "APPROVED":
+        return "";
+      case "REJECTED":
+        return "";
+      case "PENDING":
+        return "";
+      default:
+        return "bg-card border-border hover:border-muted-foreground/20";
+    }
+  };
+
+  const getStatusLabel = () => {
+    switch (status?.toUpperCase()) {
+      case "APPROVED":
+        return "Approved";
+      case "REJECTED":
+        return "Rejected";
+      case "PENDING":
+        return "Pending";
+      default:
+        return null;
+    }
+  };
+
+  const getDotColor = () => {
+    switch (status?.toUpperCase()) {
+      case "APPROVED":
+        return "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]";
+      case "REJECTED":
+        return "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]";
+      case "PENDING":
+        return "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]";
+      default:
+        return "bg-gray-400 shadow-[0_0_6px_rgba(156,163,175,0.6)]";
+    }
+  };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -82,20 +123,23 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   };
 
   return (
-    <motion.div className="group relative flex items-center gap-4 rounded-xl p-2 border transition-all duration-300 cursor-pointer overflow-hidden">
-      {/* ✅ Delete Button */}
+    <motion.div
+      transition={{ duration: 0.25 }}
+      className={`group relative flex items-center justify-between gap-4 rounded-xl p-3 border shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden ${getCardStyle()}`}
+    >
+      {/* 🗑 Delete Button */}
       {canDelete && (
         <button
           onClick={handleDelete}
-          className="absolute top-1.5 right-2 p-1 rounded-full dark:bg-red-950 border dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900 transition-all  z-10"
+          className="absolute top-2 right-2 p-1 rounded-full dark:bg-red-950 border dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900 transition-all z-10"
           title="Delete Document"
         >
           <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
         </button>
       )}
 
-      {/* Icon Container */}
-      <div className="relative flex-shrink-0 w-20 h-20 rounded-lg p-2 overflow-hidden flex items-center justify-center">
+      {/* 📄 File Icon */}
+      <div className="relative flex-shrink-0 w-20 h-20 rounded-lg p-2 flex items-center justify-center">
         <div
           className={`relative w-14 h-16 rounded-md shadow-md transition-transform duration-300 group-hover:scale-110 bg-gradient-to-br ${color}`}
         >
@@ -111,29 +155,61 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
         </div>
       </div>
 
-      {/* File Info */}
+      {/* 📁 File Info */}
       <div className="flex flex-col justify-between flex-1 min-w-0">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate pr-6">
+          <h3 className="text-sm font-semibold text-foreground truncate pr-6">
             {doc.originalName}
           </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {doc.created_at
               ? `Uploaded on ${formatDate(doc.created_at, { month: "short" })}`
-              : "Uploaded on: null"}
+              : "Uploaded date not available"}
           </p>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 mt-3">
+        {/* 🔘 Actions + Status */}
+        <div className="flex items-center justify-between gap-3 mt-3">
+          {/* 📥 Download Button */}
           <button
             onClick={handleDownload}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-600 font-medium text-xs"
-            title="View Document"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-blue-200 
+                       bg-blue-50 hover:bg-blue-100 text-blue-600 font-medium text-xs transition-all
+                       dark:border-blue-800 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 dark:text-blue-300"
+            title="Download File"
           >
             <Download className="w-4 h-4" />
             <span>Download</span>
           </button>
+
+          {/* 🟢 Animated Status */}
+          {getStatusLabel() && (
+            <div className="flex items-center gap-2 pr-1">
+              <motion.div
+                className={`w-2 h-2 rounded-full ${getDotColor()}`}
+                animate={{
+                  scale: [1, 1.25, 1],
+                  opacity: [0.8, 1, 0.8],
+                }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 1.6,
+                  ease: "easeInOut",
+                }}
+              />
+              <span
+                className={`text-[12px] font-semibold ${
+                  status === "APPROVED"
+                    ? "text-green-700 dark:text-green-400"
+                    : status === "REJECTED"
+                    ? "text-red-700 dark:text-red-400"
+                    : "text-blue-700 dark:text-blue-400"
+                }`}
+              >
+                {getStatusLabel()}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>
