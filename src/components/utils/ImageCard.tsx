@@ -81,7 +81,7 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
   };
   return (
     <div
-      className={`relative flex items-center gap-4 p-3 rounded-xl max-w-[310px] shadow-sm hover:shadow-md transition-all duration-300 border ${getCardStyle()}`}
+      className={`group relative flex items-center justify-between gap-4 rounded-xl p-3 border shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden ${getCardStyle()}`}
     >
       {/* 🗑 Delete Button */}
       {canDelete && (

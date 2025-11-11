@@ -142,7 +142,7 @@ export default function ClientDocumentationDetails({
           {/* Image Section */}
           <div className="space-y-3">
             <h3 className="text-base font-semibold">Project Images</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-2">
               {imageDocs.length > 0 ? (
                 imageDocs.map((img, idx) => (
                   <ImageComponent
