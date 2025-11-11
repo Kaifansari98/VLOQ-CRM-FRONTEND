@@ -54,14 +54,9 @@ export default function DesigningLeadsDetails({ leadId }: props) {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="border rounded-lg w-full h-full"
+      className="border rounded-lg w-full h-full p-4 overflow-y-scroll"
     >
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="border rounded-lg w-full h-full p-4"
-      >
+ 
         <DetailsProvider value={{ leadId, accountId }}>
           <PillTabs
             bookingBtn={false}
@@ -85,7 +80,6 @@ export default function DesigningLeadsDetails({ leadId }: props) {
             ]}
           />
         </DetailsProvider>
-      </motion.div>
     </motion.div>
   );
 }

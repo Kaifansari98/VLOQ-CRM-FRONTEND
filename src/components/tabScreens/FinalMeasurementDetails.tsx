@@ -3,9 +3,27 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { FileText, Eye, Download, Plus, Edit2 } from "lucide-react";
-import { useFinalMeasurementLeadById } from "@/hooks/final-measurement/use-final-measurement";
 import { useAppSelector } from "@/redux/store";
+import {
+  useFinalMeasurementLeadById,
+} from "@/hooks/final-measurement/use-final-measurement";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Ban, Images, FileText, Plus } from "lucide-react";
+import { useDeleteDocument } from "@/api/leads";
+import { ImageComponent } from "@/components/utils/ImageCard";
+import ImageCarouselModal from "@/components/utils/image-carousel-modal";
+import DocumentCard from "@/components/utils/documentCard";
+import Loader from "@/components/utils/loader";
+import SectionHeader from "@/utils/sectionHeader";
 
 type Props = {
   leadId: number;
@@ -22,11 +40,59 @@ const itemVariants = {
 };
 
 export default function FinalMeasurementLeadDetails({ leadId }: Props) {
+  // 🧩 --- Redux User Context ---
   const vendorId = useAppSelector((state) => state.auth?.user?.vendor_id) || 0;
-  const { data } = useFinalMeasurementLeadById(vendorId, leadId);
+  const userId = useAppSelector((state) => state.auth?.user?.id);
+  const userType = useAppSelector(
+    (state) => state.auth?.user?.user_type?.user_type
+  );
 
-  const [openEditNoteModal, setOpenEditNoteModal] = useState(false);
-  const [openAddPhotosModal, setOpenAddPhotosModal] = useState(false);
+  // 🧩 --- Data Hook ---
+  const { data, isLoading, error } = useFinalMeasurementLeadById(vendorId, leadId);
+  const { mutate: deleteDocument, isPending: deleting } =
+    useDeleteDocument(leadId);
+
+  // 🧩 --- Local States ---
+  const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
+  const [isCarouselOpen, setIsCarouselOpen] = useState(false);
+  const [initialImageIndex, setInitialImageIndex] = useState(0);
+
+  // 🧩 --- Permissions ---
+  const canDelete = userType === "admin" || userType === "super_admin";
+
+  // 🧩 --- Delete Handler ---
+  const handleConfirmDelete = () => {
+    if (confirmDelete) {
+      deleteDocument({
+        vendorId: vendorId!,
+        documentId: confirmDelete,
+        deleted_by: userId!,
+      });
+      setConfirmDelete(null);
+    }
+  };
+
+  // 🧩 --- Loading & Error States ---
+  if (isLoading)
+    return (
+      <Loader
+        fullScreen
+        size={250}
+        message="Loading Final Measurement Details..."
+      />
+    );
+
+  if (error)
+    return (
+      <div className="flex flex-col items-center justify-center h-[80vh]">
+        <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+          <Ban size={32} className="text-destructive" />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Error loading final measurement details.
+        </p>
+      </div>
+    );
 
   if (!data) {
     return (
@@ -36,139 +102,119 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
     );
   }
 
-  const { measurementDocs, sitePhotos, final_desc_note } = data;
+  // 🧩 --- Data Extraction ---
+  const { sitePhotos = [], measurementDocs = [], final_desc_note } = data;
 
-  const formatFileName = (filename: string) => {
-    const maxLength = 25;
-    if (!filename) return "Untitled";
-    if (filename.length <= maxLength) return filename;
-    const ext = filename.split(".").pop();
-    const name = filename.substring(0, filename.lastIndexOf("."));
-    return `${name.substring(0, maxLength - (ext?.length ?? 0) - 4)}...${ext}`;
-  };
-
+  // 🧩 --- Render ---
   return (
     <motion.div
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="border rounded-lg w-full h-full p-6 space-y-8"
+      className="border rounded-lg w-full h-full p-6 space-y-8 overflow-y-auto"
     >
-      {/* -------- Current Site Photos -------- */}
-      <motion.div variants={itemVariants} className="space-y-3">
-        <h3 className="text-lg font-semibold">Current Site Photos</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {sitePhotos && sitePhotos.length > 0 ? (
-            sitePhotos.map((photo: any) => (
-              <div
-                key={photo.id}
-                className="relative group border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-              >
-                <img
-                  src={photo.signedUrl}
-                  alt={photo.doc_og_name}
-                  className="h-32 w-full object-cover cursor-pointer"
+      {/* -------- Site Photos Section -------- */}
+      <div className="border rounded-xl overflow-hidden">
+        <SectionHeader title="Current Site Photos" icon={<Images size={20} />} />
+
+        <motion.div variants={itemVariants} className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {sitePhotos.length > 0 ? (
+              sitePhotos.map((photo, index) => (
+                <ImageComponent
+                  key={photo.id}
+                  doc={{
+                    id: photo.id,
+                    doc_og_name: photo.doc_og_name,
+                    signedUrl: photo.signedUrl,
+                    created_at: photo.created_at,
+                  }}
+                  index={index}
+                  canDelete={canDelete}
+                  onView={(i) => {
+                    setInitialImageIndex(i);
+                    setIsCarouselOpen(true);
+                  }}
+                  onDelete={(id) => setConfirmDelete(Number(id))}
                 />
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs px-2 text-center transition-opacity">
-                  {photo.doc_og_name}
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-gray-500 italic">
-              No site photos uploaded yet.
-            </p>
-          )}
-
-          {/* Add Button as last grid item */}
-          {/* <div
-            onClick={() => setOpenAddPhotosModal(true)}
-            className="flex flex-col items-center justify-center h-32 w-full border-2 border-dashed border-gray-300 dark:bg-[#262626] rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 group bg-[#f5f5f5]"
-          >
-            <Plus
-              size={24}
-              className="mb-1 text-gray-500 group-hover:text-blue-600"
-            />
-            <span className="text-xs font-medium text-gray-500 group-hover:text-blue-600">
-              Add Photo
-            </span>
-          </div> */}
-        </div>
-      </motion.div>
-
-      {/* -------- Measurement Documents (can be multiple) -------- */}
-      {measurementDocs && measurementDocs.length > 0 && (
-        <motion.div variants={itemVariants} className="space-y-3">
-          <h3 className="text-lg font-semibold">Measurement Documents</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {measurementDocs.map((doc: any) => (
-              <div
-                key={doc.id}
-                className="flex flex-col items-center justify-center border rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow"
-              >
-                <FileText size={40} className="text-red-500 mb-3" />
-                <p className="text-sm font-medium text-center truncate max-w-[160px]">
-                  {formatFileName(doc.doc_og_name)}
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8">
+                <FileText size={40} className="text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  No site photos uploaded yet.
                 </p>
-                <div className="flex gap-2 mt-3">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => window.open(doc.signedUrl, "_blank")}
-                    className="text-xs gap-1 h-7"
-                  >
-                    <Eye size={12} /> View
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      const link = document.createElement("a");
-                      link.href = doc.signedUrl;
-                      link.download = doc.doc_og_name;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                    }}
-                    className="text-xs gap-1 h-7"
-                  >
-                    <Download size={12} /> Download
-                  </Button>
-                </div>
               </div>
-            ))}
+            )}
           </div>
         </motion.div>
+      </div>
+
+      {/* -------- Measurement Documents Section -------- */}
+      {measurementDocs.length > 0 && (
+        <div className="border rounded-xl overflow-hidden">
+          <SectionHeader title="Measurement Documents" icon={<FileText size={20} />} />
+
+          <motion.div variants={itemVariants} className="p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {measurementDocs.map((doc) => (
+                <DocumentCard
+                  key={doc.id}
+                  doc={{
+                    id: doc.id,
+                    originalName: doc.doc_og_name,
+                    created_at: doc.created_at,
+                    signedUrl: doc.signedUrl,
+                  }}
+                  canDelete={canDelete}
+                  onDelete={(id) => setConfirmDelete(id)}
+                />
+              ))}
+            </div>
+          </motion.div>
+        </div>
       )}
 
-      {/* -------- Description Note -------- */}
-      <motion.div variants={itemVariants} className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Critical Discussion Notes</h3>
-          {/* <Button
-            size="sm"
-            className="gap-1"
-            onClick={() => setOpenEditNoteModal(true)}
-          >
-            <Edit2 size={14} /> Edit
-          </Button> */}
-        </div>
-        <div className="bg-muted border rounded-md p-3 text-sm min-h-[60px]">
+      {/* -------- Discussion Note Section -------- */}
+      
+       
+        <div className="p-4 bg-muted border-t text-sm min-h-[60px] space-y-3 border rounded-xl overflow-hidden">
           {final_desc_note || "No description provided."}
         </div>
-      </motion.div>
 
-      {/* 🔹 Modals (to be implemented like SiteMeasurement modals) */}
-      {/* <FinalMeasurementEditNoteModal
-        open={openEditNoteModal}
-        onOpenChange={setOpenEditNoteModal}
-        data={{ note: final_desc_note, leadId }}
+
+      {/* -------- Image Carousel Modal -------- */}
+      <ImageCarouselModal
+        open={isCarouselOpen}
+        initialIndex={initialImageIndex}
+        onClose={() => setIsCarouselOpen(false)}
+        images={sitePhotos.map((photo) => ({
+          id: photo.id,
+          signed_url: photo.signedUrl,
+          doc_og_name: photo.doc_og_name,
+        }))}
       />
-      <AddFinalMeasurementPhotos
-        open={openAddPhotosModal}
-        onOpenChange={setOpenAddPhotosModal}
-        data={{ leadId, vendorId }}
-      /> */}
+
+      {/* -------- Delete Confirmation Dialog -------- */}
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={() => setConfirmDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The selected file will be permanently removed from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} disabled={deleting}>
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }

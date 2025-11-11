@@ -8,7 +8,6 @@ import { format } from "date-fns";
 import {
   FolderOpen,
   Upload,
-  FileImage,
   ExternalLink,
   Loader2,
 } from "lucide-react";

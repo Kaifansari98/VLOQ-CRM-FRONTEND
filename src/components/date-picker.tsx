@@ -19,6 +19,7 @@ interface CustomeDatePickerProps {
     | "none"
     | "pastOnly"
     | "futureOnly"
+    | "futureAfterTwoDays"
     | "pastWeekOnly"
     | "pastMonthOnly";
   minDate?: string; // ✅ new
@@ -68,6 +69,15 @@ export default function CustomeDatePicker({
         return date < min; // block dates before minDate
       }
       return date < today;
+    }
+
+    if (restriction === "futureAfterTwoDays") {
+      const min = new Date();
+      const currentHour = min.getHours();
+      const daysToAdd = currentHour >= 15 ? 3 : 2;
+      min.setDate(min.getDate() + daysToAdd);
+      min.setHours(0, 0, 0, 0);
+      return date < min; // disable all dates before min date
     }
 
     if (restriction === "pastOnly") {

@@ -10,14 +10,12 @@ import ClientApprovalDetails from "@/components/site-supervisor/client-approval/
 import TechCheckDetails from "@/components/production/tech-check-stage/TechCheckDetails";
 import OrderLoginDetails from "@/components/production/order-login-stage/OrderLoginDetails";
 import LeadDetailsProductionUtil from "@/components/production/pre-production-stage/lead-details-production-tabs";
-
 import GroupedSmoothTab from "./grouped-smooth-tab";
 import ReadyToDispatchDetails from "../production/ready-to-dispatch/ReadyToDispatchDetails";
 import SiteReadinessDetails from "../installation/site-readiness/SiteReadinessDetails";
 import { StageId } from "@/types/lead-stage-types";
 import SiteReadinessTabs from "../installation/site-readiness/SiteReadinessTabs";
-
-
+import DispatchPlanningDetails from "../installation/dispatch-planning/DispatchPlanningDetails";
 
 type StatusKey = StageId;
 
@@ -37,9 +35,18 @@ export interface LeadDetailsGroupedProps {
 
 const GROUPS = {
   leads: ["details", "measurement", "designing", "booking"] as StageId[],
-  project: ["finalMeasurement", "clientdocumentation", "clientApproval"] as StageId[],
-  production: ["techcheck", "orderLogin", "production", "readyToDispatch"] as StageId[],
-  installation: ["siteReadiness"] as StageId[],
+  project: [
+    "finalMeasurement",
+    "clientdocumentation",
+    "clientApproval",
+  ] as StageId[],
+  production: [
+    "techcheck",
+    "orderLogin",
+    "production",
+    "readyToDispatch",
+  ] as StageId[],
+  installation: ["siteReadiness", "dispatchPlanning"] as StageId[], // ✅ add here
 };
 
 const STATUS_TO_DEFAULT: Record<StatusKey, StageId> = {
@@ -55,6 +62,7 @@ const STATUS_TO_DEFAULT: Record<StatusKey, StageId> = {
   production: "production",
   readyToDispatch: "readyToDispatch",
   siteReadiness: "siteReadiness",
+  dispatchPlanning: "dispatchPlanning", // ✅ new mapping
 };
 
 export default function LeadDetailsGrouped({
@@ -71,13 +79,33 @@ export default function LeadDetailsGrouped({
 
   const groups = {
     leads: [
-      { id: "details", title: "Lead Details", component: <OpenLeadDetails leadId={leadId} /> },
-      { id: "measurement", title: "Site Measurement", component: <SiteMeasurementLeadDetails leadId={leadId} /> },
-      { id: "designing", title: "Designing", component: <DesigningLeadsDetails leadId={leadId} /> },
-      { id: "booking", title: "Booking", component: <BookingLeadsDetails leadId={leadId} /> },
+      {
+        id: "details",
+        title: "Lead Details",
+        component: <OpenLeadDetails leadId={leadId} />,
+      },
+      {
+        id: "measurement",
+        title: "Site Measurement",
+        component: <SiteMeasurementLeadDetails leadId={leadId} />,
+      },
+      {
+        id: "designing",
+        title: "Designing",
+        component: <DesigningLeadsDetails leadId={leadId} />,
+      },
+      {
+        id: "booking",
+        title: "Booking",
+        component: <BookingLeadsDetails leadId={leadId} />,
+      },
     ],
     project: [
-      { id: "finalMeasurement", title: "Final Measurement", component: <FinalMeasurementLeadDetails leadId={leadId} /> },
+      {
+        id: "finalMeasurement",
+        title: "Final Measurement",
+        component: <FinalMeasurementLeadDetails leadId={leadId} />,
+      },
       {
         id: "clientdocumentation",
         title: "Client Documentation",
@@ -89,23 +117,41 @@ export default function LeadDetailsGrouped({
           />
         ),
       },
-      { id: "clientApproval", title: "Client Approval", component: <ClientApprovalDetails leadId={leadId} /> },
+      {
+        id: "clientApproval",
+        title: "Client Approval",
+        component: <ClientApprovalDetails leadId={leadId} />,
+      },
     ],
     production: [
       {
         id: "techcheck",
         title: "Tech Check",
-        component: <TechCheckDetails leadId={leadId} accountId={accountId} name={leadName} />,
+        component: (
+          <TechCheckDetails
+            leadId={leadId}
+            accountId={accountId}
+            name={leadName}
+          />
+        ),
       },
       {
         id: "orderLogin",
         title: "Order Login",
-        component: <OrderLoginDetails leadId={leadId} accountId={accountId} name={leadName} />,
+        component: (
+          <OrderLoginDetails
+            leadId={leadId}
+            accountId={accountId}
+            name={leadName}
+          />
+        ),
       },
       {
         id: "production",
         title: "Production Stage",
-        component: <LeadDetailsProductionUtil leadId={leadId} accountId={accountId} />,
+        component: (
+          <LeadDetailsProductionUtil leadId={leadId} accountId={accountId} />
+        ),
       },
       {
         id: "readyToDispatch",
@@ -123,7 +169,18 @@ export default function LeadDetailsGrouped({
       {
         id: "siteReadiness",
         title: "Site Readiness",
-        component: <SiteReadinessTabs leadId={leadId} accountId={accountId} name={leadName} />,
+        component: (
+          <SiteReadinessTabs
+            leadId={leadId}
+            accountId={accountId}
+            name={leadName}
+          />
+        ),
+      },
+      {
+        id: "dispatchPlanning",
+        title: "Dispatch Planning",
+        component: <DispatchPlanningDetails leadId={leadId} accountId={accountId}/>, // ✅ new component
       },
     ],
   } as const;

@@ -13,6 +13,8 @@ import {
   SquareArrowOutUpRight,
   Eye,
   Download,
+  Images,
+  RefreshCcw,
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
 import { useLeadById } from "@/hooks/useLeadsQueries";
@@ -33,6 +35,8 @@ import {
 import { useState } from "react";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import ImageCarouselModal from "../utils/image-carousel-modal";
+import { ImageComponent } from "../utils/ImageCard";
+import { Button } from "../ui/button";
 
 type OpenLeadDetailsProps = {
   leadId: number;
@@ -255,126 +259,73 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             </div>
           </motion.section>
           {/* Site Photos */}
-          <motion.section variants={itemVariants}>
-            <h3 className="text-base font-semibold mb-4 pb-2 border-b">
-              Site Photos
-            </h3>
 
-            {lead.documents && lead.documents.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {lead.documents.map((doc: any, index: number) =>
-                  doc.signedUrl ? (
-                    <motion.div
-                      key={doc.id}
-                      variants={itemVariants}
-                      className="relative group"
-                    >
-                      {/* Delete Button */}
-
-                      {(userType === "admin" ||
-                        userType === "super-admin" ||
-                        (userType === "sales-executive" &&
-                          leadStage === "open")) && (
-                        <button
-                          className="absolute -top-2 -right-2 z-10 p-1.5 rounded-full bg-red-100 dark:bg-red-950 border border-red-200 dark:border-red-800 hover:bg-red-200 dark:hover:bg-red-900 transition-all shadow-md hover:shadow-lg"
-                          onClick={() => setConfirmDelete(doc.id)}
-                        >
-                          <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
-                        </button>
-                      )}
-
-                      {/* Card Content */}
-                      <div className="flex items-center gap-4 p-3 border rounded-xl ">
-                        {/* Thumbnail */}
-                        <div className="flex-shrink-0">
-                          <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
-                            <img
-                              src={doc.signedUrl}
-                              alt={doc.doc_og_name}
-                              className="w-full h-full object-cover object-center"
-                              onClick={() => {
-                                setInitialImageIndex(index); // use array index here
-                                setIsCarouselOpen(true);
-                              }}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Document Info */}
-                        <div className="flex flex-col justify-between flex-1 min-w-0">
-                          <div>
-                            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                              {doc.doc_og_name}
-                            </h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                              Uploaded on{" "}
-                              {new Date(doc.created_at).toLocaleDateString(
-                                "en-IN",
-                                {
-                                  day: "numeric",
-                                  month: "short",
-                                  year: "numeric",
-                                }
-                              )}
-                            </p>
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div className="flex items-center gap-2 mt-3">
-                            <button
-                              onClick={() =>
-                                window.open(doc.signedUrl, "_blank")
-                              }
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-600 font-medium text-xs"
-                              title="View Document"
-                            >
-                              <SquareArrowOutUpRight className="w-4 h-4" />
-                              <span>View</span>
-                            </button>
-
-                            {/* <button
-                              onClick={() => {
-                                const link = document.createElement("a");
-                                link.href = doc.signedUrl;
-                                link.download = doc.doc_og_name;
-                                link.click();
-                              }}
-                              className="flex items-center justify-center w-8 h-8 rounded-full bg-green-50 hover:bg-green-100 shadow-sm transition-all duration-200"
-                              title="Download Document"
-                            >
-                              <Download className="text-green-500 w-4 h-4" />
-                            </button> */}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ) : null
-                )}
+          <div className="border rounded-xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between bg-muted px-4 py-2 border-b">
+              <div className="flex items-center gap-2">
+                <Images size={20} />
+                <h1 className="text-base font-semibold">Current Site Photos</h1>
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 px-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
-                <svg
-                  className="w-12 h-12 text-gray-400 mb-3"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
-                <p className="text-sm text-gray-600 font-medium">
-                  No site photos uploaded
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  Photos will appear here once uploaded
-                </p>
-              </div>
-            )}
-          </motion.section>
+
+              <Button variant="outline" size="sm">
+                <RefreshCcw size={15} />
+                Refresh
+              </Button>
+            </div>
+
+            <motion.div variants={itemVariants} className="p-4">
+              {lead.documents && lead.documents.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {lead.documents.map((doc: any, index: number) =>
+                    doc.signedUrl ? (
+                      <motion.div key={doc.id} variants={itemVariants}>
+                        <ImageComponent
+                          key={doc.id}
+                          doc={doc}
+                          index={index}
+                          canDelete={
+                            userType === "admin" ||
+                            userType === "super-admin" ||
+                            (userType === "sales-executive" &&
+                              leadStage === "open")
+                          }
+                          onView={(i) => {
+                            setInitialImageIndex(i);
+                            setIsCarouselOpen(true);
+                          }}
+                          onDelete={(id) => setConfirmDelete(Number(id))}
+                        />
+                      </motion.div>
+                    ) : null
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 px-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                  <svg
+                    className="w-12 h-12 text-gray-400 mb-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <p className="text-sm text-gray-600 font-medium">
+                    No site photos uploaded
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Photos will appear here once uploaded
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          </div>
+
           <AlertDialog
             open={!!confirmDelete}
             onOpenChange={() => setConfirmDelete(null)}

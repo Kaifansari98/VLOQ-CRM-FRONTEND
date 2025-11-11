@@ -179,7 +179,7 @@ const ClientDocumentationModal: React.FC<Props> = ({
                         setPythaFiles(newFiles);
                         field.onChange(newFiles);
                       }}
-                      accept=".pyo,.pdf,.pytha,.zip"
+                      accept=".pdf,.zip"
                     />
                   </FormControl>
                   {/* <FormDescription className="text-xs">

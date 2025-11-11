@@ -299,7 +299,7 @@ export const fetchLeadLogs = async ({
 /**
  * Soft delete a document (LeadDocuments)
  */
-export const useDeleteDocument = () => {
+export const useDeleteDocument = (leadId?: number) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -320,8 +320,39 @@ export const useDeleteDocument = () => {
     },
     onSuccess: () => {
       toast.success("Document deleted successfully!");
-      // ✅ refresh correct query
+
+      // ✅ Invalidate both queries safely
       queryClient.invalidateQueries({ queryKey: ["lead"] });
+
+      if (leadId) {
+        queryClient.invalidateQueries({
+          queryKey: ["siteMeasurementLeadDetails", leadId],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["getQuotationDoc", leadId],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["meetings", leadId],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["getDesignsDoc", leadId],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["clientApprovalDetails"],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["bookingLead"],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["clientDocumentationDetails"],
+        });
+      }
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || "Failed to delete document");

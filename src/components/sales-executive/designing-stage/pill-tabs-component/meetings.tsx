@@ -39,6 +39,7 @@ const MeetingsTab = () => {
     leadId
   );
 
+  console.log("Meetings data: ", data)
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date");

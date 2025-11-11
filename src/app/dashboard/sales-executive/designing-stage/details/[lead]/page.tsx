@@ -65,7 +65,10 @@ import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import BookingModal from "@/components/sales-executive/designing-stage/booking-modal";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { useDesigningStageCounts } from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  useDesigningStageCounts,
+  useLeadStatus,
+} from "@/hooks/designing-stage/designing-leads-hooks";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import {
   canReassingLead,
@@ -96,15 +99,15 @@ export default function DesigningStageLead() {
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
 
+  const { data: leadData, error } = useLeadStatus(leadIdNum, vendorId);
+  const leadStatus = leadData?.status;
   const canMoveToBooking =
     countsData?.QuotationDoc > 0 && countsData?.DesignsDoc > 0;
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
-  console.log("page details :- ", lead?.assignedTo?.id);
 
   const LeadStage = lead?.statusType?.type;
-  console.log("Lead Stage :- ", LeadStage);
 
   useEffect(() => {
     if (isLoading) return;
@@ -174,9 +177,9 @@ export default function DesigningStageLead() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
+      <SidebarInset className="w-full h-full flex flex-col">
         {/* Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b bg-background">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
@@ -299,6 +302,7 @@ export default function DesigningStageLead() {
         </header>
 
         {/* 🔹 Tabs bar above content */}
+
         <Tabs
           value={activeTab}
           onValueChange={(val) => {
@@ -363,7 +367,7 @@ export default function DesigningStageLead() {
 
           {/* 🔹 Tab Contents */}
           <TabsContent value="details">
-            <main className="flex-1 h-fit">
+            <main className="flex-1 h-fit ">
               <LeadDetailsUtil
                 status="designing"
                 leadId={leadIdNum}

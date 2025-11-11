@@ -115,48 +115,61 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     }
   }, [orderLoginData]);
 
-  // 🧩 Handle submit for both create + update
   const handleSubmitAll = async () => {
-    const formatted = Object.entries(breakups)
-      .filter(([_, val]) => val.item_desc?.trim()) // only filled
-      .map(([title, val]) => {
+    try {
+      const clearedItems = Object.entries(breakups).filter(([title, val]) => {
         const existing = orderLoginData?.find(
           (item: any) => item.item_type === title
         );
-        return {
-          id: existing?.id || null,
-          item_type: title,
-          item_desc: val.item_desc || "N/A",
-          company_vendor_id: val.company_vendor_id,
-          created_by: userId,
-          updated_by: userId,
-        };
+
+        return existing && (!val.item_desc || val.item_desc.trim() === "");
       });
 
-    if (formatted.length === 0) {
-      toast.info(
-        "Please fill at least one order login field before submitting."
-      );
-      return;
-    }
+      if (clearedItems.length > 0) {
+        const names = clearedItems.map(([title]) => title).join(", ");
+        toast.error(`Description cannot be empty for: ${names}`);
+        return;
+      }
 
-    // Split into Create + Update (only changed updates)
-    const newRecords = formatted.filter((r) => !r.id);
-    const updates = formatted.filter((r) => {
-      const existing = orderLoginData?.find((i: any) => i.id === r.id);
-      return (
-        r.id &&
-        (!existing ||
-          existing.item_desc !== r.item_desc ||
-          existing.company_vendor_id !== r.company_vendor_id)
-      );
-    });
+      const formatted = Object.entries(breakups)
+        .filter(([_, val]) => val.item_desc?.trim())
+        .map(([title, val]) => {
+          const existing = orderLoginData?.find(
+            (item: any) => item.item_type === title
+          );
+          return {
+            id: existing?.id || null,
+            item_type: title,
+            item_desc: val.item_desc.trim(),
+            company_vendor_id: val.company_vendor_id,
+            created_by: userId,
+            updated_by: userId,
+          };
+        });
 
-    try {
+      if (formatted.length === 0) {
+        toast.info(
+          "Please fill at least one order login field before submitting."
+        );
+        return;
+      }
+
+      const newRecords = formatted.filter((r) => !r.id);
+      const updates = formatted.filter((r) => {
+        const existing = orderLoginData?.find((i: any) => i.id === r.id);
+        return (
+          r.id &&
+          (!existing ||
+            existing.item_desc !== r.item_desc ||
+            existing.company_vendor_id !== r.company_vendor_id)
+        );
+      });
+
       if (updates.length > 0) await updateMultiple(updates);
       if (newRecords.length > 0) await uploadMultiple(newRecords);
 
       toast.success("Order login records processed successfully ✅");
+
       queryClient.invalidateQueries({
         queryKey: ["orderLoginByLead", vendorId, leadId],
       });
