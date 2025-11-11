@@ -257,18 +257,14 @@ export default function FinalMeasurementLeadDetails() {
                   To-Do Task
                 </TabsTrigger>
               ) : (
-                <CustomeTooltip
-                  value="You don't have permission to upload final documentation."
-                  truncateValue={
-                    <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 rounded-md">
-                      <PanelsTopLeftIcon
-                        size={16}
-                        className="mr-1 opacity-60"
-                      />
-                      To-Do Task
-                    </div>
-                  }
-                />
+                <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled
+                    className="bg-gray-400 cursor-not-allowed text-white"
+                  >
+                    order Login
+                  </Button>
               )}
 
               <TabsTrigger value="history">
