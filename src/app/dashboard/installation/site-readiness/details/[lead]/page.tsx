@@ -63,6 +63,10 @@ import CustomeTooltip from "@/components/cutome-tooltip";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
+import {
+  useCheckSiteReadinessCompletion,
+  useMoveLeadToDispatchPlanning,
+} from "@/api/installation/useSiteReadinessLeads";
 
 export default function ReadyToDispatchLeadDetails() {
   const router = useRouter();
@@ -90,6 +94,31 @@ export default function ReadyToDispatchLeadDetails() {
   const accountId = Number(lead?.account_id);
 
   const deleteLeadMutation = useDeleteLead();
+
+  const { data: readinessStatus, isLoading: checkingStatus } =
+    useCheckSiteReadinessCompletion(vendorId, leadIdNum);
+
+  const moveToDispatchMutation = useMoveLeadToDispatchPlanning();
+
+  const [openMoveConfirm, setOpenMoveConfirm] = useState(false);
+
+  const isCompleted = readinessStatus?.is_site_readiness_completed ?? false;
+
+  const handleMoveToDispatch = async () => {
+    try {
+      await moveToDispatchMutation.mutateAsync({
+        vendorId: vendorId!,
+        leadId: leadIdNum,
+        updated_by: userId!,
+      });
+      toast.success("Lead moved to Dispatch Planning successfully!");
+      router.push("/dashboard/installation/site-readiness/");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to move lead");
+    } finally {
+      setOpenMoveConfirm(false);
+    }
+  };
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -137,6 +166,33 @@ export default function ReadyToDispatchLeadDetails() {
           </div>
 
           <div className="flex items-center space-x-2">
+            {/* ✅ Move to Dispatch Planning Button */}
+            {checkingStatus ? (
+              <Button size="sm" disabled>
+                Checking...
+              </Button>
+            ) : isCompleted ? (
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                onClick={() => setOpenMoveConfirm(true)}
+                disabled={moveToDispatchMutation.isPending}
+              >
+                <Truck size={16} />
+                Move to Dispatch Planning
+              </Button>
+            ) : (
+              <CustomeTooltip
+                truncateValue={
+                  <Button size="sm" disabled>
+                    Move to Dispatch Planning
+                  </Button>
+                }
+                value="Complete all 6 Site Readiness items and upload at least one current site photo to enable this action."
+              />
+            )}
+
+            {/* Assign Task Button */}
             <Button size="sm" onClick={() => setAssignOpen(true)}>
               Assign Task
             </Button>
@@ -149,7 +205,6 @@ export default function ReadyToDispatchLeadDetails() {
                   <EllipsisVertical size={25} />
                 </Button>
               </DropdownMenuTrigger>
-
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen size={20} />
@@ -248,11 +303,11 @@ export default function ReadyToDispatchLeadDetails() {
           <TabsContent value="details">
             <main className="flex-1 h-fit">
               <LeadDetailsGrouped
-                status="readyToDispatch"
-                defaultTab="readyToDispatch"
+                status="siteReadiness"
+                defaultTab="siteReadiness"
                 leadId={leadIdNum}
                 accountId={accountId}
-                maxVisibleStage="readyToDispatch"
+                maxVisibleStage="siteReadiness"
               />
             </main>
           </TabsContent>
@@ -300,6 +355,32 @@ export default function ReadyToDispatchLeadDetails() {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteLead}>
                 Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Confirm Move to Dispatch Planning */}
+        <AlertDialog open={openMoveConfirm} onOpenChange={setOpenMoveConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Move Lead to Dispatch Planning?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to move this lead to the Dispatch Planning
+                stage? This action will update the lead’s workflow stage.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleMoveToDispatch}
+                disabled={moveToDispatchMutation.isPending}
+              >
+                {moveToDispatchMutation.isPending
+                  ? "Moving..."
+                  : "Move to Dispatch Planning"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

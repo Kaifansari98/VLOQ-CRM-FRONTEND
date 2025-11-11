@@ -5,21 +5,9 @@ import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
+import { StageId } from "@/types/lead-stage-types";
 
-type StageId =
-  | "details"
-  | "measurement"
-  | "designing"
-  | "booking"
-  | "finalMeasurement"
-  | "clientdocumentation"
-  | "clientApproval"
-  | "techcheck"
-  | "orderLogin"
-  | "production"
-  | "readyToDispatch";
-
-type GroupKey = "leads" | "project" | "production";
+type GroupKey = "leads" | "project" | "production" | "installation";
 
 interface GroupedSmoothTabProps {
   groups: Record<
@@ -35,6 +23,7 @@ const groupLabels: Record<GroupKey, string> = {
   leads: "Leads",
   project: "Project",
   production: "Production",
+  installation: "Installation",
 };
 
 export default function GroupedSmoothTab({
@@ -63,6 +52,7 @@ export default function GroupedSmoothTab({
       "orderLogin",
       "production",
       "readyToDispatch",
+      "siteReadiness",
     ];
 
     const maxIndex = allStageOrder.indexOf(maxVisibleStage);
@@ -90,6 +80,7 @@ export default function GroupedSmoothTab({
       ...visibleGroups.leads,
       ...visibleGroups.project,
       ...visibleGroups.production,
+      ...(visibleGroups.installation || []),
     ],
     [visibleGroups]
   );
