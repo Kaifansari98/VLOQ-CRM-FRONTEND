@@ -34,7 +34,6 @@ import {
   BoxIcon,
   UsersRoundIcon,
   Truck,
-  CalendarCheck2,
 } from "lucide-react";
 
 import {
@@ -61,19 +60,13 @@ import {
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
-import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
-import CustomeDatePicker from "@/components/date-picker";
-import {
-  useLatestOrderLoginByLead,
-  usePostProductionCompleteness,
-  useUpdateExpectedOrderLoginReadyDate,
-} from "@/api/production/production-api";
-import { useQueryClient } from "@tanstack/react-query";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
-import { useCheckPostProductionReady } from "@/api/production/production-api";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
-import { useMoveLeadToReadyToDispatch } from "@/api/production/useReadyToDispatchLeads";
-import AssignTaskSiteReadinessForm from "@/components/production/ready-to-dispatch/assign-task-site-readiness-form";
+import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
+import {
+  useCheckSiteReadinessCompletion,
+  useMoveLeadToDispatchPlanning,
+} from "@/api/installation/useSiteReadinessLeads";
 
 export default function ReadyToDispatchLeadDetails() {
   const router = useRouter();
@@ -100,37 +93,30 @@ export default function ReadyToDispatchLeadDetails() {
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = Number(lead?.account_id);
 
-  const { data: latestOrderLoginData } = useLatestOrderLoginByLead(
-    vendorId,
-    Number(leadIdNum)
-  );
-  const latestOrderLoginDate =
-    latestOrderLoginData?.data?.estimated_completion_date;
-
   const deleteLeadMutation = useDeleteLead();
-  const queryClient = useQueryClient();
-  const { mutateAsync: updateExpectedDate } =
-    useUpdateExpectedOrderLoginReadyDate();
-    
-  const { data: completeness } = usePostProductionCompleteness(
-    vendorId,
-    leadIdNum
-  );
 
-  const handleExpectedDateChange = async (newDate?: string) => {
-    if (!newDate || !vendorId || !userId || !leadIdNum) return;
+  const { data: readinessStatus, isLoading: checkingStatus } =
+    useCheckSiteReadinessCompletion(vendorId, leadIdNum);
 
+  const moveToDispatchMutation = useMoveLeadToDispatchPlanning();
+
+  const [openMoveConfirm, setOpenMoveConfirm] = useState(false);
+
+  const isCompleted = readinessStatus?.is_site_readiness_completed ?? false;
+
+  const handleMoveToDispatch = async () => {
     try {
-      await updateExpectedDate({
-        vendorId,
+      await moveToDispatchMutation.mutateAsync({
+        vendorId: vendorId!,
         leadId: leadIdNum,
-        expected_order_login_ready_date: newDate,
-        updated_by: userId,
+        updated_by: userId!,
       });
-      toast.success("Expected Order Login Ready Date updated successfully!");
-      queryClient.invalidateQueries({ queryKey: ["leadById", leadIdNum] });
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to update expected order login date");
+      toast.success("Lead moved to Dispatch Planning successfully!");
+      router.push("/dashboard/installation/site-readiness/");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to move lead");
+    } finally {
+      setOpenMoveConfirm(false);
     }
   };
 
@@ -180,6 +166,33 @@ export default function ReadyToDispatchLeadDetails() {
           </div>
 
           <div className="flex items-center space-x-2">
+            {/* ✅ Move to Dispatch Planning Button */}
+            {checkingStatus ? (
+              <Button size="sm" disabled>
+                Checking...
+              </Button>
+            ) : isCompleted ? (
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                onClick={() => setOpenMoveConfirm(true)}
+                disabled={moveToDispatchMutation.isPending}
+              >
+                <Truck size={16} />
+                Move to Dispatch Planning
+              </Button>
+            ) : (
+              <CustomeTooltip
+                truncateValue={
+                  <Button size="sm" disabled>
+                    Move to Dispatch Planning
+                  </Button>
+                }
+                value="Complete all 6 Site Readiness items and upload at least one current site photo to enable this action."
+              />
+            )}
+
+            {/* Assign Task Button */}
             <Button size="sm" onClick={() => setAssignOpen(true)}>
               Assign Task
             </Button>
@@ -192,7 +205,6 @@ export default function ReadyToDispatchLeadDetails() {
                   <EllipsisVertical size={25} />
                 </Button>
               </DropdownMenuTrigger>
-
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen size={20} />
@@ -238,10 +250,10 @@ export default function ReadyToDispatchLeadDetails() {
             <div className="w-full h-full flex justify-between items-center mb-4">
               <div className="w-full flex items-center gap-2 justify-between">
                 <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-                  {/* ✅ Ready To Dispatch Details */}
+                  {/* ✅ Site Readiness Details */}
                   <TabsTrigger value="details">
                     <Truck size={16} className="mr-1 opacity-60" />
-                    Ready To Dispatch Details
+                    Site Readiness Details
                   </TabsTrigger>
 
                   {/* ✅ To-Do Task (Conditional Access) */}
@@ -283,28 +295,6 @@ export default function ReadyToDispatchLeadDetails() {
                     Payment Information
                   </TabsTrigger>
                 </TabsList>
-
-                <div className="w-60 flex flex-col">
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1 ml-1">
-                    <CalendarCheck2 size={12} />
-                    Expected Dispatch Date
-                  </label>
-                  <CustomeDatePicker
-                    value={lead?.expected_order_login_ready_date}
-                    onChange={handleExpectedDateChange}
-                    restriction="futureOnly"
-                    minDate={
-                      latestOrderLoginDate
-                        ? latestOrderLoginDate.split("T")[0]
-                        : undefined
-                    }
-                    disabledReason={
-                      completeness?.any_exists
-                        ? "Cannot change date as the lead is already in dispatch."
-                        : undefined
-                    }
-                  />
-                </div>
               </div>
             </div>
             <ScrollBar orientation="horizontal" />
@@ -313,11 +303,11 @@ export default function ReadyToDispatchLeadDetails() {
           <TabsContent value="details">
             <main className="flex-1 h-fit">
               <LeadDetailsGrouped
-                status="readyToDispatch"
-                defaultTab="readyToDispatch"
+                status="siteReadiness"
+                defaultTab="siteReadiness"
                 leadId={leadIdNum}
                 accountId={accountId}
-                maxVisibleStage="readyToDispatch"
+                maxVisibleStage="siteReadiness"
               />
             </main>
           </TabsContent>
@@ -344,14 +334,11 @@ export default function ReadyToDispatchLeadDetails() {
           leadData={{ id: leadIdNum }}
         />
 
-        <AssignTaskSiteReadinessForm
+        <AssignTaskSiteMeasurementForm
           open={assignOpen}
-          onOpenChange={(open) => {
-            setAssignOpen(open);
-            if (!open) setActiveTab(previousTab);
-          }}
+          onOpenChange={setAssignOpen}
+          onlyFollowUp={true}
           data={{ id: leadIdNum, name: "" }}
-          userType={userType}
         />
 
         {/* Delete Dialog */}
@@ -368,6 +355,32 @@ export default function ReadyToDispatchLeadDetails() {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteLead}>
                 Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Confirm Move to Dispatch Planning */}
+        <AlertDialog open={openMoveConfirm} onOpenChange={setOpenMoveConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Move Lead to Dispatch Planning?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to move this lead to the Dispatch Planning
+                stage? This action will update the lead’s workflow stage.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleMoveToDispatch}
+                disabled={moveToDispatchMutation.isPending}
+              >
+                {moveToDispatchMutation.isPending
+                  ? "Moving..."
+                  : "Move to Dispatch Planning"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -84,7 +84,7 @@ export const useApproveTechCheck = () => {
     onSuccess: async (_, variables) => {
       toast.success("Tech Check approved successfully!");
       await queryClient.invalidateQueries({ queryKey: ["techCheckLeads"] });
-      router.push(`/dashboard/production/tech-check`);
+      router.push(`/dashboard/production/order-login`);
       await queryClient.invalidateQueries({ queryKey: ["leadStats"] });
     },
     onError: (error: any) => {

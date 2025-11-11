@@ -146,14 +146,15 @@ const data = {
       items: [
         {
           title: "Site Readiness",
+          url: "/dashboard/installation/site-readiness",
+          showCount: "total_site_readiness_stage_leads" as const,
+        },
+        {
+          title: "Dispatch Planning",
           url: "#",
         },
         {
           title: "Dispatch",
-          url: "#",
-        },
-        {
-          title: "Installation Planning",
           url: "#",
         },
         {

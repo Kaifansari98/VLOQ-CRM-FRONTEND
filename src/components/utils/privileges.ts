@@ -118,6 +118,14 @@ export const canOrderLogin = (userType: string | undefined) => {
   return allowedRoles.includes(userType.toLowerCase());
 };
 
+export const canAssignSR = (
+  userType: string | undefined
+) => {
+  if (!userType) return false;
+  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  return allowedRoles.includes(userType.toLowerCase());
+};
+
 // utils/privilege.ts
 export function canUploadOrDeleteBookingDone(
   role: string,

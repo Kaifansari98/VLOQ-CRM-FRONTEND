@@ -123,7 +123,7 @@ export default function MoveToProductionModal({
       {
         onSuccess: () => {
           toast.success("Lead moved to Production stage successfully!");
-          router.push("/dashboard/production/order-login");
+          router.push("/dashboard/production/pre-post-prod");
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
           setConfirmOpen(false);
           onOpenChange(false);

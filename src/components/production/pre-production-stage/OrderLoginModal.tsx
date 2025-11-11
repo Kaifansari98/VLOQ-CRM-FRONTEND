@@ -144,7 +144,7 @@ export default function OrderLoginModal({
         hour12: true,
       });
 
-      toast.success(`Marked as completed at ${formattedTime}`);
+      toast.success(`Marked as ready at ${formattedTime}`);
       setIsCompleted(true);
 
       queryClient.invalidateQueries({
@@ -157,6 +157,11 @@ export default function OrderLoginModal({
       toast.error(err?.message || "Failed to mark as completed");
     }
   };
+
+  const isProductionDateReached = productionReadyDate
+    ? new Date().setHours(0, 0, 0, 0) >=
+      new Date(productionReadyDate).setHours(0, 0, 0, 0)
+    : false;
 
   const initial =
     companyVendorName && companyVendorName.length > 0
@@ -284,7 +289,7 @@ export default function OrderLoginModal({
                   }
                   value={
                     isCompleted
-                      ? "You cannot change the vendor after this order-login is marked as completed."
+                      ? "You cannot change the vendor after this order-login is marked as ready."
                       : "Select a factory vendor."
                   }
                 />
@@ -332,7 +337,7 @@ export default function OrderLoginModal({
                     }
                     value={
                       isCompleted
-                        ? "You cannot change the date after this order-login is marked as completed."
+                        ? "You cannot change the date after this order-login is marked as ready."
                         : "Select a production ready date."
                     }
                   />
@@ -359,7 +364,11 @@ export default function OrderLoginModal({
                       >
                         <Button
                           onClick={handleMarkAsCompleted}
-                          disabled={isCompleted || !productionReadyDate}
+                          disabled={
+                            isCompleted ||
+                            !productionReadyDate ||
+                            !isProductionDateReached
+                          }
                           className={`w-full flex items-center justify-center gap-2 ${
                             isCompleted
                               ? "bg-green-500 hover:bg-green-600"
@@ -367,7 +376,9 @@ export default function OrderLoginModal({
                           }`}
                         >
                           <CheckCircle2 className="w-4 h-4" />
-                          {isCompleted ? "Marked as Completed" : "Mark as Completed"}
+                          {isCompleted
+                            ? "Marked as Ready"
+                            : "Mark as Ready"}
                         </Button>
                       </div>
                     }
@@ -376,6 +387,8 @@ export default function OrderLoginModal({
                         ? "This order-login is already completed."
                         : !productionReadyDate
                         ? "Please set the Production Ready Date before marking as completed."
+                        : !isProductionDateReached
+                        ? "You can mark as completed only once the Production Ready Date has arrived."
                         : "Mark this order-login as completed."
                     }
                   />
@@ -384,7 +397,7 @@ export default function OrderLoginModal({
                     <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 space-y-1">
                       <p className="flex items-center gap-1">
                         <CheckCircle2 size={12} className="text-green-500" />
-                        This order-login has been marked as completed.
+                        This order-login has been marked as ready.
                       </p>
                       {formattedCompletedDate && (
                         <p className="pl-5 text-gray-400">

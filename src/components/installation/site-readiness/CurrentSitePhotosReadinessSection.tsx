@@ -8,63 +8,81 @@ import { format } from "date-fns";
 import {
   FolderOpen,
   Upload,
+  FileImage,
   ExternalLink,
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { toast } from "react-toastify";
-import {
-  useCurrentSitePhotos,
-  useUploadCurrentSitePhotos,
-} from "@/api/production/useReadyToDispatchLeads";
 
-interface CurrentSitePhotosSectionProps {
+import {
+  useCurrentSitePhotosAtSiteReadiness,
+  useUploadCurrentSitePhotosAtSiteReadiness,
+} from "@/api/installation/useSiteReadinessLeads";
+
+interface CurrentSitePhotosReadinessSectionProps {
   leadId: number;
   accountId: number | null;
 }
 
-export default function CurrentSitePhotosSection({
+export default function CurrentSitePhotosReadinessSection({
   leadId,
   accountId,
-}: CurrentSitePhotosSectionProps) {
+}: CurrentSitePhotosReadinessSectionProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const queryClient = useQueryClient();
 
-  const { data: sitePhotos, isLoading } = useCurrentSitePhotos(vendorId, leadId);
-  const { mutateAsync: uploadPhotos, isPending } = useUploadCurrentSitePhotos(
+  // 🔹 Fetch existing site photos
+  const { data: sitePhotos, isLoading } = useCurrentSitePhotosAtSiteReadiness(
     vendorId,
     leadId
   );
 
+  // 🔹 Upload mutation
+  const { mutateAsync: uploadPhotos, isPending } =
+    useUploadCurrentSitePhotosAtSiteReadiness();
+
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const hasFiles = Array.isArray(sitePhotos) && sitePhotos.length > 0;
 
+  // 🔹 Handle Upload
   const handleUpload = async () => {
+    if (!vendorId || !userId || !leadId) {
+      toast.error("Missing required IDs.");
+      return;
+    }
+
     if (selectedFiles.length === 0) {
       toast.error("Please select at least one photo to upload.");
       return;
     }
 
     try {
-      const formData = new FormData();
-      selectedFiles.forEach((file) => formData.append("files", file));
-      formData.append("created_by", String(userId || 0));
-      if (accountId) formData.append("account_id", String(accountId));
+      await uploadPhotos({
+        vendorId,
+        leadId,
+        accountId: accountId || 0,
+        createdBy: userId,
+        files: selectedFiles,
+      });
 
-      await uploadPhotos(formData);
       toast.success("Current Site Photos uploaded successfully!");
       setSelectedFiles([]);
 
+      // Refresh data
       queryClient.invalidateQueries({
-        queryKey: ["currentSitePhotos", vendorId, leadId],
+        queryKey: ["currentSitePhotosAtSiteReadiness", vendorId, leadId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["currentSitePhotosCount", vendorId, leadId],
+        queryKey: ["checkSiteReadinessCompletion", vendorId, leadId],
       });
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to upload photos.");
+      toast.error(
+        error?.response?.data?.message ||
+          "Failed to upload Current Site Photos."
+      );
     }
   };
 
@@ -74,10 +92,12 @@ export default function CurrentSitePhotosSection({
       <div className="px-6 py-4 border-b bg-muted/20 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FolderOpen className="w-5 h-5" />
-          <h2 className="text-lg font-semibold">Current Site Photos</h2>
+          <h2 className="text-lg font-semibold">
+            Current Site Photos (Site Readiness)
+          </h2>
         </div>
         <p className="text-xs text-muted-foreground">
-          Upload and manage photos for Ready-To-Dispatch stage.
+          Upload and manage current site photos.
         </p>
       </div>
 
@@ -120,7 +140,7 @@ export default function CurrentSitePhotosSection({
           </h4>
           {hasFiles && (
             <span className="text-xs text-muted-foreground">
-              {sitePhotos.length} file{sitePhotos.length > 1 ? "s" : ""}
+              {sitePhotos.length} photo{sitePhotos.length > 1 ? "s" : ""}
             </span>
           )}
         </div>
@@ -128,13 +148,13 @@ export default function CurrentSitePhotosSection({
         {isLoading ? (
           <div className="flex justify-center py-10 text-sm text-muted-foreground">
             <Loader2 className="animate-spin mr-2 size-4" />
-            Loading Current Site Photos...
+            Loading current site photos...
           </div>
         ) : !hasFiles ? (
           <div className="p-8 border border-dashed rounded-lg flex flex-col items-center justify-center text-center bg-muted/30">
             <FolderOpen className="w-10 h-10 text-muted-foreground mb-2" />
             <p className="text-sm font-medium text-muted-foreground">
-              No Current Site Photos uploaded yet.
+              No photos uploaded yet.
             </p>
           </div>
         ) : (

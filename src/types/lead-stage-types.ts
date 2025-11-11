@@ -1,0 +1,13 @@
+export type StageId =
+  | "details"
+  | "measurement"
+  | "designing"
+  | "booking"
+  | "finalMeasurement"
+  | "clientdocumentation"
+  | "clientApproval"
+  | "techcheck"
+  | "orderLogin"
+  | "production"
+  | "readyToDispatch"
+  | "siteReadiness";

@@ -20,7 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import BaseModal from "@/components/utils/baseModal";
-import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 import { useAppSelector } from "@/redux/store";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
@@ -29,19 +28,16 @@ import z from "zod";
 import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useAssignToSiteReadiness } from "@/api/production/useReadyToDispatchLeads"; // 🔹 Create a matching hook later
-import { AssignToSiteReadinessPayload } from "@/api/production/useReadyToDispatchLeads"; // 🔹 Create interface same as Site Measurement one
+import { useAssignToSiteReadiness } from "@/api/production/useReadyToDispatchLeads";
+import {
+  AssignToSiteReadinessPayload,
+  useCurrentSitePhotosCount,
+} from "@/api/production/useReadyToDispatchLeads";
+import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUsers"; // ✅ now using supervisors
+import { canAssignSR } from "@/components/utils/privileges";
+import CustomeTooltip from "@/components/cutome-tooltip";
 
-interface Props {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  data?: {
-    id: number;
-    name: string;
-  };
-  onlyFollowUp?: boolean;
-}
-
+// ✅ Validation schema
 const formSchema = z
   .object({
     assign_lead_to: z.number().min(1, "Assign lead to is required"),
@@ -69,27 +65,48 @@ const formSchema = z
     }
   );
 
+interface Props {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  data?: {
+    id: number;
+    name: string;
+  };
+  onlyFollowUp?: boolean;
+  userType?: string; // ✅ add this line
+}
+
 const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   open,
   onOpenChange,
   data,
   onlyFollowUp,
+  userType,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const {
-    data: vendorUsers,
-    isLoading: loadingUsers,
-    error,
-  } = useVendorSalesExecutiveUsers(vendorId!);
-
   const router = useRouter();
   const leadId = data?.id!;
   const mutation = useAssignToSiteReadiness(leadId);
   const queryClient = useQueryClient();
+  const isAllowedToAssignSR = canAssignSR(userType);
+
+  const {
+    data: currentSitePhotosCount,
+    isLoading: isLoadingCurrentSitePhotosCount,
+  } = useCurrentSitePhotosCount(vendorId, leadId);
+
+  const hasCurrentSitePhotos = currentSitePhotosCount?.hasPhotos === true;
+
+  // ✅ Fetch vendor site supervisors
+  const {
+    data: vendorUsers,
+    isLoading: loadingUsers,
+    error,
+  } = useVendorSiteSupervisorUsers(vendorId!);
 
   const mappedData =
-    vendorUsers?.data?.sales_executives?.map((user: any) => ({
+    vendorUsers?.data?.site_supervisors?.map((user: any) => ({
       id: user.id,
       label: user.user_name,
     })) ?? [];
@@ -98,11 +115,26 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       assign_lead_to: undefined,
-      task_type: onlyFollowUp ? "Follow Up" : "Site Readiness",
+      task_type: isAllowedToAssignSR ? "Site Readiness" : "Follow Up",
       due_date: "",
       remark: "N/A",
     },
   });
+
+  // ✅ Auto-select "Follow Up" if Site Readiness is disabled
+  React.useEffect(() => {
+    if (isLoadingCurrentSitePhotosCount || !isAllowedToAssignSR) return;
+
+    form.setValue(
+      "task_type",
+      hasCurrentSitePhotos ? "Site Readiness" : "Follow Up"
+    );
+  }, [
+    isAllowedToAssignSR,
+    hasCurrentSitePhotos,
+    isLoadingCurrentSitePhotosCount,
+    form,
+  ]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const payload: AssignToSiteReadinessPayload = {
@@ -143,7 +175,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
         title="Loading..."
         size="lg"
       >
-        <div className="p-6">Loading...</div>
+        <div className="p-6">Loading Site Supervisors...</div>
       </BaseModal>
     );
   }
@@ -165,8 +197,16 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Assign Task for Site Readiness"
-      description="Use this form to assign a task for Site Readiness."
+      title={
+        form.watch("task_type") === "Follow Up" || !isAllowedToAssignSR
+          ? "Assign Task for Follow Up"
+          : "Assign Task for Site Readiness"
+      }
+      description={
+        form.watch("task_type") === "Follow Up" || !isAllowedToAssignSR
+          ? "Use this form to assign a follow up task."
+          : "Use this form to assign a task to a Site Supervisor for Site Readiness."
+      }
       size="smd"
     >
       <div className="px-6 py-6 space-y-8">
@@ -186,12 +226,33 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {!onlyFollowUp && (
-                        <SelectItem value="Site Readiness">
-                          Site Readiness
-                        </SelectItem>
+                      {isAllowedToAssignSR ? (
+                        <>
+                          {/* 🔹 If API says site photos missing → disable + tooltip */}
+                          {hasCurrentSitePhotos ? (
+                            <SelectItem value="Site Readiness">
+                              Site Readiness
+                            </SelectItem>
+                          ) : (
+                            <CustomeTooltip
+                              value="Please upload current site photos before moving this lead to Site Readiness."
+                              truncateValue={
+                                <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                  <span>Site Readiness</span>
+                                  <span className="text-xs italic text-muted-foreground ml-1">
+                                    (locked)
+                                  </span>
+                                </div>
+                              }
+                            />
+                          )}
+
+                          {/* Always allow Follow Up */}
+                          <SelectItem value="Follow Up">Follow Up</SelectItem>
+                        </>
+                      ) : (
+                        <SelectItem value="Follow Up">Follow Up</SelectItem>
                       )}
-                      <SelectItem value="Follow Up">Follow Up</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -206,7 +267,9 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                 name="assign_lead_to"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm">Select User</FormLabel>
+                    <FormLabel className="text-sm">
+                      Select Site Supervisor
+                    </FormLabel>
                     <FormControl>
                       <AssignToPicker
                         data={mappedData}
