@@ -67,11 +67,13 @@ import {
   useCheckSiteReadinessCompletion,
   useMoveLeadToDispatchPlanning,
 } from "@/api/installation/useSiteReadinessLeads";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function ReadyToDispatchLeadDetails() {
   const router = useRouter();
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
+  const queryClient = useQueryClient();
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -112,7 +114,10 @@ export default function ReadyToDispatchLeadDetails() {
         updated_by: userId!,
       });
       toast.success("Lead moved to Dispatch Planning successfully!");
-      router.push("/dashboard/installation/site-readiness/");
+      router.push("/dashboard/installation/dispatch-planning/");
+      queryClient.invalidateQueries({
+        queryKey: ["leadStats"],
+      });
     } catch (error: any) {
       toast.error(error?.message || "Failed to move lead");
     } finally {

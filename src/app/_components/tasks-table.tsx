@@ -101,6 +101,12 @@ const MyTaskTable = () => {
           variant: "Follow Up",
         });
         setOpenFollowUp(true);
+      } else if (row.taskType === "Pending Materials") {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "Pending Materials",
+        });
+        setOpenFollowUp(true); // ✅ Reuse same modal as Follow Up
       } else {
         const leadId = row.id;
         console.log("follow up is under development");
@@ -313,6 +319,9 @@ const MyTaskTable = () => {
     vendorUserTasksQuery.isLoading && !vendorUserTasksQuery.data;
   const isFetching = vendorUserTasksQuery.isFetching;
 
+  const followUpVariant: "Follow Up" | "Pending Materials" =
+    rowAction?.variant === "Pending Materials" ? "Pending Materials" : "Follow Up";
+
   return (
     <div className="relative space-y-4">
       <DataTable
@@ -391,6 +400,7 @@ const MyTaskTable = () => {
       <FollowUpModal
         open={openFollowUp}
         onOpenChange={setOpenFollowUp}
+        variant={followUpVariant}
         data={{
           id: rowAction?.row.original.leadId || 0,
           accountId: rowAction?.row.original.accountId || 0,

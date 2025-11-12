@@ -25,6 +25,7 @@ import RescheduleModal from "./sales-executive/siteMeasurement/reschedule-modal"
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  variant?: "Follow Up" | "Pending Materials";
   data?: {
     id: number;
     accountId: number;
@@ -35,7 +36,12 @@ interface Props {
   };
 }
 
-const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
+const FollowUpModal: React.FC<Props> = ({
+  open,
+  onOpenChange,
+  variant,
+  data,
+}) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const leadId = data?.id;
@@ -128,8 +134,16 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
       <BaseModal
         open={open}
         onOpenChange={onOpenChange}
-        title="Follow Up"
-        description="Update the follow-up status for this lead."
+        title={
+          variant === "Pending Materials"
+            ? "Pending Material Task"
+            : "Follow Up"
+        }
+        description={
+          variant === "Pending Materials"
+            ? "Update the pending material task status for this lead."
+            : "Update the follow-up status for this lead."
+        }
         size="md"
       >
         <div className="space-y-4 p-6">
@@ -138,7 +152,9 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
             <div className="flex flex-col gap-1">
               <span className="text-base font-semibold">Mark as Completed</span>
               <p className="text-sm text-muted-foreground">
-                If your follow up is completed, you can mark it as completed.
+                {variant === "Pending Materials"
+                  ? "If this pending material have been dispatched or received, you can mark this task as completed."
+                  : "If your follow up is completed, you can mark it as completed."}
               </p>
             </div>
             <Button
@@ -154,8 +170,9 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
             <div className="flex flex-col gap-1">
               <span className="text-base font-semibold">Reschedule</span>
               <p className="text-sm text-muted-foreground">
-                If the client has pushed the meeting date, you can reschedule
-                it.
+                {variant === "Pending Materials"
+                  ? "If the material dispatch date has been changed or delayed, you can reschedule it accordingly."
+                  : "If the client has pushed the meeting date, you can reschedule it."}
               </p>
             </div>
             <Button
@@ -171,7 +188,9 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
             <div className="flex flex-col gap-1">
               <span className="text-base font-semibold ">Mark as Cancel</span>
               <p className="text-sm text-muted-foreground">
-                If this follow up is cancelled, you can mark it as cancelled.
+                {variant === "Pending Materials"
+                  ? "If this pending material task is no longer relevant, you can mark it as cancelled."
+                  : "If this follow up is cancelled, you can mark it as cancelled."}
               </p>
             </div>
             <Button className="w-28" onClick={() => setOpenCancelModal(true)}>
@@ -187,10 +206,19 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Mark Follow Up As Completed?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Mark{" "}
+              {variant === "Pending Materials"
+                ? "Pending Material Task"
+                : "Follow Up"}{" "}
+              as Completed?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to mark this follow up as completed? This
-              action can’t be undone.
+              Are you sure you want to mark this{" "}
+              {variant === "Pending Materials"
+                ? "pending material task"
+                : "follow up"}{" "}
+              as completed? This action can’t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -209,10 +237,19 @@ const FollowUpModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
       <AlertDialog open={openCancelModal} onOpenChange={setOpenCancelModal}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Follow Up?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Cancel{" "}
+              {variant === "Pending Materials"
+                ? "Pending Material Task"
+                : "Follow Up"}
+              ?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel this Follow Up? This action can’t
-              be undone.
+              Are you sure you want to cancel this{" "}
+              {variant === "Pending Materials"
+                ? "pending material task"
+                : "follow up"}
+              ? This action can’t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

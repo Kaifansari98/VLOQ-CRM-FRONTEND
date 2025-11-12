@@ -71,7 +71,7 @@ const DispatchTabsWrapper: React.FC<DispatchTabsWrapperProps> = ({
       items={tabItems}
       defaultTabId="dispatch"
       activeColor="bg-primary"
-      contentHeightClass="h-[150vh]"
+      contentHeightClass="h-[250vh]"
     />
   );
 };
