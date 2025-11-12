@@ -73,33 +73,8 @@ export default function LeadDetailsGrouped({
         title: "Booking",
         component: <BookingLeadsDetails leadId={leadId} />,
       },
-      {
-        id: "details",
-        title: "Lead Details",
-        component: <OpenLeadDetails leadId={leadId} />,
-      },
-      {
-        id: "measurement",
-        title: "Site Measurement",
-        component: <SiteMeasurementLeadDetails leadId={leadId} />,
-      },
-      {
-        id: "designing",
-        title: "Designing",
-        component: <DesigningLeadsDetails leadId={leadId} />,
-      },
-      {
-        id: "booking",
-        title: "Booking",
-        component: <BookingLeadsDetails leadId={leadId} />,
-      },
     ],
     project: [
-      {
-        id: "finalMeasurement",
-        title: "Final Measurement",
-        component: <FinalMeasurementLeadDetails leadId={leadId} />,
-      },
       {
         id: "finalMeasurement",
         title: "Final Measurement",
