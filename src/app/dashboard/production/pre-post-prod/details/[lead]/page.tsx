@@ -410,7 +410,7 @@ export default function ProductionLeadDetails() {
                 defaultTab={productionDefaultTab ? "production" : "techcheck"}
                 leadId={leadIdNum}
                 accountId={accountId}
-                maxVisibleStageGroup="production"
+                defaultParentTab="production"
               />
             </main>
           </TabsContent>

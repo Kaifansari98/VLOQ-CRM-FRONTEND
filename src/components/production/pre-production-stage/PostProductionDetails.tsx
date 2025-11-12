@@ -148,7 +148,7 @@ export default function PostProductionDetails({
   };
 
   return (
-    <div className="h-full w-full relative">
+    <div className="h-full w-full relative overflow-scroll">
       <motion.div
         className=" w-full flex items-center justify-start gap-2 mb-3"
         initial={{ opacity: 0, y: 10 }}

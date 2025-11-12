@@ -22,14 +22,13 @@ import CustomeTooltip from "../cutome-tooltip";
 type GroupKey = "leads" | "project" | "production" | "installation";
 
 interface GroupedSmoothTabProps {
-  groups: Partial<
-    Record<
-      GroupKey,
-      ReadonlyArray<{ id: StageId; title: string; component: React.ReactNode }>
-    >
+  groups: Record<
+    GroupKey,
+    ReadonlyArray<{ id: StageId; title: string; component: React.ReactNode }>
   >;
   defaultTabId: StageId;
   onChange?: (tabId: StageId) => void;
+  maxVisibleStage?: StageId;
 }
 
 const groupLabels: Record<GroupKey, string> = {
@@ -43,27 +42,64 @@ export default function GroupedSmoothTab({
   groups,
   defaultTabId,
   onChange,
+  maxVisibleStage,
 }: GroupedSmoothTabProps) {
   const [activeTab, setActiveTab] = React.useState<StageId>(defaultTabId);
+
   const [hoveredGroup, setHoveredGroup] = React.useState<GroupKey | null>(null);
+
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type as string | undefined
   );
 
-  // Determine the active group based on the current tab
+  // ✅ Limit visible items by maxVisibleStage
+  const visibleGroups = React.useMemo(() => {
+    if (!maxVisibleStage) return groups;
+
+    const allStageOrder: StageId[] = [
+      "details",
+      "measurement",
+      "designing",
+      "booking",
+      "finalMeasurement",
+      "clientdocumentation",
+      "clientApproval",
+      "techcheck",
+      "orderLogin",
+      "production",
+      "readyToDispatch",
+      "siteReadiness",
+    ];
+
+    const maxIndex = allStageOrder.indexOf(maxVisibleStage);
+    const visibleSet = new Set(allStageOrder.slice(0, maxIndex + 1));
+
+    const filteredGroups = {} as typeof groups;
+    (Object.keys(groups) as GroupKey[]).forEach((key) => {
+      filteredGroups[key] = groups[key].filter((i) => visibleSet.has(i.id));
+    });
+
+    return filteredGroups;
+  }, [groups, maxVisibleStage]);
+
   const [activeGroup, setActiveGroup] = React.useState<GroupKey>(() => {
-    const found = (Object.keys(groups) as GroupKey[]).find((g) =>
-      groups[g]?.some((i) => i.id === defaultTabId)
+    const foundGroup = (Object.keys(groups) as GroupKey[]).find((g) =>
+      groups[g].some((i) => i.id === defaultTabId)
     );
-    return (found as GroupKey) ?? "leads";
+    return foundGroup && visibleGroups[foundGroup].length > 0
+      ? (foundGroup as GroupKey)
+      : "leads";
   });
 
-  // Flatten all items for rendering content
   const allItems = React.useMemo(
-    () =>
-      (Object.keys(groups) as GroupKey[]).flatMap((key) => groups[key] || []),
-    [groups]
-  );
+  () => [
+    ...(visibleGroups.leads || []),
+    ...(visibleGroups.project || []),
+    ...(visibleGroups.production || []),
+    ...(visibleGroups.installation || []),
+  ],
+  [visibleGroups]
+);
 
   const activeComponent = React.useMemo(
     () => allItems.find((i) => i.id === activeTab)?.component,
@@ -77,17 +113,18 @@ export default function GroupedSmoothTab({
     onChange?.(id);
   };
 
-  const getActiveTabTitle = () =>
-    allItems.find((i) => i.id === activeTab)?.title || "";
+  const getActiveTabTitle = () => {
+    return allItems.find((i) => i.id === activeTab)?.title || "";
+  };
 
   return (
     <div className="flex flex-col h-full">
-      {/* Top-level grouped tab header */}
+      {/* ShadCN-style tabs with hover dropdowns */}
       <div className="flex items-center gap-2 border-b px-1">
-        {(Object.keys(groups) as GroupKey[]).map((g) => {
+        {(Object.keys(visibleGroups) as GroupKey[]).map((g) => {
           const isActive = activeGroup === g;
           const isHovered = hoveredGroup === g;
-          const items = groups[g];
+          const items = visibleGroups[g];
 
           return (
             <div
@@ -99,17 +136,17 @@ export default function GroupedSmoothTab({
               <Button
                 variant="ghost"
                 className={cn(
-                  "relative px-4 h-10 rounded-none border-b transition-all duration-200",
+                  "relative px-4 h-10 rounded-none border-b-0.5 transition-all duration-200",
                   isActive
-                    ? "border-primary text-foreground font-semibold after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2px] after:bg-primary after:rounded-full"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
+                    ? "border-primary text-foreground font-semibold after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2px] after:bg-primary after:rounded-full after:transition-all after:duration-300"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
                 )}
               >
                 <span className="flex items-center gap-1.5">
                   {groupLabels[g]}
                   <ChevronDown
                     className={cn(
-                      "w-3.5 h-3.5 transition-transform",
+                      "w-3.5 h-3.5 transition-transform duration-200",
                       isHovered && "rotate-180"
                     )}
                   />
@@ -128,50 +165,87 @@ export default function GroupedSmoothTab({
                   >
                     <div className="p-1">
                       <TooltipProvider>
-                        {items?.map((item) => {
+                        {items.map((item) => {
+                          // 🔍 Role-based permission checks
                           const canViewOrderLogin =
                             canViewToOrderLoginDetails(userType);
                           const canViewProduction =
                             canViewToProductionDetails(userType);
 
+                          // 👇 Compute disabled state and tooltip dynamically
                           const isDisabled =
                             (item.id === "orderLogin" && !canViewOrderLogin) ||
                             (item.id === "production" && !canViewProduction);
 
                           const tooltipText = isDisabled
                             ? item.id === "orderLogin"
-                              ? "No permission to access Order Login"
-                              : "No permission to access Production Stage"
+                              ? "You don’t have permission to access Order Login"
+                              : "You don’t have permission to access Production Stage"
                             : null;
-
-                          const button = (
-                            <button
-                              onClick={() =>
-                                !isDisabled && handleSelect(g, item.id)
-                              }
-                              disabled={isDisabled}
-                              className={cn(
-                                "relative w-full px-2 py-1.5 text-sm rounded-sm text-left transition-colors",
-                                isDisabled
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "hover:bg-accent hover:text-accent-foreground",
-                                activeTab === item.id &&
-                                  "bg-primary/10 text-primary font-medium"
-                              )}
-                            >
-                              {item.title}
-                            </button>
-                          );
 
                           return (
                             <div key={item.id}>
                               {tooltipText ? (
                                 <CustomeTooltip
+                                  truncateValue={
+                                    <button
+                                      onClick={() =>
+                                        !isDisabled && handleSelect(g, item.id)
+                                      }
+                                      disabled={isDisabled}
+                                      className={cn(
+                                        "relative w-full px-2 py-1.5 text-sm rounded-sm text-left transition-colors",
+                                        isDisabled
+                                          ? "opacity-50 cursor-not-allowed"
+                                          : "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground outline-none",
+                                        activeTab === item.id &&
+                                          "bg-primary/10 text-primary font-medium rounded-sm"
+                                      )}
+                                    >
+                                      {item.title}
+                                      {activeTab === item.id && !isDisabled && (
+                                        <motion.div
+                                          layoutId="active-indicator"
+                                          className="absolute inset-0 bg-accent rounded-sm -z-10"
+                                          transition={{
+                                            type: "spring",
+                                            stiffness: 380,
+                                            damping: 30,
+                                          }}
+                                        />
+                                      )}
+                                    </button>
+                                  }
                                   value={tooltipText}
-                                  truncateValue={button}
                                 />
                               ) : (
-                                button
+                                <button
+                                  onClick={() =>
+                                    !isDisabled && handleSelect(g, item.id)
+                                  }
+                                  disabled={isDisabled}
+                                  className={cn(
+                                    "relative w-full px-2 py-1.5 text-sm rounded-sm text-left transition-colors",
+                                    isDisabled
+                                      ? "opacity-50 cursor-not-allowed"
+                                      : "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground outline-none",
+                                    activeTab === item.id &&
+                                      "bg-primary/10 text-primary font-medium rounded-sm"
+                                  )}
+                                >
+                                  {item.title}
+                                  {activeTab === item.id && !isDisabled && (
+                                    <motion.div
+                                      layoutId="active-indicator"
+                                      className="absolute inset-0 bg-accent rounded-sm -z-10"
+                                      transition={{
+                                        type: "spring",
+                                        stiffness: 380,
+                                        damping: 30,
+                                      }}
+                                    />
+                                  )}
+                                </button>
                               )}
                             </div>
                           );
@@ -185,14 +259,16 @@ export default function GroupedSmoothTab({
           );
         })}
 
-        {/* Current tab title */}
-        <div className="ml-auto py-1 px-3 rounded-2xl flex items-center gap-2 bg-muted text-xs text-muted-foreground">
-          <span className="w-2 h-2 bg-green-500 rounded-full" />
-          <p className="font-medium text-foreground">{getActiveTabTitle()}</p>
+        {/* Active tab indicator badge */}
+        <div className="ml-auto py-1 px-3 rounded-2xl flex items-center justify-center gap-2 bg-muted text-xs text-muted-foreground">
+          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+          <p className="rounded-md text-foreground font-medium">
+            {getActiveTabTitle()}
+          </p>
         </div>
       </div>
 
-      {/* Active content */}
+      {/* Active content with smooth transitions */}
       <div className="relative flex-1 mt-4">
         <AnimatePresence mode="wait">
           <motion.div

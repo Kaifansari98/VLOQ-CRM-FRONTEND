@@ -15,7 +15,16 @@ import { format } from "date-fns";
 import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { FileUploadField } from "@/components/custom/file-upload";
 import TextAreaInput from "@/components/origin-text-area";
 
@@ -24,6 +33,10 @@ import {
   usePostProductionCompleteness,
   useUploadWoodworkPackingDetails,
 } from "@/api/production/production-api";
+import { useDeleteDocument } from "@/api/leads";
+import { ImageComponent } from "@/components/utils/ImageCard";
+import DocumentCard from "@/components/utils/documentCard";
+import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 
 interface WoodworkPackingDetailsSectionProps {
   leadId: number;
@@ -36,21 +49,48 @@ export default function WoodworkPackingDetailsSection({
 }: WoodworkPackingDetailsSectionProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const queryClient = useQueryClient();
 
   const { data: packingDetails, isLoading } = useGetWoodworkPackingDetails(
     vendorId,
     leadId
   );
+
+  const { mutate: deleteDocument, isPending: deleting } =
+    useDeleteDocument(leadId);
+
+  const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const { mutateAsync: uploadPackingDetails, isPending } =
     useUploadWoodworkPackingDetails(vendorId, leadId);
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [openCarousel, setOpenCarousel] = useState(false);
+  const [startIndex, setStartIndex] = useState(0);
   const [remark, setRemark] = useState(packingDetails?.remark || "");
 
   const { data: completeness, refetch: refetchCompleteness } =
-  usePostProductionCompleteness(vendorId, leadId);
+    usePostProductionCompleteness(vendorId, leadId);
 
+  console.log("Wood Wor Packing details: ", packingDetails);
+
+  const imageExtensions = ["jpg", "jpeg", "png"];
+  const documentExtensions = ["pdf", "zip"];
+
+  const images =
+  packingDetails?.data?.filter((file: any) => {
+    const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
+    return imageExtensions.includes(ext || "");
+  }) || [];
+
+const Documents =
+  packingDetails?.data?.filter((file: any) => {
+    const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
+    return documentExtensions.includes(ext || "");
+  }) || [];
+
+  console.log("Images: ", images);
+  console.log("Documents: ", Documents);
   useEffect(() => {
     if (packingDetails?.remark) setRemark(packingDetails.remark);
   }, [packingDetails?.remark]);
@@ -112,6 +152,20 @@ export default function WoodworkPackingDetailsSection({
       });
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Failed to update remark.");
+    }
+  };
+
+  const canDelete = userType === "admin" || userType === "super-admin";
+
+  // 🧩 --- Handlers ---
+  const handleConfirmDelete = () => {
+    if (confirmDelete) {
+      deleteDocument({
+        vendorId: vendorId!,
+        documentId: confirmDelete,
+        deleted_by: userId!,
+      });
+      setConfirmDelete(null);
     }
   };
 
@@ -217,43 +271,73 @@ export default function WoodworkPackingDetailsSection({
           </div>
         ) : (
           <ScrollArea className="max-h-[400px] mt-2 pr-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {packingDetails.data.map((doc: any) => (
-                <div
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {images.map((doc: any, index: number) => (
+                <ImageComponent
+                  doc={{
+                    id: doc?.id,
+                    doc_og_name: doc.doc_og_name,
+                    signedUrl: doc.signed_url,
+                    created_at: doc.created_at,
+                  }}
+                  index={index}
+                  canDelete={canDelete}
+                  onView={(i) => {
+                    setStartIndex(i);
+                    setOpenCarousel(true);
+                  }}
+                  onDelete={(id) => setConfirmDelete(Number(id))}
+                />
+              ))}
+
+              {Documents.map((doc: any) => (
+                <DocumentCard
                   key={doc.id}
-                  className="group border rounded-lg p-3 flex flex-col justify-between bg-card shadow-sm hover:shadow-md transition-all duration-200"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <FileText
-                        size={20}
-                        className="text-primary shrink-0 group-hover:scale-110 transition-transform"
-                      />
-                      <p className="font-medium text-sm line-clamp-2">
-                        {doc.doc_og_name}
-                      </p>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Uploaded on{" "}
-                    {format(new Date(doc.created_at), "dd MMM yyyy")}
-                  </p>
-
-                  <a
-                    href={doc.signed_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-1 mt-2 font-medium"
-                  >
-                    <ExternalLink size={14} /> View / Download
-                  </a>
-                </div>
+                  doc={{
+                    id: doc.id,
+                    originalName: doc.doc_og_name,
+                    signedUrl: doc.signed_url,
+                    created_at: doc.created_at,
+                  }}
+                  canDelete={canDelete}
+                  onDelete={(id) => setConfirmDelete(id)}
+                />
               ))}
             </div>
           </ScrollArea>
         )}
       </div>
+
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={() => setConfirmDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The selected document will be
+              permanently removed from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <ImageCarouselModal
+        images={images}
+        open={openCarousel}
+        initialIndex={startIndex}
+        onClose={() => setOpenCarousel(false)}
+      />
     </div>
   );
 }

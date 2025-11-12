@@ -5,12 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import {
-  FolderOpen,
-  Upload,
-  ExternalLink,
-  Loader2,
-} from "lucide-react";
+import { FolderOpen, Upload, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { toast } from "react-toastify";
@@ -18,7 +13,21 @@ import {
   useCurrentSitePhotos,
   useUploadCurrentSitePhotos,
 } from "@/api/production/useReadyToDispatchLeads";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useDeleteDocument } from "@/api/leads";
+import ImageCarouselModal from "@/components/utils/image-carousel-modal";
+import { ImageComponent } from "@/components/utils/ImageCard";
+import DocumentCard from "@/components/utils/documentCard";
+import { canUploadReadyToDispatchDocuments } from "@/components/utils/privileges";
 interface CurrentSitePhotosSectionProps {
   leadId: number;
   accountId: number | null;
@@ -29,14 +38,41 @@ export default function CurrentSitePhotosSection({
   accountId,
 }: CurrentSitePhotosSectionProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+
   const userId = useAppSelector((s) => s.auth.user?.id);
   const queryClient = useQueryClient();
 
-  const { data: sitePhotos, isLoading } = useCurrentSitePhotos(vendorId, leadId);
+  const { data: sitePhotos, isLoading } = useCurrentSitePhotos(
+    vendorId,
+    leadId
+  );
   const { mutateAsync: uploadPhotos, isPending } = useUploadCurrentSitePhotos(
     vendorId,
     leadId
   );
+
+  const { mutate: deleteDocument, isPending: deleting } =
+    useDeleteDocument(leadId);
+  const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
+
+  const [openCarousel, setOpenCarousel] = useState(false);
+  const [startIndex, setStartIndex] = useState(0);
+
+  const imageExtensions = ["jpg", "jpeg", "png"];
+  const documentExtensions = ["pdf", "zip"];
+
+  const images =
+    sitePhotos?.filter((file: any) => {
+      const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
+      return imageExtensions.includes(ext || "");
+    }) || [];
+
+  const Documents =
+    sitePhotos?.filter((file: any) => {
+      const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
+      return documentExtensions.includes(ext || "");
+    }) || [];
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const hasFiles = Array.isArray(sitePhotos) && sitePhotos.length > 0;
@@ -68,6 +104,21 @@ export default function CurrentSitePhotosSection({
     }
   };
 
+  const canDelete = userType === "admin" || userType === "super-admin";
+  const canUploadDocuments = canUploadReadyToDispatchDocuments(userType);
+
+  // 🧩 --- Handlers ---
+  const handleConfirmDelete = () => {
+    if (confirmDelete) {
+      deleteDocument({
+        vendorId: vendorId!,
+        documentId: confirmDelete,
+        deleted_by: userId!,
+      });
+      setConfirmDelete(null);
+    }
+  };
+
   return (
     <div className="border rounded-lg overflow-hidden bg-background">
       {/* Header */}
@@ -82,35 +133,38 @@ export default function CurrentSitePhotosSection({
       </div>
 
       {/* Upload Section */}
-      <div className="p-6 border-b space-y-4">
-        <FileUploadField
-          value={selectedFiles}
-          onChange={setSelectedFiles}
-          accept=".jpg,.jpeg,.png,.pdf,.zip"
-          multiple
-        />
 
-        <div className="flex justify-end">
-          <Button
-            size="sm"
-            onClick={handleUpload}
-            disabled={isPending || selectedFiles.length === 0}
-            className="flex items-center gap-2"
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="animate-spin size-4" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Upload size={16} />
-                Upload Photos
-              </>
-            )}
-          </Button>
+      {canUploadDocuments && (
+        <div className="p-6 border-b space-y-4">
+          <FileUploadField
+            value={selectedFiles}
+            onChange={setSelectedFiles}
+            accept=".jpg,.jpeg,.png,.pdf,.zip"
+            multiple
+          />
+
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={handleUpload}
+              disabled={isPending || selectedFiles.length === 0}
+              className="flex items-center gap-2"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="animate-spin size-4" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload size={16} />
+                  Upload Photos
+                </>
+              )}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Files List */}
       <div className="p-6">
@@ -139,39 +193,73 @@ export default function CurrentSitePhotosSection({
           </div>
         ) : (
           <ScrollArea className="max-h-[400px] mt-2 pr-2">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {sitePhotos.map((photo: any) => (
-                <div
-                  key={photo.id}
-                  className="group border rounded-lg overflow-hidden bg-card shadow-sm hover:shadow-md transition-all duration-200"
-                >
-                  <img
-                    src={photo.signed_url}
-                    alt={photo.doc_og_name}
-                    className="object-cover w-full h-32 group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="p-2">
-                    <p className="text-xs font-medium truncate">
-                      {photo.doc_og_name}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      {format(new Date(photo.created_at), "dd MMM yyyy")}
-                    </p>
-                    <a
-                      href={photo.signed_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] text-blue-500 hover:underline flex items-center gap-1 mt-1"
-                    >
-                      <ExternalLink size={12} /> View / Download
-                    </a>
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {images.map((doc: any, index: number) => (
+                <ImageComponent
+                  doc={{
+                    id: doc?.id,
+                    doc_og_name: doc.doc_og_name,
+                    signedUrl: doc.signed_url,
+                    created_at: doc.created_at,
+                  }}
+                  index={index}
+                  canDelete={canDelete}
+                  onView={(i) => {
+                    setStartIndex(i);
+                    setOpenCarousel(true);
+                  }}
+                  onDelete={(id) => setConfirmDelete(Number(id))}
+                />
+              ))}
+
+              {Documents.map((doc: any) => (
+                <DocumentCard
+                  key={doc.id}
+                  doc={{
+                    id: doc.id,
+                    originalName: doc.doc_og_name,
+                    signedUrl: doc.signed_url,
+                    created_at: doc.created_at,
+                  }}
+                  canDelete={canDelete}
+                  onDelete={(id) => setConfirmDelete(id)}
+                />
               ))}
             </div>
           </ScrollArea>
         )}
       </div>
+
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={() => setConfirmDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The selected document will be
+              permanently removed from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <ImageCarouselModal
+        images={images}
+        open={openCarousel}
+        initialIndex={startIndex}
+        onClose={() => setOpenCarousel(false)}
+      />
     </div>
   );
 }

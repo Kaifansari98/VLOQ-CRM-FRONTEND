@@ -194,3 +194,13 @@ export const canMoveToReadyToDispatch = (userType: string | undefined) => {
   const allowedRoles = ["super_admin", "admin", "factory"];
   return allowedRoles.includes(userType.toLowerCase());
 };
+
+
+export const canUploadReadyToDispatchDocuments = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  return allowedRoles.includes(userType.toLowerCase());
+};
+
+
+
