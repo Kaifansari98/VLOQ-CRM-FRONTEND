@@ -100,6 +100,8 @@ export const saveDispatchPlanningInfo = async (
     required_date_for_dispatch: string;
     onsite_contact_person_name: string;
     onsite_contact_person_number: string;
+    alt_onsite_contact_person_name?: string;
+    alt_onsite_contact_person_number?: string;
     material_lift_availability: string;
     dispatch_planning_remark: string;
     created_by: number;
