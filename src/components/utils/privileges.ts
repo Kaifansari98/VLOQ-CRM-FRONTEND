@@ -80,7 +80,7 @@ export const canUploadMoreClientDocumentationFiles = (
   userType: string | undefined
 ) => {
   if (!userType) return false;
-  const allowedRoles = ["super-admin", "admin"];
+  const allowedRoles = ["super_admin", "admin"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -88,7 +88,7 @@ export const canUploadRevisedClientDocumentationFiles = (
   userType: string | undefined
 ) => {
   if (!userType) return false;
-  const allowedRoles = ["super-admin", "admin", "sales-executive"];
+  const allowedRoles = ["super_admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -131,7 +131,7 @@ export function canUploadOrDeleteBookingDone(
 ): boolean {
   return (
     role === "admin" ||
-    role === "super-admin" ||
+    role === "super_admin" ||
     (role === "sales-executive" && stage === "booking-stage")
   );
 }
@@ -195,12 +195,40 @@ export const canMoveToReadyToDispatch = (userType: string | undefined) => {
   return allowedRoles.includes(userType.toLowerCase());
 };
 
-
-export const canUploadReadyToDispatchDocuments = (userType: string | undefined) => {
+export const canUploadReadyToDispatchDocuments = (
+  userType: string | undefined
+) => {
   if (!userType) return false;
   const allowedRoles = ["super_admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
+export function canAccessAddNewSectionButton(
+  role: string,
+  stage: string
+): boolean {
+  const allowedRoles = ["super_admin", "admin", "backend"];
+  return stage === "order-login-stage" && allowedRoles.includes(role);
+}
 
+export function canAccessSaveOrderLoginButton(
+  role: string,
+  stage: string
+): boolean {
+  return (
+    role === "admin" ||
+    role === "super-admin" ||
+    (role === "backend" && stage === "order-login-stage")
+  );
+}
 
+export function canAccessInputField(
+  role: string,
+  stage: string
+): boolean {
+  return (
+    role === "admin" ||
+    role === "super-admin" ||
+    (role === "backend" && stage === "order-login-stage")
+  );
+}

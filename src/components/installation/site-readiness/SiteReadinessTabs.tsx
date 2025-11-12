@@ -58,7 +58,7 @@ export default function SiteReadinessTabs({
   ];
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full">
       <SmoothTab
         items={tabItems}
         defaultTabId="checklist"

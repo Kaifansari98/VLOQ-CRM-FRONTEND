@@ -368,6 +368,10 @@ export const useDeleteDocument = (leadId?: number) => {
         queryClient.invalidateQueries({
           queryKey: ["qcPhotos"],
         });
+
+        queryClient.invalidateQueries({
+          queryKey: ["currentSitePhotosAtSiteReadiness"],
+        });
       }
     },
     onError: (err: any) => {

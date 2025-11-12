@@ -19,6 +19,12 @@ import SmoothTab from "@/components/kokonutui/smooth-tab";
 import { Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useClientRequiredCompletionDate } from "@/api/tech-check";
+import {
+  canAccessAddNewSectionButton,
+  canAccessInputField,
+  canAccessSaveOrderLoginButton,
+} from "@/components/utils/privileges";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 
 interface OrderLoginDetailsProps {
   leadId: number;
@@ -32,9 +38,12 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type
+  );
   const { data: companyVendors } = useCompanyVendors(vendorId);
   const { data: orderLoginData } = useOrderLoginByLead(vendorId, leadId);
+  const { data: leadData, isLoading, error } = useLeadStatus(leadId, vendorId);
 
   const queryClient = useQueryClient();
 
@@ -42,8 +51,6 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const [breakups, setBreakups] = useState<
     Record<string, { item_desc: string; company_vendor_id: number | null }>
   >({});
-
-  const [activeTab, setActiveTab] = useState("order-login");
 
   // 🧩 Handlers
   const handleFieldChange = (title: string, field: string, value: any) => {
@@ -64,8 +71,21 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const { mutateAsync: uploadMultiple, isPending } =
     useUploadMultipleFileBreakupsByLead(vendorId, leadId, accountId);
 
-  const { data, isLoading } = useClientRequiredCompletionDate(vendorId, leadId);
+  const { data } = useClientRequiredCompletionDate(vendorId, leadId);
 
+  const leadStatus = leadData?.status;
+
+  const canAccessButtons = canAccessAddNewSectionButton(userType, leadStatus);
+  const canAccessInput = canAccessInputField(userType, leadStatus);
+
+  console.log("Can Access Input: ", canAccessInput)
+
+  const canAccessSaveButton = canAccessSaveOrderLoginButton(
+    userType,
+    leadStatus
+  );
+
+  console.log("lead Status: ", leadStatus);
   // 🧩 Vendors for dropdowns
   const users =
     companyVendors?.map((vendor: any) => ({
@@ -255,32 +275,30 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             id: "approved-docs",
             title: "Approved Documents",
             color: "bg-blue-500 hover:bg-purple-600",
-            cardContent: (
-              <div>
-                <ApprovedDocsSection leadId={leadId} />
-              </div>
-            ),
+            cardContent: <ApprovedDocsSection leadId={leadId} />,
           },
           {
             id: "order-login",
             title: "Order Login",
             color: "bg-green-500 hover:bg-blue-600",
             cardContent: (
-              <div className="h-[calc(100vh-200px)] overflow-y-auto space-y-6">
+              <div className="overflow-y-auto h-full space-y-6">
                 <div className="flex items-start justify-between">
                   <div>
                     <h2 className="text-xl font-semibold">Order Login</h2>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleSubmitAll}
-                      disabled={isPending}
-                    >
-                      {isPending ? "Processing..." : "Save Order Login"}
-                    </Button>
-                  </div>
+                  {canAccessSaveButton && (
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleSubmitAll}
+                        disabled={isPending}
+                      >
+                        {isPending ? "Processing..." : "Save Order Login"}
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
@@ -295,6 +313,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                           company_vendor_id: null,
                         }
                       }
+                      disable={!canAccessInput}
                       onChange={handleFieldChange}
                       isMandatory={mandatoryTitles.includes(title)}
                     />
@@ -311,35 +330,39 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                           company_vendor_id: item.company_vendor_id || null,
                         }
                       }
+                      disable={!canAccessInput}
                       onChange={handleFieldChange}
                       isMandatory={false}
                     />
                   ))}
 
                   {/* Add More Section Card */}
-                  <div className="rounded-xl border-2 border-dashed border-primary/30 p-4 bg-primary/5 hover:bg-primary/10 transition-colors flex flex-col items-center justify-center gap-3 min-h-[180px] cursor-pointer group">
-                    <div className="rounded-full bg-primary/10 p-3 group-hover:bg-primary/20 transition-colors">
-                      <Plus className="w-6 h-6 text-primary" />
+
+                  {canAccessButtons && (
+                    <div className="rounded-xl border-2 border-dashed border-primary/30 p-4 bg-primary/5 hover:bg-primary/10 transition-colors flex flex-col items-center justify-center gap-3 min-h-[180px] cursor-pointer group">
+                      <div className="rounded-full bg-primary/10 p-3 group-hover:bg-primary/20 transition-colors">
+                        <Plus className="w-6 h-6 text-primary" />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-medium text-sm text-primary mb-1">
+                          Add New Section
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Create custom breakup category
+                        </p>
+                      </div>
+                      <AddSectionModal
+                        users={users}
+                        leadId={leadId}
+                        accountId={accountId}
+                        onSectionAdded={() => {
+                          queryClient.invalidateQueries({
+                            queryKey: ["orderLoginByLead", vendorId, leadId],
+                          });
+                        }}
+                      />
                     </div>
-                    <div className="text-center">
-                      <p className="font-medium text-sm text-primary mb-1">
-                        Add New Section
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Create custom breakup category
-                      </p>
-                    </div>
-                    <AddSectionModal
-                      users={users}
-                      leadId={leadId}
-                      accountId={accountId}
-                      onSectionAdded={() => {
-                        queryClient.invalidateQueries({
-                          queryKey: ["orderLoginByLead", vendorId, leadId],
-                        });
-                      }}
-                    />
-                  </div>
+                  )}
                 </div>
               </div>
             ),
@@ -349,9 +372,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             title: "Production Files",
             color: "bg-purple-500 hover:bg-emerald-600",
             cardContent: (
-              <div>
-                <ProductionFilesSection leadId={leadId} accountId={accountId} />
-              </div>
+              <ProductionFilesSection leadId={leadId} accountId={accountId} />
             ),
           },
         ]}

@@ -111,7 +111,7 @@ export default function ProductionFilesSection({
   const canDelete = canUploadOrDeleteOrderLogin(userType, leadStatus);
 
   return (
-    <div className="border rounded-lg overflow-hidden bg-background">
+    <div className="border h-full rounded-lg overflow-y-auto bg-background">
       {/* Header */}
       <div className="px-6 py-4 border-b bg-muted/20 flex items-center justify-between">
         <div className="flex items-center gap-2">

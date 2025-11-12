@@ -17,6 +17,7 @@ interface FileBreakUpFieldProps {
     field: keyof FileBreakUpFieldProps["value"],
     val: any
   ) => void;
+  disable?: boolean;
 }
 
 const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
@@ -25,7 +26,11 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   isMandatory = false,
   value,
   onChange,
+  disable,
 }) => {
+
+
+  
   // ✅ Simplified handler — no validation
   const handleFieldChange = (
     field: keyof FileBreakUpFieldProps["value"],
@@ -50,6 +55,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
             onChange={(id) => handleFieldChange("company_vendor_id", id)}
             placeholder="Search vendor..."
             emptyLabel="Select a vendor"
+            disabled={disable}
           />
         </div>
       </div>
@@ -60,6 +66,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
           value={value.item_desc}
           onChange={(val) => handleFieldChange("item_desc", val)}
           placeholder={`Enter description for ${title}`}
+          disabled={disable}
         />
       </div>
     </div>

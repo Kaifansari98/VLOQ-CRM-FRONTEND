@@ -20,23 +20,25 @@ import {
 
 interface SelectData {
   id: number;
-  label: string; // e.g., user_name
+  label: string;
 }
 
 interface Props {
   data: SelectData[];
   value?: number;
   onChange?: (selectedId: number | null) => void;
-  placeholder?: string; // for search input
-  emptyLabel?: string; // ✅ NEW — text shown when nothing is selected
+  placeholder?: string;
+  emptyLabel?: string;
+  disabled?: boolean;
 }
 
 export default function AssignToPicker({
   data,
   value,
   onChange,
-  placeholder = "Search user...", // default for search bar
-  emptyLabel = "Select an option", // ✅ default for dropdown display
+  placeholder = "Search user...",
+  emptyLabel = "Select an option",
+  disabled = false,
 }: Props) {
   const id = useId();
   const [open, setOpen] = useState<boolean>(false);
@@ -46,15 +48,21 @@ export default function AssignToPicker({
   const selectedItem = data.find((item) => item.id === value);
 
   return (
-    <div className="*:not-first:mt-2">
-      <Popover modal={false} open={open} onOpenChange={setOpen}>
+    <div className="relative *:not-first:mt-2 group">
+      <Popover modal={false} open={open && !disabled} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             id={id}
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]"
+            disabled={disabled}
+            className={cn(
+              "bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
+              disabled &&
+                "opacity-60 cursor-not-allowed relative after:content-[''] after:absolute after:inset-0 after:border-2 after:border-transparent after:rounded-md"
+              // ✅ Adds red border on hover when disabled
+            )}
           >
             <span
               className={cn(
@@ -72,34 +80,36 @@ export default function AssignToPicker({
           </Button>
         </PopoverTrigger>
 
-        <PopoverContent
-          className="border-input w-full min-w-[var(--radix-popper-anchor-width)] p-0"
-          align="start"
-        >
-          <Command>
-            <CommandInput placeholder={placeholder} />
-            <CommandList>
-              <CommandEmpty>No options found.</CommandEmpty>
-              <CommandGroup>
-                {data.map((item) => (
-                  <CommandItem
-                    key={item.id}
-                    value={item.label.toLowerCase()}
-                    onSelect={() => {
-                      setOpen(false);
-                      onChange?.(item.id);
-                    }}
-                  >
-                    {item.label}
-                    {value === item.id && (
-                      <CheckIcon size={16} className="ml-auto" />
-                    )}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
+        {!disabled && (
+          <PopoverContent
+            className="border-input w-full min-w-[var(--radix-popper-anchor-width)] p-0"
+            align="start"
+          >
+            <Command>
+              <CommandInput placeholder={placeholder} />
+              <CommandList>
+                <CommandEmpty>No options found.</CommandEmpty>
+                <CommandGroup>
+                  {data.map((item) => (
+                    <CommandItem
+                      key={item.id}
+                      value={item.label.toLowerCase()}
+                      onSelect={() => {
+                        setOpen(false);
+                        onChange?.(item.id);
+                      }}
+                    >
+                      {item.label}
+                      {value === item.id && (
+                        <CheckIcon size={16} className="ml-auto" />
+                      )}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        )}
       </Popover>
     </div>
   );
