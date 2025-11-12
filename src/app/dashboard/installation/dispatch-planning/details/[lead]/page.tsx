@@ -373,7 +373,7 @@ export default function DispatchPlanningLeadDetails() {
                       "Lead successfully moved to Dispatch stage 🚚"
                     );
                     queryClient.invalidateQueries({ queryKey: ["leadStats"] });
-                    router.push("/dashboard/installation/dispatch-planning/");
+                    router.push("/dashboard/installation/dispatch-stage/");
                     setOpenMoveConfirm(false);
                   } catch (err: any) {
                     toast.error(

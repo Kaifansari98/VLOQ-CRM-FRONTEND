@@ -134,7 +134,7 @@ export default function DispatchPlanningDetails({
         alt_onsite_contact_person_number:
           dispatchInfoData.alt_onsite_contact_person_number || "", // ✅
         material_lift_availability:
-          dispatchInfoData.material_lift_availability || false,
+          dispatchInfoData.material_lift_availability || null,
         dispatch_planning_remark:
           dispatchInfoData.dispatch_planning_remark || "",
       });
@@ -168,7 +168,7 @@ export default function DispatchPlanningDetails({
     try {
       // Validation
       if (!dispatchInfo.required_date_for_dispatch) {
-        toast.error("Required date for dispatch is mandatory");
+        toast.error("Required OnSite Delivery Date is mandatory");
         return;
       }
       if (!dispatchInfo.onsite_contact_person_name) {
@@ -413,7 +413,7 @@ export default function DispatchPlanningDetails({
               />
             </div>
 
-            {/* Required Date for Dispatch */}
+            {/* Required OnSite Delivery Date */}
             <div className="space-y-2">
               <Label className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />

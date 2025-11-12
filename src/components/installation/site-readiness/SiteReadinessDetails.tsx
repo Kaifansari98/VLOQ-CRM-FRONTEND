@@ -35,7 +35,7 @@ interface ChecklistItem {
   id?: number;
   type: string;
   label: string;
-  value: boolean;
+  value: boolean | null;
   remark: string;
 }
 
@@ -60,7 +60,7 @@ export default function SiteReadinessDetails({
     CHECKLIST_ITEMS.map((item) => ({
       type: item.type,
       label: item.label,
-      value: false,
+      value: null,
       remark: "",
     }))
   );
@@ -290,7 +290,7 @@ export default function SiteReadinessDetails({
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all duration-150",
                       "focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-1",
-                      item.value
+                      item.value === true
                         ? "bg-green-500 border-green-500 text-white shadow-sm"
                         : "bg-background border-border text-muted-foreground hover:border-green-400 hover:text-green-600"
                     )}
@@ -304,7 +304,7 @@ export default function SiteReadinessDetails({
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all duration-150",
                       "focus:outline-none focus:ring-1 focus:ring-red-500 focus:ring-offset-1",
-                      !item.value
+                      item.value === false
                         ? "bg-red-500 border-red-500 text-white shadow-sm"
                         : "bg-background border-border text-muted-foreground hover:border-red-400 hover:text-red-600"
                     )}
