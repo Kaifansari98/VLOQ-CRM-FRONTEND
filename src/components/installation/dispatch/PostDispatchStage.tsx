@@ -1,0 +1,180 @@
+"use client";
+
+import React, { useState } from "react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAppSelector } from "@/redux/store";
+import { useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { FolderOpen, Upload, ExternalLink, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { FileUploadField } from "@/components/custom/file-upload";
+import { toast } from "react-toastify";
+import {
+  usePostDispatchDocuments,
+  useUploadPostDispatchDocuments,
+} from "@/api/installation/useDispatchStageLeads"; // ✅ use your Post Dispatch APIs
+
+interface PostDispatchStageProps {
+  leadId: number;
+  accountId: number | null;
+}
+
+export default function PostDispatchStage({
+  leadId,
+  accountId,
+}: PostDispatchStageProps) {
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const userId = useAppSelector((s) => s.auth.user?.id);
+  const queryClient = useQueryClient();
+
+  // ✅ Get and Upload APIs
+  const { data: postDispatchDocs, isLoading } = usePostDispatchDocuments(
+    vendorId,
+    leadId
+  );
+  const { mutateAsync: uploadPostDispatchFiles, isPending } =
+    useUploadPostDispatchDocuments();
+
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const hasFiles = Array.isArray(postDispatchDocs) && postDispatchDocs.length > 0;
+
+  // ✅ Upload Handler
+  const handleUpload = async () => {
+    if (selectedFiles.length === 0) {
+      toast.error("Please select at least one file to upload.");
+      return;
+    }
+
+    try {
+      await uploadPostDispatchFiles({
+        vendorId: vendorId!,
+        leadId: leadId!,
+        payload: {
+          files: selectedFiles,
+          account_id: accountId,
+          created_by: userId!,
+        },
+      });
+
+      toast.success("Post Dispatch documents uploaded successfully!");
+      setSelectedFiles([]);
+
+      queryClient.invalidateQueries({
+        queryKey: ["postDispatchDocuments", vendorId, leadId],
+      });
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Failed to upload Post Dispatch documents."
+      );
+    }
+  };
+
+  return (
+    <div className="border rounded-lg overflow-hidden bg-background">
+      {/* Header */}
+      <div className="px-6 py-4 border-b bg-muted/20 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <FolderOpen className="w-5 h-5" />
+          <h2 className="text-lg font-semibold">Post Dispatch Documents</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Upload and manage all Post Dispatch related photos and documents.
+        </p>
+      </div>
+
+      {/* Upload Section */}
+      <div className="p-6 border-b space-y-4">
+        <FileUploadField
+          value={selectedFiles}
+          onChange={setSelectedFiles}
+          accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.zip"
+          multiple
+        />
+
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            onClick={handleUpload}
+            disabled={isPending || selectedFiles.length === 0}
+            className="flex items-center gap-2"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="animate-spin size-4" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload size={16} />
+                Upload Files
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Files List */}
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-3">
+          <h4 className="text-sm font-semibold text-foreground">
+            Uploaded Documents
+          </h4>
+          {hasFiles && (
+            <span className="text-xs text-muted-foreground">
+              {postDispatchDocs.length} file
+              {postDispatchDocs.length > 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center py-10 text-sm text-muted-foreground">
+            <Loader2 className="animate-spin mr-2 size-4" />
+            Loading Post Dispatch documents...
+          </div>
+        ) : !hasFiles ? (
+          <div className="p-8 border border-dashed rounded-lg flex flex-col items-center justify-center text-center bg-muted/30">
+            <FolderOpen className="w-10 h-10 text-muted-foreground mb-2" />
+            <p className="text-sm font-medium text-muted-foreground">
+              No Post Dispatch documents uploaded yet.
+            </p>
+          </div>
+        ) : (
+          <ScrollArea className="max-h-[400px] mt-2 pr-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {postDispatchDocs.map((doc: any) => (
+                <div
+                  key={doc.id}
+                  className="group border rounded-lg overflow-hidden bg-card shadow-sm hover:shadow-md transition-all duration-200"
+                >
+                  <img
+                    src={doc.signed_url}
+                    alt={doc.doc_og_name}
+                    className="object-cover w-full h-32 group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="p-2">
+                    <p className="text-xs font-medium truncate">
+                      {doc.doc_og_name}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {format(new Date(doc.created_at), "dd MMM yyyy")}
+                    </p>
+                    <a
+                      href={doc.signed_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-blue-500 hover:underline flex items-center gap-1 mt-1"
+                    >
+                      <ExternalLink size={12} /> View / Download
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        )}
+      </div>
+    </div>
+  );
+}

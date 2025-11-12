@@ -158,7 +158,8 @@ const data = {
         },
         {
           title: "Dispatch",
-          url: "#",
+          url: "/dashboard/installation/dispatch-stage",
+          showCount: "total_dispatch_stage_leads" as const,
         },
         {
           title: "Under Installation",
