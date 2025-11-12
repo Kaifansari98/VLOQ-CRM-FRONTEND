@@ -16,6 +16,8 @@ import SiteReadinessDetails from "../installation/site-readiness/SiteReadinessDe
 import { StageId } from "@/types/lead-stage-types";
 import SiteReadinessTabs from "../installation/site-readiness/SiteReadinessTabs";
 import DispatchPlanningDetails from "../installation/dispatch-planning/DispatchPlanningDetails";
+import DispatchStageDetails from "../installation/dispatch/DispatchStageDetails";
+import DispatchTabsWrapper from "../installation/dispatch/DispatchTabsWrapper";
 
 type StatusKey = StageId;
 
@@ -46,7 +48,7 @@ const GROUPS = {
     "production",
     "readyToDispatch",
   ] as StageId[],
-  installation: ["siteReadiness", "dispatchPlanning"] as StageId[], // ✅ add here
+  installation: ["siteReadiness", "dispatchPlanning", "dispatch"] as StageId[], // ✅ add here
 };
 
 const STATUS_TO_DEFAULT: Record<StatusKey, StageId> = {
@@ -63,6 +65,7 @@ const STATUS_TO_DEFAULT: Record<StatusKey, StageId> = {
   readyToDispatch: "readyToDispatch",
   siteReadiness: "siteReadiness",
   dispatchPlanning: "dispatchPlanning", // ✅ new mapping
+  dispatch: "dispatch",
 };
 
 export default function LeadDetailsGrouped({
@@ -180,7 +183,20 @@ export default function LeadDetailsGrouped({
       {
         id: "dispatchPlanning",
         title: "Dispatch Planning",
-        component: <DispatchPlanningDetails leadId={leadId} accountId={accountId}/>, // ✅ new component
+        component: (
+          <DispatchPlanningDetails leadId={leadId} accountId={accountId} />
+        ), // ✅ new component
+      },
+      {
+        id: "dispatch",
+        title: "Dispatch",
+        component: (
+          <DispatchTabsWrapper
+            leadId={leadId}
+            accountId={accountId}
+            name={leadName}
+          />
+        ),
       },
     ],
   } as const;
