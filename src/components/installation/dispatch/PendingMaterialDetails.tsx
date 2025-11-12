@@ -36,9 +36,20 @@ export default function PendingMaterialDetails({
   leadId,
   accountId,
 }: PendingMaterialDetailsProps) {
-  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
-  const userId = useAppSelector((s) => s.auth.user?.id) || 0;
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const userId = useAppSelector((s) => s.auth.user?.id);
   const queryClient = useQueryClient();
+  if (!vendorId) {
+    toast.error("Vendor information is missing.");
+    return;
+  }
+
+  if (!userId) {
+    toast.error("User information is missing.");
+    return;
+  }
+
+  console.log("account kjsdfkjdsfjk ",accountId);
 
   const { mutateAsync: createPendingTask, isPending } =
     useCreatePendingMaterialTask();
@@ -52,6 +63,7 @@ export default function PendingMaterialDetails({
   const [title, setTitle] = useState("");
   const [remark, setRemark] = useState("");
   const [dueDate, setDueDate] = useState<string | null>(null);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

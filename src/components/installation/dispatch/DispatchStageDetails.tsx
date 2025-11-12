@@ -77,6 +77,8 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id) || 0;
 
+  console.log("parent", Number(accountId));
+
   // API Hooks
   const { data: requiredDateData, isLoading: loadingRequiredDate } =
     useRequiredDateForDispatch(vendorId, leadId);
