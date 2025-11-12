@@ -60,6 +60,7 @@ import {
   canReassingLead,
   canDeleteLead,
   canOrderLogin,
+  canMoveToProduction,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
@@ -85,6 +86,7 @@ export default function OrderLoginLeadDetails() {
   const missing = readiness?.orderLogin?.missing ?? [];
   const lacksProdFiles = readiness ? !readiness.productionFiles?.hasAny : false;
   const canMove = readiness?.readyForProduction === true;
+  const canMoveToProductionStage = canMoveToProduction(userType);
 
   const disabledReason = readinessLoading
     ? "Checking prerequisites…"
@@ -105,7 +107,8 @@ export default function OrderLoginLeadDetails() {
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
 
-  const client_required_order_login_complition_date = lead?.client_required_order_login_complition_date;
+  const client_required_order_login_complition_date =
+    lead?.client_required_order_login_complition_date;
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
@@ -239,30 +242,32 @@ export default function OrderLoginLeadDetails() {
                 </TabsList>
               </div>
               <div className="flex items-center justify-end gap-2">
-                {/* ✅ Move to Production Button (gated by readiness) */}
-                {canMove ? (
-                  <Button
-                    size="sm"
-                    variant="default"
-                    className="flex items-center gap-1"
-                    onClick={() => setOpenMoveToProduction(true)}
-                  >
-                    <ArrowUpRight size={16} />
-                    Move to Production
-                  </Button>
-                ) : (
-                  <CustomeTooltip
-                    truncateValue={
-                      <div className="flex items-center gap-1 opacity-60 cursor-not-allowed px-2 py-1.5 text-sm">
-                        <ArrowUpRight size={16} />
-                        Move to Production
-                      </div>
-                    }
-                    value={
-                      disabledReason || "Not eligible to move to Production yet"
-                    }
-                  />
-                )}
+                {/* ✅ Show only if user has permission */}
+                {canMoveToProductionStage &&
+                  (canMove ? (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="flex items-center gap-1"
+                      onClick={() => setOpenMoveToProduction(true)}
+                    >
+                      <ArrowUpRight size={16} />
+                      Move to Production
+                    </Button>
+                  ) : (
+                    <CustomeTooltip
+                      truncateValue={
+                        <div className="flex items-center gap-1 opacity-60 cursor-not-allowed px-2 py-1.5 text-sm">
+                          <ArrowUpRight size={16} />
+                          Move to Production
+                        </div>
+                      }
+                      value={
+                        disabledReason ||
+                        "Not eligible to move to Production yet"
+                      }
+                    />
+                  ))}
               </div>
             </div>
             <ScrollBar orientation="horizontal" />
@@ -314,7 +319,9 @@ export default function OrderLoginLeadDetails() {
           open={openMoveToProduction}
           onOpenChange={setOpenMoveToProduction}
           data={{ id: Number(leadId), accountId }}
-          client_required_order_login_complition_date={client_required_order_login_complition_date}
+          client_required_order_login_complition_date={
+            client_required_order_login_complition_date
+          }
         />
 
         <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>

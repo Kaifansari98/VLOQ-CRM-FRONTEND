@@ -1,5 +1,5 @@
 "use client";
-
+import React from "react";
 import OpenLeadDetails from "@/components/tabScreens/OpenLeadDetails";
 import BookingLeadsDetails from "@/components/sales-executive/booking-stage/view-booking-modal";
 import SiteMeasurementLeadDetails from "@/components/tabScreens/SiteMeasurementLeadDetails";
@@ -10,63 +10,36 @@ import ClientApprovalDetails from "@/components/site-supervisor/client-approval/
 import TechCheckDetails from "@/components/production/tech-check-stage/TechCheckDetails";
 import OrderLoginDetails from "@/components/production/order-login-stage/OrderLoginDetails";
 import LeadDetailsProductionUtil from "@/components/production/pre-production-stage/lead-details-production-tabs";
-import GroupedSmoothTab from "./grouped-smooth-tab";
+
 import ReadyToDispatchDetails from "../production/ready-to-dispatch/ReadyToDispatchDetails";
-import SiteReadinessDetails from "../installation/site-readiness/SiteReadinessDetails";
-import { StageId } from "@/types/lead-stage-types";
 import SiteReadinessTabs from "../installation/site-readiness/SiteReadinessTabs";
 import DispatchPlanningDetails from "../installation/dispatch-planning/DispatchPlanningDetails";
-import DispatchStageDetails from "../installation/dispatch/DispatchStageDetails";
 import DispatchTabsWrapper from "../installation/dispatch/DispatchTabsWrapper";
 
 type StatusKey = StageId;
+import GroupedSmoothTab from "./grouped-smooth-tab";
+import { StageId } from "@/types/lead-stage-types";
+
+type GroupKey = "leads" | "project" | "production" | "installation";
 
 export interface LeadDetailsGroupedProps {
-  /** which screen should be active initially; if omitted, we infer from `status` */
   defaultTab?: StageId;
-  /** semantic status that also maps to a screen; if provided and defaultTab is missing, we use this */
-  status?: StatusKey;
+  status?: StageId;
   leadId: number;
   accountId: number;
-  /** optional: handle tab changes */
   onChangeTab?: (tabId: StageId) => void;
-  /** optional: pass a display name if your screens use it */
   leadName?: string;
   maxVisibleStage?: StageId;
+  /** 👇 NEW PROP to control visible group range */
+  defaultParentTab?: GroupKey;
 }
 
-const GROUPS = {
-  leads: ["details", "measurement", "designing", "booking"] as StageId[],
-  project: [
-    "finalMeasurement",
-    "clientdocumentation",
-    "clientApproval",
-  ] as StageId[],
-  production: [
-    "techcheck",
-    "orderLogin",
-    "production",
-    "readyToDispatch",
-  ] as StageId[],
-  installation: ["siteReadiness", "dispatchPlanning", "dispatch"] as StageId[], // ✅ add here
-};
-
-const STATUS_TO_DEFAULT: Record<StatusKey, StageId> = {
-  details: "details",
-  measurement: "measurement",
-  designing: "designing",
-  booking: "booking",
-  finalMeasurement: "finalMeasurement",
-  clientdocumentation: "clientdocumentation",
-  clientApproval: "clientApproval",
-  techcheck: "techcheck",
-  orderLogin: "orderLogin",
-  production: "production",
-  readyToDispatch: "readyToDispatch",
-  siteReadiness: "siteReadiness",
-  dispatchPlanning: "dispatchPlanning", // ✅ new mapping
-  dispatch: "dispatch",
-};
+const GROUP_ORDER: GroupKey[] = [
+  "leads",
+  "project",
+  "production",
+  "installation",
+];
 
 export default function LeadDetailsGrouped({
   defaultTab,
@@ -76,10 +49,8 @@ export default function LeadDetailsGrouped({
   onChangeTab,
   leadName,
   maxVisibleStage,
+  defaultParentTab = "installation", // default: show all
 }: LeadDetailsGroupedProps) {
-  const initialTab: StageId =
-    defaultTab ?? (status ? STATUS_TO_DEFAULT[status] : "details");
-
   const groups = {
     leads: [
       {
@@ -201,9 +172,57 @@ export default function LeadDetailsGrouped({
     ],
   } as const;
 
+  // ✅ Filter based on defaultParentTab
+  const visibleGroups = React.useMemo(() => {
+    const allowedKeys = GROUP_ORDER.slice(
+      0,
+      GROUP_ORDER.indexOf(defaultParentTab) + 1
+    );
+
+    const filtered = {} as Record<
+      GroupKey,
+      { id: StageId; title: string; component: React.ReactNode }[]
+    >;
+
+    for (const key of allowedKeys) {
+      const stages = groups[key];
+
+      // agar ye last allowed group hai to andar se cutoff lagao
+      if (key === defaultParentTab && status) {
+        const stageOrder: StageId[] = [
+          "details",
+          "measurement",
+          "designing",
+          "booking",
+          "finalMeasurement",
+          "clientdocumentation",
+          "clientApproval",
+          "techcheck",
+          "orderLogin",
+          "production",
+          "readyToDispatch",
+          "siteReadiness",
+          "dispatchPlanning",
+          "dispatch",
+        ];
+
+        const maxIndex = stageOrder.indexOf(status);
+        filtered[key] = stages.filter(
+          (s) => stageOrder.indexOf(s.id) <= maxIndex
+        );
+      } else {
+        filtered[key] = [...stages];
+      }
+    }
+
+    return filtered;
+  }, [defaultParentTab, status]);
+
+  const initialTab: StageId = defaultTab ?? (status ? status : "details");
+
   return (
     <GroupedSmoothTab
-      groups={groups}
+      groups={visibleGroups}
       defaultTabId={initialTab}
       onChange={onChangeTab}
       maxVisibleStage={maxVisibleStage}

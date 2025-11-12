@@ -153,11 +153,11 @@ export default function ClientApprovalDetails({ leadId }: Props) {
           <div className="p-4 space-y-6">
             {/* Payment Proof */}
             {paymentFile && (
-              <div className="flex flex-col space-y-1">
+              <div className="flex flex-col space-y-1 ">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
                   Payment Proof
                 </p>
-                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-2">
                   <ImageComponent
                     doc={{
                       id: paymentFile.id,
@@ -177,7 +177,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
                     }}
                     onDelete={(id) => setConfirmDelete(Number(id))}
                   />
-                
+                </div>
               </div>
             )}
 

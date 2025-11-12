@@ -56,7 +56,13 @@ import { toast } from "react-toastify";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
-import { canReassingLead, canDeleteLead } from "@/components/utils/privileges";
+import {
+  canReassingLead,
+  canDeleteLead,
+  canViewToOrderLoginDetails,
+  handledproductionDefaultTab,
+  canMoveToReadyToDispatch,
+} from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
@@ -104,6 +110,8 @@ export default function ProductionLeadDetails() {
 
   const { data: latestOrderLoginData, isLoading: latestOrderLoginLoading } =
     useLatestOrderLoginByLead(vendorId, Number(leadIdNum));
+
+  const canMoveReadyToDispatchStage = canMoveToReadyToDispatch(userType);
 
   const latestOrderLoginDate =
     latestOrderLoginData?.data?.estimated_completion_date;
@@ -165,6 +173,8 @@ export default function ProductionLeadDetails() {
   const accountId = Number(lead?.account_id);
 
   const noOfBoxes = lead?.no_of_boxes;
+
+  const productionDefaultTab = handledproductionDefaultTab(userType);
 
   const deleteLeadMutation = useDeleteLead();
 
@@ -244,36 +254,37 @@ export default function ProductionLeadDetails() {
           </div>
 
           <div className="flex items-center space-x-2">
-            {completeness?.any_exists && lead?.no_of_boxes > 0 ? (
-              <Button
-                size="sm"
-                variant="secondary"
-                className="bg-green-600 hover:bg-green-700 text-white"
-                onClick={() => setOpenReadyToDispatch(true)}
-              >
-                Ready To Dispatch
-              </Button>
-            ) : (
-              <CustomeTooltip
-                truncateValue={
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled
-                    className="bg-gray-400 cursor-not-allowed text-white"
-                  >
-                    Ready To Dispatch
-                  </Button>
-                }
-                value={
-                  !completeness?.any_exists
-                    ? "Cannot move yet — production tasks are incomplete."
-                    : !lead?.no_of_boxes || lead?.no_of_boxes <= 0
-                    ? "Add number of boxes before dispatch."
-                    : "Action unavailable."
-                }
-              />
-            )}
+            {canMoveReadyToDispatchStage &&
+              (completeness?.any_exists && lead?.no_of_boxes > 0 ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => setOpenReadyToDispatch(true)}
+                >
+                  Ready To Dispatch
+                </Button>
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled
+                      className="bg-gray-400 cursor-not-allowed text-white"
+                    >
+                      Ready To Dispatch
+                    </Button>
+                  }
+                  value={
+                    !completeness?.any_exists
+                      ? "Cannot move yet — production tasks are incomplete."
+                      : !lead?.no_of_boxes || lead?.no_of_boxes <= 0
+                      ? "Add number of boxes before dispatch."
+                      : "Action unavailable."
+                  }
+                />
+              ))}
 
             <Button size="sm" onClick={() => setAssignOpen(true)}>
               Assign Task
@@ -395,11 +406,11 @@ export default function ProductionLeadDetails() {
           <TabsContent value="details">
             <main className="flex-1 h-fit">
               <LeadDetailsGrouped
-                status="production" // or omit if you pass defaultTab directly
-                defaultTab="production" // opens Production > Tech Check directly
+                status="production"
+                defaultTab={productionDefaultTab ? "production" : "techcheck"}
                 leadId={leadIdNum}
                 accountId={accountId}
-                maxVisibleStage="production"
+                defaultParentTab="production"
               />
             </main>
           </TabsContent>

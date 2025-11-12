@@ -125,6 +125,7 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
               users={users}
               value={sectionData}
               onChange={handleFieldChange}
+              disable={false}
             />
           )}
 

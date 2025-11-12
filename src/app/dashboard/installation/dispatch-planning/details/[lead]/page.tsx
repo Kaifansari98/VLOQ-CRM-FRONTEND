@@ -295,7 +295,7 @@ export default function DispatchPlanningLeadDetails() {
                 defaultTab="dispatchPlanning"
                 leadId={leadIdNum}
                 accountId={accountId}
-                maxVisibleStage="dispatchPlanning"
+                defaultParentTab="installation"
               />
             </main>
           </TabsContent>

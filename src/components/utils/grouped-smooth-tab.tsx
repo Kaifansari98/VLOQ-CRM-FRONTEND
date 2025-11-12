@@ -6,6 +6,18 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 import { StageId } from "@/types/lead-stage-types";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
+import {
+  canViewToOrderLoginDetails,
+  canViewToProductionDetails,
+} from "./privileges";
+import { useAppSelector } from "@/redux/store";
+import CustomeTooltip from "../cutome-tooltip";
 
 type GroupKey = "leads" | "project" | "production" | "installation";
 
@@ -35,6 +47,10 @@ export default function GroupedSmoothTab({
   const [activeTab, setActiveTab] = React.useState<StageId>(defaultTabId);
 
   const [hoveredGroup, setHoveredGroup] = React.useState<GroupKey | null>(null);
+
+  const userType = useAppSelector(
+    (state) => state.auth?.user?.user_type.user_type as string | undefined
+  );
 
   // ✅ Limit visible items by maxVisibleStage
   const visibleGroups = React.useMemo(() => {
@@ -78,14 +94,14 @@ export default function GroupedSmoothTab({
   });
 
   const allItems = React.useMemo(
-    () => [
-      ...visibleGroups.leads,
-      ...visibleGroups.project,
-      ...visibleGroups.production,
-      ...(visibleGroups.installation || []),
-    ],
-    [visibleGroups]
-  );
+  () => [
+    ...(visibleGroups.leads || []),
+    ...(visibleGroups.project || []),
+    ...(visibleGroups.production || []),
+    ...(visibleGroups.installation || []),
+  ],
+  [visibleGroups]
+);
 
   const activeComponent = React.useMemo(
     () => allItems.find((i) => i.id === activeTab)?.component,
@@ -150,32 +166,93 @@ export default function GroupedSmoothTab({
                     className="absolute top-full left-0 mt-1 w-56 bg-popover rounded-md border shadow-md z-50"
                   >
                     <div className="p-1">
-                      {items.map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => handleSelect(g, item.id)}
-                          className={cn(
-                            "relative w-full px-2 py-1.5 text-sm rounded-sm text-left transition-colors",
-                            "hover:bg-accent hover:text-accent-foreground",
-                            "focus:bg-accent focus:text-accent-foreground outline-none",
-                            activeTab === item.id &&
-                              "bg-primary/10 text-primary font-medium rounded-sm"
-                          )}
-                        >
-                          {item.title}
-                          {activeTab === item.id && (
-                            <motion.div
-                              layoutId="active-indicator"
-                              className="absolute inset-0 bg-accent rounded-sm -z-10"
-                              transition={{
-                                type: "spring",
-                                stiffness: 380,
-                                damping: 30,
-                              }}
-                            />
-                          )}
-                        </button>
-                      ))}
+                      <TooltipProvider>
+                        {items.map((item) => {
+                          // 🔍 Role-based permission checks
+                          const canViewOrderLogin =
+                            canViewToOrderLoginDetails(userType);
+                          const canViewProduction =
+                            canViewToProductionDetails(userType);
+
+                          // 👇 Compute disabled state and tooltip dynamically
+                          const isDisabled =
+                            (item.id === "orderLogin" && !canViewOrderLogin) ||
+                            (item.id === "production" && !canViewProduction);
+
+                          const tooltipText = isDisabled
+                            ? item.id === "orderLogin"
+                              ? "You don’t have permission to access Order Login"
+                              : "You don’t have permission to access Production Stage"
+                            : null;
+
+                          return (
+                            <div key={item.id}>
+                              {tooltipText ? (
+                                <CustomeTooltip
+                                  truncateValue={
+                                    <button
+                                      onClick={() =>
+                                        !isDisabled && handleSelect(g, item.id)
+                                      }
+                                      disabled={isDisabled}
+                                      className={cn(
+                                        "relative w-full px-2 py-1.5 text-sm rounded-sm text-left transition-colors",
+                                        isDisabled
+                                          ? "opacity-50 cursor-not-allowed"
+                                          : "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground outline-none",
+                                        activeTab === item.id &&
+                                          "bg-primary/10 text-primary font-medium rounded-sm"
+                                      )}
+                                    >
+                                      {item.title}
+                                      {activeTab === item.id && !isDisabled && (
+                                        <motion.div
+                                          layoutId="active-indicator"
+                                          className="absolute inset-0 bg-accent rounded-sm -z-10"
+                                          transition={{
+                                            type: "spring",
+                                            stiffness: 380,
+                                            damping: 30,
+                                          }}
+                                        />
+                                      )}
+                                    </button>
+                                  }
+                                  value={tooltipText}
+                                />
+                              ) : (
+                                <button
+                                  onClick={() =>
+                                    !isDisabled && handleSelect(g, item.id)
+                                  }
+                                  disabled={isDisabled}
+                                  className={cn(
+                                    "relative w-full px-2 py-1.5 text-sm rounded-sm text-left transition-colors",
+                                    isDisabled
+                                      ? "opacity-50 cursor-not-allowed"
+                                      : "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground outline-none",
+                                    activeTab === item.id &&
+                                      "bg-primary/10 text-primary font-medium rounded-sm"
+                                  )}
+                                >
+                                  {item.title}
+                                  {activeTab === item.id && !isDisabled && (
+                                    <motion.div
+                                      layoutId="active-indicator"
+                                      className="absolute inset-0 bg-accent rounded-sm -z-10"
+                                      transition={{
+                                        type: "spring",
+                                        stiffness: 380,
+                                        damping: 30,
+                                      }}
+                                    />
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </TooltipProvider>
                     </div>
                   </motion.div>
                 )}

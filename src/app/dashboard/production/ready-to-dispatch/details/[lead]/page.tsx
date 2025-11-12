@@ -111,7 +111,7 @@ export default function ReadyToDispatchLeadDetails() {
   const queryClient = useQueryClient();
   const { mutateAsync: updateExpectedDate } =
     useUpdateExpectedOrderLoginReadyDate();
-    
+
   const { data: completeness } = usePostProductionCompleteness(
     vendorId,
     leadIdNum
@@ -317,7 +317,7 @@ export default function ReadyToDispatchLeadDetails() {
                 defaultTab="readyToDispatch"
                 leadId={leadIdNum}
                 accountId={accountId}
-                maxVisibleStage="readyToDispatch"
+                defaultParentTab="production"
               />
             </main>
           </TabsContent>

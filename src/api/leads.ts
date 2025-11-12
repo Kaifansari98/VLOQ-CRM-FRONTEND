@@ -352,6 +352,26 @@ export const useDeleteDocument = (leadId?: number) => {
         queryClient.invalidateQueries({
           queryKey: ["clientDocumentationDetails"],
         });
+
+        queryClient.invalidateQueries({
+          queryKey: ["currentSitePhotos"],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["woodworkPackingDetails"],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["hardwarePackingDetails"],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["qcPhotos"],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["currentSitePhotosAtSiteReadiness"],
+        });
       }
     },
     onError: (err: any) => {
