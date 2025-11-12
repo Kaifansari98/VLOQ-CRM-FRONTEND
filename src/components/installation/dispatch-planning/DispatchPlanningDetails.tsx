@@ -64,7 +64,9 @@ export default function DispatchPlanningDetails({
     required_date_for_dispatch: "",
     onsite_contact_person_name: "",
     onsite_contact_person_number: "",
-    material_lift_availability: false,
+    alt_onsite_contact_person_name: "",
+    alt_onsite_contact_person_number: "",
+    material_lift_availability: null as boolean | null,
     dispatch_planning_remark: "",
   });
 
@@ -128,6 +130,10 @@ export default function DispatchPlanningDetails({
           dispatchInfoData.onsite_contact_person_name || "",
         onsite_contact_person_number:
           dispatchInfoData.onsite_contact_person_number || "",
+        alt_onsite_contact_person_name:
+          dispatchInfoData.alt_onsite_contact_person_name || "", // ✅
+        alt_onsite_contact_person_number:
+          dispatchInfoData.alt_onsite_contact_person_number || "", // ✅
         material_lift_availability:
           dispatchInfoData.material_lift_availability || false,
         dispatch_planning_remark:
@@ -172,6 +178,10 @@ export default function DispatchPlanningDetails({
       }
       if (!dispatchInfo.onsite_contact_person_number) {
         toast.error("Onsite contact person number is mandatory");
+        return;
+      }
+      if (dispatchInfo.material_lift_availability === null) {
+        toast.error("Please select material lift availability");
         return;
       }
 
@@ -345,9 +355,6 @@ export default function DispatchPlanningDetails({
                   })
                 }
               />
-              <p className="text-xs text-muted-foreground">
-                Client person or client himself
-              </p>
             </div>
 
             {/* Onsite Contact Person Number */}
@@ -370,11 +377,48 @@ export default function DispatchPlanningDetails({
               />
             </div>
 
+            {/* Alternate Onsite Contact Person Name */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1">
+                <User className="h-4 w-4" />
+                Alternate Contact Person Name
+              </Label>
+              <Input
+                placeholder="Enter alternate contact person name"
+                value={dispatchInfo.alt_onsite_contact_person_name}
+                onChange={(e) =>
+                  setDispatchInfo({
+                    ...dispatchInfo,
+                    alt_onsite_contact_person_name: e.target.value,
+                  })
+                }
+              />
+            </div>
+
+            {/* Alternate Onsite Contact Person Number */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1">
+                <Phone className="h-4 w-4" />
+                Alternate Contact Person Number
+              </Label>
+              <PhoneInput
+                placeholder="Enter alternate contact number"
+                defaultCountry="IN"
+                value={dispatchInfo.alt_onsite_contact_person_number}
+                onChange={(value) =>
+                  setDispatchInfo({
+                    ...dispatchInfo,
+                    alt_onsite_contact_person_number: value || "",
+                  })
+                }
+              />
+            </div>
+
             {/* Required Date for Dispatch */}
             <div className="space-y-2">
               <Label className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                Required Date For Dispatch
+                Required OnSite Delivery Date
                 <span className="text-red-500">*</span>
               </Label>
               <CustomeDatePicker
@@ -388,58 +432,61 @@ export default function DispatchPlanningDetails({
                 restriction="futureAfterTwoDays"
               />
 
-              <p className="text-xs text-muted-foreground">
+              {/* <p className="text-xs text-muted-foreground">
                 {new Date().getHours() >= 15
                   ? "After 3 PM: minimum 3 days ahead"
                   : "Minimum 2 days ahead"}
-              </p>
+              </p> */}
             </div>
 
             {/* Material Lift Availability */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1">
+            <div className="space-y-3">
+              <Label className="flex items-center gap-1 text-sm font-medium">
                 <Truck className="h-4 w-4" />
                 Material Lift Availability
                 <span className="text-red-500">*</span>
               </Label>
 
-              <div className="flex w-1/2 gap-3">
-                <Button
-                  type="button"
-                  variant={
-                    dispatchInfo.material_lift_availability
-                      ? "default"
-                      : "outline"
-                  }
-                  onClick={() =>
-                    setDispatchInfo({
-                      ...dispatchInfo,
-                      material_lift_availability: true,
-                    })
-                  }
-                  className="w-full md:w-1/2"
-                >
-                  Available
-                </Button>
-
-                <Button
-                  type="button"
-                  variant={
-                    !dispatchInfo.material_lift_availability
-                      ? "default"
-                      : "outline"
-                  }
-                  onClick={() =>
-                    setDispatchInfo({
-                      ...dispatchInfo,
-                      material_lift_availability: false,
-                    })
-                  }
-                  className="w-full md:w-1/2"
-                >
-                  Not Available
-                </Button>
+              <div className="flex flex-wrap gap-3">
+                {[
+                  { label: "Available", value: true },
+                  { label: "Not Available", value: false },
+                ].map((option) => {
+                  const isSelected =
+                    dispatchInfo.material_lift_availability === option.value;
+                  return (
+                    <Button
+                      key={option.label}
+                      type="button"
+                      variant={isSelected ? "default" : "outline"}
+                      className={`w-40 justify-center transition-all duration-200 ${
+                        isSelected
+                          ? "border-primary shadow-md bg-primary text-white"
+                          : "border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/20"
+                      }`}
+                      onClick={() =>
+                        setDispatchInfo({
+                          ...dispatchInfo,
+                          material_lift_availability: option.value,
+                        })
+                      }
+                    >
+                      {option.label}
+                      {isSelected && (
+                        <CheckCircle2 className="ml-2 h-4 w-4 text-white" />
+                      )}
+                    </Button>
+                  );
+                })}
               </div>
+
+              {/* Hint text when no selection */}
+              {dispatchInfo.material_lift_availability === null && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Please select whether a material lift is available at the
+                  site.
+                </p>
+              )}
             </div>
           </div>
 
