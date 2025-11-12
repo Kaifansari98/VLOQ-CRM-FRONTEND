@@ -147,6 +147,14 @@ export function canUploadOrDeleteOrderLogin(
   );
 }
 
+
+export const canDoDispatchPlanning = (
+  userType: string | undefined
+) => {
+  if (!userType) return false;
+  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  return allowedRoles.includes(userType.toLowerCase());
+};
 export const canMoveToProduction = (userType: string | undefined) => {
   if (!userType) return false;
   const allowedRoles = ["super_admin", "admin", "backend"];

@@ -69,6 +69,8 @@ export default function GroupedSmoothTab({
       "production",
       "readyToDispatch",
       "siteReadiness",
+      "dispatchPlanning", 
+      "dispatch",
     ];
 
     const maxIndex = allStageOrder.indexOf(maxVisibleStage);

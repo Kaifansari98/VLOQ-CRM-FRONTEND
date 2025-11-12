@@ -10,11 +10,15 @@ import ClientApprovalDetails from "@/components/site-supervisor/client-approval/
 import TechCheckDetails from "@/components/production/tech-check-stage/TechCheckDetails";
 import OrderLoginDetails from "@/components/production/order-login-stage/OrderLoginDetails";
 import LeadDetailsProductionUtil from "@/components/production/pre-production-stage/lead-details-production-tabs";
+
 import ReadyToDispatchDetails from "../production/ready-to-dispatch/ReadyToDispatchDetails";
 import SiteReadinessTabs from "../installation/site-readiness/SiteReadinessTabs";
+import DispatchPlanningDetails from "../installation/dispatch-planning/DispatchPlanningDetails";
+import DispatchTabsWrapper from "../installation/dispatch/DispatchTabsWrapper";
+
+type StatusKey = StageId;
 import GroupedSmoothTab from "./grouped-smooth-tab";
 import { StageId } from "@/types/lead-stage-types";
-import { useAppSelector } from "@/redux/store";
 
 type GroupKey = "leads" | "project" | "production" | "installation";
 
@@ -47,8 +51,6 @@ export default function LeadDetailsGrouped({
   maxVisibleStage,
   defaultParentTab = "installation", // default: show all
 }: LeadDetailsGroupedProps) {
- 
-
   const groups = {
     leads: [
       {
@@ -71,8 +73,33 @@ export default function LeadDetailsGrouped({
         title: "Booking",
         component: <BookingLeadsDetails leadId={leadId} />,
       },
+      {
+        id: "details",
+        title: "Lead Details",
+        component: <OpenLeadDetails leadId={leadId} />,
+      },
+      {
+        id: "measurement",
+        title: "Site Measurement",
+        component: <SiteMeasurementLeadDetails leadId={leadId} />,
+      },
+      {
+        id: "designing",
+        title: "Designing",
+        component: <DesigningLeadsDetails leadId={leadId} />,
+      },
+      {
+        id: "booking",
+        title: "Booking",
+        component: <BookingLeadsDetails leadId={leadId} />,
+      },
     ],
     project: [
+      {
+        id: "finalMeasurement",
+        title: "Final Measurement",
+        component: <FinalMeasurementLeadDetails leadId={leadId} />,
+      },
       {
         id: "finalMeasurement",
         title: "Final Measurement",
@@ -149,53 +176,72 @@ export default function LeadDetailsGrouped({
           />
         ),
       },
+      {
+        id: "dispatchPlanning",
+        title: "Dispatch Planning",
+        component: (
+          <DispatchPlanningDetails leadId={leadId} accountId={accountId} />
+        ), // ✅ new component
+      },
+      {
+        id: "dispatch",
+        title: "Dispatch",
+        component: (
+          <DispatchTabsWrapper
+            leadId={leadId}
+            accountId={accountId}
+            name={leadName}
+          />
+        ),
+      },
     ],
   } as const;
 
   // ✅ Filter based on defaultParentTab
-const visibleGroups = React.useMemo(() => {
-  const allowedKeys = GROUP_ORDER.slice(
-    0,
-    GROUP_ORDER.indexOf(defaultParentTab) + 1
-  );
+  const visibleGroups = React.useMemo(() => {
+    const allowedKeys = GROUP_ORDER.slice(
+      0,
+      GROUP_ORDER.indexOf(defaultParentTab) + 1
+    );
 
-  const filtered = {} as Record<
-    GroupKey,
-    { id: StageId; title: string; component: React.ReactNode }[]
-  >;
+    const filtered = {} as Record<
+      GroupKey,
+      { id: StageId; title: string; component: React.ReactNode }[]
+    >;
 
-  for (const key of allowedKeys) {
-    const stages = groups[key];
+    for (const key of allowedKeys) {
+      const stages = groups[key];
 
-    // agar ye last allowed group hai to andar se cutoff lagao
-    if (key === defaultParentTab && status) {
-      const stageOrder: StageId[] = [
-        "details",
-        "measurement",
-        "designing",
-        "booking",
-        "finalMeasurement",
-        "clientdocumentation",
-        "clientApproval",
-        "techcheck",
-        "orderLogin",
-        "production",
-        "readyToDispatch",
-        "siteReadiness",
-      ];
+      // agar ye last allowed group hai to andar se cutoff lagao
+      if (key === defaultParentTab && status) {
+        const stageOrder: StageId[] = [
+          "details",
+          "measurement",
+          "designing",
+          "booking",
+          "finalMeasurement",
+          "clientdocumentation",
+          "clientApproval",
+          "techcheck",
+          "orderLogin",
+          "production",
+          "readyToDispatch",
+          "siteReadiness",
+          "dispatchPlanning",
+          "dispatch",
+        ];
 
-      const maxIndex = stageOrder.indexOf(status);
-      filtered[key] = stages.filter(
-        (s) => stageOrder.indexOf(s.id) <= maxIndex
-      );
-    } else {
-      filtered[key] = [...stages];
+        const maxIndex = stageOrder.indexOf(status);
+        filtered[key] = stages.filter(
+          (s) => stageOrder.indexOf(s.id) <= maxIndex
+        );
+      } else {
+        filtered[key] = [...stages];
+      }
     }
-  }
 
-  return filtered;
-}, [defaultParentTab, status]);
-
+    return filtered;
+  }, [defaultParentTab, status]);
 
   const initialTab: StageId = defaultTab ?? (status ? status : "details");
 

@@ -23,6 +23,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { useAppSelector } from "@/redux/store";
+import { isAction } from "@reduxjs/toolkit";
 
 // Updated navigation data with showCount properties
 const data = {
@@ -143,6 +144,7 @@ const data = {
       title: "Installation",
       url: "#",
       icon: Settings2,
+      isActive: true,
       items: [
         {
           title: "Site Readiness",
@@ -151,11 +153,13 @@ const data = {
         },
         {
           title: "Dispatch Planning",
-          url: "#",
+          url: "/dashboard/installation/dispatch-planning",
+          showCount: "total_dispatch_planning_stage_leads" as const,
         },
         {
           title: "Dispatch",
-          url: "#",
+          url: "/dashboard/installation/dispatch-stage",
+          showCount: "total_dispatch_stage_leads" as const,
         },
         {
           title: "Under Installation",

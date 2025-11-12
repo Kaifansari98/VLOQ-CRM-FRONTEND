@@ -46,7 +46,7 @@ export default function LeadDetailsProductionUtil({
 
   return (
     <div className="h-full">
-      <SmoothTab items={allTabs} defaultTabId="preProduction" />
+      <SmoothTab items={allTabs} defaultTabId="preProduction" contentHeightClass="h-[150vh]" />
     </div>
   );
 }

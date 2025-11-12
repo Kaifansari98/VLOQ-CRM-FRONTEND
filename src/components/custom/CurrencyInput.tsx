@@ -8,12 +8,14 @@ interface CurrencyInputProps {
   value: number | undefined;
   onChange: (value: number | undefined) => void;
   placeholder?: string;
+  disabled?: boolean;
 }
 
 const CurrencyInput: React.FC<CurrencyInputProps> = ({
   value,
   onChange,
   placeholder,
+  disabled = false,
 }) => {
   const [displayValue, setDisplayValue] = useState("");
 
@@ -50,6 +52,7 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
       value={displayValue}
       onChange={handleChange}
       placeholder={placeholder || "Enter amount"}
+      disabled={disabled}
     />
   );
 };
