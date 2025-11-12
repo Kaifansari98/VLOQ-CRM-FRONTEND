@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "react-toastify";
 import { z } from "zod";
+import PendingMaterialDetails from "./PendingMaterialDetails";
 
 const DispatchDetailsSchema = z.object({
   dispatch_date: z.string().nonempty("Dispatch date is required"),
@@ -200,7 +201,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">
-                  Required Date for Dispatch
+                  Required OnSite Delivery Date
                 </p>
                 {loadingRequiredDate ? (
                   <div className="h-6 w-32 bg-muted animate-pulse rounded mt-1" />
@@ -467,24 +468,23 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                 </div>
 
                 <div className="w-full flex justify-end">
-
-                <Button
-                  onClick={handleUploadDocuments}
-                  disabled={uploadDocsMutation.isPending}
-                  className="flex justify-end"
-                >
-                  {uploadDocsMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Upload Files
-                    </>
-                  )}
-                </Button>
+                  <Button
+                    onClick={handleUploadDocuments}
+                    disabled={uploadDocsMutation.isPending}
+                    className="flex justify-end"
+                  >
+                    {uploadDocsMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Upload Files
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             )}
@@ -569,6 +569,10 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
           </div>
         </CardContent>
       </Card>
+
+      {/* Pending Material Details Section */}
+      <PendingMaterialDetails leadId={leadId} accountId={accountId} />
+
       {/* ✨ Edit No. of Boxes Modal */}
       <Dialog open={openBoxesModal} onOpenChange={setOpenBoxesModal}>
         <DialogContent className="sm:max-w-[420px] p-6 rounded-2xl border shadow-lg bg-card">

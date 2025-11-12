@@ -36,7 +36,20 @@ export interface ExtendedColumnFilter<TData> extends FilterItemSchema {
 
 export interface DataTableRowAction<TData> {
   row: Row<TData>;
-  variant: "edit" | "delete" | "view"  | "reassignlead" | "measurement" | "details" | "booking" | "move" | "measurement-modal" | "uploadmeasurement" | "uploadfinalmeasurement" |  "Follow Up";
+  variant:
+    | "edit"
+    | "delete"
+    | "view"
+    | "reassignlead"
+    | "measurement"
+    | "details"
+    | "booking"
+    | "move"
+    | "measurement-modal"
+    | "uploadmeasurement"
+    | "uploadfinalmeasurement"
+    | "Follow Up"
+    | "Pending Materials";
 }
 
 

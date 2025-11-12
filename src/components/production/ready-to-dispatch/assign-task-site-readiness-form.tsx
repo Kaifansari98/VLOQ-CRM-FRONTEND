@@ -149,12 +149,12 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       onSuccess: () => {
         toast.success("Task assigned successfully!");
         queryClient.invalidateQueries({
-          queryKey: ["readyToDispatchLeads", vendorId],
+          queryKey: ["leadStats"],
         });
         onOpenChange(false);
 
         if (values.task_type === "Site Readiness") {
-          router.push("/dashboard/production/ready-to-dispatch");
+          router.push("/dashboard/installation/site-readiness");
         }
       },
       onError: (error: any) => {

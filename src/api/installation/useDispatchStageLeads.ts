@@ -348,3 +348,82 @@ export const useUploadPostDispatchDocuments = () => {
     },
   });
 };
+
+/* ==========================================================
+   🔹 Create Pending Material Task
+   @route POST /leads/installation/dispatch/vendorId/:vendorId/leadId/:leadId/create-pending-material
+   ========================================================== */
+export interface CreatePendingMaterialPayload {
+  account_id: number;
+  created_by: number;
+  due_date: string; // ISO or yyyy-MM-dd
+  remark?: string;
+}
+
+export const createPendingMaterialTask = async (
+  vendorId: number,
+  leadId: number,
+  payload: CreatePendingMaterialPayload
+) => {
+  const { data } = await apiClient.post(
+    `/leads/installation/dispatch/vendorId/${vendorId}/leadId/${leadId}/create-pending-material`,
+    payload
+  );
+  return data?.data;
+};
+
+/* ==========================================================
+     ✅ React Query Hook — Create Pending Material Task
+     ========================================================== */
+export const useCreatePendingMaterialTask = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      payload,
+    }: {
+      vendorId: number;
+      leadId: number;
+      payload: CreatePendingMaterialPayload;
+    }) => createPendingMaterialTask(vendorId, leadId, payload),
+
+    onSuccess: () => {
+      toast.success("Pending Material task created successfully!");
+      // Optionally invalidate related queries
+      queryClient.invalidateQueries({ queryKey: ["leadTasks"] });
+    },
+
+    onError: (err: any) => {
+      toast.error(
+        err?.response?.data?.message ||
+          "Failed to create Pending Material task."
+      );
+    },
+  });
+};
+
+/* ==========================================================
+   ✅ GET Pending Material Tasks
+   ========================================================== */
+export const getPendingMaterialTasks = async (
+  vendorId: number,
+  leadId: number
+) => {
+  const { data } = await apiClient.get(
+    `/leads/installation/dispatch/vendorId/${vendorId}/leadId/${leadId}/pending-material-tasks`
+  );
+  return data?.data;
+};
+
+/* ==========================================================
+     ✅ React Query Hook — Fetch Pending Material Tasks
+     ========================================================== */
+export const usePendingMaterialTasks = (vendorId?: number, leadId?: number) => {
+  return useQuery({
+    queryKey: ["pendingMaterialTasks", vendorId, leadId],
+    queryFn: () => getPendingMaterialTasks(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
+};
