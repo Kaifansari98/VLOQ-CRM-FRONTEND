@@ -124,6 +124,12 @@ export const canAssignSR = (userType: string | undefined) => {
   return allowedRoles.includes(userType.toLowerCase());
 };
 
+export const canDoSR = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowedRoles = ["super_admin", "admin", "site-supervisor"];
+  return allowedRoles.includes(userType.toLowerCase());
+};
+
 // utils/privilege.ts
 export function canUploadOrDeleteBookingDone(
   role: string,
@@ -147,10 +153,7 @@ export function canUploadOrDeleteOrderLogin(
   );
 }
 
-
-export const canDoDispatchPlanning = (
-  userType: string | undefined
-) => {
+export const canDoDispatchPlanning = (userType: string | undefined) => {
   if (!userType) return false;
   const allowedRoles = ["super_admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
@@ -230,10 +233,7 @@ export function canAccessSaveOrderLoginButton(
   );
 }
 
-export function canAccessInputField(
-  role: string,
-  stage: string
-): boolean {
+export function canAccessInputField(role: string, stage: string): boolean {
   return (
     role === "admin" ||
     role === "super-admin" ||

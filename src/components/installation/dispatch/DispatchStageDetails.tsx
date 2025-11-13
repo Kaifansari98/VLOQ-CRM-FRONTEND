@@ -51,6 +51,7 @@ import {
 import { toast } from "react-toastify";
 import { z } from "zod";
 import PendingMaterialDetails from "./PendingMaterialDetails";
+import VehicleNumberInput from "@/components/custom/VehicleNumberInput";
 
 const DispatchDetailsSchema = z.object({
   dispatch_date: z.string().nonempty("Dispatch date is required"),
@@ -76,6 +77,8 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id) || 0;
+
+  console.log("parent", Number(accountId));
 
   // API Hooks
   const { data: requiredDateData, isLoading: loadingRequiredDate } =
@@ -302,17 +305,12 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
                 {/* Vehicle Number */}
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
-                    <Truck className="h-4 w-4" />
-                    Vehicle Number
-                    <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    name="vehicle_no"
+                  <VehicleNumberInput
                     value={formData.vehicle_no}
-                    onChange={handleInputChange}
-                    placeholder="e.g., MH-01-AB-1234"
+                    onChange={(val) =>
+                      setFormData({ ...formData, vehicle_no: val })
+                    }
+                    required
                   />
                 </div>
 
@@ -407,16 +405,12 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                 onChange={setSelectedFiles}
                 accept="image/*,.pdf,.doc,.docx"
                 multiple={true}
-                
               />
             </div>
 
             {/* Selected Files Preview */}
             {selectedFiles.length > 0 && (
               <div className="space-y-3">
-              
-
-
                 <div className="w-full flex justify-end">
                   <Button
                     onClick={handleUploadDocuments}

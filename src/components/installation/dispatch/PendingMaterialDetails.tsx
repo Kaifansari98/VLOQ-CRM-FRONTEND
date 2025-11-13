@@ -20,12 +20,15 @@ import {
 import { useAppSelector } from "@/redux/store";
 import {
   useCreatePendingMaterialTask,
+  useOrderLoginSummary,
   usePendingMaterialTasks,
 } from "@/api/installation/useDispatchStageLeads";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
+import AssignToPicker from "@/components/assign-to-picker";
+import TextSelectPicker from "@/components/TextSelectPicker";
 
 interface PendingMaterialDetailsProps {
   leadId: number;
@@ -36,12 +39,26 @@ export default function PendingMaterialDetails({
   leadId,
   accountId,
 }: PendingMaterialDetailsProps) {
-  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
-  const userId = useAppSelector((s) => s.auth.user?.id) || 0;
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const userId = useAppSelector((s) => s.auth.user?.id);
   const queryClient = useQueryClient();
+  if (!vendorId) {
+    toast.error("Vendor information is missing.");
+    return;
+  }
+
+  if (!userId) {
+    toast.error("User information is missing.");
+    return;
+  }
+
+  console.log("account kjsdfkjdsfjk ", accountId);
 
   const { mutateAsync: createPendingTask, isPending } =
     useCreatePendingMaterialTask();
+
+  const { data: orderLoginSummary = [], isLoading: loadingSummary } =
+    useOrderLoginSummary(vendorId, leadId);
 
   const { data: tasks = [], isLoading } = usePendingMaterialTasks(
     vendorId,
@@ -129,10 +146,21 @@ export default function PendingMaterialDetails({
                   Material Title
                   <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  placeholder="e.g., Solar Panels, Inverter"
+                <TextSelectPicker
+                  options={
+                    orderLoginSummary.map(
+                      (item: any) => item.item_type || "Untitled Item"
+                    ) || []
+                  }
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(selectedText) => setTitle(selectedText)}
+                  placeholder={
+                    loadingSummary
+                      ? "Loading materials..."
+                      : "Select material..."
+                  }
+                  emptyLabel="Select Material"
+                  disabled={loadingSummary}
                 />
               </div>
 

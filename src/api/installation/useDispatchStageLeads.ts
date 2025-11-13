@@ -427,3 +427,29 @@ export const usePendingMaterialTasks = (vendorId?: number, leadId?: number) => {
     enabled: !!vendorId && !!leadId,
   });
 };
+
+/* ==========================================================
+   🔹 GET Order Login Summary (id & item_type)
+   @route GET /vendorId/:vendorId/get-order-login-summary?lead_id=:leadId
+   ========================================================== */
+export const getOrderLoginSummary = async (
+  vendorId: number,
+  leadId: number
+) => {
+  const { data } = await apiClient.get(
+    `/leads/installation/dispatch/vendorId/${vendorId}/get-order-login-summary`,
+    { params: { lead_id: leadId } }
+  );
+  return data?.data;
+};
+
+/**
+ * ✅ React Query Hook for Order Login Summary
+ */
+export const useOrderLoginSummary = (vendorId?: number, leadId?: number) => {
+  return useQuery({
+    queryKey: ["orderLoginSummary", vendorId, leadId],
+    queryFn: () => getOrderLoginSummary(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
+};

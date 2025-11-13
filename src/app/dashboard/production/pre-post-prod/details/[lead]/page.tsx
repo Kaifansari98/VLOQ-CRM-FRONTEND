@@ -255,7 +255,7 @@ export default function ProductionLeadDetails() {
 
           <div className="flex items-center space-x-2">
             {canMoveReadyToDispatchStage &&
-              (completeness?.any_exists && lead?.no_of_boxes > 0 ? (
+              (completeness?.all_exists && lead?.no_of_boxes > 0 ? (
                 <Button
                   size="sm"
                   variant="secondary"
@@ -277,8 +277,8 @@ export default function ProductionLeadDetails() {
                     </Button>
                   }
                   value={
-                    !completeness?.any_exists
-                      ? "Cannot move yet — production tasks are incomplete."
+                    !completeness?.all_exists
+                      ? "Cannot move yet — please complete all production tasks (QC photos, hardware packing, and woodwork packing)."
                       : !lead?.no_of_boxes || lead?.no_of_boxes <= 0
                       ? "Add number of boxes before dispatch."
                       : "Action unavailable."
