@@ -44,11 +44,38 @@ import {
 import { useAppSelector } from "@/redux/store";
 import CurrencyInput from "@/components/custom/CurrencyInput";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import TextAreaInput from "@/components/origin-text-area";
 
 interface DispatchPlanningDetailsProps {
   leadId: number;
   accountId: number;
 }
+
+const dispatchSchema = z.object({
+  required_date_for_dispatch: z
+    .string()
+    .nonempty("Required OnSite Delivery Date is mandatory"),
+  onsite_contact_person_name: z
+    .string()
+    .nonempty("Onsite contact person name is mandatory"),
+  onsite_contact_person_number: z
+    .string()
+    .min(10, "Enter a valid contact number"),
+  material_lift_availability: z
+    .boolean()
+    .nullable()
+    .refine((val) => val !== null, {
+      message: "Please select material lift availability",
+    }),
+  alt_onsite_contact_person_name: z.string().optional(),
+  alt_onsite_contact_person_number: z.string().optional(),
+  dispatch_planning_remark: z.string().optional(),
+});
+
+type DispatchFormData = z.infer<typeof dispatchSchema>;
 
 export default function DispatchPlanningDetails({
   leadId,
@@ -93,6 +120,28 @@ export default function DispatchPlanningDetails({
   } = useDispatchPlanningInfo(vendorId, leadId);
 
   const {
+    register,
+    handleSubmit,
+    setValue,
+    getValues,
+    formState: { errors },
+    watch,
+  } = useForm<DispatchFormData>({
+    resolver: zodResolver(dispatchSchema),
+    defaultValues: {
+      required_date_for_dispatch: "",
+      onsite_contact_person_name: "",
+      onsite_contact_person_number: "",
+      alt_onsite_contact_person_name: "",
+      alt_onsite_contact_person_number: "",
+      material_lift_availability: null,
+      dispatch_planning_remark: "",
+    },
+  });
+
+  const watchLiftAvailability = watch("material_lift_availability");
+
+  const {
     data: paymentData,
     isLoading: loadingPaymentInfo,
     refetch: refetchPaymentInfo,
@@ -119,7 +168,7 @@ export default function DispatchPlanningDetails({
   // Load dispatch info data
   useEffect(() => {
     if (dispatchInfoData) {
-      setDispatchInfo({
+      const formValues = {
         required_date_for_dispatch: dispatchInfoData.required_date_for_dispatch
           ? new Date(dispatchInfoData.required_date_for_dispatch)
               .toISOString()
@@ -130,17 +179,28 @@ export default function DispatchPlanningDetails({
         onsite_contact_person_number:
           dispatchInfoData.onsite_contact_person_number || "",
         alt_onsite_contact_person_name:
-          dispatchInfoData.alt_onsite_contact_person_name || "", // ✅
+          dispatchInfoData.alt_onsite_contact_person_name || "",
         alt_onsite_contact_person_number:
-          dispatchInfoData.alt_onsite_contact_person_number || "", // ✅
+          dispatchInfoData.alt_onsite_contact_person_number || "",
         material_lift_availability:
-          dispatchInfoData.material_lift_availability || null,
+          dispatchInfoData.material_lift_availability ?? null,
         dispatch_planning_remark:
           dispatchInfoData.dispatch_planning_remark || "",
+      };
+
+      // ✅ 1. Update local state (optional, for reference)
+      setDispatchInfo(formValues);
+
+      // ✅ 2. Also populate react-hook-form fields
+      Object.entries(formValues).forEach(([key, value]) => {
+        setValue(key as keyof DispatchFormData, value as any, {
+          shouldValidate: false,
+        });
       });
+
       setInfoSaved(true);
     }
-  }, [dispatchInfoData]);
+  }, [dispatchInfoData, setValue]);
 
   // Load payment info data
   useEffect(() => {
@@ -164,30 +224,12 @@ export default function DispatchPlanningDetails({
   }, [paymentData]);
 
   // Handle Save Dispatch Planning Info
-  const handleSaveInfo = async () => {
+  const handleSaveInfo = handleSubmit(async (values) => {
     try {
-      // Validation
-      if (!dispatchInfo.required_date_for_dispatch) {
-        toast.error("Required OnSite Delivery Date is mandatory");
-        return;
-      }
-      if (!dispatchInfo.onsite_contact_person_name) {
-        toast.error("Onsite contact person name is mandatory");
-        return;
-      }
-      if (!dispatchInfo.onsite_contact_person_number) {
-        toast.error("Onsite contact person number is mandatory");
-        return;
-      }
-      if (dispatchInfo.material_lift_availability === null) {
-        toast.error("Please select material lift availability");
-        return;
-      }
-
       const payload = {
-        ...dispatchInfo,
+        ...values,
         material_lift_availability:
-          dispatchInfo.material_lift_availability.toString(),
+          values.material_lift_availability!.toString(),
         created_by: userId,
       };
 
@@ -208,7 +250,7 @@ export default function DispatchPlanningDetails({
           "Failed to save dispatch planning info"
       );
     }
-  };
+  });
 
   // Validate payment fields
   const validatePaymentFields = () => {
@@ -341,39 +383,40 @@ export default function DispatchPlanningDetails({
             <div className="space-y-2">
               <Label className="flex items-center gap-1">
                 <User className="h-4 w-4" />
-                Onsite Contact Person Name
+                Onsite Contact Person Name{" "}
                 <span className="text-red-500">*</span>
               </Label>
               <Input
                 placeholder="Enter contact person name"
-                value={dispatchInfo.onsite_contact_person_name}
-                onChange={(e) =>
-                  setDispatchInfo({
-                    ...dispatchInfo,
-                    onsite_contact_person_name: e.target.value,
-                  })
-                }
+                {...register("onsite_contact_person_name")}
               />
+              {errors.onsite_contact_person_name && (
+                <p className="text-xs text-red-500">
+                  {errors.onsite_contact_person_name.message}
+                </p>
+              )}
             </div>
 
             {/* Onsite Contact Person Number */}
             <div className="space-y-2">
               <Label className="flex items-center gap-1">
                 <Phone className="h-4 w-4" />
-                Onsite Contact Person Number
+                Onsite Contact Person Number{" "}
                 <span className="text-red-500">*</span>
               </Label>
               <PhoneInput
                 placeholder="Enter contact number"
                 defaultCountry="IN"
-                value={dispatchInfo.onsite_contact_person_number}
+                value={getValues("onsite_contact_person_number")}
                 onChange={(value) =>
-                  setDispatchInfo({
-                    ...dispatchInfo,
-                    onsite_contact_person_number: value || "",
-                  })
+                  setValue("onsite_contact_person_number", value || "")
                 }
               />
+              {errors.onsite_contact_person_number && (
+                <p className="text-xs text-red-500">
+                  {errors.onsite_contact_person_number.message}
+                </p>
+              )}
             </div>
 
             {/* Alternate Onsite Contact Person Name */}
@@ -384,13 +427,7 @@ export default function DispatchPlanningDetails({
               </Label>
               <Input
                 placeholder="Enter alternate contact person name"
-                value={dispatchInfo.alt_onsite_contact_person_name}
-                onChange={(e) =>
-                  setDispatchInfo({
-                    ...dispatchInfo,
-                    alt_onsite_contact_person_name: e.target.value,
-                  })
-                }
+                {...register("alt_onsite_contact_person_name")}
               />
             </div>
 
@@ -403,12 +440,9 @@ export default function DispatchPlanningDetails({
               <PhoneInput
                 placeholder="Enter alternate contact number"
                 defaultCountry="IN"
-                value={dispatchInfo.alt_onsite_contact_person_number}
+                value={getValues("alt_onsite_contact_person_number")}
                 onChange={(value) =>
-                  setDispatchInfo({
-                    ...dispatchInfo,
-                    alt_onsite_contact_person_number: value || "",
-                  })
+                  setValue("alt_onsite_contact_person_number", value || "")
                 }
               />
             </div>
@@ -417,76 +451,69 @@ export default function DispatchPlanningDetails({
             <div className="space-y-2">
               <Label className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                Required OnSite Delivery Date
+                Required OnSite Delivery Date{" "}
                 <span className="text-red-500">*</span>
               </Label>
               <CustomeDatePicker
-                value={dispatchInfo.required_date_for_dispatch}
+                value={getValues("required_date_for_dispatch")}
                 onChange={(value) =>
-                  setDispatchInfo({
-                    ...dispatchInfo,
-                    required_date_for_dispatch: value || "",
-                  })
+                  setValue("required_date_for_dispatch", value || "")
                 }
                 restriction="futureAfterTwoDays"
               />
-
-              {/* <p className="text-xs text-muted-foreground">
-                {new Date().getHours() >= 15
-                  ? "After 3 PM: minimum 3 days ahead"
-                  : "Minimum 2 days ahead"}
-              </p> */}
-            </div>
-
-            {/* Material Lift Availability */}
-            <div className="space-y-3">
-              <Label className="flex items-center gap-1 text-sm font-medium">
-                <Truck className="h-4 w-4" />
-                Material Lift Availability
-                <span className="text-red-500">*</span>
-              </Label>
-
-              <div className="flex flex-wrap gap-3">
-                {[
-                  { label: "Available", value: true },
-                  { label: "Not Available", value: false },
-                ].map((option) => {
-                  const isSelected =
-                    dispatchInfo.material_lift_availability === option.value;
-                  return (
-                    <Button
-                      key={option.label}
-                      type="button"
-                      variant={isSelected ? "default" : "outline"}
-                      className={`w-40 justify-center transition-all duration-200 ${
-                        isSelected
-                          ? "border-primary shadow-md bg-primary text-white"
-                          : "border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/20"
-                      }`}
-                      onClick={() =>
-                        setDispatchInfo({
-                          ...dispatchInfo,
-                          material_lift_availability: option.value,
-                        })
-                      }
-                    >
-                      {option.label}
-                      {isSelected && (
-                        <CheckCircle2 className="ml-2 h-4 w-4 text-white" />
-                      )}
-                    </Button>
-                  );
-                })}
-              </div>
-
-              {/* Hint text when no selection */}
-              {dispatchInfo.material_lift_availability === null && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Please select whether a material lift is available at the
-                  site.
+              {errors.required_date_for_dispatch && (
+                <p className="text-xs text-red-500">
+                  {errors.required_date_for_dispatch.message}
                 </p>
               )}
             </div>
+
+            {/* Material Lift Availability */}
+
+            <div className="space-y-3">
+              <Label className="flex items-center gap-1 text-sm font-medium">
+                <Truck className="h-4 w-4" />
+                Material Lift Availability{" "}
+                <span className="text-red-500">*</span>
+              </Label>
+
+              <div className="flex gap-3">
+                {[
+                  { label: "Available", value: true },
+                  { label: "Not Available", value: false },
+                ].map((option) => (
+                  <Button
+                    key={option.label}
+                    type="button"
+                    variant={
+                      watchLiftAvailability === option.value
+                        ? "default"
+                        : "outline"
+                    }
+                    onClick={() =>
+                      setValue("material_lift_availability", option.value, {
+                        shouldValidate: true,
+                      })
+                    }
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
+
+              {errors.material_lift_availability && (
+                <p className="text-xs text-red-500">
+                  {errors.material_lift_availability.message}
+                </p>
+              )}
+            </div>
+
+            {/* Hint text when no selection */}
+            {dispatchInfo.material_lift_availability === null && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Please select whether a material lift is available at the site.
+              </p>
+            )}
           </div>
 
           {/* Remarks */}
@@ -495,16 +522,13 @@ export default function DispatchPlanningDetails({
               <FileText className="h-4 w-4" />
               Remarks
             </Label>
-            <Textarea
+            <TextAreaInput
               placeholder="Enter any additional remarks..."
-              value={dispatchInfo.dispatch_planning_remark}
-              onChange={(e) =>
-                setDispatchInfo({
-                  ...dispatchInfo,
-                  dispatch_planning_remark: e.target.value,
-                })
+              value={watch("dispatch_planning_remark") || ""}
+              onChange={(value) =>
+                setValue("dispatch_planning_remark", value || "")
               }
-              rows={3}
+              maxLength={1000}
             />
           </div>
 
