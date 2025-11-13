@@ -48,6 +48,10 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import TextAreaInput from "@/components/origin-text-area";
+import { useDeleteDocument } from "@/api/leads";
+import ImageCarouselModal from "@/components/utils/image-carousel-modal";
+import { ImageComponent } from "@/components/utils/ImageCard";
+import DocumentCard from "@/components/utils/documentCard";
 
 interface DispatchPlanningDetailsProps {
   leadId: number;
@@ -84,6 +88,7 @@ export default function DispatchPlanningDetails({
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id) || 0;
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
 
   // State for Dispatch Planning Info
   const [dispatchInfo, setDispatchInfo] = useState({
@@ -103,6 +108,9 @@ export default function DispatchPlanningDetails({
     payment_proof_file: [] as File[],
   });
 
+  const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
+  const [openCarousel, setOpenCarousel] = useState(false);
+  const [startIndex, setStartIndex] = useState(0);
   const [infoSaved, setInfoSaved] = useState(false);
   const [paymentSaved, setPaymentSaved] = useState(false);
   const [existingPaymentDoc, setExistingPaymentDoc] = useState<{
@@ -118,7 +126,8 @@ export default function DispatchPlanningDetails({
     isLoading: loadingDispatchInfo,
     refetch: refetchDispatchInfo,
   } = useDispatchPlanningInfo(vendorId, leadId);
-
+  const { mutate: deleteDocument, isPending: deleting } =
+    useDeleteDocument(leadId);
   const {
     register,
     handleSubmit,
@@ -358,6 +367,39 @@ export default function DispatchPlanningDetails({
       </div>
     );
   }
+
+  const imageExtensions = ["jpg", "jpeg", "png", "webp"];
+  const documentExtensions = ["pdf", "zip"];
+
+  // Always initialize empty arrays
+  let images: any[] = [];
+  let Documents: any[] = [];
+
+  // Get the file object safely
+  const file = paymentData?.document;
+
+  if (file && file.doc_og_name) {
+    const ext = file.doc_og_name.split(".").pop()?.toLowerCase();
+
+    if (imageExtensions.includes(ext || "")) {
+      images.push(file);
+    } else if (documentExtensions.includes(ext || "")) {
+      Documents.push(file);
+    }
+  }
+
+  const handleConfirmDelete = () => {
+    if (confirmDelete) {
+      deleteDocument({
+        vendorId: vendorId!,
+        documentId: confirmDelete,
+        deleted_by: userId!,
+      });
+      setConfirmDelete(null);
+    }
+  };
+
+  const canDelete = userType === "admin" || userType === "super-admin";
 
   return (
     <div className="space-y-6">
@@ -646,38 +688,38 @@ export default function DispatchPlanningDetails({
 
             {/* Show existing document if uploaded */}
             {existingPaymentDoc ? (
-              <div className="border rounded-lg p-4 bg-muted/50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded">
-                      <FileCheck className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {existingPaymentDoc.doc_og_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Already uploaded
-                      </p>
-                    </div>
-                  </div>
-                  {existingPaymentDoc.signed_url && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a
-                        href={existingPaymentDoc.signed_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="gap-2"
-                      >
-                        View
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Payment proof has been uploaded. You cannot change it.
-                </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {images.map((doc: any, index: number) => (
+                  <ImageComponent
+                    doc={{
+                      id: doc?.id,
+                      doc_og_name: doc.doc_og_name,
+                      signedUrl: doc.signed_url,
+                      created_at: doc.created_at,
+                    }}
+                    index={index}
+                    canDelete={canDelete}
+                    onView={(i) => {
+                      setStartIndex(i);
+                      setOpenCarousel(true);
+                    }}
+                    onDelete={(id) => setConfirmDelete(Number(id))}
+                  />
+                ))}
+
+                {Documents.map((doc: any) => (
+                  <DocumentCard
+                    key={doc.id}
+                    doc={{
+                      id: doc.id,
+                      originalName: doc.doc_og_name,
+                      signedUrl: doc.signed_url,
+                      created_at: doc.created_at,
+                    }}
+                    canDelete={canDelete}
+                    onDelete={(id) => setConfirmDelete(id)}
+                  />
+                ))}
               </div>
             ) : (
               <FileUploadField
@@ -764,6 +806,37 @@ export default function DispatchPlanningDetails({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={() => setConfirmDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The selected document will be
+              permanently removed from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <ImageCarouselModal
+        images={images}
+        open={openCarousel}
+        initialIndex={startIndex}
+        onClose={() => setOpenCarousel(false)}
+      />
     </div>
   );
 }
