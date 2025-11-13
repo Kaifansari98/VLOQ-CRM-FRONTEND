@@ -88,7 +88,8 @@ export default function DispatchPlanningLeadDetails() {
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
-  const accountId = Number(lead?.account_id);
+  const accountId = lead?.account_id;
+  console.log("Parent 1: ", accountId);
 
   const deleteLeadMutation = useDeleteLead();
 
@@ -246,13 +247,15 @@ export default function DispatchPlanningLeadDetails() {
 
           <TabsContent value="details">
             <main className="flex-1 h-fit">
-              <LeadDetailsGrouped
-                status="dispatch"
-                defaultTab="dispatch"
-                leadId={leadIdNum}
-                accountId={accountId}
-                defaultParentTab="installation"
-              />
+              {!isLoading && accountId && (
+                <LeadDetailsGrouped
+                  status="dispatch"
+                  defaultTab="dispatch"
+                  leadId={leadIdNum}
+                  accountId={accountId}
+                  defaultParentTab="installation"
+                />
+              )}
             </main>
           </TabsContent>
 
@@ -303,7 +306,6 @@ export default function DispatchPlanningLeadDetails() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
       </SidebarInset>
     </SidebarProvider>
   );
