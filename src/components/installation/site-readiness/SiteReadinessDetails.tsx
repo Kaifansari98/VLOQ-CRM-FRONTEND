@@ -91,7 +91,7 @@ export default function SiteReadinessDetails({
               ? {
                   ...item,
                   id: existing.id,
-                  value: existing.value ?? false,
+                  value: existing.value,
                   remark: existing.remark || "",
                 }
               : item;
@@ -156,7 +156,10 @@ export default function SiteReadinessDetails({
     }
   };
 
-  const completedCount = checklistData.filter((item) => item.value).length;
+  const completedCount = checklistData.filter(
+    (item) => item.value !== null
+  ).length;
+
   const totalCount = checklistData.length;
   const completionPercentage = Math.round((completedCount / totalCount) * 100);
 
@@ -254,8 +257,10 @@ export default function SiteReadinessDetails({
               className={cn(
                 "relative p-4 rounded-lg border-2 transition-all duration-200",
                 "hover:border-primary/30 hover:shadow-sm",
-                item.value &&
-                  "border-green-200 bg-green-50/40 dark:border-green-900 dark:bg-green-950/30"
+                item.value === true &&
+                  "border-green-200 bg-green-50/40 dark:border-green-900 dark:bg-green-950/30",
+                item.value === false &&
+                  "border-red-200 bg-red-50/40 dark:border-red-900 dark:bg-red-950/30"
               )}
             >
               {/* Checklist Header */}
@@ -342,7 +347,9 @@ export default function SiteReadinessDetails({
               <div
                 className={cn(
                   "absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-background transition-all",
-                  item.value ? "bg-green-500" : "bg-red-500"
+                  item.value === true && "bg-green-500",
+                  item.value === false && "bg-red-500",
+                  item.value === null && "bg-gray-300"
                 )}
               />
             </div>
