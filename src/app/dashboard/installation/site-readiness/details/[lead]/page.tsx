@@ -17,7 +17,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,7 +85,9 @@ export default function ReadyToDispatchLeadDetails() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState(
+    userType?.toLowerCase() === "site-supervisor" ? "todo" : "details"
+  );
   const [previousTab, setPreviousTab] = useState("details");
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
@@ -96,6 +98,12 @@ export default function ReadyToDispatchLeadDetails() {
   const accountId = Number(lead?.account_id);
 
   const deleteLeadMutation = useDeleteLead();
+
+  useEffect(() => {
+    if (userType?.toLowerCase() === "site-supervisor") {
+      setActiveTab("todo");
+    }
+  }, [userType]);
 
   const { data: readinessStatus, isLoading: checkingStatus } =
     useCheckSiteReadinessCompletion(vendorId, leadIdNum);
@@ -240,15 +248,7 @@ export default function ReadyToDispatchLeadDetails() {
         {/* Tabs */}
         <Tabs
           value={activeTab}
-          onValueChange={(val) => {
-            if (val === "todo") {
-              // store current tab before opening modal
-              setPreviousTab(activeTab);
-              setAssignOpen(true); // open Assign Task modal
-              return; // don't switch tab
-            }
-            setActiveTab(val);
-          }}
+          onValueChange={(val) => setActiveTab(val)}
           className="w-full px-6 pt-4"
         >
           <ScrollArea>
@@ -263,10 +263,7 @@ export default function ReadyToDispatchLeadDetails() {
 
                   {/* ✅ To-Do Task (Conditional Access) */}
                   {canAssignSR(userType) ? (
-                    <TabsTrigger
-                      value="todo"
-                      onClick={() => setAssignOpen(true)}
-                    >
+                    <TabsTrigger value="todo">
                       <PanelsTopLeftIcon
                         size={16}
                         className="mr-1 opacity-60"
@@ -284,7 +281,7 @@ export default function ReadyToDispatchLeadDetails() {
                           To-Do Task
                         </div>
                       }
-                      value="Only Admin or Sales Executive can access this tab"
+                      value="Only Admin or Site Supervisor can access this tab"
                     />
                   )}
 
@@ -316,6 +313,21 @@ export default function ReadyToDispatchLeadDetails() {
               />
             </main>
           </TabsContent>
+
+          {/* ✅ To-Do Task (Same as Site Readiness Details, but only for canAssignSR) */}
+          {canAssignSR(userType) && (
+            <TabsContent value="todo">
+              <main className="flex-1 h-fit">
+                <LeadDetailsGrouped
+                  status="siteReadiness"
+                  defaultTab="siteReadiness"
+                  leadId={leadIdNum}
+                  accountId={accountId}
+                  maxVisibleStage="siteReadiness"
+                />
+              </main>
+            </TabsContent>
+          )}
 
           <TabsContent value="history">
             <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />

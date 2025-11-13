@@ -120,7 +120,7 @@ export const canOrderLogin = (userType: string | undefined) => {
 
 export const canAssignSR = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super_admin", "admin", "site-supervisor"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -147,10 +147,7 @@ export function canUploadOrDeleteOrderLogin(
   );
 }
 
-
-export const canDoDispatchPlanning = (
-  userType: string | undefined
-) => {
+export const canDoDispatchPlanning = (userType: string | undefined) => {
   if (!userType) return false;
   const allowedRoles = ["super_admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
@@ -230,10 +227,7 @@ export function canAccessSaveOrderLoginButton(
   );
 }
 
-export function canAccessInputField(
-  role: string,
-  stage: string
-): boolean {
+export function canAccessInputField(role: string, stage: string): boolean {
   return (
     role === "admin" ||
     role === "super-admin" ||
