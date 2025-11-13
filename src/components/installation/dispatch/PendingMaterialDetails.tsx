@@ -20,12 +20,15 @@ import {
 import { useAppSelector } from "@/redux/store";
 import {
   useCreatePendingMaterialTask,
+  useOrderLoginSummary,
   usePendingMaterialTasks,
 } from "@/api/installation/useDispatchStageLeads";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
+import AssignToPicker from "@/components/assign-to-picker";
+import TextSelectPicker from "@/components/TextSelectPicker";
 
 interface PendingMaterialDetailsProps {
   leadId: number;
@@ -49,10 +52,13 @@ export default function PendingMaterialDetails({
     return;
   }
 
-  console.log("account kjsdfkjdsfjk ",accountId);
+  console.log("account kjsdfkjdsfjk ", accountId);
 
   const { mutateAsync: createPendingTask, isPending } =
     useCreatePendingMaterialTask();
+
+  const { data: orderLoginSummary = [], isLoading: loadingSummary } =
+    useOrderLoginSummary(vendorId, leadId);
 
   const { data: tasks = [], isLoading } = usePendingMaterialTasks(
     vendorId,
@@ -63,7 +69,6 @@ export default function PendingMaterialDetails({
   const [title, setTitle] = useState("");
   const [remark, setRemark] = useState("");
   const [dueDate, setDueDate] = useState<string | null>(null);
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,10 +146,21 @@ export default function PendingMaterialDetails({
                   Material Title
                   <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  placeholder="e.g., Solar Panels, Inverter"
+                <TextSelectPicker
+                  options={
+                    orderLoginSummary.map(
+                      (item: any) => item.item_type || "Untitled Item"
+                    ) || []
+                  }
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(selectedText) => setTitle(selectedText)}
+                  placeholder={
+                    loadingSummary
+                      ? "Loading materials..."
+                      : "Select material..."
+                  }
+                  emptyLabel="Select Material"
+                  disabled={loadingSummary}
                 />
               </div>
 
