@@ -5,12 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import {
-  FolderOpen,
-  Upload,
-  ExternalLink,
-  Loader2,
-} from "lucide-react";
+import { FolderOpen, Upload, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { toast } from "react-toastify";
@@ -33,6 +28,8 @@ import {
 import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 
 interface PostProductionQcPhotosSectionProps {
   leadId: number;
@@ -54,6 +51,9 @@ export default function PostProductionQcPhotosSection({
     vendorId,
     leadId
   );
+
+  const { data: leadData, error } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
 
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
@@ -113,6 +113,7 @@ export default function PostProductionQcPhotosSection({
   };
 
   const canDelete = userType === "admin" || userType === "super-admin";
+  const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatus);
 
   // 🧩 --- Handlers ---
   const handleConfirmDelete = () => {
@@ -139,35 +140,37 @@ export default function PostProductionQcPhotosSection({
       </div>
 
       {/* Upload Section */}
-      <div className="p-6 border-b space-y-4">
-        <FileUploadField
-          value={selectedFiles}
-          onChange={setSelectedFiles}
-          accept=".jpg,.jpeg,.png,.pdf,.zip"
-          multiple
-        />
+      {canViewAndWork && (
+        <div className="p-6 border-b space-y-4">
+          <FileUploadField
+            value={selectedFiles}
+            onChange={setSelectedFiles}
+            accept=".jpg,.jpeg,.png,.pdf,.zip"
+            multiple
+          />
 
-        <div className="flex justify-end">
-          <Button
-            size="sm"
-            onClick={handleUpload}
-            disabled={isPending || selectedFiles.length === 0}
-            className="flex items-center gap-2"
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="animate-spin size-4" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Upload size={16} />
-                Upload Photos
-              </>
-            )}
-          </Button>
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={handleUpload}
+              disabled={isPending || selectedFiles.length === 0}
+              className="flex items-center gap-2"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="animate-spin size-4" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload size={16} />
+                  Upload Photos
+                </>
+              )}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Files List */}
       <div className="p-6">
@@ -197,7 +200,7 @@ export default function PostProductionQcPhotosSection({
         ) : (
           <ScrollArea className="max-h-[400px] mt-2 pr-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-               {images.map((doc: any, index: number) => (
+              {images.map((doc: any, index: number) => (
                 <ImageComponent
                   doc={{
                     id: doc?.id,

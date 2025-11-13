@@ -8,7 +8,7 @@ import { useAppSelector } from "@/redux/store";
 import React, { useEffect, useState } from "react";
 
 interface LeadDetailsProductionUtilProps {
-  leadId?: number;
+  leadId: number;
   accountId?: number;
 }
 
