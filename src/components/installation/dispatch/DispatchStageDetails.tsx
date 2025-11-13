@@ -190,7 +190,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 h-full overflow-y-scroll">
       {/* Required Date & Boxes Info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
@@ -407,65 +407,15 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                 onChange={setSelectedFiles}
                 accept="image/*,.pdf,.doc,.docx"
                 multiple={true}
+                
               />
-              <p className="text-xs text-muted-foreground">
-                Upload images, PDFs, or documents (Maximum 10 files)
-              </p>
             </div>
 
             {/* Selected Files Preview */}
             {selectedFiles.length > 0 && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">
-                    Selected Files ({selectedFiles.length})
-                  </Label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedFiles([])}
-                    className="h-8 text-destructive hover:text-destructive"
-                  >
-                    Clear All
-                  </Button>
-                </div>
+              
 
-                <div className="space-y-2">
-                  {selectedFiles.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 border rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                    >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="p-2 bg-background rounded">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {file.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {(file.size / 1024).toFixed(1)} KB
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          setSelectedFiles((prev) =>
-                            prev.filter((_, i) => i !== index)
-                          )
-                        }
-                        className="h-8 w-8 p-0 hover:bg-destructive/10"
-                      >
-                        <X className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
 
                 <div className="w-full flex justify-end">
                   <Button

@@ -230,7 +230,7 @@ export default function PendingMaterialDetails({
               </div>
             </div>
           ) : (
-            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+            <div className="space-y-3 overflow-y-auto pr-2">
               <AnimatePresence mode="popLayout">
                 {tasks.map((task: any, idx: number) => {
                   const [taskTitle, ...descParts] = (task.remark || "").split(
