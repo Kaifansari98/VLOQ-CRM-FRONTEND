@@ -124,6 +124,12 @@ export const canAssignSR = (userType: string | undefined) => {
   return allowedRoles.includes(userType.toLowerCase());
 };
 
+export const canDoSR = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowedRoles = ["super_admin", "admin", "site-supervisor"];
+  return allowedRoles.includes(userType.toLowerCase());
+};
+
 // utils/privilege.ts
 export function canUploadOrDeleteBookingDone(
   role: string,
