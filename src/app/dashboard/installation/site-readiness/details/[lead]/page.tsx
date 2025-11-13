@@ -56,7 +56,7 @@ import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen
 import {
   canReassingLead,
   canDeleteLead,
-  canAssignSR,
+  canDoSR,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
@@ -262,7 +262,7 @@ export default function ReadyToDispatchLeadDetails() {
                   </TabsTrigger>
 
                   {/* ✅ To-Do Task (Conditional Access) */}
-                  {canAssignSR(userType) ? (
+                  {canDoSR(userType) ? (
                     <TabsTrigger value="todo">
                       <PanelsTopLeftIcon
                         size={16}
@@ -315,7 +315,7 @@ export default function ReadyToDispatchLeadDetails() {
           </TabsContent>
 
           {/* ✅ To-Do Task (Same as Site Readiness Details, but only for canAssignSR) */}
-          {canAssignSR(userType) && (
+          {canDoSR(userType) && (
             <TabsContent value="todo">
               <main className="flex-1 h-fit">
                 <LeadDetailsGrouped
