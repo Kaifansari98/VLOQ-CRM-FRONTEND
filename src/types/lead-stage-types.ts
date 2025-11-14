@@ -12,4 +12,5 @@ export type StageId =
   | "readyToDispatch"
   | "siteReadiness"
   | "dispatchPlanning"
-  | "dispatch";
+  | "dispatch"
+  | "underInstallation";

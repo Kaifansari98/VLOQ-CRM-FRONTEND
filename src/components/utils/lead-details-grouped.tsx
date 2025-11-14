@@ -19,6 +19,7 @@ import DispatchTabsWrapper from "../installation/dispatch/DispatchTabsWrapper";
 type StatusKey = StageId;
 import GroupedSmoothTab from "./grouped-smooth-tab";
 import { StageId } from "@/types/lead-stage-types";
+import UnderInstallationTabsWrapper from "../installation/under-installation/UnderInstallationTabsWrapper";
 
 type GroupKey = "leads" | "project" | "production" | "installation";
 
@@ -169,6 +170,17 @@ export default function LeadDetailsGrouped({
           />
         ),
       },
+      {
+        id: "underInstallation",
+        title: "Under Installation",
+        component: (
+          <UnderInstallationTabsWrapper
+            leadId={leadId}
+            accountId={accountId}
+            name={leadName}
+          />
+        ),
+      },
     ],
   } as const;
 
@@ -204,6 +216,7 @@ export default function LeadDetailsGrouped({
           "siteReadiness",
           "dispatchPlanning",
           "dispatch",
+          "underInstallation",
         ];
 
         const maxIndex = stageOrder.indexOf(status);
