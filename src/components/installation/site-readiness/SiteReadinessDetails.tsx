@@ -24,6 +24,9 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { canViewAndWorSiteRedinessStage } from "@/components/utils/privileges";
+import CustomeTooltip from "@/components/cutome-tooltip";
 
 interface SiteReadinessDetailsProps {
   leadId: number;
@@ -56,6 +59,10 @@ export default function SiteReadinessDetails({
   const vendor_id = useAppSelector((state) => state.auth.user?.vendor_id);
   const user_id = useAppSelector((state) => state.auth.user?.id);
 
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type
+  );
+
   const [checklistData, setChecklistData] = useState<ChecklistItem[]>(
     CHECKLIST_ITEMS.map((item) => ({
       type: item.type,
@@ -64,6 +71,9 @@ export default function SiteReadinessDetails({
       remark: "",
     }))
   );
+
+  const { data: leadData } = useLeadStatus(leadId, vendor_id);
+  const leadStatus = leadData?.status;
 
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
@@ -172,6 +182,8 @@ export default function SiteReadinessDetails({
     );
   }
 
+  const canViewAndWork = canViewAndWorSiteRedinessStage(userType, leadStatus);
+
   return (
     <div className="space-y-4 w-full mx-auto">
       {/* Success/Error Messages */}
@@ -228,29 +240,46 @@ export default function SiteReadinessDetails({
 
               <Separator orientation="vertical" className="h-6 mx-1" />
 
-              <Button
-                onClick={handleSubmit}
-                disabled={loading}
-                size="sm"
-                className="gap-1.5 h-8 px-3"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span className="text-xs">Saving...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-3.5 w-3.5" />
-                    <span className="text-xs">Save Changes</span>
-                  </>
-                )}
-              </Button>
+              <CustomeTooltip
+                truncateValue={
+                  <div
+                    className={`${
+                      !canViewAndWork ? "opacity-70 pointer-events-none" : ""
+                    }`}
+                  >
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={loading || !canViewAndWork}
+                      size="sm"
+                      className="gap-1.5 h-8 px-3"
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <span className="text-xs">Saving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-3.5 w-3.5" />
+                          <span className="text-xs">Save Changes</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                }
+                value={
+                  !canViewAndWork && userType === "site-supervisor"
+                    ? "This lead stage has progressed. Site Supervisors cannot modify this section."
+                    : !canViewAndWork
+                    ? "You do not have access to save changes."
+                    : undefined
+                }
+              />
             </div>
           </div>
         </CardHeader>
 
-        <CardContent className="p-4 space-y-3">
+        <CardContent className="p-4 space-y-3 ">
           {checklistData.map((item, index) => (
             <div
               key={item.type}
@@ -291,27 +320,32 @@ export default function SiteReadinessDetails({
                 <div className="flex gap-1.5">
                   <button
                     type="button"
+                    disabled={!canViewAndWork}
                     onClick={() => handleChecklistChange(index, "value", true)}
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all duration-150",
                       "focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-1",
                       item.value === true
                         ? "bg-green-500 border-green-500 text-white shadow-sm"
-                        : "bg-background border-border text-muted-foreground hover:border-green-400 hover:text-green-600"
+                        : "bg-background border-border text-muted-foreground hover:border-green-400 hover:text-green-600",
+                      !canViewAndWork && "opacity-60 cursor-not-allowed" // 🔥 added here
                     )}
                   >
                     <Check className="h-3.5 w-3.5" />
                     <span>Yes</span>
                   </button>
+
                   <button
                     type="button"
+                    disabled={!canViewAndWork}
                     onClick={() => handleChecklistChange(index, "value", false)}
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all duration-150",
                       "focus:outline-none focus:ring-1 focus:ring-red-500 focus:ring-offset-1",
                       item.value === false
                         ? "bg-red-500 border-red-500 text-white shadow-sm"
-                        : "bg-background border-border text-muted-foreground hover:border-red-400 hover:text-red-600"
+                        : "bg-background border-border text-muted-foreground hover:border-red-400 hover:text-red-600",
+                      !canViewAndWork && "opacity-60 cursor-not-allowed" // 🔥 added here
                     )}
                   >
                     <X className="h-3.5 w-3.5" />
@@ -338,6 +372,7 @@ export default function SiteReadinessDetails({
                     handleChecklistChange(index, "remark", e.target.value)
                   }
                   placeholder="Add any relevant notes or observations..."
+                  disabled={!canViewAndWork}
                   className="resize-none text-xs h-16 py-2"
                   rows={2}
                 />

@@ -241,18 +241,41 @@ export function canAccessInputField(role: string, stage: string): boolean {
   );
 }
 
-
 export function canViewAndWorkProductionStage(
+  role: string,
+  stage: string
+): boolean {
+  // 1. Admins always have access
+  if (role === "admin" || role === "super-admin") return true;
+
+  // 2. Factory has access only in production stage
+  if (role === "factory") return stage === "production-stage";
+
+  // 3. Backend and Tech-check never have access
+  if (role === "backend" || role === "tech-check") return false;
+
+  // 4. Everyone else has access by default
+  return true;
+}
+
+export function canViewAndWorSiteRedinessStage(
   role: string,
   stage: string
 ): boolean {
   return (
     role === "admin" ||
-    role === "super-admin" ||
-    (role === "factory" && stage === "production-stage") 
+    role === "super_admin" ||
+    (role === "site-supervisor" && stage === "site-rediness-stage")
   );
 }
 
-
-
-
+export function canViewAndWorDispatchPlanningStage(
+  role: string,
+  stage: string
+): boolean {
+  return (
+    role === "admin" ||
+    role === "super_admin" ||
+    (role === "sales-executive" && stage === "dispatch-planing-stage")
+  );
+}
