@@ -1,0 +1,95 @@
+import { apiClient } from "@/lib/apiClient";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
+
+/* ==========================================================
+   🔹 1️⃣ Move Lead to Under Installation Stage
+   @route PUT /leads/installation/under-installation/vendorId/:vendorId/leadId/:leadId/move-to-under-installation
+   ========================================================== */
+export const moveLeadToUnderInstallation = async (
+  vendorId: number,
+  leadId: number,
+  updated_by: number
+) => {
+  const { data } = await apiClient.put(
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/move-to-under-installation`,
+    { updated_by }
+  );
+  return data?.data;
+};
+
+/**
+ * ✅ React Query Mutation Hook — Move Lead to Under Installation Stage
+ */
+export const useMoveLeadToUnderInstallation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      updated_by,
+    }: {
+      vendorId: number;
+      leadId: number;
+      updated_by: number;
+    }) => moveLeadToUnderInstallation(vendorId, leadId, updated_by),
+
+    onSuccess: (data) => {
+      toast.success("Lead successfully moved to Under Installation stage");
+      // 🔄 Refresh any affected lists (e.g., dispatch or under-installation leads)
+      queryClient.invalidateQueries({
+        queryKey: ["leadStats"],
+      });
+    },
+
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.message ||
+          "Failed to move lead to Under Installation stage"
+      );
+    },
+  });
+};
+
+/* ==========================================================
+   🔹 GET Under Installation Stage Leads (Paginated)
+   @route GET /leads/installation/under-installation/vendorId/:vendorId/userId/:userId
+   ========================================================== */
+export const getUnderInstallationStageLeads = async (
+  vendorId: number,
+  userId: number,
+  page: number = 1,
+  limit: number = 10
+) => {
+  const { data } = await apiClient.get(
+    `/leads/installation/under-installation/vendorId/${vendorId}/userId/${userId}`,
+    {
+      params: { page, limit },
+    }
+  );
+
+  return data?.data;
+};
+
+/**
+ * ✅ React Query Hook — Under Installation Stage Leads
+ */
+export const useUnderInstallationStageLeads = (
+  vendorId?: number,
+  userId?: number,
+  page: number = 1,
+  limit: number = 10
+) => {
+  return useQuery({
+    queryKey: ["underInstallationStageLeads", vendorId, userId, page, limit],
+    queryFn: () =>
+      getUnderInstallationStageLeads(vendorId!, userId!, page, limit),
+    enabled: !!vendorId && !!userId,
+  });
+};
+
+and so on...
+
+__________________________________________________________________________________________________________
+

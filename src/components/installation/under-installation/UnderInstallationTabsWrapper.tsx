@@ -5,6 +5,7 @@ import SmoothTab from "@/components/kokonutui/smooth-tab";
 import UnderInstallationDetails from "./UnderInstallationDetails";
 import { useUnderInstallationDetails } from "@/api/installation/useUnderInstallationStageLeads";
 import { useAppSelector } from "@/redux/store";
+import InstallationMiscellaneous from "./InstallationMiscellaneous";
 
 export default function UnderInstallationTabsWrapper({
   leadId,
@@ -15,7 +16,8 @@ export default function UnderInstallationTabsWrapper({
   accountId?: number;
   name?: string;
 }) {
-  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
+  const account_id = accountId || 0;
 
   // 🔹 Fetch installation details (to check start date)
   const { data: underDetails } = useUnderInstallationDetails(vendorId, leadId);
@@ -41,19 +43,19 @@ export default function UnderInstallationTabsWrapper({
     },
 
     {
-      id: "misc",
-      title: "Miscellaneous",
-      color: "bg-gray-400",
-      disabled: !installationStarted, // 🚫 disabled until installation starts
-      disabledReason: installationStarted
-        ? "Still yet to come ✨"
-        : "Start installation to access this section",
-      cardContent: (
-        <div className="flex items-center justify-center h-full text-muted-foreground">
-          Miscellaneous section is coming soon...
-        </div>
-      ),
-    },
+        id: "misc",
+        title: "Miscellaneous",
+        color: "bg-gray-400",
+        disabled: !installationStarted,
+        disabledReason: "Start installation to access this section",
+        cardContent: (
+          <InstallationMiscellaneous
+            vendorId={vendorId}
+            leadId={leadId}
+            accountId={account_id}
+          />
+        ),
+      },
 
     {
       id: "issueLog",

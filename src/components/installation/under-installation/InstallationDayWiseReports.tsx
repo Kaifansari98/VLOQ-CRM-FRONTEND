@@ -149,6 +149,20 @@ export default function InstallationDayWiseReports({
     );
   };
 
+  function formatInstallationDate(dateString: string) {
+    const date = new Date(dateString);
+
+    const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+
+    const fullDate = date.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    return `${dayName}, ${fullDate}`;
+  }
+
   return (
     <div className="mt-10 border-t pt-6">
       {/* Header */}
@@ -169,7 +183,7 @@ export default function InstallationDayWiseReports({
       </div>
 
       {/* Report Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {reports?.length === 0 && (
           <div className="col-span-full text-center py-16 text-muted-foreground">
             <div className="flex flex-col items-center gap-3">
@@ -189,61 +203,46 @@ export default function InstallationDayWiseReports({
         {reports?.map((report: ReportCard) => (
           <Card
             key={report.update_id}
-            className="group cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200"
+            className="
+        group cursor-pointer border bg-card
+        hover:border-primary/60 transition-all duration-300 rounded-xl
+      "
             onClick={() => setViewModal({ open: true, data: report })}
           >
-            <CardContent className="p-5">
-              {/* Date Header with Badge */}
-              <div className="flex items-center justify-between mb-4">
+            <CardContent className="px-5 space-y-4">
+              {/* Top Section: Date + Icon */}
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl">
+                  <div className="p-2.5 bg-primary/10 rounded-xl">
                     <Calendar className="w-5 h-5 text-primary" />
                   </div>
                   <div>
                     <p className="font-semibold text-sm">
-                      {formatDate(report.update_date)}
+                      {formatInstallationDate(report.update_date)}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      Installation Update
+                    <p className="text-xs text-muted-foreground flex gap-1 mt-0.5 items-center justify-start">
+                      <FileText className="w-3 h-3" />
+                      {report.documents.length}{" "}
+                      {report.documents.length === 1 ? "Document" : "Documents"}
                     </p>
                   </div>
                 </div>
 
+                {/* External link button */}
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="
+              h-8 w-8 opacity-100 group-hover:opacity-100
+              transition-opacity rounded-full hover:bg-primary/10
+            "
                   onClick={(e) => {
                     e.stopPropagation();
                     setViewModal({ open: true, data: report });
                   }}
                 >
-                  <ExternalLink className="w-4 h-4" />
+                  <ExternalLink className="w-4 h-4 text-muted-foreground" />
                 </Button>
-              </div>
-
-              {/* Documents Badge */}
-              <div className="flex items-center gap-2 mb-3">
-                <Badge variant="secondary" className="text-xs font-normal">
-                  <FileText className="w-3 h-3 mr-1" />
-                  {report.documents.length}{" "}
-                  {report.documents.length === 1 ? "file" : "files"}
-                </Badge>
-              </div>
-
-              {/* Remark Preview */}
-              {report.remark && (
-                <div className="mt-3 pt-3 border-t">
-                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                    {report.remark}
-                  </p>
-                </div>
-              )}
-
-              {/* View Details CTA */}
-              <div className="mt-4 flex items-center text-xs text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                <Eye className="w-3 h-3 mr-1" />
-                View details
               </div>
             </CardContent>
           </Card>
