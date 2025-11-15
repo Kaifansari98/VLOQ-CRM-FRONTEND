@@ -169,7 +169,7 @@ export default function InstallationDayWiseReports({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-semibold">
-            Day-Wise Installation Reports
+            Installation Day-Wise Updates 
           </h3>
           <p className="text-sm text-muted-foreground">
             Track installation progress with daily updates and documentation
@@ -178,7 +178,7 @@ export default function InstallationDayWiseReports({
 
         <Button onClick={() => setIsAddModalOpen(true)} size="sm">
           <Plus className="w-4 h-4 mr-2" />
-          Add Report
+          Add Day Wise Update
         </Button>
       </div>
 
@@ -191,9 +191,9 @@ export default function InstallationDayWiseReports({
                 <FileText className="w-10 h-10 opacity-50" />
               </div>
               <div>
-                <p className="font-medium">No reports yet</p>
+                <p className="font-medium">No updates yet</p>
                 <p className="text-xs mt-1">
-                  Add your first day-wise installation report
+                  Add your first day-wise installation updates
                 </p>
               </div>
             </div>
@@ -309,84 +309,88 @@ export default function InstallationDayWiseReports({
         </DialogContent>
       </Dialog>
 
-      {/* View Documents Modal - Enhanced */}
+      {/* View Documents Modal (Redesigned) */}
       <Dialog
         open={viewModal.open}
         onOpenChange={(open) => setViewModal({ open, data: null })}
       >
-        <DialogContent className="min-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader className="pb-4">
+        <DialogContent className="min-w-4xl w-full max-h-[90vh] overflow-scroll rounded-xl p-0">
+          {/* Header */}
+          <div className="p-6 pb-4 border-b bg-card">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
-                <DialogTitle className="text-xl">
+                <DialogTitle className="text-xl font-semibold tracking-tight">
                   Installation Report
                 </DialogTitle>
+
                 {viewModal.data && (
                   <p className="text-sm text-muted-foreground">
                     {formatFullDate(viewModal.data.update_date)}
                   </p>
                 )}
               </div>
-              <Badge variant="outline" className="ml-4">
+
+              <Badge variant="secondary" className="text-xs px-3 py-1">
                 {viewModal.data?.documents.length || 0} Documents
               </Badge>
             </div>
-          </DialogHeader>
+          </div>
 
-          <Separator />
-
-          <div className="flex-1 overflow-y-auto py-4 space-y-6">
-            {/* Remark Section - Enhanced */}
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-8">
+            {/* Notes */}
             {viewModal.data?.remark && (
-              <div className="bg-muted/30 border border-muted rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="p-1.5 bg-primary/10 rounded">
+              <div className="bg-muted/40 border border-border rounded-lg p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="p-1.5 bg-primary/10 rounded-md">
                     <FileText className="w-4 h-4 text-primary" />
                   </div>
-                  <p className="text-sm font-semibold">Notes</p>
+                  <span className="text-sm font-semibold">Notes</span>
                 </div>
-                <p className="text-sm text-muted-foreground leading-relaxed pl-8">
+
+                <p className="text-sm text-muted-foreground leading-relaxed pl-7">
                   {viewModal.data.remark}
                 </p>
               </div>
             )}
 
-            {/* Documents Section - Enhanced Grid */}
+            {/* Documents */}
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-semibold">Attached Documents</h4>
+                <h4 className="text-sm font-medium">Attached Documents</h4>
                 <Badge variant="secondary" className="text-xs">
                   {viewModal.data?.documents.length || 0} files
                 </Badge>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {viewModal.data?.documents.map((doc, index) => (
+              {/* Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {viewModal.data?.documents.map((doc) => (
                   <div
                     key={doc.document_id}
-                    className="group relative bg-card border border-border rounded-lg p-4 hover:border-primary/50 hover:shadow-md transition-all duration-200"
+                    className="group relative rounded-lg border border-border bg-card p-4 shadow-sm 
+                         hover:shadow-md hover:border-primary/40 transition-all duration-200"
                   >
-                    {/* Document Card */}
                     <div className="flex items-start gap-3">
-                      {/* File Icon */}
-                      <div className="flex-shrink-0 p-2.5 bg-muted rounded-lg">
+                      {/* Icon */}
+                      <div className="p-2 bg-muted rounded-lg">
                         {getFileIcon(doc.original_name)}
                       </div>
 
-                      {/* File Info */}
+                      {/* Info */}
                       <div className="flex-1 min-w-0 space-y-1">
-                        <p className="text-sm font-medium truncate pr-8">
+                        <p className="text-sm font-medium truncate">
                           {doc.original_name}
                         </p>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Badge
                             variant="outline"
-                            className="text-xs font-normal"
+                            className="text-[10px] px-1.5"
                           >
                             {getFileExtension(doc.original_name).toUpperCase()}
                           </Badge>
-                          <span className="text-xs text-muted-foreground">
+                          <span>
                             {new Date(doc.uploaded_at).toLocaleDateString(
                               "en-US",
                               {
@@ -400,8 +404,9 @@ export default function InstallationDayWiseReports({
                         </div>
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {/* Actions */}
+                      <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* View */}
                         <a
                           href={doc.signed_url}
                           target="_blank"
@@ -411,12 +416,13 @@ export default function InstallationDayWiseReports({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
-                            title="View"
+                            className="h-8 w-8 rounded-full hover:bg-primary/10"
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
                         </a>
+
+                        {/* Download */}
                         <a
                           href={doc.signed_url}
                           download={doc.original_name}
@@ -425,8 +431,7 @@ export default function InstallationDayWiseReports({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
-                            title="Download"
+                            className="h-8 w-8 rounded-full hover:bg-primary/10"
                           >
                             <Download className="w-4 h-4" />
                           </Button>
@@ -434,16 +439,14 @@ export default function InstallationDayWiseReports({
                       </div>
                     </div>
 
-                    {/* Image Preview for image files */}
+                    {/* Image Preview */}
                     {isImageFile(doc.original_name) && (
-                      <div className="mt-3 pt-3 border-t">
-                        <div className="relative aspect-video w-full overflow-hidden rounded-md bg-muted">
-                          <img
-                            src={doc.signed_url}
-                            alt={doc.original_name}
-                            className="object-cover w-full h-full hover:scale-105 transition-transform duration-200"
-                          />
-                        </div>
+                      <div className="mt-4 overflow-hidden rounded-md border bg-muted">
+                        <img
+                          src={doc.signed_url}
+                          alt={doc.original_name}
+                          className="object-cover w-full h-40 group-hover:scale-105 transition-transform duration-300"
+                        />
                       </div>
                     )}
                   </div>
@@ -452,16 +455,15 @@ export default function InstallationDayWiseReports({
             </div>
           </div>
 
-          <Separator />
-
-          <DialogFooter className="pt-4">
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-3 border-t bg-card p-4">
             <Button
               variant="outline"
               onClick={() => setViewModal({ open: false, data: null })}
             >
               Close
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

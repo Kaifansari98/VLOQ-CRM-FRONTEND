@@ -6,6 +6,8 @@ import UnderInstallationDetails from "./UnderInstallationDetails";
 import { useUnderInstallationDetails } from "@/api/installation/useUnderInstallationStageLeads";
 import { useAppSelector } from "@/redux/store";
 import InstallationMiscellaneous from "./InstallationMiscellaneous";
+import InstallationIssueLog from "./InstallationIssueLog";
+import UsableHandover from "./UsableHandoverDetails";
 
 export default function UnderInstallationTabsWrapper({
   leadId,
@@ -43,47 +45,51 @@ export default function UnderInstallationTabsWrapper({
     },
 
     {
-        id: "misc",
-        title: "Miscellaneous",
-        color: "bg-gray-400",
-        disabled: !installationStarted,
-        disabledReason: "Start installation to access this section",
-        cardContent: (
-          <InstallationMiscellaneous
-            vendorId={vendorId}
-            leadId={leadId}
-            accountId={account_id}
-          />
-        ),
-      },
+      id: "misc",
+      title: "Miscellaneous",
+      color: "bg-gray-400",
+      disabled: !installationStarted,
+      disabledReason: "Start installation to access this section",
+      cardContent: (
+        <InstallationMiscellaneous
+          vendorId={vendorId}
+          leadId={leadId}
+          accountId={account_id}
+        />
+      ),
+    },
 
     {
       id: "issueLog",
       title: "Issue Log",
-      color: "bg-gray-400",
-      disabled: !installationStarted, // 🚫 disabled until installation starts
+      color: "bg-red-500 hover:bg-red-600", // Changed to red
+      disabled: !installationStarted,
       disabledReason: installationStarted
-        ? "Still yet to come ✨"
+        ? ""
         : "Start installation to access this section",
       cardContent: (
-        <div className="flex items-center justify-center h-full text-muted-foreground">
-          Issue Log section is coming soon...
-        </div>
+        <InstallationIssueLog
+          vendorId={vendorId}
+          leadId={leadId}
+          accountId={account_id}
+        />
       ),
     },
 
     {
       id: "handover",
       title: "Usable Handover",
-      color: "bg-gray-400",
-      disabled: !installationStarted, // 🚫 disabled until installation starts
+      color: "bg-green-500 hover:bg-green-600",
+      disabled: !installationStarted,
       disabledReason: installationStarted
-        ? "Still yet to come ✨"
+        ? ""
         : "Start installation to access this section",
       cardContent: (
-        <div className="flex items-center justify-center h-full text-muted-foreground">
-          Usable Handover section is coming soon...
-        </div>
+        <UsableHandover
+          vendorId={vendorId}
+          leadId={leadId}
+          accountId={account_id}
+        />
       ),
     },
   ];
@@ -94,7 +100,7 @@ export default function UnderInstallationTabsWrapper({
         items={tabs}
         defaultTabId="underInstallation"
         activeColor="bg-blue-500"
-        contentHeightClass="h-[130vh]"
+        contentHeightClass="h-[150vh]"
       />
     </div>
   );

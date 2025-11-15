@@ -1,6 +1,16 @@
-import { apiClient } from "@/lib/apiClient";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+/* ==========================================================
+     📥 GET - All Teams (Vendor Wise)
+     @route GET /miscellaneous-master/team/vendor/:vendor_id
+     ========================================================== */
+  export const getMiscTeams = async (vendorId: number): Promise<MiscTeam[]> => {
+    const { data } = await apiClient.get(
+      `/miscellaneous-master/team/vendor/${vendorId}`
+    );
+  
+    return data?.data || [];
+  }; <- use this to get responsible teams
+
+similar api / hook we need to create eg of it :-
 
 /* ==========================================================
    🔹 1️⃣ Move Lead to Under Installation Stage
@@ -52,44 +62,109 @@ export const useMoveLeadToUnderInstallation = () => {
   });
 };
 
-/* ==========================================================
-   🔹 GET Under Installation Stage Leads (Paginated)
-   @route GET /leads/installation/under-installation/vendorId/:vendorId/userId/:userId
-   ========================================================== */
-export const getUnderInstallationStageLeads = async (
-  vendorId: number,
-  userId: number,
-  page: number = 1,
-  limit: number = 10
-) => {
-  const { data } = await apiClient.get(
-    `/leads/installation/under-installation/vendorId/${vendorId}/userId/${userId}`,
+tabs
+
+"use client";
+
+import React from "react";
+import SmoothTab from "@/components/kokonutui/smooth-tab";
+import UnderInstallationDetails from "./UnderInstallationDetails";
+import { useUnderInstallationDetails } from "@/api/installation/useUnderInstallationStageLeads";
+import { useAppSelector } from "@/redux/store";
+import InstallationMiscellaneous from "./InstallationMiscellaneous";
+import InstallationIssueLog from "./InstallationIssueLog";
+
+export default function UnderInstallationTabsWrapper({
+  leadId,
+  accountId,
+  name,
+}: {
+  leadId: number;
+  accountId?: number;
+  name?: string;
+}) {
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
+  const account_id = accountId || 0;
+
+  // 🔹 Fetch installation details (to check start date)
+  const { data: underDetails } = useUnderInstallationDetails(vendorId, leadId);
+
+  const installationStarted = !!underDetails?.actual_installation_start_date;
+
+  const tabs = [
     {
-      params: { page, limit },
-    }
+      id: "underInstallation",
+      title: "Under Installation",
+      color: "bg-blue-500 hover:bg-blue-600",
+      disabled: !installationStarted, // always accessible
+      disabledReason: installationStarted
+        ? ""
+        : "Start installation to access this section",
+      cardContent: (
+        <UnderInstallationDetails
+          leadId={leadId}
+          accountId={accountId}
+          name={name}
+        />
+      ),
+    },
+
+    {
+      id: "misc",
+      title: "Miscellaneous",
+      color: "bg-gray-400",
+      disabled: !installationStarted,
+      disabledReason: "Start installation to access this section",
+      cardContent: (
+        <InstallationMiscellaneous
+          vendorId={vendorId}
+          leadId={leadId}
+          accountId={account_id}
+        />
+      ),
+    },
+
+    {
+      id: "issueLog",
+      title: "Issue Log",
+      color: "bg-red-500 hover:bg-red-600", // Changed to red
+      disabled: !installationStarted,
+      disabledReason: installationStarted
+        ? ""
+        : "Start installation to access this section",
+      cardContent: (
+        <InstallationIssueLog
+          vendorId={vendorId}
+          leadId={leadId}
+          accountId={account_id}
+        />
+      ),
+    },
+
+    {
+      id: "handover",
+      title: "Usable Handover",
+      color: "bg-gray-400",
+      disabled: !installationStarted, // 🚫 disabled until installation starts
+      disabledReason: installationStarted
+        ? "Still yet to come ✨"
+        : "Start installation to access this section",
+      cardContent: (
+        <div className="flex items-center justify-center h-full text-muted-foreground">
+          Usable Handover section is coming soon...
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="w-full h-full">
+      <SmoothTab
+        items={tabs}
+        defaultTabId="underInstallation"
+        activeColor="bg-blue-500"
+        contentHeightClass="h-[130vh]"
+      />
+    </div>
   );
-
-  return data?.data;
-};
-
-/**
- * ✅ React Query Hook — Under Installation Stage Leads
- */
-export const useUnderInstallationStageLeads = (
-  vendorId?: number,
-  userId?: number,
-  page: number = 1,
-  limit: number = 10
-) => {
-  return useQuery({
-    queryKey: ["underInstallationStageLeads", vendorId, userId, page, limit],
-    queryFn: () =>
-      getUnderInstallationStageLeads(vendorId!, userId!, page, limit),
-    enabled: !!vendorId && !!userId,
-  });
-};
-
-and so on...
-
-__________________________________________________________________________________________________________
-
+}

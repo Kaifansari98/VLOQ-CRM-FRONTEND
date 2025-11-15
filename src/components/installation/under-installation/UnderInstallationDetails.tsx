@@ -79,6 +79,9 @@ export default function UnderInstallationDetails({
     if (details?.expected_installation_end_date) {
       setEndDate(details.expected_installation_end_date);
     }
+    if(details?.actual_installation_start_date) {
+        console.log("Installation start date", details?.actual_installation_start_date);
+    }
   }, [mappedInstallers, details]);
 
   // 🔹 State: date + selected installers
@@ -235,6 +238,7 @@ export default function UnderInstallationDetails({
       {/*   INSTALLATION COMPLETION UI   */}
       {/* ------------------------------- */}
 
+      {installationStarted && (
       <div className="mt-10 border-t pt-6">
         <h3 className="text-lg font-semibold">Installation Completion</h3>
         <p className="text-sm text-muted-foreground mb-6">
@@ -307,6 +311,7 @@ export default function UnderInstallationDetails({
           </div>
         </div>
       </div>
+      )}
 
       <AlertDialog
         open={!!confirmState}

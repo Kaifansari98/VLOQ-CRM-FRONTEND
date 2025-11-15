@@ -73,6 +73,69 @@ export interface MiscTeam {
   created_at: string;
 }
 
+export interface IssueType {
+  id: number;
+  name: string;
+  vendor_id: number;
+  created_at: string;
+}
+
+export interface InstallationIssueLog {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  account_id: number;
+  issue_description: string;
+  issue_impact: string;
+  created_by: number;
+  created_at: string;
+  createdBy: {
+    id: number;
+    user_name: string;
+  };
+  issueTypes: Array<{
+    id: number;
+    type: IssueType;
+  }>;
+  responsibleTeams: Array<{
+    id: number;
+    team: {
+      id: number;
+      team_name: string;
+    };
+  }>;
+  lead?: {
+    id: number;
+    lead_code: string;
+    firstname: string;
+    lastname: string;
+  };
+  account?: {
+    id: number;
+    name: string;
+    contact_no: string;
+  };
+}
+
+export interface CreateIssueLogPayload {
+  vendor_id: number;
+  lead_id: number;
+  account_id: number;
+  issue_type_ids: number[];
+  issue_description: string;
+  issue_impact: string;
+  responsible_team_ids: number[];
+  created_by: number;
+}
+
+export interface UpdateIssueLogPayload {
+  issue_type_ids?: number[];
+  issue_description?: string;
+  issue_impact?: string;
+  responsible_team_ids?: number[];
+  updated_by: number;
+}
+
 
 /* ==========================================================
    🔹 1️⃣ Move Lead to Under Installation Stage
@@ -677,3 +740,341 @@ export const useMiscellaneousEntries = (
       },
     });
   };
+
+/**
+ * 📋 GET - All Issue Types by Vendor
+ * @route GET /issue-logs/issue-type/vendor/:vendor_id
+ */
+export const getIssueTypes = async (vendorId: number): Promise<IssueType[]> => {
+  const { data } = await apiClient.get(
+    `/issue-logs/issue-type/vendor/${vendorId}`
+  );
+  return data?.data || [];
+};
+
+/**
+ * 📋 GET - All Installation Issue Logs
+ * @route GET /leads/installation/under-installation/issue-log/vendor/:vendor_id/lead/:lead_id
+ */
+export const getInstallationIssueLogs = async (
+  vendorId: number,
+  leadId: number
+): Promise<InstallationIssueLog[]> => {
+  const { data } = await apiClient.get(
+    `/leads/installation/under-installation/issue-log/vendor/${vendorId}/lead/${leadId}`
+  );
+  return data?.data || [];
+};
+
+/**
+ * 📋 GET - Single Installation Issue Log by ID
+ * @route GET /leads/installation/under-installation/issue-log/:id
+ */
+export const getInstallationIssueLogById = async (
+  id: number
+): Promise<InstallationIssueLog> => {
+  const { data } = await apiClient.get(
+    `/leads/installation/under-installation/issue-log/${id}`
+  );
+  return data?.data;
+};
+
+/**
+ * ➕ POST - Create Installation Issue Log
+ * @route POST /leads/installation/under-installation/issue-log/create
+ */
+export const createInstallationIssueLog = async (
+  payload: CreateIssueLogPayload
+): Promise<InstallationIssueLog> => {
+  const { data } = await apiClient.post(
+    `/leads/installation/under-installation/issue-log/create`,
+    payload
+  );
+  return data?.data;
+};
+
+/**
+ * 🔄 PUT - Update Installation Issue Log
+ * @route PUT /leads/installation/under-installation/issue-log/:id/update
+ */
+export const updateInstallationIssueLog = async (
+  id: number,
+  payload: UpdateIssueLogPayload
+): Promise<InstallationIssueLog> => {
+  const { data } = await apiClient.put(
+    `/leads/installation/under-installation/issue-log/${id}/update`,
+    payload
+  );
+  return data?.data;
+};
+
+/* ==========================================================
+   🔹 REACT QUERY HOOKS
+   ========================================================== */
+
+/**
+ * ✅ React Query Hook - Get Issue Types
+ */
+export const useGetIssueTypes = (vendorId: number) => {
+  return useQuery({
+    queryKey: ["issueTypes", vendorId],
+    queryFn: () => getIssueTypes(vendorId),
+    enabled: !!vendorId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+/**
+ * ✅ React Query Hook - Get Installation Issue Logs
+ */
+export const useGetInstallationIssueLogs = (
+  vendorId: number,
+  leadId: number
+) => {
+  return useQuery({
+    queryKey: ["installationIssueLogs", vendorId, leadId],
+    queryFn: () => getInstallationIssueLogs(vendorId, leadId),
+    enabled: !!vendorId && !!leadId,
+  });
+};
+
+/**
+ * ✅ React Query Hook - Get Installation Issue Log by ID
+ */
+export const useGetInstallationIssueLogById = (id: number) => {
+  return useQuery({
+    queryKey: ["installationIssueLog", id],
+    queryFn: () => getInstallationIssueLogById(id),
+    enabled: !!id,
+  });
+};
+
+/**
+ * ✅ React Query Mutation Hook - Create Installation Issue Log
+ */
+export const useCreateInstallationIssueLog = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: CreateIssueLogPayload) =>
+      createInstallationIssueLog(payload),
+
+    onSuccess: (data, variables) => {
+      toast.success("Issue log created successfully");
+      
+      // Invalidate and refetch issue logs for this lead
+      queryClient.invalidateQueries({
+        queryKey: ["installationIssueLogs", variables.vendor_id, variables.lead_id],
+      });
+      
+      // Also invalidate lead stats if you have them
+      queryClient.invalidateQueries({
+        queryKey: ["leadStats"],
+      });
+    },
+
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.message || "Failed to create issue log"
+      );
+    },
+  });
+};
+
+/**
+ * ✅ React Query Mutation Hook - Update Installation Issue Log
+ */
+export const useUpdateInstallationIssueLog = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number;
+      payload: UpdateIssueLogPayload;
+    }) => updateInstallationIssueLog(id, payload),
+
+    onSuccess: (data) => {
+      toast.success("Issue log updated successfully");
+      
+      // Invalidate the specific issue log
+      queryClient.invalidateQueries({
+        queryKey: ["installationIssueLog", data.id],
+      });
+      
+      // Invalidate the list of issue logs
+      queryClient.invalidateQueries({
+        queryKey: ["installationIssueLogs"],
+      });
+    },
+
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.message || "Failed to update issue log"
+      );
+    },
+  });
+};
+
+/* ==========================================================
+   📦 Usable Handover API & React Query Hooks
+   ========================================================== */
+   
+   export interface LeadDocument {
+     id: number;
+     vendor_id: number;
+     account_id: number;
+     lead_id: number;
+     doc_type_id: number;
+     doc_og_name: string;
+     doc_sys_name: string;
+     created_by: number;
+     created_at: string;
+     signedUrl?: string;
+   }
+   
+   export interface UsableHandoverData {
+     pending_work_details: string | null;
+     final_site_photos: LeadDocument[];
+     handover_documents: LeadDocument[];
+   }
+   
+   export interface UpdateUsableHandoverPayload {
+     vendor_id: number;
+     lead_id: number;
+     account_id: number;
+     created_by: number;
+     pending_work_details?: string;
+     files: File[];
+   }
+   
+   export interface UpdateRemarksPayload {
+     vendor_id: number;
+     lead_id: number;
+     pending_work_details: string;
+   }
+   
+   /* ==========================================================
+      🔹 API FUNCTIONS
+      ========================================================== */
+   
+   /**
+    * 📋 GET - Usable Handover Data
+    * @route GET /leads/installation/under-installation/:vendor_id/:lead_id
+    */
+   export const getUsableHandover = async (
+     vendorId: number,
+     leadId: number
+   ): Promise<UsableHandoverData> => {
+     const { data } = await apiClient.get(
+       `/leads/installation/under-installation/${vendorId}/${leadId}`
+     );
+     return data?.data;
+   };
+   
+   /**
+    * 🔄 POST - Update Usable Handover (Upload Files)
+    * @route POST /leads/installation/under-installation/usable-handover/update
+    */
+   export const updateUsableHandover = async (
+     formData: FormData
+   ): Promise<any> => {
+     const { data } = await apiClient.post(
+       `/leads/installation/under-installation/usable-handover/update`,
+       formData,
+       {
+         headers: {
+           "Content-Type": "multipart/form-data",
+         },
+       }
+     );
+     return data?.data;
+   };
+   
+   /**
+    * 🔄 PUT - Update Remarks Only
+    * @route PUT /leads/installation/under-installation/update-remarks
+    */
+   export const updateRemarks = async (
+     payload: UpdateRemarksPayload
+   ): Promise<any> => {
+     const { data } = await apiClient.put(
+       `/leads/installation/under-installation/update-remarks`,
+       payload
+     );
+     return data?.data;
+   };
+   
+   /* ==========================================================
+      🔹 REACT QUERY HOOKS
+      ========================================================== */
+   
+   /**
+    * ✅ React Query Hook - Get Usable Handover Data
+    */
+   export const useGetUsableHandover = (vendorId: number, leadId: number) => {
+     return useQuery({
+       queryKey: ["usableHandover", vendorId, leadId],
+       queryFn: () => getUsableHandover(vendorId, leadId),
+       enabled: !!vendorId && !!leadId,
+       refetchOnMount: true,
+     });
+   };
+   
+   /**
+    * ✅ React Query Mutation Hook - Update Usable Handover (Upload Files)
+    */
+   export const useUpdateUsableHandover = () => {
+     const queryClient = useQueryClient();
+   
+     return useMutation({
+       mutationFn: (formData: FormData) => updateUsableHandover(formData),
+   
+       onSuccess: (data, variables) => {
+         toast.success("Files uploaded successfully");
+         
+         // Extract vendor_id and lead_id from FormData
+         const vendorId = variables.get("vendor_id");
+         const leadId = variables.get("lead_id");
+         
+         // Invalidate and refetch usable handover data
+         queryClient.invalidateQueries({
+           queryKey: ["usableHandover", Number(vendorId), Number(leadId)],
+         });
+       },
+   
+       onError: (error: any) => {
+         toast.error(
+           error?.response?.data?.message || "Failed to upload files"
+         );
+       },
+     });
+   };
+   
+   /**
+    * ✅ React Query Mutation Hook - Update Remarks Only
+    */
+   export const useUpdateRemarks = () => {
+     const queryClient = useQueryClient();
+   
+     return useMutation({
+       mutationFn: (payload: UpdateRemarksPayload) => updateRemarks(payload),
+   
+       onSuccess: (data, variables) => {
+         toast.success("Remarks updated successfully");
+         
+         // Invalidate and refetch usable handover data
+         queryClient.invalidateQueries({
+           queryKey: ["usableHandover", variables.vendor_id, variables.lead_id],
+         });
+       },
+   
+       onError: (error: any) => {
+         toast.error(
+           error?.response?.data?.message || "Failed to update remarks"
+         );
+       },
+     });
+   };
