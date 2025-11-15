@@ -35,7 +35,7 @@ import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
-import { canViewAndWorSiteRedinessStage } from "@/components/utils/privileges";
+import { canViewAndWorkSiteRedinessStage } from "@/components/utils/privileges";
 
 interface CurrentSitePhotosReadinessSectionProps {
   leadId: number;
@@ -128,7 +128,7 @@ export default function CurrentSitePhotosReadinessSection({
 
   const canDelete = userType === "admin" || userType === "super-admin";
 
-  const canViewAndWork = canViewAndWorSiteRedinessStage(userType, leadStatus);
+  const canViewAndWork = canViewAndWorkSiteRedinessStage(userType, leadStatus);
 
   // 🧩 --- Handlers ---
   const handleConfirmDelete = () => {

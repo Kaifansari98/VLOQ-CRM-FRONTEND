@@ -52,6 +52,9 @@ import { useDeleteDocument } from "@/api/leads";
 import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { canViewAndWorkDispatchPlanningStage } from "@/components/utils/privileges";
+import CustomeTooltip from "@/components/cutome-tooltip";
 
 interface DispatchPlanningDetailsProps {
   leadId: number;
@@ -90,6 +93,9 @@ export default function DispatchPlanningDetails({
   const userId = useAppSelector((state) => state.auth.user?.id) || 0;
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
 
+  const { data: leadData, isLoading, error } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
+
   // State for Dispatch Planning Info
   const [dispatchInfo, setDispatchInfo] = useState({
     required_date_for_dispatch: "",
@@ -121,6 +127,7 @@ export default function DispatchPlanningDetails({
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   // Queries
+
   const {
     data: dispatchInfoData,
     isLoading: loadingDispatchInfo,
@@ -401,8 +408,14 @@ export default function DispatchPlanningDetails({
 
   const canDelete = userType === "admin" || userType === "super-admin";
 
+  const canViewAndWork = canViewAndWorkDispatchPlanningStage(
+    userType,
+    leadStatus
+  );
+
+  console.log("can View And Work: ", canViewAndWork);
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-10">
       {/* Dispatch Planning Information */}
       <Card>
         <CardHeader>
@@ -431,6 +444,7 @@ export default function DispatchPlanningDetails({
               <Input
                 placeholder="Enter contact person name"
                 {...register("onsite_contact_person_name")}
+                disabled={!canViewAndWork}
               />
               {errors.onsite_contact_person_name && (
                 <p className="text-xs text-red-500">
@@ -449,6 +463,7 @@ export default function DispatchPlanningDetails({
               <PhoneInput
                 placeholder="Enter contact number"
                 defaultCountry="IN"
+                disabled={!canViewAndWork}
                 value={getValues("onsite_contact_person_number")}
                 onChange={(value) =>
                   setValue("onsite_contact_person_number", value || "")
@@ -470,6 +485,7 @@ export default function DispatchPlanningDetails({
               <Input
                 placeholder="Enter alternate contact person name"
                 {...register("alt_onsite_contact_person_name")}
+                disabled={!canViewAndWork}
               />
             </div>
 
@@ -482,6 +498,7 @@ export default function DispatchPlanningDetails({
               <PhoneInput
                 placeholder="Enter alternate contact number"
                 defaultCountry="IN"
+                disabled={!canViewAndWork}
                 value={getValues("alt_onsite_contact_person_number")}
                 onChange={(value) =>
                   setValue("alt_onsite_contact_person_number", value || "")
@@ -496,13 +513,25 @@ export default function DispatchPlanningDetails({
                 Required OnSite Delivery Date{" "}
                 <span className="text-red-500">*</span>
               </Label>
-              <CustomeDatePicker
-                value={getValues("required_date_for_dispatch")}
-                onChange={(value) =>
-                  setValue("required_date_for_dispatch", value || "")
+              <div
+                className={
+                  !canViewAndWork
+                    ? "opacity-50 pointer-events-none w-full"
+                    : "w-full"
                 }
-                restriction="futureAfterTwoDays"
-              />
+              >
+                <CustomeDatePicker
+                  value={getValues("required_date_for_dispatch")}
+                  onChange={
+                    !canViewAndWork
+                      ? () => {}
+                      : (value) =>
+                          setValue("required_date_for_dispatch", value || "")
+                  }
+                  restriction="futureAfterTwoDays"
+                />
+              </div>
+
               {errors.required_date_for_dispatch && (
                 <p className="text-xs text-red-500">
                   {errors.required_date_for_dispatch.message}
@@ -525,6 +554,7 @@ export default function DispatchPlanningDetails({
                   { label: "Not Available", value: false },
                 ].map((option) => (
                   <Button
+                    disabled={!canViewAndWork}
                     key={option.label}
                     type="button"
                     variant={
@@ -571,27 +601,28 @@ export default function DispatchPlanningDetails({
                 setValue("dispatch_planning_remark", value || "")
               }
               maxLength={1000}
+              disabled={!canViewAndWork}
             />
           </div>
 
-          <Button
-            onClick={handleSaveInfo}
-            disabled={saveInfoMutation.isPending}
-            className="w-full md:w-auto"
-          >
-            {saveInfoMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>Save Dispatch Info</>
-            )}
-          </Button>
+          {canViewAndWork && (
+            <Button
+              onClick={handleSaveInfo}
+              disabled={saveInfoMutation.isPending}
+              className="w-full md:w-auto"
+            >
+              {saveInfoMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>Save Dispatch Info</>
+              )}
+            </Button>
+          )}
         </CardContent>
       </Card>
-
-      <Separator />
 
       {/* Payment Information */}
       <Card>
@@ -609,7 +640,7 @@ export default function DispatchPlanningDetails({
             )}
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-7">
           {!infoSaved && (
             <div className="bg-muted p-4 rounded-lg text-sm text-muted-foreground">
               Please save dispatch planning information first before adding
@@ -617,7 +648,7 @@ export default function DispatchPlanningDetails({
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 items-start gap-4 ">
             <div className="space-y-2">
               <Label>
                 Pending Payment
@@ -641,15 +672,13 @@ export default function DispatchPlanningDetails({
                   })
                 }
                 placeholder="Enter amount"
-                disabled={!infoSaved || existingPaymentDoc !== null}
+                disabled={
+                  !canViewAndWork || !infoSaved || existingPaymentDoc !== null
+                }
               />
-
-              {!paymentData && (
-                <p className="text-xs text-muted-foreground">
-                  Project Pending Amount:{" "}
-                  <strong>₹{project_pending_amount ?? 0}</strong>
-                </p>
-              )}
+              <p className="text-sm font-medium mt-2">
+                Project Pending Amount: {project_pending_amount}
+              </p>
             </div>
 
             {/* Pending Payment Details */}
@@ -662,6 +691,7 @@ export default function DispatchPlanningDetails({
                   <span className="text-red-500 ml-1">*</span>
                 )}
               </Label>
+
               <Input
                 placeholder="Enter payment details"
                 value={paymentInfo.pending_payment_details}
@@ -671,20 +701,24 @@ export default function DispatchPlanningDetails({
                     pending_payment_details: e.target.value,
                   })
                 }
-                disabled={!infoSaved || existingPaymentDoc !== null}
+                disabled={
+                  !canViewAndWork || !infoSaved || existingPaymentDoc !== null
+                }
               />
             </div>
           </div>
 
           {/* Payment Screenshot */}
           <div className="space-y-2">
-            <Label>
-              Payment Screenshot
-              {(paymentInfo.pending_payment ||
-                paymentInfo.pending_payment_details) && (
-                <span className="text-red-500 ml-1">*</span>
-              )}
-            </Label>
+            {(existingPaymentDoc || canViewAndWork) && (
+              <Label>
+                Payment Screenshot
+                {(paymentInfo.pending_payment ||
+                  paymentInfo.pending_payment_details) && (
+                  <span className="text-red-500 ml-1">*</span>
+                )}
+              </Label>
+            )}
 
             {/* Show existing document if uploaded */}
             {existingPaymentDoc ? (
@@ -698,7 +732,6 @@ export default function DispatchPlanningDetails({
                       created_at: doc.created_at,
                     }}
                     index={index}
-                    canDelete={canDelete}
                     onView={(i) => {
                       setStartIndex(i);
                       setOpenCarousel(true);
@@ -722,47 +755,54 @@ export default function DispatchPlanningDetails({
                 ))}
               </div>
             ) : (
-              <FileUploadField
-                value={paymentInfo.payment_proof_file}
-                onChange={(files) =>
-                  setPaymentInfo({
-                    ...paymentInfo,
-                    payment_proof_file: files,
-                  })
-                }
-                accept=".jpg,.jpeg,.png,.pdf"
-                multiple={false}
-              />
+              canViewAndWork && (
+                <FileUploadField
+                  value={paymentInfo.payment_proof_file}
+                  onChange={(files) =>
+                    setPaymentInfo({
+                      ...paymentInfo,
+                      payment_proof_file: files,
+                    })
+                  }
+                  disabled={!canViewAndWork}
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  multiple={false}
+                />
+              )
             )}
           </div>
 
-          {(paymentInfo.pending_payment ||
-            paymentInfo.pending_payment_details ||
-            paymentInfo.payment_proof_file.length > 0) && (
-            <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-              <strong>Note:</strong> If you fill any payment field, all three
-              fields (Amount, Details, and Screenshot) become mandatory.
-            </p>
-          )}
-
-          <Button
-            onClick={handlePaymentSaveClick}
-            disabled={
-              savePaymentMutation.isPending ||
-              !infoSaved ||
-              existingPaymentDoc !== null
-            }
-            className="w-full md:w-auto"
-          >
-            {savePaymentMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>Save Payment Info</>
+          {canViewAndWork &&
+            !existingPaymentDoc &&
+            (paymentInfo.pending_payment ||
+              paymentInfo.pending_payment_details ||
+              paymentInfo.payment_proof_file.length > 0) && (
+              <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                <strong>Note:</strong> If you fill any payment field, all three
+                fields (Amount, Details, and Screenshot) become mandatory.
+              </p>
             )}
-          </Button>
+
+          {canViewAndWork && !existingPaymentDoc && (
+            <Button
+              onClick={handlePaymentSaveClick}
+              disabled={
+                savePaymentMutation.isPending ||
+                !infoSaved ||
+                existingPaymentDoc !== null
+              }
+              className="w-full md:w-auto"
+            >
+              {savePaymentMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>Save Payment Info</>
+              )}
+            </Button>
+          )}
         </CardContent>
       </Card>
 

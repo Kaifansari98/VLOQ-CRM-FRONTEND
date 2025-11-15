@@ -67,6 +67,8 @@ import { useDeleteDocument } from "@/api/leads";
 import DocumentCard from "@/components/utils/documentCard";
 import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { canViewAndWorkDispatchStage } from "@/components/utils/privileges";
 
 const DispatchDetailsSchema = z.object({
   dispatch_date: z.string().nonempty("Dispatch date is required"),
@@ -109,6 +111,9 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     vendorId,
     leadId
   );
+
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
   const addDispatchMutation = useAddDispatchDetails();
   const uploadDocsMutation = useUploadDispatchDocuments();
 
@@ -242,6 +247,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   }
 
   const canDelete = userType === "admin" || userType === "super-admin";
+  const canViewAndWork = canViewAndWorkDispatchStage(userType, leadStatus);
 
   return (
     <div className="space-y-6 h-full overflow-y-scroll">
@@ -289,19 +295,22 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     <p className="text-lg font-semibold text-foreground">
                       {requiredDateData?.no_of_boxes || 0}
                     </p>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-6 w-6 p-0 hover:bg-accent rounded-full"
-                      onClick={() => {
-                        setNoOfBoxesInput(
-                          requiredDateData?.no_of_boxes?.toString() || ""
-                        );
-                        setOpenBoxesModal(true);
-                      }}
-                    >
-                      <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-                    </Button>
+
+                    {canViewAndWork && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 hover:bg-accent rounded-full"
+                        onClick={() => {
+                          setNoOfBoxesInput(
+                            requiredDateData?.no_of_boxes?.toString() || ""
+                          );
+                          setOpenBoxesModal(true);
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -345,13 +354,22 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     Dispatch Date
                     <span className="text-red-500">*</span>
                   </Label>
-                  <CustomeDatePicker
-                    value={formData.dispatch_date}
-                    onChange={(value) =>
-                      setFormData({ ...formData, dispatch_date: value || "" })
+
+                  <div
+                    className={
+                      !canViewAndWork
+                        ? "opacity-50 pointer-events-none w-full"
+                        : "w-full"
                     }
-                    restriction="futureOnly"
-                  />
+                  >
+                    <CustomeDatePicker
+                      value={formData.dispatch_date}
+                      onChange={(value) =>
+                        setFormData({ ...formData, dispatch_date: value || "" })
+                      }
+                      restriction="futureOnly"
+                    />
+                  </div>
                 </div>
 
                 {/* Vehicle Number */}
@@ -361,6 +379,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     onChange={(val) =>
                       setFormData({ ...formData, vehicle_no: val })
                     }
+                    disabled={!canViewAndWork}
                     required
                   />
                 </div>
@@ -377,6 +396,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     value={formData.driver_name}
                     onChange={handleInputChange}
                     placeholder="Enter driver name"
+                    disabled={!canViewAndWork}
                   />
                 </div>
 
@@ -389,6 +409,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                   <PhoneInput
                     placeholder="Enter phone number"
                     defaultCountry="IN"
+                    disabled={!canViewAndWork}
                     value={formData.driver_number}
                     onChange={(value) =>
                       setFormData({
@@ -412,24 +433,27 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                   onChange={handleInputChange}
                   placeholder="Add any additional notes or remarks..."
                   rows={3}
+                  disabled={!canViewAndWork}
                 />
               </div>
 
               {/* Submit Button */}
-              <Button
-                type="submit"
-                disabled={addDispatchMutation.isPending}
-                className="w-full md:w-auto"
-              >
-                {addDispatchMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>Save Dispatch Details</>
-                )}
-              </Button>
+              {canViewAndWork && (
+                <Button
+                  type="submit"
+                  disabled={addDispatchMutation.isPending}
+                  className="w-full md:w-auto"
+                >
+                  {addDispatchMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>Save Dispatch Details</>
+                  )}
+                </Button>
+              )}
             </form>
           )}
         </CardContent>
@@ -446,18 +470,20 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
             <span className="text-red-500">*</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-3">
           {/* File Upload Area */}
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Upload Files</Label>
-              <FileUploadField
-                value={selectedFiles}
-                onChange={setSelectedFiles}
-                accept="image/*,.pdf,.doc,.docx"
-                multiple={true}
-              />
-            </div>
+            {canViewAndWork && (
+              <div className="space-y-2">
+                <Label>Upload Files</Label>
+                <FileUploadField
+                  value={selectedFiles}
+                  onChange={setSelectedFiles}
+                  accept="image/*,.pdf,.doc,.docx"
+                  multiple={true}
+                />
+              </div>
+            )}
 
             {/* Selected Files Preview */}
             {selectedFiles.length > 0 && (
@@ -576,7 +602,8 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
       </Card>
 
       {/* Pending Material Details Section */}
-      <PendingMaterialDetails leadId={leadId} accountId={accountId} />
+   
+      <PendingMaterialDetails leadId={leadId} accountId={accountId} disabled={canViewAndWork} />
 
       {/* ✨ Edit No. of Boxes Modal */}
       <Dialog open={openBoxesModal} onOpenChange={setOpenBoxesModal}>

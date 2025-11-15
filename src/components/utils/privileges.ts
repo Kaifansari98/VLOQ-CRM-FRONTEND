@@ -256,26 +256,37 @@ export function canViewAndWorkProductionStage(
 
   // 4. Everyone else has access by default
   return true;
-}
+} 
 
-export function canViewAndWorSiteRedinessStage(
+export function canViewAndWorkSiteRedinessStage(
   role: string,
   stage: string
 ): boolean {
   return (
     role === "admin" ||
     role === "super_admin" ||
-    (role === "site-supervisor" && stage === "site-rediness-stage")
+    (role === "site-supervisor" && stage === "site-readiness-stage")
   );
 }
 
-export function canViewAndWorDispatchPlanningStage(
+export function canViewAndWorkDispatchPlanningStage(
   role: string,
   stage: string
 ): boolean {
   return (
     role === "admin" ||
     role === "super_admin" ||
-    (role === "sales-executive" && stage === "dispatch-planing-stage")
+    (role === "sales-executive" && stage === "dispatch-planning-stage")
+  );
+}
+
+export function canViewAndWorkDispatchStage(
+  role: string,
+  stage: string
+): boolean {
+  return (
+    role === "admin" ||
+    role === "super_admin" ||
+    (role === "factory" && stage === "dispatch-stage")
   );
 }

@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
-import { canViewAndWorSiteRedinessStage } from "@/components/utils/privileges";
+import { canViewAndWorkSiteRedinessStage } from "@/components/utils/privileges";
 import CustomeTooltip from "@/components/cutome-tooltip";
 
 interface SiteReadinessDetailsProps {
@@ -182,7 +182,7 @@ export default function SiteReadinessDetails({
     );
   }
 
-  const canViewAndWork = canViewAndWorSiteRedinessStage(userType, leadStatus);
+  const canViewAndWork = canViewAndWorkSiteRedinessStage(userType, leadStatus);
 
   return (
     <div className="space-y-4 w-full mx-auto">
