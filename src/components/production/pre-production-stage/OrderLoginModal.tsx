@@ -23,6 +23,9 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 import CustomeTooltip from "@/components/cutome-tooltip";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
+import { useAppSelector } from "@/redux/store";
 
 interface OrderLoginModalProps {
   open: boolean;
@@ -57,12 +60,16 @@ export default function OrderLoginModal({
   productionDate,
   markedAsCompletedDate,
 }: OrderLoginModalProps) {
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+
   const queryClient = useQueryClient();
   const { data: vendors } = useCompanyVendors(vendorId);
   const { mutateAsync } = useHandleFactoryVendorSelection();
   const [selectedVendorId, setSelectedVendorId] = useState<number | null>(
     currentCompanyVendorId || null
   );
+  const { data: leadData, error } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
   const [remarkModalOpen, setRemarkModalOpen] = useState(false);
   const [pendingVendorId, setPendingVendorId] = useState<number | null>(null);
 
@@ -210,6 +217,8 @@ export default function OrderLoginModal({
     }
   };
 
+  const canWorkAndView = canViewAndWorkProductionStage(userType, leadStatus);
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -280,6 +289,7 @@ export default function OrderLoginModal({
                             label: v.company_name,
                           })) ?? []
                         }
+                        disabled={!canWorkAndView}
                         value={selectedVendorId || undefined}
                         onChange={isCompleted ? () => {} : handleVendorChange}
                         placeholder="Search vendor..."
@@ -288,7 +298,11 @@ export default function OrderLoginModal({
                     </div>
                   }
                   value={
-                    isCompleted
+                    !canWorkAndView && userType === "factory"
+                      ? "This lead stage has progressed. Factory users cannot modify this section."
+                      : !canWorkAndView
+                      ? "You do not have access to assign or change vendors."
+                      : isCompleted
                       ? "You cannot change the vendor after this order-login is marked as ready."
                       : "Select a factory vendor."
                   }
@@ -323,20 +337,29 @@ export default function OrderLoginModal({
                     truncateValue={
                       <div
                         className={
-                          isCompleted
+                          isCompleted || !canWorkAndView
                             ? "opacity-70 pointer-events-none w-full"
                             : "w-full"
                         }
                       >
                         <CustomeDatePicker
                           value={productionReadyDate}
-                          onChange={isCompleted ? () => {} : handleDateChange}
+                          onChange={
+                            isCompleted || !canWorkAndView
+                              ? () => {}
+                              : handleDateChange
+                          }
                           restriction="futureOnly"
+                          disabledReason=""
                         />
                       </div>
                     }
                     value={
-                      isCompleted
+                      !canWorkAndView && userType === "factory"
+                        ? "This lead stage has progressed. Factory users cannot modify this section."
+                        : !canWorkAndView
+                        ? "You do not have access to change or set production-ready dates."
+                        : isCompleted
                         ? "You cannot change the date after this order-login is marked as ready."
                         : "Select a production ready date."
                     }
@@ -367,7 +390,8 @@ export default function OrderLoginModal({
                           disabled={
                             isCompleted ||
                             !productionReadyDate ||
-                            !isProductionDateReached
+                            !isProductionDateReached ||
+                            !canWorkAndView
                           }
                           className={`w-full flex items-center justify-center gap-2 ${
                             isCompleted
@@ -376,14 +400,16 @@ export default function OrderLoginModal({
                           }`}
                         >
                           <CheckCircle2 className="w-4 h-4" />
-                          {isCompleted
-                            ? "Marked as Ready"
-                            : "Mark as Ready"}
+                          {isCompleted ? "Marked as Ready" : "Mark as Ready"}
                         </Button>
                       </div>
                     }
                     value={
-                      isCompleted
+                      !canWorkAndView && userType === "factory"
+                        ? "This lead stage has progressed. Factory users cannot modify this section."
+                        : !canWorkAndView
+                        ? "You do not have access to mark this order-login as completed."
+                        : isCompleted
                         ? "This order-login is already completed."
                         : !productionReadyDate
                         ? "Please set the Production Ready Date before marking as completed."

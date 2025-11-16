@@ -240,3 +240,15 @@ export function canAccessInputField(role: string, stage: string): boolean {
     (role === "backend" && stage === "order-login-stage")
   );
 }
+
+
+export function canViewAndWorkProductionStage(
+  role: string,
+  stage: string
+): boolean {
+  return (
+    role === "admin" ||
+    role === "super-admin" ||
+    (role === "factory" && stage === "production-stage") 
+  );
+}

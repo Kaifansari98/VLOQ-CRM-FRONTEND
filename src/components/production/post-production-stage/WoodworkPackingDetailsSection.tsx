@@ -37,6 +37,8 @@ import { useDeleteDocument } from "@/api/leads";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import ImageCarouselModal from "@/components/utils/image-carousel-modal";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 
 interface WoodworkPackingDetailsSectionProps {
   leadId: number;
@@ -59,6 +61,8 @@ export default function WoodworkPackingDetailsSection({
 
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
+  const { data: leadData, error } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const { mutateAsync: uploadPackingDetails, isPending } =
@@ -78,19 +82,17 @@ export default function WoodworkPackingDetailsSection({
   const documentExtensions = ["pdf", "zip"];
 
   const images =
-  packingDetails?.data?.filter((file: any) => {
-    const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
-    return imageExtensions.includes(ext || "");
-  }) || [];
+    packingDetails?.data?.filter((file: any) => {
+      const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
+      return imageExtensions.includes(ext || "");
+    }) || [];
 
-const Documents =
-  packingDetails?.data?.filter((file: any) => {
-    const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
-    return documentExtensions.includes(ext || "");
-  }) || [];
+  const Documents =
+    packingDetails?.data?.filter((file: any) => {
+      const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
+      return documentExtensions.includes(ext || "");
+    }) || [];
 
-  console.log("Images: ", images);
-  console.log("Documents: ", Documents);
   useEffect(() => {
     if (packingDetails?.remark) setRemark(packingDetails.remark);
   }, [packingDetails?.remark]);
@@ -156,6 +158,7 @@ const Documents =
   };
 
   const canDelete = userType === "admin" || userType === "super-admin";
+  const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatus);
 
   // 🧩 --- Handlers ---
   const handleConfirmDelete = () => {
@@ -170,7 +173,7 @@ const Documents =
   };
 
   return (
-    <div className="border rounded-lg overflow-hidden bg-background">
+    <div className="border rounded-lg h-full overflow-y-auto bg-background">
       {/* Header */}
       <div className="px-6 py-4 border-b bg-muted/20 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -183,38 +186,45 @@ const Documents =
       </div>
 
       {/* Upload Section */}
+
       <div className="p-6 border-b">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div
+          className={`grid grid-cols-1 ${
+            canViewAndWork && "md:grid-cols-2"
+          }  gap-6`}
+        >
           {/* File Upload Column */}
-          <div>
-            <FileUploadField
-              value={selectedFiles}
-              onChange={setSelectedFiles}
-              accept=".pdf,.jpg,.jpeg,.png,.zip"
-              multiple
-            />
-            {/* Upload Button */}
-            <div className="flex justify-end mt-4">
-              <Button
-                size="sm"
-                onClick={handleUpload}
-                disabled={isPending || selectedFiles.length === 0}
-                className="flex items-center gap-2"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="animate-spin size-4" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload size={16} />
-                    Upload Files
-                  </>
-                )}
-              </Button>
+          {canViewAndWork && (
+            <div>
+              <FileUploadField
+                value={selectedFiles}
+                onChange={setSelectedFiles}
+                accept=".pdf,.jpg,.jpeg,.png,.zip"
+                multiple
+              />
+              {/* Upload Button */}
+              <div className="flex justify-end mt-4">
+                <Button
+                  size="sm"
+                  onClick={handleUpload}
+                  disabled={isPending || selectedFiles.length === 0}
+                  className="flex items-center gap-2"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="animate-spin size-4" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={16} />
+                      Upload Files
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Remark Column */}
           <div>
@@ -227,12 +237,13 @@ const Documents =
               maxLength={500}
               placeholder="Add a remark about the woodwork packing details..."
               className="h-[130px] bg-muted/20 rounded-lg"
+              disabled={!canViewAndWork}
             />
             <div className="flex justify-end mt-4">
               <Button
                 size="sm"
                 onClick={handleRemarkUpdate}
-                disabled={!remark.trim()}
+                disabled={!remark.trim() || !canViewAndWork}
                 className="flex items-center gap-2"
               >
                 <Paperclip size={16} />

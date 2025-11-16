@@ -17,6 +17,8 @@ export default function PreProductionDetails({
 }: PreProductionDetailsProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const { data, isLoading, isError } = useOrderLoginByLead(vendorId, leadId);
+
+
   const {
     data: ClientRequiredCompletionDate,
     isLoading: ClientRequiredCompletionDateIsLoading,
@@ -43,6 +45,7 @@ export default function PreProductionDetails({
       transition: { duration: 0.3, staggerChildren: 0.05 },
     },
   };
+
 
   return (
     <div className="space-y-4">

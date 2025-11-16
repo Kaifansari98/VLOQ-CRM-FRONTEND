@@ -13,11 +13,14 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+
 import { useParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
+
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,16 +28,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
 import {
   EllipsisVertical,
   SquarePen,
   Users,
   XCircle,
+  Hammer, // Under Installation icon
   PanelsTopLeftIcon,
   BoxIcon,
   UsersRoundIcon,
-  Truck,
 } from "lucide-react";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,28 +50,30 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
+
 import { toast } from "react-toastify";
+
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
-import {
-  canReassingLead,
-  canDeleteLead,
-  canDoDispatchPlanning,
-} from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
+
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
-import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMoveLeadToUnderInstallation } from "@/api/installation/useUnderInstallationStageLeads";
-import { useCheckReadyForPostDispatch } from "@/api/installation/useDispatchStageLeads";
+import {
+  useMoveToFinalHandover,
+  useSetActualInstallationStartDate,
+  useUnderInstallationDetails,
+} from "@/api/installation/useUnderInstallationStageLeads";
 
-export default function DispatchPlanningLeadDetails() {
+export default function UnderInstallationLeadDetails() {
   const router = useRouter();
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
@@ -74,24 +81,23 @@ export default function DispatchPlanningLeadDetails() {
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const userType = useAppSelector(
-    (state) => state.auth?.user?.user_type.user_type as string | undefined
+
+  const { data: underDetails } = useUnderInstallationDetails(
+    vendorId,
+    leadIdNum
   );
+  const setStartMutation = useSetActualInstallationStartDate();
+
+  const [openStartModal, setOpenStartModal] = useState(false);
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [assignOpen, setAssignOpen] = useState(false);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<any>(null);
+  const moveMutation = useMoveToFinalHandover();
+
   const [activeTab, setActiveTab] = useState("details");
-  const [previousTab, setPreviousTab] = useState("details");
-
-  const [openMoveConfirm, setOpenMoveConfirm] = useState(false);
-  const moveMutation = useMoveLeadToUnderInstallation();
-
-  const { data: readiness } = useCheckReadyForPostDispatch(
-    vendorId,
-    leadIdNum
-  );
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -99,7 +105,6 @@ export default function DispatchPlanningLeadDetails() {
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = lead?.account_id;
-  console.log("Parent 1: ", accountId);
 
   const deleteLeadMutation = useDeleteLead();
 
@@ -121,15 +126,35 @@ export default function DispatchPlanningLeadDetails() {
     setOpenDelete(false);
   };
 
+  function formatInstallationDate(dateString: string) {
+    const date = new Date(dateString);
+
+    const time = date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+
+    const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+
+    const fullDate = date.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    return `${time} – ${dayName}, ${fullDate}`;
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
-        {/* Header */}
+        {/* 🔹 Header */}
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
+
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
@@ -144,38 +169,18 @@ export default function DispatchPlanningLeadDetails() {
             </Breadcrumb>
           </div>
 
+          {/* 🔹 Header Actions */}
           <div className="flex items-center space-x-2">
-            <div className="flex items-center gap-2">
-              {/* Move to Under Installation Button + Tooltip Logic */}
-              {readiness?.readyForPostDispatch ? (
-                // 🔹 ENABLED BUTTON (Lead is ready)
-                <Button
-                  size="sm"
-                  variant="default"
-                  onClick={() => setOpenMoveConfirm(true)}
-                >
-                  Move to Under Installation
-                </Button>
-              ) : (
-                // 🔸 DISABLED with Tooltip (Lead NOT ready)
-                <CustomeTooltip
-                  truncateValue={
-                    <div className="opacity-50 cursor-not-allowed px-3 py-1.5 text-sm border rounded-md">
-                      Move to Under Installation
-                    </div>
-                  }
-                  value={
-                    readiness?.message ||
-                    "Lead is missing required information to proceed."
-                  }
-                />
-              )}
-
-              {/* Assign Task Button */}
-              <Button size="sm" onClick={() => setAssignOpen(true)}>
-                Assign Task
-              </Button>
-            </div>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => {
+                setSelectedLead(lead); // <-- use the lead you're viewing
+                setShowMoveModal(true);
+              }}
+            >
+              Move to Final Handover
+            </Button>
 
             <AnimatedThemeToggler />
 
@@ -192,63 +197,41 @@ export default function DispatchPlanningLeadDetails() {
                   Edit
                 </DropdownMenuItem>
 
-                {canReassingLead(userType) && (
-                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                    <Users size={20} />
-                    Reassign Lead
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                  <Users size={20} />
+                  Reassign Lead
+                </DropdownMenuItem>
 
-                {canDeleteLead(userType) && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                      <XCircle size={20} className="text-red-500" />
-                      Delete
-                    </DropdownMenuItem>
-                  </>
-                )}
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                    <XCircle size={20} className="text-red-500" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </header>
 
-        {/* Tabs */}
+        {/* 🔹 Tabs */}
         <Tabs
           value={activeTab}
-          onValueChange={(val) => {
-            if (val === "todo") {
-              setPreviousTab(activeTab);
-              setAssignOpen(true);
-              return;
-            }
-            setActiveTab(val);
-          }}
+          onValueChange={(val) => setActiveTab(val)}
           className="w-full px-6 pt-4"
         >
-          <ScrollArea>
-            <div className="w-full h-full flex justify-between items-center mb-4">
-              <div className="w-full flex items-center gap-2 justify-between">
-                <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-                  {/* ✅ Dispatch Planning Details */}
-                  <TabsTrigger value="details">
-                    <Truck size={16} className="mr-1 opacity-60" />
-                    Dispatch Planning Details
-                  </TabsTrigger>
-
-                  {/* ✅ To-Do Task (Conditional Access) */}
-                  {canDoDispatchPlanning(userType) ? (
-                    <TabsTrigger
-                      value="todo"
-                      onClick={() => setAssignOpen(true)}
-                    >
-                      <PanelsTopLeftIcon
-                        size={16}
-                        className="mr-1 opacity-60"
-                      />
-                      To-Do Task
+          <div className="w-full flex justify-between">
+            <div>
+              <ScrollArea>
+                <div className="w-full h-full flex justify-between items-center mb-4">
+                  <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
+                    {/* Under Installation Details */}
+                    <TabsTrigger value="details">
+                      <Hammer size={16} className="mr-1 opacity-60" />
+                      Under Installation Details
                     </TabsTrigger>
-                  ) : (
+
+                    {/* To-Do Tab — Disabled */}
                     <CustomeTooltip
                       truncateValue={
                         <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
@@ -259,33 +242,59 @@ export default function DispatchPlanningLeadDetails() {
                           To-Do Task
                         </div>
                       }
-                      value="Only Admin or Sales Executive can access this tab"
+                      value="Under development"
                     />
-                  )}
 
-                  {/* ✅ Site History */}
-                  <TabsTrigger value="history">
-                    <BoxIcon size={16} className="mr-1 opacity-60" />
-                    Site History
-                  </TabsTrigger>
+                    {/* Site History */}
+                    <TabsTrigger value="history">
+                      <BoxIcon size={16} className="mr-1 opacity-60" />
+                      Site History
+                    </TabsTrigger>
 
-                  {/* ✅ Payment Info */}
-                  <TabsTrigger value="payment">
-                    <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                    Payment Information
-                  </TabsTrigger>
-                </TabsList>
-              </div>
+                    {/* Payment */}
+                    <TabsTrigger value="payment">
+                      <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                      Payment Information
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
             </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+            <div className="flex px-6">
+              {!underDetails?.actual_installation_start_date ? (
+                <Button size="sm" onClick={() => setOpenStartModal(true)}>
+                  Start Installation
+                </Button>
+              ) : (
+                <div className="flex flex-col items-start">
+                  <p className="text-xs font-semibold">
+                    Installation Started At
+                  </p>
+
+                  {/* Stylish formatted date & time */}
+                  <div className="mt-1">
+                    <p className="text-sm">
+                      {formatInstallationDate(
+                        underDetails.actual_installation_start_date
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 🔹 Start Installation Button / Date Display */}
+
+          {/* TAB CONTENTS */}
 
           <TabsContent value="details">
             <main className="flex-1 h-fit">
               {!isLoading && accountId && (
                 <LeadDetailsGrouped
-                  status="dispatch"
-                  defaultTab="dispatch"
+                  status="underInstallation"
+                  defaultTab="underInstallation"
                   leadId={leadIdNum}
                   accountId={accountId}
                   defaultParentTab="installation"
@@ -303,7 +312,7 @@ export default function DispatchPlanningLeadDetails() {
           </TabsContent>
         </Tabs>
 
-        {/* Modals */}
+        {/* 🔹 Modals */}
         <AssignLeadModal
           open={assignOpenLead}
           onOpenChange={setAssignOpenLead}
@@ -316,13 +325,6 @@ export default function DispatchPlanningLeadDetails() {
           leadData={{ id: leadIdNum }}
         />
 
-        <AssignTaskSiteMeasurementForm
-          open={assignOpen}
-          onOpenChange={setAssignOpen}
-          onlyFollowUp={true}
-          data={{ id: leadIdNum, name: "" }}
-        />
-
         {/* Delete Dialog */}
         <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
           <AlertDialogContent>
@@ -333,6 +335,7 @@ export default function DispatchPlanningLeadDetails() {
                 lead from your system.
               </AlertDialogDescription>
             </AlertDialogHeader>
+
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteLead}>
@@ -342,16 +345,13 @@ export default function DispatchPlanningLeadDetails() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Move to Under Installation Confirmation */}
-        <AlertDialog open={openMoveConfirm} onOpenChange={setOpenMoveConfirm}>
+        <AlertDialog open={openStartModal} onOpenChange={setOpenStartModal}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>
-                Move Lead to Under Installation?
-              </AlertDialogTitle>
+              <AlertDialogTitle>Start Installation?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will move the current lead from <b>Dispatch Planning</b> to
-                the <b>Under Installation</b> stage. Do you wish to continue?
+                Are you sure you want to mark the installation as started? (Date
+                & time will be recorded)
               </AlertDialogDescription>
             </AlertDialogHeader>
 
@@ -359,39 +359,48 @@ export default function DispatchPlanningLeadDetails() {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
-                  if (!vendorId || !userId) {
-                    toast.error("Missing vendor or user information!");
-                    return;
-                  }
-
-                  moveMutation.mutate(
-                    { vendorId, leadId: leadIdNum, updated_by: userId },
-                    {
-                      onSuccess: () => {
-                        toast.success(
-                          "Lead successfully moved to Under Installation stage!"
-                        );
-                        setOpenMoveConfirm(false);
-                        queryClient.invalidateQueries({
-                          queryKey: ["dispatchStageLeads"],
-                        });
-                        queryClient.invalidateQueries({
-                          queryKey: ["underInstallationStageLeads"],
-                        });
-                        // Optionally redirect to the new stage’s page
-                        router.push("/dashboard/installation/under-installation");
-                      },
-                      onError: (err: any) => {
-                        toast.error(
-                          err?.response?.data?.message ||
-                            "Failed to move lead to Under Installation"
-                        );
-                      },
-                    }
-                  );
+                  setStartMutation.mutate({
+                    vendorId: vendorId!,
+                    leadId: leadIdNum,
+                    updated_by: userId!,
+                    actual_installation_start_date: new Date().toISOString(),
+                  });
+                  setOpenStartModal(false);
                 }}
               >
-                {moveMutation.isPending ? "Moving..." : "Confirm Move"}
+                Confirm
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={showMoveModal} onOpenChange={setShowMoveModal}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-lg font-semibold">
+                Move Lead to Final Handover?
+              </AlertDialogTitle>
+            </AlertDialogHeader>
+
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to mark this lead as <b>Final Handover</b>?
+              This action will update the lead’s stage.
+            </p>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+
+              <AlertDialogAction
+                onClick={() => {
+                  moveMutation.mutate({
+                    vendorId: lead.vendor_id,
+                    leadId: lead.id,
+                    updated_by: userId!,
+                  });
+                  setShowMoveModal(false);
+                }}
+              >
+                Confirm
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
