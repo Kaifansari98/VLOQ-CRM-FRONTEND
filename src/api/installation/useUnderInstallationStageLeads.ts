@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 
 export interface MiscellaneousDocument {
@@ -135,7 +136,6 @@ export interface UpdateIssueLogPayload {
   responsible_team_ids?: number[];
   updated_by: number;
 }
-
 
 /* ==========================================================
    🔹 1️⃣ Move Lead to Under Installation Stage
@@ -565,7 +565,10 @@ export const createMiscellaneousEntry = async (
     formData.append("problem_description", payload.problem_description);
   }
   if (payload.reorder_material_details) {
-    formData.append("reorder_material_details", payload.reorder_material_details);
+    formData.append(
+      "reorder_material_details",
+      payload.reorder_material_details
+    );
   }
   if (payload.quantity !== undefined) {
     formData.append("quantity", payload.quantity.toString());
@@ -614,10 +617,14 @@ export const useCreateMiscellaneousEntry = () => {
 
     onSuccess: (data, variables) => {
       toast.success("Miscellaneous entry created successfully");
-      
+
       // Invalidate and refetch the list
       queryClient.invalidateQueries({
-        queryKey: ["miscellaneousEntries", variables.vendorId, variables.leadId],
+        queryKey: [
+          "miscellaneousEntries",
+          variables.vendorId,
+          variables.leadId,
+        ],
       });
     },
 
@@ -647,10 +654,7 @@ export const getMiscellaneousEntries = async (
 /**
  * ✅ React Query Hook - Get All Miscellaneous Entries
  */
-export const useMiscellaneousEntries = (
-  vendorId?: number,
-  leadId?: number
-) => {
+export const useMiscellaneousEntries = (vendorId?: number, leadId?: number) => {
   return useQuery({
     queryKey: ["miscellaneousEntries", vendorId, leadId],
     queryFn: () => getMiscellaneousEntries(vendorId!, leadId!),
@@ -662,84 +666,84 @@ export const useMiscellaneousEntries = (
    📥 GET - All Misc Types (Vendor Wise)
    @route GET /miscellaneous-master/type/vendor/:vendor_id
    ========================================================== */
-   export const getMiscTypes = async (vendorId: number): Promise<MiscType[]> => {
-    const { data } = await apiClient.get(
-      `/miscellaneous-master/type/vendor/${vendorId}`
-    );
-  
-    return data?.data || [];
-  };
-  
-  /**
-   * ✅ React Query Hook - Get All Misc Types
-   */
-  export const useMiscTypes = (vendorId?: number) => {
-    return useQuery({
-      queryKey: ["miscTypes", vendorId],
-      queryFn: () => getMiscTypes(vendorId!),
-      enabled: !!vendorId,
-    });
-  };
-  
-  /* ==========================================================
+export const getMiscTypes = async (vendorId: number): Promise<MiscType[]> => {
+  const { data } = await apiClient.get(
+    `/miscellaneous-master/type/vendor/${vendorId}`
+  );
+
+  return data?.data || [];
+};
+
+/**
+ * ✅ React Query Hook - Get All Misc Types
+ */
+export const useMiscTypes = (vendorId?: number) => {
+  return useQuery({
+    queryKey: ["miscTypes", vendorId],
+    queryFn: () => getMiscTypes(vendorId!),
+    enabled: !!vendorId,
+  });
+};
+
+/* ==========================================================
      📥 GET - All Teams (Vendor Wise)
      @route GET /miscellaneous-master/team/vendor/:vendor_id
      ========================================================== */
-  export const getMiscTeams = async (vendorId: number): Promise<MiscTeam[]> => {
-    const { data } = await apiClient.get(
-      `/miscellaneous-master/team/vendor/${vendorId}`
-    );
-  
-    return data?.data || [];
-  };
-  
-  /**
-   * ✅ React Query Hook - Get All Teams
-   */
-  export const useMiscTeams = (vendorId?: number) => {
-    return useQuery({
-      queryKey: ["miscTeams", vendorId],
-      queryFn: () => getMiscTeams(vendorId!),
-      enabled: !!vendorId,
-    });
-  };
+export const getMiscTeams = async (vendorId: number): Promise<MiscTeam[]> => {
+  const { data } = await apiClient.get(
+    `/miscellaneous-master/team/vendor/${vendorId}`
+  );
 
-  export const updateMiscExpectedReadyDate = async ({
-    vendorId,
-    miscId,
-    expected_ready_date,
-    updated_by,
-  }: {
-    vendorId: number;
-    miscId: number;
-    expected_ready_date?: string;
-    updated_by: number;
-  }) => {
-    const response = await apiClient.put(
-      `/leads/installation/under-installation/vendorId/${vendorId}/miscId/${miscId}/update-erd`,
-      {
-        expected_ready_date,
-        updated_by,
-      }
-    );
-  
-    return response.data.data;
-  };
+  return data?.data || [];
+};
 
-  export const useUpdateMiscERD = () => {
-    const client = useQueryClient();
-  
-    return useMutation({
-      mutationFn: updateMiscExpectedReadyDate,
-      onSuccess: () => {
-        toast.success("Expected ready date updated!");
-        client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
-      },
-      onError: (err: any) => {
-        toast.error(err?.message || "Failed to update date");
-      },
-    });
-  };
+/**
+ * ✅ React Query Hook - Get All Teams
+ */
+export const useMiscTeams = (vendorId?: number) => {
+  return useQuery({
+    queryKey: ["miscTeams", vendorId],
+    queryFn: () => getMiscTeams(vendorId!),
+    enabled: !!vendorId,
+  });
+};
+
+export const updateMiscExpectedReadyDate = async ({
+  vendorId,
+  miscId,
+  expected_ready_date,
+  updated_by,
+}: {
+  vendorId: number;
+  miscId: number;
+  expected_ready_date?: string;
+  updated_by: number;
+}) => {
+  const response = await apiClient.put(
+    `/leads/installation/under-installation/vendorId/${vendorId}/miscId/${miscId}/update-erd`,
+    {
+      expected_ready_date,
+      updated_by,
+    }
+  );
+
+  return response.data.data;
+};
+
+export const useUpdateMiscERD = () => {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateMiscExpectedReadyDate,
+    onSuccess: () => {
+      toast.success("Expected ready date updated!");
+      client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Failed to update date");
+    },
+  });
+};
 
 /**
  * 📋 GET - All Issue Types by Vendor
@@ -861,12 +865,16 @@ export const useCreateInstallationIssueLog = () => {
 
     onSuccess: (data, variables) => {
       toast.success("Issue log created successfully");
-      
+
       // Invalidate and refetch issue logs for this lead
       queryClient.invalidateQueries({
-        queryKey: ["installationIssueLogs", variables.vendor_id, variables.lead_id],
+        queryKey: [
+          "installationIssueLogs",
+          variables.vendor_id,
+          variables.lead_id,
+        ],
       });
-      
+
       // Also invalidate lead stats if you have them
       queryClient.invalidateQueries({
         queryKey: ["leadStats"],
@@ -898,12 +906,12 @@ export const useUpdateInstallationIssueLog = () => {
 
     onSuccess: (data) => {
       toast.success("Issue log updated successfully");
-      
+
       // Invalidate the specific issue log
       queryClient.invalidateQueries({
         queryKey: ["installationIssueLog", data.id],
       });
-      
+
       // Invalidate the list of issue logs
       queryClient.invalidateQueries({
         queryKey: ["installationIssueLogs"],
@@ -921,160 +929,196 @@ export const useUpdateInstallationIssueLog = () => {
 /* ==========================================================
    📦 Usable Handover API & React Query Hooks
    ========================================================== */
-   
-   export interface LeadDocument {
-     id: number;
-     vendor_id: number;
-     account_id: number;
-     lead_id: number;
-     doc_type_id: number;
-     doc_og_name: string;
-     doc_sys_name: string;
-     created_by: number;
-     created_at: string;
-     signedUrl?: string;
-   }
-   
-   export interface UsableHandoverData {
-     pending_work_details: string | null;
-     final_site_photos: LeadDocument[];
-     handover_documents: LeadDocument[];
-   }
-   
-   export interface UpdateUsableHandoverPayload {
-     vendor_id: number;
-     lead_id: number;
-     account_id: number;
-     created_by: number;
-     pending_work_details?: string;
-     files: File[];
-   }
-   
-   export interface UpdateRemarksPayload {
-     vendor_id: number;
-     lead_id: number;
-     pending_work_details: string;
-   }
-   
-   /* ==========================================================
+
+export interface LeadDocument {
+  id: number;
+  vendor_id: number;
+  account_id: number;
+  lead_id: number;
+  doc_type_id: number;
+  doc_og_name: string;
+  doc_sys_name: string;
+  created_by: number;
+  created_at: string;
+  signedUrl?: string;
+}
+
+export interface UsableHandoverData {
+  pending_work_details: string | null;
+  final_site_photos: LeadDocument[];
+  handover_documents: LeadDocument[];
+}
+
+export interface UpdateUsableHandoverPayload {
+  vendor_id: number;
+  lead_id: number;
+  account_id: number;
+  created_by: number;
+  pending_work_details?: string;
+  files: File[];
+}
+
+export interface UpdateRemarksPayload {
+  vendor_id: number;
+  lead_id: number;
+  pending_work_details: string;
+}
+
+/* ==========================================================
       🔹 API FUNCTIONS
       ========================================================== */
-   
-   /**
-    * 📋 GET - Usable Handover Data
-    * @route GET /leads/installation/under-installation/:vendor_id/:lead_id
-    */
-   export const getUsableHandover = async (
-     vendorId: number,
-     leadId: number
-   ): Promise<UsableHandoverData> => {
-     const { data } = await apiClient.get(
-       `/leads/installation/under-installation/${vendorId}/${leadId}`
-     );
-     return data?.data;
-   };
-   
-   /**
-    * 🔄 POST - Update Usable Handover (Upload Files)
-    * @route POST /leads/installation/under-installation/usable-handover/update
-    */
-   export const updateUsableHandover = async (
-     formData: FormData
-   ): Promise<any> => {
-     const { data } = await apiClient.post(
-       `/leads/installation/under-installation/usable-handover/update`,
-       formData,
-       {
-         headers: {
-           "Content-Type": "multipart/form-data",
-         },
-       }
-     );
-     return data?.data;
-   };
-   
-   /**
-    * 🔄 PUT - Update Remarks Only
-    * @route PUT /leads/installation/under-installation/update-remarks
-    */
-   export const updateRemarks = async (
-     payload: UpdateRemarksPayload
-   ): Promise<any> => {
-     const { data } = await apiClient.put(
-       `/leads/installation/under-installation/update-remarks`,
-       payload
-     );
-     return data?.data;
-   };
-   
-   /* ==========================================================
+
+/**
+ * 📋 GET - Usable Handover Data
+ * @route GET /leads/installation/under-installation/:vendor_id/:lead_id
+ */
+export const getUsableHandover = async (
+  vendorId: number,
+  leadId: number
+): Promise<UsableHandoverData> => {
+  const { data } = await apiClient.get(
+    `/leads/installation/under-installation/${vendorId}/${leadId}`
+  );
+  return data?.data;
+};
+
+/**
+ * 🔄 POST - Update Usable Handover (Upload Files)
+ * @route POST /leads/installation/under-installation/usable-handover/update
+ */
+export const updateUsableHandover = async (
+  formData: FormData
+): Promise<any> => {
+  const { data } = await apiClient.post(
+    `/leads/installation/under-installation/usable-handover/update`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+  return data?.data;
+};
+
+/**
+ * 🔄 PUT - Update Remarks Only
+ * @route PUT /leads/installation/under-installation/update-remarks
+ */
+export const updateRemarks = async (
+  payload: UpdateRemarksPayload
+): Promise<any> => {
+  const { data } = await apiClient.put(
+    `/leads/installation/under-installation/update-remarks`,
+    payload
+  );
+  return data?.data;
+};
+
+/* ==========================================================
       🔹 REACT QUERY HOOKS
       ========================================================== */
-   
-   /**
-    * ✅ React Query Hook - Get Usable Handover Data
-    */
-   export const useGetUsableHandover = (vendorId: number, leadId: number) => {
-     return useQuery({
-       queryKey: ["usableHandover", vendorId, leadId],
-       queryFn: () => getUsableHandover(vendorId, leadId),
-       enabled: !!vendorId && !!leadId,
-       refetchOnMount: true,
-     });
-   };
-   
-   /**
-    * ✅ React Query Mutation Hook - Update Usable Handover (Upload Files)
-    */
-   export const useUpdateUsableHandover = () => {
-     const queryClient = useQueryClient();
-   
-     return useMutation({
-       mutationFn: (formData: FormData) => updateUsableHandover(formData),
-   
-       onSuccess: (data, variables) => {
-         toast.success("Files uploaded successfully");
-         
-         // Extract vendor_id and lead_id from FormData
-         const vendorId = variables.get("vendor_id");
-         const leadId = variables.get("lead_id");
-         
-         // Invalidate and refetch usable handover data
-         queryClient.invalidateQueries({
-           queryKey: ["usableHandover", Number(vendorId), Number(leadId)],
-         });
-       },
-   
-       onError: (error: any) => {
-         toast.error(
-           error?.response?.data?.message || "Failed to upload files"
-         );
-       },
-     });
-   };
-   
-   /**
-    * ✅ React Query Mutation Hook - Update Remarks Only
-    */
-   export const useUpdateRemarks = () => {
-     const queryClient = useQueryClient();
-   
-     return useMutation({
-       mutationFn: (payload: UpdateRemarksPayload) => updateRemarks(payload),
-   
-       onSuccess: (data, variables) => {
-         toast.success("Remarks updated successfully");
-         
-         // Invalidate and refetch usable handover data
-         queryClient.invalidateQueries({
-           queryKey: ["usableHandover", variables.vendor_id, variables.lead_id],
-         });
-       },
-   
-       onError: (error: any) => {
-         toast.error(
-           error?.response?.data?.message || "Failed to update remarks"
-         );
-       },
-     });
-   };
+
+/**
+ * ✅ React Query Hook - Get Usable Handover Data
+ */
+export const useGetUsableHandover = (vendorId: number, leadId: number) => {
+  return useQuery({
+    queryKey: ["usableHandover", vendorId, leadId],
+    queryFn: () => getUsableHandover(vendorId, leadId),
+    enabled: !!vendorId && !!leadId,
+    refetchOnMount: true,
+  });
+};
+
+/**
+ * ✅ React Query Mutation Hook - Update Usable Handover (Upload Files)
+ */
+export const useUpdateUsableHandover = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (formData: FormData) => updateUsableHandover(formData),
+
+    onSuccess: (data, variables) => {
+      toast.success("Files uploaded successfully");
+
+      // Extract vendor_id and lead_id from FormData
+      const vendorId = variables.get("vendor_id");
+      const leadId = variables.get("lead_id");
+
+      // Invalidate and refetch usable handover data
+      queryClient.invalidateQueries({
+        queryKey: ["usableHandover", Number(vendorId), Number(leadId)],
+      });
+    },
+
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Failed to upload files");
+    },
+  });
+};
+
+/**
+ * ✅ React Query Mutation Hook - Update Remarks Only
+ */
+export const useUpdateRemarks = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateRemarksPayload) => updateRemarks(payload),
+
+    onSuccess: (data, variables) => {
+      toast.success("Remarks updated successfully");
+
+      // Invalidate and refetch usable handover data
+      queryClient.invalidateQueries({
+        queryKey: ["usableHandover", variables.vendor_id, variables.lead_id],
+      });
+    },
+
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Failed to update remarks");
+    },
+  });
+};
+
+// 🚀 Move Lead to Final Handover (Type 27)
+export async function moveToFinalHandoverApi(
+  vendorId: number,
+  leadId: number,
+  updated_by: number
+) {
+  const response = await apiClient.put(
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/move-to-final-handover`,
+    { updated_by }
+  );
+
+  return response.data;
+}
+
+export function useMoveToFinalHandover() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      updated_by,
+    }: {
+      vendorId: number;
+      leadId: number;
+      updated_by: number;
+    }) => moveToFinalHandoverApi(vendorId, leadId, updated_by),
+
+    onSuccess: () => {
+      toast.success("Lead moved to Final Handover stage");
+      router.push("/dashboard/installation/under-installation")
+    },
+
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.error || "Failed to move lead");
+    },
+  });
+}

@@ -168,7 +168,8 @@ const data = {
         },
         {
           title: "Final Handover",
-          url: "#",
+          url: "/dashboard/installation/final-handover",
+          showCount: "total_final_handover_stage_leads" as const,
         },
         {
           title: "Servicing",

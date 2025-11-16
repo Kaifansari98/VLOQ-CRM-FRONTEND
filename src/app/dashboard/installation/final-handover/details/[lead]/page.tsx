@@ -13,11 +13,9 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-
 import { useParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
-
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
@@ -34,7 +32,7 @@ import {
   SquarePen,
   Users,
   XCircle,
-  Hammer, // Under Installation icon
+  CheckCircle2, // Final Handover Icon
   PanelsTopLeftIcon,
   BoxIcon,
   UsersRoundIcon,
@@ -67,13 +65,8 @@ import CustomeTooltip from "@/components/cutome-tooltip";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  useMoveToFinalHandover,
-  useSetActualInstallationStartDate,
-  useUnderInstallationDetails,
-} from "@/api/installation/useUnderInstallationStageLeads";
 
-export default function UnderInstallationLeadDetails() {
+export default function FinalHandoverLeadDetails() {
   const router = useRouter();
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
@@ -82,20 +75,9 @@ export default function UnderInstallationLeadDetails() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
 
-  const { data: underDetails } = useUnderInstallationDetails(
-    vendorId,
-    leadIdNum
-  );
-  const setStartMutation = useSetActualInstallationStartDate();
-
-  const [openStartModal, setOpenStartModal] = useState(false);
-
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [showMoveModal, setShowMoveModal] = useState(false);
-  const [selectedLead, setSelectedLead] = useState<any>(null);
-  const moveMutation = useMoveToFinalHandover();
 
   const [activeTab, setActiveTab] = useState("details");
 
@@ -126,25 +108,6 @@ export default function UnderInstallationLeadDetails() {
     setOpenDelete(false);
   };
 
-  function formatInstallationDate(dateString: string) {
-    const date = new Date(dateString);
-
-    const time = date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-
-    const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
-
-    const fullDate = date.toLocaleDateString("en-US", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-
-    return `${time} – ${dayName}, ${fullDate}`;
-  }
-
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -171,17 +134,6 @@ export default function UnderInstallationLeadDetails() {
 
           {/* 🔹 Header Actions */}
           <div className="flex items-center space-x-2">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => {
-                setSelectedLead(lead); // <-- use the lead you're viewing
-                setShowMoveModal(true);
-              }}
-            >
-              Move to Final Handover
-            </Button>
-
             <AnimatedThemeToggler />
 
             <DropdownMenu>
@@ -225,13 +177,14 @@ export default function UnderInstallationLeadDetails() {
               <ScrollArea>
                 <div className="w-full h-full flex justify-between items-center mb-4">
                   <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-                    {/* Under Installation Details */}
+
+                    {/* Final Handover Details */}
                     <TabsTrigger value="details">
-                      <Hammer size={16} className="mr-1 opacity-60" />
-                      Under Installation Details
+                      <CheckCircle2 size={16} className="mr-1 opacity-60" />
+                      Final Handover Details
                     </TabsTrigger>
 
-                    {/* To-Do Tab — Disabled */}
+                    {/* To-Do Tab (still disabled) */}
                     <CustomeTooltip
                       truncateValue={
                         <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
@@ -261,31 +214,7 @@ export default function UnderInstallationLeadDetails() {
                 <ScrollBar orientation="horizontal" />
               </ScrollArea>
             </div>
-            <div className="flex px-6">
-              {!underDetails?.actual_installation_start_date ? (
-                <Button size="sm" onClick={() => setOpenStartModal(true)}>
-                  Start Installation
-                </Button>
-              ) : (
-                <div className="flex flex-col items-start">
-                  <p className="text-xs font-semibold">
-                    Installation Started At
-                  </p>
-
-                  {/* Stylish formatted date & time */}
-                  <div className="mt-1">
-                    <p className="text-sm">
-                      {formatInstallationDate(
-                        underDetails.actual_installation_start_date
-                      )}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
-
-          {/* 🔹 Start Installation Button / Date Display */}
 
           {/* TAB CONTENTS */}
 
@@ -293,8 +222,8 @@ export default function UnderInstallationLeadDetails() {
             <main className="flex-1 h-fit">
               {!isLoading && accountId && (
                 <LeadDetailsGrouped
-                  status="underInstallation"
-                  defaultTab="underInstallation"
+                  status="finalHandover"
+                  defaultTab="finalHandover"
                   leadId={leadIdNum}
                   accountId={accountId}
                   defaultParentTab="installation"
@@ -340,67 +269,6 @@ export default function UnderInstallationLeadDetails() {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteLead}>
                 Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        <AlertDialog open={openStartModal} onOpenChange={setOpenStartModal}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Start Installation?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to mark the installation as started? (Date
-                & time will be recorded)
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
-                  setStartMutation.mutate({
-                    vendorId: vendorId!,
-                    leadId: leadIdNum,
-                    updated_by: userId!,
-                    actual_installation_start_date: new Date().toISOString(),
-                  });
-                  setOpenStartModal(false);
-                }}
-              >
-                Confirm
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        <AlertDialog open={showMoveModal} onOpenChange={setShowMoveModal}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-lg font-semibold">
-                Move Lead to Final Handover?
-              </AlertDialogTitle>
-            </AlertDialogHeader>
-
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to mark this lead as <b>Final Handover</b>?
-              This action will update the lead’s stage.
-            </p>
-
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-
-              <AlertDialogAction
-                onClick={() => {
-                  moveMutation.mutate({
-                    vendorId: lead.vendor_id,
-                    leadId: lead.id,
-                    updated_by: userId!,
-                  });
-                  setShowMoveModal(false);
-                }}
-              >
-                Confirm
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

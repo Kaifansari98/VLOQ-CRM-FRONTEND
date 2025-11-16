@@ -20,6 +20,7 @@ type StatusKey = StageId;
 import GroupedSmoothTab from "./grouped-smooth-tab";
 import { StageId } from "@/types/lead-stage-types";
 import UnderInstallationTabsWrapper from "../installation/under-installation/UnderInstallationTabsWrapper";
+import FinalHandover from "../installation/final-handover/FinalHandoverDetails";
 
 type GroupKey = "leads" | "project" | "production" | "installation";
 
@@ -181,6 +182,17 @@ export default function LeadDetailsGrouped({
           />
         ),
       },
+      {
+        id: "finalHandover",
+        title: "Final Handover",
+        component: (
+          <FinalHandover
+            leadId={leadId}
+            accountId={accountId}
+            name={leadName}
+          />
+        ),
+      },
     ],
   } as const;
 
@@ -217,6 +229,7 @@ export default function LeadDetailsGrouped({
           "dispatchPlanning",
           "dispatch",
           "underInstallation",
+          "finalHandover",
         ];
 
         const maxIndex = stageOrder.indexOf(status);

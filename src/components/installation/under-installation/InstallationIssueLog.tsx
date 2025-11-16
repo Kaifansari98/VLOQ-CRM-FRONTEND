@@ -132,12 +132,12 @@ export default function InstallationIssueLog({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mt-4 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Issue Log</h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h2 className="text-lg font-semibold tracking-tight">Issue Log</h2>
+          <p className="text-sm text-muted-foreground">
             Track and manage installation issues and their resolution
           </p>
         </div>

@@ -229,27 +229,17 @@ export default function InstallationMiscellaneous({
         {entries?.map((entry) => (
           <Card
             key={entry.id}
-            className="group relative overflow-hidden border-border/50 hover:border-primary/30 hover:shadow-md transition-all duration-300 cursor-pointer"
+            className="group relative overflow-hidden border cursor-pointer"
             onClick={() => setViewModal({ open: true, data: entry })}
           >
-            {/* Status Indicator Strip */}
-            <div
-              className={`absolute top-0 left-0 right-0 h-1 ${
-                entry.is_resolved
-                  ? "bg-gradient-to-r from-green-500 to-emerald-500"
-                  : "bg-gradient-to-r from-orange-500 to-amber-500"
-              }`}
-            />
 
-            <CardContent className="p-6">
+            <CardContent className="px-6">
               {/* Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <div
                     className={`p-2 rounded-lg ${
-                      entry.is_resolved
-                        ? "bg-green-500/10"
-                        : "bg-orange-500/10"
+                      entry.is_resolved ? "bg-green-500/10" : "bg-orange-500/10"
                     }`}
                   >
                     {entry.is_resolved ? (
@@ -259,7 +249,7 @@ export default function InstallationMiscellaneous({
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-sm mb-1 truncate">
+                    <h4 className="font-semibold text-sm truncate">
                       {entry.type.name}
                     </h4>
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -281,20 +271,37 @@ export default function InstallationMiscellaneous({
                 </Badge>
               </div>
 
-              {/* Problem Description */}
-              {entry.problem_description && (
-                <div className="mb-4">
-                  <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-                    {entry.problem_description}
-                  </p>
-                </div>
-              )}
-
               <Separator className="my-4" />
 
               {/* Info Grid */}
               <div className="grid grid-cols-2 gap-3 mb-4">
-                {entry.quantity && (
+                {entry.teams.length > 0 && (
+                  <div className="flex items-center gap-2 text-xs col-span-2">
+                    <div className="p-1.5 bg-purple-500/10 rounded">
+                      <Users className="w-3.5 h-3.5 text-purple-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-muted-foreground">Responsible Teams</p>
+                      <p className="font-medium truncate">
+                        {entry.teams.map((t) => t.team_name).join(", ")}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {formData.reorder_material_details && (
+                  <div className="flex items-center gap-2 text-xs col-span-2">
+                    <div className="p-1.5 bg-purple-500/10 rounded">
+                      <Users className="w-3.5 h-3.5 text-purple-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-muted-foreground">Reorder Material Details</p>
+                      <p className="font-medium truncate">
+                        {entry.teams.map((t) => t.team_name).join(", ")}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {/* {entry.quantity && (
                   <div className="flex items-center gap-2 text-xs">
                     <div className="p-1.5 bg-blue-500/10 rounded">
                       <Package className="w-3.5 h-3.5 text-blue-600" />
@@ -317,20 +324,7 @@ export default function InstallationMiscellaneous({
                       </p>
                     </div>
                   </div>
-                )}
-                {entry.teams.length > 0 && (
-                  <div className="flex items-center gap-2 text-xs col-span-2">
-                    <div className="p-1.5 bg-purple-500/10 rounded">
-                      <Users className="w-3.5 h-3.5 text-purple-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-muted-foreground">Teams</p>
-                      <p className="font-medium truncate">
-                        {entry.teams.map((t) => t.team_name).join(", ")}
-                      </p>
-                    </div>
-                  </div>
-                )}
+                )} */}
               </div>
 
               {/* Footer */}

@@ -189,13 +189,13 @@ export default function UsableHandover({
     handoverData.handover_documents.length > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="mt-4 space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">
+        <h2 className="text-lg font-semibold tracking-tight">
           Usable Handover
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-sm text-muted-foreground">
           Upload final site photos and handover documents for the installation
         </p>
       </div>
