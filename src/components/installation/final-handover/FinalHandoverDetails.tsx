@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload,
   FileText,
-  Image,
   Download,
   Trash2,
   FolderOpen,
@@ -13,11 +13,22 @@ import {
   Award,
   BookOpen,
   ClipboardCheck,
+  Plus,
+  X,
+  Image,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { FileUploadField } from "@/components/custom/file-upload";
 import {
   useGetFinalHandoverDocuments,
@@ -47,6 +58,18 @@ interface FinalHandoverProps {
   accountId: number;
 }
 
+interface DocumentSection {
+  id: string;
+  title: string;
+  icon: React.ReactNode;
+  description: string;
+  fieldName: string;
+  accept: string;
+  color: string;
+  bgColor: string;
+  iconBg: string;
+}
+
 export default function FinalHandover({
   name,
   leadId,
@@ -57,24 +80,15 @@ export default function FinalHandover({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const queryClient = useQueryClient();
 
-  // File states for each section
-  const [finalSitePhotos, setFinalSitePhotos] = useState<File[]>([]);
-  const [warrantyCardPhotos, setWarrantyCardPhotos] = useState<File[]>([]);
-  const [handoverBookletPhotos, setHandoverBookletPhotos] = useState<File[]>(
-    []
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [activeSection, setActiveSection] = useState<DocumentSection | null>(
+    null
   );
-  const [finalHandoverFormPhotos, setFinalHandoverFormPhotos] = useState<
-    File[]
-  >([]);
-  const [qcDocuments, setQcDocuments] = useState<File[]>([]);
-
-  // Carousel states
   const [openCarousel, setOpenCarousel] = useState(false);
   const [startIndex, setStartIndex] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [carouselImages, setCarouselImages] = useState<any[]>([]);
 
-  // Fetch documents
   const { data: documents, isLoading } = useGetFinalHandoverDocuments(
     vendorId,
     leadId
@@ -85,31 +99,83 @@ export default function FinalHandover({
 
   const canDelete = userType === "admin" || userType === "super-admin";
 
-  // Group documents by type
+  const sections: DocumentSection[] = [
+    {
+      id: "final_site_photos",
+      title: "Final Site Photos",
+      icon: <Image className="w-6 h-6" />,
+      description: "Upload final installation site photos",
+      fieldName: "final_site_photos",
+      accept: ".jpg,.jpeg,.png,.webp",
+      color: "text-blue-600",
+      bgColor: "bg-blue-50 dark:bg-blue-950",
+      iconBg: "bg-blue-100 dark:bg-blue-900",
+    },
+    {
+      id: "warranty_card",
+      title: "Warranty Card Photos",
+      icon: <Award className="w-6 h-6" />,
+      description: "Upload warranty card photos",
+      fieldName: "warranty_card_photo",
+      accept: ".jpg,.jpeg,.png,.pdf",
+      color: "text-amber-600",
+      bgColor: "bg-amber-50 dark:bg-amber-950",
+      iconBg: "bg-amber-100 dark:bg-amber-900",
+    },
+    {
+      id: "handover_booklet",
+      title: "Handover Booklet",
+      icon: <BookOpen className="w-6 h-6" />,
+      description: "Upload handover booklet photos",
+      fieldName: "handover_booklet_photo",
+      accept: ".jpg,.jpeg,.png,.pdf",
+      color: "text-purple-600",
+      bgColor: "bg-purple-50 dark:bg-purple-950",
+      iconBg: "bg-purple-100 dark:bg-purple-900",
+    },
+    {
+      id: "final_handover_form",
+      title: "Final Handover Form",
+      icon: <ClipboardCheck className="w-6 h-6" />,
+      description: "Upload final handover form photos",
+      fieldName: "final_handover_form_photo",
+      accept: ".jpg,.jpeg,.png,.pdf",
+      color: "text-green-600",
+      bgColor: "bg-green-50 dark:bg-green-950",
+      iconBg: "bg-green-100 dark:bg-green-900",
+    },
+    {
+      id: "qc_documents",
+      title: "QC Documents",
+      icon: <FileCheck className="w-6 h-6" />,
+      description: "Upload quality check documents",
+      fieldName: "qc_document",
+      accept: ".pdf,.doc,.docx,.zip",
+      color: "text-orange-600",
+      bgColor: "bg-orange-50 dark:bg-orange-950",
+      iconBg: "bg-orange-100 dark:bg-orange-900",
+    },
+  ];
+
   const docsByType = React.useMemo(() => {
     if (!documents) return {};
-
     return {
-      finalSitePhotos: documents.filter(
+      final_site_photos: documents.filter(
         (d: any) => d.doc_type_tag === "Type 27"
       ),
-      warrantyCard: documents.filter((d: any) => d.doc_type_tag === "Type 28"),
-      handoverBooklet: documents.filter(
+      warranty_card: documents.filter((d: any) => d.doc_type_tag === "Type 28"),
+      handover_booklet: documents.filter(
         (d: any) => d.doc_type_tag === "Type 29"
       ),
-      finalHandoverForm: documents.filter(
+      final_handover_form: documents.filter(
         (d: any) => d.doc_type_tag === "Type 30"
       ),
-      qcDocument: documents.filter((d: any) => d.doc_type_tag === "Type 31"),
+      qc_documents: documents.filter((d: any) => d.doc_type_tag === "Type 31"),
     };
   }, [documents]);
 
-  const handleUpload = async (
-    files: File[],
-    fieldName: string,
-    setFiles: (files: File[]) => void
-  ) => {
-    if (files.length === 0) {
+  const handleUpload = async () => {
+    if (selectedFiles.length === 0 || !activeSection) {
       toast.error("Please select at least one file to upload.");
       return;
     }
@@ -121,13 +187,13 @@ export default function FinalHandover({
       formData.append("accountId", accountId.toString());
       formData.append("userId", userId.toString());
 
-      files.forEach((file) => {
-        formData.append(fieldName, file);
+      selectedFiles.forEach((file) => {
+        formData.append(activeSection.fieldName, file);
       });
 
       await uploadMutation.mutateAsync(formData);
       toast.success("Files uploaded successfully!");
-      setFiles([]);
+      setSelectedFiles([]);
 
       queryClient.invalidateQueries({
         queryKey: ["finalHandoverDocuments", vendorId, leadId],
@@ -154,16 +220,11 @@ export default function FinalHandover({
     setOpenCarousel(true);
   };
 
-  const renderDocumentSection = (
-    title: string,
-    icon: React.ReactNode,
-    description: string,
-    files: File[],
-    setFiles: (files: File[]) => void,
-    fieldName: string,
-    accept: string,
-    docs: any[]
-  ) => {
+  const getDocumentsForSection = (sectionId: string) => {
+    return (docsByType[sectionId as keyof typeof docsByType] || []) as any[];
+  };
+
+  const separateImageAndDocs = (docs: any[]) => {
     const imageExtensions = ["jpg", "jpeg", "png", "webp"];
     const images = docs.filter((d: any) => {
       const ext = d.doc_og_name?.split(".").pop()?.toLowerCase();
@@ -173,107 +234,7 @@ export default function FinalHandover({
       const ext = d.doc_og_name?.split(".").pop()?.toLowerCase();
       return !imageExtensions.includes(ext || "");
     });
-
-    return (
-      <div className="border rounded-lg overflow-hidden bg-background">
-        {/* Header */}
-        <div className="px-6 py-4 border-b bg-muted/20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {icon}
-            <h2 className="text-lg font-semibold">{title}</h2>
-          </div>
-          <p className="text-xs text-muted-foreground">{description}</p>
-        </div>
-
-        {/* Upload Section */}
-        <div className="p-6 border-b space-y-4">
-          <FileUploadField
-            value={files}
-            onChange={setFiles}
-            accept={accept}
-            multiple
-          />
-
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              onClick={() => handleUpload(files, fieldName, setFiles)}
-              disabled={uploadMutation.isPending || files.length === 0}
-              className="flex items-center gap-2"
-            >
-              {uploadMutation.isPending ? (
-                <>
-                  <Loader2 className="animate-spin size-4" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload size={16} />
-                  Upload Files
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-
-        {/* Files List */}
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-3">
-            <h4 className="text-sm font-semibold text-foreground">
-              Uploaded Files
-            </h4>
-            {docs.length > 0 && (
-              <Badge variant="secondary">
-                {docs.length} file{docs.length > 1 ? "s" : ""}
-              </Badge>
-            )}
-          </div>
-
-          {docs.length === 0 ? (
-            <div className="p-8 border border-dashed rounded-lg flex flex-col items-center justify-center text-center bg-muted/30">
-              <FolderOpen className="w-10 h-10 text-muted-foreground mb-2" />
-              <p className="text-sm font-medium text-muted-foreground">
-                No files uploaded yet.
-              </p>
-            </div>
-          ) : (
-            <ScrollArea className="max-h-[400px] mt-2 pr-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {images.map((doc: any, index: number) => (
-                  <ImageComponent
-                    key={doc.id}
-                    doc={{
-                      id: doc.id,
-                      doc_og_name: doc.doc_og_name,
-                      signedUrl: doc.signed_url,
-                      created_at: doc.created_at,
-                    }}
-                    index={index}
-                    canDelete={canDelete}
-                    onView={(i) => openImageCarousel(images, i)}
-                    onDelete={(id) => setConfirmDelete(Number(id))}
-                  />
-                ))}
-
-                {nonImages.map((doc: any) => (
-                  <DocumentCard
-                    key={doc.id}
-                    doc={{
-                      id: doc.id,
-                      originalName: doc.doc_og_name,
-                      signedUrl: doc.signed_url,
-                      created_at: doc.created_at,
-                    }}
-                    canDelete={canDelete}
-                    onDelete={(id) => setConfirmDelete(id)}
-                  />
-                ))}
-              </div>
-            </ScrollArea>
-          )}
-        </div>
-      </div>
-    );
+    return { images, nonImages };
   };
 
   if (isLoading) {
@@ -288,78 +249,298 @@ export default function FinalHandover({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-6 pb-6">
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">
-          Final Handover
-        </h2>
+        <h2 className="text-lg font-semibold tracking-tight">Final Handover</h2>
         <p className="text-sm text-muted-foreground">
           Upload and manage all final handover documents and photos
         </p>
       </div>
 
-      {/* Final Site Photos */}
-      {renderDocumentSection(
-        "Final Site Photos",
-        <Image className="w-5 h-5" />,
-        "Upload final installation site photos",
-        finalSitePhotos,
-        setFinalSitePhotos,
-        "final_site_photos",
-        ".jpg,.jpeg,.png,.webp",
-        docsByType.finalSitePhotos || []
-      )}
+      {/* Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {sections.map((section, index) => {
+          const docs = getDocumentsForSection(section.id);
 
-      {/* Warranty Card Photos */}
-      {renderDocumentSection(
-        "Warranty Card Photos",
-        <Award className="w-5 h-5" />,
-        "Upload warranty card photos",
-        warrantyCardPhotos,
-        setWarrantyCardPhotos,
-        "warranty_card_photo",
-        ".jpg,.jpeg,.png,.pdf",
-        docsByType.warrantyCard || []
-      )}
+          return (
+            <motion.div
+              key={section.id}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, delay: index * 0.05 }}
+            >
+              <Card
+                className="
+            rounded-2xl border bg-white dark:bg-neutral-900 
+            hover:shadow-[0_8px_25px_-4px_rgba(0,0,0,0.12)]
+            transition-all duration-200 cursor-pointer
+            group
+          "
+                onClick={() => {
+                  setActiveSection(section);
+                  setSelectedFiles([]);
+                }}
+              >
+                <CardContent className="px-6">
+                  {/* Top Row */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`
+                    w-12 h-12 rounded-xl flex items-center justify-center 
+                    border bg-neutral-50 dark:bg-neutral-800 
+                    ${section.color}
+                  `}
+                      >
+                        {section.icon}
+                      </div>
 
-      {/* Handover Booklet Photos */}
-      {renderDocumentSection(
-        "Handover Booklet Photos",
-        <BookOpen className="w-5 h-5" />,
-        "Upload handover booklet photos",
-        handoverBookletPhotos,
-        setHandoverBookletPhotos,
-        "handover_booklet_photo",
-        ".jpg,.jpeg,.png,.pdf",
-        docsByType.handoverBooklet || []
-      )}
+                      <div>
+                        <h3 className="font-semibold text-sm">
+                          {section.title}
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                          {section.description}
+                        </p>
+                      </div>
+                    </div>
 
-      {/* Final Handover Form Photos */}
-      {renderDocumentSection(
-        "Final Handover Form Photos",
-        <ClipboardCheck className="w-5 h-5" />,
-        "Upload final handover form photos",
-        finalHandoverFormPhotos,
-        setFinalHandoverFormPhotos,
-        "final_handover_form_photo",
-        ".jpg,.jpeg,.png,.pdf",
-        docsByType.finalHandoverForm || []
-      )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveSection(section);
+                      }}
+                    >
+                      View
+                    </Button>
+                  </div>
 
-      {/* QC Documents */}
-      {renderDocumentSection(
-        "QC Documents",
-        <FileCheck className="w-5 h-5" />,
-        "Upload quality check documents",
-        qcDocuments,
-        setQcDocuments,
-        "qc_document",
-        ".pdf,.doc,.docx,.zip",
-        docsByType.qcDocument || []
-      )}
+                  {/* Divider */}
+                  <div className="my-4 border-t" />
 
-      {/* Delete Confirmation Dialog */}
+                  {/* Metadata row */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2 text-sm">
+                      <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-medium">
+                        {docs.length} file{docs.length !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bottom preview row */}
+                  {docs.length > 0 ? (
+                    <div className="flex -space-x-2">
+                      {docs.slice(0, 4).map((doc: any, idx) => (
+                        <div
+                          key={doc.id}
+                          className="
+                      w-10 h-10 rounded-lg border bg-neutral-100 dark:bg-neutral-800 
+                      flex items-center justify-center
+                    "
+                          style={{ zIndex: 4 - idx }}
+                        >
+                          <FileText className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      ))}
+
+                      {docs.length > 4 && (
+                        <div
+                          className="
+                    w-10 h-10 rounded-lg bg-neutral-200 dark:bg-neutral-700 
+                    flex items-center justify-center text-xs font-medium text-muted-foreground
+                  "
+                        >
+                          +{docs.length - 4}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      No files uploaded yet
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Document Modal */}
+      <AnimatePresence>
+        {activeSection && (
+          <Dialog
+            open={!!activeSection}
+            onOpenChange={(open) => {
+              if (!open) {
+                setActiveSection(null);
+                setSelectedFiles([]);
+              }
+            }}
+          >
+            <DialogContent className="min-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+              <DialogHeader>
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`p-2.5 rounded-lg ${activeSection.iconBg} ${activeSection.color}`}
+                  >
+                    {activeSection.icon}
+                  </div>
+                  <div>
+                    <DialogTitle>{activeSection.title}</DialogTitle>
+                    <DialogDescription>
+                      {activeSection.description}
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <Separator />
+
+              <div className="flex-1 overflow-y-auto space-y-6 py-4">
+                {/* Upload Section */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold">Upload New Files</h4>
+                    {selectedFiles.length > 0 && (
+                      <Badge variant="secondary">
+                        {selectedFiles.length} selected
+                      </Badge>
+                    )}
+                  </div>
+                  <FileUploadField
+                    value={selectedFiles}
+                    onChange={setSelectedFiles}
+                    accept={activeSection.accept}
+                    multiple
+                  />
+                  {selectedFiles.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      className="flex justify-end"
+                    >
+                      <Button
+                        onClick={handleUpload}
+                        disabled={uploadMutation.isPending}
+                        className="gap-2"
+                      >
+                        {uploadMutation.isPending ? (
+                          <>
+                            <Loader2 className="animate-spin w-4 h-4" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4" />
+                            Upload {selectedFiles.length} File
+                            {selectedFiles.length > 1 ? "s" : ""}
+                          </>
+                        )}
+                      </Button>
+                    </motion.div>
+                  )}
+                </motion.div>
+
+                <Separator />
+
+                {/* Existing Files */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold">Uploaded Files</h4>
+                    <Badge variant="outline">
+                      {getDocumentsForSection(activeSection.id).length} total
+                    </Badge>
+                  </div>
+
+                  {(() => {
+                    const docs = getDocumentsForSection(activeSection.id);
+                    const { images, nonImages } = separateImageAndDocs(docs);
+
+                    if (docs.length === 0) {
+                      return (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="p-12 border border-dashed rounded-lg flex flex-col items-center justify-center text-center bg-muted/30"
+                        >
+                          <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
+                          <p className="text-sm font-medium text-muted-foreground">
+                            No files uploaded yet
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Upload your first file to get started
+                          </p>
+                        </motion.div>
+                      );
+                    }
+
+                    return (
+                      <ScrollArea className="max-h-[400px]">
+                        <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 gap-3">
+                          {images.map((doc: any, index: number) => (
+                            <motion.div
+                              key={doc.id}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: index * 0.05 }}
+                            >
+                              <ImageComponent
+                                doc={{
+                                  id: doc.id,
+                                  doc_og_name: doc.doc_og_name,
+                                  signedUrl: doc.signed_url,
+                                  created_at: doc.created_at,
+                                }}
+                                index={index}
+                                canDelete={canDelete}
+                                onView={(i) => openImageCarousel(images, i)}
+                                onDelete={(id) => setConfirmDelete(Number(id))}
+                              />
+                            </motion.div>
+                          ))}
+
+                          {nonImages.map((doc: any, index: number) => (
+                            <motion.div
+                              key={doc.id}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{
+                                delay: (images.length + index) * 0.05,
+                              }}
+                            >
+                              <DocumentCard
+                                doc={{
+                                  id: doc.id,
+                                  originalName: doc.doc_og_name,
+                                  signedUrl: doc.signed_url,
+                                  created_at: doc.created_at,
+                                }}
+                                canDelete={canDelete}
+                                onDelete={(id) => setConfirmDelete(id)}
+                              />
+                            </motion.div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    );
+                  })()}
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation */}
       <AlertDialog
         open={!!confirmDelete}
         onOpenChange={() => setConfirmDelete(null)}
@@ -369,7 +550,7 @@ export default function FinalHandover({
             <AlertDialogTitle>Delete Document?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. The selected document will be
-              permanently removed from the system.
+              permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -384,7 +565,7 @@ export default function FinalHandover({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Image Carousel Modal */}
+      {/* Image Carousel */}
       <ImageCarouselModal
         images={carouselImages}
         open={openCarousel}

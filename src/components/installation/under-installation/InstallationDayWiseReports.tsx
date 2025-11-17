@@ -31,6 +31,7 @@ import {
   useUnderInstallationDetails,
 } from "@/api/installation/useUnderInstallationStageLeads";
 import { useAppSelector } from "@/redux/store";
+import { motion } from "framer-motion";
 
 interface InstallationDayWiseReportsProps {
   vendorId: number;
@@ -185,11 +186,11 @@ export default function InstallationDayWiseReports({
       </div>
 
       {/* Report Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {reports?.length === 0 && (
           <div className="col-span-full text-center py-16 text-muted-foreground">
             <div className="flex flex-col items-center gap-3">
-              <div className="p-4 bg-muted/50 rounded-full">
+              <div className="p-4 bg-muted/40 rounded-2xl shadow-inner">
                 <FileText className="w-10 h-10 opacity-50" />
               </div>
               <div>
@@ -202,58 +203,102 @@ export default function InstallationDayWiseReports({
           </div>
         )}
 
-        {reports?.map((report: ReportCard) => (
-          <Card
+        {reports?.map((report: ReportCard, index: number) => (
+          <motion.div
             key={report.update_id}
-            className="
-        group cursor-pointer border bg-card
-        hover:border-primary/60 transition-all duration-300 rounded-xl
-      "
-            onClick={() => setViewModal({ open: true, data: report })}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05, duration: 0.3 }}
           >
-            <CardContent className="px-5 space-y-4">
-              {/* Top Section: Date + Icon */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-primary/10 rounded-xl">
-                    <Calendar className="w-5 h-5 text-primary" />
+            <Card
+              className="
+          group cursor-pointer rounded-xl bg-card border
+          hover:shadow-[0_4px_18px_-2px_rgba(0,0,0,0.1)]
+          hover:border-primary/40 transition-all duration-300 
+          active:scale-[0.98]
+        "
+              onClick={() => setViewModal({ open: true, data: report })}
+            >
+              <CardContent className="px-5 space-y-5">
+                {/* Header Section */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-primary/10 rounded-xl shadow-sm">
+                      <Calendar className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">
+                        {formatInstallationDate(report.update_date)}
+                      </p>
+                      <p className="text-xs text-muted-foreground flex gap-1 mt-1 items-center">
+                        <FileText className="w-3 h-3" />
+                        {report.documents.length}{" "}
+                        {report.documents.length === 1
+                          ? "Document"
+                          : "Documents"}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-sm">
-                      {formatInstallationDate(report.update_date)}
-                    </p>
-                    <p className="text-xs text-muted-foreground flex gap-1 mt-0.5 items-center justify-start">
-                      <FileText className="w-3 h-3" />
-                      {report.documents.length}{" "}
-                      {report.documents.length === 1 ? "Document" : "Documents"}
-                    </p>
-                  </div>
+
+                  {/* Open Button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="
+                h-8 w-8 rounded-full shadow-sm
+                hover:bg-primary/10 transition-colors
+              "
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewModal({ open: true, data: report });
+                    }}
+                  >
+                    <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                  </Button>
                 </div>
 
-                {/* External link button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="
-              h-8 w-8 opacity-100 group-hover:opacity-100
-              transition-opacity rounded-full hover:bg-primary/10
-            "
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setViewModal({ open: true, data: report });
-                  }}
-                >
-                  <ExternalLink className="w-4 h-4 text-muted-foreground" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                {/* Divider Line */}
+                <div className="h-px bg-muted/50" />
+
+                {/* Thumbnail Strip */}
+                {report.documents.length > 0 && (
+                  <div className="flex -space-x-2">
+                    {report.documents
+                      .slice(0, 4)
+                      .map((doc: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className="
+                    w-10 h-10 rounded-lg bg-muted border shadow-sm
+                    flex items-center justify-center
+                  "
+                          style={{ zIndex: 4 - idx }}
+                        >
+                          <FileText className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      ))}
+
+                    {report.documents.length > 4 && (
+                      <div
+                        className="
+                  w-10 h-10 rounded-lg flex items-center justify-center
+                  bg-primary/10 text-primary font-semibold text-xs shadow-sm
+                "
+                      >
+                        +{report.documents.length - 4}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
         ))}
       </div>
 
       {/* Add Report Modal */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="min-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Day-Wise Installation Report</DialogTitle>
           </DialogHeader>
