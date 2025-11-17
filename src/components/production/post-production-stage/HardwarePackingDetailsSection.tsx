@@ -172,7 +172,7 @@ export default function HardwarePackingDetailsSection({
 
   const canDelete = userType === "admin" || userType === "super-admin";
 
-  const canViewAndWork = canViewAndWorkProductionStage("backend", leadStatus);
+  const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatus);
 
   return (
     <div className="border rounded-lg overflow-hidden bg-background">

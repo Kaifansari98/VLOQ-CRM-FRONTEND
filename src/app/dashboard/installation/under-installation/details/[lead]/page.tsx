@@ -171,16 +171,34 @@ export default function UnderInstallationLeadDetails() {
 
           {/* 🔹 Header Actions */}
           <div className="flex items-center space-x-2">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => {
-                setSelectedLead(lead); // <-- use the lead you're viewing
-                setShowMoveModal(true);
-              }}
-            >
-              Move to Final Handover
-            </Button>
+            {!underDetails?.actual_installation_start_date ? (
+              <CustomeTooltip
+                truncateValue={
+                  <div className="opacity-60 cursor-not-allowed">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled
+                      className="pointer-events-none"
+                    >
+                      Move to Final Handover
+                    </Button>
+                  </div>
+                }
+                value="Start Installation first to move this lead to Final Handover."
+              />
+            ) : (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  setSelectedLead(lead);
+                  setShowMoveModal(true);
+                }}
+              >
+                Move to Final Handover
+              </Button>
+            )}
 
             <AnimatedThemeToggler />
 
@@ -269,7 +287,7 @@ export default function UnderInstallationLeadDetails() {
               ) : (
                 <div className="flex flex-col items-start">
                   <p className="text-xs font-semibold">
-                    Installation Started At
+                    Installation Started On
                   </p>
 
                   {/* Stylish formatted date & time */}

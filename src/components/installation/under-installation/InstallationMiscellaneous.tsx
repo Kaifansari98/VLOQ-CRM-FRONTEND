@@ -204,7 +204,7 @@ export default function InstallationMiscellaneous({
 
         <Button onClick={() => setIsAddModalOpen(true)} size="sm">
           <Plus className="w-4 h-4 mr-2" />
-          Add Issue
+          Add Miscellaneous
         </Button>
       </div>
 
@@ -232,7 +232,6 @@ export default function InstallationMiscellaneous({
             className="group relative overflow-hidden border cursor-pointer"
             onClick={() => setViewModal({ open: true, data: entry })}
           >
-
             <CardContent className="px-6">
               {/* Header */}
               <div className="flex items-start justify-between mb-4">
@@ -294,7 +293,9 @@ export default function InstallationMiscellaneous({
                       <Users className="w-3.5 h-3.5 text-purple-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-muted-foreground">Reorder Material Details</p>
+                      <p className="text-muted-foreground">
+                        Reorder Material Details
+                      </p>
                       <p className="font-medium truncate">
                         {entry.teams.map((t) => t.team_name).join(", ")}
                       </p>
@@ -349,14 +350,14 @@ export default function InstallationMiscellaneous({
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
         <DialogContent className="min-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Miscellaneous Issue</DialogTitle>
+            <DialogTitle>Add Miscellaneous</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {/* Issue Type */}
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium">Issue Type *</label>
+                <label className="text-sm font-medium">Miscellaneous Type *</label>
                 <AssignToPicker
                   data={typeSelectData}
                   value={formData.misc_type_id}
@@ -418,7 +419,7 @@ export default function InstallationMiscellaneous({
             {/* Reorder Material Details */}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium flex items-center gap-1">
-                Reorder Material Details *
+                Reorder Material Type *
               </label>
 
               <TextSelectPicker
@@ -442,6 +443,22 @@ export default function InstallationMiscellaneous({
                 }
                 emptyLabel="Select material details"
                 disabled={loadingSummary}
+              />
+            </div>
+
+            {/* Supervisor Remark */}
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Reorder Material Details *</label>
+              <TextAreaInput
+                value={formData.supervisor_remark}
+                onChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    supervisor_remark: value,
+                  }))
+                }
+                placeholder="Any remarks from supervisor..."
+                maxLength={1000}
               />
             </div>
 
@@ -490,22 +507,6 @@ export default function InstallationMiscellaneous({
                 />
               </div>
             </div>
-
-            {/* Supervisor Remark */}
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Supervisor Remark</label>
-              <TextAreaInput
-                value={formData.supervisor_remark}
-                onChange={(value) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    supervisor_remark: value,
-                  }))
-                }
-                placeholder="Any remarks from supervisor..."
-                maxLength={1000}
-              />
-            </div>
           </div>
 
           <DialogFooter>
@@ -523,7 +524,9 @@ export default function InstallationMiscellaneous({
               onClick={handleCreateEntry}
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? "Creating..." : "Create Issue"}
+              {createMutation.isPending
+                ? "Creating..."
+                : "Create Miscellaneous"}
             </Button>
           </DialogFooter>
         </DialogContent>

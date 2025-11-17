@@ -100,7 +100,6 @@ export default function UnderInstallationTabsWrapper({
         items={tabs}
         defaultTabId="underInstallation"
         activeColor="bg-blue-500"
-        contentHeightClass="h-[150vh]"
       />
     </div>
   );

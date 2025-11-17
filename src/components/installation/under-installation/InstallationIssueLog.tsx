@@ -27,6 +27,7 @@ import {
 import { getMiscTeams } from "@/api/installation/useUnderInstallationStageLeads";
 import { useAppSelector } from "@/redux/store";
 import AssignToPicker from "@/components/assign-to-picker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface InstallationIssueLogProps {
   vendorId: number;
@@ -51,7 +52,9 @@ export default function InstallationIssueLog({
   const [selectedTeams, setSelectedTeams] = useState<Option[]>([]);
   const [issueDescription, setIssueDescription] = useState("");
   const [issueImpact, setIssueImpact] = useState("");
-  const [selectedIssueType, setSelectedIssueType] = useState<number | undefined>(undefined);
+  const [selectedIssueType, setSelectedIssueType] = useState<
+    number | undefined
+  >(undefined);
 
   // Fetch issue logs
   const { data: issueLogs, isLoading } = useGetInstallationIssueLogs(
@@ -198,12 +201,21 @@ export default function InstallationIssueLog({
                 <Label htmlFor="issue-impact" className="text-sm font-medium">
                   Issue Impact <span className="text-destructive">*</span>
                 </Label>
-                <TextAreaInput
-                  value={issueImpact}
-                  onChange={setIssueImpact}
-                  placeholder="Explain the impact of this issue on the project..."
-                  maxLength={1000}
-                />
+
+                <div className="w-full">
+                  <Select value={issueImpact} onValueChange={setIssueImpact}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select issue impact..." />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="critical">Very High Impact</SelectItem>
+                      <SelectItem value="high">High Impact</SelectItem>
+                      <SelectItem value="medium">Medium Impact</SelectItem>
+                      <SelectItem value="low">Low Impact</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Responsible Teams */}
