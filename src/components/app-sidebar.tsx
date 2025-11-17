@@ -163,11 +163,13 @@ const data = {
         },
         {
           title: "Under Installation",
-          url: "#",
+          url: "/dashboard/installation/under-installation",
+          showCount: "total_under_installation_stage_leads" as const,
         },
         {
           title: "Final Handover",
-          url: "#",
+          url: "/dashboard/installation/final-handover",
+          showCount: "total_final_handover_stage_leads" as const,
         },
         {
           title: "Servicing",

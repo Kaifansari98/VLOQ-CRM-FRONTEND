@@ -21,9 +21,12 @@ interface CustomeDatePickerProps {
     | "futureOnly"
     | "futureAfterTwoDays"
     | "pastWeekOnly"
-    | "pastMonthOnly";
+    | "pastMonthOnly"
+    | "installationInterval";
   minDate?: string; // ✅ new
   disabledReason?: string; // ✅ new
+  intervalStartDate?: string;
+  intervalEndDate?: string;
 }
 
 export default function CustomeDatePicker({
@@ -32,6 +35,8 @@ export default function CustomeDatePicker({
   restriction = "none",
   minDate,
   disabledReason,
+  intervalStartDate,
+  intervalEndDate,  
 }: CustomeDatePickerProps) {
   const [date, setDate] = React.useState<Date | undefined>(
     value ? parseISO(value) : undefined
@@ -62,11 +67,37 @@ export default function CustomeDatePicker({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // ---------------------------------------------------------------
+  // 🔥 NEW INSTALLATION INTERVAL LOGIC
+  // ---------------------------------------------------------------
+
   const disableDates = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // ✔ Installation interval mode
+    if (restriction === "installationInterval") {
+      if (!intervalStartDate || !intervalEndDate) return true;
+
+      const start = parseISO(intervalStartDate);
+      const end = parseISO(intervalEndDate);
+
+      start.setHours(0, 0, 0, 0);
+      end.setHours(0, 0, 0, 0);
+
+      // dynamic max date → min(today, expected_end)
+      const maxSelectable = today < end ? today : end;
+
+      return date < start || date > maxSelectable;
+    }
+
+    // ---------------------------------------------------------------
+    // EXISTING LOGIC
+    // ---------------------------------------------------------------
     if (restriction === "futureOnly") {
       if (minDate) {
         const min = parseISO(minDate);
-        return date < min; // block dates before minDate
+        return date < min;
       }
       return date < today;
     }
@@ -77,22 +108,21 @@ export default function CustomeDatePicker({
       const daysToAdd = currentHour >= 15 ? 3 : 2;
       min.setDate(min.getDate() + daysToAdd);
       min.setHours(0, 0, 0, 0);
-      return date < min; // disable all dates before min date
+      return date < min;
     }
 
-    if (restriction === "pastOnly") {
-      return date > today;
-    }
+    if (restriction === "pastOnly") return date > today;
     if (restriction === "pastWeekOnly") {
       const sevenDaysAgo = new Date(today);
       sevenDaysAgo.setDate(today.getDate() - 7);
       return date < sevenDaysAgo || date > today;
     }
     if (restriction === "pastMonthOnly") {
-      const thirtyDaysAgo = new Date(today);
-      thirtyDaysAgo.setDate(today.getDate() - 30);
-      return date < thirtyDaysAgo || date > today;
+      const monthAgo = new Date(today);
+      monthAgo.setDate(today.getDate() - 30);
+      return date < monthAgo || date > today;
     }
+
     return false;
   };
 

@@ -44,6 +44,8 @@ interface NavItem {
     | "total_site_readiness_stage_leads"
     | "total_dispatch_planning_stage_leads"
     | "total_dispatch_stage_leads"
+    | "total_under_installation_stage_leads"
+    | "total_final_handover_stage_leads"
     | "total_my_tasks";
   items?: {
     title: string;
@@ -64,6 +66,8 @@ interface NavItem {
       | "total_site_readiness_stage_leads"
       | "total_dispatch_planning_stage_leads"
       | "total_dispatch_stage_leads"
+      | "total_under_installation_stage_leads"
+      | "total_final_handover_stage_leads"
       | "total_my_tasks";
   }[];
 }

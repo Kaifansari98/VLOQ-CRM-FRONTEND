@@ -105,7 +105,7 @@ const QuotationTab = () => {
           <div className="flex items-center gap-2">
             <Images size={20} />
             <h1 className="text-base font-semibold flex items-center gap-1">
-              Quotatio
+              Quotation
               <span className="text-xs font-medium text-muted-foreground">
                 ({designQuotationDocs.length}{" "}
                 {designQuotationDocs.length === 1 ? "Document" : "Documents"})
