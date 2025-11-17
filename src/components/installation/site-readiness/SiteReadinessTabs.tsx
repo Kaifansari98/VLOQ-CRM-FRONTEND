@@ -64,7 +64,6 @@ export default function SiteReadinessTabs({
         defaultTabId="checklist"
         activeColor="bg-primary"
         className="!justify-start !w-fit border-none shadow-none bg-muted px-0 overflow-scroll"
-        contentHeightClass="h-[150vh]"
       />
     </div>
   );

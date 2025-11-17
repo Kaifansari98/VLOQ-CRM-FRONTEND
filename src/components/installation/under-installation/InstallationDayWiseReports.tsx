@@ -22,13 +22,13 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "react-toastify";
 import CustomeDatePicker from "@/components/date-picker";
 import { FileUploadField } from "@/components/custom/file-upload";
 import {
   useUploadInstallationUpdate,
   useInstallationUpdates,
+  useUnderInstallationDetails,
 } from "@/api/installation/useUnderInstallationStageLeads";
 import { useAppSelector } from "@/redux/store";
 
@@ -76,6 +76,17 @@ export default function InstallationDayWiseReports({
   const uploadMutation = useUploadInstallationUpdate();
   const { data: reports, refetch } = useInstallationUpdates(vendorId, leadId);
 
+  const { data: underDetails } = useUnderInstallationDetails(vendorId, leadId);
+
+  console.log(
+    "Installation Start Date :- ",
+    underDetails?.actual_installation_start_date
+  );
+  console.log(
+    "Expected End Date :- ",
+    underDetails?.expected_installation_end_date
+  );
+
   const handleAddReport = () => {
     if (!selectedDate) {
       toast.error("Please select a date");
@@ -111,15 +122,6 @@ export default function InstallationDayWiseReports({
         },
       }
     );
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
   };
 
   const formatFullDate = (dateString: string) => {
@@ -169,7 +171,7 @@ export default function InstallationDayWiseReports({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-semibold">
-            Installation Day-Wise Updates 
+            Installation Day-Wise Updates
           </h3>
           <p className="text-sm text-muted-foreground">
             Track installation progress with daily updates and documentation
@@ -263,7 +265,9 @@ export default function InstallationDayWiseReports({
               <CustomeDatePicker
                 value={selectedDate}
                 onChange={setSelectedDate}
-                restriction="pastOnly"
+                restriction="installationInterval"
+                intervalStartDate={underDetails?.actual_installation_start_date}
+                intervalEndDate={underDetails?.expected_installation_end_date}
               />
             </div>
 

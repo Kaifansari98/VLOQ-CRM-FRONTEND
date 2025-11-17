@@ -25,7 +25,7 @@ export default function LeadDetailsProductionUtil({
   const allTabs = [
     {
       id: "preProduction",
-      title: "Pre Production",
+      title: "Under Production",
       color: "bg-blue-500 hover:bg-blue-700",
       cardContent: (
         <PreProductionDetails leadId={leadId} accountId={accountId} />
@@ -46,7 +46,7 @@ export default function LeadDetailsProductionUtil({
 
   return (
     <div className="h-full">
-      <SmoothTab items={allTabs} defaultTabId="preProduction" contentHeightClass="h-[150vh]" />
+      <SmoothTab items={allTabs} defaultTabId="preProduction"/>
     </div>
   );
 }

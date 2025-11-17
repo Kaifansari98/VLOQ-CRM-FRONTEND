@@ -270,21 +270,21 @@ const slideVariants = {
     opacity: 0,
     filter: "blur(8px)",
     scale: 0.95,
-    position: "absolute" as const,
+    position: "relative" as const,
   }),
   center: {
     x: 0,
     opacity: 1,
     filter: "blur(0px)",
     scale: 1,
-    position: "absolute" as const,
+    position: "relative" as const,
   },
   exit: (direction: number) => ({
     x: direction < 0 ? "100%" : "-100%",
     opacity: 0,
     filter: "blur(8px)",
     scale: 0.95,
-    position: "absolute" as const,
+    position: "relative" as const,
   }),
 };
 
@@ -450,14 +450,9 @@ export default function SmoothTab({
       </div>
 
       {/* Card Content Area */}
-      <div className="flex-1 mb-4 relative h-full">
-        <div
-          className={cn(
-            "bg-card rounded-lg w-full relative",
-            contentHeightClass || "h-[100vh]" // ✅ fallback if prop not provided
-          )}
-        >
-          <div className="absolute inset-0 overflow-hidden rounded-lg">
+      <div className="mb-4 relative">
+        <div className={cn("bg-card rounded-lg w-full", contentHeightClass)}>
+          <div className="relative overflow-hidden rounded-lg">
             <AnimatePresence
               initial={false}
               mode="popLayout"
@@ -471,7 +466,7 @@ export default function SmoothTab({
                 animate="center"
                 exit="exit"
                 transition={transition as any}
-                className="absolute inset-0 w-full h-full will-change-transform bg-card"
+                className="relative w-full will-change-transform bg-card"
                 style={{
                   backfaceVisibility: "hidden",
                   WebkitBackfaceVisibility: "hidden",
