@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useAppSelector } from "@/redux/store";
 import {
   useReactTable,
@@ -21,86 +21,52 @@ import { DataTableSortList } from "@/components/data-table/data-table-sort-list"
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
 import { useFeatureFlags } from "./feature-flags-provider";
-import type { DataTableRowActionClientDocumentation } from "@/types/data-table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-  AlertDialogFooter,
-  AlertDialogHeader,
-} from "@/components/ui/alert-dialog";
-import { useDeleteLead } from "@/hooks/useDeleteLead";
-import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
-import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-import ClientDocumantationModal from "@/components/site-supervisor/final-measurement/client-documantation-modal";
-import { getClientDocumentationTableColumns } from "./client-documentation-column";
+
 import {
   useClientDocumentationLeads,
   useVendorOverallClientDocumentationLeads,
 } from "@/hooks/client-documentation/use-clientdocumentation";
-import {
-  ClientDocumentationLead,
-  ProcessedClientDocumentationLead,
-} from "@/types/client-documentation";
+
+import { ClientDocumentationLead } from "@/types/client-documentation";
+
+import { getUniversalTableColumns } from "@/components/utils/column/Universal-column";
+import { LeadColumn } from "@/components/utils/column/column-type";
 
 const ClientDocumentationLeadsTable = () => {
-  // Redux selectors
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const userId = useAppSelector((state) => state.auth.user?.id);
-  const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type as string | undefined
-  );
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const userId = useAppSelector((s) => s.auth.user?.id);
+  const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
 
-  // Feature flags
-  const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const router = useRouter();
+  const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
 
   const isAdmin =
     userType?.toLowerCase() === "admin" ||
     userType?.toLowerCase() === "super_admin";
 
-  // 🟢 My / Overall tab
   const [viewType, setViewType] = useState<"my" | "overall">("my");
 
-  // Queries
-  const myLeadsQuery = useClientDocumentationLeads();
-  const overallLeadsQuery = useVendorOverallClientDocumentationLeads(
+  const myQuery = useClientDocumentationLeads();
+  const overallQuery = useVendorOverallClientDocumentationLeads(
     vendorId!,
     userId!
   );
 
   const activeData =
     viewType === "my"
-      ? myLeadsQuery.data?.data || []
-      : overallLeadsQuery.data?.data || [];
+      ? myQuery.data?.data || []
+      : overallQuery.data?.data || [];
 
-  const myCount = myLeadsQuery.data?.count ?? 0;
-  const overallCount = overallLeadsQuery.data?.count ?? 0;
+  const myCount = myQuery.data?.count ?? 0;
+  const overallCount = overallQuery.data?.count ?? 0;
 
   const isLoading =
-    viewType === "my" ? myLeadsQuery.isLoading : overallLeadsQuery.isLoading;
-  const isError =
-    viewType === "my" ? myLeadsQuery.isError : overallLeadsQuery.isError;
+    viewType === "my" ? myQuery.isLoading : overallQuery.isLoading;
 
-  // const { data, isLoading, isError } = useClientDocumentationLeads();
-  // console.log("Booking Leads Data:", data);
+  const isError = viewType === "my" ? myQuery.isError : overallQuery.isError;
 
-  // Local state
-  const [openDelete, setOpenDelete] = useState(false);
-  const [assignOpenLead, setAssignOpenLead] = useState(false);
-  const [openEditModal, setOpenEditModal] = useState<boolean>(false);
-  const [openClientDocModal, setOpenClientDocModal] = useState<boolean>(false);
-  const [openViewClientDocModal, setOpenViewClientDocModal] =
-    useState<boolean>(false);
-  const [rowAction, setRowAction] =
-    useState<DataTableRowActionClientDocumentation<ProcessedClientDocumentationLead> | null>(
-      null
-    );
-
+  // Table state
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: true },
@@ -113,56 +79,52 @@ const ClientDocumentationLeadsTable = () => {
     createdAt: false,
     altContact: false,
     productTypes: true,
-    email: false,
     productStructures: false,
+    email: false,
     designerRemark: false,
   });
 
-  // Mutations
-  const deleteLeadMutation = useDeleteLead();
-
-  // Derived: formatted row data
-  const rowData = useMemo<ProcessedClientDocumentationLead[]>(() => {
+  // 🔄 Transform API → LeadColumn (universal format)
+  const rowData = useMemo<LeadColumn[]>(() => {
     if (!Array.isArray(activeData)) return [];
-    console.log("Client Documentation Leads:", activeData);
 
     return (activeData as ClientDocumentationLead[]).map((lead, index) => ({
       id: lead.id,
       srNo: index + 1,
-      lead_code: lead.lead_code,
-      name: `${lead.firstname || ""} ${lead.lastname || ""}`.trim(),
-      email: lead.email || "",
-      contact: `${lead.country_code || ""} ${lead.contact_no || ""}`.trim(),
-      siteAddress: lead.site_address || "",
-      architechName: lead.archetech_name || "",
-      designerRemark: lead.designer_remark || "",
-      source: lead.source?.type || "",
-      siteType: lead.siteType?.type || "",
-      createdAt: lead.created_at || "",
-      updatedAt: lead.updated_at || "",
-      altContact: lead.alt_contact_no || "",
-      status: lead.statusType?.type || "",
-      assignedTo: lead.assignedTo?.user_name || "",
-      final_booking_amt: lead.final_booking_amt,
-      accountId: lead.account_id,
+      lead_code: lead.lead_code ?? "",
+      name: `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim(),
+      email: lead.email ?? "",
+      contact: `${lead.country_code ?? ""} ${lead.contact_no ?? ""}`.trim(),
+      siteAddress: lead.site_address ?? "",
+      architechName: lead.archetech_name ?? "",
+      designerRemark: lead.designer_remark ?? "",
+
       productTypes:
         lead.productMappings
           ?.map((pm) => pm.productType?.type)
           .filter(Boolean)
-          .join(", ") || "-",
+          .join(", ") ?? "",
+
       productStructures:
         lead.leadProductStructureMapping
           ?.map((ps) => ps.productStructure?.type)
           .filter(Boolean)
-          .join(", ") || "-",
+          .join(", ") ?? "",
+
+      source: lead.source?.type ?? "",
+      siteType: lead.siteType?.type ?? "",
+      createdAt: lead.created_at ?? "",
+      updatedAt: lead.updated_at ?? "",
+      altContact: lead.alt_contact_no ?? "",
+      status: lead.statusType?.type ?? "",
+      assign_to: lead.assignedTo?.user_name ?? "",
+
+      accountId: lead.account_id ?? 0,
     }));
   }, [activeData]);
 
   // Columns
-  const columns = useMemo(
-    () => getClientDocumentationTableColumns({ setRowAction, userType }),
-    [setRowAction, userType]
-  );
+  const columns = useMemo(() => getUniversalTableColumns(), []);
 
   // Table setup
   const table = useReactTable({
@@ -173,12 +135,15 @@ const ClientDocumentationLeadsTable = () => {
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
+
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+
     getRowId: (row) => row.id.toString(),
     globalFilterFn: "includesString",
+
     state: {
       sorting,
       columnFilters,
@@ -188,47 +153,18 @@ const ClientDocumentationLeadsTable = () => {
     },
   });
 
-  // Effects
-  useEffect(() => {
-    if (!rowAction) return;
-    if (rowAction.variant === "view") setOpenViewClientDocModal(true);
-    if (rowAction.variant === "delete") setOpenDelete(true);
-    if (rowAction.variant === "reassignlead") setAssignOpenLead(true);
-    if (rowAction.variant === "clientdoc") setOpenClientDocModal(true);
-  }, [rowAction]);
-
-  // Handlers
-  const handleDeleteLead = () => {
-    if (!rowAction?.row || !vendorId || !userId) {
-      toast.error("Missing vendor or user info!");
-      return;
-    }
-
-    deleteLeadMutation.mutate(
-      { leadId: rowAction.row.original.id, vendorId, userId },
-      {
-        onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: (err: any) =>
-          toast.error(err?.message || "Failed to delete lead"),
-      }
-    );
-
-    setOpenDelete(false);
-    setRowAction(null);
-  };
-
-  const handleRowClick = (row: ProcessedClientDocumentationLead) => {
+  const handleRowClick = (row: LeadColumn) => {
     router.push(
-      `/dashboard/site-supervisor/client-documentation/details/${row.id}`
+      `/dashboard/site-supervisor/client-documentation/details/${row.id}?accountId=${row.accountId}`
     );
   };
 
-  // Early returns
   if (!vendorId) return <p>No vendor selected</p>;
   if (isLoading) return <p>Loading...</p>;
   if (isError) return <p>Error loading leads</p>;
 
-  // Render
+  const mockProps = { shallow: true, debounceMs: 300, throttleMs: 50 };
+
   return (
     <>
       <DataTable table={table} onRowDoubleClick={handleRowClick}>
@@ -236,57 +172,41 @@ const ClientDocumentationLeadsTable = () => {
           <DataTableAdvancedToolbar table={table}>
             <DataTableSortList table={table} align="start" />
             {filterFlag === "advancedFilters" ? (
-              <DataTableFilterList
-                table={table}
-                shallow
-                debounceMs={300}
-                throttleMs={50}
-                align="start"
-              />
+              <DataTableFilterList table={table} {...mockProps} />
             ) : (
-              <DataTableFilterMenu
-                table={table}
-                shallow
-                debounceMs={300}
-                throttleMs={50}
-              />
+              <DataTableFilterMenu table={table} {...mockProps} />
             )}
           </DataTableAdvancedToolbar>
         ) : (
           <DataTableToolbar table={table}>
-            {/* 🧭 My Leads / Overall Leads Tabs */}
             {!isAdmin && (
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setViewType("my")}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium ${
                     viewType === "my"
-                      ? "bg-blue-600 text-white shadow-sm"
+                      ? "bg-blue-600 text-white"
                       : "bg-muted text-gray-700 hover:bg-gray-100"
                   }`}
                 >
                   My Leads
-                  {myLeadsQuery.data && (
-                    <span className="ml-3 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
-                      {myCount}
-                    </span>
-                  )}
+                  <span className="ml-2 bg-blue-100 text-xs text-blue-500 px-1.5 py-0.5 rounded-full">
+                    {myCount}
+                  </span>
                 </button>
 
                 <button
                   onClick={() => setViewType("overall")}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium ${
                     viewType === "overall"
-                      ? "bg-blue-600 text-white shadow-sm"
+                      ? "bg-blue-600 text-white"
                       : "bg-muted text-gray-700 hover:bg-gray-100"
                   }`}
                 >
                   Overall Leads
-                  {overallLeadsQuery.data && (
-                    <span className="ml-3 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
-                      {overallCount}
-                    </span>
-                  )}
+                  <span className="ml-2 bg-blue-100 text-xs text-blue-500 px-1.5 py-0.5 rounded-full">
+                    {overallCount}
+                  </span>
                 </button>
               </div>
             )}
@@ -295,43 +215,6 @@ const ClientDocumentationLeadsTable = () => {
           </DataTableToolbar>
         )}
       </DataTable>
-
-      {/* Delete Confirmation */}
-      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              lead from your system.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteLead}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* <ViewClientDocumentationModal
-        open={openViewClientDocModal}
-        onOpenChange={setOpenViewClientDocModal}
-        data={rowAction?.row.original}
-      /> */}
-
-      <AssignLeadModal
-        open={assignOpenLead}
-        onOpenChange={setAssignOpenLead}
-        leadData={rowAction?.row.original}
-      />
-
-      <ClientDocumantationModal
-        open={openClientDocModal}
-        onOpenChange={setOpenClientDocModal}
-        data={rowAction?.row.original}
-      />
     </>
   );
 };

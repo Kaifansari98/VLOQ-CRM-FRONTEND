@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useAppSelector } from "@/redux/store";
+
 import {
   useReactTable,
   getCoreRowModel,
@@ -21,44 +22,25 @@ import { DataTableSortList } from "@/components/data-table/data-table-sort-list"
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
 import { useFeatureFlags } from "@/app/_components/feature-flags-provider";
-import type { DataTableRowActionFinalMeasurement } from "@/types/data-table";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
-import { useDeleteLead } from "@/hooks/useDeleteLead";
-import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
-import AssignTaskFinalMeasurementForm from "@/components/sales-executive/Lead/assign-task-final-measurement-form";
-import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-
 import { useProductionLeads } from "@/api/production/production-api";
 
-import {
-  orderLoginLead as productionLead,
-  ProcessedOrderLoginLead as ProcessedProductionLead,
-} from "@/types/production/order-login.types"; // ✅ reuse same types for now
+import { LeadColumn } from "@/components/utils/column/column-type";
 
-import { getProductionTableColumns } from "./production-columns";
+import { getUniversalTableColumns } from "@/components/utils/column/Universal-column";
 
 const ProductionTable = () => {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const userId = useAppSelector((state) => state.auth.user?.id);
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type as string | undefined
+    (s) => s.auth.user?.user_type.user_type as string | undefined
   );
 
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const router = useRouter();
 
+  // Table States
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: true },
@@ -67,12 +49,11 @@ const ProductionTable = () => {
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     architechName: false,
-    source: false,
     createdAt: false,
-    altContact: false,
-    productTypes: true,
-    productStructures: false,
     email: false,
+    source: false,
+    altContact: false,
+    productStructures: false,
     designerRemark: false,
   });
 
@@ -81,7 +62,7 @@ const ProductionTable = () => {
     pageSize: 10,
   });
 
-  // 🔹 Fetch Data
+  // API Call
   const { data, isLoading, isError } = useProductionLeads(
     vendorId!,
     userId!,
@@ -89,81 +70,72 @@ const ProductionTable = () => {
     pagination.pageSize
   );
 
-  const deleteLeadMutation = useDeleteLead();
-
-  // 🔹 Modals
-  const [openDelete, setOpenDelete] = useState(false);
-  const [assignOpenLead, setAssignOpenLead] = useState(false);
-  const [openFMTaskModal, setOpenFMTaskModal] = useState(false);
-  const [rowAction, setRowAction] =
-    useState<DataTableRowActionFinalMeasurement<ProcessedProductionLead> | null>(
-      null
-    );
-
-  // 🔹 Row Actions
-  useEffect(() => {
-    if (!rowAction) return;
-    if (rowAction.variant === "delete") setOpenDelete(true);
-    if (rowAction.variant === "reassignlead") setAssignOpenLead(true);
-    if (rowAction.variant === "assignTask") setOpenFMTaskModal(true);
-  }, [rowAction]);
-
-  // 🔹 Data Mapping
-  const rowData = useMemo<ProcessedProductionLead[]>(() => {
+  // Convert API → LeadColumn
+  const rowData = useMemo<LeadColumn[]>(() => {
     if (!data?.leads || !Array.isArray(data.leads)) return [];
 
-    return (data.leads as productionLead[]).map((lead, index) => ({
-      id: lead.id,
-      srNo: index + 1,
-      lead_code: lead.lead_code || "-",
-      name: `${lead.firstname || ""} ${lead.lastname || ""}`.trim(),
-      email: lead.email || "",
-      contact: `${lead.country_code || ""} ${lead.contact_no || ""}`.trim(),
-      siteAddress: lead.site_address || "",
-      architechName: lead.archetech_name || "",
-      designerRemark: lead.designer_remark || "",
-      productTypes:
-        lead.productMappings
-          ?.map((pm: any) => pm.productType?.type)
-          .filter(Boolean)
-          .join(", ") || "-",
-      productStructures:
-        lead.leadProductStructureMapping
-          ?.map((ps: any) => ps.productStructure?.type)
-          .filter(Boolean)
-          .join(", ") || "-",
-      siteSupervisor: lead.siteSupervisors?.[0]?.user_name || "-",
-      siteSupervisorId: lead.siteSupervisors?.[0]?.id ?? 0,
-      source: lead.source?.type || "",
-      siteType: lead.siteType?.type || "",
-      createdAt: lead.created_at || "",
-      updatedAt: lead.updated_at || "",
-      altContact: lead.alt_contact_no || "",
-      status: lead.statusType?.type || "Pre-Production",
-      assignedTo: lead.assignedTo?.user_name || "-",
-      accountId: lead.account_id,
-      final_booking_amt: lead.final_booking_amt || 0, // ✅ FIXED LINE
-    }));
+    return (data.leads ?? []).map(
+      (lead: any, index: number): LeadColumn => ({
+        id: lead.id,
+        srNo: index + 1,
+
+        lead_code: lead.lead_code ?? "",
+        name: `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim(),
+        email: lead.email ?? "",
+        contact: `${lead.country_code ?? ""} ${lead.contact_no ?? ""}`.trim(),
+
+        siteAddress: lead.site_address ?? "",
+        architechName: lead.archetech_name ?? "",
+        designerRemark: lead.designer_remark ?? "",
+
+        productTypes:
+          lead.productMappings
+            ?.map((pm: any) => pm.productType?.type)
+            .filter(Boolean)
+            .join(", ") ?? "",
+
+        productStructures:
+          lead.leadProductStructureMapping
+            ?.map((ps: any) => ps.productStructure?.type)
+            .filter(Boolean)
+            .join(", ") ?? "",
+
+        source: lead.source?.type ?? "",
+        siteType: lead.siteType?.type ?? "",
+        createdAt: lead.created_at ?? "",
+        updatedAt: lead.updated_at ?? "",
+        altContact: lead.alt_contact_no ?? "",
+
+        status: lead.statusType?.type ?? "Pre-Production",
+
+        assign_to: lead.assignedTo?.user_name ?? "",
+        accountId: lead.account_id ?? 0,
+      })
+    );
   }, [data]);
 
-  // 🔹 Columns
-  const columns = useMemo(
-    () => getProductionTableColumns({ setRowAction, userType }),
-    [setRowAction, userType]
-  );
+  // Columns
+  const columns = useMemo(() => getUniversalTableColumns(), []);
 
-  // ⚙️ Table Config
+  // React Table Setup
   const table = useReactTable({
     data: rowData,
     columns,
+
     pageCount: Math.ceil((data?.total || 0) / pagination.pageSize),
+
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
+
+    onPaginationChange: setPagination,
+    manualPagination: true,
+
     getRowId: (row) => row.id.toString(),
     globalFilterFn: "includesString",
+
     state: {
       pagination,
       sorting,
@@ -172,35 +144,17 @@ const ProductionTable = () => {
       globalFilter,
       columnVisibility,
     },
-    onPaginationChange: setPagination,
-    manualPagination: true,
+
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  const handleDeleteLead = () => {
-    if (!rowAction?.row || !vendorId || !userId) {
-      toast.error("Missing vendor or user info!");
-      return;
-    }
-
-    deleteLeadMutation.mutate(
-      { leadId: rowAction.row.original.id, vendorId, userId },
-      {
-        onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: (err: any) =>
-          toast.error(err?.message || "Failed to delete lead"),
-      }
+  const handleRowClick = (row: LeadColumn) => {
+    router.push(
+      `/dashboard/production/pre-post-prod/details/${row.id}?accountId=${row.accountId}`
     );
-
-    setOpenDelete(false);
-    setRowAction(null);
-  };
-
-  const handleRowClick = (row: ProcessedProductionLead) => {
-    router.push(`/dashboard/production/pre-post-prod/details/${row.id}`);
   };
 
   if (!vendorId) return <p>No vendor selected</p>;
@@ -208,55 +162,22 @@ const ProductionTable = () => {
   if (isError) return <p>Error loading Production leads</p>;
 
   return (
-    <>
-      <DataTable table={table} onRowDoubleClick={handleRowClick}>
-        {enableAdvancedFilter ? (
-          <DataTableAdvancedToolbar table={table}>
-            <DataTableSortList table={table} align="start" />
-            {filterFlag === "advancedFilters" ? (
-              <DataTableFilterList table={table} shallow />
-            ) : (
-              <DataTableFilterMenu table={table} shallow />
-            )}
-          </DataTableAdvancedToolbar>
-        ) : (
-          <DataTableToolbar table={table}>
-            <DataTableSortList table={table} align="end" />
-          </DataTableToolbar>
-        )}
-      </DataTable>
-
-      {/* 🗑 Delete Confirmation */}
-      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              lead from your system.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteLead}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* 🧩 Modals */}
-      <AssignLeadModal
-        open={assignOpenLead}
-        onOpenChange={setAssignOpenLead}
-        leadData={rowAction?.row.original}
-      />
-      <AssignTaskFinalMeasurementForm
-        open={openFMTaskModal}
-        onOpenChange={setOpenFMTaskModal}
-        data={rowAction?.row.original}
-      />
-    </>
+    <DataTable table={table} onRowDoubleClick={handleRowClick}>
+      {enableAdvancedFilter ? (
+        <DataTableAdvancedToolbar table={table}>
+          <DataTableSortList table={table} align="start" />
+          {filterFlag === "advancedFilters" ? (
+            <DataTableFilterList table={table} shallow />
+          ) : (
+            <DataTableFilterMenu table={table} shallow />
+          )}
+        </DataTableAdvancedToolbar>
+      ) : (
+        <DataTableToolbar table={table}>
+          <DataTableSortList table={table} align="end" />
+        </DataTableToolbar>
+      )}
+    </DataTable>
   );
 };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useAppSelector } from "@/redux/store";
 import {
   useReactTable,
@@ -21,32 +21,11 @@ import { DataTableSortList } from "@/components/data-table/data-table-sort-list"
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
 import { useFeatureFlags } from "@/app/_components/feature-flags-provider";
-import type { DataTableRowActionFinalMeasurement } from "@/types/data-table";
-
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
-import { useDeleteLead } from "@/hooks/useDeleteLead";
-import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
-import AssignTaskFinalMeasurementForm from "@/components/sales-executive/Lead/assign-task-final-measurement-form";
-import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 
 import { useReadyToDispatchLeads } from "@/api/production/useReadyToDispatchLeads";
-import {
-  orderLoginLead as ReadyToDispatchLead,
-  ProcessedOrderLoginLead as ProcessedReadyToDispatchLead,
-} from "@/types/production/order-login.types";
-
-import { getReadyToDispatchTableColumns } from "./ready-to-dispatch-columns";
+import { LeadColumn } from "@/components/utils/column/column-type";
+import { getUniversalTableColumns } from "@/components/utils/column/Universal-column";
 
 const ReadyToDispatchTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -85,69 +64,54 @@ const ReadyToDispatchTable = () => {
     pagination.pageSize
   );
 
-  const deleteLeadMutation = useDeleteLead();
-
-  // 🔹 Modals
-  const [openDelete, setOpenDelete] = useState(false);
-  const [assignOpenLead, setAssignOpenLead] = useState(false);
-  const [openTaskModal, setOpenTaskModal] = useState(false);
-  const [rowAction, setRowAction] =
-    useState<DataTableRowActionFinalMeasurement<ProcessedReadyToDispatchLead> | null>(
-      null
-    );
-
-  // 🔹 Row Actions
-  useEffect(() => {
-    if (!rowAction) return;
-    if (rowAction.variant === "delete") setOpenDelete(true);
-    if (rowAction.variant === "reassignlead") setAssignOpenLead(true);
-    if (rowAction.variant === "assignTask") setOpenTaskModal(true);
-  }, [rowAction]);
-
-  // 🔹 Data Mapping
-  const rowData = useMemo<ProcessedReadyToDispatchLead[]>(() => {
+  // 🔹 Convert API → LeadColumn
+  const rowData = useMemo<LeadColumn[]>(() => {
     if (!data?.leads || !Array.isArray(data.leads)) return [];
 
-    return (data.leads as ReadyToDispatchLead[]).map((lead, index) => ({
-      id: lead.id,
-      srNo: index + 1,
-      lead_code: lead.lead_code || "-",
-      name: `${lead.firstname || ""} ${lead.lastname || ""}`.trim(),
-      email: lead.email || "",
-      contact: `${lead.country_code || ""} ${lead.contact_no || ""}`.trim(),
-      siteAddress: lead.site_address || "",
-      architechName: lead.archetech_name || "",
-      designerRemark: lead.designer_remark || "",
-      productTypes:
-        lead.productMappings
-          ?.map((pm: any) => pm.productType?.type)
-          .join(", ") || "-",
-      productStructures:
-        lead.leadProductStructureMapping
-          ?.map((ps: any) => ps.productStructure?.type)
-          .join(", ") || "-",
-      source: lead.source?.type || "",
-      siteType: lead.siteType?.type || "",
-      createdAt: lead.created_at || "",
-      updatedAt: lead.updated_at || "",
-      altContact: lead.alt_contact_no || "",
-      status: lead.statusType?.type || "Ready To Dispatch",
-      assignedTo: lead.assignedTo?.user_name || "-",
-      accountId: lead.account_id,
+    return data.leads.map(
+      (lead: any, index: number): LeadColumn => ({
+        id: lead.id,
+        srNo: index + 1,
 
-      // ✅ Added missing required fields
-      siteSupervisor: lead.siteSupervisors?.[0]?.user_name || "-",
-      siteSupervisorId: lead.siteSupervisors?.[0]?.id ?? 0,
-      final_booking_amt: lead.final_booking_amt ?? 0,
-    }));
+        lead_code: lead.lead_code ?? "",
+        name: `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim(),
+        email: lead.email ?? "",
+        contact: `${lead.country_code ?? ""} ${lead.contact_no ?? ""}`.trim(),
+
+        siteAddress: lead.site_address ?? "",
+        architechName: lead.archetech_name ?? "",
+        designerRemark: lead.designer_remark ?? "",
+
+        productTypes:
+          lead.productMappings
+            ?.map((pm: any) => pm.productType?.type)
+            .filter(Boolean)
+            .join(", ") ?? "",
+
+        productStructures:
+          lead.leadProductStructureMapping
+            ?.map((ps: any) => ps.productStructure?.type)
+            .filter(Boolean)
+            .join(", ") ?? "",
+
+        source: lead.source?.type ?? "",
+        siteType: lead.siteType?.type ?? "",
+        createdAt: lead.created_at ?? "",
+        updatedAt: lead.updated_at ?? "",
+        altContact: lead.alt_contact_no ?? "",
+
+        status: lead.statusType?.type ?? "Ready To Dispatch",
+
+        assign_to: lead.assignedTo?.user_name ?? "",
+        accountId: lead.account_id ?? 0,
+      })
+    );
   }, [data]);
 
-  const columns = useMemo(
-    () => getReadyToDispatchTableColumns({ setRowAction, userType }),
-    [setRowAction, userType]
-  );
+  // 🔹 Universal Columns
+  const columns = useMemo(() => getUniversalTableColumns(), []);
 
-  // ⚙️ Table
+  // ⚙️ Table Setup
   const table = useReactTable({
     data: rowData,
     columns,
@@ -175,26 +139,7 @@ const ReadyToDispatchTable = () => {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  const handleDeleteLead = () => {
-    if (!rowAction?.row || !vendorId || !userId) {
-      toast.error("Missing vendor or user info!");
-      return;
-    }
-
-    deleteLeadMutation.mutate(
-      { leadId: rowAction.row.original.id, vendorId, userId },
-      {
-        onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: (err: any) =>
-          toast.error(err?.message || "Failed to delete lead"),
-      }
-    );
-
-    setOpenDelete(false);
-    setRowAction(null);
-  };
-
-  const handleRowClick = (row: ProcessedReadyToDispatchLead) => {
+  const handleRowClick = (row: LeadColumn) => {
     router.push(`/dashboard/production/ready-to-dispatch/details/${row.id}`);
   };
 
@@ -220,37 +165,6 @@ const ReadyToDispatchTable = () => {
           </DataTableToolbar>
         )}
       </DataTable>
-
-      {/* Delete Confirmation */}
-      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              lead.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteLead}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Modals */}
-      <AssignLeadModal
-        open={assignOpenLead}
-        onOpenChange={setAssignOpenLead}
-        leadData={rowAction?.row.original}
-      />
-      <AssignTaskFinalMeasurementForm
-        open={openTaskModal}
-        onOpenChange={setOpenTaskModal}
-        data={rowAction?.row.original}
-      />
     </>
   );
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useAppSelector } from "@/redux/store";
 import {
   useVendorOverallLeads,
@@ -27,46 +27,11 @@ import { DataTableSortList } from "@/components/data-table/data-table-sort-list"
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
 import { useFeatureFlags } from "./feature-flags-provider";
-import type { DataTableRowActionOpen } from "@/types/data-table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-  AlertDialogFooter,
-  AlertDialogHeader,
-} from "@/components/ui/alert-dialog";
-import { useDeleteLead } from "@/hooks/useDeleteLead";
-import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
-import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
-import { toast } from "react-toastify";
-import { useRouter } from "next/navigation";
-import { getViewOpenLeadsTableColumns } from "./view-tables-coloumns";
-import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 
-// Define processed lead type for table
-export type ProcessedLead = {
-  id: number;
-  srNo: number;
-  name: string;
-  email: string;
-  contact: string;
-  siteAddress: string;
-  architechName: string;
-  designerRemark: string;
-  productTypes: string;
-  productStructures: string;
-  siteType: string;
-  createdAt: string;
-  updatedAt: string;
-  altContact?: string;
-  source: string;
-  status: string;
-  initial_site_measurement_date: string;
-  accountId: number; // ✅ added for passing to details
-};
+import { useRouter } from "next/navigation";
+import { getUniversalTableColumns } from "@/components/utils/column/Universal-column";
+import { LeadColumn } from "@/components/utils/column/column-type";
+
 
 const ViewOpenLeadTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -88,8 +53,6 @@ const ViewOpenLeadTable = () => {
     userType?.toLowerCase() === "admin" ||
     userType?.toLowerCase() === "super_admin";
 
-  console.log("Admin :- ", isAdmin);
-
   const router = useRouter();
 
   // 🆕 Select which data to use
@@ -103,14 +66,7 @@ const ViewOpenLeadTable = () => {
       ? vendorUserLeadsQuery.isLoading
       : vendorOverallLeadsQuery.isLoading;
 
-  console.log("-------->>>>", activeData);
-
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
-  const [openDelete, setOpenDelete] = useState<boolean>(false);
-  const [openAssignTask, setOpenAssignTak] = useState<boolean>(false);
-  const [assignOpenLead, setAssignOpenLead] = useState<boolean>(false);
-  const [editOpenLead, setEditOpenLead] = useState<boolean>(false);
-  const deleteLeadMutation = useDeleteLead();
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({
@@ -123,60 +79,7 @@ const ViewOpenLeadTable = () => {
       designerRemark: false,
     });
 
-  // Row action state
-  const [rowAction, setRowAction] =
-    React.useState<DataTableRowActionOpen<ProcessedLead> | null>(null);
-
-  useEffect(() => {
-    if (rowAction?.variant === "delete" && rowAction.row) {
-      setOpenDelete(true);
-    }
-    if (rowAction?.variant === "reassignlead" && rowAction.row) {
-      console.log("Original Data row Leads: ", rowAction.row.original);
-      setAssignOpenLead(true);
-    }
-    if (rowAction?.variant === "edit" && rowAction.row) {
-      console.log("Original Edit Data row Leads: ", rowAction.row.original);
-      setEditOpenLead(true);
-    }
-    if (rowAction?.variant === "assigntask" && rowAction.row) {
-      setOpenAssignTak(true);
-    }
-  }, [rowAction]);
-
-  const handleDeleteLead = async () => {
-    if (!rowAction?.row) return;
-
-    const leadId = rowAction.row.original.id;
-
-    if (!vendorId || !userId) {
-      toast.error("Vendor or User information is missing!");
-      return;
-    }
-
-    deleteLeadMutation.mutate(
-      { leadId, vendorId, userId },
-      {
-        onSuccess: () => {
-          toast.success("Lead deleted successfully!");
-        },
-        onError: (error: any) => {
-          toast.error(error?.message || "Failed to delete lead!");
-        },
-      }
-    );
-
-    setOpenDelete(false);
-    setRowAction(null);
-  };
-
-  const handleRowClick = (row: ProcessedLead) => {
-    console.log(
-      "[handleRowClick] LeadId:",
-      row.id,
-      "accountId:",
-      row.accountId
-    );
+  const handleRowClick = (row: LeadColumn) => {
     router.push(
       `/dashboard/sales-executive/leadstable/details/${row.id}?accountId=${row.accountId}`
     );
@@ -189,13 +92,10 @@ const ViewOpenLeadTable = () => {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   );
-  const [rowSelection, setRowSelection] = React.useState({});
 
   // 🆕 Process active data (from selected tab)
-  const rowData = useMemo<ProcessedLead[]>(() => {
+  const rowData = useMemo<LeadColumn[]>(() => {
     if (!Array.isArray(activeData)) return [];
-
-    console.log(`${viewType === "my" ? "My" : "Overall"} leads:`, activeData);
 
     return activeData.map((lead: Lead, index: number) => {
       const accountId = lead.account?.id ?? lead.account_id ?? 0;
@@ -203,7 +103,8 @@ const ViewOpenLeadTable = () => {
       return {
         id: lead.id,
         srNo: index + 1,
-        lead_code: lead.lead_code,
+        lead_code: lead.lead_code ?? "",
+
         name: `${lead.firstname} ${lead.lastname}`.trim(),
         email: lead.email || "",
         assign_to: lead.assignedTo?.user_name || "",
@@ -224,7 +125,6 @@ const ViewOpenLeadTable = () => {
         updatedAt: lead.updated_at || "",
         altContact: lead.alt_contact_no || "",
         status: lead.statusType?.type || "",
-        initial_site_measurement_date: lead.initial_site_measurement_date || "",
         accountId,
       };
     });
@@ -232,8 +132,8 @@ const ViewOpenLeadTable = () => {
 
   // Setup columns
   const columns = React.useMemo(
-    () => getViewOpenLeadsTableColumns({ setRowAction, userType, router }),
-    [setRowAction, userType, router]
+    () => getUniversalTableColumns(),
+    [userType, router]
   );
 
   // Create table
@@ -243,7 +143,6 @@ const ViewOpenLeadTable = () => {
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -254,7 +153,6 @@ const ViewOpenLeadTable = () => {
     state: {
       sorting,
       columnFilters,
-      rowSelection,
       globalFilter,
       columnVisibility,
     },
@@ -377,42 +275,6 @@ const ViewOpenLeadTable = () => {
           </DataTableToolbar>
         )}
       </DataTable>
-
-      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              lead from your system.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteLead}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AssignLeadModal
-        open={assignOpenLead}
-        onOpenChange={setAssignOpenLead}
-        leadData={rowAction?.row.original}
-      />
-
-      <EditLeadModal
-        open={editOpenLead}
-        onOpenChange={setEditOpenLead}
-        leadData={rowAction?.row.original}
-      />
-
-      <AssignTaskSiteMeasurementForm
-        open={openAssignTask}
-        onOpenChange={setOpenAssignTak}
-        data={rowAction?.row.original}
-      />
     </>
   );
 };

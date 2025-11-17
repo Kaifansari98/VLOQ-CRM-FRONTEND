@@ -248,7 +248,7 @@ export default function OrderLoginLeadDetails() {
                     <Button
                       size="sm"
                       variant="default"
-                      className="flex items-center gap-1"
+                      className="flex items-center gap-1 "
                       onClick={() => setOpenMoveToProduction(true)}
                     >
                       <ArrowUpRight size={16} />
@@ -257,10 +257,10 @@ export default function OrderLoginLeadDetails() {
                   ) : (
                     <CustomeTooltip
                       truncateValue={
-                        <div className="flex items-center gap-1 opacity-60 cursor-not-allowed px-2 py-1.5 text-sm">
+                        <Button variant="outline" disabled={true}>
                           <ArrowUpRight size={16} />
                           Move to Production
-                        </div>
+                        </Button>
                       }
                       value={
                         disabledReason ||

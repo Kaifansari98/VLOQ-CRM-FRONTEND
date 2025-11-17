@@ -3,127 +3,18 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Ellipsis,
-  Eye,
-  SquarePen,
-  Users,
-  Text,
-  Ruler,
-  FileText,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import type { DataTableRowActionClientDocumentation } from "@/types/data-table";
-import { canDeleteLead, canReassingLead } from "@/components/utils/privileges";
-import CustomeBadge from "@/components/origin-badge";
+import { Text } from "lucide-react";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/cutome-tooltip";
-import { useRouter } from "next/navigation";
-import { ProcessedClientDocumentationLead } from "@/types/client-documentation";
+import { LeadColumn } from "./column-type";
 
-interface GetVendorLeadsTableColumnsProps {
-  setRowAction: React.Dispatch<
-    React.SetStateAction<DataTableRowActionClientDocumentation<ProcessedClientDocumentationLead> | null>
-  >;
-  userType?: string;
-}
 
-export function getClientDocumentationTableColumns({
-  setRowAction,
-  userType,
-}: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedClientDocumentationLead>[] {
-  const router = useRouter();
+
+
+export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
   return [
-    // Action Button
-    // {
-    //   id: "actions",
-    //   cell: ({ row }) => (
-    //     <DropdownMenu>
-    //       <DropdownMenuTrigger asChild>
-    //         <Button
-    //           aria-label="Open menu"
-    //           variant="ghost"
-    //           className="flex size-8 p-0 data-[state=open]:bg-muted"
-    //         >
-    //           <Ellipsis className="size-4" aria-hidden="true" />
-    //         </Button>
-    //       </DropdownMenuTrigger>
-    //       <DropdownMenuContent align="end">
-    //         <DropdownMenuItem
-    //           data-slot="action-button"
-    //           onSelect={() => setRowAction({ row, variant: "view" })}
-    //         >
-    //           <Eye size={20} />
-    //           View
-    //         </DropdownMenuItem>
-    //         {!canDeleteLead(userType) && <DropdownMenuSeparator />}
-
-    //         <DropdownMenuItem
-    //           data-slot="action-button"
-    //           onSelect={() => setRowAction({ row, variant: "clientdoc" })}
-    //         >
-    //           <FileText size={20} />
-    //           Client Documentation
-    //         </DropdownMenuItem>
-
-    //         {canReassingLead(userType) && (
-    //           <DropdownMenuItem
-    //             data-slot="action-button"
-    //             onSelect={() => setRowAction({ row, variant: "reassignlead" })}
-    //           >
-    //             <Users size={20} />
-    //             Reassign Lead
-    //           </DropdownMenuItem>
-    //         )}
-
-    //         {canDeleteLead(userType) && (
-    //           <>
-    //             <DropdownMenuSeparator />
-    //             <DropdownMenuItem
-    //               data-slot="action-button"
-    //               onSelect={() => setRowAction({ row, variant: "delete" })}
-    //             >
-    //               Delete
-    //               <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
-    //             </DropdownMenuItem>
-    //           </>
-    //         )}
-    //       </DropdownMenuContent>
-    //     </DropdownMenu>
-    //   ),
-    //   enableSorting: false,
-    //   enableHiding: false,
-    //   size: 40,
-    // },
-    // Sr NO
-    // {
-    //   accessorKey: "srNo",
-    //   header: ({ column }) => (
-    //     <div className="w-full text-center">
-    //       <DataTableColumnHeader column={column} title="Sr. No." />
-    //     </div>
-    //   ),
-    //   cell: ({ getValue }) => (
-    //     <div className="w-full text-center">{getValue<number>()}</div>
-    //   ),
-    //   meta: {
-    //     label: "SrNo",
-    //   },
-    //   enableSorting: true,
-    //   enableColumnFilter: true,
-    //   enableHiding: true,
-    // },
-
     {
       accessorKey: "lead_code",
       header: ({ column }) => (
@@ -238,23 +129,39 @@ export function getClientDocumentationTableColumns({
     },
 
     // Sales Executive: 7
-    ...(canReassingLead(userType)
-      ? [
-          {
-            accessorKey: "assignedTo",
-            header: ({ column }) => (
-              <DataTableColumnHeader column={column} title="Sales Executive" />
-            ),
-            cell: ({ row }) => row.getValue("assignedTo"),
-            meta: {
-              label: "Sales Executive",
-            },
-            enableSorting: true,
-            enableHiding: true,
-            enableColumnFilter: true,
-          } as ColumnDef<ProcessedClientDocumentationLead>,
-        ]
-      : []),
+    // ...(canReassingLead(userType)
+    //   ? [
+    //       {
+    //         accessorKey: "assign_to",
+    //         header: ({ column }) => (
+    //           <DataTableColumnHeader column={column} title="Sales Executive" />
+    //         ),
+    //         cell: ({ row }) => row.getValue("assign_to"),
+    //         meta: {
+    //           label: "Sales Executive",
+    //         },
+    //         enableSorting: true,
+    //         enableHiding: true,
+    //         enableColumnFilter: true,
+    //       } as ColumnDef<Lead>,
+    //     ]
+    //   : []),
+
+    {
+      accessorKey: "assign_to",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Sales Executive" />
+      ),
+      cell: ({ row }) => row.getValue("assign_to"),
+      meta: {
+        label: "Sales Executive",
+      },
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+    } as ColumnDef<LeadColumn>,
+
+    
 
     // Site Address: 8
     {
