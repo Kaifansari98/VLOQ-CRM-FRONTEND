@@ -129,7 +129,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="border rounded-lg w-full h-full overflow-y-scroll"
+        className="border rounded-lg w-full h-full overflow-y-scroll mb-6"
       >
         {/* Header */}
         <div className="border-b px-6 py-2.5">

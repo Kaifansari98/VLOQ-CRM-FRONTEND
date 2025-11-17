@@ -360,7 +360,7 @@ export default function DispatchPlanningDetails({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-6">
       {/* Dispatch Planning Information */}
       <Card>
         <CardHeader>

@@ -151,7 +151,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="w-full h-full space-y-8 overflow-y-scroll px-2"
+      className="w-full h-full space-y-8 overflow-y-scroll px-2 pb-6"
     >
       <motion.div className=" w-full flex items-center justify-start gap-2">
         {/* Animated green circle */}
