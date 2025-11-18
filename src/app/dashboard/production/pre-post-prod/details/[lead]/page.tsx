@@ -63,6 +63,11 @@ import {
   canViewToOrderLoginDetails,
   handledproductionDefaultTab,
   canMoveToReadyToDispatch,
+  canViewAndWorkEditProcutionExpectedDate,
+
+  canEditLeadButton,
+  canDeleteLeadButton,
+  canReassignLeadButton,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
@@ -90,7 +95,7 @@ export default function ProductionLeadDetails() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth?.user?.user_type.user_type as string | undefined
+    (state) => state.auth?.user?.user_type.user_type
   );
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
@@ -111,7 +116,7 @@ export default function ProductionLeadDetails() {
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
 
-  // 🔍 Check Post Production Readiness
+  // 🔍 Check Post Prouction Readiness
   const { data: postProductionStatus } = useCheckPostProductionReady(
     vendorId,
     leadIdNum
@@ -121,6 +126,8 @@ export default function ProductionLeadDetails() {
     useLatestOrderLoginByLead(vendorId, Number(leadIdNum));
 
   const canMoveReadyToDispatchStage = canMoveToReadyToDispatch(userType);
+  const canUpdateExpectedDate =
+    canViewAndWorkEditProcutionExpectedDate(userType);
 
   const latestOrderLoginDate =
     latestOrderLoginData?.data?.estimated_completion_date;
@@ -183,6 +190,10 @@ export default function ProductionLeadDetails() {
 
   const noOfBoxes = lead?.no_of_boxes;
 
+    const canReassign = canReassignLeadButton(userType);
+  const canDelete = canDeleteLeadButton(userType);
+  const canEdit = canEditLeadButton(userType);
+
   const productionDefaultTab = handledproductionDefaultTab(userType);
 
   const deleteLeadMutation = useDeleteLead();
@@ -234,9 +245,18 @@ export default function ProductionLeadDetails() {
     setOpenDelete(false);
   };
 
+
   if (isLoading) {
     return <p className="p-6">Loading production lead details...</p>;
   }
+
+  const disabledReason = !canUpdateExpectedDate
+    ? "You do not have permission to update this date."
+    : completeness?.any_exists
+    ? "Cannot change the date because lead is currently in post-production."
+    : !postProductionStatus?.all_order_login_dates_added
+    ? "Please ensure all Order Login expected completion dates are added before setting this."
+    : undefined;
 
   return (
     <SidebarProvider>
@@ -318,19 +338,23 @@ export default function ProductionLeadDetails() {
                   <Clock className=" h-4 w-4" />
                   Mark On Hold
                 </DropdownMenuItem>
+
+                {canEdit && (
+
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen size={20} />
                   Edit
                 </DropdownMenuItem>
+                )}
 
-                {canReassingLead(userType) && (
+                {canReassign && (
                   <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
                     <Users size={20} />
                     Reassign Lead
                   </DropdownMenuItem>
                 )}
 
-                {canDeleteLead(userType) && (
+                {canDelete && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => setOpenDelete(true)}>
@@ -406,13 +430,7 @@ export default function ProductionLeadDetails() {
                         ? latestOrderLoginDate.split("T")[0] // ✅ user can only pick dates >= latest order login date
                         : undefined
                     }
-                    disabledReason={
-                      completeness?.any_exists
-                        ? "Cannot change the date because lead is currently in post-production."
-                        : !postProductionStatus?.all_order_login_dates_added
-                        ? "Please ensure all Order Login expected completion dates are added before setting this."
-                        : undefined
-                    }
+                    disabledReason={disabledReason}
                   />
                 </div>
               </div>

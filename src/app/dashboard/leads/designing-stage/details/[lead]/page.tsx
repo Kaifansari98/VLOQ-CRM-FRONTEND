@@ -75,6 +75,9 @@ import {
   canReassingLead,
   canDeleteLead,
   canMoveToBookingStage,
+  canReassignLeadButton,
+  canDeleteLeadButton,
+  canEditLeadForSalesExecutiveButton,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
@@ -97,7 +100,7 @@ export default function DesigningStageLead() {
     useDesigningStageCounts(vendorId, leadIdNum);
 
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type as string | undefined
+    (state) => state.auth.user?.user_type.user_type
   );
 
   const { data: leadData, error } = useLeadStatus(leadIdNum, vendorId);
@@ -120,6 +123,10 @@ export default function DesigningStageLead() {
       setBookingOpenLead(true);
     }
   }, [isLoading, userType, canMoveToBooking]);
+
+  const canReassign = canReassignLeadButton(userType);
+  const canDelete = canDeleteLeadButton(userType);
+  const canEdit = canEditLeadForSalesExecutiveButton(userType);
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
@@ -243,7 +250,7 @@ export default function DesigningStageLead() {
                 {/* Lead Status submenu */}
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
-                   <CircleArrowOutUpRight className="mr-2 h-4 w-4" />
+                    <CircleArrowOutUpRight className="mr-2 h-4 w-4" />
                     Lead Status
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
@@ -268,26 +275,25 @@ export default function DesigningStageLead() {
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
 
-                {canReassingLead(userType) && (
-                  <>
-                    {/* Reassign Lead */}
-                    <DropdownMenuItem onSelect={() => setAssignOpenLead(true)}>
-                      <Users className="h-4 w-4" />
-                      Reassign Lead
-                    </DropdownMenuItem>
-                  </>
+                {canReassign && (
+                  <DropdownMenuItem onSelect={() => setAssignOpenLead(true)}>
+                    <Users className="h-4 w-4" />
+                    Reassign Lead
+                  </DropdownMenuItem>
                 )}
 
                 {/* Edit Lead */}
-                <DropdownMenuItem onSelect={() => setOpenEditModal(true)}>
-                  <SquarePen className="h-4 w-4" />
-                  Edit Lead
-                </DropdownMenuItem>
 
-                {canDeleteLead(userType) && (
+                {canEdit && (
+                  <DropdownMenuItem onSelect={() => setOpenEditModal(true)}>
+                    <SquarePen className="h-4 w-4" />
+                    Edit Lead
+                  </DropdownMenuItem>
+                )}
+
+                {canDelete && (
                   <>
                     <DropdownMenuSeparator />
-                    {/* Delete */}
                     <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
                       <XCircle className="h-4 w-4 text-red-500" />
                       Delete Lead

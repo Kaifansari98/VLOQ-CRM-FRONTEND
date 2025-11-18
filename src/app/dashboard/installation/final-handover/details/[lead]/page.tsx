@@ -68,6 +68,11 @@ import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
+import {
+  canDeleteLeadButton,
+  canEditLeadButton,
+  canReassignLeadButton,
+} from "@/components/utils/privileges";
 
 export default function FinalHandoverLeadDetails() {
   const router = useRouter();
@@ -77,6 +82,9 @@ export default function FinalHandoverLeadDetails() {
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type
+  );
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -88,6 +96,10 @@ export default function FinalHandoverLeadDetails() {
   const [activityType, setActivityType] = useState<"onHold">("onHold");
 
   const updateStatusMutation = useUpdateActivityStatus();
+
+  const canReassign = canReassignLeadButton(userType);
+  const canDelete = canDeleteLeadButton(userType);
+  const canEdit = canEditLeadButton(userType);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -165,19 +177,22 @@ export default function FinalHandoverLeadDetails() {
                   <SquarePen size={20} />
                   Edit
                 </DropdownMenuItem>
-
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
-
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                    <XCircle size={20} className="text-red-500" />
-                    Delete
+                {canReassign && (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
                   </DropdownMenuItem>
-                </>
+                )}
+
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                      <XCircle size={20} className="text-red-500" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

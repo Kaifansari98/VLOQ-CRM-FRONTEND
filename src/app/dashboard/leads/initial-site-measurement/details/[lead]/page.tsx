@@ -68,6 +68,9 @@ import {
   canReassingLead,
   canDeleteLead,
   canUploadISM,
+  canReassignLeadButton,
+  canEditLeadForSalesExecutiveButton,
+  canDeleteLeadButton,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
@@ -88,7 +91,7 @@ export default function SiteMeasurementLead() {
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type as string | undefined
+    (state) => state.auth.user?.user_type.user_type
   );
 
   const [openDelete, setOpenDelete] = useState(false);
@@ -156,6 +159,10 @@ export default function SiteMeasurementLead() {
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
+
+  const canReassign = canReassignLeadButton(userType);
+  const canDelete = canDeleteLeadButton(userType);
+  const canEdit = canEditLeadForSalesExecutiveButton(userType);
 
   console.log("assigned to", lead?.assignedTo?.id);
 
@@ -232,11 +239,13 @@ export default function SiteMeasurementLead() {
                   />
                 )}
 
+                {/* Lead Status */}
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <CircleArrowOutUpRight className="mr-2 h-4 w-4" />
-                    Lead Status
+                  <DropdownMenuSubTrigger className="flex items-center gap-2">
+                    <CircleArrowOutUpRight className="h-4 w-4" />
+                    <span>Lead Status</span>
                   </DropdownMenuSubTrigger>
+
                   <DropdownMenuSubContent>
                     <DropdownMenuItem
                       onSelect={() => {
@@ -244,9 +253,10 @@ export default function SiteMeasurementLead() {
                         setActivityModalOpen(true);
                       }}
                     >
-                      <Clock className="h-4 w-4" />
+                      <Clock className="h-4 w-4 " />
                       Mark On Hold
                     </DropdownMenuItem>
+
                     <DropdownMenuItem
                       onSelect={() => {
                         setActivityType("lostApproval");
@@ -259,19 +269,24 @@ export default function SiteMeasurementLead() {
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
 
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
+                {/* Edit */}
+                {canEdit && (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
+                )}
 
-                {canReassingLead(userType) && (
+                {/* Reassign */}
+                {canReassign && (
                   <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
                     <Users size={20} />
                     Reassign Lead
                   </DropdownMenuItem>
                 )}
 
-                {canDeleteLead(userType) && (
+                {/* Delete */}
+                {canDelete && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => setOpenDelete(true)}>

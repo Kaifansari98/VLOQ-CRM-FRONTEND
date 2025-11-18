@@ -176,7 +176,9 @@ export const canViewToOrderLoginDetails = (userType: string | undefined) => {
   return allowedRoles.includes(userType.toLowerCase());
 };
 
-export const canViewToProductionDetails = (userType: string | undefined) => {
+export const canViewAndWorkProductionDetails = (
+  userType: string | undefined
+) => {
   if (!userType) return false;
   const allowedRoles = [
     "super_admin",
@@ -184,6 +186,8 @@ export const canViewToProductionDetails = (userType: string | undefined) => {
     "backend",
     "tech-check",
     "factory",
+    "sales-executive",
+    "site-supervisor",
   ];
   return allowedRoles.includes(userType.toLowerCase());
 };
@@ -196,6 +200,8 @@ export const handledproductionDefaultTab = (userType: string | undefined) => {
     "backend",
     "tech-check",
     "factory",
+    "sales-executive",
+    "site-supervisor",
   ];
   return allowedRoles.includes(userType.toLowerCase());
 };
@@ -251,12 +257,41 @@ export function canViewAndWorkProductionStage(
   // 2. Factory has access only in production stage
   if (role === "factory") return stage === "production-stage";
 
-  // 3. Backend and Tech-check never have access
-  if (role === "backend" || role === "tech-check") return false;
+  // 3. Backend and Tech-check never have access "can view only"
+  if (
+    role === "backend" ||
+    role === "tech-check" ||
+    role === "sales-executive" ||
+    role === "site-supervisor"
+  )
+    return false;
 
   // 4. Everyone else has access by default
   return true;
-} 
+}
+
+export function canViewAndWorkEditProcutionExpectedDate(role: string): boolean {
+  // 1. Admins always have access
+  if (role === "admin" || role === "super-admin" || role === "factory")
+    return true;
+
+  // 3. "can view only"
+  if (
+    role === "backend" ||
+    role === "tech-check" ||
+    role === "sales-executive" ||
+    role === "site-supervisor"
+  )
+    return false;
+
+  // 4. Everyone else has access by default
+  return true;
+}
+
+export const canViewDefaultSubTabProductionStage = (role: string) => {
+  if (role === "sales-executive" || role === "site-supervisor") return false;
+  return true;
+};
 
 export function canViewAndWorkSiteRedinessStage(
   role: string,
@@ -289,4 +324,32 @@ export function canViewAndWorkDispatchStage(
     role === "super_admin" ||
     (role === "factory" && stage === "dispatch-stage")
   );
+}
+
+export function canEditLeadForSalesExecutiveButton(role: string): boolean {
+  return (
+    role === "admin" || role === "super_admin" || role === "sales-executive"
+  );
+}
+
+export function canDeleteLedForSalesExecutiveButton(role: string): boolean {
+  return (
+    role === "admin" || role === "super_admin" || role === "sales-executive"
+  );
+}
+
+export function canEditLeadButton(role: string): boolean {
+  return (
+    role === "admin" || role === "super_admin"
+  );
+}
+
+export function canDeleteLeadButton(role: string): boolean {
+  return (
+    role === "admin" || role === "super_admin"
+  );
+}
+
+export function canReassignLeadButton(role: string): boolean {
+  return role === "admin" || role === "super_admin";
 }

@@ -66,6 +66,9 @@ import {
   canReassingLead,
   canDeleteLead,
   canAssignISM,
+  canReassignLeadButton,
+  canDeleteLedForSalesExecutiveButton,
+  canEditLeadForSalesExecutiveButton,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
@@ -85,7 +88,7 @@ export default function LeadDetails() {
   const userId = useAppSelector((s) => s.auth.user?.id);
 
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type as string | undefined
+    (state) => state.auth.user?.user_type.user_type
   );
 
   const [openDelete, setOpenDelete] = useState(false);
@@ -111,6 +114,10 @@ export default function LeadDetails() {
   const [activityType, setActivityType] = useState<"onHold" | "lostApproval">(
     "onHold"
   );
+
+  const canReassign = canReassignLeadButton(userType);
+  const canDelete = canDeleteLedForSalesExecutiveButton(userType);
+  const canEdit = canEditLeadForSalesExecutiveButton(userType);
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -175,7 +182,6 @@ export default function LeadDetails() {
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumb>
               <BreadcrumbList>
-            
                 <BreadcrumbItem>
                   <BreadcrumbPage>
                     <p className="font-bold">
@@ -208,31 +214,33 @@ export default function LeadDetails() {
             )}
 
             <AnimatedThemeToggler />
-            
+
             {/* Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon">
-                   <CircleArrowOutUpRight  size={22} />
+                  <EllipsisVertical size={22} />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen className="mr-2 h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
+                {canEdit && (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen className=" h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
 
-                {canReassingLead(userType) && (
+                {canReassign && (
                   <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                    <Users className="mr-2 h-4 w-4" />
+                    <Users className="h-4 w-4" />
                     Reassign Lead
                   </DropdownMenuItem>
                 )}
 
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <EllipsisVertical className="mr-2 h-4 w-4" />
-                    Lead Status
+                  <DropdownMenuSubTrigger className="flex items-center gap-2">
+                    <CircleArrowOutUpRight className="h-4 w-4" />
+                    <span>Lead Status</span>
                   </DropdownMenuSubTrigger>
 
                   {!uiDisabled && (
@@ -243,22 +251,24 @@ export default function LeadDetails() {
                           setActivityModalOpen(true);
                         }}
                       >
-                        <Clock className="h-4 w-4" />
+                        <Clock className="h-4 w-4 mr-2" />
                         Mark On Hold
                       </DropdownMenuItem>
+
                       <DropdownMenuItem
                         onSelect={() => {
                           setActivityType("lostApproval");
                           setActivityModalOpen(true);
                         }}
                       >
-                        <XCircle className="h-4 w-4" />
+                        <XCircle className="h-4 w-4 mr-2" />
                         Mark As Lost
                       </DropdownMenuItem>
                     </DropdownMenuSubContent>
                   )}
                 </DropdownMenuSub>
-                {canDeleteLead(userType) && (
+
+                {canDelete && (
                   <>
                     <DropdownMenuSeparator />
                     {uiDisabled ? (

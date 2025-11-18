@@ -14,7 +14,7 @@ import {
 } from "../ui/tooltip";
 import {
   canViewToOrderLoginDetails,
-  canViewToProductionDetails,
+  canViewAndWorkProductionDetails,
 } from "./privileges";
 import { useAppSelector } from "@/redux/store";
 import CustomeTooltip from "../cutome-tooltip";
@@ -173,7 +173,7 @@ export default function GroupedSmoothTab({
                           const canViewOrderLogin =
                             canViewToOrderLoginDetails(userType);
                           const canViewProduction =
-                            canViewToProductionDetails(userType);
+                            canViewAndWorkProductionDetails(userType);
 
                           // 👇 Compute disabled state and tooltip dynamically
                           const isDisabled =
