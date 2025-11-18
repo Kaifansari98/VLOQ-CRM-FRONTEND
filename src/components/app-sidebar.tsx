@@ -59,9 +59,10 @@ const data = {
     },
     {
       title: "Leads",
-      url: "/",
+      url: "#",
       icon: BookOpenCheck,
       isActive: true,
+      // showCount: "total_leads_group" as const,
       items: [
         // {
         //   title: "Dashboard",
@@ -94,6 +95,7 @@ const data = {
       url: "#",
       icon: Bot,
       isActive: true,
+      // showCount: "total_project_group" as const,
       items: [
         {
           title: "Final Measurement",
@@ -117,6 +119,7 @@ const data = {
       url: "#",
       icon: BookOpen,
       isActive: true,
+      // showCount: "total_production_group" as const,
       items: [
         {
           title: "Tech Check",
@@ -145,6 +148,7 @@ const data = {
       url: "#",
       icon: Settings2,
       isActive: true,
+      // showCount: "total_installation_group" as const,
       items: [
         {
           title: "Site Readiness",

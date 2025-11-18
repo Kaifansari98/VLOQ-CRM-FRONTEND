@@ -1114,7 +1114,7 @@ export function useMoveToFinalHandover() {
 
     onSuccess: () => {
       toast.success("Lead moved to Final Handover stage");
-      router.push("/dashboard/installation/under-installation")
+      router.push("/dashboard/installation/under-installation");
     },
 
     onError: (err: any) => {
@@ -1122,3 +1122,41 @@ export function useMoveToFinalHandover() {
     },
   });
 }
+
+export const fetchUsableHandoverReady = async (
+  vendorId: number,
+  leadId: number
+) => {
+  const res = await apiClient.get(
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/check-ready-flag`
+  );
+  return res.data.data;
+};
+
+export const useUsableHandoverReady = (vendorId: number, leadId: number) => {
+  return useQuery({
+    queryKey: ["usableHandoverReady", vendorId, leadId],
+    queryFn: () => fetchUsableHandoverReady(vendorId, leadId),
+    enabled: !!vendorId && !!leadId,
+  });
+};
+
+// 🔥 NEW — Check Lead Ready for Final Handover
+export const fetchFinalHandoverReady = async (
+  vendorId: number,
+  leadId: number
+) => {
+  const res = await apiClient.get(
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/check-final-handover-ready`
+  );
+
+  return res.data.data; // contains { success, isReady, message, step }
+};
+
+export const useFinalHandoverReady = (vendorId: number, leadId: number) => {
+  return useQuery({
+    queryKey: ["finalHandoverReady", vendorId, leadId],
+    queryFn: () => fetchFinalHandoverReady(vendorId, leadId),
+    enabled: !!vendorId && !!leadId,
+  });
+};

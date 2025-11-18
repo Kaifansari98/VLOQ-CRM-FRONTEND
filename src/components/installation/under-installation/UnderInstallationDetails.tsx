@@ -28,6 +28,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import InstallationDayWiseReports from "./InstallationDayWiseReports";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function UnderInstallationDetails({
   leadId,
@@ -51,6 +52,7 @@ export default function UnderInstallationDetails({
 
   const postMutation = useAddInstallersAndEndDate();
   const putMutation = useUpdateInstallationDetails();
+  const queryClient = useQueryClient();
 
   const { data: installerUsers } = useInstallerUsers(vendorId);
 
@@ -79,8 +81,11 @@ export default function UnderInstallationDetails({
     if (details?.expected_installation_end_date) {
       setEndDate(details.expected_installation_end_date);
     }
-    if(details?.actual_installation_start_date) {
-        console.log("Installation start date", details?.actual_installation_start_date);
+    if (details?.actual_installation_start_date) {
+      console.log(
+        "Installation start date",
+        details?.actual_installation_start_date
+      );
     }
   }, [mappedInstallers, details]);
 
@@ -120,7 +125,12 @@ export default function UnderInstallationDetails({
           payload,
         },
         {
-          onSuccess: () => toast.success("Installation details updated."),
+          onSuccess: () => {
+            toast.success("Installation details updated."),
+              queryClient.invalidateQueries({
+                queryKey: ["usableHandoverReady"],
+              });
+          },
         }
       );
     } else {
@@ -132,7 +142,12 @@ export default function UnderInstallationDetails({
           payload,
         },
         {
-          onSuccess: () => toast.success("Installers added successfully."),
+          onSuccess: () => {
+            toast.success("Installers added successfully.");
+            queryClient.invalidateQueries({
+              queryKey: ["usableHandoverReady"],
+            });
+          },
         }
       );
     }
@@ -239,78 +254,80 @@ export default function UnderInstallationDetails({
       {/* ------------------------------- */}
 
       {installationStarted && (
-      <div className="mt-10 border-t pt-6">
-        <h3 className="text-lg font-semibold">Installation Completion</h3>
-        <p className="text-sm text-muted-foreground mb-6">
-          Update the completion status for carcass and shutter installation.
-        </p>
+        <div className="mt-10 border-t pt-6">
+          <h3 className="text-lg font-semibold">Installation Completion</h3>
+          <p className="text-sm text-muted-foreground mb-6">
+            Update the completion status for carcass and shutter installation.
+          </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Carcass Section */}
-          <div className="flex items-start gap-3">
-            <Checkbox
-              id="carcass"
-              checked={details?.is_carcass_installation_completed || false}
-              onCheckedChange={() =>
-                setConfirmState({
-                  type: "carcass",
-                  current: details?.is_carcass_installation_completed || false,
-                })
-              }
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Carcass Section */}
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="carcass"
+                checked={details?.is_carcass_installation_completed || false}
+                onCheckedChange={() =>
+                  setConfirmState({
+                    type: "carcass",
+                    current:
+                      details?.is_carcass_installation_completed || false,
+                  })
+                }
+              />
 
-            <div className="flex flex-col">
-              <label
-                htmlFor="carcass"
-                className="font-medium text-sm cursor-pointer"
-              >
-                Carcass Installation Completed
-              </label>
+              <div className="flex flex-col">
+                <label
+                  htmlFor="carcass"
+                  className="font-medium text-sm cursor-pointer"
+                >
+                  Carcass Installation Completed
+                </label>
 
-              {/* Date */}
-              {details?.carcass_installation_completion_date && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {formatInstallationDate(
-                    details.carcass_installation_completion_date
-                  )}
-                </p>
-              )}
+                {/* Date */}
+                {details?.carcass_installation_completion_date && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {formatInstallationDate(
+                      details.carcass_installation_completion_date
+                    )}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Shutter Section */}
-          <div className="flex items-start gap-3">
-            <Checkbox
-              id="shutter"
-              checked={details?.is_shutter_installation_completed || false}
-              onCheckedChange={() =>
-                setConfirmState({
-                  type: "shutter",
-                  current: details?.is_shutter_installation_completed || false,
-                })
-              }
-            />
+            {/* Shutter Section */}
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="shutter"
+                checked={details?.is_shutter_installation_completed || false}
+                onCheckedChange={() =>
+                  setConfirmState({
+                    type: "shutter",
+                    current:
+                      details?.is_shutter_installation_completed || false,
+                  })
+                }
+              />
 
-            <div className="flex flex-col">
-              <label
-                htmlFor="shutter"
-                className="font-medium text-sm cursor-pointer"
-              >
-                Shutter Installation Completed
-              </label>
+              <div className="flex flex-col">
+                <label
+                  htmlFor="shutter"
+                  className="font-medium text-sm cursor-pointer"
+                >
+                  Shutter Installation Completed
+                </label>
 
-              {/* Date */}
-              {details?.shutter_installation_completion_date && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {formatInstallationDate(
-                    details.shutter_installation_completion_date
-                  )}
-                </p>
-              )}
+                {/* Date */}
+                {details?.shutter_installation_completion_date && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {formatInstallationDate(
+                      details.shutter_installation_completion_date
+                    )}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
       )}
 
       <AlertDialog
@@ -341,19 +358,31 @@ export default function UnderInstallationDetails({
               onClick={() => {
                 if (!confirmState) return;
 
-                updateCompletionMutation.mutate({
-                  vendorId,
-                  leadId,
-                  updated_by: userId!,
-                  is_carcass_installation_completed:
-                    confirmState.type === "carcass"
-                      ? !confirmState.current
-                      : undefined,
-                  is_shutter_installation_completed:
-                    confirmState.type === "shutter"
-                      ? !confirmState.current
-                      : undefined,
-                });
+                updateCompletionMutation.mutate(
+                  {
+                    vendorId,
+                    leadId,
+                    updated_by: userId!,
+                    is_carcass_installation_completed:
+                      confirmState.type === "carcass"
+                        ? !confirmState.current
+                        : undefined,
+                    is_shutter_installation_completed:
+                      confirmState.type === "shutter"
+                        ? !confirmState.current
+                        : undefined,
+                  },
+                  {
+                    onSuccess: () => {
+                      // 🔥 Invalidate usable handover flag when carcass is toggled
+                      if (confirmState.type === "carcass") {
+                        queryClient.invalidateQueries({
+                          queryKey: ["usableHandoverReady"],
+                        });
+                      }
+                    },
+                  }
+                );
 
                 setConfirmState(null);
               }}
