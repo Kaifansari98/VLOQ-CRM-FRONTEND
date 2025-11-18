@@ -81,7 +81,7 @@ const ViewOpenLeadTable = () => {
 
   const handleRowClick = (row: LeadColumn) => {
     router.push(
-      `/dashboard/sales-executive/leadstable/details/${row.id}?accountId=${row.accountId}`
+      `/dashboard/leads/leadstable/details/${row.id}?accountId=${row.accountId}`
     );
   };
 

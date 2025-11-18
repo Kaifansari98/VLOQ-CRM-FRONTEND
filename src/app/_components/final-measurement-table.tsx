@@ -86,6 +86,8 @@ const FinalMeasurementLeadsTable = () => {
   const rowData = useMemo<LeadColumn[]>(() => {
     if (!Array.isArray(activeData)) return [];
 
+    console.log("Final Measurment Data: ", activeData)
+
     return (activeData as FinalMeasurementLead[]).map((lead, index) => ({
       id: lead.id,
       srNo: index + 1,
@@ -119,6 +121,7 @@ const FinalMeasurementLeadsTable = () => {
       altContact: lead.alt_contact_no ?? "",
       status: lead.statusType?.type ?? "",
       assign_to: lead.assignedTo?.user_name ?? "",
+      site_map_link: lead.site_map_link ?? "",
 
       accountId: lead.account_id ?? 0,
     }));
@@ -156,7 +159,7 @@ const FinalMeasurementLeadsTable = () => {
 
   const handleRowClick = (row: LeadColumn) => {
     router.push(
-      `/dashboard/site-supervisor/final-measurement/details/${row.id}?accountId=${row.accountId}`
+      `/dashboard/project/final-measurement/details/${row.id}?accountId=${row.accountId}`
     );
   };
 

@@ -155,7 +155,7 @@ const ClientDocumentationLeadsTable = () => {
 
   const handleRowClick = (row: LeadColumn) => {
     router.push(
-      `/dashboard/site-supervisor/client-documentation/details/${row.id}?accountId=${row.accountId}`
+      `/dashboard/project/client-documentation/details/${row.id}?accountId=${row.accountId}`
     );
   };
 

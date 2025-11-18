@@ -99,9 +99,8 @@ const ReadyToDispatchTable = () => {
         createdAt: lead.created_at ?? "",
         updatedAt: lead.updated_at ?? "",
         altContact: lead.alt_contact_no ?? "",
-
+        site_map_link: lead.site_map_link ?? "",
         status: lead.statusType?.type ?? "Ready To Dispatch",
-
         assign_to: lead.assignedTo?.user_name ?? "",
         accountId: lead.account_id ?? 0,
       })

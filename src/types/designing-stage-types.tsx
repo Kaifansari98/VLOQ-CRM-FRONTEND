@@ -206,6 +206,7 @@ export interface DesigningLead {
   updated_at: string;
   vendor: Vendor;
   siteType: SiteType;
+  site_map_link?: string;
   source: Source;
   statusType: StatusType;
   account: Account;

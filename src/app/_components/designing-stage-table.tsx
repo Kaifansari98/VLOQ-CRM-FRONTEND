@@ -93,7 +93,7 @@ const DesigningStageTable = () => {
   // Row click handler
   const handleRowClick = (row: LeadColumn) => {
     router.push(
-      `/dashboard/sales-executive/designing-stage/details/${row.id}?accountId=${row.accountId}`
+      `/dashboard/leads/designing-stage/details/${row.id}?accountId=${row.accountId}`
     );
   };
 
@@ -136,7 +136,7 @@ const DesigningStageTable = () => {
       altContact: lead.alt_contact_no ?? "",
       status: lead.statusType?.type ?? "",
       assign_to: lead.assignedTo?.user_name ?? "",
-
+      site_map_link: lead?.site_map_link ?? "",
       accountId: lead.account_id ?? 0,
     }));
   }, [activeData]);

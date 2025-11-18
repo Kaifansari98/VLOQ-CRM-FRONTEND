@@ -124,7 +124,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
 
         // ✅ Redirect if task type is Initial Site Measurement
         if (values.task_type === "Initial Site Measurement") {
-          router.push("/dashboard/sales-executive/initial-site-measurement");
+          router.push("/dashboard/leads/initial-site-measurement");
         }
       },
       onError: (error: any) => {

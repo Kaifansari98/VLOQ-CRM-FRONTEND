@@ -36,6 +36,7 @@ import {
   PanelsTopLeftIcon,
   BoxIcon,
   UsersRoundIcon,
+  Clock,
 } from "lucide-react";
 
 import {
@@ -65,6 +66,8 @@ import CustomeTooltip from "@/components/cutome-tooltip";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import { useQueryClient } from "@tanstack/react-query";
+import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
+import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 
 export default function FinalHandoverLeadDetails() {
   const router = useRouter();
@@ -80,6 +83,11 @@ export default function FinalHandoverLeadDetails() {
   const [openDelete, setOpenDelete] = useState(false);
 
   const [activeTab, setActiveTab] = useState("details");
+
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [activityType, setActivityType] = useState<"onHold">("onHold");
+
+  const updateStatusMutation = useUpdateActivityStatus();
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -144,6 +152,15 @@ export default function FinalHandoverLeadDetails() {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setActivityType("onHold");
+                    setActivityModalOpen(true);
+                  }}
+                >
+                  <Clock className="mh-4 w-4" />
+                  Mark On Hold
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen size={20} />
                   Edit
@@ -177,7 +194,6 @@ export default function FinalHandoverLeadDetails() {
               <ScrollArea>
                 <div className="w-full h-full flex justify-between items-center mb-4">
                   <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-
                     {/* Final Handover Details */}
                     <TabsTrigger value="details">
                       <CheckCircle2 size={16} className="mr-1 opacity-60" />
@@ -273,6 +289,48 @@ export default function FinalHandoverLeadDetails() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <ActivityStatusModal
+          open={activityModalOpen}
+          onOpenChange={setActivityModalOpen}
+          statusType={activityType}
+          onSubmitRemark={(remark, dueDate) => {
+            if (!vendorId || !userId) {
+              toast.error("Vendor or User info is missing!");
+              return;
+            }
+            updateStatusMutation.mutate(
+              {
+                leadId: leadIdNum,
+                payload: {
+                  vendorId,
+                  accountId: Number(accountId),
+                  userId,
+                  status: activityType,
+                  remark,
+                  createdBy: userId,
+                  ...(activityType === "onHold" ? { dueDate } : {}),
+                },
+              },
+              {
+                onSuccess: () => {
+                  toast.success("Lead marked as On Hold!");
+
+                  setActivityModalOpen(false);
+
+                  // Invalidate related queries to refresh UI
+                  queryClient.invalidateQueries({
+                    queryKey: ["leadById", leadIdNum],
+                  });
+                },
+                onError: (err: any) => {
+                  toast.error(err?.message || "Failed to update lead status");
+                },
+              }
+            );
+          }}
+          loading={updateStatusMutation.isPending}
+        />
       </SidebarInset>
     </SidebarProvider>
   );

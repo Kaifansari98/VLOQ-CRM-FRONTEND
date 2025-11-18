@@ -74,17 +74,16 @@ const BookingStageLeadsTable = () => {
   ]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState({});
-  const [columnVisibility, setColumnVisibility] =
-    useState<VisibilityState>({
-      architechName: false,
-      source: false,
-      createdAt: false,
-      altContact: false,
-      productTypes: true,
-      productStructures: false,
-      email: false,
-      designerRemark: false,
-    });
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    architechName: false,
+    source: false,
+    createdAt: false,
+    altContact: false,
+    productTypes: true,
+    productStructures: false,
+    email: false,
+    designerRemark: false,
+  });
 
   const rowData = useMemo<LeadColumn[]>(() => {
     if (!Array.isArray(activeData)) return [];
@@ -121,16 +120,13 @@ const BookingStageLeadsTable = () => {
       altContact: lead.alt_contact_no ?? "",
       status: lead.statusType?.type ?? "",
       assign_to: lead.assignedTo?.user_name ?? "",
-
+      site_map_link: lead.site_map_link ?? "",
       accountId: lead.account_id ?? 0,
     }));
   }, [activeData]);
 
   // Columns
-  const columns = useMemo(
-    () => getUniversalTableColumns({ userType, router }),
-    [userType, router]
-  );
+  const columns = useMemo(() => getUniversalTableColumns(), []);
 
   // Table setup
   const table = useReactTable({
@@ -161,7 +157,7 @@ const BookingStageLeadsTable = () => {
 
   const handleRowClick = (row: LeadColumn) => {
     router.push(
-      `/dashboard/sales-executive/booking-stage/details/${row.id}?accountId=${row.accountId}`
+      `/dashboard/leads/booking-stage/details/${row.id}?accountId=${row.accountId}`
     );
   };
 

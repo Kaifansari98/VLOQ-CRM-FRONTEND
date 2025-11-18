@@ -157,6 +157,7 @@ export interface BookingLead {
   leadProductStructureMapping?: ProductStructureMapping[];
   statusType: StatusType;
   createdBy: UserRef;
+  site_map_link: string;  
   updatedBy: UserRef | null;
   assignedTo: AssignedTo | null;
   assignedBy: UserRef | null;

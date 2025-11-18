@@ -34,6 +34,7 @@ import {
   BoxIcon,
   UsersRoundIcon,
   Truck,
+  Clock,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -65,6 +66,8 @@ import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/ass
 import { useQueryClient } from "@tanstack/react-query";
 import { useMoveLeadToUnderInstallation } from "@/api/installation/useUnderInstallationStageLeads";
 import { useCheckReadyForPostDispatch } from "@/api/installation/useDispatchStageLeads";
+import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
+import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 
 export default function DispatchPlanningLeadDetails() {
   const router = useRouter();
@@ -88,10 +91,12 @@ export default function DispatchPlanningLeadDetails() {
   const [openMoveConfirm, setOpenMoveConfirm] = useState(false);
   const moveMutation = useMoveLeadToUnderInstallation();
 
-  const { data: readiness } = useCheckReadyForPostDispatch(
-    vendorId,
-    leadIdNum
-  );
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [activityType, setActivityType] = useState<"onHold">("onHold");
+
+  const updateStatusMutation = useUpdateActivityStatus();
+
+  const { data: readiness } = useCheckReadyForPostDispatch(vendorId, leadIdNum);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -187,6 +192,15 @@ export default function DispatchPlanningLeadDetails() {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setActivityType("onHold");
+                    setActivityModalOpen(true);
+                  }}
+                >
+                  <Clock className="mr h-4 w-4" />
+                  Mark On Hold
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen size={20} />
                   Edit
@@ -379,7 +393,9 @@ export default function DispatchPlanningLeadDetails() {
                           queryKey: ["underInstallationStageLeads"],
                         });
                         // Optionally redirect to the new stage’s page
-                        router.push("/dashboard/installation/under-installation");
+                        router.push(
+                          "/dashboard/installation/under-installation"
+                        );
                       },
                       onError: (err: any) => {
                         toast.error(
@@ -396,6 +412,48 @@ export default function DispatchPlanningLeadDetails() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <ActivityStatusModal
+          open={activityModalOpen}
+          onOpenChange={setActivityModalOpen}
+          statusType={activityType}
+          onSubmitRemark={(remark, dueDate) => {
+            if (!vendorId || !userId) {
+              toast.error("Vendor or User info is missing!");
+              return;
+            }
+            updateStatusMutation.mutate(
+              {
+                leadId: leadIdNum,
+                payload: {
+                  vendorId,
+                  accountId: Number(accountId),
+                  userId,
+                  status: activityType,
+                  remark,
+                  createdBy: userId,
+                  ...(activityType === "onHold" ? { dueDate } : {}),
+                },
+              },
+              {
+                onSuccess: () => {
+                  toast.success("Lead marked as On Hold!");
+
+                  setActivityModalOpen(false);
+
+                  // Invalidate related queries to refresh UI
+                  queryClient.invalidateQueries({
+                    queryKey: ["leadById", leadIdNum],
+                  });
+                },
+                onError: (err: any) => {
+                  toast.error(err?.message || "Failed to update lead status");
+                },
+              }
+            );
+          }}
+          loading={updateStatusMutation.isPending}
+        />
       </SidebarInset>
     </SidebarProvider>
   );

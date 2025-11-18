@@ -69,42 +69,44 @@ const FinalHandoverStageTable = () => {
   const rowData = useMemo<LeadColumn[]>(() => {
     if (!data?.leads || !Array.isArray(data.leads)) return [];
 
-    return data.leads.map((lead: any, index: number): LeadColumn => ({
-      id: lead.id,
-      srNo: index + 1,
+    return data.leads.map(
+      (lead: any, index: number): LeadColumn => ({
+        id: lead.id,
+        srNo: index + 1,
 
-      lead_code: lead.lead_code ?? "",
-      name: `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim(),
-      email: lead.email ?? "",
-      contact: `${lead.country_code ?? ""} ${lead.contact_no ?? ""}`.trim(),
+        lead_code: lead.lead_code ?? "",
+        name: `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim(),
+        email: lead.email ?? "",
+        contact: `${lead.country_code ?? ""} ${lead.contact_no ?? ""}`.trim(),
 
-      siteAddress: lead.site_address ?? "",
-      architechName: lead.archetech_name ?? "",
-      designerRemark: lead.designer_remark ?? "",
+        siteAddress: lead.site_address ?? "",
+        architechName: lead.archetech_name ?? "",
+        designerRemark: lead.designer_remark ?? "",
 
-      productTypes:
-        lead.productMappings
-          ?.map((pm: any) => pm.productType?.type)
-          .filter(Boolean)
-          .join(", ") ?? "",
+        productTypes:
+          lead.productMappings
+            ?.map((pm: any) => pm.productType?.type)
+            .filter(Boolean)
+            .join(", ") ?? "",
 
-      productStructures:
-        lead.leadProductStructureMapping
-          ?.map((ps: any) => ps.productStructure?.type)
-          .filter(Boolean)
-          .join(", ") ?? "",
+        productStructures:
+          lead.leadProductStructureMapping
+            ?.map((ps: any) => ps.productStructure?.type)
+            .filter(Boolean)
+            .join(", ") ?? "",
 
-      source: lead.source?.type ?? "",
-      siteType: lead.siteType?.type ?? "",
-      createdAt: lead.created_at ?? "",
-      updatedAt: lead.updated_at ?? "",
-      altContact: lead.alt_contact_no ?? "",
+        source: lead.source?.type ?? "",
+        siteType: lead.siteType?.type ?? "",
+        createdAt: lead.created_at ?? "",
+        updatedAt: lead.updated_at ?? "",
+        altContact: lead.alt_contact_no ?? "",
+        site_map_link: lead.site_map_link ?? "",
+        status: lead.statusType?.type ?? "Final Handover",
 
-      status: lead.statusType?.type ?? "Final Handover",
-
-      assign_to: lead.assignedTo?.user_name ?? "",
-      accountId: lead.account_id ?? 0,
-    }));
+        assign_to: lead.assignedTo?.user_name ?? "",
+        accountId: lead.account_id ?? 0,
+      })
+    );
   }, [data]);
 
   // 🔹 Universal Column Config

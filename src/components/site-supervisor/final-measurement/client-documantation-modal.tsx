@@ -120,7 +120,7 @@ const ClientDocumentationModal: React.FC<Props> = ({
       setPythaFiles([]);
 
       // ✅ Redirect
-      router.push("/dashboard/site-supervisor/client-approval");
+      router.push("/dashboard/project/client-approval");
     } catch (error) {
       console.error(error);
       toast.error("Failed to upload documents");

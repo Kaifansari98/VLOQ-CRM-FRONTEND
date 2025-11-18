@@ -19,5 +19,6 @@ export type LeadColumn = {
   designerRemark: string;
   accountId: number; // n
   updatedAt: string; //n
+  site_map_link?: string;
 };
 

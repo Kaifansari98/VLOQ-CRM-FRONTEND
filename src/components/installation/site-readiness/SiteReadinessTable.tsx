@@ -64,6 +64,8 @@ const SiteReadinessTable = () => {
     pagination.pageSize
   );
 
+  console.log("Site Readiness Data: ", data);
+
   // 🔹 Convert API → LeadColumn (Unified Format)
   const rowData = useMemo<LeadColumn[]>(() => {
     if (!data?.leads || !Array.isArray(data.leads)) return [];
@@ -99,10 +101,10 @@ const SiteReadinessTable = () => {
         createdAt: lead.created_at ?? "",
         updatedAt: lead.updated_at ?? "",
         altContact: lead.alt_contact_no ?? "",
-
+        site_map_link: lead.site_map_link ?? "",
         status: lead.statusType?.type ?? "Site Readiness",
 
-        assign_to: lead.assignedTo?.user_name ?? "",  
+        assign_to: lead.assignedTo?.user_name ?? "",
         accountId: lead.account_id ?? 0,
       })
     );

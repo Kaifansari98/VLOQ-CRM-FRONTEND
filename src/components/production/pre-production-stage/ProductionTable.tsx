@@ -107,6 +107,7 @@ const ProductionTable = () => {
         altContact: lead.alt_contact_no ?? "",
 
         status: lead.statusType?.type ?? "Pre-Production",
+        site_map_link: lead?.site_map_link ?? "",
 
         assign_to: lead.assignedTo?.user_name ?? "",
         accountId: lead.account_id ?? 0,

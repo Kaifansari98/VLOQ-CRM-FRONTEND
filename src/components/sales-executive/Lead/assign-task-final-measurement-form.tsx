@@ -123,7 +123,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         onOpenChange(false);
         // ✅ Redirect conditionally
         if (values.task_type === "Final Measurements") {
-          router.push("/dashboard/site-supervisor/final-measurement");
+          router.push("/dashboard/project/final-measurement");
         }
       },
       onError: (error: any) => {

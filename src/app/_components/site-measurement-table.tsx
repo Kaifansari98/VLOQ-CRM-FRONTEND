@@ -22,16 +22,13 @@ import { DataTableSortList } from "@/components/data-table/data-table-sort-list"
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
 import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
+import { useInitialSiteMeasurement } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 
 import { useFeatureFlags } from "./feature-flags-provider";
-
 import { getUniversalTableColumns } from "@/components/utils/column/Universal-column";
 import { LeadColumn } from "@/components/utils/column/column-type";
 
-import { useInitialSiteMeasurement } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
-
 import { useRouter } from "next/navigation";
-
 import type { Lead } from "@/api/leads";
 
 const SiteMeasurementTable = () => {
@@ -68,7 +65,7 @@ const SiteMeasurementTable = () => {
     designerRemark: false,
   });
 
-  // API DATA
+  // API CALLS
   const {
     data: myLeadsData,
     isLoading: isMyLoading,
@@ -84,46 +81,61 @@ const SiteMeasurementTable = () => {
   const activeData =
     viewType === "my" ? myLeadsData?.data || [] : overallLeadsData?.data || [];
 
+  // ⭐ LeadColumn mapping (IMPORTANT)
   const rowData = useMemo<LeadColumn[]>(() => {
     if (!Array.isArray(activeData)) return [];
 
-    return activeData.map((lead: Lead, index: number) => ({
-      id: lead.id,
-      srNo: index + 1,
-      lead_code: lead.lead_code ?? "",
+    console.log("Initial site measurment Data: ", activeData);
+    return activeData.map(
+      (lead: Lead, index: number): LeadColumn => ({
+        id: lead.id,
+        srNo: index + 1,
 
-      name: `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim(),
-      email: lead.email ?? "",
-      assign_to: lead.assignedTo?.user_name ?? "",
-      contact: `${lead.country_code ?? ""} ${lead.contact_no ?? ""}`,
+        lead_code: lead.lead_code ?? "",
+        name: `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim(),
+        email: lead.email ?? "",
+        contact: `${lead.country_code ?? ""} ${lead.contact_no ?? ""}`.trim(),
 
-      siteAddress: lead.site_address ?? "",
-      architechName: lead.archetech_name ?? "",
-      designerRemark: lead.designer_remark ?? "",
+        siteAddress: lead.site_address ?? "",
+        architechName: lead.archetech_name ?? "",
+        designerRemark: lead.designer_remark ?? "",
 
-      productTypes:
-        lead.productMappings?.map((pm) => pm.productType.type).join(", ") ?? "",
+        productTypes:
+          lead.productMappings?.map((pm) => pm.productType?.type).join(", ") ??
+          "",
 
-      productStructures:
-        lead.leadProductStructureMapping
-          ?.map((psm) => psm.productStructure.type)
-          .join(", ") ?? "",
+        productStructures:
+          lead.leadProductStructureMapping
+            ?.map((psm) => psm.productStructure?.type)
+            .join(", ") ?? "",
 
-      source: lead.source?.type ?? "",
-      siteType: lead.siteType?.type ?? "",
-      createdAt: lead.created_at ?? "",
-      updatedAt: lead.updated_at ?? "",
-      altContact: lead.alt_contact_no ?? "",
-      status: lead.statusType?.type ?? "",
-      accountId: lead.account?.id ?? lead.account_id ?? 0,
-    }));
+        source: lead.source?.type ?? "",
+        siteType: lead.siteType?.type ?? "",
+        createdAt: lead.created_at ?? "",
+        updatedAt: lead.updated_at ?? "",
+        altContact: lead.alt_contact_no ?? "",
+        status: lead.statusType?.type ?? "",
+        site_map_link: lead?.site_map_link ?? "",
+        assign_to: lead.assignedTo?.user_name ?? "",
+        accountId: lead.account?.id ?? lead.account_id ?? 0,
+      })
+    );
   }, [activeData]);
 
-  const columns = useMemo(() => getUniversalTableColumns(), [userType, router]);
+  // Columns
+  const columns = useMemo(() => getUniversalTableColumns(), []);
 
+  // Table
   const table = useReactTable({
     data: rowData,
     columns,
+    state: {
+      sorting,
+      columnFilters,
+      globalFilter,
+      columnVisibility,
+      rowSelection,
+    },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
@@ -137,29 +149,18 @@ const SiteMeasurementTable = () => {
 
     getRowId: (row) => row.id.toString(),
     globalFilterFn: "includesString",
-
-    state: {
-      sorting,
-      columnFilters,
-      globalFilter,
-      columnVisibility,
-      rowSelection,
-    },
   });
 
   const handleRowClick = (row: LeadColumn) => {
     router.push(
-      `/dashboard/sales-executive/initial-site-measurement/details/${row.id}?accountId=${row.accountId}`
+      `/dashboard/leads/initial-site-measurement/details/${row.id}?accountId=${row.accountId}`
     );
   };
 
   if (!vendorId) return <p>No vendor selected</p>;
-
   if (isLoading)
     return (
-      <p className="p-4 text-gray-600">
-        Loading {viewType === "my" ? "My" : "Overall"} Leads...
-      </p>
+      <p className="p-4 text-gray-600">Loading Site Measurement Leads...</p>
     );
 
   if (isError) {
@@ -173,90 +174,72 @@ const SiteMeasurementTable = () => {
   const overallLeadsCount = overallLeadsData?.count ?? 0;
 
   return (
-    <>
-      <DataTable table={table} onRowDoubleClick={handleRowClick}>
-        {/* Filtering + Tabs */}
-        {enableAdvancedFilter ? (
-          <DataTableAdvancedToolbar table={table}>
-            <DataTableSortList table={table} align="start" />
+    <DataTable table={table} onRowDoubleClick={handleRowClick}>
+      {enableAdvancedFilter ? (
+        <DataTableAdvancedToolbar table={table}>
+          <DataTableSortList table={table} align="start" />
 
-            {filterFlag === "advancedFilters" ? (
-              <DataTableFilterList table={table} {...mockProps} align="start" />
-            ) : (
-              <DataTableFilterMenu table={table} {...mockProps} />
-            )}
+          {filterFlag === "advancedFilters" ? (
+            <DataTableFilterList table={table} {...mockProps} align="start" />
+          ) : (
+            <DataTableFilterMenu table={table} {...mockProps} />
+          )}
 
-            {!isAdmin && (
-              <div className="ml-auto flex items-center gap-1.5 flex-wrap">
-                <button
-                  onClick={() => setViewType("my")}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium ${
-                    viewType === "my"
-                      ? "bg-blue-600 text-white"
-                      : "bg-muted text-gray-700"
-                  }`}
-                >
-                  My Leads{" "}
-                  <span className="ml-2 bg-blue-100 text-xs text-blue-500 px-1.5 py-0.5 rounded-full">
-                    {myLeadsCount}
-                  </span>
-                </button>
+          {!isAdmin && (
+            <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+              <button
+                onClick={() => setViewType("my")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium ${
+                  viewType === "my" ? "bg-blue-600 text-white" : "bg-muted"
+                }`}
+              >
+                My Leads{" "}
+                <span className="ml-2 bg-blue-100 text-xs text-blue-500 px-1.5 py-0.5 rounded-full">
+                  {myLeadsCount}
+                </span>
+              </button>
 
-                <button
-                  onClick={() => setViewType("overall")}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium ${
-                    viewType === "overall"
-                      ? "bg-blue-600 text-white"
-                      : "bg-muted text-gray-700"
-                  }`}
-                >
-                  Overall Leads{" "}
-                  <span className="ml-2 bg-blue-100 text-xs text-blue-500 px-1.5 py-0.5 rounded-full">
-                    {overallLeadsCount}
-                  </span>
-                </button>
-              </div>
-            )}
-          </DataTableAdvancedToolbar>
-        ) : (
-          <DataTableToolbar table={table}>
-            {!isAdmin && (
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setViewType("my")}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium ${
-                    viewType === "my"
-                      ? "bg-blue-600 text-white"
-                      : "bg-muted text-gray-700"
-                  }`}
-                >
-                  My Leads{" "}
-                  <span className="ml-2 bg-blue-100 text-xs text-blue-500 px-1.5 py-0.5 rounded-full">
-                    {myLeadsCount}
-                  </span>
-                </button>
+              <button
+                onClick={() => setViewType("overall")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium ${
+                  viewType === "overall" ? "bg-blue-600 text-white" : "bg-muted"
+                }`}
+              >
+                Overall Leads{" "}
+                <span className="ml-2 bg-blue-100 text-xs text-blue-500 px-1.5 py-0.5 rounded-full">
+                  {overallLeadsCount}
+                </span>
+              </button>
+            </div>
+          )}
+        </DataTableAdvancedToolbar>
+      ) : (
+        <DataTableToolbar table={table}>
+          {!isAdmin && (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setViewType("my")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium ${
+                  viewType === "my" ? "bg-blue-600 text-white" : "bg-muted"
+                }`}
+              >
+                My Leads
+              </button>
 
-                <button
-                  onClick={() => setViewType("overall")}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium ${
-                    viewType === "overall"
-                      ? "bg-blue-600 text-white"
-                      : "bg-muted text-gray-700"
-                  }`}
-                >
-                  Overall Leads{" "}
-                  <span className="ml-2 bg-blue-100 text-xs text-blue-500 px-1.5 py-0.5 rounded-full">
-                    {overallLeadsCount}
-                  </span>
-                </button>
-              </div>
-            )}
-
-            <DataTableSortList table={table} align="end" />
-          </DataTableToolbar>
-        )}
-      </DataTable>
-    </>
+              <button
+                onClick={() => setViewType("overall")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium ${
+                  viewType === "overall" ? "bg-blue-600 text-white" : "bg-muted"
+                }`}
+              >
+                Overall Leads
+              </button>
+            </div>
+          )}
+          <DataTableSortList table={table} align="end" />
+        </DataTableToolbar>
+      )}
+    </DataTable>
   );
 };
 

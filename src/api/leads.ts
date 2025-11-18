@@ -65,6 +65,7 @@ export interface Lead {
   initial_site_measurement_date: string;
   activity_status?: string;
   count?: number;
+  site_map_link: string;
 }
 
 export interface AssignToPayload {

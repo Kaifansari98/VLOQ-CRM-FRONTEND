@@ -25,7 +25,6 @@ import { useRouter } from "next/navigation";
 
 import { useUnderInstallationStageLeads } from "@/api/installation/useUnderInstallationStageLeads";
 
-
 import type { LeadColumn } from "@/components/utils/column/column-type";
 import { getUniversalTableColumns } from "@/components/utils/column/Universal-column";
 
@@ -98,7 +97,7 @@ const UnderInstallationStageTable = () => {
         createdAt: lead.created_at ?? "",
         updatedAt: lead.updated_at ?? "",
         altContact: lead.alt_contact_no ?? "",
-
+        site_map_link: lead.site_map_link ?? "",
         status: lead.statusType?.type ?? "Under Installation",
 
         assign_to: lead.assignedTo?.user_name ?? "",

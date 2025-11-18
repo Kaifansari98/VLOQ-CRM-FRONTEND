@@ -3,15 +3,12 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Text } from "lucide-react";
+import { Map, MapPin, Text } from "lucide-react";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import { LeadColumn } from "./column-type";
-
-
-
 
 export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
   return [
@@ -91,25 +88,52 @@ export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
       enableColumnFilter: true,
     },
 
-    // Status : 5
     {
-      accessorKey: "status",
+      accessorKey: "site_map_link",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
+        <DataTableColumnHeader column={column} title="Address" />
       ),
       meta: {
-        label: "Status",
+        label: "Address",
       },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
       cell: ({ row }) => {
-        const status = row.getValue("status") as string;
+        const link = row.getValue("site_map_link") as string;
+
+        const isValidLink =
+          typeof link === "string" &&
+          (link.startsWith("http://") || link.startsWith("https://"));
+
+        if (!isValidLink) {
+          return (
+            <span className="text-gray-400 text-xs italic">
+              No Map Available
+            </span>
+          );
+        }
 
         return (
-          <div className="flex items-center">
-            <CustomeStatusBadge title={status} />
-          </div>
+          <a
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="
+              inline-flex items-center gap-1.5
+              px-3 py-1.5 rounded-lg
+              bg-white text-black-700 
+            
+              border border-black
+              
+              text-xs font-medium 
+              transition-all duration-200
+              
+            "
+          >
+            <MapPin size={14} strokeWidth={2} />
+            Open Map
+          </a>
         );
       },
     },
@@ -160,8 +184,6 @@ export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
       enableHiding: true,
       enableColumnFilter: true,
     } as ColumnDef<LeadColumn>,
-
-    
 
     // Site Address: 8
     {

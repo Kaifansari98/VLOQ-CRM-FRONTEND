@@ -122,7 +122,7 @@ const ClientApprovalLeadsTable = () => {
       altContact: lead.alt_contact_no ?? "",
       status: lead.statusType?.type ?? "",
       assign_to: lead.assignedTo?.user_name ?? "",
-
+      site_map_link: lead?.site_map_link ?? "",
       accountId: lead.account_id ?? 0,
     }));
   }, [activeData]);
@@ -159,7 +159,7 @@ const ClientApprovalLeadsTable = () => {
 
   const handleRowClick = (row: LeadColumn) => {
     router.push(
-      `/dashboard/site-supervisor/client-approval/details/${row.id}?accountId=${row.accountId}`
+      `/dashboard/project/client-approval/details/${row.id}?accountId=${row.accountId}`
     );
   };
 

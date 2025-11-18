@@ -114,6 +114,7 @@ const OrderLoginTable = () => {
         createdAt: lead.created_at ?? "",
         updatedAt: lead.updated_at ?? "",
         altContact: lead.alt_contact_no ?? "",
+        site_map_link: lead?.site_map_link ?? "",
 
         status: lead.statusType?.type ?? "Order Login",
 

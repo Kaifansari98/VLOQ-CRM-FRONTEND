@@ -42,6 +42,7 @@ import {
   CircleCheckBig,
   Settings2,
   UploadIcon,
+  Clock,
 } from "lucide-react";
 import CustomeTooltip from "@/components/cutome-tooltip";
 
@@ -84,6 +85,9 @@ import ClientDocumentationModal from "@/components/site-supervisor/final-measure
 import UploadMoreClientDocumentationModal from "@/components/site-supervisor/client-documentation/uploadmore-client-documentaition-modal";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
+import { useQueryClient } from "@tanstack/react-query";
+import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -112,6 +116,11 @@ export default function ClientApprovalLeadDetails() {
   const [openRejectDocsModal, setOpenRejectDocsModal] = useState(false);
 
   const [openUploadDocsModal, setOpenUploadDocsModal] = useState(false);
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [activityType, setActivityType] = useState<"onHold">("onHold");
+
+  const updateStatusMutation = useUpdateActivityStatus();
+  const queryClient = useQueryClient();
 
   // ✅ Auto-open To-Do modal when screen loads (only for allowed roles)
   useEffect(() => {
@@ -191,15 +200,15 @@ export default function ClientApprovalLeadDetails() {
             <Breadcrumb>
               <BreadcrumbList>
                 {/* <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard/site-supervisor/client-approval">
-                    Client Approval
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator /> */}
+                    <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbLink href="/dashboard/project/client-approval">
+                      Client Approval
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator /> */}
                 <BreadcrumbItem>
                   <BreadcrumbPage>
                     <p className="font-bold">
@@ -242,6 +251,17 @@ export default function ClientApprovalLeadDetails() {
                   <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                     <SquarePen size={20} />
                     Edit
+                  </DropdownMenuItem>
+
+                  {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setActivityType("onHold");
+                      setActivityModalOpen(true);
+                    }}
+                  >
+                    <Clock className=" h-4 w-4" />
+                    Mark On Hold
                   </DropdownMenuItem>
 
                   {canReassingLead(userType) && (
@@ -968,8 +988,8 @@ export default function ClientApprovalLeadDetails() {
             {/* Action Footer */}
             <div className="flex items-center justify-end pt-4 border-t border-gray-200">
               {/* <p className="text-xs text-gray-500">
-                This action will notify the client
-              </p> */}
+                  This action will notify the client
+                </p> */}
               <div className="flex gap-3">
                 <Button
                   variant="outline"
@@ -1075,6 +1095,49 @@ export default function ClientApprovalLeadDetails() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* --- NEW: ActivityStatusModal */}
+        <ActivityStatusModal
+          open={activityModalOpen}
+          onOpenChange={setActivityModalOpen}
+          statusType={activityType}
+          onSubmitRemark={(remark, dueDate) => {
+            if (!vendorId || !userId) {
+              toast.error("Vendor or User info is missing!");
+              return;
+            }
+            updateStatusMutation.mutate(
+              {
+                leadId: leadIdNum,
+                payload: {
+                  vendorId,
+                  accountId: Number(accountId),
+                  userId,
+                  status: activityType,
+                  remark,
+                  createdBy: userId,
+                  ...(activityType === "onHold" ? { dueDate } : {}),
+                },
+              },
+              {
+                onSuccess: () => {
+                  toast.success("Lead marked as On Hold!");
+
+                  setActivityModalOpen(false);
+
+                  // Invalidate related queries to refresh UI
+                  queryClient.invalidateQueries({
+                    queryKey: ["leadById", leadIdNum],
+                  });
+                },
+                onError: (err: any) => {
+                  toast.error(err?.message || "Failed to update lead status");
+                },
+              }
+            );
+          }}
+          loading={updateStatusMutation.isPending}
+        />
 
         <UploadMoreClientDocumentationModal
           open={openUploadDocsModal}

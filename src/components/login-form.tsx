@@ -33,7 +33,7 @@ export function LoginForm({
   // ✅ Redirect if already logged in
   useEffect(() => {
     if (user && token) {
-      router.replace("/dashboard/sales-executive/leadstable");
+      router.replace("/dashboard/leads/leadstable");
     }
   }, [user, token, router]);
 
@@ -55,7 +55,7 @@ export function LoginForm({
         })
       );
       toast.success("Login successful 🎉");
-      router.push("/dashboard/sales-executive/leadstable");
+      router.push("/dashboard/leads/leadstable");
     }
   }, [loginMutation.isSuccess, loginMutation.data, dispatch, router]);
 

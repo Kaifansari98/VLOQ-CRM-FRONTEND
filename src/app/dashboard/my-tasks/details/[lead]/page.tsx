@@ -69,7 +69,7 @@ export default function MyTaskLeadDetails() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard/sales-executive/leadstable">
+                  <BreadcrumbLink href="/dashboard/leads/leadstable">
                   Open Leads
                   </BreadcrumbLink>
                 </BreadcrumbItem>
