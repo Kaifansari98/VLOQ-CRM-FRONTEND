@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/tooltip";
 
 interface RemarkTooltipProps {
-  remark: string;
+  remark: React.ReactNode;
   remarkFull: string;
 }
 

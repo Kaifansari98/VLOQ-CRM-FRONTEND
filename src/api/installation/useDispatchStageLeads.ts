@@ -429,6 +429,80 @@ export const usePendingMaterialTasks = (vendorId?: number, leadId?: number) => {
 };
 
 /* ==========================================================
+   🔹 Create Pending Work Task
+   @route POST /leads/installation/dispatch/vendorId/:vendorId/leadId/:leadId/create-pending-work
+   ========================================================== */
+export interface CreatePendingWorkPayload {
+  account_id: number;
+  created_by: number;
+  due_date: string; // ISO or yyyy-MM-dd
+  remark?: string;
+}
+
+export const createPendingWorkTask = async (
+  vendorId: number,
+  leadId: number,
+  payload: CreatePendingWorkPayload
+) => {
+  const { data } = await apiClient.post(
+    `/leads/installation/dispatch/vendorId/${vendorId}/leadId/${leadId}/create-pending-work`,
+    payload
+  );
+  return data?.data;
+};
+
+/* ==========================================================
+     ✅ React Query Hook — Create Pending Work Task
+     ========================================================== */
+export const useCreatePendingWorkTask = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      payload,
+    }: {
+      vendorId: number;
+      leadId: number;
+      payload: CreatePendingWorkPayload;
+    }) => createPendingWorkTask(vendorId, leadId, payload),
+
+    onSuccess: () => {
+      toast.success("Pending Work task created successfully!");
+      queryClient.invalidateQueries({ queryKey: ["pendingWorkTasks"] });
+    },
+
+    onError: (err: any) => {
+      toast.error(
+        err?.response?.data?.message || "Failed to create Pending Work task."
+      );
+    },
+  });
+};
+
+/* ==========================================================
+   ✅ GET Pending Work Tasks
+   ========================================================== */
+export const getPendingWorkTasks = async (vendorId: number, leadId: number) => {
+  const { data } = await apiClient.get(
+    `/leads/installation/dispatch/vendorId/${vendorId}/leadId/${leadId}/pending-work-tasks`
+  );
+  return data?.data;
+};
+
+/* ==========================================================
+     ✅ React Query Hook — Fetch Pending Work Tasks
+     ========================================================== */
+export const usePendingWorkTasks = (vendorId?: number, leadId?: number) => {
+  return useQuery({
+    queryKey: ["pendingWorkTasks", vendorId, leadId],
+    queryFn: () => getPendingWorkTasks(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
+};
+
+/* ==========================================================
    🔹 GET Order Login Summary (id & item_type)
    @route GET /vendorId/:vendorId/get-order-login-summary?lead_id=:leadId
    ========================================================== */

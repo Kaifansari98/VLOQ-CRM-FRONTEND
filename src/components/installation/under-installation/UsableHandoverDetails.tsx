@@ -41,6 +41,7 @@ import {
 import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
+import PendingWorkDetails from "../dispatch/PendingWorkDetails";
 
 interface UsableHandoverProps {
   vendorId: number;
@@ -189,7 +190,7 @@ export default function UsableHandover({
     handoverData.handover_documents.length > 0;
 
   return (
-    <div className="mt-4 space-y-6">
+    <div className="mt-2 space-y-6">
       {/* Header */}
       <div>
         <h2 className="text-lg font-semibold tracking-tight">
@@ -200,7 +201,10 @@ export default function UsableHandover({
         </p>
       </div>
 
-      <Separator />
+      {/* ================================
+    🔹 Pending Work Component (NEW)
+    ================================ */}
+      <PendingWorkDetails leadId={leadId} accountId={accountId} />
 
       {/* Pending Work Details / Remarks */}
       <Card>

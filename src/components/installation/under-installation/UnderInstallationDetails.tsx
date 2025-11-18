@@ -158,7 +158,7 @@ export default function UnderInstallationDetails({
   }
 
   return (
-    <div className="py-4 px-2">
+    <div className="py-2 px-2">
       {/* 🚫 Not started UI */}
       {!installationStarted && (
         <div className="flex flex-col items-center justify-center text-center py-20">

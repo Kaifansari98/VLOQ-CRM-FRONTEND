@@ -182,7 +182,7 @@ export default function InstallationIssueLog({
   };
 
   return (
-    <div className="mt-4 space-y-6">
+    <div className="mt-2 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Issue Log</h2>
@@ -308,133 +308,162 @@ export default function InstallationIssueLog({
         </Dialog>
       </div>
 
-      <Separator />
-
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[200px]">Issue Type</TableHead>
-              <TableHead className="w-[300px]">Issue Description</TableHead>
-              <TableHead className="w-[150px]">Impact</TableHead>
-              <TableHead className="w-[200px]">Responsible Teams</TableHead>
-              <TableHead className="w-[150px]">Created By</TableHead>
-              <TableHead className="w-[100px] text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-40 text-center">
-                  <div className="text-sm text-muted-foreground">
-                    Loading issue logs...
-                  </div>
-                </TableCell>
+      <div className="rounded-lg">
+        {/* Table View */}
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <Table>
+            <TableHeader className="bg-muted/40">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
+                  Issue Type
+                </TableHead>
+                <TableHead className="w-[300px] text-sm font-medium text-foreground/80">
+                  Issue Description
+                </TableHead>
+                <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
+                  Responsible Teams
+                </TableHead>
+                <TableHead className="w-[150px] text-sm font-medium text-foreground/80">
+                  Impact
+                </TableHead>
+                <TableHead className="w-[150px] text-sm font-medium text-foreground/80">
+                  Created By
+                </TableHead>
+                <TableHead className="w-[80px]" />
               </TableRow>
-            ) : !issueLogs || issueLogs.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-40 text-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="p-3 bg-muted/50 rounded-full">
-                      <AlertCircle className="w-8 h-8 opacity-50" />
+            </TableHeader>
+
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-10 text-center">
+                    <div className="text-sm text-muted-foreground">
+                      Loading issue logs...
                     </div>
-                    <div>
+                  </TableCell>
+                </TableRow>
+              ) : !issueLogs || issueLogs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-10 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="p-3 bg-muted/40 rounded-full shadow-inner">
+                        <AlertCircle className="w-7 h-7 opacity-50" />
+                      </div>
                       <p className="font-medium text-sm">No Issue Logs Yet</p>
                       <p className="text-xs text-muted-foreground mt-1">
                         Start documenting installation issues by clicking "Add
                         Issue Log"
                       </p>
                     </div>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              issueLogs.map((log: any) => (
-                <TableRow
-                  key={log.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => setViewModal({ open: true, data: log })}
-                >
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded bg-destructive/10">
-                        <AlertCircle className="w-4 h-4 text-destructive" />
-                      </div>
-                      <div>
-                        <div className="flex flex-wrap gap-1">
-                          {log.issueTypes?.map((it: any) => (
-                            <Badge
-                              key={it.id}
-                              variant="outline"
-                              className="text-xs"
-                            >
-                              {it.type.name}
-                            </Badge>
-                          ))}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {formatDate(log.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="truncate max-w-[250px] inline-block">
-                    <RemarkTooltip
-                      remark={
-                        log.issue_description.length > 60
-                          ? log.issue_description.slice(0, 60) + "..."
-                          : log.issue_description
-                      }
-                      remarkFull={log.issue_description}
-                    />
-                  </TableCell>
-
-                  <TableCell>{getImpactBadge(log.issue_impact)}</TableCell>
-                  <TableCell>
-                    {log.responsibleTeams?.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {log.responsibleTeams.slice(0, 2).map((rt: any) => (
-                          <Badge
-                            key={rt.id}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {rt.team.name}
-                          </Badge>
-                        ))}
-                        {log.responsibleTeams.length > 2 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{log.responsibleTeams.length - 2}
-                          </Badge>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <User className="w-3 h-3" />
-                      {log.createdBy?.user_name}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setViewModal({ open: true, data: log });
-                      }}
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                issueLogs.map((log: any) => (
+                  <TableRow
+                    key={log.id}
+                    className="
+              cursor-pointer 
+              hover:bg-muted/30 
+              transition-all 
+              border-b last:border-0
+            "
+                    onClick={() => setViewModal({ open: true, data: log })}
+                  >
+                    {/* Issue Type */}
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-md bg-destructive/10">
+                          <AlertCircle className="w-4 h-4 text-destructive" />
+                        </div>
+                        <div>
+                          <div className="flex flex-wrap gap-1">
+                            {log.issueTypes?.map((it: any) => (
+                              <Badge
+                                key={it.id}
+                                variant="outline"
+                                className="text-xs px-2"
+                              >
+                                {it.type.name}
+                              </Badge>
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {formatDate(log.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+
+                    {/* Description */}
+                    <TableCell className="max-w-[250px] truncate">
+                      <RemarkTooltip
+                        remark={
+                          log.issue_description.length > 60
+                            ? log.issue_description.slice(0, 60) + "..."
+                            : log.issue_description
+                        }
+                        remarkFull={log.issue_description}
+                      />
+                    </TableCell>
+
+                    {/* Teams */}
+                    <TableCell>
+                      {log.responsibleTeams?.length ? (
+                        <div className="flex flex-wrap gap-1">
+                          {log.responsibleTeams.slice(0, 2).map((rt: any) => (
+                            <Badge
+                              key={rt.id}
+                              variant="secondary"
+                              className="text-xs px-2"
+                            >
+                              {rt.team.name}
+                            </Badge>
+                          ))}
+                          {log.responsibleTeams.length > 2 && (
+                            <Badge variant="secondary" className="text-xs px-2">
+                              +{log.responsibleTeams.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    
+                    {/* Impact */}
+                    <TableCell >
+                      {getImpactBadge(log.issue_impact)}
+                    </TableCell>
+
+
+                    {/* Created By */}
+                    <TableCell>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <User className="w-3 h-3" />
+                        {log.createdBy?.user_name}
+                      </div>
+                    </TableCell>
+
+                    {/* Action */}
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="opacity-70 hover:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewModal({ open: true, data: log });
+                        }}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* View Modal */}
