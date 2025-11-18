@@ -106,38 +106,34 @@ export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
           typeof link === "string" &&
           (link.startsWith("http://") || link.startsWith("https://"));
 
-        if (!isValidLink) {
-          return (
-            <span className="text-gray-400 text-xs italic">
-              No Map Available
-            </span>
-          );
-        }
-
         return (
-          <a
-            href={link}
-            target="_blank"
-            rel="noopener noreferrer"
+          <div
             className="
-              inline-flex items-center gap-1.5
-              px-3 py-1.5 rounded-lg
-              bg-white text-black-700 
-            
-              border border-black
-              
-              text-xs font-medium 
-              transition-all duration-200
-              
-            "
+          inline-flex items-center gap-1.5
+          px-3 py-1.5 rounded-lg
+          text-xs font-medium
+          min-h-[32px]
+          border border-black/20
+          bg-white
+        "
           >
-            <MapPin size={14} strokeWidth={2} />
-            Open Map
-          </a>
+            {isValidLink ? (
+              <a
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-black"
+              >
+                <MapPin size={14} strokeWidth={2} />
+                Open Map
+              </a>
+            ) : (
+              <span className="text-gray-400 italic">No Map Available</span>
+            )}
+          </div>
         );
       },
     },
-
     // Site Type: 6
     {
       accessorKey: "siteType",

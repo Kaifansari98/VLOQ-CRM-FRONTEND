@@ -40,7 +40,6 @@ export default function PendingWorkTab({
 
   return (
     <div className="space-y-6">
-
       {/* Grid */}
       <Card className="rounded-2xl border border-border/70 bg-white dark:bg-neutral-900 shadow-sm">
         <CardHeader>
@@ -89,11 +88,15 @@ export default function PendingWorkTab({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               <AnimatePresence>
                 {tasks.map((task: any, idx: number) => {
-                  const [workTitle, ...descParts] = (task.remark || "").split("—");
+                  const [workTitle, ...descParts] = (task.remark || "").split(
+                    "—"
+                  );
                   const description = descParts.join("—").trim();
+                  const isLong = description.length > 120;
+
                   const shortDesc =
                     description.length > 80
-                      ? description.slice(0, 80) + "..."
+                      ? description.slice(0, 200) + "..."
                       : description;
 
                   return (
@@ -111,7 +114,11 @@ export default function PendingWorkTab({
                           cursor-pointer transition-all duration-300
                         "
                         onClick={() => {
-                          if (task.status === "completed" || task.status === "cancelled") return;
+                          if (
+                            task.status === "completed" ||
+                            task.status === "cancelled"
+                          )
+                            return;
 
                           setSelectedTask({
                             id: task.id,
@@ -145,23 +152,28 @@ export default function PendingWorkTab({
                             {workTitle || "Untitled Work"}
                           </h4>
 
-                          {/* Description */}
-                          {description && (
-                            <RemarkTooltip
-                              remark={
-                                <span className="block line-clamp-3 text-xs text-muted-foreground leading-relaxed">
-                                  {shortDesc}
-                                </span>
-                              }
-                              remarkFull={description}
-                            />
-                          )}
+                          {description &&
+                            (isLong ? (
+                              <RemarkTooltip
+                                remark={
+                                  <span className="block line-clamp-3 text-xs text-left text-muted-foreground leading-relaxed">
+                                    {description.slice(0, 200)}...
+                                  </span>
+                                }
+                                remarkFull={description}
+                              />
+                            ) : (
+                              <span className="block text-xs text-left text-muted-foreground leading-relaxed">
+                                {description}
+                              </span>
+                            ))}
 
                           {/* Meta */}
                           <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
                             <Calendar className="h-3.5 w-3.5" />
                             <span>
-                              Due: {format(new Date(task.due_date), "dd MMM yyyy")}
+                              Due:{" "}
+                              {format(new Date(task.due_date), "dd MMM yyyy")}
                             </span>
                           </div>
                         </CardContent>

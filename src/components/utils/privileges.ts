@@ -270,11 +270,10 @@ export function canViewAndWorkProductionStage(
   return true;
 }
 
-export function canViewAndWorkEditProcutionExpectedDate(
-  role: string,
-): boolean {
+export function canViewAndWorkEditProcutionExpectedDate(role: string): boolean {
   // 1. Admins always have access
-  if (role === "admin" || role === "super-admin" || role === "factory") return true;
+  if (role === "admin" || role === "super-admin" || role === "factory")
+    return true;
 
   // 3. "can view only"
   if (
@@ -325,4 +324,32 @@ export function canViewAndWorkDispatchStage(
     role === "super_admin" ||
     (role === "factory" && stage === "dispatch-stage")
   );
+}
+
+export function canEditLeadForSalesExecutiveButton(role: string): boolean {
+  return (
+    role === "admin" || role === "super_admin" || role === "sales-executive"
+  );
+}
+
+export function canDeleteLedForSalesExecutiveButton(role: string): boolean {
+  return (
+    role === "admin" || role === "super_admin" || role === "sales-executive"
+  );
+}
+
+export function canEditLeadButton(role: string): boolean {
+  return (
+    role === "admin" || role === "super_admin"
+  );
+}
+
+export function canDeleteLeadButton(role: string): boolean {
+  return (
+    role === "admin" || role === "super_admin"
+  );
+}
+
+export function canReassignLeadButton(role: string): boolean {
+  return role === "admin" || role === "super_admin";
 }

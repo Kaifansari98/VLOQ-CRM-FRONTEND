@@ -75,6 +75,11 @@ import {
 } from "@/api/installation/useUnderInstallationStageLeads";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
+import {
+  canDeleteLeadButton,
+  canEditLeadButton,
+  canReassignLeadButton,
+} from "@/components/utils/privileges";
 
 export default function UnderInstallationLeadDetails() {
   const router = useRouter();
@@ -82,6 +87,9 @@ export default function UnderInstallationLeadDetails() {
   const leadIdNum = Number(leadId);
   const queryClient = useQueryClient();
 
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type.user_type
+  );
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
 
@@ -113,6 +121,9 @@ export default function UnderInstallationLeadDetails() {
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = lead?.account_id;
 
+  const canReassign = canReassignLeadButton(userType);
+  const canDelete = canDeleteLeadButton(userType);
+  const canEdit = canEditLeadButton(userType);
   const deleteLeadMutation = useDeleteLead();
 
   const handleDeleteLead = () => {
@@ -226,23 +237,29 @@ export default function UnderInstallationLeadDetails() {
                   <Clock className=" h-4 w-4" />
                   Mark On Hold
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
-
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
-
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                    <XCircle size={20} className="text-red-500" />
-                    Delete
+                {canEdit && (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
                   </DropdownMenuItem>
-                </>
+                )}
+
+                {canReassign && (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )}
+
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                      <XCircle size={20} className="text-red-500" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

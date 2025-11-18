@@ -62,9 +62,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 import {
-  canReassingLead,
-  canDeleteLead,
   canAssignFM,
+  canEditLeadButton,
+  canDeleteLeadButton,
+  canReassignLeadButton,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
@@ -88,7 +89,7 @@ export default function BookingStageLeadsDetails() {
   const [assignOpen, setAssignOpen] = useState(true);
 
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type as string | undefined
+    (state) => state.auth.user?.user_type.user_type
   );
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
@@ -140,6 +141,9 @@ export default function BookingStageLeadsDetails() {
     return <p className="p-6">Loading lead details...</p>;
   }
 
+  const canReassign = canReassignLeadButton(userType);
+  const canDelete = canDeleteLeadButton(userType);
+  const canEdit = canEditLeadButton(userType);
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -198,21 +202,21 @@ export default function BookingStageLeadsDetails() {
                   Mark On Hold
                 </DropdownMenuItem>
 
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
-
-                {canReassingLead(userType) && (
-                  <>
-                    <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                      <Users size={20} />
-                      Reassign Lead
-                    </DropdownMenuItem>
-                  </>
+                {canEdit && (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
                 )}
 
-                {canDeleteLead(userType) && (
+                {canReassign && (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )}
+
+                {canDelete && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => setOpenDelete(true)}>

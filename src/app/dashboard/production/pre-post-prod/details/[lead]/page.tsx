@@ -64,6 +64,10 @@ import {
   handledproductionDefaultTab,
   canMoveToReadyToDispatch,
   canViewAndWorkEditProcutionExpectedDate,
+
+  canEditLeadButton,
+  canDeleteLeadButton,
+  canReassignLeadButton,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
@@ -186,6 +190,10 @@ export default function ProductionLeadDetails() {
 
   const noOfBoxes = lead?.no_of_boxes;
 
+    const canReassign = canReassignLeadButton(userType);
+  const canDelete = canDeleteLeadButton(userType);
+  const canEdit = canEditLeadButton(userType);
+
   const productionDefaultTab = handledproductionDefaultTab(userType);
 
   const deleteLeadMutation = useDeleteLead();
@@ -236,6 +244,7 @@ export default function ProductionLeadDetails() {
 
     setOpenDelete(false);
   };
+
 
   if (isLoading) {
     return <p className="p-6">Loading production lead details...</p>;
@@ -329,19 +338,23 @@ export default function ProductionLeadDetails() {
                   <Clock className=" h-4 w-4" />
                   Mark On Hold
                 </DropdownMenuItem>
+
+                {canEdit && (
+
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen size={20} />
                   Edit
                 </DropdownMenuItem>
+                )}
 
-                {canReassingLead(userType) && (
+                {canReassign && (
                   <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
                     <Users size={20} />
                     Reassign Lead
                   </DropdownMenuItem>
                 )}
 
-                {canDeleteLead(userType) && (
+                {canDelete && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => setOpenDelete(true)}>

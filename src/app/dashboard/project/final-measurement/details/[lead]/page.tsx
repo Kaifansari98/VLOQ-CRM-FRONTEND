@@ -67,6 +67,9 @@ import {
   canReassingLead,
   canDeleteLead,
   canUploadFinalMeasurements,
+  canEditLeadButton,
+  canDeleteLeadButton,
+  canReassignLeadButton,
 } from "@/components/utils/privileges";
 
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
@@ -86,7 +89,7 @@ export default function FinalMeasurementLeadDetails() {
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type as string | undefined
+    (state) => state.auth.user?.user_type.user_type
   );
 
   // UI STATES
@@ -151,6 +154,10 @@ export default function FinalMeasurementLeadDetails() {
     return <p className="p-6">Loading final measurement lead details...</p>;
   }
 
+  const canReassign = canReassignLeadButton(userType);
+  const canDelete = canDeleteLeadButton(userType);
+  const canEdit = canEditLeadButton(userType);
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -193,19 +200,18 @@ export default function FinalMeasurementLeadDetails() {
 
               <DropdownMenuContent align="end">
                 {/* ✔ ONLY MARK ON HOLD */}
-                <DropdownMenuItem
-                  onSelect={() => setActivityModalOpen(true)}
-                >
+                <DropdownMenuItem onSelect={() => setActivityModalOpen(true)}>
                   <Clock className="mh-4 w-4" />
                   Mark On Hold
                 </DropdownMenuItem>
+                {canEdit && (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
+                )}
 
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
-
-                {canReassingLead(userType) && (
+                {canReassign && (
                   <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
                     <Users size={20} />
                     Reassign Lead
@@ -230,7 +236,7 @@ export default function FinalMeasurementLeadDetails() {
                   />
                 )}
 
-                {canDeleteLead(userType) && (
+                {canDelete && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => setOpenDelete(true)}>
