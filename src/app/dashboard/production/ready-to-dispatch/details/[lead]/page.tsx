@@ -35,6 +35,7 @@ import {
   UsersRoundIcon,
   Truck,
   CalendarCheck2,
+  Clock,
 } from "lucide-react";
 
 import {
@@ -74,6 +75,8 @@ import { useCheckPostProductionReady } from "@/api/production/production-api";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import { useMoveLeadToReadyToDispatch } from "@/api/production/useReadyToDispatchLeads";
 import AssignTaskSiteReadinessForm from "@/components/production/ready-to-dispatch/assign-task-site-readiness-form";
+import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
+import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 
 export default function ReadyToDispatchLeadDetails() {
   const router = useRouter();
@@ -93,6 +96,12 @@ export default function ReadyToDispatchLeadDetails() {
   const [activeTab, setActiveTab] = useState("details");
   const [previousTab, setPreviousTab] = useState("details");
 
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [activityType, setActivityType] = useState<"onHold">("onHold");
+
+  const updateStatusMutation = useUpdateActivityStatus();
+  const queryClient = useQueryClient();
+
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
 
@@ -108,7 +117,6 @@ export default function ReadyToDispatchLeadDetails() {
     latestOrderLoginData?.data?.estimated_completion_date;
 
   const deleteLeadMutation = useDeleteLead();
-  const queryClient = useQueryClient();
   const { mutateAsync: updateExpectedDate } =
     useUpdateExpectedOrderLoginReadyDate();
 
@@ -194,6 +202,15 @@ export default function ReadyToDispatchLeadDetails() {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setActivityType("onHold");
+                    setActivityModalOpen(true);
+                  }}
+                >
+                  <Clock className=" h-4 w-4" />
+                  Mark On Hold
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen size={20} />
                   Edit
@@ -352,6 +369,48 @@ export default function ReadyToDispatchLeadDetails() {
           }}
           data={{ id: leadIdNum, name: "" }}
           userType={userType}
+        />
+
+        <ActivityStatusModal
+          open={activityModalOpen}
+          onOpenChange={setActivityModalOpen}
+          statusType={activityType}
+          onSubmitRemark={(remark, dueDate) => {
+            if (!vendorId || !userId) {
+              toast.error("Vendor or User info is missing!");
+              return;
+            }
+            updateStatusMutation.mutate(
+              {
+                leadId: leadIdNum,
+                payload: {
+                  vendorId,
+                  accountId: Number(accountId),
+                  userId,
+                  status: activityType,
+                  remark,
+                  createdBy: userId,
+                  ...(activityType === "onHold" ? { dueDate } : {}),
+                },
+              },
+              {
+                onSuccess: () => {
+                  toast.success("Lead marked as On Hold!");
+
+                  setActivityModalOpen(false);
+
+                  // Invalidate related queries to refresh UI
+                  queryClient.invalidateQueries({
+                    queryKey: ["leadById", leadIdNum],
+                  });
+                },
+                onError: (err: any) => {
+                  toast.error(err?.message || "Failed to update lead status");
+                },
+              }
+            );
+          }}
+          loading={updateStatusMutation.isPending}
         />
 
         {/* Delete Dialog */}

@@ -37,6 +37,7 @@ import {
   BoxIcon,
   UsersRoundIcon,
   ArrowUpRight,
+  Clock,
 } from "lucide-react";
 
 import {
@@ -68,6 +69,9 @@ import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/ass
 import MoveToProductionModal from "@/components/production/order-login-stage/MoveToProductionModal";
 import { useLeadProductionReadiness } from "@/api/production/order-login";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
+import { useQueryClient } from "@tanstack/react-query";
+import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 
 export default function OrderLoginLeadDetails() {
   const { lead: leadId } = useParams();
@@ -105,6 +109,12 @@ export default function OrderLoginLeadDetails() {
   const [openMoveToProduction, setOpenMoveToProduction] = useState(false);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [activityType, setActivityType] = useState<"onHold">("onHold");
+
+  const updateStatusMutation = useUpdateActivityStatus();
+  const queryClient = useQueryClient();
   const lead = data?.data?.lead;
 
   const client_required_order_login_complition_date =
@@ -176,6 +186,16 @@ export default function OrderLoginLeadDetails() {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end">
+                {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setActivityType("onHold");
+                    setActivityModalOpen(true);
+                  }}
+                >
+                  <Clock className=" h-4 w-4" />
+                  Mark On Hold
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen size={20} />
                   Edit
@@ -248,7 +268,7 @@ export default function OrderLoginLeadDetails() {
                     <Button
                       size="sm"
                       variant="default"
-                      className="flex items-center gap-1"
+                      className="flex items-center gap-1 "
                       onClick={() => setOpenMoveToProduction(true)}
                     >
                       <ArrowUpRight size={16} />
@@ -257,10 +277,10 @@ export default function OrderLoginLeadDetails() {
                   ) : (
                     <CustomeTooltip
                       truncateValue={
-                        <div className="flex items-center gap-1 opacity-60 cursor-not-allowed px-2 py-1.5 text-sm">
+                        <Button variant="outline" disabled={true}>
                           <ArrowUpRight size={16} />
                           Move to Production
-                        </div>
+                        </Button>
                       }
                       value={
                         disabledReason ||
@@ -294,6 +314,50 @@ export default function OrderLoginLeadDetails() {
             <PaymentInformation accountId={accountId} />
           </TabsContent>
         </Tabs>
+
+
+        {/* --- NEW: ActivityStatusModal */}
+        <ActivityStatusModal
+          open={activityModalOpen}
+          onOpenChange={setActivityModalOpen}
+          statusType={activityType}
+          onSubmitRemark={(remark, dueDate) => {
+            if (!vendorId || !userId) {
+              toast.error("Vendor or User info is missing!");
+              return;
+            }
+            updateStatusMutation.mutate(
+              {
+                leadId: leadIdNum,
+                payload: {
+                  vendorId,
+                  accountId: Number(accountId),
+                  userId,
+                  status: activityType,
+                  remark,
+                  createdBy: userId,
+                  ...(activityType === "onHold" ? { dueDate } : {}),
+                },
+              },
+              {
+                onSuccess: () => {
+                  toast.success("Lead marked as On Hold!");
+
+                  setActivityModalOpen(false);
+
+                  // Invalidate related queries to refresh UI
+                  queryClient.invalidateQueries({
+                    queryKey: ["leadById", leadIdNum],
+                  });
+                },
+                onError: (err: any) => {
+                  toast.error(err?.message || "Failed to update lead status");
+                },
+              }
+            );
+          }}
+          loading={updateStatusMutation.isPending}
+        />
 
         {/* Modals */}
         <AssignLeadModal

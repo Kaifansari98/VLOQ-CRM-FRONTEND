@@ -32,11 +32,13 @@ import TextSelectPicker from "@/components/TextSelectPicker";
 interface PendingMaterialDetailsProps {
   leadId: number;
   accountId: number;
+  disabled: boolean;
 }
 
 export default function PendingMaterialDetails({
   leadId,
   accountId,
+  disabled
 }: PendingMaterialDetailsProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
@@ -120,6 +122,8 @@ export default function PendingMaterialDetails({
   return (
     <div className="space-y-6">
       {/* Add New Material Card */}
+      {disabled && (
+
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -212,6 +216,7 @@ export default function PendingMaterialDetails({
           </form>
         </CardContent>
       </Card>
+      )}
 
       {/* Pending Materials List */}
       <Card>

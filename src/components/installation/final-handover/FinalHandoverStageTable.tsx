@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useAppSelector } from "@/redux/store";
 
 import {
@@ -22,45 +22,22 @@ import { DataTableSortList } from "@/components/data-table/data-table-sort-list"
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
 import { useFeatureFlags } from "@/app/_components/feature-flags-provider";
-import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 
-import { useDeleteLead } from "@/hooks/useDeleteLead";
-
-// NEW HOOK
 import { useFinalHandoverStageLeads } from "@/api/installation/useFinalHandoverStageLeads";
 
-// TYPES (same as OrderLogin types, but adjust based on your backend)
-import {
-  orderLoginLead as FinalHandoverLead,
-  ProcessedOrderLoginLead as ProcessedFinalHandoverLead,
-} from "@/types/production/order-login.types";
+import type { LeadColumn } from "@/components/utils/column/column-type";
 
-// Use any column structure you want:
-import { getSiteReadinessTableColumns } from "../site-readiness/site-readiness-columns";
-
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { getUniversalTableColumns } from "@/components/utils/column/Universal-column";
 
 const FinalHandoverStageTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type as string | undefined
-  );
 
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const router = useRouter();
 
-  // TABLE STATES
+  // Table States
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: true },
@@ -80,7 +57,7 @@ const FinalHandoverStageTable = () => {
 
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  // FETCH FINAL HANDOVER DATA
+  // API
   const { data, isLoading, isError } = useFinalHandoverStageLeads(
     vendorId!,
     userId!,
@@ -88,61 +65,54 @@ const FinalHandoverStageTable = () => {
     pagination.pageSize
   );
 
-  const deleteLeadMutation = useDeleteLead();
-
-  // MODALS
-  const [openDelete, setOpenDelete] = useState(false);
-  const [rowAction, setRowAction] =
-    useState<any | null>(null);
-
-  // Row Action Listener
-  useEffect(() => {
-    if (!rowAction) return;
-    if (rowAction.variant === "delete") setOpenDelete(true);
-  }, [rowAction]);
-
-  // DATA MAPPING
-  const rowData = useMemo<ProcessedFinalHandoverLead[]>(() => {
+  // 🔹 Transform raw API → LeadColumn (Universal Row Format)
+  const rowData = useMemo<LeadColumn[]>(() => {
     if (!data?.leads || !Array.isArray(data.leads)) return [];
 
-    return (data.leads as FinalHandoverLead[]).map((lead, index) => ({
-      id: lead.id,
-      srNo: index + 1,
-      lead_code: lead.lead_code ?? "-",
-      name: `${lead.firstname || ""} ${lead.lastname || ""}`.trim(),
-      email: lead.email || "",
-      contact: `${lead.country_code || ""} ${lead.contact_no || ""}`,
-      siteAddress: lead.site_address || "",
-      architechName: lead.archetech_name || "",
-      designerRemark: lead.designer_remark || "",
-      productTypes:
-        lead.productMappings?.map((pm: any) => pm.productType?.type).join(", ") ||
-        "-",
-      productStructures:
-        lead.leadProductStructureMapping
-          ?.map((ps: any) => ps.productStructure?.type)
-          .join(", ") || "-",
-      source: lead.source?.type || "",
-      siteType: lead.siteType?.type || "",
-      createdAt: lead.created_at || "",
-      updatedAt: lead.updated_at || "",
-      altContact: lead.alt_contact_no || "",
-      status: lead.statusType?.type || "Final Handover",
-      assignedTo: lead.assignedTo?.user_name || "-",
-      accountId: lead.account_id,
-      siteSupervisor: lead.siteSupervisors?.[0]?.user_name || "-",
-      siteSupervisorId: lead.siteSupervisors?.[0]?.id ?? 0,
-      final_booking_amt: lead.final_booking_amt ?? 0,
-    }));
+    return data.leads.map(
+      (lead: any, index: number): LeadColumn => ({
+        id: lead.id,
+        srNo: index + 1,
+
+        lead_code: lead.lead_code ?? "",
+        name: `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim(),
+        email: lead.email ?? "",
+        contact: `${lead.country_code ?? ""} ${lead.contact_no ?? ""}`.trim(),
+
+        siteAddress: lead.site_address ?? "",
+        architechName: lead.archetech_name ?? "",
+        designerRemark: lead.designer_remark ?? "",
+
+        productTypes:
+          lead.productMappings
+            ?.map((pm: any) => pm.productType?.type)
+            .filter(Boolean)
+            .join(", ") ?? "",
+
+        productStructures:
+          lead.leadProductStructureMapping
+            ?.map((ps: any) => ps.productStructure?.type)
+            .filter(Boolean)
+            .join(", ") ?? "",
+
+        source: lead.source?.type ?? "",
+        siteType: lead.siteType?.type ?? "",
+        createdAt: lead.created_at ?? "",
+        updatedAt: lead.updated_at ?? "",
+        altContact: lead.alt_contact_no ?? "",
+        site_map_link: lead.site_map_link ?? "",
+        status: lead.statusType?.type ?? "Final Handover",
+
+        assign_to: lead.assignedTo?.user_name ?? "",
+        accountId: lead.account_id ?? 0,
+      })
+    );
   }, [data]);
 
-  // COLUMNS
-  const columns = useMemo(
-    () => getSiteReadinessTableColumns({ setRowAction, userType }),
-    [setRowAction, userType]
-  );
+  // 🔹 Universal Column Config
+  const columns = useMemo(() => getUniversalTableColumns(), []);
 
-  // TABLE CONFIG
+  // 🔹 Table Setup
   const table = useReactTable({
     data: rowData,
     columns,
@@ -170,30 +140,13 @@ const FinalHandoverStageTable = () => {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  // DELETE HANDLER
-  const handleDeleteLead = () => {
-    if (!rowAction?.row || !vendorId || !userId) return;
-
-    deleteLeadMutation.mutate(
-      { leadId: rowAction.row.original.id, vendorId, userId },
-      {
-        onSuccess: () => toast.success("Lead deleted successfully"),
-        onError: (err: any) =>
-          toast.error(err?.message || "Failed to delete lead"),
-      }
-    );
-
-    setOpenDelete(false);
-    setRowAction(null);
-  };
-
-  // ROW CLICK → OPEN DETAILS PAGE
-  const handleRowClick = (row: ProcessedFinalHandoverLead) => {
+  // 🔹 Row double-click → open detail screen
+  const handleRowClick = (row: LeadColumn) => {
     router.push(`/dashboard/installation/final-handover/details/${row.id}`);
   };
 
   if (!vendorId) return <p>No vendor selected</p>;
-  if (isLoading) return <p>Loading Final Handover leads…</p>;
+  if (isLoading) return <p>Loading Final Handover leads...</p>;
   if (isError) return <p>Error loading Final Handover leads</p>;
 
   return (
@@ -215,25 +168,6 @@ const FinalHandoverStageTable = () => {
           </DataTableToolbar>
         )}
       </DataTable>
-
-      {/* DELETE MODAL */}
-      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. The lead will be permanently removed.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteLead}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 };

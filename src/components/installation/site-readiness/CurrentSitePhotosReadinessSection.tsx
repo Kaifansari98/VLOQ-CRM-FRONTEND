@@ -34,6 +34,8 @@ import { useDeleteDocument } from "@/api/leads";
 import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { canViewAndWorkSiteRedinessStage } from "@/components/utils/privileges";
 
 interface CurrentSitePhotosReadinessSectionProps {
   leadId: number;
@@ -54,6 +56,9 @@ export default function CurrentSitePhotosReadinessSection({
     vendorId,
     leadId
   );
+
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
 
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
@@ -123,6 +128,8 @@ export default function CurrentSitePhotosReadinessSection({
 
   const canDelete = userType === "admin" || userType === "super-admin";
 
+  const canViewAndWork = canViewAndWorkSiteRedinessStage(userType, leadStatus);
+
   // 🧩 --- Handlers ---
   const handleConfirmDelete = () => {
     if (confirmDelete) {
@@ -151,35 +158,37 @@ export default function CurrentSitePhotosReadinessSection({
       </div>
 
       {/* Upload Section */}
-      <div className="p-6 border-b space-y-4">
-        <FileUploadField
-          value={selectedFiles}
-          onChange={setSelectedFiles}
-          accept=".jpg,.jpeg,.png,.pdf,.zip"
-          multiple
-        />
+      {canViewAndWork && (
+        <div className="p-6 border-b space-y-4">
+          <FileUploadField
+            value={selectedFiles}
+            onChange={setSelectedFiles}
+            accept=".jpg,.jpeg,.png,.pdf,.zip"
+            multiple
+          />
 
-        <div className="flex justify-end">
-          <Button
-            size="sm"
-            onClick={handleUpload}
-            disabled={isPending || selectedFiles.length === 0}
-            className="flex items-center gap-2"
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="animate-spin size-4" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Upload size={16} />
-                Upload Photos
-              </>
-            )}
-          </Button>
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={handleUpload}
+              disabled={isPending || selectedFiles.length === 0}
+              className="flex items-center gap-2"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="animate-spin size-4" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload size={16} />
+                  Upload Photos
+                </>
+              )}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Files List */}
       <div className="p-6">

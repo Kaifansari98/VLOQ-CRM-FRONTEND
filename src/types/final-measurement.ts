@@ -78,7 +78,7 @@ export interface FinalMeasurementLead {
   updated_at: string | null;
   followStatus?: string,
   tasks?:TaskDetails[]
-
+  site_map_link?: string;
   siteType: SiteType;
   source: SourceType;
   statusType: StatusType;

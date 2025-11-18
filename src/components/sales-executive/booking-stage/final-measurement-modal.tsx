@@ -100,7 +100,7 @@ const FinalMeasurementModal = ({
           onOpenChange(false);
 
           // 👇 redirect to client documentation page
-          router.push("/dashboard/site-supervisor/client-documentation");
+          router.push("/dashboard/project/client-documentation");
         },
         onError: (error: any) => {
           toast.error(error?.message || "Upload failed. Try again.");

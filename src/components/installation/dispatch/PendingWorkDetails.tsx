@@ -7,21 +7,14 @@ import CustomeDatePicker from "@/components/date-picker";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Calendar,
-  FileText,
-  Clock,
-  PlusCircle,
-  Loader2,
-  Wrench,
-  CheckCircle2,
-} from "lucide-react";
+import { Calendar, FileText, PlusCircle, Loader2, Wrench } from "lucide-react";
 
 import { useAppSelector } from "@/redux/store";
 import {
   useCreatePendingWorkTask,
+  useOrderLoginSummary,
   usePendingWorkTasks,
-} from "@/api/installation/useDispatchStageLeads"; // <-- your new API file
+} from "@/api/installation/useDispatchStageLeads";
 import { toast } from "react-toastify";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
@@ -57,6 +50,9 @@ export default function PendingWorkDetails({
     useCreatePendingWorkTask();
 
   const { data: tasks = [], isLoading } = usePendingWorkTasks(vendorId, leadId);
+
+  const { data: workTitleOptions = [], isLoading: loadingTitles } =
+    useOrderLoginSummary(vendorId, leadId);
 
   /* 📝 Form State */
   const [title, setTitle] = useState("");
@@ -145,19 +141,18 @@ export default function PendingWorkDetails({
                 </Label>
 
                 <TextSelectPicker
-                  options={[
-                    "Touchup Work",
-                    "Woodwork Fixing",
-                    "Polish Work",
-                    "Gap Filling",
-                    "Laminate Fix",
-                    "Hardware Fix",
-                    "Other Work",
-                  ]}
+                  options={
+                    workTitleOptions.map(
+                      (item: any) => item.item_type || "Untitled Work"
+                    ) || []
+                  }
                   value={title}
                   onChange={(text) => setTitle(text)}
-                  placeholder="Select work..."
+                  placeholder={
+                    loadingTitles ? "Loading work titles..." : "Select work..."
+                  }
                   emptyLabel="Select Work"
+                  disabled={loadingTitles}
                 />
               </div>
 

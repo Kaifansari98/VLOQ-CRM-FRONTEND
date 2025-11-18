@@ -22,6 +22,7 @@ interface FileUploadFieldProps {
   onChange: (files: File[]) => void;
   accept?: string;
   multiple?: boolean;
+  disabled?: boolean;
 }
 
 export function FileUploadField({
@@ -29,6 +30,7 @@ export function FileUploadField({
   onChange,
   accept,
   multiple = true,
+  disabled
 }: FileUploadFieldProps) {
   const finalAccept = accept ?? ".png,.jpg,.jpeg";
 
@@ -120,12 +122,14 @@ export function FileUploadField({
       onUpload={onUpload}
       onFileReject={onFileReject} // ✅ correct type
       maxFiles={multiple ? 20 : 1}
-      className="w-full"
+      className={`w-full ${disabled && "opacity-50" } `}
       multiple={multiple}
       accept={finalAccept}
+      disabled={disabled}
+
     >
       <FileUploadDropzone>
-        <div className="flex flex-col items-center gap-1 text-center">
+        <div className="flex flex-col items-center gap-1 text-center ">
           <div className="flex items-center justify-center rounded-full border p-2.5">
             <Upload className="size-6 text-muted-foreground" />
           </div>

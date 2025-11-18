@@ -69,22 +69,22 @@ const data = {
         // },
         {
           title: "Open Leads",
-          url: "/dashboard/sales-executive/leadstable",
+          url: "/dashboard/leads/leadstable",
           showCount: "total_open_leads" as const,
         },
         {
           title: "ISM Leads",
-          url: "/dashboard/sales-executive/initial-site-measurement",
+          url: "/dashboard/leads/initial-site-measurement",
           showCount: "total_initial_site_measurement_leads" as const,
         },
         {
           title: "Designing Stage",
-          url: "/dashboard/sales-executive/designing-stage",
+          url: "/dashboard/leads/designing-stage",
           showCount: "total_designing_stage_leads" as const,
         },
         {
           title: "Booking Done",
-          url: "/dashboard/sales-executive/booking-stage",
+          url: "/dashboard/leads/booking-stage",
           showCount: "total_booking_stage_leads" as const,
         },
       ],
@@ -97,17 +97,17 @@ const data = {
       items: [
         {
           title: "Final Measurement",
-          url: "/dashboard/site-supervisor/final-measurement",
+          url: "/dashboard/project/final-measurement",
           showCount: "total_final_measurement_leads" as const, // ✅ added
         },
         {
           title: "Client Documents",
-          url: "/dashboard/site-supervisor/client-documentation",
+          url: "/dashboard/project/client-documentation",
           showCount: "total_client_documentation_leads" as const, // ✅ added
         },
         {
           title: "Client Approval",
-          url: "/dashboard/site-supervisor/client-approval",
+          url: "/dashboard/project/client-approval",
           showCount: "total_client_approval_leads" as const, // ✅ added
         },
       ],

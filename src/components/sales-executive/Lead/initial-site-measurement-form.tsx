@@ -157,7 +157,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       onOpenChange(false);
 
       // ✅ Redirect to Designing Stage
-      router.push("/dashboard/sales-executive/designing-stage");
+      router.push("/dashboard/leads/designing-stage");
     },
     onError: (error: any) => {
       const backendMessage =

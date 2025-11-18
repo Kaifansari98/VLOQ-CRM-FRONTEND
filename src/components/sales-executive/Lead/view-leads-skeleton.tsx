@@ -4,7 +4,7 @@ import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import ViewOpenLeadTable from "@/app/_components/view-leads-table";
-import PendingLeadsTable from "@/app/dashboard/sales-executive/pending-leads/pending-leads-table";
+import PendingLeadsTable from "@/app/dashboard/leads/pending-leads/pending-leads-table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { LeadStatusTabs } from "./LeadStatusTabs";
 import { useAppSelector } from "@/redux/store";

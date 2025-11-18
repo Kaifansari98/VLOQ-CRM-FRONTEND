@@ -34,6 +34,7 @@ import {
   BoxIcon,
   UsersRoundIcon,
   Truck,
+  Clock,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -67,6 +68,8 @@ import {
   useMoveLeadToDispatch,
 } from "@/api/installation/useDispatchPlanning";
 import { useQueryClient } from "@tanstack/react-query";
+import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
+import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 
 export default function DispatchPlanningLeadDetails() {
   const router = useRouter();
@@ -103,6 +106,11 @@ export default function DispatchPlanningLeadDetails() {
   const accountId = Number(lead?.account_id);
 
   const deleteLeadMutation = useDeleteLead();
+
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [activityType, setActivityType] = useState<"onHold">("onHold");
+
+  const updateStatusMutation = useUpdateActivityStatus();
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -195,6 +203,15 @@ export default function DispatchPlanningLeadDetails() {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setActivityType("onHold");
+                    setActivityModalOpen(true);
+                  }}
+                >
+                  <Clock className="m h-4 w-4" />
+                  Mark On Hold
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen size={20} />
                   Edit
@@ -388,6 +405,48 @@ export default function DispatchPlanningLeadDetails() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <ActivityStatusModal
+          open={activityModalOpen}
+          onOpenChange={setActivityModalOpen}
+          statusType={activityType}
+          onSubmitRemark={(remark, dueDate) => {
+            if (!vendorId || !userId) {
+              toast.error("Vendor or User info is missing!");
+              return;
+            }
+            updateStatusMutation.mutate(
+              {
+                leadId: leadIdNum,
+                payload: {
+                  vendorId,
+                  accountId: Number(accountId),
+                  userId,
+                  status: activityType,
+                  remark,
+                  createdBy: userId,
+                  ...(activityType === "onHold" ? { dueDate } : {}),
+                },
+              },
+              {
+                onSuccess: () => {
+                  toast.success("Lead marked as On Hold!");
+
+                  setActivityModalOpen(false);
+
+                  // Invalidate related queries to refresh UI
+                  queryClient.invalidateQueries({
+                    queryKey: ["leadById", leadIdNum],
+                  });
+                },
+                onError: (err: any) => {
+                  toast.error(err?.message || "Failed to update lead status");
+                },
+              }
+            );
+          }}
+          loading={updateStatusMutation.isPending}
+        />
       </SidebarInset>
     </SidebarProvider>
   );

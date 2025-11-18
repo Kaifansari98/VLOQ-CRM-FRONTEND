@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useAppSelector } from "@/redux/store";
 import {
   useReactTable,
@@ -21,54 +21,37 @@ import { DataTableSortList } from "@/components/data-table/data-table-sort-list"
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
 import { useFeatureFlags } from "./feature-flags-provider";
-import type { DataTableRowActionFinalMeasurement } from "@/types/data-table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-  AlertDialogFooter,
-  AlertDialogHeader,
-} from "@/components/ui/alert-dialog";
-import { useDeleteLead } from "@/hooks/useDeleteLead";
-import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
-import { toast } from "react-toastify";
+
 import { useRouter } from "next/navigation";
-import { BookingLead, ProcessedBookingLead } from "@/types/booking-types";
-import { getBookingLeadsTableColumns } from "./booking-stage-columns";
 import {
   useBookingLeads,
   useVendorBookingLeads,
 } from "@/hooks/booking-stage/use-booking";
-import BookingEditModal from "@/components/sales-executive/booking-stage/bookint-edit-form";
-import AssignTaskFinalMeasurementForm from "@/components/sales-executive/Lead/assign-task-final-measurement-form";
+import { BookingLead } from "@/types/booking-types";
+
+import { getUniversalTableColumns } from "@/components/utils/column/Universal-column";
+import { LeadColumn } from "@/components/utils/column/column-type";
 
 const BookingStageLeadsTable = () => {
-  // Redux selectors
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type as string | undefined
+    (state) => state.auth.user?.user_type.user_type
   );
 
-  // Feature flags
-  const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const router = useRouter();
+  const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
 
-  // React Query hook
-  // ✅ Add after router declaration
   const [viewType, setViewType] = useState<"my" | "overall">("my");
 
-  // 🟢 My Leads (Assigned)
+  // Fetch My Leads
   const {
     data: myLeadsData,
     isLoading: isMyLoading,
     isError: isMyError,
   } = useBookingLeads(vendorId!, userId!);
 
-  // 🔵 Overall Leads (All Booking Stage)
+  // Fetch Overall Leads
   const {
     data: overallLeadsData,
     isLoading: isOverallLoading,
@@ -78,25 +61,13 @@ const BookingStageLeadsTable = () => {
   const isLoading = viewType === "my" ? isMyLoading : isOverallLoading;
   const isError = viewType === "my" ? isMyError : isOverallError;
 
-  // ✅ Counts
-  const myLeadsCount = myLeadsData?.data?.count ?? 0;
-  const overallLeadsCount = overallLeadsData?.count ?? 0;
-
-  // ✅ Active dataset
+  // Active dataset
   const activeData =
-    viewType === "my" ? myLeadsData?.data?.leads || [] : overallLeadsData?.data || [];
+    viewType === "my"
+      ? myLeadsData?.data?.leads || []
+      : overallLeadsData?.data || [];
 
-  // Local state
-  const [openDelete, setOpenDelete] = useState(false);
-  const [assignOpenLead, setAssignOpenLead] = useState(false);
-  const [openViewModal, setOpenViewModal] = useState<boolean>(false);
-  const [editOpenLead, setEditOpenLead] = useState(false);
-  const [openFMTaskModal, setOpenFMTaskModal] = useState(false);
-  const [rowAction, setRowAction] =
-    useState<DataTableRowActionFinalMeasurement<ProcessedBookingLead> | null>(
-      null
-    );
-
+  // Table states
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: true },
@@ -114,54 +85,48 @@ const BookingStageLeadsTable = () => {
     designerRemark: false,
   });
 
-  // Mutations
-  const deleteLeadMutation = useDeleteLead();
+  const rowData = useMemo<LeadColumn[]>(() => {
+    if (!Array.isArray(activeData)) return [];
 
-  // Derived: formatted row data
-  const rowData = useMemo<ProcessedBookingLead[]>(() => {
-    if (!activeData || !Array.isArray(activeData)) return [];
-
-    return (activeData as BookingLead[]).map((lead, index: number) => ({
+    return (activeData as BookingLead[]).map((lead, index) => ({
       id: lead.id,
       srNo: index + 1,
-      lead_code: lead.lead_code,
-      name: `${lead.firstname || ""} ${lead.lastname || ""}`.trim(),
-      email: lead.email || "",
-      contact: `${lead.country_code || ""} ${lead.contact_no || ""}`.trim(),
-      siteAddress: lead.site_address || "",
-      architechName: lead.archetech_name || "",
-      designerRemark: lead.designer_remark || "",
-      source: lead.source?.type || "",
-      siteType: lead.siteType?.type || "",
-      createdAt: lead.created_at || "",
-      updatedAt: lead.updated_at || "",
-      altContact: lead.alt_contact_no || "",
-      status: lead.statusType?.type || "",
-      assignedTo: lead.assignedTo?.user_name || "",
-      siteSupervisor: lead.siteSupervisors?.[0]?.user_name || "-",
-      siteSupervisorId: lead.siteSupervisors?.[0]?.id,
-      bookingAmount: lead.payments?.[0].amount || 0,
-      paymentsText: lead.payments?.[0].payment_text || "-",
-      final_booking_amt: lead.final_booking_amt,
-      accountId: lead.account_id,
+
+      lead_code: lead.lead_code ?? "",
+      name: `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim(),
+      email: lead.email ?? "",
+      contact: `${lead.country_code ?? ""} ${lead.contact_no ?? ""}`.trim(),
+
+      siteAddress: lead.site_address ?? "",
+      architechName: lead.archetech_name ?? "",
+      designerRemark: lead.designer_remark ?? "",
+
       productTypes:
         lead.productMappings
           ?.map((pm) => pm.productType?.type)
           .filter(Boolean)
-          .join(", ") || "-",
+          .join(", ") ?? "",
+
       productStructures:
         lead.leadProductStructureMapping
           ?.map((ps) => ps.productStructure?.type)
           .filter(Boolean)
-          .join(", ") || "-",
+          .join(", ") ?? "",
+
+      source: lead.source?.type ?? "",
+      siteType: lead.siteType?.type ?? "",
+      createdAt: lead.created_at ?? "",
+      updatedAt: lead.updated_at ?? "",
+      altContact: lead.alt_contact_no ?? "",
+      status: lead.statusType?.type ?? "",
+      assign_to: lead.assignedTo?.user_name ?? "",
+      site_map_link: lead.site_map_link ?? "",
+      accountId: lead.account_id ?? 0,
     }));
   }, [activeData]);
 
   // Columns
-  const columns = useMemo(
-    () => getBookingLeadsTableColumns({ setRowAction, userType }),
-    [setRowAction, userType]
-  );
+  const columns = useMemo(() => getUniversalTableColumns(), []);
 
   // Table setup
   const table = useReactTable({
@@ -172,12 +137,15 @@ const BookingStageLeadsTable = () => {
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
+
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+
     getRowId: (row) => row.id.toString(),
     globalFilterFn: "includesString",
+
     state: {
       sorting,
       columnFilters,
@@ -187,47 +155,20 @@ const BookingStageLeadsTable = () => {
     },
   });
 
-  // Effects
-  useEffect(() => {
-    if (!rowAction) return;
-    if (rowAction.variant === "delete") setOpenDelete(true);
-    if (rowAction.variant === "reassignlead") setAssignOpenLead(true);
-    if (rowAction.variant === "edit") setEditOpenLead(true);
-    if (rowAction.variant === "view") setOpenViewModal(true);
-    if (rowAction.variant === "assignTask" && rowAction.row)
-      setOpenFMTaskModal(true);
-  }, [rowAction]);
-
-  // Handlers
-  const handleDeleteLead = () => {
-    if (!rowAction?.row || !vendorId || !userId) {
-      toast.error("Missing vendor or user info!");
-      return;
-    }
-
-    deleteLeadMutation.mutate(
-      { leadId: rowAction.row.original.id, vendorId, userId },
-      {
-        onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: (err: any) =>
-          toast.error(err?.message || "Failed to delete lead"),
-      }
+  const handleRowClick = (row: LeadColumn) => {
+    router.push(
+      `/dashboard/leads/booking-stage/details/${row.id}?accountId=${row.accountId}`
     );
-
-    setOpenDelete(false);
-    setRowAction(null);
   };
 
-  const handleRowClick = (row: ProcessedBookingLead) => {
-    router.push(`/dashboard/sales-executive/booking-stage/details/${row.id}`);
-  };
-
-  // Early returns
+  // Loading states
   if (!vendorId) return <p>No vendor selected</p>;
-  if (isLoading) return <p>Loading...</p>;
+  if (isLoading) return <p>Loading booking leads...</p>;
   if (isError) return <p>Error loading leads</p>;
 
-  // Render
+  const myLeadsCount = myLeadsData?.data?.count ?? 0;
+  const overallLeadsCount = overallLeadsData?.count ?? 0;
+
   return (
     <>
       <DataTable table={table} onRowDoubleClick={handleRowClick}>
@@ -259,7 +200,7 @@ const BookingStageLeadsTable = () => {
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setViewType("my")}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium ${
                     viewType === "my"
                       ? "bg-blue-600 text-white shadow-sm"
                       : "bg-muted text-gray-700 hover:bg-gray-100"
@@ -273,7 +214,7 @@ const BookingStageLeadsTable = () => {
 
                 <button
                   onClick={() => setViewType("overall")}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium ${
                     viewType === "overall"
                       ? "bg-blue-600 text-white shadow-sm"
                       : "bg-muted text-gray-700 hover:bg-gray-100"
@@ -291,49 +232,6 @@ const BookingStageLeadsTable = () => {
           </DataTableToolbar>
         )}
       </DataTable>
-
-      {/* Delete Confirmation */}
-      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              lead from your system.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteLead}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Modals */}
-      <AssignLeadModal
-        open={assignOpenLead}
-        onOpenChange={setAssignOpenLead}
-        leadData={rowAction?.row.original}
-      />
-      <BookingEditModal
-        open={editOpenLead}
-        onOpenChange={setEditOpenLead}
-        data={rowAction?.row.original}
-      />
-
-      <AssignTaskFinalMeasurementForm
-        open={openFMTaskModal}
-        onOpenChange={setOpenFMTaskModal}
-        data={rowAction?.row.original}
-      />
-
-      {/* <FinalMeasurementModal
-        open={openFinalModal}
-        onOpenChange={setOpenFinalModal}
-        data={rowAction?.row.original}
-      /> */}
     </>
   );
 };

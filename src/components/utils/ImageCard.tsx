@@ -16,8 +16,57 @@ interface DocumentCardProps {
   onView?: (index: number) => void;
   onDelete?: (id: number | string) => void;
   status?: "APPROVED" | "REJECTED" | "PENDING" | string;
+  isLoading?: boolean;
 }
 
+// Skeleton Loading Component
+export const DocumentCardSkeleton: React.FC<{
+  canDelete?: boolean;
+  status?: boolean;
+}> = ({ canDelete = false, status }) => {
+  return (
+    <div className="group relative flex items-center justify-between gap-4 rounded-xl p-3 border border-border shadow-sm overflow-hidden bg-card">
+      {/* Delete Button Skeleton */}
+      {canDelete && (
+        <div className="absolute top-3 right-1.5 p-1 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse">
+          <div className="w-4 h-4" />
+        </div>
+      )}
+
+      {/* Thumbnail Skeleton */}
+      <div className="flex-shrink-0">
+        <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-border bg-gray-200 dark:bg-gray-700 animate-pulse" />
+      </div>
+
+      {/* Details Skeleton */}
+      <div className="flex flex-col justify-between flex-1 min-w-0">
+        <div>
+          {/* Title Skeleton */}
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-3/4 mb-2" />
+
+          {/* Date Skeleton */}
+          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-1/2 mt-0.5" />
+        </div>
+
+        {/* Actions + Status Skeleton */}
+        <div className="flex items-center justify-between gap-2 mt-3">
+          {/* View Button Skeleton */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-200 dark:bg-gray-700 animate-pulse w-20 h-7" />
+
+          {/* Status Skeleton */}
+          {status && (
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-pulse" />
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-16" />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Main Component
 export const ImageComponent: React.FC<DocumentCardProps> = ({
   doc,
   index = 0,
@@ -25,8 +74,14 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
   onView,
   onDelete,
   status,
+  isLoading = false,
 }) => {
-  // 🧩 Card style based on status
+  // Show skeleton if loading
+  if (isLoading) {
+    return <DocumentCardSkeleton canDelete={canDelete} status={!!status} />;
+  }
+
+  // Card style based on status
   const getCardStyle = () => {
     switch (status?.toUpperCase()) {
       case "APPROVED":
@@ -34,23 +89,9 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
       case "REJECTED":
         return "";
       case "PENDING":
-        return ""; // 🔵 changed
+        return "";
       default:
         return "bg-card border-border hover:border-muted-foreground/20";
-    }
-  };
-
-  // 🧩 Badge tone
-  const getStatusStyle = () => {
-    switch (status?.toUpperCase()) {
-      case "APPROVED":
-        return "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300";
-      case "REJECTED":
-        return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
-      case "PENDING":
-        return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"; // 🔵 changed
-      default:
-        return "hidden";
     }
   };
 
@@ -79,23 +120,24 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
         return "bg-gray-400 shadow-[0_0_6px_rgba(156,163,175,0.6)]";
     }
   };
+
   return (
     <div
       className={`group relative flex items-center justify-between gap-4 rounded-xl p-3 border shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden ${getCardStyle()}`}
     >
-      {/* 🗑 Delete Button */}
+      {/* Delete Button */}
       {canDelete && (
         <button
           onClick={() => onDelete?.(doc.id)}
           className="absolute top-3 right-1.5 p-1 rounded-full dark:bg-red-950 border dark:border-red-800 
-                     dark:hover:bg-red-900 hover:bg-red-50 transition-all z-10"
+                      dark:hover:bg-red-900 hover:bg-red-50 transition-all z-10"
           title="Delete Document"
         >
           <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
         </button>
       )}
 
-      {/* 🖼 Thumbnail */}
+      {/* Thumbnail */}
       <div className="flex-shrink-0">
         <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-border">
           <img
@@ -106,7 +148,7 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
         </div>
       </div>
 
-      {/* 📄 Details */}
+      {/* Details */}
       <div className="flex flex-col justify-between flex-1 min-w-0">
         <div>
           <h3 className="text-sm font-semibold text-foreground truncate pr-6">
@@ -122,21 +164,21 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
           </p>
         </div>
 
-        {/* 🔘 Actions + Status */}
+        {/* Actions + Status */}
         <div className="flex items-center justify-between gap-2 mt-3">
-          {/* view button */}
+          {/* View Button */}
           <button
             onClick={() => onView?.(index)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-blue-200 
-                       bg-blue-50 hover:bg-blue-100 text-blue-600 font-medium text-xs transition-all
-                       dark:border-blue-800 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 dark:text-blue-300"
+                        bg-blue-50 hover:bg-blue-100 text-blue-600 font-medium text-xs transition-all
+                        dark:border-blue-800 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 dark:text-blue-300"
             title="View Document"
           >
             <SquareArrowOutUpRight className="w-4 h-4" />
             <span>View</span>
           </button>
 
-          {/* status */}
+          {/* Status */}
           {getStatusLabel() && (
             <div className="flex items-center gap-2">
               {/* Animated glowing dot */}

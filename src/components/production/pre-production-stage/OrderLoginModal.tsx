@@ -350,7 +350,7 @@ export default function OrderLoginModal({
                               : handleDateChange
                           }
                           restriction="futureOnly"
-                          disabledReason=""
+
                         />
                       </div>
                     }

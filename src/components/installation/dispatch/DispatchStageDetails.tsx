@@ -48,10 +48,27 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "react-toastify";
 import { z } from "zod";
 import PendingMaterialDetails from "./PendingMaterialDetails";
 import VehicleNumberInput from "@/components/custom/VehicleNumberInput";
+import { useDeleteDocument } from "@/api/leads";
+import DocumentCard from "@/components/utils/documentCard";
+import ImageCarouselModal from "@/components/utils/image-carousel-modal";
+import { ImageComponent } from "@/components/utils/ImageCard";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { canViewAndWorkDispatchStage } from "@/components/utils/privileges";
 
 const DispatchDetailsSchema = z.object({
   dispatch_date: z.string().nonempty("Dispatch date is required"),
@@ -77,6 +94,9 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id) || 0;
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type
+  );
 
   console.log("parent", Number(accountId));
 
@@ -85,10 +105,15 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     useRequiredDateForDispatch(vendorId, leadId);
   const { data: dispatchDetails, isLoading: loadingDispatchDetails } =
     useDispatchDetails(vendorId, leadId);
+  const { mutate: deleteDocument, isPending: deleting } =
+    useDeleteDocument(leadId);
   const { data: documents, isLoading: loadingDocuments } = useDispatchDocuments(
     vendorId,
     leadId
   );
+
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
   const addDispatchMutation = useAddDispatchDetails();
   const uploadDocsMutation = useUploadDispatchDocuments();
 
@@ -111,6 +136,9 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   const [noOfBoxesInput, setNoOfBoxesInput] = useState(
     requiredDateData?.no_of_boxes?.toString() || ""
   );
+  const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
+  const [openCarousel, setOpenCarousel] = useState(false);
+  const [startIndex, setStartIndex] = useState(0);
   const queryClient = useQueryClient();
   const { mutateAsync: updateNoBoxes, isPending: updatingBoxes } =
     useUpdateNoOfBoxes(vendorId, leadId);
@@ -184,6 +212,32 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     );
   };
 
+  const handleConfirmDelete = () => {
+    if (confirmDelete) {
+      deleteDocument({
+        vendorId: vendorId!,
+        documentId: confirmDelete,
+        deleted_by: userId!,
+      });
+      setConfirmDelete(null);
+    }
+  };
+
+  const imageExtensions = ["jpg", "jpeg", "png", "webp"];
+  const documentExtensions = ["pdf", "doc", "docx"];
+
+  const images =
+    documents?.filter((file: any) => {
+      const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
+      return imageExtensions.includes(ext || "");
+    }) || [];
+
+  const Documents =
+    documents?.filter((file: any) => {
+      const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
+      return documentExtensions.includes(ext || "");
+    }) || [];
+
   if (loadingRequiredDate && loadingDispatchDetails) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -191,6 +245,9 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
       </div>
     );
   }
+
+  const canDelete = userType === "admin" || userType === "super-admin";
+  const canViewAndWork = canViewAndWorkDispatchStage(userType, leadStatus);
 
   return (
     <div className="space-y-6 h-full overflow-y-scroll">
@@ -238,19 +295,22 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     <p className="text-lg font-semibold text-foreground">
                       {requiredDateData?.no_of_boxes || 0}
                     </p>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-6 w-6 p-0 hover:bg-accent rounded-full"
-                      onClick={() => {
-                        setNoOfBoxesInput(
-                          requiredDateData?.no_of_boxes?.toString() || ""
-                        );
-                        setOpenBoxesModal(true);
-                      }}
-                    >
-                      <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-                    </Button>
+
+                    {canViewAndWork && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 hover:bg-accent rounded-full"
+                        onClick={() => {
+                          setNoOfBoxesInput(
+                            requiredDateData?.no_of_boxes?.toString() || ""
+                          );
+                          setOpenBoxesModal(true);
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -294,13 +354,22 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     Dispatch Date
                     <span className="text-red-500">*</span>
                   </Label>
-                  <CustomeDatePicker
-                    value={formData.dispatch_date}
-                    onChange={(value) =>
-                      setFormData({ ...formData, dispatch_date: value || "" })
+
+                  <div
+                    className={
+                      !canViewAndWork
+                        ? "opacity-50 pointer-events-none w-full"
+                        : "w-full"
                     }
-                    restriction="futureOnly"
-                  />
+                  >
+                    <CustomeDatePicker
+                      value={formData.dispatch_date}
+                      onChange={(value) =>
+                        setFormData({ ...formData, dispatch_date: value || "" })
+                      }
+                      restriction="futureOnly"
+                    />
+                  </div>
                 </div>
 
                 {/* Vehicle Number */}
@@ -310,6 +379,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     onChange={(val) =>
                       setFormData({ ...formData, vehicle_no: val })
                     }
+                    disabled={!canViewAndWork}
                     required
                   />
                 </div>
@@ -326,6 +396,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     value={formData.driver_name}
                     onChange={handleInputChange}
                     placeholder="Enter driver name"
+                    disabled={!canViewAndWork}
                   />
                 </div>
 
@@ -338,6 +409,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                   <PhoneInput
                     placeholder="Enter phone number"
                     defaultCountry="IN"
+                    disabled={!canViewAndWork}
                     value={formData.driver_number}
                     onChange={(value) =>
                       setFormData({
@@ -361,24 +433,27 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                   onChange={handleInputChange}
                   placeholder="Add any additional notes or remarks..."
                   rows={3}
+                  disabled={!canViewAndWork}
                 />
               </div>
 
               {/* Submit Button */}
-              <Button
-                type="submit"
-                disabled={addDispatchMutation.isPending}
-                className="w-full md:w-auto"
-              >
-                {addDispatchMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>Save Dispatch Details</>
-                )}
-              </Button>
+              {canViewAndWork && (
+                <Button
+                  type="submit"
+                  disabled={addDispatchMutation.isPending}
+                  className="w-full md:w-auto"
+                >
+                  {addDispatchMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>Save Dispatch Details</>
+                  )}
+                </Button>
+              )}
             </form>
           )}
         </CardContent>
@@ -395,18 +470,20 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
             <span className="text-red-500">*</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-3">
           {/* File Upload Area */}
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Upload Files</Label>
-              <FileUploadField
-                value={selectedFiles}
-                onChange={setSelectedFiles}
-                accept="image/*,.pdf,.doc,.docx"
-                multiple={true}
-              />
-            </div>
+            {canViewAndWork && (
+              <div className="space-y-2">
+                <Label>Upload Files</Label>
+                <FileUploadField
+                  value={selectedFiles}
+                  onChange={setSelectedFiles}
+                  accept="image/*,.pdf,.doc,.docx"
+                  multiple={true}
+                />
+              </div>
+            )}
 
             {/* Selected Files Preview */}
             {selectedFiles.length > 0 && (
@@ -434,8 +511,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
             )}
           </div>
 
-          <Separator />
-
           {/* Uploaded Documents */}
           <div className="space-y-3">
             <Label>Uploaded Documents</Label>
@@ -449,51 +524,63 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                 ))}
               </div>
             ) : documents && documents.length > 0 ? (
-              <div className="space-y-2">
-                {documents.map((doc: any) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="p-2 bg-primary/10 rounded">
-                        <FileCheck className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {doc.doc_og_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Uploaded on{" "}
-                          {format(new Date(doc.created_at), "MMM dd, yyyy")}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" asChild>
-                        <a
-                          href={doc.signed_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="gap-2"
-                        >
-                          <Eye className="h-4 w-4" />
-                          View
-                        </a>
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <a
-                          href={doc.signed_url}
-                          download={doc.doc_og_name}
-                          className="gap-2"
-                        >
-                          <Download className="h-4 w-4" />
-                          Download
-                        </a>
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[...images, ...Documents]
+                  .sort(
+                    (a, b) =>
+                      new Date(b.created_at).getTime() -
+                      new Date(a.created_at).getTime()
+                  )
+                  .map((doc: any, index: number) => {
+                    // Determine if it's an image or a document (by extension)
+                    const ext = doc.doc_og_name
+                      ?.split(".")
+                      .pop()
+                      ?.toLowerCase();
+                    const isImage = [
+                      "jpg",
+                      "jpeg",
+                      "png",
+                      "gif",
+                      "bmp",
+                      "webp",
+                      "tiff",
+                      "heic",
+                      "avif",
+                      "svg",
+                    ].includes(ext);
+
+                    return isImage ? (
+                      <ImageComponent
+                        key={`img-${doc.id}`}
+                        doc={{
+                          id: doc?.id,
+                          doc_og_name: doc.doc_og_name,
+                          signedUrl: doc.signed_url,
+                          created_at: doc.created_at,
+                        }}
+                        index={index}
+                        canDelete={canDelete}
+                        onView={(i) => {
+                          setStartIndex(i);
+                          setOpenCarousel(true);
+                        }}
+                        onDelete={(id) => setConfirmDelete(Number(id))}
+                      />
+                    ) : (
+                      <DocumentCard
+                        key={`doc-${doc.id}`}
+                        doc={{
+                          id: doc.id,
+                          originalName: doc.doc_og_name,
+                          signedUrl: doc.signed_url,
+                          created_at: doc.created_at,
+                        }}
+                        canDelete={canDelete}
+                        onDelete={(id) => setConfirmDelete(id)}
+                      />
+                    );
+                  })}
               </div>
             ) : (
               <div className="border-2 border-dashed rounded-lg p-12 text-center">
@@ -515,7 +602,8 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
       </Card>
 
       {/* Pending Material Details Section */}
-      <PendingMaterialDetails leadId={leadId} accountId={accountId} />
+   
+      <PendingMaterialDetails leadId={leadId} accountId={accountId} disabled={canViewAndWork} />
 
       {/* ✨ Edit No. of Boxes Modal */}
       <Dialog open={openBoxesModal} onOpenChange={setOpenBoxesModal}>
@@ -594,6 +682,37 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={() => setConfirmDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The selected document will be
+              permanently removed from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <ImageCarouselModal
+        images={images}
+        open={openCarousel}
+        initialIndex={startIndex}
+        onClose={() => setOpenCarousel(false)}
+      />
     </div>
   );
 };

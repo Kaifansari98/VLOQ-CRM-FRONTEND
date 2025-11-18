@@ -220,7 +220,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
         onOpenChange(false);
         form.reset();
 
-        router.push("/dashboard/sales-executive/booking-stage");
+        router.push("/dashboard/leads/booking-stage");
       },
       onError: (err: any) => {
         toast.error(err?.response?.data?.message || "Failed to save booking");
