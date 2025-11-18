@@ -25,7 +25,7 @@ import RescheduleModal from "./sales-executive/siteMeasurement/reschedule-modal"
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  variant?: "Follow Up" | "Pending Materials";
+  variant?: "Follow Up" | "Pending Materials" | "Pending Work";
   data?: {
     id: number;
     accountId: number;
@@ -83,6 +83,9 @@ const FollowUpModal: React.FC<Props> = ({
             queryClient.invalidateQueries({
               queryKey: ["vendorUserTasks", vendorId, userId],
             });
+            queryClient.invalidateQueries({
+              queryKey: ["pendingWorkTasks"],
+            });
           }
         },
         onError: (err: any) => {
@@ -135,12 +138,16 @@ const FollowUpModal: React.FC<Props> = ({
         open={open}
         onOpenChange={onOpenChange}
         title={
-          variant === "Pending Materials"
+          variant === "Pending Work"
+            ? "Pending Work Task"
+            : variant === "Pending Materials"
             ? "Pending Material Task"
             : "Follow Up"
         }
         description={
-          variant === "Pending Materials"
+          variant === "Pending Work"
+            ? "Update or manage this pending work task for the lead."
+            : variant === "Pending Materials"
             ? "Update the pending material task status for this lead."
             : "Update the follow-up status for this lead."
         }
@@ -152,8 +159,10 @@ const FollowUpModal: React.FC<Props> = ({
             <div className="flex flex-col gap-1">
               <span className="text-base font-semibold">Mark as Completed</span>
               <p className="text-sm text-muted-foreground">
-                {variant === "Pending Materials"
-                  ? "If this pending material have been dispatched or received, you can mark this task as completed."
+                {variant === "Pending Work"
+                  ? "If this pending work has been completed, you can mark it as done."
+                  : variant === "Pending Materials"
+                  ? "If this pending material has been dispatched or received, mark it as completed."
                   : "If your follow up is completed, you can mark it as completed."}
               </p>
             </div>
@@ -170,8 +179,10 @@ const FollowUpModal: React.FC<Props> = ({
             <div className="flex flex-col gap-1">
               <span className="text-base font-semibold">Reschedule</span>
               <p className="text-sm text-muted-foreground">
-                {variant === "Pending Materials"
-                  ? "If the material dispatch date has been changed or delayed, you can reschedule it accordingly."
+                {variant === "Pending Work"
+                  ? "If the work schedule has changed or delayed, you can reschedule it."
+                  : variant === "Pending Materials"
+                  ? "If the material dispatch date has changed or delayed, you can reschedule it."
                   : "If the client has pushed the meeting date, you can reschedule it."}
               </p>
             </div>
@@ -188,8 +199,10 @@ const FollowUpModal: React.FC<Props> = ({
             <div className="flex flex-col gap-1">
               <span className="text-base font-semibold ">Mark as Cancel</span>
               <p className="text-sm text-muted-foreground">
-                {variant === "Pending Materials"
-                  ? "If this pending material task is no longer relevant, you can mark it as cancelled."
+                {variant === "Pending Work"
+                  ? "If this pending work is no longer relevant, you can cancel this task."
+                  : variant === "Pending Materials"
+                  ? "If this pending material task is no longer relevant, you can cancel it."
                   : "If this follow up is cancelled, you can mark it as cancelled."}
               </p>
             </div>
@@ -208,16 +221,20 @@ const FollowUpModal: React.FC<Props> = ({
           <AlertDialogHeader>
             <AlertDialogTitle>
               Mark{" "}
-              {variant === "Pending Materials"
-                ? "Pending Material Task"
-                : "Follow Up"}{" "}
+              {variant === "Pending Work"
+                ? "Mark Pending Work Task as Completed?"
+                : variant === "Pending Materials"
+                ? "Mark Pending Material Task as Completed?"
+                : "Mark Follow Up as Completed?"}
               as Completed?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to mark this{" "}
-              {variant === "Pending Materials"
-                ? "pending material task"
-                : "follow up"}{" "}
+              Are you sure you want to mark this
+              {variant === "Pending Work"
+                ? " pending work task "
+                : variant === "Pending Materials"
+                ? " pending material task "
+                : " follow up "}
               as completed? This action can’t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -239,16 +256,20 @@ const FollowUpModal: React.FC<Props> = ({
           <AlertDialogHeader>
             <AlertDialogTitle>
               Cancel{" "}
-              {variant === "Pending Materials"
-                ? "Pending Material Task"
-                : "Follow Up"}
+              {variant === "Pending Work"
+                ? "Cancel Pending Work Task?"
+                : variant === "Pending Materials"
+                ? "Cancel Pending Material Task?"
+                : "Cancel Follow Up?"}
               ?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel this{" "}
-              {variant === "Pending Materials"
-                ? "pending material task"
-                : "follow up"}
+              Are you sure you want to cancel this
+              {variant === "Pending Work"
+                ? " pending work task "
+                : variant === "Pending Materials"
+                ? " pending material task "
+                : " follow up "}
               ? This action can’t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

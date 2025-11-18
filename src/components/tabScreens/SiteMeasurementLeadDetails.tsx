@@ -147,7 +147,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="border rounded-lg w-full h-full p-6 space-y-6 overflow-y-scroll"
+      className="border rounded-lg w-full h-full p-6 space-y-6 overflow-y-scroll mb-6"
     >
       {/* -------- Measurement Document + Payment Info Row -------- */}
       <div className="flex flex-col lg:flex-row gap-6">

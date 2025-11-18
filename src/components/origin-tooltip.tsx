@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/tooltip";
 
 interface RemarkTooltipProps {
-  remark: string;
+  remark: React.ReactNode;
   remarkFull: string;
 }
 
@@ -27,7 +27,6 @@ export default function RemarkTooltip({
             <p className="text-[13px] font-medium">Design Remark</p>
             <p className="text-muted-foreground  text-xs">
               {remarkFull}
-              <code>trigger</code> prop to <code>click</code>.
             </p>
           </div>
         </TooltipContent>

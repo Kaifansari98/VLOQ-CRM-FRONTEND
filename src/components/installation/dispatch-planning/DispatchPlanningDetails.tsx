@@ -415,7 +415,7 @@ export default function DispatchPlanningDetails({
 
   console.log("can View And Work: ", canViewAndWork);
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-6">
       {/* Dispatch Planning Information */}
       <Card>
         <CardHeader>
