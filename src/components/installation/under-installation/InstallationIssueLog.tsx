@@ -227,16 +227,21 @@ export default function InstallationIssueLog({
 
               <div className="space-y-2">
                 <Label
-                  htmlFor="issue-description"
+                  htmlFor="responsible-teams"
                   className="text-sm font-medium"
                 >
-                  Issue Description <span className="text-destructive">*</span>
+                  Responsible Teams <span className="text-destructive">*</span>
                 </Label>
-                <TextAreaInput
-                  value={issueDescription}
-                  onChange={setIssueDescription}
-                  placeholder="Describe the issue in detail..."
-                  maxLength={1000}
+                <MultipleSelector
+                  value={selectedTeams}
+                  onChange={setSelectedTeams}
+                  options={teamOptions}
+                  placeholder="Select responsible teams..."
+                  emptyIndicator={
+                    <p className="text-center text-sm text-muted-foreground">
+                      No teams found
+                    </p>
+                  }
                 />
               </div>
 
@@ -258,24 +263,18 @@ export default function InstallationIssueLog({
                   </Select>
                 </div>
               </div>
-
               <div className="space-y-2">
                 <Label
-                  htmlFor="responsible-teams"
+                  htmlFor="issue-description"
                   className="text-sm font-medium"
                 >
-                  Responsible Teams <span className="text-destructive">*</span>
+                  Issue Description <span className="text-destructive">*</span>
                 </Label>
-                <MultipleSelector
-                  value={selectedTeams}
-                  onChange={setSelectedTeams}
-                  options={teamOptions}
-                  placeholder="Select responsible teams..."
-                  emptyIndicator={
-                    <p className="text-center text-sm text-muted-foreground">
-                      No teams found
-                    </p>
-                  }
+                <TextAreaInput
+                  value={issueDescription}
+                  onChange={setIssueDescription}
+                  placeholder="Describe the issue in detail..."
+                  maxLength={1000}
                 />
               </div>
 
@@ -429,12 +428,9 @@ export default function InstallationIssueLog({
                         <span className="text-sm text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    
-                    {/* Impact */}
-                    <TableCell >
-                      {getImpactBadge(log.issue_impact)}
-                    </TableCell>
 
+                    {/* Impact */}
+                    <TableCell>{getImpactBadge(log.issue_impact)}</TableCell>
 
                     {/* Created By */}
                     <TableCell>

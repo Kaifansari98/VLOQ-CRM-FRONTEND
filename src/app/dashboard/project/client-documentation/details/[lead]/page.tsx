@@ -67,6 +67,9 @@ import {
   canReassingLead,
   canDeleteLead,
   canUploadClientDocumentation,
+  canEditLeadButton,
+  canDeleteLeadButton,
+  canReassignLeadButton,
 } from "@/components/utils/privileges";
 
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
@@ -86,7 +89,7 @@ export default function ClientDocumentationLeadDetails() {
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type as string | undefined
+    (state) => state.auth.user?.user_type.user_type
   );
 
   // UI STATES
@@ -146,6 +149,9 @@ export default function ClientDocumentationLeadDetails() {
     return <p className="p-6">Loading client documentation details…</p>;
   }
 
+  const canReassign = canReassignLeadButton(userType);
+  const canDelete = canDeleteLeadButton(userType);
+  const canEdit = canEditLeadButton(userType);
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -216,13 +222,15 @@ export default function ClientDocumentationLeadDetails() {
                 )}
 
                 {/* EDIT */}
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
+                {canEdit && (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
+                )}
 
                 {/* REASSIGN */}
-                {canReassingLead(userType) && (
+                {canReassign && (
                   <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
                     <Users size={20} />
                     Reassign Lead
@@ -230,7 +238,7 @@ export default function ClientDocumentationLeadDetails() {
                 )}
 
                 {/* DELETE */}
-                {canDeleteLead(userType) && (
+                {canDelete && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => setOpenDelete(true)}>

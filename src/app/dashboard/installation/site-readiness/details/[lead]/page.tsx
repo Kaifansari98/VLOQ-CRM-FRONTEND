@@ -58,6 +58,9 @@ import {
   canReassingLead,
   canDeleteLead,
   canDoSR,
+  canEditLeadButton,
+  canDeleteLeadButton,
+  canReassignLeadButton,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
@@ -81,7 +84,7 @@ export default function ReadyToDispatchLeadDetails() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth?.user?.user_type.user_type as string | undefined
+    (state) => state.auth?.user?.user_type.user_type
   );
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
@@ -121,6 +124,10 @@ export default function ReadyToDispatchLeadDetails() {
   const [openMoveConfirm, setOpenMoveConfirm] = useState(false);
 
   const isCompleted = readinessStatus?.is_site_readiness_completed ?? false;
+
+  const canReassign = canReassignLeadButton(userType);
+  const canDelete = canDeleteLeadButton(userType);
+  const canEdit = canEditLeadButton(userType);
 
   const handleMoveToDispatch = async () => {
     try {
@@ -236,19 +243,22 @@ export default function ReadyToDispatchLeadDetails() {
                   <Clock className=" h-4 w-4" />
                   Mark On Hold
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
 
-                {canReassingLead(userType) && (
+                {canEdit && (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+
+                {canReassign && (
                   <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
                     <Users size={20} />
                     Reassign Lead
                   </DropdownMenuItem>
                 )}
 
-                {canDeleteLead(userType) && (
+                {canDelete && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => setOpenDelete(true)}>
@@ -420,7 +430,7 @@ export default function ReadyToDispatchLeadDetails() {
           </AlertDialogContent>
         </AlertDialog>
 
-         <ActivityStatusModal
+        <ActivityStatusModal
           open={activityModalOpen}
           onOpenChange={setActivityModalOpen}
           statusType={activityType}
@@ -461,7 +471,6 @@ export default function ReadyToDispatchLeadDetails() {
           }}
           loading={updateStatusMutation.isPending}
         />
-
       </SidebarInset>
     </SidebarProvider>
   );

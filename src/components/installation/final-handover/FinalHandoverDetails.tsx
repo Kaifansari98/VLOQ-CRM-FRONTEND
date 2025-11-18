@@ -268,7 +268,7 @@ export default function FinalHandover({
               transition={{ duration: 0.25, delay: index * 0.05 }}
             >
               <Card
-                className="
+                className="h-full
             rounded-2xl border bg-white dark:bg-neutral-900 
             hover:shadow-[0_8px_25px_-4px_rgba(0,0,0,0.12)]
             transition-all duration-200 cursor-pointer
@@ -303,17 +303,33 @@ export default function FinalHandover({
                       </div>
                     </div>
 
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-xs text-muted-foreground hover:text-foreground"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveSection(section);
-                      }}
-                    >
-                      View
-                    </Button>
+                    {/* Button swap: Add if no docs, View if docs exist */}
+                    {docs.length === 0 ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveSection(section);
+                          setSelectedFiles([]); // allow adding new files
+                        }}
+                      >
+                        Upload
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveSection(section); // only view existing files
+                        }}
+                      >
+                        View
+                      </Button>
+                    )}
                   </div>
 
                   {/* Divider */}
