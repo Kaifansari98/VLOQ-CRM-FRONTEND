@@ -27,7 +27,6 @@ import { format } from "date-fns";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
-import AssignToPicker from "@/components/assign-to-picker";
 import TextSelectPicker from "@/components/TextSelectPicker";
 
 interface PendingMaterialDetailsProps {

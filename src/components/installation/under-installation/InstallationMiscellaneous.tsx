@@ -190,8 +190,8 @@ export default function InstallationMiscellaneous({
   }));
 
   return (
-    <div className="mt-4 px-2">
-      <div className="flex items-center justify-between mb-6">
+    <div className="mt-2 px-2">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold">Miscellaneous Issues</h3>
           <p className="text-sm text-muted-foreground">
@@ -207,36 +207,49 @@ export default function InstallationMiscellaneous({
       </div>
 
       {/* Table View */}
-      <div className="border rounded-lg">
+      <div className="rounded-xl border bg-card overflow-hidden">
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[200px]">Miscellaneous Type</TableHead>
-              <TableHead className="w-[300px]">Problem Description</TableHead>
-              <TableHead className="w-[100px]">Quantity</TableHead>
-              <TableHead className="w-[120px]">Cost</TableHead>
-              <TableHead className="w-[200px]">Responsible Teams</TableHead>
-              <TableHead className="w-[100px] text-center">Documents</TableHead>
-              <TableHead className="w-[100px] text-center">Status</TableHead>
-              <TableHead className="w-[100px] text-right">Actions</TableHead>
+          <TableHeader className="bg-muted/40">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
+                Miscellaneous Type
+              </TableHead>
+              <TableHead className="w-[300px] text-sm font-medium text-foreground/80">
+                Problem Description
+              </TableHead>
+              <TableHead className="w-[100px] text-sm font-medium text-foreground/80">
+                Quantity
+              </TableHead>
+              <TableHead className="w-[120px] text-sm font-medium text-foreground/80">
+                Cost
+              </TableHead>
+              <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
+                Responsible Teams
+              </TableHead>
+              <TableHead className="w-[100px] text-center text-sm font-medium text-foreground/80">
+                Documents
+              </TableHead>
+              <TableHead className="w-[100px] text-center text-sm font-medium text-foreground/80">
+                Status
+              </TableHead>
+              <TableHead className="w-[50px]" />
             </TableRow>
           </TableHeader>
+
           <TableBody>
             {!entries || entries.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-40 text-center">
+                <TableCell colSpan={8} className="py-10 text-center">
                   <div className="flex flex-col items-center gap-3">
-                    <div className="p-3 bg-muted/50 rounded-full">
-                      <Wrench className="w-8 h-8 opacity-50" />
+                    <div className="p-3 bg-muted/40 rounded-full shadow-inner">
+                      <Wrench className="w-7 h-7 opacity-50" />
                     </div>
-                    <div>
-                      <p className="font-medium text-sm">
-                        No issues reported yet
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Add your first miscellaneous issue or material reorder
-                      </p>
-                    </div>
+                    <p className="font-medium text-sm">
+                      No issues reported yet
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Add your first miscellaneous issue or material reorder
+                    </p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -244,26 +257,33 @@ export default function InstallationMiscellaneous({
               entries.map((entry) => (
                 <TableRow
                   key={entry.id}
-                  className="cursor-pointer hover:bg-muted/50"
+                  className="
+              cursor-pointer 
+              hover:bg-muted/30 
+              transition-all 
+              border-b last:border-0
+            "
                   onClick={() => setViewModal({ open: true, data: entry })}
                 >
-                  <TableCell className="font-medium">
+                  {/* TYPE */}
+                  <TableCell className="py-3">
                     <div className="flex items-center gap-2">
                       <div
-                        className={`p-1.5 rounded ${
+                        className={`p-1.5 rounded-md ${
                           entry.is_resolved
-                            ? "bg-green-50 dark:bg-green-950"
-                            : "bg-orange-50 dark:bg-orange-950"
+                            ? "bg-green-100 dark:bg-green-900"
+                            : "bg-orange-100 dark:bg-orange-900"
                         }`}
                       >
                         {entry.is_resolved ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                          <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-300" />
                         ) : (
-                          <AlertCircle className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                          <AlertCircle className="w-4 h-4 text-orange-600 dark:text-orange-300" />
                         )}
                       </div>
+
                       <div>
-                        <p className="text-sm font-semibold">
+                        <p className="font-semibold text-sm">
                           {entry.type.name}
                         </p>
                         <p className="text-xs text-muted-foreground">
@@ -272,7 +292,9 @@ export default function InstallationMiscellaneous({
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="max-w-[260px]">
+
+                  {/* DESCRIPTION */}
+                  <TableCell className="py-3">
                     <RemarkTooltip
                       remark={
                         entry.problem_description
@@ -285,43 +307,43 @@ export default function InstallationMiscellaneous({
                     />
                   </TableCell>
 
-                  <TableCell>
+                  {/* QTY */}
+                  <TableCell className="py-3">
                     {entry.quantity ? (
-                      <div className="flex items-center gap-1">
-                        <Package className="w-3.5 h-3.5 text-blue-600" />
-                        <span className="text-sm font-medium">
-                          {entry.quantity}
-                        </span>
-                      </div>
+                      <span className="text-sm font-medium">
+                        {entry.quantity}
+                      </span>
                     ) : (
                       <span className="text-sm text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  <TableCell>
+
+                  {/* COST */}
+                  <TableCell className="py-3">
                     {entry.cost ? (
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm font-medium">
-                          ₹{entry.cost.toLocaleString()}
-                        </span>
-                      </div>
+                      <span className="text-sm font-medium">
+                        ₹{entry.cost.toLocaleString()}
+                      </span>
                     ) : (
                       <span className="text-sm text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  <TableCell>
-                    {entry.teams.length > 0 ? (
+
+                  {/* TEAMS */}
+                  <TableCell className="py-3">
+                    {entry.teams.length ? (
                       <div className="flex flex-wrap gap-1">
                         {entry.teams.slice(0, 2).map((team) => (
                           <Badge
                             key={team.team_id}
                             variant="secondary"
-                            className="text-xs"
+                            className="text-xs px-2"
                           >
                             {team.team_name}
                           </Badge>
                         ))}
                         {entry.teams.length > 2 && (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-xs px-2">
                             +{entry.teams.length - 2}
                           </Badge>
                         )}
@@ -330,28 +352,38 @@ export default function InstallationMiscellaneous({
                       <span className="text-sm text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="outline" className="text-xs">
+
+                  {/* DOCUMENTS */}
+                  <TableCell className="py-3 text-center">
+                    <Badge variant="outline" className="text-xs px-2">
                       <FileText className="w-3 h-3 mr-1" />
                       {entry.documents.length}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-center">
+
+                  {/* STATUS */}
+                  <TableCell className="py-3 text-center">
                     <Badge
                       variant={entry.is_resolved ? "default" : "secondary"}
-                      className={`text-xs ${
-                        entry.is_resolved
-                          ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-0"
-                          : ""
-                      }`}
+                      className={`
+                  text-xs px-2 text-yellow-600 bg-yellow-100
+                  ${
+                    entry.is_resolved
+                      ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                      : ""
+                  }
+                `}
                     >
                       {entry.is_resolved ? "Resolved" : "Pending"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+
+                  {/* ACTION */}
+                  <TableCell className="py-3 text-right">
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="icon"
+                      className="opacity-70 hover:opacity-100"
                       onClick={(e) => {
                         e.stopPropagation();
                         setViewModal({ open: true, data: entry });
