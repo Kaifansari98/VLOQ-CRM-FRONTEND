@@ -46,6 +46,10 @@ interface NavItem {
     | "total_dispatch_stage_leads"
     | "total_under_installation_stage_leads"
     | "total_final_handover_stage_leads"
+    | "total_leads_group"
+    | "total_project_group"
+    | "total_production_group"
+    | "total_installation_group"
     | "total_my_tasks";
   items?: {
     title: string;
@@ -68,6 +72,10 @@ interface NavItem {
       | "total_dispatch_stage_leads"
       | "total_under_installation_stage_leads"
       | "total_final_handover_stage_leads"
+      | "total_leads_group"
+      | "total_project_group"
+      | "total_production_group"
+      | "total_installation_group"
       | "total_my_tasks";
   }[];
 }
@@ -107,8 +115,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                           href={item.url}
                           className={cn(
                             "flex items-center gap-2 w-full justify-between transition-all duration-200",
-                            isActive &&
-                              "font-semibold text-primary rounded-md"
+                            isActive && "font-semibold text-primary rounded-md"
                           )}
                         >
                           <div className="flex items-center gap-2">
@@ -157,9 +164,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                                       <Badge className="ml-2 rounded-full">
                                         {isLoading
                                           ? "…"
-                                          : getCountForItem(
-                                              subItem.showCount
-                                            )}
+                                          : getCountForItem(subItem.showCount)}
                                       </Badge>
                                     )}
                                 </a>

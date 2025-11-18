@@ -20,6 +20,12 @@ interface LeadStatsResponse {
     total_dispatch_planning_stage_leads: number;
     total_my_tasks: number;
     total_under_installation_stage_leads: number;
+
+    // group totals (NEW)
+    total_leads_group: number;
+    total_project_group: number;
+    total_production_group: number;
+    total_installation_group: number;
   };
 }
 
