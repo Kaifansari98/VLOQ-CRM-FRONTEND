@@ -339,17 +339,38 @@ export function canDeleteLedForSalesExecutiveButton(role: string): boolean {
 }
 
 export function canEditLeadButton(role: string): boolean {
-  return (
-    role === "admin" || role === "super_admin"
-  );
+  return role === "admin" || role === "super_admin";
 }
 
 export function canDeleteLeadButton(role: string): boolean {
-  return (
-    role === "admin" || role === "super_admin"
-  );
+  return role === "admin" || role === "super_admin";
 }
 
 export function canReassignLeadButton(role: string): boolean {
   return role === "admin" || role === "super_admin";
 }
+
+export function canViewAndWorkInstallationDetails(
+  role: string,
+): boolean {
+  // can work and view both
+  if (role === "admin" || role === "super-admin" || role === "site-supervisor")
+    return true;
+
+  // 4. Everyone else has access by default
+  return false;
+}
+
+// export function canViewAndWorkInstallationDetails(
+//   role: string,
+// ): boolean {
+//   // can work and view both
+//   if (role === "admin" || role === "super-admin" || "site-supervisor")
+//     return true;
+
+//   // 4. Everyone else has access by default
+//   return false;
+// }
+
+
+
