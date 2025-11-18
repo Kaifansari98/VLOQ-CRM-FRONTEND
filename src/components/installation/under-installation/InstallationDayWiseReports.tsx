@@ -365,9 +365,9 @@ export default function InstallationDayWiseReports({
       >
         <DialogContent className="min-w-4xl w-full max-h-[90vh] overflow-scroll rounded-xl p-0">
           {/* Header */}
-          <div className="p-6 pb-4 border-b bg-card">
+          <div className="px-6 pt-4 pb-4 border-b bg-card">
             <div className="flex items-start justify-between">
-              <div className="space-y-1">
+              <div>
                 <DialogTitle className="text-xl font-semibold tracking-tight">
                   Installation Report
                 </DialogTitle>
@@ -378,15 +378,11 @@ export default function InstallationDayWiseReports({
                   </p>
                 )}
               </div>
-
-              <Badge variant="secondary" className="text-xs px-3 py-1">
-                {viewModal.data?.documents.length || 0} Documents
-              </Badge>
             </div>
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          <div className="flex-1 overflow-y-auto px-6 space-y-8">
             {/* Notes */}
             {viewModal.data?.remark && (
               <div className="bg-muted/40 border border-border rounded-lg p-4 shadow-sm">

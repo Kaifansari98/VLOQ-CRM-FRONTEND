@@ -53,7 +53,6 @@ import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 
 interface FinalHandoverProps {
-  name?: string;
   leadId: number;
   accountId: number;
 }
@@ -71,7 +70,6 @@ interface DocumentSection {
 }
 
 export default function FinalHandover({
-  name,
   leadId,
   accountId,
 }: FinalHandoverProps) {
