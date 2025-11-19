@@ -65,6 +65,7 @@ import {
   canEditLeadButton,
   canDeleteLeadButton,
   canReassignLeadButton,
+  canWorkTodoTaskOrderLoginStage,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
@@ -94,6 +95,7 @@ export default function OrderLoginLeadDetails() {
   const lacksProdFiles = readiness ? !readiness.productionFiles?.hasAny : false;
   const canMove = readiness?.readyForProduction === true;
   const canMoveToProductionStage = canMoveToProduction(userType);
+  const canViewTodoTask = canWorkTodoTaskOrderLoginStage(userType);
 
   const disabledReason = readinessLoading
     ? "Checking prerequisites…"
@@ -108,7 +110,9 @@ export default function OrderLoginLeadDetails() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState(
+    userType === "backend" ? "todo" : "details"
+  );
   const [openMoveToProduction, setOpenMoveToProduction] = useState(false);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
@@ -246,18 +250,27 @@ export default function OrderLoginLeadDetails() {
                     Lead Details
                   </TabsTrigger>
 
-                  <CustomeTooltip
-                    truncateValue={
-                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                        <PanelsTopLeftIcon
-                          size={16}
-                          className="mr-1 opacity-60"
-                        />
-                        To-Do Task
-                      </div>
-                    }
-                    value="Under Development"
-                  />
+                  {canViewTodoTask ? (
+                    // Actual Tab
+                    <TabsTrigger value="todo">
+                      <PanelsTopLeftIcon size={16} className="mr-1" />
+                      To-Do Task
+                    </TabsTrigger>
+                  ) : (
+                    // Restricted Tab With Tooltip Message
+                    <CustomeTooltip
+                      value="Only Backend access to this tab."
+                      truncateValue={
+                        <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                          <PanelsTopLeftIcon
+                            size={16}
+                            className="mr-1 opacity-60"
+                          />
+                          To-Do Task
+                        </div>
+                      }
+                    />
+                  )}
 
                   <TabsTrigger value="history">
                     <BoxIcon size={16} className="mr-1 opacity-60" />
@@ -311,6 +324,20 @@ export default function OrderLoginLeadDetails() {
                 defaultTab={
                   canOrderLogin(userType) ? "orderLogin" : "techcheck"
                 }
+              />
+            </main>
+          </TabsContent>
+
+          <TabsContent value="todo">
+            <main className="flex-1 h-fit">
+              <LeadDetailsUtil
+                status="orderLogin"
+                leadId={leadIdNum}
+                accountId={accountId}
+                defaultTab={
+                  canOrderLogin(userType) ? "orderLogin" : "techcheck"
+                }
+                forceDefaultTab="order-login"
               />
             </main>
           </TabsContent>

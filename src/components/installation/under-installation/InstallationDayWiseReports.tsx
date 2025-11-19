@@ -37,6 +37,7 @@ interface InstallationDayWiseReportsProps {
   vendorId: number;
   leadId: number;
   accountId?: number;
+  accessBtn?: boolean;
 }
 
 interface ReportDocument {
@@ -58,6 +59,7 @@ export default function InstallationDayWiseReports({
   vendorId,
   leadId,
   accountId,
+  accessBtn,
 }: InstallationDayWiseReportsProps) {
   const userId = useAppSelector((s) => s.auth.user?.id);
 
@@ -179,10 +181,12 @@ export default function InstallationDayWiseReports({
           </p>
         </div>
 
-        <Button onClick={() => setIsAddModalOpen(true)} size="sm">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Day Wise Update
-        </Button>
+        {accessBtn && (
+          <Button onClick={() => setIsAddModalOpen(true)} size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Day Wise Update
+          </Button>
+        )}
       </div>
 
       {/* Report Cards Grid */}

@@ -123,7 +123,7 @@ export default function GroupedSmoothTab({
   return (
     <div className="flex flex-col h-full">
       {/* ShadCN-style tabs with hover dropdowns */}
-      <div className="flex items-center gap-2 border-b px-1">
+      <div className="flex items-center gap-2 border-b px-1 -mt-2">
         {(Object.keys(visibleGroups) as GroupKey[]).map((g) => {
           const isActive = activeGroup === g;
           const isHovered = hoveredGroup === g;
