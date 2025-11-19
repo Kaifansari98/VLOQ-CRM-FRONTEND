@@ -344,12 +344,12 @@ export default function InstallationIssueLog({
               ) : !issueLogs || issueLogs.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="py-10 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="p-3 bg-muted/40 rounded-full shadow-inner">
+                    <div className="flex flex-col items-center">
+                      <div className="p-3 bg-muted/40 rounded-full shadow-inner mb-2">
                         <AlertCircle className="w-7 h-7 opacity-50" />
                       </div>
                       <p className="font-medium text-sm">No Issue Logs Yet</p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-xs text-muted-foreground">
                         Start documenting installation issues by clicking "Add
                         Issue Log"
                       </p>

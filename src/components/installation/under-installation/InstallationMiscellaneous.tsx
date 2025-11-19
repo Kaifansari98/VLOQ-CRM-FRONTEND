@@ -240,8 +240,8 @@ export default function InstallationMiscellaneous({
             {!entries || entries.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="py-10 text-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="p-3 bg-muted/40 rounded-full shadow-inner">
+                  <div className="flex flex-col items-center">
+                    <div className="p-3 bg-muted/40 rounded-full shadow-inner mb-2">
                       <Wrench className="w-7 h-7 opacity-50" />
                     </div>
                     <p className="font-medium text-sm">
