@@ -114,7 +114,13 @@ export const canViewThreeVerticalDocsOptionInTechCheck = (
 
 export const canOrderLogin = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "backend", "tech-check", "factory"];
+  const allowedRoles = [
+    "super_admin",
+    "admin",
+    "backend",
+    "tech-check",
+    "factory",
+  ];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -282,6 +288,15 @@ export function canViewAndWorkProductionStage(
   return true;
 }
 
+export function canAccessTodoTaskTabProductionStage(role: string): boolean {
+  // 1. Admins always have access
+  if (role === "admin" || role === "super-admin" || role === "factory")
+    return true;
+
+  // 4. Everyone else has access by default
+  return false;
+}
+
 export function canViewAndWorkEditProcutionExpectedDate(role: string): boolean {
   // 1. Admins always have access
   if (role === "admin" || role === "super-admin" || role === "factory")
@@ -371,13 +386,4 @@ export function canViewAndWorkInstallationDetails(role: string): boolean {
   return false;
 }
 
-// export function canViewAndWorkInstallationDetails(
-//   role: string,
-// ): boolean {
-//   // can work and view both
-//   if (role === "admin" || role === "super-admin" || "site-supervisor")
-//     return true;
 
-//   // 4. Everyone else has access by default
-//   return false;
-// }

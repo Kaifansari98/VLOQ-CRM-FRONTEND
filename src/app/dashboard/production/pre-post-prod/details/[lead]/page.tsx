@@ -67,6 +67,7 @@ import {
   canEditLeadButton,
   canDeleteLeadButton,
   canReassignLeadButton,
+  canAccessTodoTaskTabProductionStage,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
@@ -127,6 +128,8 @@ export default function ProductionLeadDetails() {
   const canMoveReadyToDispatchStage = canMoveToReadyToDispatch(userType);
   const canUpdateExpectedDate =
     canViewAndWorkEditProcutionExpectedDate(userType);
+
+  const canShowTodoTab = canAccessTodoTaskTabProductionStage(userType);
 
   const latestOrderLoginDate =
     latestOrderLoginData?.data?.estimated_completion_date;
@@ -380,18 +383,28 @@ export default function ProductionLeadDetails() {
                     Production Details
                   </TabsTrigger>
 
-                  <CustomeTooltip
-                    truncateValue={
-                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                        <PanelsTopLeftIcon
-                          size={16}
-                          className="mr-1 opacity-60"
-                        />
-                        To-Do Task
-                      </div>
-                    }
-                    value="Under Development"
-                  />
+                  {canShowTodoTab ? (
+                    <TabsTrigger value="todo">
+                      <PanelsTopLeftIcon
+                        size={16}
+                        className="mr-1 opacity-60"
+                      />
+                      To-Do Task
+                    </TabsTrigger>
+                  ) : (
+                    <CustomeTooltip
+                      truncateValue={
+                        <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                          <PanelsTopLeftIcon
+                            size={16}
+                            className="mr-1 opacity-60"
+                          />
+                          To-Do Task
+                        </div>
+                      }
+                      value="Only factory user can access this tab"
+                    />
+                  )}
 
                   <TabsTrigger value="history">
                     <BoxIcon size={16} className="mr-1 opacity-60" />
@@ -437,6 +450,19 @@ export default function ProductionLeadDetails() {
 
           {/* 🔹 Details Tab */}
           <TabsContent value="details">
+            <main className="flex-1 h-fit">
+              <LeadDetailsGrouped
+                status="production"
+                defaultTab={productionDefaultTab ? "production" : "techcheck"}
+                leadId={leadIdNum}
+                accountId={accountId}
+                defaultParentTab="production"
+              />
+            </main>
+          </TabsContent>
+
+          {/* 🔹 To-Do Tab — use SAME component as Details */}
+          <TabsContent value="todo">
             <main className="flex-1 h-fit">
               <LeadDetailsGrouped
                 status="production"
