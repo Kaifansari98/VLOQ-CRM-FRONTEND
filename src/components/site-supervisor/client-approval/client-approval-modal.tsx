@@ -268,7 +268,7 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
               {/* ✅ Remaining Amount (Placed Uniformly Below Both Fields) */}
               <div className="mt-1">
                 <p className="text-sm text-muted-foreground">
-                  <span className="font-bold text-zinc-900">
+                  <span className="font-bold">
                     {formatCurrencyINR(projectFinance.pending_amount)}
                   </span>{" "}
                   is the remaining amount.

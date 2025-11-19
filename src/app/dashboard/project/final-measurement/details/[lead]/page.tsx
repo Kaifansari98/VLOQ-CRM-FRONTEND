@@ -298,7 +298,7 @@ export default function FinalMeasurementLeadDetails() {
           </ScrollArea>
 
           {/* CONTENT */}
-          <TabsContent value="details">
+          <TabsContent value="details" >
             <LeadDetailsUtil
               status="booking"
               leadId={leadIdNum}
