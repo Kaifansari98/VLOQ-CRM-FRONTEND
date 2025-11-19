@@ -214,8 +214,11 @@ export default function InstallationMiscellaneous({
               <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
                 Miscellaneous Type
               </TableHead>
-              <TableHead className="w-[300px] text-sm font-medium text-foreground/80">
+              <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
                 Problem Description
+              </TableHead>
+              <TableHead className="w-[140px] text-sm font-medium text-foreground/80">
+                ERD Date
               </TableHead>
               <TableHead className="w-[100px] text-sm font-medium text-foreground/80">
                 Quantity
@@ -240,8 +243,8 @@ export default function InstallationMiscellaneous({
             {!entries || entries.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="py-10 text-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="p-3 bg-muted/40 rounded-full shadow-inner">
+                  <div className="flex flex-col items-center">
+                    <div className="p-3 bg-muted/40 rounded-full shadow-inner mb-2">
                       <Wrench className="w-7 h-7 opacity-50" />
                     </div>
                     <p className="font-medium text-sm">
@@ -298,13 +301,24 @@ export default function InstallationMiscellaneous({
                     <RemarkTooltip
                       remark={
                         entry.problem_description
-                          ? entry.problem_description.length > 60
-                            ? entry.problem_description.slice(0, 60) + "..."
+                          ? entry.problem_description.length > 40
+                            ? entry.problem_description.slice(0, 40) + "..."
                             : entry.problem_description
                           : "-"
                       }
                       remarkFull={entry.problem_description || "-"}
                     />
+                  </TableCell>
+
+                  {/* ⭐ NEW ERD COLUMN */}
+                  <TableCell className="py-3">
+                    {entry.expected_ready_date ? (
+                      <span className="text-sm font-medium">
+                        {formatDate(entry.expected_ready_date)}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    )}
                   </TableCell>
 
                   {/* QTY */}

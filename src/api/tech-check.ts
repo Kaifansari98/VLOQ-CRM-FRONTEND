@@ -46,13 +46,21 @@ export const approveTechCheck = async ({
   vendorId,
   leadId,
   userId,
+  assignToUserId,
+  accountId,
 }: {
   vendorId: number;
   leadId: number;
   userId: number;
+  assignToUserId: number;
+  accountId: number;
 }) => {
   const { data } = await apiClient.post(
-    `/leads/production/tech-check/leadId/${leadId}/vendorId/${vendorId}/userId/${userId}/approve`
+    `/leads/production/tech-check/leadId/${leadId}/vendorId/${vendorId}/userId/${userId}/approve`,
+    {
+      assign_to_user_id: assignToUserId,
+      account_id: accountId,
+    }
   );
   return data;
 };

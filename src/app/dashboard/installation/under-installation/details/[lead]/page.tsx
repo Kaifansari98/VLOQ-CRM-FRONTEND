@@ -69,6 +69,7 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  useFinalHandoverReady,
   useMoveToFinalHandover,
   useSetActualInstallationStartDate,
   useUnderInstallationDetails,
@@ -98,6 +99,8 @@ export default function UnderInstallationLeadDetails() {
     leadIdNum
   );
   const setStartMutation = useSetActualInstallationStartDate();
+
+  const { data: finalReady } = useFinalHandoverReady(vendorId!, leadIdNum);
 
   const [openStartModal, setOpenStartModal] = useState(false);
 
@@ -189,7 +192,12 @@ export default function UnderInstallationLeadDetails() {
 
           {/* 🔹 Header Actions */}
           <div className="flex items-center space-x-2">
+            {/* ───────────────────────────────────────────── */}
+            {/*  MOVE TO FINAL HANDOVER BUTTON WITH CONDITIONS */}
+            {/* ───────────────────────────────────────────── */}
+
             {!underDetails?.actual_installation_start_date ? (
+              // 1️⃣ Installation NOT started → block
               <CustomeTooltip
                 truncateValue={
                   <div className="opacity-60 cursor-not-allowed">
@@ -205,7 +213,28 @@ export default function UnderInstallationLeadDetails() {
                 }
                 value="Start Installation first to move this lead to Final Handover."
               />
+            ) : !finalReady?.isReady ? (
+              // 2️⃣ Installation started but NOT eligible → show WHY
+              <CustomeTooltip
+                truncateValue={
+                  <div className="opacity-60 cursor-not-allowed">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled
+                      className="pointer-events-none"
+                    >
+                      Move to Final Handover
+                    </Button>
+                  </div>
+                }
+                value={
+                  finalReady?.message ||
+                  "Lead is not ready for Final Handover yet."
+                }
+              />
             ) : (
+              // 3️⃣ Eligible → allow moving
               <Button
                 variant="default"
                 size="sm"

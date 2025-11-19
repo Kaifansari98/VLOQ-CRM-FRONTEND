@@ -86,6 +86,9 @@ const FollowUpModal: React.FC<Props> = ({
             queryClient.invalidateQueries({
               queryKey: ["pendingWorkTasks"],
             });
+            queryClient.invalidateQueries({
+              queryKey: ["finalHandoverReadiness"],
+            });
           }
         },
         onError: (err: any) => {

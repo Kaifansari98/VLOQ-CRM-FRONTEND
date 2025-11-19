@@ -149,7 +149,7 @@ export function canUploadOrDeleteOrderLogin(
   return (
     role === "admin" ||
     role === "super-admin" ||
-    (role === "tech-check" && stage === "order-login-stage")
+    (role === "backend" && stage === "order-login-stage")
   );
 }
 

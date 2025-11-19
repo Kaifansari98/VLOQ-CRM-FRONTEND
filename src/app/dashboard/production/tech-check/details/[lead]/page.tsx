@@ -91,12 +91,14 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
+import { useBackendUsers } from "@/api/client-approval";
+import MoveToOrderLoginModal from "@/components/production/tech-check-stage/MoveToOrderLoginModal";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
 
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   const userType = useAppSelector(
@@ -121,6 +123,7 @@ export default function ClientApprovalLeadDetails() {
   const [openUploadDocsModal, setOpenUploadDocsModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
+  const [openOrderLoginModal, setOpenOrderLoginModal] = useState(false);
 
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
@@ -149,6 +152,10 @@ export default function ClientApprovalLeadDetails() {
     vendorId!,
     leadIdNum
   );
+
+  const { data: backendUsers } = useBackendUsers(vendorId);
+
+  console.log("backend users :- ", backendUsers);
 
   const pptDocs = clientDocsData?.documents?.ppt ?? [];
   const pythaDocs = clientDocsData?.documents?.pytha ?? [];
@@ -474,7 +481,7 @@ export default function ClientApprovalLeadDetails() {
 
                     return (
                       <Button
-                        onClick={() => setOpenFinalApproveConfirm(true)}
+                        onClick={() => setOpenOrderLoginModal(true)}
                         className="bg-green-500/10 text-green-500 border-green-500 border hover:bg-green-500/15 flex items-center gap-2"
                       >
                         <CircleCheckBig size={16} />
@@ -551,15 +558,17 @@ export default function ClientApprovalLeadDetails() {
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={() => {
-                  approveTechCheckMutate({
-                    vendorId: vendorId!,
-                    leadId: leadIdNum,
-                    userId: userId!,
-                  });
+                // onClick={() => {
+                //   approveTechCheckMutate({
+                //     vendorId: vendorId!,
+                //     leadId: leadIdNum,
+                //     userId: userId!,
+                //     assignToUserId: selectedBackendUserId, // 👈 NEW
+                //     accountId: accountId, // 👈 NEW
+                //   });
 
-                  setOpenFinalApproveConfirm(false);
-                }}
+                //   setOpenFinalApproveConfirm(false);
+                // }}
                 disabled={approving}
               >
                 {approving ? "Approving..." : "Confirm"}
@@ -1162,6 +1171,15 @@ export default function ClientApprovalLeadDetails() {
           onOpenChange={setAssignOpen}
           onlyFollowUp
           data={{ id: leadIdNum, name: "" }}
+        />
+
+        <MoveToOrderLoginModal
+          open={openOrderLoginModal}
+          onOpenChange={setOpenOrderLoginModal}
+          data={{
+            id: leadIdNum,
+            accountId: accountId,
+          }}
         />
       </SidebarInset>
     </SidebarProvider>
