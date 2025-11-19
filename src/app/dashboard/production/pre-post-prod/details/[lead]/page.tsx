@@ -64,7 +64,6 @@ import {
   handledproductionDefaultTab,
   canMoveToReadyToDispatch,
   canViewAndWorkEditProcutionExpectedDate,
-
   canEditLeadButton,
   canDeleteLeadButton,
   canReassignLeadButton,
@@ -190,7 +189,7 @@ export default function ProductionLeadDetails() {
 
   const noOfBoxes = lead?.no_of_boxes;
 
-    const canReassign = canReassignLeadButton(userType);
+  const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadButton(userType);
 
@@ -244,7 +243,6 @@ export default function ProductionLeadDetails() {
 
     setOpenDelete(false);
   };
-
 
   if (isLoading) {
     return <p className="p-6">Loading production lead details...</p>;
@@ -340,11 +338,10 @@ export default function ProductionLeadDetails() {
                 </DropdownMenuItem>
 
                 {canEdit && (
-
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
                 )}
 
                 {canReassign && (

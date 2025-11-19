@@ -191,7 +191,7 @@ export default function UnderInstallationDetails({
           value={endDate}
           onChange={() => {}}
           restriction="futureOnly"
-          disabledReason="You cannot modify the expected installation date once it has been set."
+          disabledReason="Site Supervisor modify the expected installation date once it has been set."
         />
       );
     }
@@ -211,7 +211,7 @@ export default function UnderInstallationDetails({
     const isDisabled = !canWork || isInstallersLocked;
     const tooltipMessage = !canWork
       ? "You do not have permission to modify installers."
-      : "Supervisors cannot modify installers once assigned.";
+      : "Site Supervisor cannot modify installers once assigned.";
 
     if (isDisabled) {
       return (
@@ -265,7 +265,7 @@ export default function UnderInstallationDetails({
 
     const tooltipMessage = !canWork
       ? "You do not have permission to modify completion status."
-      : "Supervisors cannot modify completion status once it has been marked.";
+      : "Site Supervisor cannot modify completion status once it has been marked.";
 
     const checkboxElement = (
       <div className="flex items-start gap-3 w-full">
