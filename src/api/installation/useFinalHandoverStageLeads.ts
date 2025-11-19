@@ -152,6 +152,9 @@ export const useUploadFinalHandoverDocuments = () => {
       queryClient.invalidateQueries({
         queryKey: ["finalHandoverDocuments", Number(vendorId), Number(leadId)],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["finalHandoverReadiness"],
+      });
 
       // Also invalidate leads list if needed
       queryClient.invalidateQueries({
@@ -164,5 +167,55 @@ export const useUploadFinalHandoverDocuments = () => {
         error?.response?.data?.message || "Failed to upload documents"
       );
     },
+  });
+};
+
+export const fetchFinalHandoverReadiness = async (
+  vendorId: number,
+  leadId: number
+) => {
+  const { data } = await apiClient.get(
+    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/ready-status`
+  );
+
+  return data?.data; // { docs_complete, pending_tasks_clear, can_move_to_final_handover }
+};
+
+export const useFinalHandoverReadiness = (
+  vendorId?: number,
+  leadId?: number
+) => {
+  return useQuery({
+    queryKey: ["finalHandoverReadiness", vendorId, leadId],
+    queryFn: () => fetchFinalHandoverReadiness(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
+};
+
+// 🚀 Move Lead to Project Completed Stage
+export const moveLeadToProjectCompleted = async (
+  vendorId: number,
+  leadId: number,
+  updated_by: number
+) => {
+  const { data } = await apiClient.put(
+    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/move-to-project-completed`,
+    { updated_by }
+  );
+
+  return data;
+};
+
+export const useMoveProjectCompleted = () => {
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      updated_by,
+    }: {
+      vendorId: number;
+      leadId: number;
+      updated_by: number;
+    }) => moveLeadToProjectCompleted(vendorId, leadId, updated_by),
   });
 };

@@ -73,6 +73,10 @@ import {
   canEditLeadButton,
   canReassignLeadButton,
 } from "@/components/utils/privileges";
+import {
+  useFinalHandoverReadiness,
+  useMoveProjectCompleted,
+} from "@/api/installation/useFinalHandoverStageLeads";
 
 export default function FinalHandoverLeadDetails() {
   const router = useRouter();
@@ -107,6 +111,31 @@ export default function FinalHandoverLeadDetails() {
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = lead?.account_id;
+
+  const { data: readiness, isLoading: readinessLoading } =
+    useFinalHandoverReadiness(vendorId!, leadIdNum);
+  const { mutate: moveProjectCompleted, isPending: movingProject } =
+    useMoveProjectCompleted();
+
+  const [openProjectCompleteConfirm, setOpenProjectCompleteConfirm] =
+    useState(false);
+
+  const canMarkCompleted = readiness?.can_move_to_project_completed;
+
+  const isReady = readiness?.can_move_to_final_handover;
+
+  const tooltipMessage = (() => {
+    if (readinessLoading) return "Checking project readiness...";
+    if (!readiness) return "Unable to verify readiness.";
+
+    if (!readiness.docs_complete)
+      return "Upload all Final Handover documents before completing the project.";
+
+    if (!readiness.pending_tasks_clear)
+      return "Resolve all pending work tasks before marking project as completed.";
+
+    return "";
+  })();
 
   const deleteLeadMutation = useDeleteLead();
 
@@ -154,6 +183,32 @@ export default function FinalHandoverLeadDetails() {
 
           {/* 🔹 Header Actions */}
           <div className="flex items-center space-x-2">
+            {isReady && (
+              <Button
+                className="flex items-center gap-2"
+                onClick={() => setOpenProjectCompleteConfirm(true)}
+              >
+                <CheckCircle2 size={18} />
+                Mark Project as Completed
+              </Button>
+            )}
+            {!isReady && (
+              <CustomeTooltip
+                value={tooltipMessage}
+                truncateValue={
+                  <div>
+                    <Button
+                      disabled
+                      className="bg-gray-200 text-gray-500 border border-gray-300 cursor-not-allowed flex items-center gap-2"
+                    >
+                      <CheckCircle2 size={18} />
+                      Mark Project as Completed
+                    </Button>
+                  </div>
+                }
+              />
+            )}
+
             <AnimatedThemeToggler />
 
             <DropdownMenu>
@@ -346,6 +401,51 @@ export default function FinalHandoverLeadDetails() {
           }}
           loading={updateStatusMutation.isPending}
         />
+
+        <AlertDialog
+          open={openProjectCompleteConfirm}
+          onOpenChange={setOpenProjectCompleteConfirm}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Mark Project as Completed?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action will move this project to “Completed” stage
+                permanently. Are you sure?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={movingProject}
+                onClick={() => {
+                  moveProjectCompleted(
+                    {
+                      vendorId: vendorId!,
+                      leadId: leadIdNum,
+                      updated_by: userId!,
+                    },
+                    {
+                      onSuccess: () => {
+                        toast.success("Project marked as Completed!");
+                        setOpenProjectCompleteConfirm(false);
+                        queryClient.invalidateQueries();
+                        router.push("/dashboard/installation/final-handover");
+                      },
+                      onError: (err: any) =>
+                        toast.error(
+                          err?.message || "Failed to mark project completed"
+                        ),
+                    }
+                  );
+                }}
+              >
+                {movingProject ? "Processing..." : "Confirm"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SidebarInset>
     </SidebarProvider>
   );
