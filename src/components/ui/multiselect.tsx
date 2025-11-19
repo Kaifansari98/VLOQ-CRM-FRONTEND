@@ -36,6 +36,7 @@ interface MultipleSelectorProps {
   loadingIndicator?: React.ReactNode;
   /** Empty component. */
   emptyIndicator?: React.ReactNode;
+    disabledReason?: string; // ⭐ NEW
   /** Debounce time for async search. Only work with `onSearch`. */
   delay?: number;
   /**

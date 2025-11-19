@@ -131,7 +131,7 @@ export default function CustomeDatePicker({
       <CustomeTooltip
         value={disabledReason}
         truncateValue={
-          <div className="opacity-60 cursor-not-allowed">
+          <div className="opacity-60 w-full cursor-not-allowed">
             <Button
               type="button"
               variant="outline"

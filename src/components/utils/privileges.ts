@@ -114,7 +114,7 @@ export const canViewThreeVerticalDocsOptionInTechCheck = (
 
 export const canOrderLogin = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "backend", "tech-check"];
+  const allowedRoles = ["super_admin", "admin", "backend", "tech-check", "factory"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -174,6 +174,18 @@ export const canViewToOrderLoginDetails = (userType: string | undefined) => {
     "factory",
   ];
   return allowedRoles.includes(userType.toLowerCase());
+};
+
+export const canWorkTodoTaskOrderLoginStage = (role: string | undefined) => {
+  // 1. Admins always have access
+  if (role === "admin" || role === "super-admin" || role === "backend")
+    return true;
+
+  // 3. "can view only"
+  if (role === "tech-check" || role === "factory") return false;
+
+  // 4. Everyone else has access by default
+  return false;
 };
 
 export const canViewAndWorkProductionDetails = (
@@ -339,17 +351,33 @@ export function canDeleteLedForSalesExecutiveButton(role: string): boolean {
 }
 
 export function canEditLeadButton(role: string): boolean {
-  return (
-    role === "admin" || role === "super_admin"
-  );
+  return role === "admin" || role === "super_admin";
 }
 
 export function canDeleteLeadButton(role: string): boolean {
-  return (
-    role === "admin" || role === "super_admin"
-  );
+  return role === "admin" || role === "super_admin";
 }
 
 export function canReassignLeadButton(role: string): boolean {
   return role === "admin" || role === "super_admin";
 }
+
+export function canViewAndWorkInstallationDetails(role: string): boolean {
+  // can work and view both
+  if (role === "admin" || role === "super-admin" || role === "site-supervisor")
+    return true;
+
+  // 4. Everyone else has access by default
+  return false;
+}
+
+// export function canViewAndWorkInstallationDetails(
+//   role: string,
+// ): boolean {
+//   // can work and view both
+//   if (role === "admin" || role === "super-admin" || "site-supervisor")
+//     return true;
+
+//   // 4. Everyone else has access by default
+//   return false;
+// }

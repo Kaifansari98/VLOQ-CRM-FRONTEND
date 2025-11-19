@@ -23,6 +23,7 @@ import {
   canAccessAddNewSectionButton,
   canAccessInputField,
   canAccessSaveOrderLoginButton,
+  canWorkTodoTaskOrderLoginStage,
 } from "@/components/utils/privileges";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 
@@ -30,11 +31,13 @@ interface OrderLoginDetailsProps {
   leadId: number;
   accountId: number;
   name?: string;
+   forceDefaultTab?: string;
 }
 
 const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   leadId,
   accountId,
+  forceDefaultTab,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -78,12 +81,14 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const canAccessButtons = canAccessAddNewSectionButton(userType, leadStatus);
   const canAccessInput = canAccessInputField(userType, leadStatus);
 
-  console.log("Can Access Input: ", canAccessInput)
+  console.log("Can Access Input: ", canAccessInput);
 
   const canAccessSaveButton = canAccessSaveOrderLoginButton(
     userType,
     leadStatus
   );
+
+  const canViewTodoTask = canWorkTodoTaskOrderLoginStage(userType);
 
   console.log("lead Status: ", leadStatus);
   // 🧩 Vendors for dropdowns
@@ -268,9 +273,9 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         </motion.div>
       </motion.div>
       <SmoothTab
-        defaultTabId="approved-docs"
+        defaultTabId={forceDefaultTab ? "order-login" : "approved-docs"}
         className="-mt-3"
-        items={[
+        items={[  
           {
             id: "approved-docs",
             title: "Approved Documents",

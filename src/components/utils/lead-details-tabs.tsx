@@ -27,6 +27,8 @@ interface LeadDetailsUtilProps {
   accountId?: number;
   leadInfo?: any;
   defaultTab?: string;
+  onlyThisTab?: string;
+  forceDefaultTab?: string;
 }
 
 export default function LeadDetailsUtil({
@@ -35,6 +37,8 @@ export default function LeadDetailsUtil({
   accountId,
   leadInfo,
   defaultTab = "details",
+  onlyThisTab,
+  forceDefaultTab
 }: LeadDetailsUtilProps) {
   const allTabs = [
     {
@@ -106,6 +110,7 @@ export default function LeadDetailsUtil({
           leadId={leadId ?? 0}
           accountId={accountId ?? 0}
           name={leadInfo?.name}
+          forceDefaultTab={forceDefaultTab} // ⭐ forward the control
         />
       ),
     },
@@ -190,5 +195,12 @@ export default function LeadDetailsUtil({
     statusFlow[status].includes(tab.id)
   );
 
-  return <SmoothTab items={visibleTabs} defaultTabId={defaultTab} />;
+  // Single Tab Force Rendering
+  let finalTabs = visibleTabs;
+
+  if (onlyThisTab) {
+    finalTabs = visibleTabs.filter((t) => t.id === onlyThisTab);
+  }
+
+  return <SmoothTab items={finalTabs} defaultTabId={defaultTab} />;
 }

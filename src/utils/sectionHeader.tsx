@@ -35,7 +35,7 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
       {/* Left Section: Icon + Title + Count (if refresh is present) */}
       <div className="flex items-center gap-2">
         {icon || <FileText  className="w-5 h-5 text-primary"  />}
-       <h2 className="text-lg font-semibold">Production Files</h2>
+       <h2 className="text-lg font-semibold">{title}</h2>
 
         {/* Show count next to title only if refresh button exists */}
         {hasRefresh && docCount !== undefined && (
