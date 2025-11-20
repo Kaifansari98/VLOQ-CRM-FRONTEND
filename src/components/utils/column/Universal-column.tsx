@@ -203,7 +203,7 @@ export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
 
         const truncateAddress = address.slice(0, maxLength) + "...";
 
-        return <RemarkTooltip remark={truncateAddress} remarkFull={address} />;
+        return <RemarkTooltip remark={truncateAddress} remarkFull={address} title="Site Address"/>;
       },
     },
 

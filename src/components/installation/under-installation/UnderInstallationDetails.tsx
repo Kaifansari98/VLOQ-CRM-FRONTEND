@@ -27,8 +27,9 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import InstallationDayWiseReports from "./InstallationDayWiseReports";
-import { canViewAndWorkInstallationDetails } from "@/components/utils/privileges";
+import { canViewAndWorkUnderInstallationStage } from "@/components/utils/privileges";
 import CustomeTooltip from "@/components/cutome-tooltip";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function UnderInstallationDetails({
@@ -54,6 +55,8 @@ export default function UnderInstallationDetails({
   const putMutation = useUpdateInstallationDetails();
   const updateCompletionMutation = useUpdateInstallationCompletion();
   const queryClient = useQueryClient();
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
 
   // 🔹 State
   const [endDate, setEndDate] = useState<string | undefined>();
@@ -66,7 +69,7 @@ export default function UnderInstallationDetails({
   const installationStarted = !!details?.actual_installation_start_date;
 
   // 🔹 Privileges & Permissions
-  const canWork = canViewAndWorkInstallationDetails(userType);
+  const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
   const isSupervisor = userType === "site-supervisor";
   const hasAssignedData = mappedInstallers?.length > 0;
 
@@ -79,6 +82,15 @@ export default function UnderInstallationDetails({
       value: String(i.id),
       label: i.installer_name,
     })) ?? [];
+
+  // 🚀 Validation: if all installation data already exists → hide update button
+  const isFullyCompleted =
+    !!details?.expected_installation_end_date &&
+    mappedInstallers?.length > 0 &&
+    (!!details?.carcass_installation_completion_date ||
+      details?.is_carcass_installation_completed) &&
+    (!!details?.shutter_installation_completion_date ||
+      details?.is_shutter_installation_completed);
 
   // 🔹 Initialize data
   useEffect(() => {
@@ -343,7 +355,7 @@ export default function UnderInstallationDetails({
                 Assign installers & set expected installation completion date.
               </p>
             </div>
-            {canWork && (
+            {canWork && !isFullyCompleted && (
               <Button onClick={onSave} size="sm">
                 {hasAssignedData ? "Update" : "Save"}
               </Button>
@@ -388,71 +400,23 @@ export default function UnderInstallationDetails({
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Carcass Section */}
-            <div className="flex items-start gap-3">
-              <Checkbox
-                id="carcass"
-                checked={details?.is_carcass_installation_completed || false}
-                onCheckedChange={() =>
-                  setConfirmState({
-                    type: "carcass",
-                    current:
-                      details?.is_carcass_installation_completed || false,
-                  })
-                }
-              />
+            {/* Carcass Checkbox */}
+            {renderCheckbox(
+              "carcass",
+              "Carcass Installation Completed",
+              details?.is_carcass_installation_completed || false,
+              details?.carcass_installation_completion_date || null,
+              "carcass"
+            )}
 
-              <div className="flex flex-col">
-                <label
-                  htmlFor="carcass"
-                  className="font-medium text-sm cursor-pointer"
-                >
-                  Carcass Installation Completed
-                </label>
-
-                {/* Date */}
-                {details?.carcass_installation_completion_date && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatInstallationDate(
-                      details.carcass_installation_completion_date
-                    )}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Shutter Section */}
-            <div className="flex items-start gap-3">
-              <Checkbox
-                id="shutter"
-                checked={details?.is_shutter_installation_completed || false}
-                onCheckedChange={() =>
-                  setConfirmState({
-                    type: "shutter",
-                    current:
-                      details?.is_shutter_installation_completed || false,
-                  })
-                }
-              />
-
-              <div className="flex flex-col">
-                <label
-                  htmlFor="shutter"
-                  className="font-medium text-sm cursor-pointer"
-                >
-                  Shutter Installation Completed
-                </label>
-
-                {/* Date */}
-                {details?.shutter_installation_completion_date && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatInstallationDate(
-                      details.shutter_installation_completion_date
-                    )}
-                  </p>
-                )}
-              </div>
-            </div>
+            {/* Shutter Checkbox */}
+            {renderCheckbox(
+              "shutter",
+              "Shutter Installation Completed",
+              details?.is_shutter_installation_completed || false,
+              details?.shutter_installation_completion_date || null,
+              "shutter"
+            )}
           </div>
         </div>
       )}
@@ -483,31 +447,19 @@ export default function UnderInstallationDetails({
               onClick={() => {
                 if (!confirmState) return;
 
-                updateCompletionMutation.mutate(
-                  {
-                    vendorId,
-                    leadId,
-                    updated_by: userId!,
-                    is_carcass_installation_completed:
-                      confirmState.type === "carcass"
-                        ? !confirmState.current
-                        : undefined,
-                    is_shutter_installation_completed:
-                      confirmState.type === "shutter"
-                        ? !confirmState.current
-                        : undefined,
-                  },
-                  {
-                    onSuccess: () => {
-                      // 🔥 Invalidate usable handover flag when carcass is toggled
-                      if (confirmState.type === "carcass") {
-                        queryClient.invalidateQueries({
-                          queryKey: ["usableHandoverReady"],
-                        });
-                      }
-                    },
-                  }
-                );
+                updateCompletionMutation.mutate({
+                  vendorId,
+                  leadId,
+                  updated_by: userId!,
+                  is_carcass_installation_completed:
+                    confirmState.type === "carcass"
+                      ? !confirmState.current
+                      : undefined,
+                  is_shutter_installation_completed:
+                    confirmState.type === "shutter"
+                      ? !confirmState.current
+                      : undefined,
+                });
 
                 setConfirmState(null);
               }}

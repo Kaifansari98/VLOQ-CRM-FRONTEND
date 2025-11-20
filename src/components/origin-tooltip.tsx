@@ -8,11 +8,13 @@ import {
 interface RemarkTooltipProps {
   remark: React.ReactNode;
   remarkFull: string;
+  title?: string;
 }
 
 export default function RemarkTooltip({
   remark,
   remarkFull,
+  title,
 }: RemarkTooltipProps) {
   return (
     <TooltipProvider delayDuration={0}>
@@ -24,10 +26,8 @@ export default function RemarkTooltip({
         </TooltipTrigger>
         <TooltipContent className="py-3 w-[300px] ">
           <div className="space-y-1">
-            <p className="text-[13px] font-medium">Design Remark</p>
-            <p className="text-muted-foreground  text-xs">
-              {remarkFull}
-            </p>
+            <p className="text-[13px] font-medium">{title}</p>
+            <p className="text-muted-foreground  text-xs">{remarkFull}</p>
           </div>
         </TooltipContent>
       </Tooltip>

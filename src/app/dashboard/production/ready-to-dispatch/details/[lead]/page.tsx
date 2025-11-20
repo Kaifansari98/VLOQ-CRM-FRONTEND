@@ -17,7 +17,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -166,6 +166,15 @@ export default function ReadyToDispatchLeadDetails() {
     setOpenDelete(false);
   };
 
+  // 🔥 Auto-open To-Do modal for Sales Executive
+  useEffect(() => {
+    if (userType === "sales-executive") {
+      setPreviousTab("details"); // so closing modal returns to details
+      setAssignOpen(true); // open modal on load
+      setActiveTab("todo"); // switch tab to To-Do
+    }
+  }, [userType]);
+
   if (isLoading) {
     return <p className="p-6">Loading Ready-To-Dispatch lead details...</p>;
   }
@@ -251,10 +260,10 @@ export default function ReadyToDispatchLeadDetails() {
           value={activeTab}
           onValueChange={(val) => {
             if (val === "todo") {
-              // store current tab before opening modal
               setPreviousTab(activeTab);
-              setAssignOpen(true); // open Assign Task modal
-              return; // don't switch tab
+              setAssignOpen(true);
+              setActiveTab("todo"); 
+              return;
             }
             setActiveTab(val);
           }}

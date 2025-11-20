@@ -69,6 +69,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import {
+  canAccessTodoTaskTabUnderFinalHandoverStage,
   canDeleteLeadButton,
   canEditLeadButton,
   canReassignLeadButton,
@@ -94,7 +95,9 @@ export default function FinalHandoverLeadDetails() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
 
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState(
+    userType === "site-supervisor" ? "todo" : "details"
+  );
 
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
@@ -104,6 +107,8 @@ export default function FinalHandoverLeadDetails() {
   const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadButton(userType);
+  const canAccessTodoTab =
+    canAccessTodoTaskTabUnderFinalHandoverStage(userType);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -228,10 +233,13 @@ export default function FinalHandoverLeadDetails() {
                   <Clock className="mh-4 w-4" />
                   Mark On Hold
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
+
+                {canEdit && (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
+                )}
                 {canReassign && (
                   <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
                     <Users size={20} />
@@ -271,18 +279,29 @@ export default function FinalHandoverLeadDetails() {
                     </TabsTrigger>
 
                     {/* To-Do Tab (still disabled) */}
-                    <CustomeTooltip
-                      truncateValue={
-                        <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                          <PanelsTopLeftIcon
-                            size={16}
-                            className="mr-1 opacity-60"
-                          />
-                          To-Do Task
-                        </div>
-                      }
-                      value="Under development"
-                    />
+
+                    {canAccessTodoTab ? (
+                      <TabsTrigger value="todo">
+                        <PanelsTopLeftIcon
+                          size={16}
+                          className="mr-1 opacity-60"
+                        />
+                        To-Do Task
+                      </TabsTrigger>
+                    ) : (
+                      <CustomeTooltip
+                        truncateValue={
+                          <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                            <PanelsTopLeftIcon
+                              size={16}
+                              className="mr-1 opacity-60"
+                            />
+                            To-Do Task
+                          </div>
+                        }
+                        value="Only Site Supervisor can access this tab"
+                      />
+                    )}
 
                     {/* Site History */}
                     <TabsTrigger value="history">
@@ -305,6 +324,20 @@ export default function FinalHandoverLeadDetails() {
           {/* TAB CONTENTS */}
 
           <TabsContent value="details">
+            <main className="flex-1 h-fit">
+              {!isLoading && accountId && (
+                <LeadDetailsGrouped
+                  status="finalHandover"
+                  defaultTab="finalHandover"
+                  leadId={leadIdNum}
+                  accountId={accountId}
+                  defaultParentTab="installation"
+                />
+              )}
+            </main>
+          </TabsContent>
+
+          <TabsContent value="todo">
             <main className="flex-1 h-fit">
               {!isLoading && accountId && (
                 <LeadDetailsGrouped

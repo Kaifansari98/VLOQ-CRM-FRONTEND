@@ -34,6 +34,12 @@ export const canUploadISM = (userType: string | undefined) => {
   return allowCreateRoles.includes(userType.toLowerCase());
 };
 
+export const canAccessDessingTodoTab = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  return allowCreateRoles.includes(userType.toLowerCase());
+};
+
 export const canMoveToBookingStage = (userType: string | undefined) => {
   if (!userType) return false;
   const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
@@ -114,7 +120,13 @@ export const canViewThreeVerticalDocsOptionInTechCheck = (
 
 export const canOrderLogin = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "backend", "tech-check", "factory"];
+  const allowedRoles = [
+    "super_admin",
+    "admin",
+    "backend",
+    "tech-check",
+    "factory",
+  ];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -158,6 +170,7 @@ export const canDoDispatchPlanning = (userType: string | undefined) => {
   const allowedRoles = ["super_admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
+
 export const canMoveToProduction = (userType: string | undefined) => {
   if (!userType) return false;
   const allowedRoles = ["super_admin", "admin", "backend"];
@@ -251,6 +264,14 @@ export function canAccessSaveOrderLoginButton(
   );
 }
 
+export function canAccessTodoTaskTabDispatchStage(role: string): boolean {
+  // 1. Admins always have access
+  if (role === "admin" || role === "super-admin" || role === "factory")
+    return true;
+
+  return false;
+}
+
 export function canAccessInputField(role: string, stage: string): boolean {
   return (
     role === "admin" ||
@@ -280,6 +301,15 @@ export function canViewAndWorkProductionStage(
 
   // 4. Everyone else has access by default
   return true;
+}
+
+export function canAccessTodoTaskTabProductionStage(role: string): boolean {
+  // 1. Admins always have access
+  if (role === "admin" || role === "super-admin" || role === "factory")
+    return true;
+
+  // 4. Everyone else has access by default
+  return false;
 }
 
 export function canViewAndWorkEditProcutionExpectedDate(role: string): boolean {
@@ -362,22 +392,58 @@ export function canReassignLeadButton(role: string): boolean {
   return role === "admin" || role === "super_admin";
 }
 
-export function canViewAndWorkInstallationDetails(role: string): boolean {
-  // can work and view both
+export function canViewAndWorkUnderInstallationStage(
+  role: string,
+  stage: string
+): boolean {
+  // can work and view both and site suprvisor work only under-installation stage.
+  return (
+    role === "admin" ||
+    role === "super-admin" ||
+    (role === "site-supervisor" && stage === "under-installation-stage")
+  );
+}
+
+export function canAccessTodoTaskTabUnderInstallationStage(
+  role: string
+): boolean {
+  // 1. Admins always have access
   if (role === "admin" || role === "super-admin" || role === "site-supervisor")
     return true;
 
-  // 4. Everyone else has access by default
   return false;
 }
 
-// export function canViewAndWorkInstallationDetails(
-//   role: string,
-// ): boolean {
-//   // can work and view both
-//   if (role === "admin" || role === "super-admin" || "site-supervisor")
-//     return true;
+export function canAccessTodoTaskTabUnderFinalHandoverStage(
+  role: string
+): boolean {
+  // 1. Admins always have access
+  if (role === "admin" || role === "super-admin" || role === "site-supervisor")
+    return true;
 
-//   // 4. Everyone else has access by default
-//   return false;
-// }
+  return false;
+}
+
+export function canViewAndWorkFinalHandoverStage(
+  role: string,
+  stage: string
+): boolean {
+  // can work and view both and site suprvisor work only final-handover-stage.
+  return (
+    role === "admin" ||
+    role === "super-admin" ||
+    (role === "site-supervisor" && stage === "final-handover-stage")
+  );
+}
+
+export function canDoERDMiscellaneousDate(
+  role: string,
+  stage: string
+): boolean {
+  // can work and view both and factory work only final-handover-stage.
+  return (
+    role === "admin" ||
+    role === "super-admin" ||
+    (role === "factory" && stage === "under-installation-stage")
+  );
+}

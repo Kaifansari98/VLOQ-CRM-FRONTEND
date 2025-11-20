@@ -55,6 +55,7 @@ import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkDispatchPlanningStage } from "@/components/utils/privileges";
 import CustomeTooltip from "@/components/cutome-tooltip";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface DispatchPlanningDetailsProps {
   leadId: number;
@@ -184,6 +185,11 @@ export default function DispatchPlanningDetails({
   // Load dispatch info data
   useEffect(() => {
     if (dispatchInfoData) {
+      const apiValue = dispatchInfoData.material_lift_availability;
+
+      const normalizedLiftAvailability =
+        apiValue === true ? true : apiValue === false ? null : null;
+
       const formValues = {
         required_date_for_dispatch: dispatchInfoData.required_date_for_dispatch
           ? new Date(dispatchInfoData.required_date_for_dispatch)
@@ -198,16 +204,12 @@ export default function DispatchPlanningDetails({
           dispatchInfoData.alt_onsite_contact_person_name || "",
         alt_onsite_contact_person_number:
           dispatchInfoData.alt_onsite_contact_person_number || "",
-        material_lift_availability:
-          dispatchInfoData.material_lift_availability ?? null,
+        material_lift_availability: normalizedLiftAvailability,
         dispatch_planning_remark:
           dispatchInfoData.dispatch_planning_remark || "",
       };
 
-      // ✅ 1. Update local state (optional, for reference)
-      setDispatchInfo(formValues);
-
-      // ✅ 2. Also populate react-hook-form fields
+      // Update React Hook Form
       Object.entries(formValues).forEach(([key, value]) => {
         setValue(key as keyof DispatchFormData, value as any, {
           shouldValidate: false,
@@ -433,7 +435,7 @@ export default function DispatchPlanningDetails({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
             {/* Onsite Contact Person Name */}
             <div className="space-y-2">
               <Label className="flex items-center gap-1">
@@ -548,29 +550,40 @@ export default function DispatchPlanningDetails({
                 <span className="text-red-500">*</span>
               </Label>
 
-              <div className="flex gap-3">
-                {[
-                  { label: "Available", value: true },
-                  { label: "Not Available", value: false },
-                ].map((option) => (
-                  <Button
+              <div className="flex gap-6 items-center">
+                {/* Available */}
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    defaultChecked={false}
                     disabled={!canViewAndWork}
-                    key={option.label}
-                    type="button"
-                    variant={
-                      watchLiftAvailability === option.value
-                        ? "default"
-                        : "outline"
-                    }
-                    onClick={() =>
-                      setValue("material_lift_availability", option.value, {
-                        shouldValidate: true,
-                      })
-                    }
-                  >
-                    {option.label}
-                  </Button>
-                ))}
+                    checked={watchLiftAvailability === true}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setValue("material_lift_availability", true, {
+                          shouldValidate: true,
+                        });
+                      }
+                    }}
+                  />
+                  <label className="text-sm">Available</label>
+                </div>
+
+                {/* Not Available */}
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    defaultChecked={false}
+                    disabled={!canViewAndWork}
+                    checked={watchLiftAvailability === false}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setValue("material_lift_availability", false, {
+                          shouldValidate: true,
+                        });
+                      }
+                    }}
+                  />
+                  <label className="text-sm">Not Available</label>
+                </div>
               </div>
 
               {errors.material_lift_availability && (

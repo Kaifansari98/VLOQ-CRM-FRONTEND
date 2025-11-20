@@ -92,12 +92,11 @@ export default function PendingWorkTab({
                     "—"
                   );
                   const description = descParts.join("—").trim();
-                  const isLong = description.length > 120;
 
-                  const shortDesc =
-                    description.length > 80
-                      ? description.slice(0, 200) + "..."
-                      : description;
+                  const isLong = description.length > 120; // 👈 Tooltip only for LONG text
+                  const preview = isLong
+                    ? description.slice(0, 200) + "..."
+                    : description;
 
                   return (
                     <motion.div
@@ -108,11 +107,11 @@ export default function PendingWorkTab({
                     >
                       <Card
                         className="
-                          group rounded-xl border border-border/50 
-                          bg-neutral-50 dark:bg-neutral-900 
-                          hover:border-primary/50 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.12)]
-                          cursor-pointer transition-all duration-300
-                        "
+          group h-full rounded-xl border border-border/50 
+          bg-neutral-50 dark:bg-neutral-900 
+          hover:border-primary/50 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.12)]
+          cursor-pointer transition-all duration-300
+        "
                         onClick={() => {
                           if (
                             task.status === "completed" ||
@@ -152,19 +151,21 @@ export default function PendingWorkTab({
                             {workTitle || "Untitled Work"}
                           </h4>
 
+                          {/* Description + Tooltip logic */}
                           {description &&
                             (isLong ? (
                               <RemarkTooltip
+                              title="Additional Note"
                                 remark={
                                   <span className="block line-clamp-3 text-xs text-left text-muted-foreground leading-relaxed">
-                                    {description.slice(0, 200)}...
+                                    {preview}
                                   </span>
                                 }
                                 remarkFull={description}
                               />
                             ) : (
                               <span className="block text-xs text-left text-muted-foreground leading-relaxed">
-                                {description}
+                                {preview}
                               </span>
                             ))}
 

@@ -17,7 +17,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -114,6 +114,15 @@ export default function DispatchPlanningLeadDetails() {
   const [activityType, setActivityType] = useState<"onHold">("onHold");
 
   const updateStatusMutation = useUpdateActivityStatus();
+
+  // 🔥 Auto-open To-Do modal for Sales Executive
+  useEffect(() => {
+    if (userType === "sales-executive") {
+      setPreviousTab("details"); // so closing modal returns to details
+      setAssignOpen(true); // open modal on load
+      setActiveTab("todo"); // switch tab to To-Do
+    }
+  }, [userType]);
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -253,6 +262,7 @@ export default function DispatchPlanningLeadDetails() {
             if (val === "todo") {
               setPreviousTab(activeTab);
               setAssignOpen(true);
+              setActiveTab("todo");
               return;
             }
             setActiveTab(val);
@@ -349,7 +359,10 @@ export default function DispatchPlanningLeadDetails() {
 
         <AssignTaskSiteMeasurementForm
           open={assignOpen}
-          onOpenChange={setAssignOpen}
+          onOpenChange={(open) => {
+            setAssignOpen(open);
+            if (!open) setActiveTab(previousTab);
+          }}
           onlyFollowUp={true}
           data={{ id: leadIdNum, name: "" }}
         />

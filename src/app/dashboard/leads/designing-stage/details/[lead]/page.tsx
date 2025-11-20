@@ -4,10 +4,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import {
   SidebarInset,
@@ -15,7 +13,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { ModeToggle } from "@/components/ModeToggle";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
@@ -66,18 +63,14 @@ import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import BookingModal from "@/components/sales-executive/designing-stage/booking-modal";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import {
-  useDesigningStageCounts,
-  useLeadStatus,
-} from "@/hooks/designing-stage/designing-leads-hooks";
+import { useDesigningStageCounts } from "@/hooks/designing-stage/designing-leads-hooks";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import {
-  canReassingLead,
-  canDeleteLead,
   canMoveToBookingStage,
   canReassignLeadButton,
   canDeleteLeadButton,
   canEditLeadForSalesExecutiveButton,
+  canAccessDessingTodoTab,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
@@ -104,7 +97,7 @@ export default function DesigningStageLead() {
     (state) => state.auth.user?.user_type.user_type
   );
 
-  const { data: leadData, error } = useLeadStatus(leadIdNum, vendorId);
+  const canAccessTodoTab = canAccessDessingTodoTab(userType);
   const canMoveToBooking =
     countsData?.QuotationDoc > 0 && countsData?.DesignsDoc > 0;
 
@@ -143,7 +136,9 @@ export default function DesigningStageLead() {
   );
 
   // tabs state
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState(
+    userType === "sales-executive" ? "todo" : "details"
+  );
 
   if (isLoading) {
     return <p className="p-6">Loading lead details...</p>;
@@ -342,7 +337,7 @@ export default function DesigningStageLead() {
               setActiveTab(val);
             }
           }}
-          className="w-full px-6 pt-4"
+          className="w-full px-6 pt-4 "
         >
           <ScrollArea>
             <div className="w-full h-full flex justify-between items-center">
@@ -352,10 +347,29 @@ export default function DesigningStageLead() {
                     <HouseIcon size={16} className="mr-1 opacity-60" />
                     Lead Details
                   </TabsTrigger>
-                  <TabsTrigger value="projects">
-                    <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                    To-Do Task
-                  </TabsTrigger>
+
+                  {canAccessTodoTab ? (
+                    <TabsTrigger value="todo">
+                      <PanelsTopLeftIcon
+                        size={16}
+                        className="mr-1 opacity-60"
+                      />
+                      To-Do Task
+                    </TabsTrigger>
+                  ) : (
+                    <CustomeTooltip
+                      truncateValue={
+                        <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                          <PanelsTopLeftIcon
+                            size={16}
+                            className="mr-1 opacity-60"
+                          />
+                          To-Do Task
+                        </div>
+                      }
+                      value="Only Sales Executive can access this tab"
+                    />
+                  )}
                   <TabsTrigger value="history">
                     <BoxIcon size={16} className="mr-1 opacity-60" />
                     Site History
@@ -371,7 +385,17 @@ export default function DesigningStageLead() {
           </ScrollArea>
 
           {/* 🔹 Tab Contents */}
-          <TabsContent value="details">
+          <TabsContent value="details" >
+            <main className="flex-1 h-fit  ">
+              <LeadDetailsUtil
+                status="designing"
+                leadId={leadIdNum}
+                defaultTab="designing"
+              />
+            </main>
+          </TabsContent>
+
+          <TabsContent value="todo">
             <main className="flex-1 h-fit ">
               <LeadDetailsUtil
                 status="designing"
