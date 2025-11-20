@@ -147,17 +147,34 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="border rounded-lg w-full h-full p-6 space-y-6 overflow-y-scroll mb-6"
+      className="rounded-lg w-full h-full py-4 space-y-6 overflow-y-scroll bg-[#fff] dark:bg-[#0a0a0a]"
     >
       {/* -------- Measurement Document + Payment Info Row -------- */}
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* Measurement Document (PDF) */}
-        <div className="lg:w-[45%] border rounded-xl overflow-hidden">
+        {/* ------- Measurement Document Card (MATCHED UI) ------- */}
+        <motion.section
+          variants={itemVariants}
+          className="
+    lg:w-[45%]
+    bg-white dark:bg-neutral-900
+    rounded-2xl
+    border border-border
+    shadow-soft
+    overflow-hidden
+  "
+        >
           {/* Header */}
-          <div className="flex items-center justify-between bg-muted px-4 py-2 border-b">
+          <div
+            className="
+      flex items-center justify-between 
+      px-5 py-3 
+      border-b border-border
+      bg-mutedBg/50 dark:bg-neutral-900/50
+    "
+          >
             <div className="flex items-center gap-2">
               <FileText size={20} />
-              <h1 className="text-base font-semibold flex items-center gap-1">
+              <h1 className="text-lg font-semibold tracking-tight flex items-center gap-1">
                 Measurement Document
                 <span className="text-xs font-medium text-muted-foreground">
                   ({pdfDocs.length} {pdfDocs.length === 1 ? "File" : "Files"})
@@ -166,43 +183,62 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
             </div>
           </div>
 
-          {/* Content */}
-          <div className="p-4">
+          {/* Body */}
+          <div className="p-6">
             {pdfDocs.length > 0 ? (
-              pdfDocs.map((doc) => (
-                <DocumentCard
-                  key={doc.id}
-                  doc={{
-                    id: doc.id,
-                    originalName: doc.originalName,
-                    created_at: doc.uploadedAt,
-                    signedUrl: doc.signedUrl,
-                  }}
-                  canDelete={canDelete}
-                  onDelete={(id) => setConfirmDelete(id)}
-                />
-              ))
+              <div className="space-y-4">
+                {pdfDocs.map((doc) => (
+                  <DocumentCard
+                    key={doc.id}
+                    doc={{
+                      id: doc.id,
+                      originalName: doc.originalName,
+                      created_at: doc.uploadedAt,
+                      signedUrl: doc.signedUrl,
+                    }}
+                    canDelete={canDelete}
+                    onDelete={(id) => setConfirmDelete(id)}
+                  />
+                ))}
+              </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-8">
-                <FileText size={40} className="text-muted-foreground mb-3" />
+              <div className="flex flex-col items-center justify-center py-10">
+                <FileText size={42} className="text-muted-foreground mb-3" />
                 <p className="text-sm text-muted-foreground">
                   No measurement document found.
                 </p>
               </div>
             )}
           </div>
-        </div>
+        </motion.section>
 
-        {/* Payment Information */}
+        {/* ------- Payment Information Card (MATCHED UI) ------- */}
         {payment && (
-          <motion.div
+          <motion.section
             variants={itemVariants}
-            className="flex-1 border rounded-xl overflow-hidden"
+            className="
+      flex-1
+      bg-white dark:bg-neutral-900
+      rounded-2xl
+      border border-border
+      shadow-soft
+      overflow-hidden
+    "
           >
-            <div className="flex items-center justify-between bg-muted px-4 py-2 border-b">
+            {/* Header */}
+            <div
+              className="
+        flex items-center justify-between 
+        px-5 py-3 
+        border-b border-border
+        bg-mutedBg/50 dark:bg-neutral-900/50
+      "
+            >
               <div className="flex items-center gap-2">
                 <Receipt size={20} />
-                <h1 className="text-base font-semibold">Payment Information</h1>
+                <h1 className="text-lg font-semibold tracking-tight">
+                  Payment Information
+                </h1>
               </div>
 
               {canEditOrUpload && (
@@ -217,49 +253,96 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
               )}
             </div>
 
-            <div className="p-4 space-y-4">
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Payment Amount</p>
-                <div className="bg-muted border rounded-sm p-2 text-sm">
+            {/* Body */}
+            <div className="p-6 space-y-6">
+              {/* Amount */}
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Payment Amount
+                </p>
+                <div className="bg-muted border border-border rounded-lg px-3 py-2 text-sm">
                   {payment.amount ?? "N/A"}
                 </div>
               </div>
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Payment Date</p>
-                <div className="bg-muted border rounded-sm p-2 text-sm">
+
+              {/* Date */}
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Payment Date
+                </p>
+                <div className="bg-muted border border-border rounded-lg px-3 py-2 text-sm">
                   {payment.payment_date ?? "N/A"}
                 </div>
               </div>
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Payment Description</p>
-                <div className="bg-muted border rounded-sm p-2 text-sm overflow-y-scroll max-h-24">
+
+              {/* Description */}
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Payment Description
+                </p>
+                <div
+                  className="
+            bg-muted border border-border rounded-lg 
+            px-3 py-2 text-sm 
+            max-h-24 overflow-y-auto
+          "
+                >
                   {payment.payment_text || "N/A"}
                 </div>
               </div>
             </div>
-          </motion.div>
+          </motion.section>
         )}
       </div>
 
-      {/* -------- Current Site Photos -------- */}
-      <div className="border rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between bg-muted px-4 py-2 border-b">
-          <div className="flex items-center gap-2">
-            <Images size={20} />
-            <h1 className="text-base font-semibold">Current Site Photos</h1>
+      {/* -------- Current Site Photos (MATCHING UI) -------- */}
+      <motion.section
+        variants={itemVariants}
+        className="
+    bg-white dark:bg-neutral-900 
+    rounded-2xl 
+    border border-border 
+    shadow-soft 
+    overflow-hidden
+  "
+      >
+        {/* Header */}
+        <div
+          className="
+      flex items-center justify-between 
+      px-5 py-3 
+      border-b border-border
+      bg-mutedBg/50 dark:bg-neutral-900/50
+    "
+        >
+          <div className="flex flex-col items-start">
+            <h1 className="text-lg font-semibold tracking-tight">
+              Current Site Photos
+            </h1>
+            <p className="text-xs text-gray-500">
+              All the Lead Related Photos uploaded by the client or team.
+            </p>
           </div>
+
           <Button
             variant="outline"
             size="sm"
-            className="flex items-center gap-1"
+            className="
+        rounded-lg 
+        border-border 
+        hover:bg-mutedBg dark:hover:bg-neutral-800 
+        dark:border-neutral-700
+        transition
+      "
           >
             <RefreshCcw size={15} />
             Refresh
           </Button>
         </div>
 
-        <motion.div variants={itemVariants} className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {/* Body */}
+        <motion.div variants={itemVariants} className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {currentSitePhotos.map((doc, index) => (
               <ImageComponent
                 key={doc.id}
@@ -279,37 +362,78 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
               />
             ))}
 
+            {/* Add button card */}
             {canEditOrUpload && (
               <div
                 onClick={() => setOpenImageModal(true)}
-                className="flex items-center justify-center w-32 max-h-28 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-all duration-200 group"
+                className="
+            flex flex-col items-center justify-center 
+            h-28 
+            border-2 border-dashed border-border 
+            rounded-xl cursor-pointer 
+            hover:bg-mutedBg dark:hover:bg-neutral-800 
+            transition-all duration-200
+          "
               >
-                <div className="flex flex-col items-center text-gray-500 group-hover:text-blue-600">
-                  <Plus size={24} className="mb-1" />
-                  <span className="text-xs font-medium">Add Photos</span>
-                </div>
+                <Plus size={26} className="text-muted-foreground mb-1" />
+                <span className="text-xs font-medium text-muted-foreground">
+                  Add Photos
+                </span>
               </div>
             )}
           </div>
         </motion.div>
-      </div>
+      </motion.section>
 
-      {/* -------- Payment Proofs -------- */}
+      {/* -------- Payment Proofs (MATCHING UI) -------- */}
       {paymentImages.length > 0 && (
-        <div className="border rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between bg-muted px-4 py-2 border-b">
-            <div className="flex items-center gap-2">
-              <Images size={20} />
-              <h1 className="text-base font-semibold">Payment Proofs</h1>
+        <motion.section
+          variants={itemVariants}
+          className="
+      bg-white dark:bg-neutral-900 
+      rounded-2xl 
+      border border-border 
+      shadow-soft 
+      overflow-hidden
+    "
+        >
+          {/* Header */}
+          <div
+            className="
+        flex items-center justify-between 
+        px-5 py-3 
+        border-b border-border
+        bg-mutedBg/50 dark:bg-neutral-900/50
+      "
+          >
+            <div className="flex flex-col items-start">
+              <h1 className="text-lg font-semibold tracking-tight">
+                Payment Proofs
+              </h1>
+              <p className="text-xs text-gray-500">
+                Uploaded payment transaction receipts & confirmation photos.
+              </p>
             </div>
-            <Button variant="outline" size="sm">
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="
+          rounded-lg 
+          border-border 
+          hover:bg-mutedBg dark:hover:bg-neutral-800 
+          dark:border-neutral-700
+          transition
+        "
+            >
               <RefreshCcw size={15} />
               Refresh
             </Button>
           </div>
 
-          <motion.div variants={itemVariants} className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {/* Body */}
+          <motion.div variants={itemVariants} className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {paymentImages.map((doc, index) => (
                 <ImageComponent
                   key={doc.id}
@@ -329,7 +453,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
               ))}
             </div>
           </motion.div>
-        </div>
+        </motion.section>
       )}
 
       {/* -------- Image Carousels -------- */}

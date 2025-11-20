@@ -147,121 +147,199 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="w-full h-full space-y-8 overflow-y-scroll px-2 pb-6"
+      className="w-full h-full space-y-4 overflow-y-scroll pb-6 bg-[#fff] dark:bg-[#0a0a0a]"
     >
-      <motion.div className=" w-full flex items-center justify-start gap-2">
-        {/* Animated green circle */}
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="w-full space-y-4"
+      >
+        {/* -------- Client Required Completion Section -------- */}
         <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="w-full h-full space-y-8 overflow-y-scroll"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="
+      flex items-center gap-3 
+      bg-muted/50 
+      dark:bg-neutral-900/50
+      border border-border 
+      rounded-xl 
+      px-4 py-3 
+      backdrop-blur-sm
+    "
         >
-          {/* 🔹 Client Required Completion Section */}
+          {/* Animated green indicator */}
           <motion.div
-            className="flex items-center gap-3 bg-muted/40 border border-border rounded-lg px-4 py-2"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            {/* ✅ Animated green status dot */}
-            <motion.div
-              className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"
-              animate={{
-                scale: [1, 1.25, 1],
-                opacity: [0.8, 1, 0.8],
-              }}
-              transition={{
-                repeat: Infinity,
-                duration: 1.6,
-                ease: "easeInOut",
-              }}
-            />
+            className="
+        w-3 h-3 rounded-full 
+        bg-green-500 
+        shadow-[0_0_8px_rgba(34,197,94,0.6)]
+      "
+            animate={{
+              scale: [1, 1.25, 1],
+              opacity: [0.75, 1, 0.75],
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: 1.6,
+              ease: "easeInOut",
+            }}
+          />
 
-            {/* ✅ Text + Date */}
-            <div className="flex flex-col">
-              <p className="text-xs font-semibold text-muted-foreground tracking-wide">
-                Client required delivery date
-              </p>
-              <span className="text-sm font-medium text-foreground mt-0.5">
-                {data?.client_required_order_login_complition_date
-                  ? new Date(
-                      data.client_required_order_login_complition_date
-                    ).toLocaleDateString("en-GB", {
-                      weekday: "long",
-                      day: "2-digit",
-                      month: "long",
-                      year: "numeric",
-                    })
-                  : "Not specified"}
-              </span>
-            </div>
-          </motion.div>
+          {/* Text + Date */}
+          <div className="flex flex-col">
+            <p className="text-xs font-medium text-muted-foreground tracking-wide">
+              Client Required Delivery Date
+            </p>
+
+            <span className="text-sm font-semibold text-foreground">
+              {data?.client_required_order_login_complition_date
+                ? new Date(
+                    data.client_required_order_login_complition_date
+                  ).toLocaleDateString("en-GB", {
+                    weekday: "long",
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                  })
+                : "Not specified"}
+            </span>
+          </div>
         </motion.div>
       </motion.div>
 
-      {/* Header with Stats */}
-      <motion.div variants={itemVariants} className="space-y-4 -mt-5">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+      {/* -------- Header Stats (Premium CRM Style) -------- */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {/* Total Docs */}
+          <div
+            className="
+      bg-white dark:bg-neutral-900 
+      rounded-xl p-4 
+      border border-border 
+      hover:bg-muted/60 dark:hover:bg-neutral-800/60 
+      transition-all duration-200
+    "
+          >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500 dark:bg-blue-600 flex items-center justify-center">
-                <FileText className="text-white" size={20} />
+              <div
+                className="
+          w-10 h-10 rounded-lg 
+          bg-blue-500/10 dark:bg-blue-500/20 
+          flex items-center justify-center
+        "
+              >
+                <FileText
+                  className="text-blue-600 dark:text-blue-400"
+                  size={20}
+                />
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                <p className="text-xs font-medium text-muted-foreground">
                   Total Docs
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-2xl font-bold text-foreground">
                   {allDocs.length}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20 rounded-xl p-4 border border-green-200 dark:border-green-800">
+          {/* Approved */}
+          <div
+            className="
+      bg-white dark:bg-neutral-900 
+      rounded-xl p-4 
+      border border-border 
+      hover:bg-muted/60 dark:hover:bg-neutral-800/60 
+      transition-all duration-200
+    "
+          >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-green-500 dark:bg-green-600 flex items-center justify-center">
-                <CheckCircle2 className="text-white" size={20} />
+              <div
+                className="
+          w-10 h-10 rounded-lg 
+          bg-green-500/10 dark:bg-green-500/20 
+          flex items-center justify-center
+        "
+              >
+                <CheckCircle2
+                  className="text-green-600 dark:text-green-400"
+                  size={20}
+                />
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                <p className="text-xs font-medium text-muted-foreground">
                   Approved
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-2xl font-bold text-foreground">
                   {approvedDocs}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
+          {/* Pending */}
+          <div
+            className="
+      bg-white dark:bg-neutral-900 
+      rounded-xl p-4 
+      border border-border 
+      hover:bg-muted/60 dark:hover:bg-neutral-800/60 
+      transition-all duration-200
+    "
+          >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-500 dark:bg-amber-600 flex items-center justify-center">
-                <AlertCircle className="text-white" size={20} />
+              <div
+                className="
+          w-10 h-10 rounded-lg 
+          bg-amber-500/10 dark:bg-amber-500/20 
+          flex items-center justify-center
+        "
+              >
+                <AlertCircle
+                  className="text-amber-600 dark:text-amber-400"
+                  size={20}
+                />
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                <p className="text-xs font-medium text-muted-foreground">
                   Pending
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-2xl font-bold text-foreground">
                   {pendingDocs}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20 rounded-xl p-4 border border-red-200 dark:border-red-800">
+          {/* Rejected */}
+          <div
+            className="
+      bg-white dark:bg-neutral-900 
+      rounded-xl p-4 
+      border border-border 
+      hover:bg-muted/60 dark:hover:bg-neutral-800/60 
+      transition-all duration-200
+    "
+          >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-red-500 dark:bg-red-600 flex items-center justify-center">
-                <XCircle className="text-white" size={20} />
+              <div
+                className="
+          w-10 h-10 rounded-lg 
+          bg-red-500/10 dark:bg-red-500/20 
+          flex items-center justify-center
+        "
+              >
+                <XCircle className="text-red-600 dark:text-red-400" size={20} />
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                <p className="text-xs font-medium text-muted-foreground">
                   Rejected
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-2xl font-bold text-foreground">
                   {rejectedDocs}
                 </p>
               </div>
@@ -270,80 +348,102 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
         </div>
       </motion.div>
 
-      {/* ========== CLIENT DOCUMENTATION - HORIZONTAL CARDS ========== */}
-      <motion.div variants={itemVariants} className="space-y-8">
-        <div className="border rounded-xl overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between bg-muted px-4 py-2 border-b">
+      {/* ========== CLIENT DOCUMENTATION (PREMIUM) ========== */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        {/* ---------- Main Wrapper ---------- */}
+        <div
+          className="
+    bg-white dark:bg-neutral-900
+    rounded-2xl border border-border
+    overflow-hidden
+  "
+        >
+          {/* Main Header */}
+          <div
+            className="
+      flex items-center justify-between px-5 py-3
+      border-b border-border
+      bg-mutedBg/50 dark:bg-neutral-900/50
+    "
+          >
             <div className="flex items-center gap-2">
-              <Layers3 size={20} />
-              <h1 className="text-base font-semibold flex items-center gap-1">
+              <Layers3 size={20} className="opacity-70" />
+              <h1 className="text-lg font-semibold tracking-tight">
                 Client Documentation
-                <span className="text-xs font-medium text-muted-foreground">
-                  ({allDocs.length}{" "}
-                  {allDocs.length === 1 ? "Document" : "Documents"})
-                </span>
               </h1>
             </div>
-          </div>
-          <div className="p-4 space-y-4">
-            {/* Client Documentation Project Files */}
 
-            <div className="border rounded-xl overflow-hidden">
-              {/* Header */}
-              <div className="flex items-center justify-between bg-muted px-4 py-2 border-b">
+            <p className="text-xs text-muted-foreground tracking-wide">
+              {allDocs.length} {allDocs.length === 1 ? "Document" : "Documents"}
+            </p>
+          </div>
+
+          <div className="p-6 space-y-8">
+            {/* ========== PROJECT FILES ========== */}
+            <motion.div variants={itemVariants} className="space-y-4">
+              <div
+                className="
+          flex items-center justify-between 
+          px-4 py-2 border border-border rounded-xl
+          bg-mutedBg/40 dark:bg-neutral-800/40
+        "
+              >
                 <div className="flex items-center gap-2">
-                  <Layers3 size={20} />
-                  <h1 className="text-base font-semibold flex items-center gap-1">
+                  <Layers3 size={18} className="opacity-70" />
+                  <h2 className="text-base font-semibold tracking-tight">
                     Project Files
-                    <span className="text-xs font-medium text-muted-foreground">
-                      ({pptDocs.length}{" "}
-                      {pptDocs.length === 1 ? "Document" : "Documents"})
-                    </span>
-                  </h1>
+                  </h2>
+                  <span className="text-xs text-muted-foreground">
+                    ({pptDocs.length}{" "}
+                    {pptDocs.length === 1 ? "Document" : "Documents"})
+                  </span>
                 </div>
               </div>
 
               {/* Body */}
               {pptDocs.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-[50vh] px-4">
-                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                    <Ban size={32} className="text-muted-foreground" />
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">
-                    No Client Documentation Design Files
+                <div
+                  className="
+            flex flex-col items-center justify-center 
+            py-14 px-6 
+            border border-dashed border-border/60 
+            rounded-xl 
+            bg-mutedBg/40 dark:bg-neutral-800/40
+          "
+                >
+                  <Ban size={38} className="text-muted-foreground mb-2" />
+                  <h3 className="font-semibold text-sm mb-1">
+                    No Project Files Found
                   </h3>
-                  <p className="text-xs text-muted-foreground text-center max-w-sm">
-                    Once Client Documentation Design Files are uploaded, they
-                    will appear here.
+                  <p className="text-xs text-muted-foreground text-center">
+                    Files will appear here once uploaded.
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-2">
-                  {pptImages.map((doc: any, index: number) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {/* Image Files */}
+                  {pptImages.map((doc, index) => (
                     <ImageComponent
                       key={doc.id}
                       doc={{
                         id: doc.id,
-                        doc_og_name: doc?.doc_og_name,
-                        signedUrl: doc?.signed_url,
-                        created_at: doc?.created_at,
+                        doc_og_name: doc.doc_og_name,
+                        signedUrl: doc.signed_url,
+                        created_at: doc.created_at,
                       }}
                       index={index}
-                      status={
-                        doc.tech_check_status === null
-                          ? "PENDING"
-                          : doc.tech_check_status
-                      }
+                      status={doc.tech_check_status ?? "PENDING"}
                       canDelete={canDelete}
-                      onView={(i) => {
-                        setStartIndex(i);
+                      onView={() => {
+                        setStartIndex(index);
                         setOpenCarousel(true);
                       }}
                       onDelete={(id) => setConfirmDelete(Number(id))}
                     />
                   ))}
-                  {pptDocuments.map((doc: any) => (
+
+                  {/* Document Files */}
+                  {pptDocuments.map((doc) => (
                     <DocumentCard
                       key={doc.id}
                       doc={{
@@ -353,50 +453,57 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
                         created_at: doc.created_at,
                       }}
                       canDelete={canDelete}
-                      status={
-                        doc.tech_check_status === null
-                          ? "PENDING"
-                          : doc.tech_check_status
-                      }
+                      status={doc.tech_check_status ?? "PENDING"}
                       onDelete={(id) => setConfirmDelete(id)}
                     />
                   ))}
                 </div>
               )}
-            </div>
-            {/* Client Documentation Designs Files */}
-            <div className="border rounded-xl overflow-hidden">
-              {/* Header */}
-              <div className="flex items-center justify-between bg-muted px-4 py-2 border-b">
+            </motion.div>
+
+            {/* ========== DESIGN FILES ========== */}
+            <motion.div variants={itemVariants} className="space-y-4">
+              <div
+                className="
+          flex items-center justify-between 
+          px-4 py-2 border border-border rounded-xl
+          bg-mutedBg/40 dark:bg-neutral-800/40
+        "
+              >
                 <div className="flex items-center gap-2">
-                  <Layers3 size={20} />
-                  <h1 className="text-base font-semibold flex items-center gap-1">
-                    Desings Files
-                    <span className="text-xs font-medium text-muted-foreground">
-                      ({pythaDocs.length}{" "}
-                      {pythaDocs.length === 1 ? "Document" : "Documents"})
-                    </span>
-                  </h1>
+                  <Layers3 size={18} className="opacity-70" />
+                  <h2 className="text-base font-semibold tracking-tight">
+                    Design Files
+                  </h2>
+                  <span className="text-xs text-muted-foreground">
+                    ({pythaDocs.length}{" "}
+                    {pythaDocs.length === 1 ? "Document" : "Documents"})
+                  </span>
                 </div>
               </div>
 
               {/* Body */}
-              {pythaDocuments.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-[50vh] px-4">
-                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                    <Ban size={32} className="text-muted-foreground" />
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">
-                    No Client Documentation Design Files
+              {pythaDocs.length === 0 ? (
+                <div
+                  className="
+            flex flex-col items-center justify-center 
+            py-14 px-6 
+            border border-dashed border-border/60 
+            rounded-xl 
+            bg-mutedBg/40 dark:bg-neutral-800/40
+          "
+                >
+                  <Ban size={38} className="text-muted-foreground mb-2" />
+                  <h3 className="font-semibold text-sm mb-1">
+                    No Design Files Found
                   </h3>
-                  <p className="text-xs text-muted-foreground text-center max-w-sm">
-                    Once Client Documentation Design Files are uploaded, they
-                    will appear here.
+                  <p className="text-xs text-muted-foreground text-center">
+                    Files will appear here once uploaded.
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-2">
-                  {pythaDocuments.map((doc: any) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {pythaDocuments.map((doc) => (
                     <DocumentCard
                       key={doc.id}
                       doc={{
@@ -406,28 +513,38 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
                         created_at: doc.created_at,
                       }}
                       canDelete={canDelete}
-                      status={
-                        doc.tech_check_status === null
-                          ? "PENDING"
-                          : doc.tech_check_status
-                      }
+                      status={doc.tech_check_status ?? "PENDING"}
                       onDelete={(id) => setConfirmDelete(id)}
                     />
                   ))}
                 </div>
               )}
-            </div>
+            </motion.div>
           </div>
         </div>
       </motion.div>
 
-      {/* Initial Site Measurement */}
-      <div className="border rounded-xl overflow-hidden">
+      {/* ========== INITIAL SITE MEASUREMENT (PREMIUM CRM) ========== */}
+      <div
+        className="
+    bg-white dark:bg-neutral-900 
+    rounded-2xl 
+    border border-border 
+    overflow-hidden
+  "
+      >
         {/* Header */}
-        <div className="flex items-center justify-between bg-muted px-4 py-2 border-b">
+        <div
+          className="
+      flex items-center justify-between 
+      px-5 py-3 
+      border-b border-border 
+      bg-mutedBg/50 dark:bg-neutral-900/50
+    "
+        >
           <div className="flex items-center gap-2">
-            <Camera size={20} />
-            <h1 className="text-base font-semibold flex items-center gap-1">
+            <Camera size={20} className="opacity-80" />
+            <h1 className="text-lg font-semibold tracking-tight flex items-center gap-1">
               Initial Site Measurement
               <span className="text-xs font-medium text-muted-foreground">
                 ({ismDocs.length}{" "}
@@ -438,46 +555,68 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
         </div>
 
         {/* Body */}
-        {ismDocs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[50vh] px-4">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-              <Ban size={32} className="text-muted-foreground" />
+        <div className="p-6">
+          {ismDocs.length === 0 ? (
+            <div
+              className="
+          flex flex-col items-center justify-center 
+          py-14 px-6 
+          border border-dashed border-border/60 
+          rounded-xl 
+          bg-mutedBg/40 dark:bg-neutral-800/40
+        "
+            >
+              <Ban size={38} className="text-muted-foreground mb-3" />
+              <h3 className="font-semibold text-sm mb-1">
+                No Site Measurement Documents
+              </h3>
+              <p className="text-xs text-muted-foreground text-center max-w-xs">
+                Uploaded documents related to initial site measurements will
+                appear here.
+              </p>
             </div>
-            <h3 className="font-semibold text-lg mb-2">
-              No Site Measurement Documents
-            </h3>
-            <p className="text-xs text-muted-foreground text-center max-w-sm">
-              Uploaded documents related to initial site measurements will
-              appear here.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-2">
-            {ismDocs.map((doc: any) => (
-              <DocumentCard
-                key={doc.id}
-                doc={{
-                  id: doc.id,
-                  originalName: doc.originalName,
-                  signedUrl: doc.signedUrl,
-                  created_at: doc.created_at,
-                }}
-                canDelete={canDelete}
-                status={doc.tech_check_status}
-                onDelete={(id) => setConfirmDelete(id)}
-              />
-            ))}
-          </div>
-        )}
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {ismDocs.map((doc: any) => (
+                <DocumentCard
+                  key={doc.id}
+                  doc={{
+                    id: doc.id,
+                    originalName: doc.originalName,
+                    signedUrl: doc.signedUrl,
+                    created_at: doc.created_at,
+                  }}
+                  canDelete={canDelete}
+                  status={doc.tech_check_status}
+                  onDelete={(id) => setConfirmDelete(id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Final Measurment */}
-      <div className="border rounded-xl overflow-hidden">
+      {/* ========== FINAL MEASUREMENT (PREMIUM CRM) ========== */}
+      <div
+        className="
+    bg-white dark:bg-neutral-900 
+    rounded-2xl 
+    border border-border 
+    overflow-hidden
+  "
+      >
         {/* Header */}
-        <div className="flex items-center justify-between bg-muted px-4 py-2 border-b">
+        <div
+          className="
+      flex items-center justify-between 
+      px-5 py-3 
+      border-b border-border 
+      bg-mutedBg/50 dark:bg-neutral-900/50
+    "
+        >
           <div className="flex items-center gap-2">
-            <Layers3 size={20} />
-            <h1 className="text-base font-semibold flex items-center gap-1">
+            <Layers3 size={20} className="opacity-80" />
+            <h1 className="text-lg font-semibold tracking-tight flex items-center gap-1">
               Final Measurement Documents
               <span className="text-xs font-medium text-muted-foreground">
                 ({finalDocs.length}{" "}
@@ -488,37 +627,45 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
         </div>
 
         {/* Body */}
-        {finalDocs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[50vh] px-4">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-              <Ban size={32} className="text-muted-foreground" />
+        <div className="p-6">
+          {finalDocs.length === 0 ? (
+            <div
+              className="
+          flex flex-col items-center justify-center 
+          py-14 px-6 
+          border border-dashed border-border/60 
+          rounded-xl 
+          bg-mutedBg/40 dark:bg-neutral-800/40
+        "
+            >
+              <Ban size={38} className="text-muted-foreground mb-3" />
+              <h3 className="font-semibold text-sm mb-1">
+                No Final Measurement Documents
+              </h3>
+              <p className="text-xs text-muted-foreground text-center max-w-xs">
+                Once final measurement documents are uploaded, they will appear
+                here.
+              </p>
             </div>
-            <h3 className="font-semibold text-lg mb-2">
-              No Final Measurement Documents
-            </h3>
-            <p className="text-xs text-muted-foreground text-center max-w-sm">
-              Once final measurement documents are uploaded, they will appear
-              here.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-2">
-            {finalDocs.map((doc: any) => (
-              <DocumentCard
-                key={doc.id}
-                doc={{
-                  id: doc.id,
-                  originalName: doc.doc_og_name,
-                  signedUrl: doc.signed_url,
-                  created_at: doc.created_at,
-                }}
-                canDelete={canDelete}
-                status={doc.tech_check_status}
-                onDelete={(id) => setConfirmDelete(id)}
-              />
-            ))}
-          </div>
-        )}
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {finalDocs.map((doc: any) => (
+                <DocumentCard
+                  key={doc.id}
+                  doc={{
+                    id: doc.id,
+                    originalName: doc.doc_og_name,
+                    signedUrl: doc.signed_url,
+                    created_at: doc.created_at,
+                  }}
+                  canDelete={canDelete}
+                  status={doc.tech_check_status}
+                  onDelete={(id) => setConfirmDelete(id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <AlertDialog

@@ -113,38 +113,56 @@ export default function ClientDocumentationDetails({
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="border rounded-lg w-full h-full p-6 space-y-8 overflow-y-auto"
+      className="w-full h-full py-4 space-y-4 overflow-y-auto bg-[#fff] dark:bg-[#0a0a0a]"
     >
-      {/* -------- Add More Button -------- */}
-      <motion.div variants={itemVariants} className="flex justify-between">
+      {/* -------- Section Header: Client Documentation -------- */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+        {/* Left */}
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">
+            Client Documentation
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            All uploaded project + design files related to this lead.
+          </p>
+        </div>
+
+        {/* Right */}
         {canUploadMoreClientDocumentationFiles(userType) && (
           <Button
             onClick={() => setAddMoreDoc(true)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 rounded-lg"
           >
-            <Plus size={16} /> Add More Files
+            <Plus size={16} />
+            Add More Files
           </Button>
         )}
-      </motion.div>
+      </div>
 
-      {/* -------- Client Documentation - Project Files -------- */}
-      <motion.div
+      {/* ---------------------------------------------------------- */}
+      {/* -------- Client Documentation — Project Files -------- */}
+      {/* ---------------------------------------------------------- */}
+      <motion.section
         variants={itemVariants}
-        className="border rounded-xl overflow-hidden"
+        className="
+      bg-white dark:bg-neutral-900
+      rounded-2xl 
+      border border-border 
+      overflow-hidden
+    "
       >
         <SectionHeader
-          title="Client Documentation - Project Files"
+          title="Client Documentation — Project Files"
           icon={<Images size={20} />}
           onRefresh={() => console.log("Refresh Project Files")}
         />
 
-        <div className="p-4 space-y-6">
-          {/* Image Section */}
+        <div className="p-6 space-y-8">
+          {/* -------- Images -------- */}
           <div className="space-y-3">
-            <h3 className="text-base font-semibold">Project Images</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {imageDocs.length > 0 ? (
-                imageDocs.map((img, idx) => (
+                imageDocs.map((img, index) => (
                   <ImageComponent
                     key={img.id}
                     doc={{
@@ -153,9 +171,7 @@ export default function ClientDocumentationDetails({
                       signedUrl: img.signed_url,
                       created_at: img.created_at,
                     }}
-                    index={idx}
-                    
-                    
+                    index={index}
                     canDelete={canDelete}
                     onView={(i) => {
                       setStartIndex(i);
@@ -165,56 +181,63 @@ export default function ClientDocumentationDetails({
                   />
                 ))
               ) : (
-                <p className="text-sm text-muted-foreground italic">
-                  No project images uploaded yet.
-                </p>
+                <div className="px-4 py-10 border border-dashed border-border/60 rounded-xl bg-mutedBg/40 dark:bg-neutral-800/40 text-center">
+                  <Images
+                    size={40}
+                    className="text-muted-foreground mx-auto mb-3"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    No project images uploaded yet.
+                  </p>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Document Section */}
-          <div className="space-y-3">
-            <h3 className="text-base font-semibold">
-              Project Documents (PPT, PDF, DOCX)
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {documentDocs.length > 0 ? (
-                documentDocs.map((doc) => (
+          {/* -------- Documents -------- */}
+          {documentDocs.length > 0 && (
+            <div className="space-y-3">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {documentDocs.map((doc) => (
                   <DocumentCard
                     key={doc.id}
                     doc={{
                       id: doc.id,
                       originalName: doc.doc_og_name,
-                      signedUrl: doc.signed_url,
                       created_at: doc.created_at,
+                      signedUrl: doc.signed_url,
                     }}
                     canDelete={canDelete}
                     onDelete={(id) => setConfirmDelete(Number(id))}
                   />
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground italic">
-                  No project documents uploaded yet.
-                </p>
-              )}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
-      </motion.div>
+      </motion.section>
 
-      {/* -------- Client Documentation - Design Files -------- */}
-      <motion.div
+      {/* ---------------------------------------------------------- */}
+      {/* -------- Client Documentation — Design Files -------- */}
+      {/* ---------------------------------------------------------- */}
+      <motion.section
         variants={itemVariants}
-        className="border rounded-xl overflow-hidden"
+        className="
+      bg-white dark:bg-neutral-900
+      rounded-2xl 
+      border border-border 
+      overflow-hidden
+    "
       >
         <SectionHeader
-          title="Client Documentation - Design Files"
+          title="Client Documentation — Design Files"
           icon={<FileText size={20} />}
           onRefresh={() => console.log("Refresh Design Files")}
         />
 
-        <div className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {pythaDocs.length > 0 ? (
               pythaDocs.map((doc) => (
                 <DocumentCard
@@ -222,21 +245,27 @@ export default function ClientDocumentationDetails({
                   doc={{
                     id: doc.id,
                     originalName: doc.doc_og_name,
-                    signedUrl: doc.signed_url,
                     created_at: doc.created_at,
+                    signedUrl: doc.signed_url,
                   }}
                   canDelete={canDelete}
                   onDelete={(id) => setConfirmDelete(Number(id))}
                 />
               ))
             ) : (
-              <p className="text-sm text-muted-foreground italic">
-                No design files uploaded yet.
-              </p>
+              <div className="px-4 py-10 border border-dashed border-border/60 rounded-xl bg-mutedBg/40 dark:bg-neutral-800/40 text-center">
+                <FileText
+                  size={40}
+                  className="text-muted-foreground mx-auto mb-3"
+                />
+                <p className="text-sm text-muted-foreground">
+                  No design files uploaded yet.
+                </p>
+              </div>
             )}
           </div>
         </div>
-      </motion.div>
+      </motion.section>
 
       {/* -------- Modals -------- */}
       <UploadMoreClientDocumentationModal
@@ -249,10 +278,10 @@ export default function ClientDocumentationDetails({
         open={openCarouselModal}
         initialIndex={startIndex}
         onClose={() => setOpenCarouselModal(false)}
-        images={imageDocs.map((photo) => ({
-          id: photo.id,
-          signed_url: photo.signed_url,
-          doc_og_name: photo.doc_og_name,
+        images={imageDocs.map((p) => ({
+          id: p.id,
+          signed_url: p.signed_url,
+          doc_og_name: p.doc_og_name,
         }))}
       />
 
@@ -266,7 +295,7 @@ export default function ClientDocumentationDetails({
             <AlertDialogTitle>Delete Document?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. The selected document will be
-              permanently removed from the system.
+              permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

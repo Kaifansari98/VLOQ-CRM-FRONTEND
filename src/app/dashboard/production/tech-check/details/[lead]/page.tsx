@@ -155,8 +155,6 @@ export default function ClientApprovalLeadDetails() {
 
   const { data: backendUsers } = useBackendUsers(vendorId);
 
-  console.log("backend users :- ", backendUsers);
-
   const pptDocs = clientDocsData?.documents?.ppt ?? [];
   const pythaDocs = clientDocsData?.documents?.pytha ?? [];
 

@@ -2,7 +2,13 @@
 
 import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ChevronRight, Building2, CheckCircle2, Clock, CalendarDays } from "lucide-react";
+import {
+  ChevronRight,
+  Building2,
+  CheckCircle2,
+  Clock,
+  CalendarDays,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { useAppSelector } from "@/redux/store";
 import OrderLoginModal from "./OrderLoginModal";
@@ -45,7 +51,9 @@ export default function OrderLoginCard({
       ? companyVendorName.charAt(0).toUpperCase()
       : "";
 
-  const isCompleted = Boolean(markedAsCompletedDate && markedAsCompletedDate.trim() !== "");
+  const isCompleted = Boolean(
+    markedAsCompletedDate && markedAsCompletedDate.trim() !== ""
+  );
 
   const formattedDate = estimated_completion_date
     ? new Date(estimated_completion_date).toLocaleDateString("en-GB", {
@@ -60,9 +68,16 @@ export default function OrderLoginCard({
     <div
       className={cn(
         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
+
+        // 🌑 Dark Mode → Keep exactly same
         isCompleted
-          ? "bg-emerald-100/60 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800"
-          : "bg-amber-100/60 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800"
+          ? "dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800"
+          : "dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800",
+
+        // ☀️ Light Mode → New premium styles
+        isCompleted
+          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+          : "bg-amber-50 text-amber-700 border-amber-200"
       )}
     >
       {isCompleted ? (
@@ -85,12 +100,9 @@ export default function OrderLoginCard({
       >
         <Card
           className={cn(
-            "group relative overflow-hidden border border-border/60 bg-card hover:shadow-md hover:border-border transition-all duration-300 cursor-pointer"
+            "group relative overflow-hidden border bg-card transition-all duration-300 cursor-pointer"
           )}
         >
-          {/* Hover gradient */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
           <div className="relative z-10">
             <CardHeader className="pb-2">
               {/* 🔹 Title + Arrow */}
@@ -135,9 +147,20 @@ export default function OrderLoginCard({
               <CardContent className="pt-4 border-t border-border/50 flex items-center gap-3">
                 {companyVendorName && (
                   <div className="relative">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center shadow-sm">
-                      <span className="text-white font-semibold text-sm">{initial}</span>
+                    <div
+                      className="
+  w-10 h-10 rounded-full 
+  bg-muted 
+  dark:bg-neutral-800 
+  border border-border/70 
+  flex items-center justify-center 
+"
+                    >
+                      <span className="font-semibold text-sm text-foreground">
+                        {initial}
+                      </span>
                     </div>
+
                     {isCompleted && (
                       <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-background rounded-full flex items-center justify-center">
                         <CheckCircle2 className="w-2 h-2 text-white" />

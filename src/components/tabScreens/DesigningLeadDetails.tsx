@@ -54,7 +54,7 @@ export default function DesigningLeadsDetails({ leadId }: props) {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="border rounded-lg w-full h-full p-4 overflow-y-scroll"
+      className="rounded-lg w-full h-full py-4 overflow-y-scroll bg-[#fff] dark:bg-[#0a0a0a]"
     >
  
         <DetailsProvider value={{ leadId, accountId }}>
