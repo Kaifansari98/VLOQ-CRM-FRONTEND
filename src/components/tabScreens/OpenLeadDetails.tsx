@@ -126,7 +126,13 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const SectionCard = ({ title, children }: any) => (
     <motion.section
       variants={itemVariants}
-      className="bg-white rounded-2xl border border-border shadow-soft p-6 space-y-6"
+      className="
+  bg-white dark:bg-neutral-900 
+  rounded-2xl 
+  border border-border 
+  shadow-soft 
+  p-6 space-y-6
+"
     >
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
@@ -138,11 +144,11 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
   const InfoRow = ({ icon: Icon, label, value }: any) => (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2 text-sm text-subtle">
+      <div className="flex items-center gap-2 text-sm text-subtle dark:text-neutral-400">
         {Icon && <Icon className="w-4 h-4 stroke-[1.5]" />}
         {label}
       </div>
-      <div className="text-[15px] font-medium text-heading pl-6">
+      <div className="text-[15px] font-medium text-heading dark:text-neutral-200 pl-6">
         {value || "—"}
       </div>
     </div>
@@ -154,21 +160,27 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="rounded-lg w-full h-full overflow-y-scroll mb-6"
+        className="
+  rounded-lg 
+  w-full h-full 
+  overflow-y-scroll 
+  mb-6 
+  bg-transparent dark:bg-transparent
+"
       >
         {/* Header */}
         <div>
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold ">Lead Details</h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-neutral-400">
                 All the Lead Related Details Which has been filled during
                 onboard.
               </p>
             </div>
             <div className="flex flex-col">
               <div className="text-xs text-gray-500">Created At</div>
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
                 <Calendar className="w-4 h-4" />
                 {formatDateTime(lead.created_at)}
               </div>
@@ -212,7 +224,11 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   <a
                     href={lead.site_map_link}
                     target="_blank"
-                    className="pl-6 underline font-medium text-heading hover:opacity-80 transition"
+                    className="
+  pl-6 underline 
+  font-medium text-heading dark:text-neutral-200 
+  hover:opacity-80
+"
                   >
                     View on Google Maps →
                   </a>
@@ -272,8 +288,14 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   Design Remarks
                 </div>
 
-                <div className="bg-mutedBg border border-border rounded-xl p-4 ml-6">
-                  <p className="text-[15px] leading-relaxed text-heading whitespace-pre-wrap">
+                <div
+                  className="
+  bg-mutedBg dark:bg-neutral-800 
+  border border-border 
+  rounded-xl p-4 ml-6
+"
+                >
+                  <p className="text-[15px] leading-relaxed text-heading dark:text-neutral-200">
                     {lead.designer_remark || "No remarks provided"}
                   </p>
                 </div>
@@ -285,23 +307,43 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
           <motion.section
             variants={itemVariants}
-            className="bg-white rounded-2xl border border-border shadow-soft overflow-hidden"
+            className="
+  bg-white dark:bg-neutral-900 
+  rounded-2xl 
+  border border-border 
+  shadow-soft 
+  overflow-hidden
+"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b bg-mutedBg/50">
+            <div
+              className="
+  flex items-center justify-between 
+  px-5 py-3 
+  border-b border-border
+  bg-mutedBg/50 dark:bg-neutral-900/50
+"
+            >
               <div className="flex flex-col items-start">
                 <h1 className="text-lg font-semibold tracking-tight">
                   Current Site Photos
                 </h1>
                 <p className="text-xs text-gray-500 ">
-                  All the Lead Related Documents Which has been submitted during onboard.
+                  All the Lead Related Documents Which has been submitted during
+                  onboard.
                 </p>
               </div>
 
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-lg border-border hover:bg-mutedBg transition"
+                className="
+  rounded-lg 
+  border-border 
+  hover:bg-mutedBg dark:hover:bg-neutral-800 
+  dark:border-neutral-700
+  transition
+"
               >
                 <RefreshCcw size={15} />
                 Refresh
@@ -336,9 +378,18 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-14 px-6 border border-dashed border-border/60 rounded-xl bg-mutedBg/40">
+                <div
+                  className="
+                flex flex-col items-center justify-center 
+                py-14 px-6 
+                border border-dashed border-border/60 
+                rounded-xl 
+                bg-mutedBg/40 dark:bg-neutral-800/40
+                dark:border-neutral-700/40
+              "
+                >
                   <svg
-                    className="w-12 h-12 text-muted-foreground mb-3"
+                    className="w-12 h-12 text-muted-foreground dark:text-neutral-500 mb-3"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -351,11 +402,11 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     />
                   </svg>
 
-                  <p className="text-sm font-medium text-muted-foreground">
+                  <p className="text-sm font-medium text-muted-foreground dark:text-neutral-400">
                     No site photos uploaded
                   </p>
 
-                  <p className="text-xs text-subtle mt-1 tracking-tight">
+                  <p className="text-xs text-subtle dark:text-neutral-500 mt-1 tracking-tight">
                     Photos will appear here once uploaded
                   </p>
                 </div>

@@ -30,24 +30,24 @@ interface DocumentCardProps {
 const getFileIcon = (ext: string) => {
   switch (ext) {
     case "pdf":
-      return { icon: FileText, color: "from-red-500 to-red-600" };
+      return { icon: FileText };
     case "doc":
     case "docx":
-      return { icon: FileText, color: "from-blue-500 to-blue-600" };
+      return { icon: FileText };
     case "xls":
     case "xlsx":
-      return { icon: FileSpreadsheet, color: "from-green-500 to-green-600" };
+      return { icon: FileSpreadsheet };
     case "ppt":
     case "pptx":
-      return { icon: FileSpreadsheet, color: "from-orange-500 to-orange-600" };
+      return { icon: FileSpreadsheet };
     case "zip":
     case "rar":
-      return { icon: FileArchive, color: "from-yellow-500 to-yellow-600" };
+      return { icon: FileArchive };
     case "txt":
     case "md":
-      return { icon: FileCode, color: "from-gray-500 to-gray-600" };
+      return { icon: FileCode };
     default:
-      return { icon: FileType, color: "from-cyan-500 to-cyan-600" };
+      return { icon: FileType };
   }
 };
 
@@ -58,20 +58,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   status,
 }) => {
   const fileExt = doc.originalName?.split(".").pop()?.toLowerCase() || "file";
-  const { icon: Icon, color } = getFileIcon(fileExt);
-
-  const getCardStyle = () => {
-    switch (status?.toUpperCase()) {
-      case "APPROVED":
-        return "";
-      case "REJECTED":
-        return "";
-      case "PENDING":
-        return "";
-      default:
-        return "bg-card border-border hover:border-muted-foreground/20";
-    }
-  };
+  const { icon: Icon } = getFileIcon(fileExt);
 
   const getStatusLabel = () => {
     switch (status?.toUpperCase()) {
@@ -89,13 +76,13 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   const getDotColor = () => {
     switch (status?.toUpperCase()) {
       case "APPROVED":
-        return "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]";
+        return "bg-green-500";
       case "REJECTED":
-        return "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]";
+        return "bg-red-500";
       case "PENDING":
-        return "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]";
+        return "bg-blue-500";
       default:
-        return "bg-gray-400 shadow-[0_0_6px_rgba(156,163,175,0.6)]";
+        return "bg-neutral-400 dark:bg-neutral-600";
     }
   };
 
@@ -125,30 +112,63 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   return (
     <motion.div
       transition={{ duration: 0.25 }}
-      className={`group relative flex items-center justify-between gap-4 rounded-xl p-3 border shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden ${getCardStyle()}`}
+      className="
+        group relative flex items-center gap-4 rounded-xl p-4
+        border border-border 
+        bg-white dark:bg-neutral-900
+        hover:bg-muted/40 dark:hover:bg-neutral-800
+        transition-all duration-200
+      "
     >
       {/* 🗑 Delete Button */}
       {canDelete && (
         <button
           onClick={handleDelete}
-          className="absolute top-2 right-2 p-1 rounded-full dark:bg-red-950 border dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900 transition-all z-10"
-          title="Delete Document"
+          className="
+            absolute top-3 right-3 p-1
+            rounded-full border border-border
+            bg-white dark:bg-neutral-900 
+            hover:bg-muted dark:hover:bg-neutral-800
+            transition-colors
+          "
         >
-          <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+          <Trash2 className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
         </button>
       )}
 
       {/* 📄 File Icon */}
-      <div className="relative flex-shrink-0 w-20 h-20 rounded-lg p-2 flex items-center justify-center">
+      <div className="relative flex-shrink-0 w-20 h-20 p-2 flex items-center justify-center">
         <div
-          className={`relative w-14 h-16 rounded-md shadow-md transition-transform duration-300 group-hover:scale-110 bg-gradient-to-br ${color}`}
+          className="
+            relative w-18 h-19 rounded-lg 
+            border border-border 
+            bg-muted dark:bg-neutral-800 
+            flex items-center justify-center
+            transition-all duration-200 group-hover:scale-[1.03]
+          "
         >
-          <div className="absolute top-0 right-0 w-0 h-0 border-l-[12px] border-l-transparent border-t-[12px] border-t-white/30 rounded-tr-md"></div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Icon className="text-white/90" size={24} />
-          </div>
-          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-white/95 dark:bg-white/90 rounded">
-            <span className="text-[8px] font-black tracking-wider text-black">
+          {/* File icon */}
+          <Icon className="text-neutral-700 dark:text-neutral-300" size={22} />
+
+          {/* Corner fold */}
+          <div
+            className="
+              absolute top-0 right-0 w-0 h-0 
+              border-l-[10px] border-l-transparent
+              border-t-[10px] border-t-white/40 dark:border-t-neutral-700/40
+            "
+          />
+
+          {/* File extension tag */}
+          <div
+            className="
+              absolute -bottom-1.5 left-1/2 -translate-x-1/2 
+              px-2 py-[1px] rounded-md
+              bg-white dark:bg-neutral-900 
+              border border-border
+            "
+          >
+            <span className="text-[9px] font-semibold text-neutral-700 dark:text-neutral-300 tracking-wide">
               .{fileExt.toUpperCase()}
             </span>
           </div>
@@ -158,10 +178,10 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
       {/* 📁 File Info */}
       <div className="flex flex-col justify-between flex-1 min-w-0">
         <div>
-          <h3 className="text-sm font-semibold text-foreground truncate pr-6">
+          <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-200 truncate pr-6">
             {doc.originalName}
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
             {doc.created_at
               ? `Uploaded on ${formatDate(doc.created_at, { month: "short" })}`
               : "Uploaded date not available"}
@@ -169,43 +189,27 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
         </div>
 
         {/* 🔘 Actions + Status */}
-        <div className="flex items-center justify-between gap-3 mt-3">
+        <div className="flex items-end justify-between gap-3 mt-3">
           {/* 📥 Download Button */}
           <button
             onClick={handleDownload}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-blue-200 
-                       bg-blue-50 hover:bg-blue-100 text-blue-600 font-medium text-xs transition-all
-                       dark:border-blue-800 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 dark:text-blue-300"
-            title="Download File"
+            className="
+              flex items-center gap-1.5 px-3 py-1.5 rounded-md 
+              border border-border 
+              bg-muted/30 dark:bg-neutral-800/40 
+              text-neutral-700 dark:text-neutral-300 text-xs font-medium
+              hover:bg-muted transition dark:hover:bg-neutral-700
+            "
           >
             <Download className="w-4 h-4" />
-            <span>Download</span>
+            Download
           </button>
 
-          {/* 🟢 Animated Status */}
+          {/* 🟢 Status */}
           {getStatusLabel() && (
-            <div className="flex items-center gap-2 pr-1">
-              <motion.div
-                className={`w-2 h-2 rounded-full ${getDotColor()}`}
-                animate={{
-                  scale: [1, 1.25, 1],
-                  opacity: [0.8, 1, 0.8],
-                }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 1.6,
-                  ease: "easeInOut",
-                }}
-              />
-              <span
-                className={`text-[12px] font-semibold ${
-                  status === "APPROVED"
-                    ? "text-green-700 dark:text-green-400"
-                    : status === "REJECTED"
-                    ? "text-red-700 dark:text-red-400"
-                    : "text-blue-700 dark:text-blue-400"
-                }`}
-              >
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${getDotColor()}`} />
+              <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
                 {getStatusLabel()}
               </span>
             </div>
