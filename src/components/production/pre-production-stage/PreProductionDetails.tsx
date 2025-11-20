@@ -18,7 +18,6 @@ export default function PreProductionDetails({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const { data, isLoading, isError } = useOrderLoginByLead(vendorId, leadId);
 
-
   const {
     data: ClientRequiredCompletionDate,
     isLoading: ClientRequiredCompletionDateIsLoading,
@@ -46,63 +45,60 @@ export default function PreProductionDetails({
     },
   };
 
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-[#fff] dark:bg-[#0a0a0a]">
+      {/* -------- Client Required Completion Section (Exact Same UI) -------- */}
       <motion.div
-        className="w-full flex items-center justify-start gap-2"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        transition={{ duration: 0.3 }}
+        className="
+    flex items-center gap-3 
+    bg-muted/50 
+    dark:bg-neutral-900/50
+    border border-border 
+    rounded-xl 
+    px-4 py-3 
+    backdrop-blur-sm
+  "
       >
-        {/* Animated green circle */}
+        {/* Animated green dot */}
         <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="w-full h-full space-y-8 overflow-y-scroll"
-        >
-          {/* 🔹 Client Required Completion Section */}
-          <motion.div
-            className="flex items-center gap-3 bg-muted/40 border border-border rounded-lg px-4 py-2"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            {/* ✅ Animated green status dot */}
-            <motion.div
-              className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"
-              animate={{
-                scale: [1, 1.25, 1],
-                opacity: [0.8, 1, 0.8],
-              }}
-              transition={{
-                repeat: Infinity,
-                duration: 1.6,
-                ease: "easeInOut",
-              }}
-            />
+          className="
+      w-3 h-3 rounded-full 
+      bg-green-500 
+      shadow-[0_0_8px_rgba(34,197,94,0.6)]
+    "
+          animate={{
+            scale: [1, 1.25, 1],
+            opacity: [0.75, 1, 0.75],
+          }}
+          transition={{
+            repeat: Infinity,
+            duration: 1.6,
+            ease: "easeInOut",
+          }}
+        />
 
-            {/* ✅ Text + Date */}
-            <div className="flex flex-col">
-              <p className="text-xs font-semibold text-muted-foreground tracking-wide">
-                Client required delivery date
-              </p>
-              <span className="text-sm font-medium text-foreground mt-0.5">
-                {ClientRequiredCompletionDate?.client_required_order_login_complition_date
-                  ? new Date(
-                      ClientRequiredCompletionDate.client_required_order_login_complition_date
-                    ).toLocaleDateString("en-GB", {
-                      weekday: "long",
-                      day: "2-digit",
-                      month: "long",
-                      year: "numeric",
-                    })
-                  : "Not specified"}
-              </span>
-            </div>
-          </motion.div>
-        </motion.div>
+        {/* Label + Date */}
+        <div className="flex flex-col">
+          <p className="text-xs font-medium text-muted-foreground tracking-wide">
+            Client Required Delivery Date
+          </p>
+
+          <span className="text-sm font-semibold text-foreground">
+            {ClientRequiredCompletionDate?.client_required_order_login_complition_date
+              ? new Date(
+                  ClientRequiredCompletionDate.client_required_order_login_complition_date
+                ).toLocaleDateString("en-GB", {
+                  weekday: "long",
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                })
+              : "Not specified"}
+          </span>
+        </div>
       </motion.div>
 
       {orders.length === 0 ? (

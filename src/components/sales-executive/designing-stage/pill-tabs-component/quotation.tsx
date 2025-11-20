@@ -22,6 +22,8 @@ import { useDeleteDocument } from "@/api/leads";
 import DocumentCard from "@/components/utils/documentCard";
 import Loader from "@/components/utils/loader";
 import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
+import ComingSoon from "@/components/generics/ComingSoon";
 
 const QuotationTab = () => {
   const { leadId } = useDetails();
@@ -42,6 +44,19 @@ const QuotationTab = () => {
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
   const designQuotationDocs = data?.data?.documents || [];
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { duration: 0.3, staggerChildren: 0.05 },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+  };
 
   // ✅ Delete confirmation handler
   const handleConfirmDelete = () => {
@@ -76,18 +91,13 @@ const QuotationTab = () => {
     );
   }
 
-  // ✅ Show empty state
+  // ✅ Empty state
   if (!designQuotationDocs || designQuotationDocs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-[80vh] px-4">
-        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-          <Ban size={32} className="text-muted-foreground" />
-        </div>
-        <h3 className="font-semibold text-lg mb-2">No Quotations Found</h3>
-        <p className="text-xs text-muted-foreground text-center max-w-sm">
-          Quotation documents will appear here once they are added.
-        </p>
-      </div>
+      <ComingSoon
+        heading="No Quotations Found"
+        description="Quotation documents will appear here once they are added."
+      />
     );
   }
 
@@ -99,12 +109,29 @@ const QuotationTab = () => {
 
   return (
     <div>
-      <div className="border rounded-xl overflow-hidden">
+      {/* -------- Quotation Section (Matched UI) -------- */}
+      <motion.section
+        variants={itemVariants}
+        className="
+    bg-white dark:bg-neutral-900
+    rounded-2xl
+    border border-border
+    shadow-soft
+    overflow-hidden
+  "
+      >
         {/* Header */}
-        <div className="flex items-center justify-between bg-muted px-4 py-2 border-b">
+        <div
+          className="
+      flex items-center justify-between
+      px-5 py-3
+      border-b border-border
+      bg-mutedBg/50 dark:bg-neutral-900/50
+    "
+        >
           <div className="flex items-center gap-2">
             <Images size={20} />
-            <h1 className="text-base font-semibold flex items-center gap-1">
+            <h1 className="text-lg font-semibold tracking-tight flex items-center gap-1">
               Quotation
               <span className="text-xs font-medium text-muted-foreground">
                 ({designQuotationDocs.length}{" "}
@@ -113,29 +140,44 @@ const QuotationTab = () => {
             </h1>
           </div>
 
-          <Button variant="outline" size="sm" className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-1"
+          >
             <RefreshCcw size={15} />
             Refresh
           </Button>
         </div>
 
-        {/* Documents Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-2">
-          {designQuotationDocs.map((doc: any) => (
-            <DocumentCard
-              key={doc.id}
-              doc={{
-                id: doc.id,
-                originalName: doc.doc_og_name,
-                created_at: doc.created_at,
-                signedUrl: doc.signedUrl,
-              }}
-              canDelete={canDelete}
-              onDelete={(id) => setConfirmDelete(id)}
-            />
-          ))}
+        {/* Body */}
+        <div className="p-6">
+          {designQuotationDocs.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {designQuotationDocs.map((doc: any) => (
+                <DocumentCard
+                  key={doc.id}
+                  doc={{
+                    id: doc.id,
+                    originalName: doc.doc_og_name,
+                    created_at: doc.created_at,
+                    signedUrl: doc.signedUrl,
+                  }}
+                  canDelete={canDelete}
+                  onDelete={(id) => setConfirmDelete(id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10">
+              <Images size={42} className="text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">
+                No quotation documents found.
+              </p>
+            </div>
+          )}
         </div>
-      </div>
+      </motion.section>
 
       {/* ✅ Delete confirmation modal */}
       <AlertDialog

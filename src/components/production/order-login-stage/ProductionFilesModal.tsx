@@ -111,19 +111,30 @@ export default function ProductionFilesSection({
   const canDelete = canUploadOrDeleteOrderLogin(userType, leadStatus);
 
   return (
-    <div className="border h-full rounded-lg overflow-y-auto bg-background">
-      {/* Header */}
-      <div className="px-6 py-4 border-b bg-muted/20 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <FolderOpen className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold">Production Files</h2>
+    <div className="border h-full rounded-lg overflow-y-auto bg-background shadow-sm">
+      {/* -------------------------------- HEADER -------------------------------- */}
+      <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2">
+            <FolderOpen className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold tracking-tight">
+              Production Files
+            </h2>
+          </div>
+          <p className="text-xs text-muted-foreground ml-7">
+            Upload and manage production files associated with this lead.
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Upload and manage production files related to this lead.
-        </p>
+
+        {hasFiles && (
+          <span className="text-xs text-muted-foreground">
+            {productionFiles.length} File
+            {productionFiles.length > 1 && "s"}
+          </span>
+        )}
       </div>
 
-      {/* Upload Section */}
+      {/* -------------------------------- UPLOAD AREA -------------------------------- */}
       {canDelete && (
         <div className="p-6 border-b space-y-4">
           <FileUploadField
@@ -156,18 +167,12 @@ export default function ProductionFilesSection({
         </div>
       )}
 
-      {/* Files List */}
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-3">
-          <h4 className="text-sm font-semibold text-foreground">
+      {/* -------------------------------- FILE LIST SECTION -------------------------------- */}
+      <div className="p-6 space-y-4">
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-sm font-semibold tracking-tight">
             Uploaded Files
           </h4>
-          {hasFiles && (
-            <span className="text-xs text-muted-foreground">
-              {productionFiles.length} file
-              {productionFiles.length > 1 ? "s" : ""}
-            </span>
-          )}
         </div>
 
         {isLoading ? (
@@ -176,24 +181,28 @@ export default function ProductionFilesSection({
             Loading files...
           </div>
         ) : !hasFiles ? (
-          <div className="p-8 border border-dashed rounded-lg flex flex-col items-center justify-center text-center bg-muted/30">
-            <FolderOpen className="w-10 h-10 text-muted-foreground mb-2" />
+          <div className="p-10 border border-dashed rounded-xl flex flex-col items-center justify-center text-center bg-muted/40">
+            <FolderOpen className="w-10 h-10 text-muted-foreground mb-3" />
             <p className="text-sm font-medium text-muted-foreground">
               No production files uploaded yet.
             </p>
+            <p className="text-xs text-muted-foreground">
+              Start by uploading your CAD, Pytha, or related files.
+            </p>
           </div>
         ) : (
-          <ScrollArea className="max-h-[400px] mt-2 pr-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-2">
+          <ScrollArea className="max-h-[420px] pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
               {productionFiles.map((doc: any) => (
                 <DocumentCard
+                  key={doc.id}
                   doc={{
                     id: doc.id,
                     originalName: doc.doc_og_name,
                     signedUrl: doc.signedUrl,
                   }}
-                  onDelete={(id) => setConfirmDelete(id)}
                   canDelete={canDelete}
+                  onDelete={(id) => setConfirmDelete(id)}
                 />
               ))}
             </div>
@@ -201,6 +210,7 @@ export default function ProductionFilesSection({
         )}
       </div>
 
+      {/* -------------------------------- DELETE CONFIRMATION -------------------------------- */}
       <AlertDialog
         open={!!confirmDelete}
         onOpenChange={() => setConfirmDelete(null)}
@@ -210,7 +220,7 @@ export default function ProductionFilesSection({
             <AlertDialogTitle>Delete Document?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. The selected document will be
-              permanently removed from the system.
+              permanently deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

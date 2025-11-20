@@ -4,9 +4,7 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useAppSelector } from "@/redux/store";
-import {
-  useFinalMeasurementLeadById,
-} from "@/hooks/final-measurement/use-final-measurement";
+import { useFinalMeasurementLeadById } from "@/hooks/final-measurement/use-final-measurement";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,7 +46,10 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   );
 
   // 🧩 --- Data Hook ---
-  const { data, isLoading, error } = useFinalMeasurementLeadById(vendorId, leadId);
+  const { data, isLoading, error } = useFinalMeasurementLeadById(
+    vendorId,
+    leadId
+  );
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
@@ -111,14 +112,29 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="border rounded-lg w-full h-full p-6 space-y-8 overflow-y-auto"
+      className="
+    w-full h-full 
+    py-4 space-y-4
+    overflow-y-auto
+    bg-[#fff] dark:bg-[#0a0a0a]
+  "
     >
-      {/* -------- Site Photos Section -------- */}
-      <div className="border rounded-xl overflow-hidden">
-        <SectionHeader title="Current Site Photos" icon={<Images size={20} />} />
+      {/* -------- Current Site Photos -------- */}
+      <div
+        className="
+      bg-white dark:bg-neutral-900
+      rounded-2xl 
+      border border-border 
+      overflow-hidden
+    "
+      >
+        <SectionHeader
+          title="Current Site Photos"
+          icon={<Images size={20} />}
+        />
 
-        <motion.div variants={itemVariants} className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <motion.div variants={itemVariants} className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {sitePhotos.length > 0 ? (
               sitePhotos.map((photo, index) => (
                 <ImageComponent
@@ -139,8 +155,8 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
                 />
               ))
             ) : (
-              <div className="flex flex-col items-center justify-center py-8">
-                <FileText size={40} className="text-muted-foreground mb-3" />
+              <div className="flex flex-col items-center justify-center py-14">
+                <FileText size={42} className="text-muted-foreground mb-3" />
                 <p className="text-sm text-muted-foreground">
                   No site photos uploaded yet.
                 </p>
@@ -150,13 +166,23 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
         </motion.div>
       </div>
 
-      {/* -------- Measurement Documents Section -------- */}
+      {/* -------- Measurement Documents -------- */}
       {measurementDocs.length > 0 && (
-        <div className="border rounded-xl overflow-hidden">
-          <SectionHeader title="Measurement Documents" icon={<FileText size={20} />} />
+        <div
+          className="
+        bg-white dark:bg-neutral-900
+        rounded-2xl 
+        border border-border 
+        overflow-hidden
+      "
+        >
+          <SectionHeader
+            title="Measurement Documents"
+            icon={<FileText size={20} />}
+          />
 
-          <motion.div variants={itemVariants} className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <motion.div variants={itemVariants} className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {measurementDocs.map((doc) => (
                 <DocumentCard
                   key={doc.id}
@@ -175,13 +201,42 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
         </div>
       )}
 
-      {/* -------- Discussion Note Section -------- */}
-      
-       
-        <div className="p-4 bg-muted border-t text-sm min-h-[60px] space-y-3 border rounded-xl overflow-hidden">
-          {final_desc_note || "No description provided."}
+      {/* -------- Discussion Note -------- */}
+      <div
+        className="
+      bg-white dark:bg-neutral-900
+      rounded-2xl 
+      border border-border
+      overflow-hidden
+    "
+      >
+        <div
+          className="
+        px-5 py-3 
+        border-b border-border
+        bg-mutedBg/50 dark:bg-neutral-900/50
+      "
+        >
+          <h2 className="text-base font-semibold tracking-tight">
+            Discussion Note
+          </h2>
         </div>
 
+        <div className="p-5">
+          <div
+            className="
+          bg-mutedBg dark:bg-neutral-800
+          border border-border
+          rounded-xl
+          p-4 
+          text-sm leading-relaxed 
+          min-h-[70px] 
+        "
+          >
+            {final_desc_note || "No description provided."}
+          </div>
+        </div>
+      </div>
 
       {/* -------- Image Carousel Modal -------- */}
       <ImageCarouselModal
@@ -204,12 +259,16 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Document?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The selected file will be permanently removed from the system.
+              This action cannot be undone. The selected file will be
+              permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete} disabled={deleting}>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+            >
               {deleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>

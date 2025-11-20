@@ -31,7 +31,7 @@ interface OrderLoginDetailsProps {
   leadId: number;
   accountId: number;
   name?: string;
-   forceDefaultTab?: string;
+  forceDefaultTab?: string;
 }
 
 const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
@@ -216,97 +216,112 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   };
 
   return (
-    <div className="space-y-6 overflow-y-scroll h-full">
+    <div className="space-y-6 overflow-y-scroll h-full bg-[#fff] dark:bg-[#0a0a0a]">
       <motion.div
-        className=" w-full flex items-center justify-start gap-2"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="w-full space-y-4"
       >
-        {/* Animated green circle */}
+        {/* -------- Client Required Completion Section -------- */}
         <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="w-full h-full space-y-8 overflow-y-scroll"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="
+      flex items-center gap-3 
+      bg-muted/50 
+      dark:bg-neutral-900/50
+      border border-border 
+      rounded-xl 
+      px-4 py-3 
+      backdrop-blur-sm
+    "
         >
-          {/* 🔹 Client Required Completion Section */}
+          {/* Animated green indicator */}
           <motion.div
-            className="flex items-center gap-3 bg-muted/40 border border-border rounded-lg px-4 py-2"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            {/* ✅ Animated green status dot */}
-            <motion.div
-              className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"
-              animate={{
-                scale: [1, 1.25, 1],
-                opacity: [0.8, 1, 0.8],
-              }}
-              transition={{
-                repeat: Infinity,
-                duration: 1.6,
-                ease: "easeInOut",
-              }}
-            />
+            className="
+        w-3 h-3 rounded-full 
+        bg-green-500 
+        shadow-[0_0_8px_rgba(34,197,94,0.6)]
+      "
+            animate={{
+              scale: [1, 1.25, 1],
+              opacity: [0.75, 1, 0.75],
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: 1.6,
+              ease: "easeInOut",
+            }}
+          />
 
-            {/* ✅ Text + Date */}
-            <div className="flex flex-col">
-              <p className="text-xs font-semibold text-muted-foreground tracking-wide">
-                Client required delivery date
-              </p>
-              <span className="text-sm font-medium text-foreground mt-0.5">
-                {data?.client_required_order_login_complition_date
-                  ? new Date(
-                      data.client_required_order_login_complition_date
-                    ).toLocaleDateString("en-GB", {
-                      weekday: "long",
-                      day: "2-digit",
-                      month: "long",
-                      year: "numeric",
-                    })
-                  : "Not specified"}
-              </span>
-            </div>
-          </motion.div>
+          {/* Text + Date */}
+          <div className="flex flex-col">
+            <p className="text-xs font-medium text-muted-foreground tracking-wide">
+              Client Required Delivery Date
+            </p>
+
+            <span className="text-sm font-semibold text-foreground">
+              {data?.client_required_order_login_complition_date
+                ? new Date(
+                    data.client_required_order_login_complition_date
+                  ).toLocaleDateString("en-GB", {
+                    weekday: "long",
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                  })
+                : "Not specified"}
+            </span>
+          </div>
         </motion.div>
       </motion.div>
       <SmoothTab
         defaultTabId={forceDefaultTab ? "order-login" : "approved-docs"}
         className="-mt-3"
-        items={[  
+        items={[
           {
             id: "approved-docs",
             title: "Approved Documents",
-            color: "bg-blue-500 hover:bg-purple-600",
+            color: "bg-zinc-800 hover:bg-zinc-900",
             cardContent: <ApprovedDocsSection leadId={leadId} />,
           },
           {
             id: "order-login",
             title: "Order Login",
-            color: "bg-green-500 hover:bg-blue-600",
+            color: "bg-zinc-800 hover:bg-zinc-900",
             cardContent: (
-              <div className="overflow-y-auto h-full space-y-6">
+              <div className="overflow-y-auto h-full space-y-4 p-1 bg-[#fff] dark:bg-[#0a0a0a]">
+          
+                {/* ---------------- HEADER ---------------- */}
                 <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="text-xl font-semibold">Order Login</h2>
+                  <div className="space-y-0">
+                    <h2 className="text-xl font-semibold tracking-tight">Order Login</h2>
+          
+                    {/* ⭐ Description under title */}
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Fill out item-level breakups and assign responsibilities before order login is finalized.
+                    </p>
                   </div>
-
+          
+                  {/* Right Button */}
                   {canAccessSaveButton && (
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        size="sm"
-                        onClick={handleSubmitAll}
-                        disabled={isPending}
-                      >
-                        {isPending ? "Processing..." : "Save Order Login"}
-                      </Button>
-                    </div>
+                    <Button
+                      size="lg"
+                      onClick={handleSubmitAll}
+                      disabled={isPending}
+                      className="min-w-[130px]"
+                    >
+                      {isPending ? "Processing..." : "Save Order Login"}
+                    </Button>
                   )}
                 </div>
-
-                <div className="grid grid-cols-3 gap-4">
+          
+                {/* ---------------- GRID OF BREAKUPS ---------------- */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          
+                  {/* Default Cards */}
                   {defaultCards.map(({ title }) => (
                     <FileBreakUpField
                       key={`default-${title}`}
@@ -323,7 +338,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                       isMandatory={mandatoryTitles.includes(title)}
                     />
                   ))}
-
+          
+                  {/* Extra Section From API */}
                   {extraFromApi.map((item: any) => (
                     <FileBreakUpField
                       key={`extra-${item.id ?? item.item_type}`}
@@ -340,22 +356,28 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                       isMandatory={false}
                     />
                   ))}
-
-                  {/* Add More Section Card */}
-
+          
+                  {/* ---------------- ADD NEW SECTION CARD ---------------- */}
                   {canAccessButtons && (
-                    <div className="rounded-xl border-2 border-dashed border-primary/30 p-4 bg-primary/5 hover:bg-primary/10 transition-colors flex flex-col items-center justify-center gap-3 min-h-[180px] cursor-pointer group">
-                      <div className="rounded-full bg-primary/10 p-3 group-hover:bg-primary/20 transition-colors">
+                    <div
+                      className="rounded-xl border-2 border-dashed border-primary/30 p-5 bg-primary/5 
+                                 hover:bg-primary/10 transition-all cursor-pointer group 
+                                 flex flex-col items-center justify-center gap-3 min-h-[190px]"
+                    >
+                      <div className="rounded-full bg-primary/10 p-3 
+                                      group-hover:bg-primary/20 transition-colors">
                         <Plus className="w-6 h-6 text-primary" />
                       </div>
+          
                       <div className="text-center">
-                        <p className="font-medium text-sm text-primary mb-1">
+                        <p className="font-medium text-sm text-primary">
                           Add New Section
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Create custom breakup category
+                          Create a new breakup category for this order
                         </p>
                       </div>
+          
                       <AddSectionModal
                         users={users}
                         leadId={leadId}
@@ -375,7 +397,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           {
             id: "production-files",
             title: "Production Files",
-            color: "bg-purple-500 hover:bg-emerald-600",
+            color: "bg-zinc-800 hover:bg-zinc-900",
             cardContent: (
               <ProductionFilesSection leadId={leadId} accountId={accountId} />
             ),

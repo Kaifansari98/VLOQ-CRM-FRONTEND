@@ -81,6 +81,7 @@ import {
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
 
 export default function DesigningStageLead() {
   const router = useRouter();
@@ -184,7 +185,7 @@ export default function DesigningStageLead() {
       <AppSidebar />
       <SidebarInset className="w-full h-full flex flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b bg-background">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
@@ -212,6 +213,25 @@ export default function DesigningStageLead() {
             </Breadcrumb>
           </div>
           <div className="flex items-center space-x-2">
+            <div>
+              {/* Move to Booking */}
+              {!canMoveToBooking ? (
+                <CustomeTooltip
+                  truncateValue={
+                    <div className="flex items-center opacity-50 cursor-not-allowed px-2">
+                      <ClipboardCheck className="mr-2 h-4 w-4" />
+                      Move To Booking
+                    </div>
+                  }
+                  value="Requires at least 1 Quotation and 1 Design"
+                />
+              ) : (
+                <Button size="sm" onClick={() => setBookingOpenLead(true)}>
+                  <ClipboardCheck className="h-3 w-3" />
+                  Move To Booking
+                </Button>
+              )}
+            </div>
             <Button size="sm" onClick={() => setAssignOpen(true)}>
               Assign Task
             </Button>
@@ -347,25 +367,6 @@ export default function DesigningStageLead() {
                 </TabsList>
                 <ScrollBar orientation="horizontal" />
               </div>
-              <div>
-                {/* Move to Booking */}
-                {!canMoveToBooking ? (
-                  <CustomeTooltip
-                    truncateValue={
-                      <div className="flex items-center opacity-50 cursor-not-allowed px-2">
-                        <ClipboardCheck className="mr-2 h-4 w-4" />
-                        Move To Booking
-                      </div>
-                    }
-                    value="Requires at least 1 Quotation and 1 Design"
-                  />
-                ) : (
-                  <Button onClick={() => setBookingOpenLead(true)}>
-                    <ClipboardCheck className="h-4 w-4" />
-                    Move To Booking
-                  </Button>
-                )}
-              </div>
             </div>
           </ScrollArea>
 
@@ -385,9 +386,7 @@ export default function DesigningStageLead() {
           </TabsContent>
 
           <TabsContent value="team">
-            <p className="text-center text-muted-foreground py-4">
-              Payment Information Content
-            </p>
+            <PaymentComingSoon />
           </TabsContent>
         </Tabs>
 
