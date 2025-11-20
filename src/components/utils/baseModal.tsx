@@ -17,6 +17,7 @@ interface BaseModalProps {
   description?: string;
   children: ReactNode;
   size?: "sm" | "md" | "lg" | "xl" | "smd";
+  icon?: ReactNode;                   // icon is optional
 }
 
 const sizeClasses = {
@@ -34,21 +35,35 @@ const BaseModal: React.FC<BaseModalProps> = ({
   description,
   children,
   size = "lg",
+  icon,
 }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`${sizeClasses[size]} max-h-[90vh] p-0 gap-0`}>
+      <DialogContent
+        className={`${sizeClasses[size]} max-h-[90vh] p-0 gap-0 overflow-hidden`}
+      >
         {(title || description) && (
-          <DialogHeader className="flex items-start justify-between px-6 py-4 border-b">
-            {title && <DialogTitle>{title}</DialogTitle>}
-            {description && (
-              <DialogDescription className="text-sm text-muted-foreground">
-                {description}
-              </DialogDescription>
-            )}
+          <DialogHeader className="flex flex-row items-center gap-4 px-6 py-4 border-b bg-muted/30">
+            {icon}
+
+            <div className="space-y-1 overflow-hidden">
+              {title && (
+                <DialogTitle className="text-base font-semibold leading-tight truncate">
+                  {title}
+                </DialogTitle>
+              )}
+              {description && (
+                <DialogDescription className="text-sm text-muted-foreground leading-snug truncate">
+                  {description}
+                </DialogDescription>
+              )}
+            </div>
           </DialogHeader>
         )}
-        <ScrollArea className="max-h-[calc(90vh-80px)]">{children}</ScrollArea>
+
+        <ScrollArea className="max-h-[calc(90vh-80px)] p-0 m-0">
+          {children}
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

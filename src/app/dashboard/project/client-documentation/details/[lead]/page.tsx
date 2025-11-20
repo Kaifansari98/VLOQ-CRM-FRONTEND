@@ -99,8 +99,10 @@ export default function ClientDocumentationLeadDetails() {
   const [openDelete, setOpenDelete] = useState(false);
   const [openClientDocModal, setOpenClientDocModal] = useState(false);
 
-  const [activeTab, setActiveTab] = useState("details");
-  const [prevTab, setPrevTab] = useState("details");
+  const [activeTab, setActiveTab] = useState(
+    userType === "sales-executive" ? "todo" : "details"
+  );
+  const [previousTab, setPreviousTab] = useState("details");
 
   // ACTIVITY STATUS — Only On Hold
   const [activityModalOpen, setActivityModalOpen] = useState(false);
@@ -118,12 +120,10 @@ export default function ClientDocumentationLeadDetails() {
 
   // Auto-open documentation modal
   useEffect(() => {
-    if (
-      canUploadClientDocumentation(userType) &&
-      userType?.toLowerCase() !== "admin" &&
-      userType?.toLowerCase() !== "super-admin"
-    ) {
+    if (userType === "sales-executive") {
+      setPreviousTab("details");
       setOpenClientDocModal(true);
+      setActiveTab("todo");
     }
   }, [userType]);
 
@@ -257,12 +257,9 @@ export default function ClientDocumentationLeadDetails() {
           value={activeTab}
           onValueChange={(val) => {
             if (val === "todo") {
-              if (!canUploadClientDocumentation(userType)) {
-                toast.error("You don’t have permission.");
-                return;
-              }
-              setPrevTab(activeTab);
+              setPreviousTab(activeTab);
               setOpenClientDocModal(true);
+              setActiveTab("todo");
               return;
             }
             setActiveTab(val);
@@ -284,7 +281,7 @@ export default function ClientDocumentationLeadDetails() {
               ) : (
                 <CustomeTooltip
                   truncateValue={
-                    <div className="opacity-50 cursor-not-allowed px-2 py-1.5 flex text-sm">
+                    <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
                       <PanelsTopLeftIcon
                         size={16}
                         className="mr-1 opacity-60"
@@ -292,7 +289,7 @@ export default function ClientDocumentationLeadDetails() {
                       To-Do Task
                     </div>
                   }
-                  value="You don’t have permission."
+                  value="Only Sales Executive can access this tab"
                 />
               )}
 
@@ -344,7 +341,7 @@ export default function ClientDocumentationLeadDetails() {
           open={openClientDocModal}
           onOpenChange={(open) => {
             setOpenClientDocModal(open);
-            if (!open) setActiveTab(prevTab);
+            if (!open) setActiveTab(previousTab);
           }}
           data={{ id: leadIdNum, ...lead, accountId }}
         />

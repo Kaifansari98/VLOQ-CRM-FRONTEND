@@ -96,7 +96,10 @@ export default function FinalMeasurementLeadDetails() {
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState(
+    userType === "site-supervisor" ? "todo" : "details"
+  );
+  const [previousTab, setPreviousTab] = useState("details");
   const [openFinalDocModal, setOpenFinalDocModal] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
 
@@ -106,14 +109,11 @@ export default function FinalMeasurementLeadDetails() {
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
 
-  // Auto-open FinalMeasurementModal
   useEffect(() => {
-    if (
-      canUploadFinalMeasurements(userType) &&
-      userType?.toLowerCase() !== "admin" &&
-      userType?.toLowerCase() !== "super-admin"
-    ) {
+    if (userType === "site-supervisor") {
+      setPreviousTab("details");
       setOpenFinalDocModal(true);
+      setActiveTab("todo");
     }
   }, [userType]);
 
@@ -255,7 +255,9 @@ export default function FinalMeasurementLeadDetails() {
           value={activeTab}
           onValueChange={(val) => {
             if (val === "todo") {
+              setPreviousTab(activeTab);
               setOpenFinalDocModal(true);
+              setActiveTab("todo");
               return;
             }
             setActiveTab(val);
@@ -275,13 +277,18 @@ export default function FinalMeasurementLeadDetails() {
                   To-Do Task
                 </TabsTrigger>
               ) : (
-                <Button
-                  size="sm"
-                  disabled
-                  className="bg-gray-400 cursor-not-allowed text-white"
-                >
-                  Order Login
-                </Button>
+                <CustomeTooltip
+                  truncateValue={
+                    <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                      <PanelsTopLeftIcon
+                        size={16}
+                        className="mr-1 opacity-60"
+                      />
+                      To-Do Task
+                    </div>
+                  }
+                  value="Only Site Supervisor can access this tab"
+                />
               )}
 
               <TabsTrigger value="history">
@@ -298,7 +305,7 @@ export default function FinalMeasurementLeadDetails() {
           </ScrollArea>
 
           {/* CONTENT */}
-          <TabsContent value="details" >
+          <TabsContent value="details">
             <LeadDetailsUtil
               status="booking"
               leadId={leadIdNum}
@@ -333,7 +340,7 @@ export default function FinalMeasurementLeadDetails() {
             open={openFinalDocModal}
             onOpenChange={(open) => {
               setOpenFinalDocModal(open);
-              if (!open) setActiveTab("details");
+              if (!open) setActiveTab(previousTab);
             }}
             data={normalizedLead}
           />

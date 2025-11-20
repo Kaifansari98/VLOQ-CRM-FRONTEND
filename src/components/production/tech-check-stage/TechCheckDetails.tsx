@@ -112,8 +112,6 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
     return documentExtensions.includes(ext || "");
   });
 
-  
-
   const pythaDocuments = pythaDocs.filter((file) => {
     const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
     return documentExtensions.includes(ext || "");
@@ -131,9 +129,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
   ).length;
 
   // ✅ Permissions
-  const canDelete =
-    userType === "admin" ||
-    userType === "super-admin";
+  const canDelete = userType === "admin" || userType === "super-admin";
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {

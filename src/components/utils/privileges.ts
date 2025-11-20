@@ -34,6 +34,12 @@ export const canUploadISM = (userType: string | undefined) => {
   return allowCreateRoles.includes(userType.toLowerCase());
 };
 
+export const canAccessDessingTodoTab = (userType: string | undefined) => {
+  if (!userType) return false;
+  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  return allowCreateRoles.includes(userType.toLowerCase());
+};
+
 export const canMoveToBookingStage = (userType: string | undefined) => {
   if (!userType) return false;
   const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
@@ -427,5 +433,17 @@ export function canViewAndWorkFinalHandoverStage(
     role === "admin" ||
     role === "super-admin" ||
     (role === "site-supervisor" && stage === "final-handover-stage")
+  );
+}
+
+export function canDoERDMiscellaneousDate(
+  role: string,
+  stage: string
+): boolean {
+  // can work and view both and factory work only final-handover-stage.
+  return (
+    role === "admin" ||
+    role === "super-admin" ||
+    (role === "factory" && stage === "under-installation-stage")
   );
 }
