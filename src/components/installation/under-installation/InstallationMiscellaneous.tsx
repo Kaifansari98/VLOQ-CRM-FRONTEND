@@ -57,6 +57,9 @@ import { useAppSelector } from "@/redux/store";
 import TextSelectPicker from "@/components/TextSelectPicker";
 import { useOrderLoginSummary } from "@/api/installation/useDispatchStageLeads";
 import RemarkTooltip from "@/components/origin-tooltip";
+import { canViewAndWorkUnderInstallationStage } from "@/components/utils/privileges";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+
 
 interface InstallationMiscellaneousProps {
   vendorId: number;
@@ -70,6 +73,7 @@ export default function InstallationMiscellaneous({
   accountId,
 }: InstallationMiscellaneousProps) {
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
 
   const { data: miscTypes = [], isLoading: loadingTypes } =
     useMiscTypes(vendorId);
@@ -97,6 +101,8 @@ export default function InstallationMiscellaneous({
   const createMutation = useCreateMiscellaneousEntry();
   const { data: entries, refetch } = useMiscellaneousEntries(vendorId, leadId);
   const updateERDMutation = useUpdateMiscERD();
+   const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
 
   const { data: orderLoginSummary = [], isLoading: loadingSummary } =
     useOrderLoginSummary(vendorId, leadId);
@@ -189,6 +195,8 @@ export default function InstallationMiscellaneous({
     label: type.name,
   }));
 
+  const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
+
   return (
     <div className="mt-2 px-2">
       <div className="flex items-center justify-between mb-4">
@@ -200,10 +208,12 @@ export default function InstallationMiscellaneous({
           </p>
         </div>
 
-        <Button onClick={() => setIsAddModalOpen(true)} size="sm">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Miscellaneous
-        </Button>
+        {canWork && (
+          <Button onClick={() => setIsAddModalOpen(true)} size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Miscellaneous
+          </Button>
+        )}
       </div>
 
       {/* Table View */}

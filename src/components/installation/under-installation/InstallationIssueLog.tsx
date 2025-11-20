@@ -44,6 +44,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import RemarkTooltip from "@/components/origin-tooltip";
+import { canViewAndWorkUnderInstallationStage } from "@/components/utils/privileges";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 
 interface InstallationIssueLogProps {
   vendorId: number;
@@ -58,6 +60,7 @@ export default function InstallationIssueLog({
 }: InstallationIssueLogProps) {
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
 
+  const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [issueTypeOptions, setIssueTypeOptions] = useState<Option[]>([]);
   const [teamOptions, setTeamOptions] = useState<Option[]>([]);
@@ -68,6 +71,8 @@ export default function InstallationIssueLog({
   const [selectedTeams, setSelectedTeams] = useState<Option[]>([]);
   const [issueDescription, setIssueDescription] = useState("");
   const [issueImpact, setIssueImpact] = useState("");
+   const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
 
   const [viewModal, setViewModal] = useState<{
     open: boolean;
@@ -159,6 +164,8 @@ export default function InstallationIssueLog({
     });
   };
 
+  const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
+
   const getImpactBadge = (impact: string) => {
     const lowerImpact = impact.toLowerCase();
     if (lowerImpact.includes("critical") || lowerImpact.includes("very high")) {
@@ -193,10 +200,12 @@ export default function InstallationIssueLog({
 
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Issue Log
-            </Button>
+            {canWork && (
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Issue Log
+              </Button>
+            )}
           </DialogTrigger>
 
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

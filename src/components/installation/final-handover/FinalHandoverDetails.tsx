@@ -51,6 +51,8 @@ import {
 import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { canViewAndWorkFinalHandoverStage } from "@/components/utils/privileges";
 
 interface FinalHandoverProps {
   leadId: number;
@@ -86,6 +88,8 @@ export default function FinalHandover({
   const [startIndex, setStartIndex] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [carouselImages, setCarouselImages] = useState<any[]>([]);
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
 
   const { data: documents, isLoading } = useGetFinalHandoverDocuments(
     vendorId,
@@ -96,6 +100,7 @@ export default function FinalHandover({
     useDeleteDocument(leadId);
 
   const canDelete = userType === "admin" || userType === "super-admin";
+  const canWork = canViewAndWorkFinalHandoverStage(userType, leadStatus);
 
   const sections: DocumentSection[] = [
     {
@@ -422,20 +427,26 @@ export default function FinalHandover({
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-4"
                 >
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold">Upload New Files</h4>
-                    {selectedFiles.length > 0 && (
-                      <Badge variant="secondary">
-                        {selectedFiles.length} selected
-                      </Badge>
-                    )}
-                  </div>
-                  <FileUploadField
-                    value={selectedFiles}
-                    onChange={setSelectedFiles}
-                    accept={activeSection.accept}
-                    multiple
-                  />
+                  {canWork && (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold">
+                          Upload New Files
+                        </h4>
+                        {selectedFiles.length > 0 && (
+                          <Badge variant="secondary">
+                            {selectedFiles.length} selected
+                          </Badge>
+                        )}
+                      </div>
+                      <FileUploadField
+                        value={selectedFiles}
+                        onChange={setSelectedFiles}
+                        accept={activeSection.accept}
+                        multiple
+                      />
+                    </>
+                  )}
                   {selectedFiles.length > 0 && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
@@ -463,8 +474,6 @@ export default function FinalHandover({
                     </motion.div>
                   )}
                 </motion.div>
-
-                <Separator />
 
                 {/* Existing Files */}
                 <div className="space-y-4">

@@ -17,7 +17,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,6 +60,7 @@ import {
   canEditLeadButton,
   canDeleteLeadButton,
   canReassignLeadButton,
+  canAccessTodoTaskTabDispatchStage,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
@@ -81,7 +82,8 @@ export default function DispatchPlanningLeadDetails() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth?.user?.user_type.user_type);
+    (state) => state.auth?.user?.user_type.user_type
+  );
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -113,6 +115,14 @@ export default function DispatchPlanningLeadDetails() {
   const canEdit = canEditLeadButton(userType);
   const deleteLeadMutation = useDeleteLead();
 
+  // 🔥 Auto-open To-Do modal for Sales Executive
+  useEffect(() => {
+    if (userType === "factory") {
+      setPreviousTab("details"); // so closing modal returns to details
+      setAssignOpen(true); // open modal on load
+      setActiveTab("todo"); // switch tab to To-Do
+    }
+  }, [userType]);
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
       toast.error("Missing vendor or user info!");
@@ -241,6 +251,7 @@ export default function DispatchPlanningLeadDetails() {
             if (val === "todo") {
               setPreviousTab(activeTab);
               setAssignOpen(true);
+              setActiveTab("todo");
               return;
             }
             setActiveTab(val);
@@ -258,7 +269,7 @@ export default function DispatchPlanningLeadDetails() {
                   </TabsTrigger>
 
                   {/* ✅ To-Do Task (Conditional Access) */}
-                  {canDoDispatchPlanning(userType) ? (
+                  {canAccessTodoTaskTabDispatchStage(userType) ? (
                     <TabsTrigger
                       value="todo"
                       onClick={() => setAssignOpen(true)}
@@ -280,7 +291,7 @@ export default function DispatchPlanningLeadDetails() {
                           To-Do Task
                         </div>
                       }
-                      value="Only Admin or Sales Executive can access this tab"
+                      value="Only factory can access this tab"
                     />
                   )}
 
@@ -339,7 +350,10 @@ export default function DispatchPlanningLeadDetails() {
 
         <AssignTaskSiteMeasurementForm
           open={assignOpen}
-          onOpenChange={setAssignOpen}
+          onOpenChange={(open) => {
+            setAssignOpen(open);
+            if (!open) setActiveTab(previousTab);
+          }}
           onlyFollowUp={true}
           data={{ id: leadIdNum, name: "" }}
         />

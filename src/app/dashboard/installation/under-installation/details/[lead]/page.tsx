@@ -77,6 +77,7 @@ import {
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import {
+  canAccessTodoTaskTabUnderInstallationStage,
   canDeleteLeadButton,
   canEditLeadButton,
   canReassignLeadButton,
@@ -115,7 +116,9 @@ export default function UnderInstallationLeadDetails() {
 
   const updateStatusMutation = useUpdateActivityStatus();
 
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState(
+    userType === "site-supervisor" ? "todo" : "details"
+  );
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -128,6 +131,7 @@ export default function UnderInstallationLeadDetails() {
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadButton(userType);
   const deleteLeadMutation = useDeleteLead();
+  const canAccessTodoTab = canAccessTodoTaskTabUnderInstallationStage(userType);
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -312,18 +316,28 @@ export default function UnderInstallationLeadDetails() {
                     </TabsTrigger>
 
                     {/* To-Do Tab — Disabled */}
-                    <CustomeTooltip
-                      truncateValue={
-                        <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                          <PanelsTopLeftIcon
-                            size={16}
-                            className="mr-1 opacity-60"
-                          />
-                          To-Do Task
-                        </div>
-                      }
-                      value="Under development"
-                    />
+                    {canAccessTodoTab ? (
+                      <TabsTrigger value="todo">
+                        <PanelsTopLeftIcon
+                          size={16}
+                          className="mr-1 opacity-60"
+                        />
+                        To-Do Task
+                      </TabsTrigger>
+                    ) : (
+                      <CustomeTooltip
+                        truncateValue={
+                          <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                            <PanelsTopLeftIcon
+                              size={16}
+                              className="mr-1 opacity-60"
+                            />
+                            To-Do Task
+                          </div>
+                        }
+                        value="Only Site Supervisor can access this tab"
+                      />
+                    )}
 
                     {/* Site History */}
                     <TabsTrigger value="history">
@@ -383,6 +397,19 @@ export default function UnderInstallationLeadDetails() {
             </main>
           </TabsContent>
 
+          <TabsContent value="todo">
+            <main className="flex-1 h-fit">
+              {!isLoading && accountId && (
+                <LeadDetailsGrouped
+                  status="underInstallation"
+                  defaultTab="underInstallation"
+                  leadId={leadIdNum}
+                  accountId={accountId}
+                  defaultParentTab="installation"
+                />
+              )}
+            </main>
+          </TabsContent>
           <TabsContent value="history">
             <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
           </TabsContent>

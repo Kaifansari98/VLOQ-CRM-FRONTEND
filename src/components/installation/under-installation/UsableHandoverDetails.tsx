@@ -42,6 +42,11 @@ import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import PendingWorkDetails from "../dispatch/PendingWorkDetails";
+import {
+
+  canViewAndWorkUnderInstallationStage,
+} from "@/components/utils/privileges";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 
 interface UsableHandoverProps {
   vendorId: number;
@@ -78,7 +83,11 @@ export default function UsableHandover({
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
+
   const canDelete = userType === "admin" || userType === "super-admin";
+  const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
 
   // Initialize remarks when data loads
   React.useEffect(() => {
@@ -213,39 +222,41 @@ export default function UsableHandover({
             <CardTitle className="text-lg">
               Pending Work Details / Remarks
             </CardTitle>
-            {!isEditingRemarks ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditingRemarks(true)}
-              >
-                Edit Remarks
-              </Button>
-            ) : (
-              <div className="flex gap-2">
+
+            {canWork &&
+              (!isEditingRemarks ? (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setPendingWorkDetails(
-                      handoverData?.pending_work_details || ""
-                    );
-                    setIsEditingRemarks(false);
-                  }}
+                  onClick={() => setIsEditingRemarks(true)}
                 >
-                  Cancel
+                  Edit Remarks
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={handleUpdateRemarks}
-                  disabled={updateRemarksMutation.isPending}
-                  className="gap-2"
-                >
-                  <Save className="h-4 w-4" />
-                  {updateRemarksMutation.isPending ? "Saving..." : "Save"}
-                </Button>
-              </div>
-            )}
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setPendingWorkDetails(
+                        handoverData?.pending_work_details || ""
+                      );
+                      setIsEditingRemarks(false);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleUpdateRemarks}
+                    disabled={updateRemarksMutation.isPending}
+                    className="gap-2"
+                  >
+                    <Save className="h-4 w-4" />
+                    {updateRemarksMutation.isPending ? "Saving..." : "Save"}
+                  </Button>
+                </div>
+              ))}
           </div>
         </CardHeader>
         <CardContent>
@@ -275,37 +286,39 @@ export default function UsableHandover({
         </div>
 
         {/* Upload Section */}
-        <div className="p-6 border-b space-y-4">
-          <FileUploadField
-            value={selectedSitePhotos}
-            onChange={setSelectedSitePhotos}
-            accept=".jpg,.jpeg,.png,.webp"
-            multiple
-          />
+        {canWork && (
+          <div className="p-6 border-b space-y-4">
+            <FileUploadField
+              value={selectedSitePhotos}
+              onChange={setSelectedSitePhotos}
+              accept=".jpg,.jpeg,.png,.webp"
+              multiple
+            />
 
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              onClick={handleUploadSitePhotos}
-              disabled={
-                updateMutation.isPending || selectedSitePhotos.length === 0
-              }
-              className="flex items-center gap-2"
-            >
-              {updateMutation.isPending ? (
-                <>
-                  <Loader2 className="animate-spin size-4" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload size={16} />
-                  Upload Photos
-                </>
-              )}
-            </Button>
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={handleUploadSitePhotos}
+                disabled={
+                  updateMutation.isPending || selectedSitePhotos.length === 0
+                }
+                className="flex items-center gap-2"
+              >
+                {updateMutation.isPending ? (
+                  <>
+                    <Loader2 className="animate-spin size-4" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload size={16} />
+                    Upload Photos
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Photos List */}
         <div className="p-6">
@@ -371,37 +384,39 @@ export default function UsableHandover({
         </div>
 
         {/* Upload Section */}
-        <div className="p-6 border-b space-y-4">
-          <FileUploadField
-            value={selectedHandoverDocs}
-            onChange={setSelectedHandoverDocs}
-            accept=".pdf,.doc,.docx,.zip"
-            multiple
-          />
+        {canWork && (
+          <div className="p-6 border-b space-y-4">
+            <FileUploadField
+              value={selectedHandoverDocs}
+              onChange={setSelectedHandoverDocs}
+              accept=".pdf,.doc,.docx,.zip"
+              multiple
+            />
 
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              onClick={handleUploadHandoverDocs}
-              disabled={
-                updateMutation.isPending || selectedHandoverDocs.length === 0
-              }
-              className="flex items-center gap-2"
-            >
-              {updateMutation.isPending ? (
-                <>
-                  <Loader2 className="animate-spin size-4" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload size={16} />
-                  Upload Documents
-                </>
-              )}
-            </Button>
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={handleUploadHandoverDocs}
+                disabled={
+                  updateMutation.isPending || selectedHandoverDocs.length === 0
+                }
+                className="flex items-center gap-2"
+              >
+                {updateMutation.isPending ? (
+                  <>
+                    <Loader2 className="animate-spin size-4" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload size={16} />
+                    Upload Documents
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Documents List */}
         <div className="p-6">

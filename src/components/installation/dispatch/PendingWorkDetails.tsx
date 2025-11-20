@@ -22,6 +22,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import TextSelectPicker from "@/components/TextSelectPicker";
 import RemarkTooltip from "@/components/origin-tooltip";
 import FollowUpModal from "@/components/follow-up-modal";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { canViewAndWorkUnderInstallationStage } from "@/components/utils/privileges";
 
 interface PendingWorkDetailsProps {
   leadId: number;
@@ -34,7 +36,11 @@ export default function PendingWorkDetails({
 }: PendingWorkDetailsProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+
   const queryClient = useQueryClient();
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
 
   if (!vendorId) {
     toast.error("Vendor information is missing.");
@@ -60,6 +66,8 @@ export default function PendingWorkDetails({
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [openTaskModal, setOpenTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
+
+  const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,99 +121,112 @@ export default function PendingWorkDetails({
   return (
     <div className="space-y-6">
       {/* Add Work Card */}
-      <Card className="border border-border/70 shadow-sm hover:shadow-md transition-all duration-200">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <PlusCircle className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="text-lg">Add Pending Work</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Tasks pending during installation
-              </p>
-            </div>
-          </div>
-        </CardHeader>
 
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Grid Inputs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Title Picker */}
+      {canWork && (
+        <Card className="border border-border/70 shadow-sm hover:shadow-md transition-all duration-200">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <PlusCircle className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Add Pending Work</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Tasks pending during installation
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Grid Inputs */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Title Picker */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    <Wrench className="h-4 w-4" />
+                    Work Title
+                    <span className="text-red-500">*</span>
+                  </Label>
+
+                  <TextSelectPicker
+                    options={
+                      workTitleOptions.map(
+                        (item: any) => item.item_type || "Untitled Work"
+                      ) || []
+                    }
+                    value={title}
+                    onChange={(text) => setTitle(text)}
+                    placeholder={
+                      loadingTitles
+                        ? "Loading work titles..."
+                        : "Select work..."
+                    }
+                    emptyLabel="Select Work"
+                    disabled={loadingTitles || !canWork}
+                  />
+                </div>
+
+                {/* Due Date */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    Due Date
+                    <span className="text-red-500">*</span>
+                  </Label>
+                  <CustomeDatePicker
+                    value={dueDate || ""}
+                    onChange={(value) => setDueDate(value || null)}
+                    restriction="futureOnly"
+                    disabledReason={
+                      !canWork
+                        ? "You don't have permission to add tasks."
+                        : undefined
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* Remark / Note */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-1">
-                  <Wrench className="h-4 w-4" />
-                  Work Title
-                  <span className="text-red-500">*</span>
+                  <FileText className="h-4 w-4" />
+                  Additional Notes
                 </Label>
-
-                <TextSelectPicker
-                  options={
-                    workTitleOptions.map(
-                      (item: any) => item.item_type || "Untitled Work"
-                    ) || []
-                  }
-                  value={title}
-                  onChange={(text) => setTitle(text)}
-                  placeholder={
-                    loadingTitles ? "Loading work titles..." : "Select work..."
-                  }
-                  emptyLabel="Select Work"
-                  disabled={loadingTitles}
+                <Textarea
+                  placeholder="Describe the work, issue, or requirements..."
+                  value={remark}
+                  onChange={(e) => setRemark(e.target.value)}
+                  rows={3}
+                  disabled={!canWork}
                 />
               </div>
 
-              {/* Due Date */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  Due Date
-                  <span className="text-red-500">*</span>
-                </Label>
-                <CustomeDatePicker
-                  value={dueDate || ""}
-                  onChange={(value) => setDueDate(value || null)}
-                  restriction="futureOnly"
-                />
-              </div>
-            </div>
-
-            {/* Remark / Note */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1">
-                <FileText className="h-4 w-4" />
-                Additional Notes
-              </Label>
-              <Textarea
-                placeholder="Describe the work, issue, or requirements..."
-                value={remark}
-                onChange={(e) => setRemark(e.target.value)}
-                rows={3}
-              />
-            </div>
-
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              disabled={isPending || !title.trim() || !dueDate}
-              className="w-full md:w-auto"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Work
-                </>
+              {/* Submit Button */}
+              {canWork && (
+                <Button
+                  type="submit"
+                  disabled={isPending || !title.trim() || !dueDate}
+                  className="w-full md:w-auto"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Add Work
+                    </>
+                  )}
+                </Button>
               )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Pending Work Grid */}
       <Card className="rounded-2xl border border-border/70 bg-white dark:bg-neutral-900 shadow-sm">
@@ -262,10 +283,11 @@ export default function PendingWorkDetails({
                     "—"
                   );
                   const description = descParts.join("—").trim();
-                  const shortDesc =
-                    description.length > 80
-                      ? description.slice(0, 80) + "..."
-                      : description;
+
+                  const isLong = description.length > 200; // 👈 Only long text will get tooltip
+                  const shortDesc = isLong
+                    ? description.slice(0, 200) + "..."
+                    : description;
 
                   return (
                     <motion.div
@@ -292,11 +314,11 @@ export default function PendingWorkDetails({
                           setOpenTaskModal(true);
                         }}
                         className="
-                            group rounded-xl border border-border/50 
-                            bg-neutral-50 dark:bg-neutral-900 
-                            hover:border-primary/50 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.12)]
-                            cursor-pointer transition-all duration-300
-                        "
+          group h-full rounded-xl border border-border/50 
+          bg-neutral-50 dark:bg-neutral-900 
+          hover:border-primary/50 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.12)]
+          cursor-pointer transition-all duration-300
+        "
                       >
                         <CardContent className="px-5">
                           {/* HEADER */}
@@ -320,18 +342,25 @@ export default function PendingWorkDetails({
                             {workTitle || "Untitled Work"}
                           </h4>
 
-                          <p className="w-full overflow-hidden">
-                            {/* DESCRIPTION + TOOLTIP */}
-                            {description && (
-                              <RemarkTooltip
-                                remark={
-                                  <span className="block line-clamp-3 text-xs text-muted-foreground leading-relaxed">
-                                    {shortDesc}
-                                  </span>
-                                }
-                                remarkFull={description}
-                              />
-                            )}
+                          {/* DESCRIPTION */}
+                          <p className="w-full overflow-hidden mt-1">
+                            {/* If long → Tooltip, else → normal text */}
+                            {description &&
+                              (isLong ? (
+                                <RemarkTooltip
+                                  title="Additional Note"
+                                  remark={
+                                    <span className="block text-left line-clamp-3 text-xs text-muted-foreground leading-relaxed">
+                                      {shortDesc}
+                                    </span>
+                                  }
+                                  remarkFull={description}
+                                />
+                              ) : (
+                                <span className="block text-left text-xs text-muted-foreground leading-relaxed line-clamp-3">
+                                  {shortDesc}
+                                </span>
+                              ))}
                           </p>
 
                           {/* META */}

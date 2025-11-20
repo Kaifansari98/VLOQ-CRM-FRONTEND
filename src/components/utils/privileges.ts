@@ -164,6 +164,7 @@ export const canDoDispatchPlanning = (userType: string | undefined) => {
   const allowedRoles = ["super_admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
+
 export const canMoveToProduction = (userType: string | undefined) => {
   if (!userType) return false;
   const allowedRoles = ["super_admin", "admin", "backend"];
@@ -255,6 +256,14 @@ export function canAccessSaveOrderLoginButton(
     role === "super-admin" ||
     (role === "backend" && stage === "order-login-stage")
   );
+}
+
+export function canAccessTodoTaskTabDispatchStage(role: string): boolean {
+  // 1. Admins always have access
+  if (role === "admin" || role === "super-admin" || role === "factory")
+    return true;
+
+  return false;
 }
 
 export function canAccessInputField(role: string, stage: string): boolean {
@@ -377,13 +386,46 @@ export function canReassignLeadButton(role: string): boolean {
   return role === "admin" || role === "super_admin";
 }
 
-export function canViewAndWorkInstallationDetails(role: string): boolean {
-  // can work and view both
+export function canViewAndWorkUnderInstallationStage(
+  role: string,
+  stage: string
+): boolean {
+  // can work and view both and site suprvisor work only under-installation stage.
+  return (
+    role === "admin" ||
+    role === "super-admin" ||
+    (role === "site-supervisor" && stage === "under-installation-stage")
+  );
+}
+
+export function canAccessTodoTaskTabUnderInstallationStage(
+  role: string
+): boolean {
+  // 1. Admins always have access
   if (role === "admin" || role === "super-admin" || role === "site-supervisor")
     return true;
 
-  // 4. Everyone else has access by default
   return false;
 }
 
+export function canAccessTodoTaskTabUnderFinalHandoverStage(
+  role: string
+): boolean {
+  // 1. Admins always have access
+  if (role === "admin" || role === "super-admin" || role === "site-supervisor")
+    return true;
 
+  return false;
+}
+
+export function canViewAndWorkFinalHandoverStage(
+  role: string,
+  stage: string
+): boolean {
+  // can work and view both and site suprvisor work only final-handover-stage.
+  return (
+    role === "admin" ||
+    role === "super-admin" ||
+    (role === "site-supervisor" && stage === "final-handover-stage")
+  );
+}
