@@ -123,160 +123,195 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     </motion.div>
   );
 
+  const SectionCard = ({ title, children }: any) => (
+    <motion.section
+      variants={itemVariants}
+      className="bg-white rounded-2xl border border-border shadow-soft p-6 space-y-6"
+    >
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
+      </div>
+
+      {children}
+    </motion.section>
+  );
+
+  const InfoRow = ({ icon: Icon, label, value }: any) => (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2 text-sm text-subtle">
+        {Icon && <Icon className="w-4 h-4 stroke-[1.5]" />}
+        {label}
+      </div>
+      <div className="text-[15px] font-medium text-heading pl-6">
+        {value || "—"}
+      </div>
+    </div>
+  );
+
   return (
     <>
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="border rounded-lg w-full h-full overflow-y-scroll mb-6"
+        className="rounded-lg w-full h-full overflow-y-scroll mb-6"
       >
         {/* Header */}
-        <div className="border-b px-6 py-2.5">
+        <div>
           <div className="flex items-center justify-between">
-            <h2 className="text-md font-semibold ">Lead Details</h2>
-            <div className="flex items-center gap-2 text-sm ">
-              <Calendar className="w-4 h-4" />
-              {formatDateTime(lead.created_at)}
+            <div>
+              <h2 className="text-lg font-semibold ">Lead Details</h2>
+              <p className="text-sm text-gray-500">
+                All the Lead Related Details Which has been filled during
+                onboard.
+              </p>
+            </div>
+            <div className="flex flex-col">
+              <div className="text-xs text-gray-500">Created At</div>
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="w-4 h-4" />
+                {formatDateTime(lead.created_at)}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="px-6 py-4 space-y-4">
-          {/* Contact Information */}
-          <motion.section variants={itemVariants}>
-            <h3 className="text-base font-semibold mb-4 pb-2 border-b ">
-              Contact Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <InfoField
+        <div className="py-4 space-y-4">
+          {/* CONTACT INFORMATION */}
+          <SectionCard title="Contact Information">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <InfoRow
+                icon={User}
                 label="Full Name"
                 value={`${lead.firstname || ""} ${lead.lastname || ""}`.trim()}
-                icon={User}
               />
-              <InfoField label="Email Address" value={lead.email} icon={Mail} />
-              <InfoField
+              <InfoRow icon={Mail} label="Email Address" value={lead.email} />
+              <InfoRow
+                icon={Phone}
                 label="Phone Number"
                 value={
                   lead.country_code && lead.contact_no
                     ? `${lead.country_code} ${lead.contact_no}`
                     : lead.contact_no
                 }
-                icon={Phone}
               />
-              {/* ✅ Special handling for map link */}
-              <motion.div variants={itemVariants} className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-gray-400" />
-                  <label className="text-sm font-medium">
-                    Site Google Maps Link
-                  </label>
+              <InfoRow
+                icon={MapPin}
+                label="Site Address"
+                value={lead.site_address || "No address provided"}
+              />
+
+              {/* Maps link under full width */}
+              <div className="md:col-span-2">
+                <div className="flex items-center gap-2 text-sm text-subtle mb-1">
+                  <MapPin className="w-4 h-4 stroke-[1.5]" />
+                  Site Google Maps Link
                 </div>
+
                 {lead?.site_map_link ? (
                   <a
                     href={lead.site_map_link}
                     target="_blank"
-                    rel="noopener noreferrer"
-                    className="pl-6 font-medium underline"
+                    className="pl-6 underline font-medium text-heading hover:opacity-80 transition"
                   >
-                    View on Google Maps
+                    View on Google Maps →
                   </a>
                 ) : (
-                  <p className="pl-6">No map link provided</p>
+                  <p className="pl-6 text-subtle">No map link provided</p>
                 )}
-              </motion.div>
-              <InfoField
-                label="Site Address"
-                value={`${lead.site_address || "No address provided"}`.trim()}
-                icon={MapPin}
-              />
+              </div>
             </div>
-          </motion.section>
-          {/* Project Details */}
-          <motion.section variants={itemVariants}>
-            <h3 className="text-base font-semibold  mb-4 pb-2 border-b ">
-              Project Details
-            </h3>
+          </SectionCard>
+
+          {/* PROJECT DETAILS */}
+          <SectionCard title="Project Details">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <InfoField
+              <InfoRow
+                icon={User}
                 label="Architect Name"
                 value={lead.archetech_name}
-                icon={User}
               />
-              <InfoField
+              <InfoRow
+                icon={Building}
                 label="Site Type"
                 value={lead.siteType?.type}
-                icon={Building}
               />
-              <InfoField
-                label="Source"
-                value={lead.source?.type}
-                icon={MapPin}
-              />
+              <InfoRow icon={MapPin} label="Source" value={lead.source?.type} />
             </div>
-          </motion.section>
-          {/* Product Information */}
-          <motion.section variants={itemVariants}>
-            <h3 className="text-base font-semibold mb-4 pb-2 border-b ">
-              Product Information
-            </h3>
+          </SectionCard>
+
+          {/* PRODUCT INFORMATION */}
+          <SectionCard title="Product Information">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <InfoField
+              <InfoRow
+                icon={Package}
                 label="Product Structures"
                 value={lead.leadProductStructureMapping
                   ?.map((ps: any) => ps.productStructure?.type)
-                  .filter(Boolean)
-                  .join(", ")}
-                icon={Package}
+                  ?.filter(Boolean)
+                  ?.join(", ")}
               />
-              <InfoField
+
+              <InfoRow
+                icon={Package}
                 label="Product Types"
                 value={lead.productMappings
                   ?.map((pm: any) => pm.productType?.type)
-                  .filter(Boolean)
-                  .join(", ")}
-                icon={Package}
+                  ?.filter(Boolean)
+                  ?.join(", ")}
               />
             </div>
-          </motion.section>
-          {/* Additional Information */}
-          <motion.section variants={itemVariants}>
-            <h3 className="text-base font-semibold  mb-4 pb-2 border-b ">
-              Additional Information
-            </h3>
-            <div className="space-y-6">
+          </SectionCard>
+
+          {/* ADDITIONAL INFORMATION */}
+          <SectionCard title="Additional Information">
+            <div className="space-y-4">
               <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <MessageSquare className="w-4 h-4 " />
-                  <label className="text-sm font-medium ">Design Remarks</label>
+                <div className="flex items-center gap-2 text-sm text-subtle mb-2">
+                  <MessageSquare className="w-4 h-4" />
+                  Design Remarks
                 </div>
-                <div className=" border rounded-md p-2 ml-6">
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+
+                <div className="bg-mutedBg border border-border rounded-xl p-4 ml-6">
+                  <p className="text-[15px] leading-relaxed text-heading whitespace-pre-wrap">
                     {lead.designer_remark || "No remarks provided"}
                   </p>
                 </div>
               </div>
             </div>
-          </motion.section>
+          </SectionCard>
+
           {/* Site Photos */}
 
-          <div className="border rounded-xl overflow-hidden">
+          <motion.section
+            variants={itemVariants}
+            className="bg-white rounded-2xl border border-border shadow-soft overflow-hidden"
+          >
             {/* Header */}
-            <div className="flex items-center justify-between bg-muted px-4 py-2 border-b">
-              <div className="flex items-center gap-2">
-                <Images size={20} />
-                <h1 className="text-base font-semibold">Current Site Photos</h1>
+            <div className="flex items-center justify-between px-5 py-3 border-b bg-mutedBg/50">
+              <div className="flex flex-col items-start">
+                <h1 className="text-lg font-semibold tracking-tight">
+                  Current Site Photos
+                </h1>
+                <p className="text-xs text-gray-500 ">
+                  All the Lead Related Documents Which has been submitted during onboard.
+                </p>
               </div>
 
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-lg border-border hover:bg-mutedBg transition"
+              >
                 <RefreshCcw size={15} />
                 Refresh
               </Button>
             </div>
 
-            <motion.div variants={itemVariants} className="p-4">
+            {/* Body */}
+            <motion.div variants={itemVariants} className="p-6">
               {lead.documents && lead.documents.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {lead.documents.map((doc: any, index: number) =>
                     doc.signedUrl ? (
                       <motion.div key={doc.id} variants={itemVariants}>
@@ -301,9 +336,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 px-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                <div className="flex flex-col items-center justify-center py-14 px-6 border border-dashed border-border/60 rounded-xl bg-mutedBg/40">
                   <svg
-                    className="w-12 h-12 text-gray-400 mb-3"
+                    className="w-12 h-12 text-muted-foreground mb-3"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -315,16 +350,18 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                       d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                     />
                   </svg>
-                  <p className="text-sm text-gray-600 font-medium">
+
+                  <p className="text-sm font-medium text-muted-foreground">
                     No site photos uploaded
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
+
+                  <p className="text-xs text-subtle mt-1 tracking-tight">
                     Photos will appear here once uploaded
                   </p>
                 </div>
               )}
             </motion.div>
-          </div>
+          </motion.section>
 
           <AlertDialog
             open={!!confirmDelete}

@@ -30,6 +30,7 @@ import InstallationDayWiseReports from "./InstallationDayWiseReports";
 import { canViewAndWorkUnderInstallationStage } from "@/components/utils/privileges";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function UnderInstallationDetails({
   leadId,
@@ -53,6 +54,7 @@ export default function UnderInstallationDetails({
   const postMutation = useAddInstallersAndEndDate();
   const putMutation = useUpdateInstallationDetails();
   const updateCompletionMutation = useUpdateInstallationCompletion();
+  const queryClient = useQueryClient();
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
@@ -104,6 +106,12 @@ export default function UnderInstallationDetails({
     if (details?.expected_installation_end_date) {
       setEndDate(details.expected_installation_end_date);
     }
+    if (details?.actual_installation_start_date) {
+      console.log(
+        "Installation start date",
+        details?.actual_installation_start_date
+      );
+    }
   }, [mappedInstallers, details]);
 
   // 🔹 Save handler
@@ -127,13 +135,35 @@ export default function UnderInstallationDetails({
 
     if (hasAssignedData) {
       putMutation.mutate(
-        { vendorId: vendorId!, leadId, payload },
-        { onSuccess: () => toast.success("Installation details updated.") }
+        {
+          vendorId: vendorId!,
+          leadId,
+          payload,
+        },
+        {
+          onSuccess: () => {
+            toast.success("Installation details updated."),
+              queryClient.invalidateQueries({
+                queryKey: ["usableHandoverReady"],
+              });
+          },
+        }
       );
     } else {
       postMutation.mutate(
-        { vendorId: vendorId!, leadId, payload },
-        { onSuccess: () => toast.success("Installers added successfully.") }
+        {
+          vendorId: vendorId!,
+          leadId,
+          payload,
+        },
+        {
+          onSuccess: () => {
+            toast.success("Installers added successfully.");
+            queryClient.invalidateQueries({
+              queryKey: ["usableHandoverReady"],
+            });
+          },
+        }
       );
     }
   };
