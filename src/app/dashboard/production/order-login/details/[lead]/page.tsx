@@ -182,6 +182,33 @@ export default function OrderLoginLeadDetails() {
           </div>
 
           <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-end gap-2">
+              {/* ✅ Show only if user has permission */}
+              {canMoveToProductionStage &&
+                (canMove ? (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="flex items-center gap-1 "
+                    onClick={() => setOpenMoveToProduction(true)}
+                  >
+                    <ArrowUpRight size={16} />
+                    Move To Production
+                  </Button>
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <Button variant="outline" disabled={true}>
+                        <ArrowUpRight size={16} />
+                        Move To Production
+                      </Button>
+                    }
+                    value={
+                      disabledReason || "Not eligible to move to Production yet"
+                    }
+                  />
+                ))}
+            </div>
             <Button size="sm" onClick={() => setAssignOpen(true)}>
               Assign Task
             </Button>
@@ -282,34 +309,6 @@ export default function OrderLoginLeadDetails() {
                     Payment Information
                   </TabsTrigger>
                 </TabsList>
-              </div>
-              <div className="flex items-center justify-end gap-2">
-                {/* ✅ Show only if user has permission */}
-                {canMoveToProductionStage &&
-                  (canMove ? (
-                    <Button
-                      size="sm"
-                      variant="default"
-                      className="flex items-center gap-1 "
-                      onClick={() => setOpenMoveToProduction(true)}
-                    >
-                      <ArrowUpRight size={16} />
-                      Move to Production
-                    </Button>
-                  ) : (
-                    <CustomeTooltip
-                      truncateValue={
-                        <Button variant="outline" disabled={true}>
-                          <ArrowUpRight size={16} />
-                          Move to Production
-                        </Button>
-                      }
-                      value={
-                        disabledReason ||
-                        "Not eligible to move to Production yet"
-                      }
-                    />
-                  ))}
               </div>
             </div>
             <ScrollBar orientation="horizontal" />

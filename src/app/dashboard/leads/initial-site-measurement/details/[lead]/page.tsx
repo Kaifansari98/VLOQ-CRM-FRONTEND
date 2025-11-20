@@ -75,6 +75,7 @@ import {
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
 
 export default function SiteMeasurementLead() {
   const router = useRouter();
@@ -345,9 +346,7 @@ export default function SiteMeasurementLead() {
           </TabsContent>
 
           <TabsContent value="payments">
-            <p className="text-center text-muted-foreground py-4">
-              Payment Information Content
-            </p>
+            <PaymentComingSoon />
           </TabsContent>
         </Tabs>
       </SidebarInset>

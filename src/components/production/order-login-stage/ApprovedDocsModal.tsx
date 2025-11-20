@@ -26,14 +26,20 @@ interface ApprovedDocsSectionProps {
   leadId: number;
 }
 
-export default function ApprovedDocsSection({ leadId }: ApprovedDocsSectionProps) {
+export default function ApprovedDocsSection({
+  leadId,
+}: ApprovedDocsSectionProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
 
   // ✅ Fetch approved docs
-  const { data, isLoading, isError } = useApprovedTechCheckDocuments(vendorId, leadId);
-  const { mutate: deleteDocument, isPending: deleting } = useDeleteDocument(leadId);
+  const { data, isLoading, isError } = useApprovedTechCheckDocuments(
+    vendorId,
+    leadId
+  );
+  const { mutate: deleteDocument, isPending: deleting } =
+    useDeleteDocument(leadId);
 
   // ✅ Image Preview State
   const [openCarousel, setOpenCarousel] = useState(false);
@@ -46,12 +52,16 @@ export default function ApprovedDocsSection({ leadId }: ApprovedDocsSectionProps
 
   const approvedImages =
     data?.filter((file: any) =>
-      imageExtensions.includes(file.doc_og_name?.split(".").pop()?.toLowerCase() || "")
+      imageExtensions.includes(
+        file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
+      )
     ) || [];
 
   const approvedDocuments =
     data?.filter((file: any) =>
-      documentExtensions.includes(file.doc_og_name?.split(".").pop()?.toLowerCase() || "")
+      documentExtensions.includes(
+        file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
+      )
     ) || [];
 
   const handleConfirmDelete = () => {
@@ -81,7 +91,9 @@ export default function ApprovedDocsSection({ leadId }: ApprovedDocsSectionProps
   if (isError) {
     return (
       <div className="border rounded-lg bg-background p-6 flex justify-center">
-        <p className="text-red-500 text-sm">Failed to load approved documents.</p>
+        <p className="text-red-500 text-sm">
+          Failed to load approved documents.
+        </p>
       </div>
     );
   }
@@ -93,35 +105,35 @@ export default function ApprovedDocsSection({ leadId }: ApprovedDocsSectionProps
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="border rounded-xl bg-background overflow-hidden"
+      className="rounded-xl bg-background overflow-hidden shadow-sm"
     >
-      {/* ✅ Main Header */}
-      <SectionHeader title="Approved Documents" docCount={totalDocs} />
 
-      {/* ✅ No Data State */}
+      {/* 🌟 Empty State */}
       {totalDocs === 0 ? (
         <div className="flex flex-col items-center justify-center h-[40vh] px-4">
           <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
             <Ban size={32} className="text-muted-foreground" />
           </div>
-          <h3 className="font-semibold text-lg mb-2">
+
+          <h3 className="font-semibold text-lg text-foreground mb-1">
             No Approved Documents Found
           </h3>
-          <p className="text-xs text-muted-foreground text-center max-w-sm">
-            Once documents are approved, they will appear here for download or
-            preview.
+
+          <p className="text-xs text-muted-foreground text-center max-w-sm leading-relaxed">
+            Once documents are approved, you can preview or download them here.
           </p>
         </div>
       ) : (
-        <div className="p-4 space-y-8">
-          {/* ✅ Approved Images Section */}
+        <div className="space-y-4">
+          {/* 🌟 Approved Images */}
           {approvedImages.length > 0 && (
-            <div className="border rounded-xl overflow-hidden">
+            <div className="border rounded-xl overflow-hidden bg-card">
               <SectionHeader
                 title="Approved Images"
                 docCount={approvedImages.length}
               />
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3">
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4 p-4">
                 {approvedImages.map((doc: any, index: number) => (
                   <ImageComponent
                     key={doc.id}
@@ -135,7 +147,6 @@ export default function ApprovedDocsSection({ leadId }: ApprovedDocsSectionProps
                     canDelete={canDelete}
                     onView={(i) => {
                       setStartIndex(i);
-                      
                       setOpenCarousel(true);
                     }}
                     onDelete={(id) => setConfirmDelete(Number(id))}
@@ -145,14 +156,15 @@ export default function ApprovedDocsSection({ leadId }: ApprovedDocsSectionProps
             </div>
           )}
 
-          {/* ✅ Approved Documents Section */}
+          {/* 🌟 Approved File Documents */}
           {approvedDocuments.length > 0 && (
-            <div className="border rounded-xl overflow-hidden">
+            <div className="border rounded-xl overflow-hidden bg-card">
               <SectionHeader
                 title="Approved Files"
                 docCount={approvedDocuments.length}
               />
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
                 {approvedDocuments.map((doc: any) => (
                   <DocumentCard
                     key={doc.id}
@@ -172,25 +184,33 @@ export default function ApprovedDocsSection({ leadId }: ApprovedDocsSectionProps
         </div>
       )}
 
-      {/* ✅ Delete Confirmation Modal */}
-      <AlertDialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
+      {/* 🌟 Delete Confirmation Modal */}
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={() => setConfirmDelete(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Document?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The selected document will be permanently removed.
+              This action cannot be undone. The selected document will be
+              permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete} disabled={deleting}>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+            >
               {deleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ✅ Image Preview Modal */}
+      {/* 🌟 Image Carousel Modal */}
       <ImageCarouselModal
         images={approvedImages}
         open={openCarousel}

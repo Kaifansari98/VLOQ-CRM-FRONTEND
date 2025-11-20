@@ -21,15 +21,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+
 import TextAreaInput from "@/components/origin-text-area";
-import {} from "@/components/pdf-upload-input";
 import { Button } from "@/components/ui/button";
+import CustomeDatePicker from "@/components/date-picker";
+import { FileUploadField } from "@/components/custom/file-upload";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { submitMeeting } from "@/api/designingStageQueries";
 import { toast } from "react-toastify";
-import { FilesUploader } from "@/components/files-uploader";
-import CustomeDatePicker from "@/components/date-picker";
-import { FileUploadField } from "@/components/custom/file-upload";
 
 export const meetingSchema = z.object({
   date: z.string().min(1, "Meeting date is required"),
@@ -52,6 +51,8 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id)!;
   const userId = useAppSelector((s) => s.auth.user?.id)!;
 
+  const queryClient = useQueryClient();
+
   const form = useForm<MeetingFormValues>({
     resolver: zodResolver(meetingSchema),
     defaultValues: {
@@ -61,29 +62,26 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
     },
   });
 
-  const queryClient = useQueryClient(); // ✅ yeh add karo
   const mutation = useMutation({
     mutationFn: (values: MeetingFormValues) =>
       submitMeeting({
         files: values.files ?? [],
         desc: values.desc,
         date: values.date,
-        vendorId: vendorId,
-        leadId: leadId,
-        userId: userId,
-        accountId: accountId,
+        vendorId,
+        leadId,
+        userId,
+        accountId,
       }),
     onSuccess: () => {
       toast.success("Meeting added successfully!");
       form.reset();
       onOpenChange(false);
 
-      // ✅ Refetch meetings query
       queryClient.invalidateQueries({
         queryKey: ["meetings", vendorId, leadId],
       });
 
-      // ✅ Refetch design stage counts so button enables correctly
       queryClient.invalidateQueries({
         queryKey: ["designingStageCounts", vendorId, leadId],
       });
@@ -93,32 +91,52 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
     },
   });
 
-  // ✅ Dedicated submit handler
   const onSubmit = (values: MeetingFormValues) => {
-    console.log("Form values: ", values);
     mutation.mutate(values);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] md:max-w-2xl p-0 gap-0">
-        <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle>Add Meeting</DialogTitle>
-        </DialogHeader>
+      <DialogContent
+        className="
+        min-w-2xl 
+        p-0 
+        rounded-2xl 
+        border border-border 
+        shadow-soft 
+        overflow-hidden
+        bg-white dark:bg-neutral-900
+      "
+      >
+        {/* Header */}
+        <div
+          className="
+          px-6 py-4 
+          border-b border-border 
+          bg-mutedBg/50 dark:bg-neutral-900/50
+        "
+        >
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold tracking-tight">
+              Add Meeting
+            </DialogTitle>
+          </DialogHeader>
+        </div>
 
-        <ScrollArea className="max-h-[calc(90vh-100px)]">
-          <div className="px-6">
+        {/* Body */}
+        <ScrollArea className="max-h-[70vh]">
+          <div className="px-6 pb-5">
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4 py-3"
+                className="space-y-3"
               >
                 {/* Date Picker */}
                 <FormField
                   control={form.control}
                   name="date"
                   render={({ field }) => (
-                    <FormItem className="w-full">
+                    <FormItem>
                       <FormLabel className="text-sm">Meeting Date</FormLabel>
                       <FormControl>
                         <CustomeDatePicker
@@ -132,7 +150,7 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
                   )}
                 />
 
-                {/* Textarea */}
+                {/* Description */}
                 <FormField
                   control={form.control}
                   name="desc"
@@ -146,6 +164,7 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
                           value={field.value}
                           onChange={field.onChange}
                           placeholder="Enter meeting details"
+                          className="min-h-[120px]"
                         />
                       </FormControl>
                       <FormMessage />
@@ -174,18 +193,20 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
                   )}
                 />
 
-                <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+                {/* Footer Buttons */}
+                <div className="flex justify-end gap-3 pt-4">
                   <Button
                     type="button"
                     variant="outline"
-                    className="text-sm"
                     onClick={() => form.reset()}
+                    className="rounded-lg"
                   >
                     Reset
                   </Button>
+
                   <Button
                     type="submit"
-                    className="text-sm"
+                    className="rounded-lg"
                     disabled={mutation.isPending}
                   >
                     {mutation.isPending ? "Saving..." : "Save Meeting"}

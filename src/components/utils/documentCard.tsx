@@ -142,7 +142,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
           className="
             relative w-18 h-19 rounded-lg 
             border border-border 
-            bg-muted dark:bg-neutral-800 
+            bg-gray-600/20 dark:bg-neutral-800 
             flex items-center justify-center
             transition-all duration-200 group-hover:scale-[1.03]
           "
@@ -163,12 +163,12 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
           <div
             className="
               absolute -bottom-1.5 left-1/2 -translate-x-1/2 
-              px-2 py-[1px] rounded-md
+              px-2 pb-[1px] rounded-md
               bg-white dark:bg-neutral-900 
               border border-border
             "
           >
-            <span className="text-[9px] font-semibold text-neutral-700 dark:text-neutral-300 tracking-wide">
+            <span className="text-[8px] font-semibold text-neutral-700 dark:text-neutral-300 tracking-wide">
               .{fileExt.toUpperCase()}
             </span>
           </div>

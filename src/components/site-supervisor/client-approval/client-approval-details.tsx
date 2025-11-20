@@ -114,23 +114,36 @@ export default function ClientApprovalDetails({ leadId }: Props) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="border rounded-lg w-full h-full p-6 space-y-6 overflow-y-scroll"
+      className="rounded-lg w-full h-full py-4 space-y-6 overflow-y-scroll bg-[#fff] dark:bg-[#0a0a0a]"
     >
       {/* -------- Payment Details Section -------- */}
       {paymentInfo && (
-        <div className="border rounded-xl overflow-hidden">
-          {/* Header with amount + date inline */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between bg-muted px-4 py-2 border-b gap-3">
+        <div
+          className="
+    bg-white dark:bg-neutral-900 
+    rounded-2xl border border-border 
+    overflow-hidden shadow-soft
+  "
+        >
+          {/* Header */}
+          <div
+            className="
+      flex flex-col md:flex-row md:items-center md:justify-between 
+      px-5 py-3 gap-4 
+      border-b border-border 
+      bg-mutedBg/50 dark:bg-neutral-900/50
+    "
+          >
             <div className="flex items-center gap-2">
               <Images size={20} />
-              <h1 className="text-base font-semibold">
+              <h1 className="text-lg font-semibold tracking-tight">
                 Client Payment Details
               </h1>
             </div>
 
-            <div className="flex flex-wrap gap-6 md:gap-8 items-center">
+            <div className="flex flex-wrap gap-8 items-center">
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                <p className="text-xs font-medium text-muted-foreground tracking-wide">
                   Amount Received
                 </p>
                 <p className="text-lg font-semibold text-primary">
@@ -139,7 +152,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
               </div>
 
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                <p className="text-xs font-medium text-muted-foreground tracking-wide">
                   Payment Date
                 </p>
                 <p className="text-lg font-semibold">
@@ -149,15 +162,16 @@ export default function ClientApprovalDetails({ leadId }: Props) {
             </div>
           </div>
 
-          {/* Content below */}
-          <div className="p-4 space-y-6">
+          {/* Content */}
+          <div className="p-6 space-y-6">
             {/* Payment Proof */}
             {paymentFile && (
-              <div className="flex flex-col space-y-1 ">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground tracking-wide">
                   Payment Proof
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-2">
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   <ImageComponent
                     doc={{
                       id: paymentFile.id,
@@ -181,13 +195,19 @@ export default function ClientApprovalDetails({ leadId }: Props) {
               </div>
             )}
 
-            {/* Remark Section */}
+            {/* Remark */}
             {paymentInfo.payment_text && (
-              <div className="pt-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground tracking-wide">
                   Remark
                 </p>
-                <div className="bg-muted border rounded-md p-3 text-sm leading-relaxed">
+                <div
+                  className="
+            bg-mutedBg/40 dark:bg-neutral-800/40 
+            border border-border rounded-xl 
+            p-4 text-sm leading-relaxed
+          "
+                >
                   {paymentInfo.payment_text}
                 </div>
               </div>
@@ -198,39 +218,66 @@ export default function ClientApprovalDetails({ leadId }: Props) {
 
       {/* -------- Approval Screenshots Section -------- */}
       {screenshots && screenshots.length > 0 && (
-        <div className="border rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between bg-muted px-4 py-2 border-b">
+        <div
+          className="
+    bg-white dark:bg-neutral-900 
+    rounded-2xl border border-border 
+    overflow-hidden shadow-soft
+  "
+        >
+          {/* Header */}
+          <div
+            className="
+      flex items-center justify-between 
+      px-5 py-3 
+      border-b border-border 
+      bg-mutedBg/50 dark:bg-neutral-900/50
+    "
+          >
             <div className="flex items-center gap-2">
               <FileText size={20} />
-              <h1 className="text-base font-semibold">
+              <h1 className="text-lg font-semibold tracking-tight">
                 Client Approval Screenshots
               </h1>
             </div>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              className="
+          rounded-lg border-border 
+          hover:bg-mutedBg dark:hover:bg-neutral-800 
+          dark:border-neutral-700
+        "
+            >
               Refresh
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 p-4 gap-3">
-            {screenshots.map((img: any, index: number) => (
-              <ImageComponent
-                key={img.id}
-                doc={{
-                  id: img.id,
-                  doc_og_name:
-                    img.doc_original_name || img.doc_og_name || "Screenshot",
-                  signedUrl: img.signedUrl || img.doc_sys_name,
-                  created_at: img.created_at,
-                }}
-                index={index}
-                canDelete={canDelete}
-                onView={(i) => {
-                  setInitialIndex(i);
-                  setIsCarouselOpen(true);
-                }}
-                onDelete={(id) => setConfirmDelete(Number(id))}
-              />
-            ))}
+          {/* Body */}
+          <div className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {screenshots.map((img: any, index: any) => (
+                <ImageComponent
+                  key={img.id}
+                  doc={{
+                    id: img.id,
+                    doc_og_name:
+                      img.doc_original_name || img.doc_og_name || "Screenshot",
+                    signedUrl: img.signedUrl || img.doc_sys_name,
+                    created_at: img.created_at,
+                  }}
+                  index={index}
+                  canDelete={canDelete}
+                  onView={(i) => {
+                    setInitialIndex(i);
+                    setIsCarouselOpen(true);
+                  }}
+                  onDelete={(id) => setConfirmDelete(Number(id))}
+                />
+              ))}
+            </div>
           </div>
         </div>
       )}

@@ -164,8 +164,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   rounded-lg 
   w-full h-full 
   overflow-y-scroll 
-  mb-6 
-  bg-transparent dark:bg-transparent
+  bg-[#fff] dark:bg-[#0a0a0a]
 "
       >
         {/* Header */}
@@ -198,6 +197,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 value={`${lead.firstname || ""} ${lead.lastname || ""}`.trim()}
               />
               <InfoRow icon={Mail} label="Email Address" value={lead.email} />
+              {/* Phone */}
               <InfoRow
                 icon={Phone}
                 label="Phone Number"
@@ -207,14 +207,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     : lead.contact_no
                 }
               />
-              <InfoRow
-                icon={MapPin}
-                label="Site Address"
-                value={lead.site_address || "No address provided"}
-              />
 
-              {/* Maps link under full width */}
-              <div className="md:col-span-2">
+              {/* Maps link (same row as phone) */}
+              <div>
                 <div className="flex items-center gap-2 text-sm text-subtle mb-1">
                   <MapPin className="w-4 h-4 stroke-[1.5]" />
                   Site Google Maps Link
@@ -225,10 +220,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     href={lead.site_map_link}
                     target="_blank"
                     className="
-  pl-6 underline 
-  font-medium text-heading dark:text-neutral-200 
-  hover:opacity-80
-"
+        pl-6 underline 
+        font-medium text-heading dark:text-neutral-200 
+        hover:opacity-80
+      "
                   >
                     View on Google Maps →
                   </a>
@@ -236,6 +231,15 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   <p className="pl-6 text-subtle">No map link provided</p>
                 )}
               </div>
+            </div>
+
+            {/* Site Address below full width */}
+            <div className="md:col-span-2">
+              <InfoRow
+                icon={MapPin}
+                label="Site Address"
+                value={lead.site_address || "No address provided"}
+              />
             </div>
           </SectionCard>
 

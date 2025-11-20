@@ -293,103 +293,185 @@ const SelectionsTab: React.FC = () => {
   }
 
   return (
-    <div className="px-6 py-4">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="carcas"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  Carcas
-                  {existingSelections.carcas && (
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                      Existing
-                    </span>
-                  )}
-                </FormLabel>
-                <FormControl>
-                  <TextAreaInput
-                    {...field}
-                    value={field.value || ""}
-                    placeholder="Enter Carcas details"
-                    disabled={isPending}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="shutter"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  Shutter
-                  {existingSelections.shutter && (
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                      Existing
-                    </span>
-                  )}
-                </FormLabel>
-                <FormControl>
-                  <TextAreaInput
-                    {...field}
-                    value={field.value || ""}
-                    placeholder="Enter Shutter details"
-                    disabled={isPending}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="handles"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  Handles
-                  {existingSelections.handles && (
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                      Existing
-                    </span>
-                  )}
-                </FormLabel>
-                <FormControl>
-                  <TextAreaInput
-                    {...field}
-                    value={field.value || ""}
-                    placeholder="Enter Handles details"
-                    disabled={isPending}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="flex gap-2 pt-4 w-1/4">
-            <Button type="submit" disabled={isPending} className="flex-1">
-              {isPending ? "Processing..." : "Save Selections"}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => refetch()}
-              disabled={isLoading}
-            >
-              Refresh
-            </Button>
+    <div className="">
+      <div
+        className="
+      bg-white dark:bg-neutral-900 
+      rounded-2xl 
+      border border-border 
+      shadow-soft 
+      overflow-hidden
+    "
+      >
+        {/* Header */}
+        <div
+          className="
+        px-5 py-3 
+        border-b border-border 
+        bg-mutedBg/50 dark:bg-neutral-900/50
+        flex items-center justify-between
+      "
+        >
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight">
+              Design Selections
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              Choose / Update Carcas, Shutter & Handle selections.
+            </p>
           </div>
-        </form>
-      </Form>
+
+          <Button type="submit" disabled={isPending} className="px-6 h-10">
+            {isPending ? "Processing..." : "Save Selections"}
+          </Button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Carcas / Shutter / Handles grid */}
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* CARCAS */}
+                <FormField
+                  control={form.control}
+                  name="carcas"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <FormLabel className="font-medium">Carcas</FormLabel>
+                        {existingSelections.carcas && (
+                          <span
+                            className="
+                          text-xs px-2 py-0.5 rounded-full 
+                          bg-blue-100 text-blue-700 
+                          dark:bg-blue-900/40 dark:text-blue-300
+                          border border-blue-300/40
+                        "
+                          >
+                            Existing
+                          </span>
+                        )}
+                      </div>
+
+                      <FormControl>
+                        <textarea
+                          {...field}
+                          value={field.value || ""}
+                          placeholder="Enter Carcas selection..."
+                          disabled={isPending}
+                          className="
+                        w-full h-28 resize-none
+                        rounded-xl px-3 py-2
+                        bg-mutedBg/40 dark:bg-neutral-800/60
+                        border border-border
+                        focus:ring-2 focus:ring-blue-500/40 
+                        focus:border-blue-500/40 
+                        outline-none
+                        transition
+                        text-sm
+                      "
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* SHUTTER */}
+                <FormField
+                  control={form.control}
+                  name="shutter"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <FormLabel className="font-medium">Shutter</FormLabel>
+                        {existingSelections.shutter && (
+                          <span
+                            className="
+                          text-xs px-2 py-0.5 rounded-full 
+                          bg-blue-100 text-blue-700 
+                          dark:bg-blue-900/40 dark:text-blue-300
+                          border border-blue-300/40
+                        "
+                          >
+                            Existing
+                          </span>
+                        )}
+                      </div>
+
+                      <FormControl>
+                        <textarea
+                          {...field}
+                          value={field.value || ""}
+                          placeholder="Enter Shutter details..."
+                          disabled={isPending}
+                          className="
+                        w-full h-28 resize-none
+                        rounded-xl px-3 py-2
+                        bg-mutedBg/40 dark:bg-neutral-800/60
+                        border border-border
+                        focus:ring-2 focus:ring-blue-500/40 
+                        focus:border-blue-500/40 
+                        outline-none
+                        text-sm transition
+                      "
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* HANDLES */}
+                <FormField
+                  control={form.control}
+                  name="handles"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2 md:col-span-2">
+                      <div className="flex items-center justify-between">
+                        <FormLabel className="font-medium">Handles</FormLabel>
+                        {existingSelections.handles && (
+                          <span
+                            className="
+                          text-xs px-2 py-0.5 rounded-full 
+                          bg-blue-100 text-blue-700 
+                          dark:bg-blue-900/40 dark:text-blue-300
+                          border border-blue-300/40
+                        "
+                          >
+                            Existing
+                          </span>
+                        )}
+                      </div>
+
+                      <FormControl>
+                        <textarea
+                          {...field}
+                          value={field.value || ""}
+                          placeholder="Enter Handles details..."
+                          disabled={isPending}
+                          className="
+                        w-full h-28 resize-none
+                        rounded-xl px-3 py-2
+                        bg-mutedBg/40 dark:bg-neutral-800/60
+                        border border-border
+                        focus:ring-2 focus:ring-blue-500/40 
+                        focus:border-blue-500/40 
+                        outline-none 
+                        text-sm transition
+                      "
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </form>
+          </Form>
+        </div>
+      </div>
     </div>
   );
 };

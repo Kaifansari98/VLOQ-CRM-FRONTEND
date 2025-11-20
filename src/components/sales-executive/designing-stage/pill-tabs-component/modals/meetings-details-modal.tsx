@@ -76,7 +76,9 @@ const MeetingDetailsModal = ({
 
   // 🧩 Non-image docs
   const docsArray = meetings
-    .filter((m) => !isImageExt(getFileExtension(m.document?.doc_sys_name || "")))
+    .filter(
+      (m) => !isImageExt(getFileExtension(m.document?.doc_sys_name || ""))
+    )
     .map((m) => ({
       id: m.document?.id,
       originalName: m.document?.doc_og_name,
@@ -110,73 +112,120 @@ const MeetingDetailsModal = ({
         title="Meeting Details"
         size="lg"
       >
-        <div className="p-4 sm:p-6 space-y-6">
-          {/* -------- Top Info Section -------- */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-2">
+        <div className="px-6 py-5 space-y-8">
+          {/* --- INFO CARDS WRAPPER --- */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* DATE CARD */}
+            <div
+              className="
+          bg-white dark:bg-neutral-900 
+          border border-border 
+          rounded-2xl p-5 shadow-soft
+          flex flex-col gap-3
+        "
+            >
+              <div className="flex items-center gap-2">
                 <Calendar
-                  size={16}
-                  className="text-blue-600 dark:text-blue-400"
+                  size={18}
+                  className="text-gray-600 dark:text-gray-400"
                 />
-                <span className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300">
-                  Date
+                <span className="text-sm font-medium text-muted-foreground">
+                  Meeting Date
                 </span>
               </div>
-              <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
+
+              <p className="text-base font-semibold text-heading dark:text-neutral-100">
                 {formatDateOnly(meeting.date)}
               </p>
-            </Card>
+            </div>
 
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-2">
+            {/* DOCUMENT COUNT CARD */}
+            <div
+              className="
+          bg-white dark:bg-neutral-900 
+          border border-border 
+          rounded-2xl p-5 shadow-soft
+          flex flex-col gap-3
+        "
+            >
+              <div className="flex items-center gap-2">
                 <FileText
-                  size={16}
-                  className="text-purple-600 dark:text-purple-400"
+                  size={18}
+                  className="text-gray-600 dark:text-gray-400"
                 />
-                <span className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300">
-                  Documents
+                <span className="text-sm font-medium text-muted-foreground">
+                  Attached Documents
                 </span>
               </div>
+
               <div className="flex items-center gap-2">
-                <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                <p className="text-base font-semibold text-heading dark:text-neutral-100">
                   {meeting.designMeetingDocsMapping.length}
                 </p>
+
                 <Badge variant="secondary" className="text-xs px-2 py-0.5">
-                  attached
+                  files
                 </Badge>
               </div>
-            </Card>
+            </div>
           </div>
 
-          {/* -------- Description -------- */}
-          <Card className="p-4">
-            <h3 className="font-medium text-sm mb-2 text-gray-900 dark:text-gray-100">
-              Description
+          {/* --- DESCRIPTION SECTION --- */}
+          <div
+            className="
+        bg-white dark:bg-neutral-900 
+        border border-border 
+        rounded-2xl p-5 shadow-soft 
+        space-y-3
+      "
+          >
+            <h3 className="text-sm font-semibold text-heading dark:text-neutral-100">
+              Meeting Description
             </h3>
-            <p className="text-gray-700 dark:text-gray-400 text-sm leading-relaxed text-justify">
+
+            <p className="text-sm text-muted-foreground leading-relaxed">
               {meeting.desc || "No description available for this meeting."}
             </p>
-          </Card>
+          </div>
 
-          {/* -------- Files & Images -------- */}
-          <Card className="p-4 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <h2 className="text-lg font-semibold">Meeting Files & Images</h2>
+          {/* --- FILES SECTION --- */}
+          <div
+            className="
+        bg-white dark:bg-neutral-900 
+        border border-border 
+        rounded-2xl p-6 shadow-soft 
+        space-y-6
+      "
+          >
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight">
+                  Meeting Files & Images
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Includes all files uploaded during this meeting.
+                </p>
+              </div>
+
               <Button
                 onClick={() => setOpenAddFilesModal(true)}
-                className="flex items-center text-sm gap-2 h-9"
+                className="
+            gap-2 rounded-lg 
+            h-9 
+          "
               >
                 <Plus className="h-4 w-4" />
                 Add More Files
               </Button>
             </div>
 
-            {/* 🖼️ Images Section */}
+            {/* --- IMAGES --- */}
             {meetingImages.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-base font-semibold">Meeting Images</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <h3 className="font-semibold text-sm">Meeting Images</h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {meetingImages.map((img, index) => (
                     <ImageComponent
                       key={img.id}
@@ -199,11 +248,12 @@ const MeetingDetailsModal = ({
               </div>
             )}
 
-            {/* 📄 Document Files Section */}
+            {/* --- PDF / OTHER DOCS --- */}
             {docsArray.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-base font-semibold">Documents</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2  gap-3">
+                <h3 className="font-semibold text-sm">Documents</h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5">
                   {docsArray.map((doc) => (
                     <DocumentCard
                       key={doc.id}
@@ -220,7 +270,7 @@ const MeetingDetailsModal = ({
                 </div>
               </div>
             )}
-          </Card>
+          </div>
         </div>
       </BaseModal>
 

@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import MeetingDetailsModal from "./modals/meetings-details-modal";
+import ComingSoon from "@/components/generics/ComingSoon";
 
 const MeetingsTab = () => {
   const { leadId } = useDetails();
@@ -39,7 +40,7 @@ const MeetingsTab = () => {
     leadId
   );
 
-  console.log("Meetings data: ", data)
+  console.log("Meetings data: ", data);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date");
@@ -161,112 +162,144 @@ const MeetingsTab = () => {
   // Empty state
   if (!data?.meetings || data.meetings.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 space-y-6">
-        <div className="text-center flex flex-col justify-center items-center">
-          <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-6">
-            <Calendar size={40} className="text-muted-foreground" />
-          </div>
-          <h3 className="font-semibold text-xl mb-3">No meetings found</h3>
-          <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-            Meetings will appear here once they are created.
-          </p>
-        </div>
-      </div>
+      <ComingSoon
+        heading="No Meetings Found"
+        description="Meetings will appear here once they are created."
+      />
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header with Search and Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-semibold">Meetings</h2>
-          <p className="text-sm text-muted-foreground">
-            {filteredAndSortedMeetings.length} meeting
-            {filteredAndSortedMeetings.length !== 1 ? "s" : ""} found
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative">
-            <Search
-              size={16}
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              placeholder="Search meetings..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 w-full sm:w-64"
-            />
+      {/* --- Header Section --- */}
+      <div
+        className="
+      rounded-2xl 
+      border border-border 
+      shadow-soft 
+      bg-white dark:bg-neutral-900 
+      overflow-hidden
+    "
+      >
+        <div
+          className="
+        flex flex-col sm:flex-row sm:items-center justify-between 
+        gap-4 px-6 py-4 
+        border-b border-border 
+        bg-mutedBg/50 dark:bg-neutral-900/50
+      "
+        >
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Meetings</h2>
+            <p className="text-sm text-muted-foreground">
+              {filteredAndSortedMeetings.length} meeting
+              {filteredAndSortedMeetings.length !== 1 ? "s" : ""} found
+            </p>
           </div>
 
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-full sm:w-40">
-              <SortAsc size={16} className="mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="date">Sort by Date</SelectItem>
-              <SelectItem value="docs">Sort by Documents</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Meetings Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filteredAndSortedMeetings.map((meeting: Meeting) => (
-          <Card
-            key={meeting.id}
-            className="group p-0 flex flex-col cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02] overflow-hidden h-full"
-            onClick={() => handleViewMeeting(meeting)}
-          >
-            {/* Header Section */}
-            <div className="relative h-28 bg-muted group-hover:bg-accent transition-colors">
-              <div className="flex justify-center items-center h-full">
-                <File size={36} className="text-foreground" />
-              </div>
-
-              <Badge className="absolute top-3 right-3 shadow-sm">
-                <FileText size={12} className="mr-1" />
-                {meeting.designMeetingDocsMapping.length}
-              </Badge>
+          {/* Search + Sort Controls */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative">
+              <Search
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                placeholder="Search meetings..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 w-full sm:w-64 rounded-lg"
+              />
             </div>
 
-            {/* Content */}
-            <div className="flex flex-col justify-between flex-1 p-4">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                  <Calendar size={12} />
-                  {formatDateOnly(meeting.date)}
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full sm:w-40 rounded-lg">
+                <SortAsc size={16} className="mr-2" />
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">Sort by Date</SelectItem>
+                <SelectItem value="docs">Sort by Documents</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* --- Meetings Grid Section --- */}
+        <div className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {filteredAndSortedMeetings.map((meeting: Meeting) => (
+              <div
+                key={meeting.id}
+                className="
+              group 
+              cursor-pointer 
+              bg-white dark:bg-neutral-900 
+              border border-border 
+              rounded-xl 
+              shadow-sm 
+              hover:shadow-md 
+              transition-all duration-200 
+              hover:scale-[1.015] 
+              overflow-hidden 
+              flex flex-col
+            "
+                onClick={() => handleViewMeeting(meeting)}
+              >
+                {/* Card Header */}
+                <div
+                  className="
+                relative h-28 
+                bg-mutedBg/60 dark:bg-neutral-800 
+                flex items-center justify-center
+              "
+                >
+                  <File size={36} className="text-foreground" />
+                  <Badge
+                    className="
+                  absolute top-3 right-3 
+                  shadow-sm rounded-md text-xs
+                "
+                  >
+                    <FileText size={12} className="mr-1" />
+                    {meeting.designMeetingDocsMapping.length}
+                  </Badge>
                 </div>
 
-                <p className="line-clamp-3 text-sm leading-relaxed text-foreground">
-                  {meeting.desc || "No description available for this meeting"}
-                </p>
-              </div>
+                {/* Card Body */}
+                <div className="flex flex-col flex-1 p-4 justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                      <Calendar size={12} />
+                      {formatDateOnly(meeting.date)}
+                    </div>
 
-              <div className="mt-4">
-                <Button
-                  size="sm"
-                  className="w-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleViewMeeting(meeting);
-                  }}
-                >
-                  <Eye size={14} className="mr-2" />
-                  View Details
-                  <ChevronRight
-                    size={14}
-                    className="ml-auto group-hover:translate-x-1 transition-transform"
-                  />
-                </Button>
+                    <p className="line-clamp-3 text-sm leading-relaxed text-foreground">
+                      {meeting.desc ||
+                        "No description available for this meeting"}
+                    </p>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    className="w-full mt-4 rounded-lg flex items-center justify-center gap-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewMeeting(meeting);
+                    }}
+                  >
+                    <Eye size={14} />
+                    View Details
+                    <ChevronRight
+                      size={14}
+                      className="group-hover:translate-x-1 transition-transform ml-1"
+                    />
+                  </Button>
+                </div>
               </div>
-            </div>
-          </Card>
-        ))}
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Meeting Details Modal */}
