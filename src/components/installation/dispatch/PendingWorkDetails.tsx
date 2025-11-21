@@ -123,28 +123,31 @@ export default function PendingWorkDetails({
       {/* Add Work Card */}
 
       {canWork && (
-        <Card className="border border-border/70 shadow-sm hover:shadow-md transition-all duration-200">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <PlusCircle className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">Add Pending Work</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Tasks pending during installation
-                </p>
-              </div>
+        <div className="border rounded-xl bg-background transition-all duration-300">
+          {/* ---------------- HEADER ---------------- */}
+          <div className="px-6 py-4 border-b bg-muted/30 flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10">
+              <PlusCircle className="h-5 w-5 text-primary" />
             </div>
-          </CardHeader>
 
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">
+                Add Pending Work
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Tasks pending during installation
+              </p>
+            </div>
+          </div>
+
+          {/* ---------------- FORM BODY ---------------- */}
+          <div className="p-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {/* Grid Inputs */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* Title Picker */}
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
+                  <Label className="flex items-center gap-1 text-sm font-medium">
                     <Wrench className="h-4 w-4" />
                     Work Title
                     <span className="text-red-500">*</span>
@@ -170,11 +173,12 @@ export default function PendingWorkDetails({
 
                 {/* Due Date */}
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
+                  <Label className="flex items-center gap-1 text-sm font-medium">
                     <Calendar className="h-4 w-4" />
                     Due Date
                     <span className="text-red-500">*</span>
                   </Label>
+
                   <CustomeDatePicker
                     value={dueDate || ""}
                     onChange={(value) => setDueDate(value || null)}
@@ -188,12 +192,13 @@ export default function PendingWorkDetails({
                 </div>
               </div>
 
-              {/* Remark / Note */}
+              {/* Remarks */}
               <div className="space-y-2">
-                <Label className="flex items-center gap-1">
+                <Label className="flex items-center gap-1 text-sm font-medium">
                   <FileText className="h-4 w-4" />
                   Additional Notes
                 </Label>
+
                 <Textarea
                   placeholder="Describe the work, issue, or requirements..."
                   value={remark}
@@ -224,20 +229,22 @@ export default function PendingWorkDetails({
                 </Button>
               )}
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Pending Work Grid */}
-      <Card className="rounded-2xl border border-border/70 bg-white dark:bg-neutral-900 shadow-sm">
+      <Card className="rounded-2xl border bg-background transition-all duration-300">
         <CardHeader>
           <div className="flex items-center justify-between">
+            {/* LEFT */}
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-primary/10 rounded-xl border flex items-center justify-center">
+              <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center">
                 <Wrench className="h-5 w-5 text-primary" />
               </div>
+
               <div>
-                <CardTitle className="text-lg font-semibold">
+                <CardTitle className="text-lg font-semibold tracking-tight">
                   Pending Work
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -246,9 +253,10 @@ export default function PendingWorkDetails({
               </div>
             </div>
 
+            {/* RIGHT */}
             <Badge
               variant="secondary"
-              className="gap-1 px-3 py-1 rounded-lg text-xs"
+              className="gap-1 px-3 py-1 rounded-lg text-xs shadow-sm"
             >
               <Wrench className="w-3 h-3" />
               {tasks.length} {tasks.length === 1 ? "Task" : "Tasks"}
@@ -262,9 +270,9 @@ export default function PendingWorkDetails({
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : tasks.length === 0 ? (
-            <div className="border-2 border-dashed rounded-xl p-12 text-center bg-neutral-50/40 dark:bg-neutral-800/30">
+            <div className="border-2 border-dashed rounded-2xl p-12 text-center bg-muted/30">
               <div className="flex flex-col items-center gap-3">
-                <div className="p-4 bg-neutral-200 dark:bg-neutral-700 rounded-full shadow-inner">
+                <div className="p-4 bg-muted/60 rounded-full shadow-inner">
                   <Wrench className="h-7 w-7 text-muted-foreground" />
                 </div>
                 <p className="text-sm font-medium text-muted-foreground">
@@ -284,7 +292,7 @@ export default function PendingWorkDetails({
                   );
                   const description = descParts.join("—").trim();
 
-                  const isLong = description.length > 200; // 👈 Only long text will get tooltip
+                  const isLong = description.length > 200;
                   const shortDesc = isLong
                     ? description.slice(0, 200) + "..."
                     : description;
@@ -314,22 +322,25 @@ export default function PendingWorkDetails({
                           setOpenTaskModal(true);
                         }}
                         className="
-          group h-full rounded-xl border border-border/50 
-          bg-neutral-50 dark:bg-neutral-900 
-          hover:border-primary/50 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.12)]
-          cursor-pointer transition-all duration-300
-        "
+                    group h-full rounded-xl 
+                    border 
+                    bg-background/80 
+                    hover:border-primary/40 
+                    hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.12)]
+                    transition-all duration-300 cursor-pointer
+                  "
                       >
-                        <CardContent className="px-5">
+                        <CardContent className="px-5 space-y-3 flex flex-col justify-between">
                           {/* HEADER */}
+                          <div>
                           <div className="flex items-start justify-between gap-3">
-                            <div className="p-2.5 rounded-lg border bg-primary/10">
+                            <div className="p-2.5 rounded-lg border bg-primary/10 border-primary/20">
                               <Wrench className="h-4 w-4 text-primary" />
                             </div>
 
                             <Badge
                               variant="outline"
-                              className={`text-[10px] h-5 mt-1 rounded-md ${getStatusColor(
+                              className={`text-[10px] h-5 px-2 rounded-md ${getStatusColor(
                                 task.status
                               )}`}
                             >
@@ -338,33 +349,34 @@ export default function PendingWorkDetails({
                           </div>
 
                           {/* TITLE */}
-                          <h4 className="mt-3 font-semibold text-sm line-clamp-1">
+                          <h4 className="font-semibold text-sm line-clamp-1 mt-4">
                             {workTitle || "Untitled Work"}
                           </h4>
 
                           {/* DESCRIPTION */}
-                          <p className="w-full overflow-hidden mt-1">
-                            {/* If long → Tooltip, else → normal text */}
-                            {description &&
-                              (isLong ? (
+                          {description && (
+                            <p className="w-full text-xs text-muted-foreground leading-relaxed mt-1">
+                              {isLong ? (
                                 <RemarkTooltip
                                   title="Additional Note"
                                   remark={
-                                    <span className="block text-left line-clamp-3 text-xs text-muted-foreground leading-relaxed">
+                                    <span className="block text-left line-clamp-3">
                                       {shortDesc}
                                     </span>
                                   }
                                   remarkFull={description}
                                 />
                               ) : (
-                                <span className="block text-left text-xs text-muted-foreground leading-relaxed line-clamp-3">
+                                <span className="block text-left line-clamp-3">
                                   {shortDesc}
                                 </span>
-                              ))}
-                          </p>
+                              )}
+                            </p>
+                          )}
+                          </div>
 
                           {/* META */}
-                          <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
                             <Calendar className="h-3.5 w-3.5" />
                             <span>
                               Due:{" "}
@@ -381,6 +393,7 @@ export default function PendingWorkDetails({
           )}
         </CardContent>
       </Card>
+
       {selectedTask && (
         <FollowUpModal
           open={openTaskModal}

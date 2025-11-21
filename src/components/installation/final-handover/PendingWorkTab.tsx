@@ -79,9 +79,15 @@ export default function PendingWorkTab({
                 <div className="p-4 bg-neutral-200 dark:bg-neutral-700 rounded-full shadow-inner">
                   <Wrench className="h-7 w-7 text-muted-foreground" />
                 </div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  No pending work
+                <div className="mt-2">
+
+                <p className="text-md font-medium">
+                  No Pending Work Found
                 </p>
+                <p className="text-xs font-medium text-muted-foreground">
+                  All the pending work of the site will get displayed here.
+                </p>
+                </div>
               </div>
             </div>
           ) : (

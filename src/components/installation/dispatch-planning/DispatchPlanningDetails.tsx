@@ -417,24 +417,43 @@ export default function DispatchPlanningDetails({
 
   console.log("can View And Work: ", canViewAndWork);
   return (
-    <div className="space-y-6 pb-6">
+    <div className="space-y-4 pb-6">
       {/* Dispatch Planning Information */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+      <div className="border h-full rounded-lg overflow-y-auto bg-background">
+        {/* ---------- HEADER ---------- */}
+        <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
+          <div className="space-y-0">
             <div className="flex items-center gap-2">
               <Truck className="h-5 w-5 text-primary" />
-              <CardTitle>Dispatch Planning Information</CardTitle>
+              <h2 className="text-lg font-semibold tracking-tight">
+                Dispatch Planning Information
+              </h2>
             </div>
-            {infoSaved && (
-              <Badge variant="outline" className="gap-1">
-                <CheckCircle2 className="h-3 w-3" />
-                Saved
-              </Badge>
-            )}
+            <p className="text-xs text-muted-foreground ml-7">
+              Provide onsite contact details & dispatch requirements.
+            </p>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+
+          {canViewAndWork && (
+            <Button
+              onClick={handleSaveInfo}
+              disabled={saveInfoMutation.isPending}
+              className="w-full md:w-auto"
+            >
+              {saveInfoMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>Save Dispatch Info</>
+              )}
+            </Button>
+          )}
+        </div>
+
+        {/* ---------- BODY ---------- */}
+        <div className="p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
             {/* Onsite Contact Person Name */}
             <div className="space-y-2">
@@ -508,7 +527,7 @@ export default function DispatchPlanningDetails({
               />
             </div>
 
-            {/* Required OnSite Delivery Date */}
+            {/* Required Delivery Date */}
             <div className="space-y-2">
               <Label className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
@@ -542,7 +561,6 @@ export default function DispatchPlanningDetails({
             </div>
 
             {/* Material Lift Availability */}
-
             <div className="space-y-3">
               <Label className="flex items-center gap-1 text-sm font-medium">
                 <Truck className="h-4 w-4" />
@@ -593,7 +611,6 @@ export default function DispatchPlanningDetails({
               )}
             </div>
 
-            {/* Hint text when no selection */}
             {dispatchInfo.material_lift_availability === null && (
               <p className="text-xs text-muted-foreground mt-1">
                 Please select whether a material lift is available at the site.
@@ -617,43 +634,35 @@ export default function DispatchPlanningDetails({
               disabled={!canViewAndWork}
             />
           </div>
-
-          {canViewAndWork && (
-            <Button
-              onClick={handleSaveInfo}
-              disabled={saveInfoMutation.isPending}
-              className="w-full md:w-auto"
-            >
-              {saveInfoMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>Save Dispatch Info</>
-              )}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Payment Information */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+      <div className="border rounded-lg bg-background overflow-y-auto">
+        {/* ---------- HEADER ---------- */}
+        <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
+          <div className="space-y-0">
             <div className="flex items-center gap-2">
               <CreditCard className="h-5 w-5 text-primary" />
-              <CardTitle>Payment Information</CardTitle>
+              <h2 className="text-lg font-semibold tracking-tight">
+                Payment Information
+              </h2>
             </div>
-            {paymentSaved && (
-              <Badge variant="outline" className="gap-1">
-                <CheckCircle2 className="h-3 w-3" />
-                Saved
-              </Badge>
-            )}
+            <p className="text-xs text-muted-foreground ml-7">
+              Add pending payment details & upload proof.
+            </p>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-7">
+
+          {paymentSaved && (
+            <span className="text-xs flex items-center gap-1 text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              Saved
+            </span>
+          )}
+        </div>
+
+        {/* ---------- BODY ---------- */}
+        <div className="p-6 space-y-7">
           {!infoSaved && (
             <div className="bg-muted p-4 rounded-lg text-sm text-muted-foreground">
               Please save dispatch planning information first before adding
@@ -661,7 +670,8 @@ export default function DispatchPlanningDetails({
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 items-start gap-4 ">
+          <div className="grid grid-cols-1 md:grid-cols-2 items-start gap-4">
+            {/* Pending Payment */}
             <div className="space-y-2">
               <Label>
                 Pending Payment
@@ -689,6 +699,7 @@ export default function DispatchPlanningDetails({
                   !canViewAndWork || !infoSaved || existingPaymentDoc !== null
                 }
               />
+
               <p className="text-sm font-medium mt-2">
                 Project Pending Amount: {project_pending_amount}
               </p>
@@ -733,11 +744,11 @@ export default function DispatchPlanningDetails({
               </Label>
             )}
 
-            {/* Show existing document if uploaded */}
             {existingPaymentDoc ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {images.map((doc: any, index: number) => (
                   <ImageComponent
+                    key={doc?.id}
                     doc={{
                       id: doc?.id,
                       doc_og_name: doc.doc_og_name,
@@ -785,6 +796,7 @@ export default function DispatchPlanningDetails({
             )}
           </div>
 
+          {/* Note */}
           {canViewAndWork &&
             !existingPaymentDoc &&
             (paymentInfo.pending_payment ||
@@ -796,6 +808,7 @@ export default function DispatchPlanningDetails({
               </p>
             )}
 
+          {/* Save Button */}
           {canViewAndWork && !existingPaymentDoc && (
             <Button
               onClick={handlePaymentSaveClick}
@@ -816,8 +829,8 @@ export default function DispatchPlanningDetails({
               )}
             </Button>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Confirmation Dialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>

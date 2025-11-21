@@ -21,9 +21,9 @@ export default function FinalHandoverWrapper({
           Final Handover
         </div>
       ),
-      color: "bg-blue-500 hover:bg-blue-600",
+      color: "bg-zinc-900 hover:bg-zinc-900",
       cardContent: (
-        <div  className="p-2">
+        <div  className="p-2 bg-[#fff] dark:bg-[#0a0a0a]">
           <div>
             <FinalHandover leadId={leadId} accountId={accountId} />
           </div>
@@ -38,7 +38,7 @@ export default function FinalHandoverWrapper({
           Pending Work
         </div>
       ),
-      color: "bg-purple-500 hover:bg-purple-600",
+      color: "bg-zinc-900 hover:bg-zinc-900",
       cardContent: (
         <div>
           <PendingWorkTab leadId={leadId} accountId={accountId} />
