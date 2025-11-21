@@ -69,6 +69,7 @@ import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkDispatchStage } from "@/components/utils/privileges";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const DispatchDetailsSchema = z.object({
   dispatch_date: z.string().nonempty("Dispatch date is required"),
@@ -250,94 +251,122 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   const canViewAndWork = canViewAndWorkDispatchStage(userType, leadStatus);
 
   return (
-    <div className="space-y-6 h-full overflow-y-scroll">
+    <div className="space-y-6 h-full overflow-y-scroll bg-[#fff] dark:bg-[#0a0a0a]">
       {/* Required Date & Boxes Info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardContent>
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-primary/10 rounded-lg">
-                <Calendar className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Required OnSite Delivery Date
+        {/* ---- Required Delivery Date Card ---- */}
+        <div className="border rounded-xl bg-background transition-all">
+          <div className="p-5 flex items-center gap-4">
+            {/* Icon */}
+            <div className="p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10">
+              <Calendar className="h-5 w-5 text-primary" />
+            </div>
+
+            {/* Content */}
+            <div className="flex flex-col">
+              <p className="text-xs font-medium text-muted-foreground tracking-wide">
+                Required OnSite Delivery Date
+              </p>
+
+              {loadingRequiredDate ? (
+                <div className="h-6 w-40 bg-muted animate-pulse rounded-md mt-2" />
+              ) : (
+                <p className="text-lg md:text-xl font-semibold text-foreground mt-1">
+                  {requiredDateData?.required_date_for_dispatch
+                    ? format(
+                        new Date(requiredDateData.required_date_for_dispatch),
+                        "EEEE dd MMMM yyyy"
+                      )
+                    : "Not set"}
                 </p>
-                {loadingRequiredDate ? (
-                  <div className="h-6 w-32 bg-muted animate-pulse rounded mt-1" />
-                ) : (
-                  <p className="text-xl font-bold text-foreground">
-                    {requiredDateData?.required_date_for_dispatch
-                      ? format(
-                          new Date(requiredDateData.required_date_for_dispatch),
-                          "EEEE dd MMMM yyyy"
-                        )
-                      : "Not set"}
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ---- Number of Boxes Card ---- */}
+        <div className="border rounded-xl bg-background transition-all">
+          <div className="p-5 flex items-center gap-4">
+            {/* Icon */}
+            <div className="p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10">
+              <Package className="h-5 w-5 text-primary" />
+            </div>
+
+            {/* Content */}
+            <div className="flex flex-col w-full">
+              <p className="text-xs font-medium text-muted-foreground tracking-wide">
+                Number of Boxes
+              </p>
+
+              {loadingRequiredDate ? (
+                <div className="h-6 w-24 bg-muted animate-pulse rounded-md mt-2" />
+              ) : (
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-lg md:text-xl font-semibold text-foreground">
+                    {requiredDateData?.no_of_boxes || 0}
                   </p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardContent>
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-primary/10 rounded-lg">
-                <Package className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Number of Boxes</p>
-                {loadingRequiredDate ? (
-                  <div className="h-6 w-20 bg-muted animate-pulse rounded mt-1" />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <p className="text-lg font-semibold text-foreground">
-                      {requiredDateData?.no_of_boxes || 0}
-                    </p>
-
-                    {canViewAndWork && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-6 w-6 p-0 hover:bg-accent rounded-full"
-                        onClick={() => {
-                          setNoOfBoxesInput(
-                            requiredDateData?.no_of_boxes?.toString() || ""
-                          );
-                          setOpenBoxesModal(true);
-                        }}
-                      >
-                        <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
+                  {canViewAndWork && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 p-0 rounded-full hover:bg-accent"
+                      onClick={() => {
+                        setNoOfBoxesInput(
+                          requiredDateData?.no_of_boxes?.toString() || ""
+                        );
+                        setOpenBoxesModal(true);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       <Separator />
 
       {/* Dispatch Details Form */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+      <div className="border rounded-lg bg-background overflow-y-auto">
+        {/* ---------- HEADER ---------- */}
+        <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
+          <div className="space-y-0">
             <div className="flex items-center gap-2">
               <Truck className="h-5 w-5 text-primary" />
-              <CardTitle>Dispatch Details</CardTitle>
+              <h2 className="text-lg font-semibold tracking-tight">
+                Dispatch Details
+              </h2>
             </div>
-            {detailsSaved && (
-              <Badge variant="outline" className="gap-1">
-                <CheckCircle2 className="h-3 w-3" />
-                Saved
-              </Badge>
-            )}
+            <p className="text-xs text-muted-foreground ml-7">
+              Enter vehicle, driver & dispatch related information.
+            </p>
           </div>
-        </CardHeader>
-        <CardContent>
+
+          {/* Save Button */}
+          {canViewAndWork && (
+            <Button
+              type="submit"
+              disabled={addDispatchMutation.isPending}
+              className="w-full md:w-auto"
+            >
+              {addDispatchMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>Save Dispatch Details</>
+              )}
+            </Button>
+          )}
+        </div>
+
+        {/* ---------- CONTENT ---------- */}
+        <div className="p-6">
           {loadingDispatchDetails ? (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
@@ -345,21 +374,19 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               ))}
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Form Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Dispatch Date */}
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    Dispatch Date
-                    <span className="text-red-500">*</span>
+                    Dispatch Date <span className="text-red-500">*</span>
                   </Label>
 
                   <div
                     className={
-                      !canViewAndWork
-                        ? "opacity-50 pointer-events-none w-full"
-                        : "w-full"
+                      !canViewAndWork ? "opacity-50 pointer-events-none" : ""
                     }
                   >
                     <CustomeDatePicker
@@ -400,7 +427,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                   />
                 </div>
 
-                {/* Driver Number */}
+                {/* Driver Contact Number */}
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1">
                     <Phone className="h-4 w-4" />
@@ -412,10 +439,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     disabled={!canViewAndWork}
                     value={formData.driver_number}
                     onChange={(value) =>
-                      setFormData({
-                        ...formData,
-                        driver_number: value || "",
-                      })
+                      setFormData({ ...formData, driver_number: value || "" })
                     }
                   />
                 </div>
@@ -436,95 +460,99 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                   disabled={!canViewAndWork}
                 />
               </div>
-
-              {/* Submit Button */}
-              {canViewAndWork && (
-                <Button
-                  type="submit"
-                  disabled={addDispatchMutation.isPending}
-                  className="w-full md:w-auto"
-                >
-                  {addDispatchMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>Save Dispatch Details</>
-                  )}
-                </Button>
-              )}
             </form>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <Separator />
 
-      {/* Photos & Documents Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5 text-primary" />
-            Dispatch Photos & Documents
-            <span className="text-red-500">*</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {/* File Upload Area */}
-          <div className="space-y-4">
-            {canViewAndWork && (
-              <div className="space-y-2">
-                <Label>Upload Files</Label>
-                <FileUploadField
-                  value={selectedFiles}
-                  onChange={setSelectedFiles}
-                  accept="image/*,.pdf,.doc,.docx"
-                  multiple={true}
-                />
-              </div>
-            )}
+      {/* Dispatch Photos & Documents (Premium Container) */}
+      <div className="border rounded-lg bg-background overflow-hidden">
+        {/* ---------------------- HEADER ---------------------- */}
+        <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
+          <div className="space-y-0">
+            <div className="flex items-center gap-2">
+              <Upload className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold tracking-tight">
+                Dispatch Photos & Documents
+              </h2>
+              <span className="text-red-500">*</span>
+            </div>
 
-            {/* Selected Files Preview */}
+            <p className="text-xs text-muted-foreground ml-7">
+              Upload and manage dispatch images & files for this lead.
+            </p>
+          </div>
+
+          {documents?.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {documents.length} File{documents.length > 1 && "s"}
+            </span>
+          )}
+        </div>
+
+        {/* ---------------------- UPLOAD AREA ---------------------- */}
+        {canViewAndWork && (
+          <div className="p-6 border-b space-y-4">
+            <FileUploadField
+              value={selectedFiles}
+              onChange={setSelectedFiles}
+              accept="image/*,.pdf,.doc,.docx"
+              multiple
+            />
+
             {selectedFiles.length > 0 && (
-              <div className="space-y-3">
-                <div className="w-full flex justify-end">
-                  <Button
-                    onClick={handleUploadDocuments}
-                    disabled={uploadDocsMutation.isPending}
-                    className="flex justify-end"
-                  >
-                    {uploadDocsMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Upload Files
-                      </>
-                    )}
-                  </Button>
-                </div>
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={handleUploadDocuments}
+                  disabled={uploadDocsMutation.isPending}
+                  className="flex items-center gap-2"
+                >
+                  {uploadDocsMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      Upload Files
+                    </>
+                  )}
+                </Button>
               </div>
             )}
           </div>
+        )}
 
-          {/* Uploaded Documents */}
-          <div className="space-y-3">
-            <Label>Uploaded Documents</Label>
-            {loadingDocuments ? (
-              <div className="space-y-2">
-                {[...Array(3)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-16 bg-muted animate-pulse rounded-lg"
-                  />
-                ))}
-              </div>
-            ) : documents && documents.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {/* ---------------------- FILE LIST ---------------------- */}
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-semibold text-foreground">
+              Uploaded Documents
+            </h4>
+          </div>
+
+          {loadingDocuments ? (
+            <div className="flex justify-center py-10 text-sm text-muted-foreground">
+              <Loader2 className="animate-spin mr-2 size-4" />
+              Loading documents...
+            </div>
+          ) : documents?.length === 0 ? (
+            <div className="p-10 border border-dashed rounded-xl flex flex-col items-center justify-center text-center bg-muted/40">
+              <FileText className="w-10 h-10 text-muted-foreground mb-3" />
+              <p className="text-sm font-medium text-muted-foreground">
+                No documents uploaded yet.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Upload dispatch photos and files above.
+              </p>
+            </div>
+          ) : (
+            <ScrollArea className="max-h-[420px] pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
                 {[...images, ...Documents]
                   .sort(
                     (a, b) =>
@@ -532,7 +560,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                       new Date(a.created_at).getTime()
                   )
                   .map((doc: any, index: number) => {
-                    // Determine if it's an image or a document (by extension)
                     const ext = doc.doc_og_name
                       ?.split(".")
                       .pop()
@@ -554,15 +581,15 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                       <ImageComponent
                         key={`img-${doc.id}`}
                         doc={{
-                          id: doc?.id,
+                          id: doc.id,
                           doc_og_name: doc.doc_og_name,
                           signedUrl: doc.signed_url,
                           created_at: doc.created_at,
                         }}
                         index={index}
                         canDelete={canDelete}
-                        onView={(i) => {
-                          setStartIndex(i);
+                        onView={() => {
+                          setStartIndex(index);
                           setOpenCarousel(true);
                         }}
                         onDelete={(id) => setConfirmDelete(Number(id))}
@@ -582,28 +609,51 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     );
                   })}
               </div>
-            ) : (
-              <div className="border-2 border-dashed rounded-lg p-12 text-center">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="p-3 bg-muted rounded-full">
-                    <FileText className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    No documents uploaded yet
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Upload dispatch photos and documents above
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </ScrollArea>
+          )}
+        </div>
+
+        {/* ---------------------- DELETE CONFIRMATION MODAL ---------------------- */}
+        <AlertDialog
+          open={!!confirmDelete}
+          onOpenChange={() => setConfirmDelete(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. The document will be permanently
+                removed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* ---------------------- IMAGE VIEWER ---------------------- */}
+        <ImageCarouselModal
+          images={images}
+          open={openCarousel}
+          initialIndex={startIndex}
+          onClose={() => setOpenCarousel(false)}
+        />
+      </div>
 
       {/* Pending Material Details Section */}
-   
-      <PendingMaterialDetails leadId={leadId} accountId={accountId} disabled={canViewAndWork} />
+
+      <PendingMaterialDetails
+        leadId={leadId}
+        accountId={accountId}
+        disabled={canViewAndWork}
+      />
 
       {/* ✨ Edit No. of Boxes Modal */}
       <Dialog open={openBoxesModal} onOpenChange={setOpenBoxesModal}>
