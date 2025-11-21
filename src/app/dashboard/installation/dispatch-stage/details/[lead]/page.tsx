@@ -54,13 +54,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 import {
-  canReassingLead,
-  canDeleteLead,
-  canDoDispatchPlanning,
   canEditLeadButton,
   canDeleteLeadButton,
   canReassignLeadButton,
   canAccessTodoTaskTabDispatchStage,
+  canDoMoveToUnderInstallation,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
@@ -101,6 +99,7 @@ export default function DispatchPlanningLeadDetails() {
   const updateStatusMutation = useUpdateActivityStatus();
 
   const { data: readiness } = useCheckReadyForPostDispatch(vendorId, leadIdNum);
+  const canAccessButton = canDoMoveToUnderInstallation(userType);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -167,29 +166,31 @@ export default function DispatchPlanningLeadDetails() {
           <div className="flex items-center space-x-2">
             <div className="flex items-center gap-2">
               {/* Move to Under Installation Button + Tooltip Logic */}
-              {readiness?.readyForPostDispatch ? (
-                // 🔹 ENABLED BUTTON (Lead is ready)
-                <Button
-                  size="sm"
-                  variant="default"
-                  onClick={() => setOpenMoveConfirm(true)}
-                >
-                  Move to Under Installation
-                </Button>
-              ) : (
-                // 🔸 DISABLED with Tooltip (Lead NOT ready)
-                <CustomeTooltip
-                  truncateValue={
-                    <div className="opacity-50 cursor-not-allowed px-3 py-1.5 text-sm border rounded-md">
+              {readiness?.readyForPostDispatch
+                ? // 🔹 ENABLED BUTTON (Lead is ready)
+                  canAccessButton && (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => setOpenMoveConfirm(true)}
+                    >
                       Move to Under Installation
-                    </div>
-                  }
-                  value={
-                    readiness?.message ||
-                    "Lead is missing required information to proceed."
-                  }
-                />
-              )}
+                    </Button>
+                  )
+                : // 🔸 DISABLED with Tooltip (Lead NOT ready)
+                  canAccessButton && (
+                    <CustomeTooltip
+                      truncateValue={
+                        <div className="opacity-50 cursor-not-allowed px-3 py-1.5 text-sm border rounded-md">
+                          Move to Under Installation
+                        </div>
+                      }
+                      value={
+                        readiness?.message ||
+                        "Lead is missing required information to proceed."
+                      }
+                    />
+                  )}
 
               {/* Assign Task Button */}
               <Button size="sm" onClick={() => setAssignOpen(true)}>
