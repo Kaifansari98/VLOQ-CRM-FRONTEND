@@ -330,7 +330,7 @@ export default function PendingWorkDetails({
                     transition-all duration-300 cursor-pointer
                   "
                       >
-                        <CardContent className="px-5 space-y-3 flex flex-col justify-between">
+                        <CardContent className="px-5 space-y-3 flex flex-col h-full justify-between">
                           {/* HEADER */}
                           <div>
                           <div className="flex items-start justify-between gap-3">
