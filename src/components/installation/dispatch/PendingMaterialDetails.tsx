@@ -122,218 +122,221 @@ export default function PendingMaterialDetails({
   return (
     <div className="space-y-6">
       {/* Add New Material Card */}
-      {disabled && (
+{disabled && (
+  <div className="border rounded-lg bg-background overflow-hidden">
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <PlusCircle className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="text-lg">Add Pending Material</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Track materials that are pending for dispatch
-              </p>
-            </div>
+    {/* ---------- HEADER ---------- */}
+    <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between gap-3">
+      <div className="flex gap-2">
+
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">Add Pending Material</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Track materials that are pending for dispatch
+        </p>
+      </div>
+      </div>
+
+      {/* Submit */}
+      <Button
+          type="submit"
+          disabled={isPending || !title.trim() || !dueDate}
+          className="w-full md:w-auto"
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Adding...
+            </>
+          ) : (
+            <>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Material
+            </>
+          )}
+        </Button>
+    </div>
+
+    {/* ---------- CONTENT ---------- */}
+    <div className="p-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
+
+        {/* Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {/* Title */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1">
+              <Package className="h-4 w-4" />
+              Material Title <span className="text-red-500">*</span>
+            </Label>
+
+            <TextSelectPicker
+              options={
+                orderLoginSummary.map((item: any) => item.item_type || "Untitled Item") || []
+              }
+              value={title}
+              onChange={(selectedText) => setTitle(selectedText)}
+              placeholder={loadingSummary ? "Loading materials..." : "Select material..."}
+              emptyLabel="Select Material"
+              disabled={loadingSummary}
+            />
           </div>
-        </CardHeader>
 
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Title */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1">
-                  <Package className="h-4 w-4" />
-                  Material Title
-                  <span className="text-red-500">*</span>
-                </Label>
-                <TextSelectPicker
-                  options={
-                    orderLoginSummary.map(
-                      (item: any) => item.item_type || "Untitled Item"
-                    ) || []
-                  }
-                  value={title}
-                  onChange={(selectedText) => setTitle(selectedText)}
-                  placeholder={
-                    loadingSummary
-                      ? "Loading materials..."
-                      : "Select material..."
-                  }
-                  emptyLabel="Select Material"
-                  disabled={loadingSummary}
-                />
-              </div>
+          {/* Due Date */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1">
+              <Calendar className="h-4 w-4" />
+              Due Date <span className="text-red-500">*</span>
+            </Label>
 
-              {/* Due Date */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  Due Date
-                  <span className="text-red-500">*</span>
-                </Label>
-                <CustomeDatePicker
-                  value={dueDate || ""}
-                  onChange={(value) => setDueDate(value || null)}
-                  restriction="futureOnly"
-                />
-              </div>
-            </div>
+            <CustomeDatePicker
+              value={dueDate || ""}
+              onChange={(value) => setDueDate(value || null)}
+              restriction="futureOnly"
+            />
+          </div>
+        </div>
 
-            {/* Remark */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1">
-                <FileText className="h-4 w-4" />
-                Description / Notes
-              </Label>
-              <Textarea
-                placeholder="Add additional details about the material..."
-                value={remark}
-                onChange={(e) => setRemark(e.target.value)}
-                rows={3}
-              />
-            </div>
+        {/* Remark */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1">
+            <FileText className="h-4 w-4" />
+            Description / Notes
+          </Label>
 
-            <Button
-              type="submit"
-              disabled={isPending || !title.trim() || !dueDate}
-              className="w-full md:w-auto"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Material
-                </>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-      )}
+          <Textarea
+            placeholder="Add additional details about the material..."
+            value={remark}
+            onChange={(e) => setRemark(e.target.value)}
+            rows={3}
+          />
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
 
       {/* Pending Materials List */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Clock className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">Pending Materials</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Materials awaiting dispatch
-                </p>
-              </div>
-            </div>
-            <Badge variant="secondary" className="gap-1">
-              <Package className="h-3 w-3" />
-              {tasks.length} {tasks.length === 1 ? "Item" : "Items"}
-            </Badge>
-          </div>
-        </CardHeader>
+<div className="border rounded-lg bg-background overflow-hidden">
+  
+  {/* ---------- HEADER ---------- */}
+  <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
+    <div className="flex items-center gap-3">
+      <div className="p-2 bg-primary/10 rounded-lg">
+        <Clock className="h-5 w-5 text-primary" />
+      </div>
 
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : tasks.length === 0 ? (
-            <div className="border-2 border-dashed rounded-lg p-12 text-center">
-              <div className="flex flex-col items-center gap-3">
-                <div className="p-4 bg-muted rounded-full">
-                  <Package className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    No pending materials yet
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Add materials using the form above
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3 overflow-y-auto pr-2">
-              <AnimatePresence mode="popLayout">
-                {tasks.map((task: any, idx: number) => {
-                  const [taskTitle, ...descParts] = (task.remark || "").split(
-                    "—"
-                  );
-                  const description = descParts.join("—").trim();
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">Pending Materials</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Materials awaiting dispatch
+        </p>
+      </div>
+    </div>
 
-                  return (
-                    <motion.div
-                      key={task.id || idx}
-                      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{
-                        duration: 0.3,
-                        delay: idx * 0.05,
-                      }}
-                      layout
-                    >
-                      <Card className="border border-border/50 hover:border-primary/50 transition-all duration-200">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-start gap-3 flex-1 min-w-0">
-                              <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
-                                <Package className="h-4 w-4 text-primary" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-sm font-semibold text-foreground mb-1">
-                                  {taskTitle || "Untitled Material"}
-                                </h4>
-                                {description && (
-                                  <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-                                    {description}
-                                  </p>
-                                )}
-                                <div className="flex flex-wrap items-center gap-3">
-                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                    <Calendar className="h-3.5 w-3.5" />
-                                    <span>
-                                      Due:{" "}
-                                      {format(
-                                        new Date(task.due_date),
-                                        "dd MMM yyyy"
-                                      )}
-                                    </span>
-                                  </div>
-                                  <Badge
-                                    variant="outline"
-                                    className={`text-xs ${getStatusColor(
-                                      task.status
-                                    )}`}
-                                  >
-                                    {task.status === "completed" && (
-                                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                                    )}
-                                    {task.status}
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+    <Badge variant="secondary" className="gap-1">
+      <Package className="h-3 w-3" />
+      {tasks.length} {tasks.length === 1 ? "Item" : "Items"}
+    </Badge>
+  </div>
+
+  {/* ---------- CONTENT ---------- */}
+  <div className="p-6">
+    {isLoading ? (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    ) : tasks.length === 0 ? (
+      
+      <div className="p-10 border border-dashed rounded-xl flex flex-col items-center justify-center bg-muted/40">
+        <div className="p-4 bg-muted rounded-full">
+          <Package className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <p className="text-sm font-medium text-muted-foreground mt-3">
+          No pending materials yet
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Add materials using the form above
+        </p>
+      </div>
+
+    ) : (
+      <div className="space-y-4 max-h-[460px] overflow-y-auto pr-2">
+        <AnimatePresence mode="popLayout">
+
+          {tasks.map((task: any, idx: number) => {
+            const [taskTitle, ...descParts] = (task.remark || "").split("—");
+            const description = descParts.join("—").trim();
+
+            return (
+              <motion.div
+                key={task.id || idx}
+                initial={{ opacity: 0, y: 20, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3, delay: idx * 0.05 }}
+                layout
+              >
+                {/* ---------- ITEM CARD ---------- */}
+                <div className="
+                  border rounded-xl px-4 py-4
+                  bg-background/60 backdrop-blur-sm
+                  transition-all duration-300
+                ">
+                  <div className="flex items-start gap-3">
+                    
+                    {/* Left Icon */}
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Package className="h-4 w-4 text-primary" />
+                    </div>
+
+                    {/* Text Block */}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-semibold text-foreground">
+                        {taskTitle || "Untitled Material"}
+                      </h4>
+
+                      {description && (
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                          {description}
+                        </p>
+                      )}
+
+                      {/* Meta Row */}
+                      <div className="flex flex-wrap items-center gap-3 mt-3">
+
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Calendar className="h-3.5 w-3.5" />
+                          Due: {format(new Date(task.due_date), "dd MMM yyyy")}
+                        </div>
+
+                        <Badge
+                          variant="outline"
+                          className={`text-xs ${getStatusColor(task.status)} capitalize`}
+                        >
+                          {task.status === "completed" && (
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                          )}
+                          {task.status}
+                        </Badge>
+
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </motion.div>
+            );
+          })}
+
+        </AnimatePresence>
+      </div>
+    )}
+  </div>
+</div>
+
     </div>
   );
 }

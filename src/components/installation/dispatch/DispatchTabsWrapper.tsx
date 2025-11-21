@@ -41,7 +41,7 @@ const DispatchTabsWrapper: React.FC<DispatchTabsWrapperProps> = ({
           <Truck className="h-3.5 w-3.5" /> Dispatch
         </div>
       ),
-      color: "bg-blue-500 hover:bg-blue-600",
+      color: "bg-zinc-900 hover:bg-zinc-900",
       cardContent: (
         <DispatchStageDetails
           leadId={leadId}
@@ -57,7 +57,7 @@ const DispatchTabsWrapper: React.FC<DispatchTabsWrapperProps> = ({
           <ClipboardCheck className="h-3.5 w-3.5" /> Post Dispatch
         </div>
       ),
-      color: "bg-emerald-500 hover:bg-emerald-600",
+      color: "bg-zinc-900 hover:bg-zinc-900",
       cardContent: (
         <PostDispatchStage leadId={leadId} accountId={accountId} />
       ),

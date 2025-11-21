@@ -46,7 +46,7 @@ export default function UnderInstallationTabsWrapper({
     {
       id: "underInstallation",
       title: "Under Installation",
-      color: "bg-blue-500 hover:bg-blue-600",
+      color: "bg-zinc-900 hover:bg-zinc-900",
       disabled: !installationStarted,
       disabledReason: installationStarted
         ? ""
@@ -63,7 +63,7 @@ export default function UnderInstallationTabsWrapper({
     {
       id: "misc",
       title: "Miscellaneous",
-      color: "bg-gray-400",
+      color: "bg-zinc-900",
       disabled: !installationStarted,
       disabledReason: "Start installation to access this section",
       cardContent: (
@@ -78,7 +78,7 @@ export default function UnderInstallationTabsWrapper({
     {
       id: "issueLog",
       title: "Issue Log",
-      color: "bg-red-500 hover:bg-red-600",
+      color: "bg-zinc-900 hover:bg-zinc-900",
       disabled: !installationStarted,
       disabledReason: installationStarted
         ? ""
@@ -95,7 +95,7 @@ export default function UnderInstallationTabsWrapper({
     {
       id: "handover",
       title: "Usable Handover",
-      color: "bg-green-500 hover:bg-green-600",
+      color: "bg-zinc-900 hover:bg-zinc-900",
       disabled: !usableReady,
       disabledReason: usableHandoverTooltip,
       cardContent: (

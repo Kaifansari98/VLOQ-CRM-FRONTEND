@@ -252,7 +252,7 @@ export default function FinalHandover({
   }
 
   return (
-    <div className="space-y-6 pb-6">
+    <div className="space-y-6 pb-6 bg-[#fff] dark:bg-[#0a0a0a]">
       <div>
         <h2 className="text-lg font-semibold tracking-tight">Final Handover</h2>
         <p className="text-sm text-muted-foreground">
