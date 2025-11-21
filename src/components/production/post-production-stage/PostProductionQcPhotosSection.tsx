@@ -4,8 +4,7 @@ import React, { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
-import { FolderOpen, Upload, ExternalLink, Loader2 } from "lucide-react";
+import { FolderOpen, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { toast } from "react-toastify";
@@ -52,13 +51,15 @@ export default function PostProductionQcPhotosSection({
     leadId
   );
 
-  const { data: leadData, error } = useLeadStatus(leadId, vendorId);
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
-  const { data: completeness, refetch: refetchCompleteness } =
-    usePostProductionCompleteness(vendorId, leadId);
+  const { refetch: refetchCompleteness } = usePostProductionCompleteness(
+    vendorId,
+    leadId
+  );
 
   const [openCarousel, setOpenCarousel] = useState(false);
   const [startIndex, setStartIndex] = useState(0);
@@ -67,20 +68,18 @@ export default function PostProductionQcPhotosSection({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const hasFiles = Array.isArray(qcPhotos) && qcPhotos.length > 0;
 
-  const imageExtensions = ["jpg", "jpeg", "png"];
-  const documentExtensions = ["pdf", "zip"];
+  const imageTypes = ["jpg", "jpeg", "png"];
+  const docTypes = ["pdf", "zip"];
 
   const images =
-    qcPhotos?.filter((file: any) => {
-      const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
-      return imageExtensions.includes(ext || "");
-    }) || [];
+    qcPhotos?.filter((file: any) =>
+      imageTypes.includes(file.doc_og_name?.split(".").pop()?.toLowerCase())
+    ) || [];
 
-  const Documents =
-    qcPhotos?.filter((file: any) => {
-      const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
-      return documentExtensions.includes(ext || "");
-    }) || [];
+  const documents =
+    qcPhotos?.filter((file: any) =>
+      docTypes.includes(file.doc_og_name?.split(".").pop()?.toLowerCase())
+    ) || [];
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) {
@@ -104,6 +103,7 @@ export default function PostProductionQcPhotosSection({
       queryClient.invalidateQueries({
         queryKey: ["postProductionCompleteness", vendorId, leadId],
       });
+
       await refetchCompleteness();
     } catch (error: any) {
       toast.error(
@@ -115,7 +115,6 @@ export default function PostProductionQcPhotosSection({
   const canDelete = userType === "admin" || userType === "super-admin";
   const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatus);
 
-  // 🧩 --- Handlers ---
   const handleConfirmDelete = () => {
     if (confirmDelete) {
       deleteDocument({
@@ -126,20 +125,29 @@ export default function PostProductionQcPhotosSection({
       setConfirmDelete(null);
     }
   };
+
   return (
-    <div className="border rounded-lg overflow-hidden bg-background">
-      {/* Header */}
-      <div className="px-6 py-4 border-b bg-muted/20 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <FolderOpen className="w-5 h-5" />
-          <h2 className="text-lg font-semibold">QC Photos</h2>
+    <div className="border h-full rounded-lg overflow-y-auto bg-background shadow-sm">
+      {/* -------------------------------- HEADER -------------------------------- */}
+      <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
+        <div className="space-y-0">
+          <div className="flex items-center gap-2">
+            <FolderOpen className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold tracking-tight">QC Photos</h2>
+          </div>
+          <p className="text-xs text-muted-foreground ml-7">
+            Upload and manage Quality Check photos for this lead.
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Upload and manage Quality Check photos.
-        </p>
+
+        {hasFiles && (
+          <span className="text-xs text-muted-foreground">
+            {qcPhotos.length} File{qcPhotos.length > 1 && "s"}
+          </span>
+        )}
       </div>
 
-      {/* Upload Section */}
+      {/* -------------------------------- UPLOAD AREA -------------------------------- */}
       {canViewAndWork && (
         <div className="p-6 border-b space-y-4">
           <FileUploadField
@@ -172,17 +180,12 @@ export default function PostProductionQcPhotosSection({
         </div>
       )}
 
-      {/* Files List */}
+      {/* -------------------------------- FILE LIST -------------------------------- */}
       <div className="p-6">
-        <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center justify-between mb-3">
           <h4 className="text-sm font-semibold text-foreground">
             Uploaded Photos
           </h4>
-          {hasFiles && (
-            <span className="text-xs text-muted-foreground">
-              {qcPhotos.length} photo{qcPhotos.length > 1 ? "s" : ""}
-            </span>
-          )}
         </div>
 
         {isLoading ? (
@@ -191,19 +194,23 @@ export default function PostProductionQcPhotosSection({
             Loading QC photos...
           </div>
         ) : !hasFiles ? (
-          <div className="p-8 border border-dashed rounded-lg flex flex-col items-center justify-center text-center bg-muted/30">
-            <FolderOpen className="w-10 h-10 text-muted-foreground mb-2" />
+          <div className="p-10 border border-dashed rounded-xl flex flex-col items-center justify-center text-center bg-muted/40">
+            <FolderOpen className="w-10 h-10 text-muted-foreground mb-3" />
             <p className="text-sm font-medium text-muted-foreground">
               No QC photos uploaded yet.
             </p>
+            <p className="text-xs text-muted-foreground">
+              Start by uploading your QC images or PDF reports.
+            </p>
           </div>
         ) : (
-          <ScrollArea className="max-h-[400px] mt-2 pr-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <ScrollArea className="max-h-[420px] pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
               {images.map((doc: any, index: number) => (
                 <ImageComponent
+                  key={doc.id}
                   doc={{
-                    id: doc?.id,
+                    id: doc.id,
                     doc_og_name: doc.doc_og_name,
                     signedUrl: doc.signed_url,
                     created_at: doc.created_at,
@@ -218,13 +225,13 @@ export default function PostProductionQcPhotosSection({
                 />
               ))}
 
-              {Documents.map((doc: any) => (
+              {documents.map((doc: any) => (
                 <DocumentCard
                   key={doc.id}
                   doc={{
                     id: doc.id,
                     originalName: doc.doc_og_name,
-                    signedUrl: doc.signed_url,
+                    signedUrl: doc.signedUrl,
                     created_at: doc.created_at,
                   }}
                   canDelete={canDelete}
@@ -236,6 +243,7 @@ export default function PostProductionQcPhotosSection({
         )}
       </div>
 
+      {/* -------------------------------- DELETE CONFIRMATION -------------------------------- */}
       <AlertDialog
         open={!!confirmDelete}
         onOpenChange={() => setConfirmDelete(null)}
@@ -259,6 +267,8 @@ export default function PostProductionQcPhotosSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* -------------------------------- IMAGE CAROUSEL -------------------------------- */}
       <ImageCarouselModal
         images={images}
         open={openCarousel}

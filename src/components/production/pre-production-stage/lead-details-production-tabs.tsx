@@ -30,7 +30,7 @@ export default function LeadDetailsProductionUtil({
     {
       id: "preProduction",
       title: "Under Production",
-      color: "bg-blue-500 hover:bg-blue-700",
+      color: "bg-zinc-900 hover:bg-zinc-900",
       disabled: !defaultTab,
       disabledReason: readyForPostProduction
         ? "You do not have permission to view this record."
@@ -43,7 +43,7 @@ export default function LeadDetailsProductionUtil({
     {
       id: "postProduction",
       title: "Post Production",
-      color: "bg-green-500 hover:bg-green-700",
+      color: "bg-zinc-900 hover:bg-zinc-900",
       disabled: !readyForPostProduction,
       disabledReason:
         "You can access Post Production only after completing Pre-Production.",

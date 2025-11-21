@@ -250,7 +250,7 @@ export default function OrderLoginModal({
 
                 {hasVendorInfo && (
                   <div className="flex items-center gap-3 pt-2">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center shadow-md">
                       <span className="text-white font-semibold text-lg">
                         {initial}
                       </span>
@@ -395,8 +395,8 @@ export default function OrderLoginModal({
                           }
                           className={`w-full flex items-center justify-center gap-2 ${
                             isCompleted
-                              ? "bg-green-500 hover:bg-green-600"
-                              : "bg-green-500 hover:bg-green-600"
+                              ? ""
+                              : ""
                           }`}
                         >
                           <CheckCircle2 className="w-4 h-4" />

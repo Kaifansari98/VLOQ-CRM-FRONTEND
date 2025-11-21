@@ -112,7 +112,7 @@ const MeetingDetailsModal = ({
         title="Meeting Details"
         size="lg"
       >
-        <div className="px-6 py-5 space-y-8">
+        <div className="px-6 py-5 space-y-4">
           {/* --- INFO CARDS WRAPPER --- */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {/* DATE CARD */}
