@@ -156,7 +156,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           variants={itemVariants}
           className="
     lg:w-[45%]
-    bg-white dark:bg-neutral-900
+    bg-[#fff] dark:bg-[#0a0a0a]
     rounded-2xl
     border border-border
     shadow-soft
@@ -169,7 +169,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
       flex items-center justify-between 
       px-5 py-3 
       border-b border-border
-      bg-mutedBg/50 dark:bg-neutral-900/50
+      bg-[#fff] dark:bg-[#0a0a0a]
     "
           >
             <div className="flex items-center gap-2">
@@ -218,7 +218,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
             variants={itemVariants}
             className="
       flex-1
-      bg-white dark:bg-neutral-900
+      bg-[#fff] dark:bg-[#0a0a0a]
       rounded-2xl
       border border-border
       shadow-soft
@@ -231,7 +231,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
         flex items-center justify-between 
         px-5 py-3 
         border-b border-border
-        bg-mutedBg/50 dark:bg-neutral-900/50
+        bg-[#fff] dark:bg-[#0a0a0a]
       "
             >
               <div className="flex items-center gap-2">
@@ -312,7 +312,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
       flex items-center justify-between 
       px-5 py-3 
       border-b border-border
-      bg-mutedBg/50 dark:bg-neutral-900/50
+      bg-[#fff] dark:bg-[#0a0a0a]
     "
         >
           <div className="flex flex-col items-start">
@@ -341,7 +341,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
         </div>
 
         {/* Body */}
-        <motion.div variants={itemVariants} className="p-6">
+        <motion.div variants={itemVariants} className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {currentSitePhotos.map((doc, index) => (
               <ImageComponent
@@ -390,7 +390,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
         <motion.section
           variants={itemVariants}
           className="
-      bg-white dark:bg-neutral-900 
+      bg-[#fff] dark:bg-[#0a0a0a] 
       rounded-2xl 
       border border-border 
       shadow-soft 
@@ -403,7 +403,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
         flex items-center justify-between 
         px-5 py-3 
         border-b border-border
-        bg-mutedBg/50 dark:bg-neutral-900/50
+        bg-[#fff] dark:bg-[#0a0a0a]
       "
           >
             <div className="flex flex-col items-start">
@@ -432,7 +432,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           </div>
 
           {/* Body */}
-          <motion.div variants={itemVariants} className="p-6">
+          <motion.div variants={itemVariants} className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {paymentImages.map((doc, index) => (
                 <ImageComponent

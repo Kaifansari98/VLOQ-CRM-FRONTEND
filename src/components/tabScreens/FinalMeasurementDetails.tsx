@@ -133,7 +133,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
           icon={<Images size={20} />}
         />
 
-        <motion.div variants={itemVariants} className="p-6">
+        <motion.div variants={itemVariants} className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {sitePhotos.length > 0 ? (
               sitePhotos.map((photo, index) => (
@@ -181,7 +181,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
             icon={<FileText size={20} />}
           />
 
-          <motion.div variants={itemVariants} className="p-6">
+          <motion.div variants={itemVariants} className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {measurementDocs.map((doc) => (
                 <DocumentCard
@@ -204,7 +204,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
       {/* -------- Discussion Note -------- */}
       <div
         className="
-      bg-white dark:bg-neutral-900
+      bg-[#fff] dark:bg-[#0a0a0a]
       rounded-2xl 
       border border-border
       overflow-hidden
@@ -225,7 +225,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
         <div className="p-5">
           <div
             className="
-          bg-mutedBg dark:bg-neutral-800
+          bg-[#fff] dark:bg-[#0a0a0a]
           border border-border
           rounded-xl
           p-4 

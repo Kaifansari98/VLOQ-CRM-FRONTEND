@@ -123,7 +123,7 @@ const MeetingsTab = () => {
     return (
       <div className="flex flex-col items-center justify-center py-16 space-y-4">
         <div className="text-center">
-          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+          <div className="w-16 h-16 bg-[#fff] dark:bg-[#0a0a0a] rounded-full flex items-center justify-center mb-4">
             <X size={32} className="text-muted-foreground" />
           </div>
           <h3 className="font-semibold text-xl mb-2">
@@ -177,7 +177,7 @@ const MeetingsTab = () => {
       rounded-2xl 
       border border-border 
       shadow-soft 
-      bg-white dark:bg-neutral-900 
+      bg-[#fff] dark:bg-[#0a0a0a]
       overflow-hidden
     "
       >
@@ -186,7 +186,7 @@ const MeetingsTab = () => {
         flex flex-col sm:flex-row sm:items-center justify-between 
         gap-4 px-6 py-4 
         border-b border-border 
-        bg-mutedBg/50 dark:bg-neutral-900/50
+        bg-[#fff] dark:bg-[#0a0a0a]
       "
         >
           <div>

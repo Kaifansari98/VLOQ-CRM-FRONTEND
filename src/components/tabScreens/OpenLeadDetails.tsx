@@ -127,7 +127,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     <motion.section
       variants={itemVariants}
       className="
-  bg-white dark:bg-neutral-900 
+  bg-[#fff] dark:bg-[#0a0a0a]
   rounded-2xl 
   border border-border 
   shadow-soft 
@@ -294,7 +294,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
                 <div
                   className="
-  bg-mutedBg dark:bg-neutral-800 
+  bg-[#fff] dark:bg-[#0a0a0a] 
   border border-border 
   rounded-xl p-4 ml-6
 "
@@ -312,7 +312,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           <motion.section
             variants={itemVariants}
             className="
-  bg-white dark:bg-neutral-900 
+  bg-[#fff] dark:bg-[#0a0a0a] 
   rounded-2xl 
   border border-border 
   shadow-soft 
@@ -325,7 +325,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   flex items-center justify-between 
   px-5 py-3 
   border-b border-border
-  bg-mutedBg/50 dark:bg-neutral-900/50
+  bg-[#fff] dark:bg-[#0a0a0a]
 "
             >
               <div className="flex flex-col items-start">

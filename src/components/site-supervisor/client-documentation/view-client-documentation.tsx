@@ -157,7 +157,7 @@ export default function ClientDocumentationDetails({
           onRefresh={() => console.log("Refresh Project Files")}
         />
 
-        <div className="p-6 space-y-8">
+        <div className="p-6 space-y-8 bg-[#fff] dark:bg-[#0a0a0a]">
           {/* -------- Images -------- */}
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -196,7 +196,7 @@ export default function ClientDocumentationDetails({
 
           {/* -------- Documents -------- */}
           {documentDocs.length > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-3 bg-[#fff] dark:bg-[#0a0a0a]">
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {documentDocs.map((doc) => (
@@ -236,7 +236,7 @@ export default function ClientDocumentationDetails({
           onRefresh={() => console.log("Refresh Design Files")}
         />
 
-        <div className="p-6">
+        <div className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {pythaDocs.length > 0 ? (
               pythaDocs.map((doc) => (

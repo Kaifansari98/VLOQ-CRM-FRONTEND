@@ -131,7 +131,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
       flex flex-col md:flex-row md:items-center md:justify-between 
       px-5 py-3 gap-4 
       border-b border-border 
-      bg-mutedBg/50 dark:bg-neutral-900/50
+      bg-[#fff] dark:bg-[#0a0a0a]
     "
           >
             <div className="flex items-center gap-2">
@@ -163,7 +163,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
           </div>
 
           {/* Content */}
-          <div className="p-6 space-y-6">
+          <div className="p-6 space-y-6 bg-[#fff] dark:bg-[#0a0a0a]">
             {/* Payment Proof */}
             {paymentFile && (
               <div className="space-y-2">
@@ -203,7 +203,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
                 </p>
                 <div
                   className="
-            bg-mutedBg/40 dark:bg-neutral-800/40 
+            bg-[#fff] dark:bg-[#0a0a0a]
             border border-border rounded-xl 
             p-4 text-sm leading-relaxed
           "
@@ -220,7 +220,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
       {screenshots && screenshots.length > 0 && (
         <div
           className="
-    bg-white dark:bg-neutral-900 
+    bg-[#fff] dark:bg-[#0a0a0a]
     rounded-2xl border border-border 
     overflow-hidden shadow-soft
   "
@@ -231,7 +231,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
       flex items-center justify-between 
       px-5 py-3 
       border-b border-border 
-      bg-mutedBg/50 dark:bg-neutral-900/50
+      bg-[#fff] dark:bg-[#0a0a0a]
     "
           >
             <div className="flex items-center gap-2">
@@ -247,7 +247,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
               onClick={() => refetch()}
               className="
           rounded-lg border-border 
-          hover:bg-mutedBg dark:hover:bg-neutral-800 
+          bg-[#fff] dark:bg-[#0a0a0a]
           dark:border-neutral-700
         "
             >

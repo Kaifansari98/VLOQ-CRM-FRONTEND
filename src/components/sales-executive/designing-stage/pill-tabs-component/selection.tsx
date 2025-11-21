@@ -296,7 +296,7 @@ const SelectionsTab: React.FC = () => {
     <div className="">
       <div
         className="
-      bg-white dark:bg-neutral-900 
+      bg-[#fff] dark:bg-[#0a0a0a] 
       rounded-2xl 
       border border-border 
       shadow-soft 
@@ -308,7 +308,7 @@ const SelectionsTab: React.FC = () => {
           className="
         px-5 py-3 
         border-b border-border 
-        bg-mutedBg/50 dark:bg-neutral-900/50
+        bg-[#fff] dark:bg-[#0a0a0a]
         flex items-center justify-between
       "
         >
@@ -363,7 +363,7 @@ const SelectionsTab: React.FC = () => {
                           className="
                         w-full h-28 resize-none
                         rounded-xl px-3 py-2
-                        bg-mutedBg/40 dark:bg-neutral-800/60
+                        bg-[#fff] dark:bg-[#0a0a0a]
                         border border-border
                         focus:ring-2 focus:ring-blue-500/40 
                         focus:border-blue-500/40 
@@ -409,7 +409,7 @@ const SelectionsTab: React.FC = () => {
                           className="
                         w-full h-28 resize-none
                         rounded-xl px-3 py-2
-                        bg-mutedBg/40 dark:bg-neutral-800/60
+                        bg-[#fff] dark:bg-[#0a0a0a]
                         border border-border
                         focus:ring-2 focus:ring-blue-500/40 
                         focus:border-blue-500/40 
@@ -454,7 +454,7 @@ const SelectionsTab: React.FC = () => {
                           className="
                         w-full h-28 resize-none
                         rounded-xl px-3 py-2
-                        bg-mutedBg/40 dark:bg-neutral-800/60
+                        bg-[#fff] dark:bg-[#0a0a0a]
                         border border-border
                         focus:ring-2 focus:ring-blue-500/40 
                         focus:border-blue-500/40 
