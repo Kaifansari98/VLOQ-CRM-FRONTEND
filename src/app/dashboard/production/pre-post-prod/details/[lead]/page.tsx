@@ -287,8 +287,7 @@ export default function ProductionLeadDetails() {
               (completeness?.all_exists && lead?.no_of_boxes > 0 ? (
                 <Button
                   size="sm"
-                  variant="secondary"
-                  className="bg-green-600 hover:bg-green-700 text-white"
+                  variant="default"
                   onClick={() => setOpenReadyToDispatch(true)}
                 >
                   Ready To Dispatch
