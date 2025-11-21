@@ -213,7 +213,7 @@ export default function InstallationMiscellaneous({
   const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
 
   return (
-    <div className="mt-2 px-2">
+    <div className="px-2 bg-[#fff] dark:bg-[#0a0a0a]">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold">Miscellaneous Issues</h3>

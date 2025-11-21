@@ -26,7 +26,7 @@ export default function SiteReadinessTabs({
           <span>Checklist</span>
         </div>
       ),
-      color: "bg-zinc-900",
+      color: "bg-primary",
       cardContent: (
         <div className="relative w-full h-full p-0">
           <SiteReadinessDetails
@@ -45,7 +45,7 @@ export default function SiteReadinessTabs({
           <span>Current Site Photos</span>
         </div>
       ),
-      color: "bg-zinc-900",
+      color: "bg-primary",
       cardContent: (
         <div className="relative w-full h-full p-0">
           <CurrentSitePhotosReadinessSection

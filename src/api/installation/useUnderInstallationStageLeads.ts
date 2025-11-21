@@ -1160,3 +1160,56 @@ export const useFinalHandoverReady = (vendorId: number, leadId: number) => {
     enabled: !!vendorId && !!leadId,
   });
 };
+
+/* ==========================================================
+   ✔️ PUT - Resolve Miscellaneous Entry
+   @route PUT /leads/installation/under-installation/vendorId/:vendorId/leadId/:leadId/misc/:miscId/resolve
+   ========================================================== */
+
+   export const resolveMiscellaneousEntry = async (payload: {
+    vendorId: number;
+    leadId: number;
+    miscId: number;
+    resolved_by: number;
+  }) => {
+    const bodyData = {
+      resolved_by: payload.resolved_by,
+    };
+  
+    const { data } = await apiClient.put(
+      `/leads/installation/under-installation/vendorId/${payload.vendorId}/leadId/${payload.leadId}/misc/${payload.miscId}/resolve`,
+      bodyData
+    );
+  
+    return data?.data;
+  };
+
+  /**
+ * ✅ React Query Mutation Hook - Resolve Miscellaneous Entry
+ */
+export const useResolveMiscellaneousEntry = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: resolveMiscellaneousEntry,
+
+    onSuccess: (data, variables) => {
+      toast.success("Marked as resolved");
+
+      // Refetch miscellaneous list
+      queryClient.invalidateQueries({
+        queryKey: [
+          "miscellaneousEntries",
+          variables.vendorId,
+          variables.leadId,
+        ],
+      });
+    },
+
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.error || "Failed to resolve miscellaneous entry"
+      );
+    },
+  });
+};

@@ -396,7 +396,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
             className="
       flex items-center justify-between px-5 py-3
       border-b border-border
-      bg-mutedBg/50 dark:bg-neutral-900/50
+      bg-[#fff] dark:bg-[#0a0a0a]
     "
           >
             <div className="flex items-center gap-2">
@@ -411,14 +411,17 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
             </p>
           </div>
 
-          <div className="p-6 space-y-8">
+          <div className="p-6 space-y-8 bg-[#fff] dark:bg-[#0a0a0a]">
             {/* ========== PROJECT FILES ========== */}
-            <motion.div variants={itemVariants} className="space-y-4">
+            <motion.div
+              variants={itemVariants}
+              className="space-y-4 bg-[#fff] dark:bg-[#0a0a0a]"
+            >
               <div
                 className="
           flex items-center justify-between 
           px-4 py-2 border border-border rounded-xl
-          bg-mutedBg/40 dark:bg-neutral-800/40
+          bg-[#fff] dark:bg-[#0a0a0a]
         "
               >
                 <div className="flex items-center gap-2">
@@ -441,7 +444,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
             py-14 px-6 
             border border-dashed border-border/60 
             rounded-xl 
-            bg-mutedBg/40 dark:bg-neutral-800/40
+            bg-[#fff] dark:bg-[#0a0a0a]
           "
                 >
                   <Ban size={38} className="text-muted-foreground mb-2" />
@@ -500,7 +503,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
                 className="
           flex items-center justify-between 
           px-4 py-2 border border-border rounded-xl
-          bg-mutedBg/40 dark:bg-neutral-800/40
+          bg-[#fff] dark:bg-[#0a0a0a]
         "
               >
                 <div className="flex items-center gap-2">
@@ -560,7 +563,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
       {/* ========== INITIAL SITE MEASUREMENT (PREMIUM CRM) ========== */}
       <div
         className="
-    bg-white dark:bg-neutral-900 
+    bg-[#fff] dark:bg-[#0a0a0a]
     rounded-2xl 
     border border-border 
     overflow-hidden
@@ -572,7 +575,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
       flex items-center justify-between 
       px-5 py-3 
       border-b border-border 
-      bg-mutedBg/50 dark:bg-neutral-900/50
+      bg-[#fff] dark:bg-[#0a0a0a]
     "
         >
           <div className="flex items-center gap-2">
@@ -644,7 +647,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
       flex items-center justify-between 
       px-5 py-3 
       border-b border-border 
-      bg-mutedBg/50 dark:bg-neutral-900/50
+      bg-[#fff] dark:bg-[#0a0a0a]
     "
         >
           <div className="flex items-center gap-2">
@@ -660,7 +663,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
         </div>
 
         {/* Body */}
-        <div className="p-6">
+        <div className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
           {finalDocs.length === 0 ? (
             <div
               className="
@@ -668,7 +671,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
           py-14 px-6 
           border border-dashed border-border/60 
           rounded-xl 
-          bg-mutedBg/40 dark:bg-neutral-800/40
+          bg-[#fff] dark:bg-[#0a0a0a]
         "
             >
               <Ban size={38} className="text-muted-foreground mb-3" />

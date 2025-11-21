@@ -143,21 +143,29 @@ export default function CurrentSitePhotosReadinessSection({
   };
 
   return (
-    <div className="border rounded-lg overflow-hidden bg-background">
-      {/* Header */}
-      <div className="px-6 py-4 border-b bg-muted/20 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <FolderOpen className="w-5 h-5" />
-          <h2 className="text-lg font-semibold">
-            Current Site Photos (Site Readiness)
-          </h2>
+    <div className="border h-full rounded-lg overflow-y-auto bg-background shadow-sm">
+      {/* -------------------------------- HEADER -------------------------------- */}
+      <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
+        <div className="space-y-0">
+          <div className="flex items-center gap-2">
+            <FolderOpen className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold tracking-tight">
+              Current Site Photos (Site Readiness)
+            </h2>
+          </div>
+          <p className="text-xs text-muted-foreground ml-7">
+            Upload and manage Current Site Photos for this lead.
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Upload and manage current site photos.
-        </p>
+
+        {hasFiles && (
+          <span className="text-xs text-muted-foreground">
+            {sitePhotos.length} File{sitePhotos.length > 1 && "s"}
+          </span>
+        )}
       </div>
 
-      {/* Upload Section */}
+      {/* -------------------------------- UPLOAD AREA -------------------------------- */}
       {canViewAndWork && (
         <div className="p-6 border-b space-y-4">
           <FileUploadField
@@ -190,38 +198,37 @@ export default function CurrentSitePhotosReadinessSection({
         </div>
       )}
 
-      {/* Files List */}
+      {/* -------------------------------- FILE LIST -------------------------------- */}
       <div className="p-6">
-        <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center justify-between mb-3">
           <h4 className="text-sm font-semibold text-foreground">
             Uploaded Photos
           </h4>
-          {hasFiles && (
-            <span className="text-xs text-muted-foreground">
-              {sitePhotos.length} photo{sitePhotos.length > 1 ? "s" : ""}
-            </span>
-          )}
         </div>
 
         {isLoading ? (
           <div className="flex justify-center py-10 text-sm text-muted-foreground">
             <Loader2 className="animate-spin mr-2 size-4" />
-            Loading current site photos...
+            Loading site photos...
           </div>
         ) : !hasFiles ? (
-          <div className="p-8 border border-dashed rounded-lg flex flex-col items-center justify-center text-center bg-muted/30">
-            <FolderOpen className="w-10 h-10 text-muted-foreground mb-2" />
+          <div className="p-10 border border-dashed rounded-xl flex flex-col items-center justify-center text-center bg-muted/40">
+            <FolderOpen className="w-10 h-10 text-muted-foreground mb-3" />
             <p className="text-sm font-medium text-muted-foreground">
-              No photos uploaded yet.
+              No site photos uploaded yet.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Start by uploading Current Site photos.
             </p>
           </div>
         ) : (
-          <ScrollArea className="max-h-[400px] mt-2 pr-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <ScrollArea className="max-h-[420px] pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
               {images.map((doc: any, index: number) => (
                 <ImageComponent
+                  key={doc.id}
                   doc={{
-                    id: doc?.id,
+                    id: doc.id,
                     doc_og_name: doc.doc_og_name,
                     signedUrl: doc.signed_url,
                     created_at: doc.created_at,
@@ -254,6 +261,7 @@ export default function CurrentSitePhotosReadinessSection({
         )}
       </div>
 
+      {/* -------------------------------- DELETE CONFIRMATION -------------------------------- */}
       <AlertDialog
         open={!!confirmDelete}
         onOpenChange={() => setConfirmDelete(null)}
@@ -278,6 +286,7 @@ export default function CurrentSitePhotosReadinessSection({
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* -------------------------------- IMAGE CAROUSEL -------------------------------- */}
       <ImageCarouselModal
         images={images}
         open={openCarousel}

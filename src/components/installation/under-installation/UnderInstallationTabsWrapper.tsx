@@ -109,7 +109,7 @@ export default function UnderInstallationTabsWrapper({
   ];
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full bg-[#fff] dark:bg-[#0a0a0a]">
       <SmoothTab
         items={tabs}
         defaultTabId="underInstallation"
