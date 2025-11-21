@@ -81,21 +81,27 @@ export default function InstallationDayWiseReports({
 
   const { data: underDetails } = useUnderInstallationDetails(vendorId, leadId);
 
-  console.log(
-    "Installation Start Date :- ",
-    underDetails?.actual_installation_start_date
-  );
-  console.log(
-    "Expected End Date :- ",
-    underDetails?.expected_installation_end_date
-  );
-
+  const usedDates = React.useMemo(() => {
+    if (!reports) return new Set<string>();
+    return new Set(
+      reports.map((r: any) =>
+        new Date(r.update_date).toISOString().slice(0, 10)
+      )
+    );
+  }, [reports]);
   const handleAddReport = () => {
     if (!selectedDate) {
       toast.error("Please select a date");
       return;
     }
 
+    // duplicate check
+    if (usedDates.has(selectedDate)) {
+      toast.error(
+        "An update for this date already exists. Choose another date."
+      );
+      return;
+    }
     if (files.length === 0) {
       toast.error("Please upload at least one document");
       return;
@@ -190,7 +196,7 @@ export default function InstallationDayWiseReports({
       </div>
 
       {/* Report Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ">
         {reports?.length === 0 && (
           <div className="col-span-full text-center py-16 text-muted-foreground">
             <div className="flex flex-col items-center gap-3">
@@ -215,11 +221,11 @@ export default function InstallationDayWiseReports({
             transition={{ delay: index * 0.05, duration: 0.3 }}
           >
             <Card
-              className="
+              className=" 
           group cursor-pointer rounded-xl bg-card border
           hover:shadow-[0_4px_18px_-2px_rgba(0,0,0,0.1)]
           hover:border-primary/40 transition-all duration-300 
-          active:scale-[0.98]
+          active:scale-[0.98] h-full
         "
               onClick={() => setViewModal({ open: true, data: report })}
             >

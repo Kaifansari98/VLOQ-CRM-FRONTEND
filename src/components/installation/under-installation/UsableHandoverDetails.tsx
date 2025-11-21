@@ -9,6 +9,7 @@ import {
   Save,
   FolderOpen,
   Loader2,
+  ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import TextAreaInput from "@/components/origin-text-area";
@@ -258,63 +259,6 @@ export default function UsableHandover({
       {/* Pending Work Component */}
       <PendingWorkDetails leadId={leadId} accountId={accountId} />
 
-      {/* Pending Work Details / Remarks */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">
-              Pending Work Details / Remarks
-            </CardTitle>
-
-            {canWork &&
-              (!isEditingRemarks ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsEditingRemarks(true)}
-                >
-                  Edit Remarks
-                </Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setPendingWorkDetails(
-                        handoverData?.pending_work_details || ""
-                      );
-                      setIsEditingRemarks(false);
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleUpdateRemarks}
-                    disabled={updateRemarksMutation.isPending}
-                    className="gap-2"
-                  >
-                    <Save className="h-4 w-4" />
-                    {updateRemarksMutation.isPending ? "Saving..." : "Save"}
-                  </Button>
-                </div>
-              ))}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <TextAreaInput
-            value={pendingWorkDetails || "N/A"}
-            onChange={setPendingWorkDetails}
-            placeholder="Enter any pending work details or remarks..."
-            maxLength={2000}
-            readOnly={!isEditingRemarks}
-            disabled={!isEditingRemarks}
-            className={isEditingRemarks ? "" : "cursor-default"}
-          />
-        </CardContent>
-      </Card>
-
       {/* Cards Grid – same pattern as FinalHandover */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {sections.map((section, index) => {
@@ -441,6 +385,85 @@ export default function UsableHandover({
           );
         })}
       </div>
+
+      {/* Pending Work Details / Remarks */}
+      <Card className="rounded-2xl border bg-background transition-all duration-300">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center">
+                <ClipboardList className="h-5 w-5 text-primary" />
+              </div>
+
+              <div>
+                <CardTitle className="text-lg font-semibold tracking-tight">
+                  Pending Work Details / Remarks
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Add or update remarks related to pending work
+                </p>
+              </div>
+            </div>
+
+            {canWork &&
+              (!isEditingRemarks ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditingRemarks(true)}
+                  className="rounded-lg shadow-sm hover:shadow transition-all"
+                >
+                  Edit Remarks
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setPendingWorkDetails(
+                        handoverData?.pending_work_details || ""
+                      );
+                      setIsEditingRemarks(false);
+                    }}
+                    className="rounded-lg"
+                  >
+                    Cancel
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    onClick={handleUpdateRemarks}
+                    disabled={updateRemarksMutation.isPending}
+                    className="gap-2 rounded-lg"
+                  >
+                    <Save className="h-4 w-4" />
+                    {updateRemarksMutation.isPending ? "Saving..." : "Save"}
+                  </Button>
+                </div>
+              ))}
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          <div className="border border-border/40 rounded-xl bg-muted/20 p-4 shadow-inner">
+            <TextAreaInput
+              value={pendingWorkDetails || "N/A"}
+              onChange={setPendingWorkDetails}
+              placeholder="Enter any pending work details or remarks..."
+              maxLength={2000}
+              readOnly={!isEditingRemarks}
+              disabled={!isEditingRemarks}
+              className={`min-h-[150px] ${
+                isEditingRemarks
+                  ? "bg-background border border-border/40 rounded-lg shadow-sm"
+                  : "bg-transparent cursor-default"
+              }`}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
 
       <BaseModal
         open={!!activeSection}

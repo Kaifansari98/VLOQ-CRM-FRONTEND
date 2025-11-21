@@ -368,6 +368,9 @@ export function canViewAndWorkDispatchStage(
   );
 }
 
+export function canDoMoveToUnderInstallation(role: string): boolean {
+  return role === "admin" || role === "super_admin" || role === "factory";
+}
 export function canEditLeadForSalesExecutiveButton(role: string): boolean {
   return (
     role === "admin" || role === "super_admin" || role === "sales-executive"
