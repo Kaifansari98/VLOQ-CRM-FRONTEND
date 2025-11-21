@@ -735,10 +735,14 @@ export const useUpdateMiscERD = () => {
 
   return useMutation({
     mutationFn: updateMiscExpectedReadyDate,
+
     onSuccess: () => {
       toast.success("Expected ready date updated!");
+
       client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
     },
+
     onError: (err: any) => {
       toast.error(err?.message || "Failed to update date");
     },
@@ -1166,25 +1170,25 @@ export const useFinalHandoverReady = (vendorId: number, leadId: number) => {
    @route PUT /leads/installation/under-installation/vendorId/:vendorId/leadId/:leadId/misc/:miscId/resolve
    ========================================================== */
 
-   export const resolveMiscellaneousEntry = async (payload: {
-    vendorId: number;
-    leadId: number;
-    miscId: number;
-    resolved_by: number;
-  }) => {
-    const bodyData = {
-      resolved_by: payload.resolved_by,
-    };
-  
-    const { data } = await apiClient.put(
-      `/leads/installation/under-installation/vendorId/${payload.vendorId}/leadId/${payload.leadId}/misc/${payload.miscId}/resolve`,
-      bodyData
-    );
-  
-    return data?.data;
+export const resolveMiscellaneousEntry = async (payload: {
+  vendorId: number;
+  leadId: number;
+  miscId: number;
+  resolved_by: number;
+}) => {
+  const bodyData = {
+    resolved_by: payload.resolved_by,
   };
 
-  /**
+  const { data } = await apiClient.put(
+    `/leads/installation/under-installation/vendorId/${payload.vendorId}/leadId/${payload.leadId}/misc/${payload.miscId}/resolve`,
+    bodyData
+  );
+
+  return data?.data;
+};
+
+/**
  * ✅ React Query Mutation Hook - Resolve Miscellaneous Entry
  */
 export const useResolveMiscellaneousEntry = () => {

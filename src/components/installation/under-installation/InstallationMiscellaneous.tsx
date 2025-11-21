@@ -73,6 +73,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+import { useResolveMiscellaneousEntry } from "@/api/installation/useUnderInstallationStageLeads";
 interface InstallationMiscellaneousProps {
   vendorId: number;
   leadId: number;
@@ -104,6 +106,8 @@ export default function InstallationMiscellaneous({
     selectedTeams: [] as Option[],
   });
   const [files, setFiles] = useState<File[]>([]);
+
+  const resolveMisc = useResolveMiscellaneousEntry();
 
   const [viewModal, setViewModal] = useState<{
     open: boolean;
@@ -872,56 +876,68 @@ export default function InstallationMiscellaneous({
 
           <DialogFooter>
             {!viewModal.data?.is_resolved && (
-              <div className="flex w-3/5 gap-3">
+              <div className="flex gap-3 flex-row items-center justify-between ">
                 {/* ⭐ FULL-WIDTH DATE PICKER */}
-                <div className="flex-1">
-                  <CustomeDatePicker
-                    key={viewModal.data?.id}
-                    value={viewModal.data?.expected_ready_date || undefined}
-                    restriction="futureOnly"
-                    disabledReason={
-                      !canDoERDDate
-                        ? userType === "factory"
-                          ? "This lead has moved ahead. Changes aren’t allowed."
-                          : "Your role cannot perform this action."
-                        : undefined
-                    }
-                    onChange={(newDate) => {
-                      if (!canDoERDDate) return;
-                      if (!newDate) return;
 
-                      setSelectedERD(newDate);
-                      setShowConfirm(true);
-                    }}
-                  />
-                </div>
-
-                {/* ⭐ RESOLVE BUTTON */}
-                <CustomeTooltip
-                  value={
+                <CustomeDatePicker
+                  key={viewModal.data?.id}
+                  value={viewModal.data?.expected_ready_date || undefined}
+                  restriction="futureOnly"
+                  disabledReason={
                     !canDoERDDate
                       ? userType === "factory"
                         ? "This lead has moved ahead. Changes aren’t allowed."
-                        : "Your role can’t perform this action."
-                      : ""
+                        : "Your role cannot perform this action."
+                      : undefined
                   }
-                  truncateValue={
-                    <div
-                      className={
-                        !canDoERDDate ? "pointer-events-none opacity-60" : ""
-                      }
-                    >
-                      <Button
-                        variant="default"
-                        size="sm"
-                        disabled={!canDoERDDate}
-                      >
-                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                        Mark as Resolved
-                      </Button>
-                    </div>
-                  }
+                  onChange={(newDate) => {
+                    if (!canDoERDDate) return;
+                    if (!newDate) return;
+
+                    setSelectedERD(newDate);
+                    setShowConfirm(true);
+                  }}
                 />
+
+                {/* ⭐ RESOLVE BUTTON */}
+                {viewModal.data?.expected_ready_date && (
+                  <CustomeTooltip
+                    value={
+                      !canDoERDDate
+                        ? userType === "factory"
+                          ? "This lead has moved ahead. Changes aren't allowed."
+                          : "Your role can't perform this action."
+                        : ""
+                    }
+                    truncateValue={
+                      <div
+                        className={
+                          !canDoERDDate ? "pointer-events-none opacity-60" : ""
+                        }
+                      >
+                        <Button
+                          variant="default"
+                          size="sm"
+                          disabled={!canDoERDDate || resolveMisc.isPending}
+                          onClick={() => {
+                            if (!viewModal.data) return;
+                            resolveMisc.mutate({
+                              vendorId,
+                              leadId,
+                              miscId: viewModal.data.id,
+                              resolved_by: userId!,
+                            });
+                          }}
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                          {resolveMisc.isPending
+                            ? "Resolving…"
+                            : "Mark as Resolved"}
+                        </Button>
+                      </div>
+                    }
+                  />
+                )}
               </div>
             )}
 
@@ -953,14 +969,22 @@ export default function InstallationMiscellaneous({
               onClick={() => {
                 if (!viewModal.data || !selectedERD) return;
 
-                updateERDMutation.mutate({
-                  vendorId,
-                  miscId: viewModal.data.id,
-                  expected_ready_date: selectedERD,
-                  updated_by: userId!,
-                });
-
-                setShowConfirm(false);
+                updateERDMutation.mutate(
+                  {
+                    vendorId,
+                    miscId: viewModal.data.id,
+                    expected_ready_date: selectedERD,
+                    updated_by: userId!,
+                  },
+                  {
+                    onSuccess: () => {
+                      // 🔥 Close ALL modals on success
+                      setShowConfirm(false);
+                      setViewModal({ open: false, data: null });
+                      setIsAddModalOpen(false);
+                    },
+                  }
+                );
               }}
             >
               Confirm

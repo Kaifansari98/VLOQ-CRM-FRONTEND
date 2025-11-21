@@ -236,7 +236,6 @@ export default function UnderInstallationDetails({
                 options={installerOptions}
                 placeholder={!canWork ? "No permission" : "Installers assigned"}
                 hidePlaceholderWhenSelected
-                className="min-h-[40px]"
                 disabled={true}
               />
             </div>
@@ -253,7 +252,6 @@ export default function UnderInstallationDetails({
         options={installerOptions}
         placeholder="Select installers"
         hidePlaceholderWhenSelected
-        className="min-h-[40px]"
         disabled={false}
       />
     );
@@ -355,7 +353,7 @@ export default function UnderInstallationDetails({
                 Assign installers & set expected installation completion date.
               </p>
             </div>
-            {canWork && !isFullyCompleted && (
+            {canWork && (
               <Button onClick={onSave} size="sm">
                 {hasAssignedData ? "Update" : "Save"}
               </Button>
@@ -363,7 +361,7 @@ export default function UnderInstallationDetails({
           </div>
 
           {/* Fields Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
             {/* Date Picker */}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium">
