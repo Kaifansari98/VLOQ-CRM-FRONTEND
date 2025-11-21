@@ -244,7 +244,7 @@ export default function UsableHandover({
   }
 
   return (
-    <div className="mt-2 space-y-6">
+    <div className="space-y-6 bg-[#fff] dark:bg-[#0a0a0a]">
       {/* Header */}
       <div>
         <h2 className="text-lg font-semibold tracking-tight">

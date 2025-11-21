@@ -327,7 +327,7 @@ export default function UnderInstallationDetails({
   };
 
   return (
-    <div className="py-2 px-2">
+    <div className="px-2 bg-[#fff] dark:bg-[#0a0a0a]">
       {/* 🚫 Not started UI */}
       {!installationStarted && (
         <div className="flex flex-col items-center justify-center text-center py-20">

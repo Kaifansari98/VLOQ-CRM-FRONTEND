@@ -57,9 +57,22 @@ import { useAppSelector } from "@/redux/store";
 import TextSelectPicker from "@/components/TextSelectPicker";
 import { useOrderLoginSummary } from "@/api/installation/useDispatchStageLeads";
 import RemarkTooltip from "@/components/origin-tooltip";
-import { canViewAndWorkUnderInstallationStage } from "@/components/utils/privileges";
+import {
+  canDoERDMiscellaneousDate,
+  canViewAndWorkUnderInstallationStage,
+} from "@/components/utils/privileges";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
-
+import CustomeTooltip from "@/components/cutome-tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 interface InstallationMiscellaneousProps {
   vendorId: number;
   leadId: number;
@@ -103,6 +116,9 @@ export default function InstallationMiscellaneous({
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
+  const [selectedERD, setSelectedERD] = useState<string | undefined>(undefined);
+  const [showConfirm, setShowConfirm] = useState(false); // confirmation modal toggle
+  const canDoERDDate = canDoERDMiscellaneousDate(userType, leadStatus);
   const { data: orderLoginSummary = [], isLoading: loadingSummary } =
     useOrderLoginSummary(vendorId, leadId);
 
@@ -197,7 +213,7 @@ export default function InstallationMiscellaneous({
   const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
 
   return (
-    <div className="mt-2 px-2">
+    <div className="px-2 bg-[#fff] dark:bg-[#0a0a0a]">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold">Miscellaneous Issues</h3>
@@ -856,51 +872,56 @@ export default function InstallationMiscellaneous({
 
           <DialogFooter>
             {!viewModal.data?.is_resolved && (
-              <div className="flex items-center w-3/5 gap-3">
-                <CustomeDatePicker
-                  key={viewModal.data?.id}
+              <div className="flex w-3/5 gap-3">
+                {/* ⭐ FULL-WIDTH DATE PICKER */}
+                <div className="flex-1">
+                  <CustomeDatePicker
+                    key={viewModal.data?.id}
+                    value={viewModal.data?.expected_ready_date || undefined}
+                    restriction="futureOnly"
+                    disabledReason={
+                      !canDoERDDate
+                        ? userType === "factory"
+                          ? "This lead has moved ahead. Changes aren’t allowed."
+                          : "Your role cannot perform this action."
+                        : undefined
+                    }
+                    onChange={(newDate) => {
+                      if (!canDoERDDate) return;
+                      if (!newDate) return;
+
+                      setSelectedERD(newDate);
+                      setShowConfirm(true);
+                    }}
+                  />
+                </div>
+
+                {/* ⭐ RESOLVE BUTTON */}
+                <CustomeTooltip
                   value={
-                    viewModal.data?.expected_ready_date
-                      ? viewModal.data.expected_ready_date
-                      : undefined
+                    !canDoERDDate
+                      ? userType === "factory"
+                        ? "This lead has moved ahead. Changes aren’t allowed."
+                        : "Your role can’t perform this action."
+                      : ""
                   }
-                  onChange={(newDate) => {
-                    setViewModal((prev): any => {
-                      if (!prev.data) return prev;
-                      return {
-                        ...prev,
-                        data: {
-                          ...prev.data,
-                          expected_ready_date: newDate ?? undefined,
-                        },
-                      };
-                    });
-                  }}
-                  restriction="futureOnly"
+                  truncateValue={
+                    <div
+                      className={
+                        !canDoERDDate ? "pointer-events-none opacity-60" : ""
+                      }
+                    >
+                      <Button
+                        variant="default"
+                        size="sm"
+                        disabled={!canDoERDDate}
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        Mark as Resolved
+                      </Button>
+                    </div>
+                  }
                 />
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    if (!viewModal.data) return;
-
-                    updateERDMutation.mutate({
-                      vendorId,
-                      miscId: viewModal.data.id,
-                      expected_ready_date:
-                        viewModal.data.expected_ready_date ?? undefined,
-                      updated_by: userId!,
-                    });
-                  }}
-                >
-                  Save ERD
-                </Button>
-
-                <Button variant="default" size="sm">
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Mark as Resolved
-                </Button>
               </div>
             )}
 
@@ -913,6 +934,40 @@ export default function InstallationMiscellaneous({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Update ERD Date?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to update the Expected Ready Date?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowConfirm(false)}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={() => {
+                if (!viewModal.data || !selectedERD) return;
+
+                updateERDMutation.mutate({
+                  vendorId,
+                  miscId: viewModal.data.id,
+                  expected_ready_date: selectedERD,
+                  updated_by: userId!,
+                });
+
+                setShowConfirm(false);
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
