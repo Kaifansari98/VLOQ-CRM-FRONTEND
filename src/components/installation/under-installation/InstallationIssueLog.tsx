@@ -192,7 +192,7 @@ export default function InstallationIssueLog({
   };
 
   return (
-    <div className="mt-2 space-y-6">
+    <div className="space-y-6 bg-[#fff] dark:bg-[#0a0a0a]">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Issue Log</h2>
