@@ -99,9 +99,8 @@ export default function ClientApprovalLeadDetails() {
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [activeTab, setActiveTab] = useState("details");
+
   const [openClientApprovalModal, setOpenClientApprovalModal] = useState(false);
-  const [prevTab, setPrevTab] = useState("details");
   const [assignOpen, setAssignOpen] = useState(false);
   const [openRequestToTechCheckModal, setOpenRequestToTechCheckModal] =
     useState(false);
@@ -119,7 +118,26 @@ export default function ClientApprovalLeadDetails() {
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = Number(lead?.account_id);
 
+  const [activeTab, setActiveTab] = useState(
+    userType === "sales-executive" ? "todo" : "details"
+  );
+  const [previousTab, setPreviousTab] = useState("details");
+
   const is_client_approval_submitted = lead?.is_client_approval_submitted;
+
+  // Auto-open documentation modal
+  /* ---------- DEFAULT MODAL ON MOUNT ---------- */
+  useEffect(() => {
+    if (isLoading) return; // wait for lead data
+    if (userType !== "sales-executive") return; // only for SE
+
+    if (is_client_approval_submitted) {
+      setOpenRequestToTechCheckModal(true);
+    } else {
+      setOpenClientApprovalModal(true);
+    }
+    setActiveTab("todo");
+  }, [isLoading, userType, is_client_approval_submitted]);
 
   // Auto-open approval modal
   useEffect(() => {
@@ -257,11 +275,10 @@ export default function ClientApprovalLeadDetails() {
                 {/* EDIT */}
 
                 {canEdit && (
-
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
                 )}
 
                 {/* REASSIGN */}
@@ -291,16 +308,29 @@ export default function ClientApprovalLeadDetails() {
         <Tabs
           value={activeTab}
           onValueChange={(val) => {
+            // When user selects "todo"
             if (val === "todo") {
-              if (!canRequestToTeckCheck(userType)) return;
+              // Save previous tab (common in both functions)
+              setPreviousTab(activeTab);
 
-              if (!is_client_approval_submitted)
+              // First logic: access privilege + tech-check flow
+              if (canRequestToTeckCheck?.(userType)) {
+                if (!is_client_approval_submitted) {
+                  setOpenClientApprovalModal(true);
+                } else {
+                  setOpenRequestToTechCheckModal(true);
+                }
+              } else {
+                // Second logic: open client document modal
                 setOpenClientApprovalModal(true);
-              else setOpenRequestToTechCheckModal(true);
+              }
 
-              setPrevTab(activeTab);
+              // Keep tab on "todo"
+              setActiveTab("todo");
               return;
             }
+
+            // Default case for normal tab switching
             setActiveTab(val);
           }}
           className="w-full px-6 pt-4"
@@ -312,13 +342,24 @@ export default function ClientApprovalLeadDetails() {
                 Lead Details
               </TabsTrigger>
 
-              {canRequestToTeckCheck(userType) ? (
+              {canUploadClientApproval(userType) ? (
                 <TabsTrigger value="todo">
                   <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
                   To-Do Task
                 </TabsTrigger>
               ) : (
-                <CustomeTooltip truncateValue="..." value="No Permission" />
+                <CustomeTooltip
+                  truncateValue={
+                    <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                      <PanelsTopLeftIcon
+                        size={16}
+                        className="mr-1 opacity-60"
+                      />
+                      To-Do Task
+                    </div>
+                  }
+                  value="Only Sales Executive can access this tab"
+                />
               )}
 
               <TabsTrigger value="history">
@@ -378,13 +419,19 @@ export default function ClientApprovalLeadDetails() {
 
         <ClientApprovalModal
           open={openClientApprovalModal}
-          onOpenChange={setOpenClientApprovalModal}
+          onOpenChange={(open) => {
+            setOpenClientApprovalModal(open);
+            if (!open) setActiveTab(previousTab);
+          }}
           data={{ id: leadIdNum, accountId }}
         />
 
         <RequestToTechCheckModal
           open={openRequestToTechCheckModal}
-          onOpenChange={setOpenRequestToTechCheckModal}
+          onOpenChange={(open) => {
+            setOpenRequestToTechCheckModal(open);
+            if (!open) setActiveTab(previousTab);
+          }}
           data={{ id: leadIdNum, accountId }}
         />
 
