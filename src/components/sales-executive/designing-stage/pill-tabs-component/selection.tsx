@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import {
   useEditSelectionData,
+  useLeadStatus,
   useSelectionData,
   useSubmitSelection,
 } from "@/hooks/designing-stage/designing-leads-hooks";
@@ -20,12 +21,19 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import TextAreaInput from "@/components/origin-text-area";
 import { Button } from "@/components/ui/button";
 import { DesignSelection } from "@/types/designing-stage-types";
 import { useQueryClient } from "@tanstack/react-query";
+import { canUpdateDessingStageSelectionInputs } from "@/components/utils/privileges";
+import TextAreaInput from "@/components/origin-text-area"; // 👈 your component
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-// Zod schema for individual selections
+/* ---------- Zod ---------- */
 const formSchema = z
   .object({
     carcas: z.string().optional(),
@@ -33,19 +41,18 @@ const formSchema = z
     handles: z.string().optional(),
   })
   .refine(
-    (data) =>
-      !!data.carcas?.trim() || !!data.shutter?.trim() || !!data.handles?.trim(),
-    {
-      message: "At least one selection is required",
-      path: ["carcas"],
-    }
+    (d) => !!d.carcas?.trim() || !!d.shutter?.trim() || !!d.handles?.trim(),
+    { message: "At least one selection is required", path: ["carcas"] }
   );
 
 type FormValues = z.infer<typeof formSchema>;
 
+/* ---------- Component ---------- */
 const SelectionsTab: React.FC = () => {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const userId = useAppSelector((state) => state.auth.user?.id);
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const userId = useAppSelector((s) => s.auth.user?.id);
+  const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
+
   const { leadId, accountId } = useDetails();
   const queryClient = useQueryClient();
 
@@ -60,16 +67,21 @@ const SelectionsTab: React.FC = () => {
     refetch,
   } = useSelectionData(vendorId!, leadId!);
 
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
+
+  const canUpdateInput = canUpdateDessingStageSelectionInputs(
+    userType,
+    leadStatus
+  );
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      carcas: "",
-      shutter: "",
-      handles: "",
-    },
+    defaultValues: { carcas: "", shutter: "", handles: "" },
+    mode: "onBlur",
   });
 
-  // Store existing selection IDs for editing
+  /* existing selections map */
   const [existingSelections, setExistingSelections] = React.useState<{
     carcas?: DesignSelection;
     shutter?: DesignSelection;
@@ -77,209 +89,127 @@ const SelectionsTab: React.FC = () => {
   }>({});
 
   useEffect(() => {
-    if (selectionsData?.success && Array.isArray(selectionsData?.data)) {
-      const carcasSelection = selectionsData.data.find(
-        (item) => item.type === "Carcas"
-      );
-      const shutterSelection = selectionsData.data.find(
-        (item) => item.type === "Shutter"
-      );
-      const handlesSelection = selectionsData.data.find(
-        (item) => item.type === "Handles"
-      );
+    if (!selectionsData?.success || !Array.isArray(selectionsData.data)) return;
 
-      setExistingSelections({
-        carcas: carcasSelection,
-        shutter: shutterSelection,
-        handles: handlesSelection,
-      });
+    const byType = (t: string) => selectionsData.data.find((i) => i.type === t);
 
-      const normalizeDisplay = (val?: string) => {
-        if (!val || val === "NULL") return "This Field is Empty";
-        return val;
-      };
+    const carcas = byType("Carcas");
+    const shutter = byType("Shutter");
+    const handles = byType("Handles");
 
-      const values: FormValues = {
-        carcas: normalizeDisplay(carcasSelection?.desc),
-        shutter: normalizeDisplay(shutterSelection?.desc),
-        handles: normalizeDisplay(handlesSelection?.desc),
-      };
+    setExistingSelections({ carcas, shutter, handles });
 
-      form.reset(values);
-    }
-  }, [selectionsData?.data, form]);
+    form.reset({
+      carcas: carcas?.desc && carcas.desc !== "NULL" ? carcas.desc : "",
+      shutter: shutter?.desc && shutter.desc !== "NULL" ? shutter.desc : "",
+      handles: handles?.desc && handles.desc !== "NULL" ? handles.desc : "",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectionsData?.data]);
 
-  const handleCreateOrUpdate = async (type: string, desc: string) => {
-    if (!desc?.trim()) return;
+  /* -------- helpers -------- */
+  const normalizeValue = (v?: string) =>
+    v?.trim() && v.trim() !== "" ? v.trim() : "NULL";
 
-    const existingSelection =
+  const upsertSelection = async (
+    type: "Carcas" | "Shutter" | "Handles",
+    descRaw?: string
+  ) => {
+    const desc = normalizeValue(descRaw);
+    const existing =
       existingSelections[type.toLowerCase() as keyof typeof existingSelections];
 
-    try {
-      if (existingSelection) {
-        // Update existing selection
-        await new Promise<void>((resolve, reject) => {
-          editSelection(
-            {
-              selectionId: existingSelection.id,
-              payload: {
-                type,
-                desc,
-                updated_by: userId!,
-              },
+    if (existing) {
+      return new Promise<void>((resolve, reject) =>
+        editSelection(
+          {
+            selectionId: existing.id,
+            payload: { type, desc, updated_by: userId! },
+          },
+          {
+            onSuccess: () => {
+              toast.success(`${type} updated`);
+              resolve();
             },
-            {
-              onSuccess: () => {
-                toast.success(`${type} updated successfully`);
-                resolve();
-              },
-              onError: (error: any) => {
-                toast.error(`Failed to update ${type}: ${error.message}`);
-                reject(error);
-              },
-            }
-          );
-        });
-      } else {
-        // Create new selection
-        await new Promise<void>((resolve, reject) => {
-          createSelection(
-            {
-              type,
-              desc,
-              vendor_id: vendorId!,
-              lead_id: leadId!,
-              user_id: userId!,
-              account_id: accountId!,
+            onError: (e: any) => {
+              toast.error(`Failed to update ${type}: ${e?.message || ""}`);
+              reject(e);
             },
-            {
-              onSuccess: () => {
-                toast.success(`${type} created successfully`);
-                resolve();
-              },
-              onError: (error: any) => {
-                toast.error(`Failed to create ${type}: ${error.message}`);
-                reject(error);
-              },
-            }
-          );
-        });
-      }
-    } catch (error) {
-      console.error(`Error handling ${type}:`, error);
+          }
+        )
+      );
     }
+    return new Promise<void>((resolve, reject) =>
+      createSelection(
+        {
+          type,
+          desc,
+          vendor_id: vendorId!,
+          lead_id: leadId!,
+          user_id: userId!,
+          account_id: accountId!,
+        },
+        {
+          onSuccess: () => {
+            toast.success(`${type} created`);
+            resolve();
+          },
+          onError: (e: any) => {
+            toast.error(`Failed to create ${type}: ${e?.message || ""}`);
+            reject(e);
+          },
+        }
+      )
+    );
   };
 
+  /* -------- submit -------- */
   const onSubmit = async (values: FormValues) => {
+    const dirtyFields = form.formState.dirtyFields;
     const promises: Promise<void>[] = [];
 
-    // Detect dirty fields
-    const dirtyFields = form.formState.dirtyFields;
-
-    // Utility function for safe string handling
-    const normalizeValue = (val?: string) =>
-      val?.trim() && val !== "This Field is Empty" ? val.trim() : "NULL";
-
-    const tryUpdate = async (type: string, desc: string) => {
-      const existingSelection =
-        existingSelections[
-          type.toLowerCase() as keyof typeof existingSelections
-        ];
-
-      if (existingSelection) {
-        await new Promise<void>((resolve, reject) => {
-          editSelection(
-            {
-              selectionId: existingSelection.id,
-              payload: {
-                type,
-                desc: normalizeValue(desc),
-                updated_by: userId!,
-              },
-            },
-            {
-              onSuccess: () => {
-                toast.success(`${type} updated successfully`);
-                resolve();
-              },
-              onError: (error: any) => {
-                toast.error(`Failed to update ${type}: ${error.message}`);
-                reject(error);
-              },
-            }
-          );
-        });
-      } else {
-        await new Promise<void>((resolve, reject) => {
-          createSelection(
-            {
-              type,
-              desc: normalizeValue(desc),
-              vendor_id: vendorId!,
-              lead_id: leadId!,
-              user_id: userId!,
-              account_id: accountId!,
-            },
-            {
-              onSuccess: () => {
-                toast.success(`${type} created successfully`);
-                resolve();
-              },
-              onError: (error: any) => {
-                toast.error(`Failed to create ${type}: ${error.message}`);
-                reject(error);
-              },
-            }
-          );
-        });
-      }
-    };
-
-    // Process only fields that changed
-    if (dirtyFields.carcas) promises.push(tryUpdate("Carcas", values.carcas!));
+    if (dirtyFields.carcas)
+      promises.push(upsertSelection("Carcas", values.carcas));
     if (dirtyFields.shutter)
-      promises.push(tryUpdate("Shutter", values.shutter!));
+      promises.push(upsertSelection("Shutter", values.shutter));
     if (dirtyFields.handles)
-      promises.push(tryUpdate("Handles", values.handles!));
+      promises.push(upsertSelection("Handles", values.handles));
+
+    if (promises.length === 0) {
+      toast.info("No changes detected");
+      return;
+    }
 
     try {
-      if (promises.length === 0) {
-        toast.info("No changes detected");
-        return;
-      }
-
       await Promise.all(promises);
       await refetch();
-
       queryClient.invalidateQueries({
         queryKey: ["designingStageCounts", vendorId, leadId],
       });
-
-      toast.success("Selections updated successfully!");
-    } catch (error) {
-      console.error("Error processing selections:", error);
+      toast.success("Selections saved!");
+    } catch {
       toast.error("Some selections failed to update");
     }
   };
 
   const isPending = isCreating || isEditing;
 
-  if (isLoading) {
+  /* -------- UI states -------- */
+  if (isLoading)
     return (
       <div className="px-6 py-4">
         <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-20 bg-gray-200 rounded"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-20 bg-gray-200 rounded"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-20 bg-gray-200 rounded"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/4" />
+          <div className="h-20 bg-gray-200 rounded" />
+          <div className="h-4 bg-gray-200 rounded w-1/4" />
+          <div className="h-20 bg-gray-200 rounded" />
+          <div className="h-4 bg-gray-200 rounded w-1/4" />
+          <div className="h-20 bg-gray-200 rounded" />
         </div>
       </div>
     );
-  }
 
-  if (isError) {
+  if (isError)
     return (
       <div className="px-6 py-4">
         <div className="text-red-500 text-center py-8">
@@ -290,28 +220,19 @@ const SelectionsTab: React.FC = () => {
         </div>
       </div>
     );
-  }
 
+  const tooltipContent = !canUpdateInput
+    ? userType === "sales-executive"
+      ? "This lead has progressed, and updates are no longer allowed."
+      : "You do not have permission to update selections."
+    : null;
+
+  /* -------- render -------- */
   return (
-    <div className="">
-      <div
-        className="
-      bg-white dark:bg-neutral-900 
-      rounded-2xl 
-      border border-border 
-      shadow-soft 
-      overflow-hidden
-    "
-      >
+    <div>
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-border shadow-soft overflow-hidden">
         {/* Header */}
-        <div
-          className="
-        px-5 py-3 
-        border-b border-border 
-        bg-mutedBg/50 dark:bg-neutral-900/50
-        flex items-center justify-between
-      "
-        >
+        <div className="px-5 py-3 border-b border-border bg-mutedBg/50 dark:bg-neutral-900/50 flex items-center justify-between">
           <div>
             <h1 className="text-lg font-semibold tracking-tight">
               Design Selections
@@ -321,16 +242,33 @@ const SelectionsTab: React.FC = () => {
             </p>
           </div>
 
-          <Button type="submit" disabled={isPending} className="px-6 h-10">
-            {isPending ? "Processing..." : "Save Selections"}
-          </Button>
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    type="submit"
+                    disabled={!canUpdateInput || isPending}
+                    className="px-6 h-10"
+                    onClick={form.handleSubmit(onSubmit)}
+                  >
+                    {isPending ? "Processing..." : "Save Selections"}
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {tooltipContent && (
+                <TooltipContent className="dark px-2 py-1 text-xs leading-snug">
+                  {tooltipContent}
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {/* Body */}
         <div className="p-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Carcas / Shutter / Handles grid */}
               <div className="grid md:grid-cols-2 gap-6">
                 {/* CARCAS */}
                 <FormField
@@ -341,36 +279,23 @@ const SelectionsTab: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <FormLabel className="font-medium">Carcas</FormLabel>
                         {existingSelections.carcas && (
-                          <span
-                            className="
-                          text-xs px-2 py-0.5 rounded-full 
-                          bg-blue-100 text-blue-700 
-                          dark:bg-blue-900/40 dark:text-blue-300
-                          border border-blue-300/40
-                        "
-                          >
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300/40">
                             Existing
                           </span>
                         )}
                       </div>
-
                       <FormControl>
-                        <textarea
-                          {...field}
-                          value={field.value || ""}
-                          placeholder="Enter Carcas selection..."
-                          disabled={isPending}
-                          className="
-                        w-full h-28 resize-none
-                        rounded-xl px-3 py-2
-                        bg-mutedBg/40 dark:bg-neutral-800/60
-                        border border-border
-                        focus:ring-2 focus:ring-blue-500/40 
-                        focus:border-blue-500/40 
-                        outline-none
-                        transition
-                        text-sm
-                      "
+                        <TextAreaInput
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          placeholder={
+                            existingSelections.carcas?.desc &&
+                            existingSelections.carcas.desc !== "NULL"
+                              ? "Enter Carcas selection..."
+                              : "This Field is Empty"
+                          }
+                          disabled={!canUpdateInput || isPending}
+                          className="h-28"
                         />
                       </FormControl>
                       <FormMessage />
@@ -387,35 +312,23 @@ const SelectionsTab: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <FormLabel className="font-medium">Shutter</FormLabel>
                         {existingSelections.shutter && (
-                          <span
-                            className="
-                          text-xs px-2 py-0.5 rounded-full 
-                          bg-blue-100 text-blue-700 
-                          dark:bg-blue-900/40 dark:text-blue-300
-                          border border-blue-300/40
-                        "
-                          >
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300/40">
                             Existing
                           </span>
                         )}
                       </div>
-
                       <FormControl>
-                        <textarea
-                          {...field}
-                          value={field.value || ""}
-                          placeholder="Enter Shutter details..."
-                          disabled={isPending}
-                          className="
-                        w-full h-28 resize-none
-                        rounded-xl px-3 py-2
-                        bg-mutedBg/40 dark:bg-neutral-800/60
-                        border border-border
-                        focus:ring-2 focus:ring-blue-500/40 
-                        focus:border-blue-500/40 
-                        outline-none
-                        text-sm transition
-                      "
+                        <TextAreaInput
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          placeholder={
+                            existingSelections.shutter?.desc &&
+                            existingSelections.shutter.desc !== "NULL"
+                              ? "Enter Shutter details..."
+                              : "This Field is Empty"
+                          }
+                          disabled={!canUpdateInput || isPending}
+                          className="h-28"
                         />
                       </FormControl>
                       <FormMessage />
@@ -432,35 +345,23 @@ const SelectionsTab: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <FormLabel className="font-medium">Handles</FormLabel>
                         {existingSelections.handles && (
-                          <span
-                            className="
-                          text-xs px-2 py-0.5 rounded-full 
-                          bg-blue-100 text-blue-700 
-                          dark:bg-blue-900/40 dark:text-blue-300
-                          border border-blue-300/40
-                        "
-                          >
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300/40">
                             Existing
                           </span>
                         )}
                       </div>
-
                       <FormControl>
-                        <textarea
-                          {...field}
-                          value={field.value || ""}
-                          placeholder="Enter Handles details..."
-                          disabled={isPending}
-                          className="
-                        w-full h-28 resize-none
-                        rounded-xl px-3 py-2
-                        bg-mutedBg/40 dark:bg-neutral-800/60
-                        border border-border
-                        focus:ring-2 focus:ring-blue-500/40 
-                        focus:border-blue-500/40 
-                        outline-none 
-                        text-sm transition
-                      "
+                        <TextAreaInput
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          placeholder={
+                            existingSelections.handles?.desc &&
+                            existingSelections.handles.desc !== "NULL"
+                              ? "Enter Handles details..."
+                              : "This Field is Empty"
+                          }
+                          disabled={!canUpdateInput || isPending}
+                          className="h-28"
                         />
                       </FormControl>
                       <FormMessage />

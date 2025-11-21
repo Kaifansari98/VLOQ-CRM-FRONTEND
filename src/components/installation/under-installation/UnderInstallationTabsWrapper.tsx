@@ -12,6 +12,8 @@ import { useUsableHandoverReady } from "@/api/installation/useUnderInstallationS
 
 import { useAppSelector } from "@/redux/store";
 
+
+
 export default function UnderInstallationTabsWrapper({
   leadId,
   accountId,

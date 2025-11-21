@@ -74,6 +74,9 @@ export default function InstallationIssueLog({
    const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
+
+  
+
   const [viewModal, setViewModal] = useState<{
     open: boolean;
     data: any | null;
