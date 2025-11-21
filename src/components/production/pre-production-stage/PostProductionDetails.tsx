@@ -123,7 +123,7 @@ export default function PostProductionDetails({
           <Hammer size={14} /> Woodwork
         </div>
       ),
-      color: "bg-amber-500 hover:bg-amber-600",
+      color: "bg-zinc-900 hover:bg-zinc-900",
       cardContent: (
         <WoodworkPackingDetailsSection
           leadId={leadId}
@@ -138,7 +138,7 @@ export default function PostProductionDetails({
           <Wrench size={14} /> Hardware
         </div>
       ),
-      color: "bg-blue-500 hover:bg-blue-600",
+      color: "bg-zinc-900 hover:bg-zinc-900",
       cardContent: (
         <HardwarePackingDetailsSection
           leadId={leadId}
@@ -153,7 +153,7 @@ export default function PostProductionDetails({
           <Camera size={14} /> QC Photos
         </div>
       ),
-      color: "bg-emerald-500 hover:bg-emerald-600",
+      color: "bg-zinc-900 hover:bg-zinc-900",
       cardContent: (
         <PostProductionQcPhotosSection
           leadId={leadId}
@@ -174,71 +174,70 @@ export default function PostProductionDetails({
   };
 
   return (
-    <div className="h-full w-full relative overflow-scroll">
+    <div className="h-full w-full relative overflow-scroll bg-[#fff] dark:bg-[#0a0a0a]">
       <motion.div
-        className="w-full flex items-center justify-start gap-2 mb-3"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="w-full space-y-4 mb-3"
       >
+        {/* -------- Client Required Completion Section -------- */}
         <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="w-full h-full space-y-8 overflow-y-scroll"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="
+      flex items-center gap-3 justify-between
+      bg-muted/50 
+      dark:bg-neutral-900/50
+      border border-border 
+      rounded-xl 
+      px-4 py-3 
+      backdrop-blur-sm
+    "
         >
-          {/* 🔹 Header Section */}
+          <div className="flex items-center gap-4">
+          {/* Animated green indicator */}
           <motion.div
             className="
-    flex items-center justify-between 
-    bg-muted/50 border border-border/60
-    rounded-xl px-6 py-3 shadow-sm
-    hover:shadow-md transition-all duration-300
-  "
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            {/* 🔹 Left: Delivery Date */}
-            <div className="flex items-center gap-3">
-              {/* Animated Status Dot */}
-              <motion.div
-                className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.7)]"
-                animate={{
-                  scale: [1, 1.25, 1],
-                  opacity: [0.8, 1, 0.8],
-                }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 1.6,
-                  ease: "easeInOut",
-                }}
-              />
+        w-3 h-3 rounded-full
+        bg-green-500 
+        shadow-[0_0_8px_rgba(34,197,94,0.6)]
+      "
+            animate={{
+              scale: [1, 1.25, 1],
+              opacity: [0.75, 1, 0.75],
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: 1.6,
+              ease: "easeInOut",
+            }}
+          />
 
-              {/* Delivery Info */}
-              <div className="flex flex-col justify-center">
-                <p className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
-                  Client Required Delivery Date
-                </p>
-                <span className="text-sm font-medium text-foreground mt-0.5">
-                  {clientRequiredCompletionDateData?.client_required_order_login_complition_date
-                    ? new Date(
-                        clientRequiredCompletionDateData.client_required_order_login_complition_date
-                      ).toLocaleDateString("en-GB", {
-                        weekday: "long",
-                        day: "2-digit",
-                        month: "long",
-                        year: "numeric",
-                      })
-                    : "Not specified"}
-                </span>
-              </div>
-            </div>
+          {/* Text + Date */}
+          <div className="flex flex-col">
+            <p className="text-xs font-medium text-muted-foreground tracking-wide">
+              Client Required Delivery Date
+            </p>
 
-            
+            <span className="text-sm font-semibold text-foreground">
+              {clientRequiredCompletionDateData?.client_required_order_login_complition_date
+                ? new Date(
+                  clientRequiredCompletionDateData?.client_required_order_login_complition_date
+                  ).toLocaleDateString("en-GB", {
+                    weekday: "long",
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                  })
+                : "Not specified"}
+            </span>
+          </div>
+          </div>
 
-            {/* 🔹 Right: Boxes Info */}
-            <div className="flex items-center justify-center">
+          {/* ---------- RIGHT: No Of Boxes section restored ---------- */}
+          <div className="flex items-center justify-center">
               {isLoading ? (
                 <Badge
                   variant="secondary"
@@ -251,51 +250,47 @@ export default function PostProductionDetails({
                   truncateValue={
                     <Card
                       className={`
-              flex items-center gap-3 px-4 py-2 border rounded-lg shadow-sm
-              transition-all duration-300
-              hover:shadow-md hover:border-primary/40
-              ${!canViewAndWork ? "opacity-70" : ""}
-            `}
+                  flex items-center gap-4 px-4 py-1 
+                  border border-border/60 
+                  rounded-lg 
+                  bg-background backdrop-blur-sm 
+                  transition-all duration-300 hover:border-primary/40
+                  ${!canViewAndWork ? "opacity-70" : ""}
+                `}
                     >
-                      <CardContent className="flex items-center gap-3 p-0">
-                        <div className="flex flex-col justify-center">
+                      <CardContent className="flex items-center gap-4 p-0">
+                        <div className="flex flex-col items-start">
                           <span className="text-xs text-muted-foreground uppercase tracking-wide">
                             No. of Boxes
                           </span>
                           <span className="text-sm font-semibold text-foreground">
-                            {noOfBoxesValue} Box
-                            {Number(noOfBoxesValue) > 1 ? "es" : ""}
+                            {noOfBoxesValue} Box{noOfBoxesValue > 1 ? "es" : ""}
                           </span>
                         </div>
 
-                        <div
-                          className={`${
-                            !canViewAndWork ? "pointer-events-none" : ""
-                          }`}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            form.setValue("noOfBoxes", String(noOfBoxesValue));
+                            setOpen(true);
+                          }}
+                          disabled={!canViewAndWork}
+                          className="
+                      rounded-full 
+                      hover:bg-primary/10 
+                      transition-colors duration-200
+                    "
                         >
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              form.setValue(
-                                "noOfBoxes",
-                                String(noOfBoxesValue)
-                              );
-                              setOpen(true);
-                            }}
-                            disabled={!canViewAndWork}
-                            className="rounded-full hover:bg-primary/10 transition-colors"
-                          >
-                            <Pencil
-                              size={18}
-                              className={`transition-transform ${
-                                !canViewAndWork
-                                  ? "text-muted-foreground"
-                                  : "text-primary hover:scale-110"
-                              }`}
-                            />
-                          </Button>
-                        </div>
+                          <Pencil
+                            size={18}
+                            className={`${
+                              !canViewAndWork
+                                ? "text-muted-foreground"
+                                : "text-primary"
+                            }`}
+                          />
+                        </Button>
                       </CardContent>
                     </Card>
                   }
@@ -311,37 +306,37 @@ export default function PostProductionDetails({
                 <CustomeTooltip
                   truncateValue={
                     <div
-                      className={`${
-                        !canViewAndWork ? "opacity-70 pointer-events-none" : ""
-                      }`}
+                      className={`
+                  ${!canViewAndWork ? "opacity-70 pointer-events-none" : ""}
+                `}
                     >
                       <Button
                         onClick={() => setOpen(true)}
                         disabled={!canViewAndWork}
                         className="
-                flex items-center gap-2 rounded-lg px-4 py-2.5
-                bg-gradient-to-r from-blue-500 to-blue-600
-                text-white font-medium shadow-sm
-                hover:shadow-md hover:brightness-[1.07]
-                transition-all duration-300
-              "
+                    flex items-center gap-2 
+                    px-4 py-2.5 
+                    rounded-lg 
+                    bg-gradient-to-r from-zinc-700 to-zinc-800
+                    text-white font-medium 
+                    shadow-sm
+                    hover:shadow-md hover:brightness-105
+                    transition-all duration-300
+                  "
                       >
                         <PackagePlus className="h-4 w-4" />
-                        <span>Set No Of Boxes</span>
+                        <span>Set No. Of Boxes</span>
                       </Button>
                     </div>
                   }
                   value={
-                    !canViewAndWork && userType === "factory"
-                      ? "This lead stage has progressed. Factory users cannot modify this section."
-                      : !canViewAndWork
+                    !canViewAndWork
                       ? "You do not have access to set the number of boxes."
                       : "Click to set the number of boxes for this order."
                   }
                 />
               )}
             </div>
-          </motion.div>
         </motion.div>
       </motion.div>
 
