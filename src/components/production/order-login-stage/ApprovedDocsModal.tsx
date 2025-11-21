@@ -127,7 +127,7 @@ export default function ApprovedDocsSection({
         <div className="space-y-4">
           {/* 🌟 Approved Images */}
           {approvedImages.length > 0 && (
-            <div className="border rounded-xl overflow-hidden bg-card">
+            <div className="border rounded-xl overflow-hidden bg-[#fff] dark:bg-[#0a0a0a]">
               <SectionHeader
                 title="Approved Images"
                 docCount={approvedImages.length}
@@ -158,7 +158,7 @@ export default function ApprovedDocsSection({
 
           {/* 🌟 Approved File Documents */}
           {approvedDocuments.length > 0 && (
-            <div className="border rounded-xl overflow-hidden bg-card">
+            <div className="border rounded-xl overflow-hidden bg-[#fff] dark:bg-[#0a0a0a]">
               <SectionHeader
                 title="Approved Files"
                 docCount={approvedDocuments.length}

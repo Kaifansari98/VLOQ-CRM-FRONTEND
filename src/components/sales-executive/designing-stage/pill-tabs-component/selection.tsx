@@ -186,7 +186,6 @@ const SelectionsTab: React.FC = () => {
       queryClient.invalidateQueries({
         queryKey: ["designingStageCounts", vendorId, leadId],
       });
-      toast.success("Selections saved!");
     } catch {
       toast.error("Some selections failed to update");
     }
@@ -229,10 +228,25 @@ const SelectionsTab: React.FC = () => {
 
   /* -------- render -------- */
   return (
-    <div>
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-border shadow-soft overflow-hidden">
+    <div className="">
+      <div
+        className="
+      bg-[#fff] dark:bg-[#0A0A0A]
+      rounded-2xl 
+      border border-border 
+      shadow-soft 
+      overflow-hidden
+    "
+      >
         {/* Header */}
-        <div className="px-5 py-3 border-b border-border bg-mutedBg/50 dark:bg-neutral-900/50 flex items-center justify-between">
+        <div
+          className="
+        px-5 py-3 
+        border-b border-border 
+        bg-[#fff] dark:bg-[#0A0A0A]
+        flex items-center justify-between
+      "
+        >
           <div>
             <h1 className="text-lg font-semibold tracking-tight">
               Design Selections

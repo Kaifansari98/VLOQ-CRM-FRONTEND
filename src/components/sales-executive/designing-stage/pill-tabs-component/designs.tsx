@@ -81,7 +81,7 @@ const DesigningTab = () => {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-[80vh] px-4">
-        <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+        <div className="w-16 h-16 bg-[#fff] dark:bg-[#0a0a0a] rounded-full flex items-center justify-center mb-4">
           <Palette size={32} className="text-destructive" />
         </div>
         <p className="text-sm text-muted-foreground">
@@ -114,7 +114,7 @@ const DesigningTab = () => {
       <motion.section
         variants={itemVariants}
         className="
-    bg-white dark:bg-neutral-900
+    bg-[#fff] dark:bg-[#0a0a0a]
     rounded-2xl
     border border-border
     shadow-soft
@@ -127,7 +127,7 @@ const DesigningTab = () => {
       flex items-center justify-between
       px-5 py-3
       border-b border-border
-      bg-mutedBg/50 dark:bg-neutral-900/50
+      bg-[#fff] dark:bg-[#0a0a0a]
     "
         >
           <div className="flex items-center gap-2">
