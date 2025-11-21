@@ -45,10 +45,8 @@ export default function PendingWorkTab({
       <Card
         className="
     rounded-2xl 
-    border border-border/60 
-    bg-background 
-    shadow-sm 
-    hover:shadow-md 
+    border 
+    bg-background  
     transition-all duration-300
   "
       >
@@ -139,10 +137,8 @@ export default function PendingWorkTab({
                       <Card
                         className="
                     group h-full rounded-xl 
-                    border border-border/50 
+                    border 
                     bg-background 
-                    hover:border-primary/50 
-                    hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.12)]
                     cursor-pointer transition-all duration-300
                   "
                         onClick={() => {
