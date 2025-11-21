@@ -204,7 +204,7 @@ export default function SiteReadinessDetails({
       )}
 
       {/* Main Checklist Card */}
-      <Card className="border shadow-sm">
+      <Card className="border bg-[#fff] dark:bg-[#0a0a0a]">
         <CardHeader className="border-b">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -215,7 +215,7 @@ export default function SiteReadinessDetails({
                 <CardTitle className="text-lg">
                   Site Readiness Checklist
                 </CardTitle>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground">
                   Complete all mandatory checks before proceeding
                 </p>
               </div>
@@ -232,7 +232,7 @@ export default function SiteReadinessDetails({
                 className={cn(
                   "text-xs px-2 py-0.5",
                   completionPercentage === 100 &&
-                    "bg-green-500 hover:bg-green-600"
+                    "bg-primary"
                 )}
               >
                 {completionPercentage}%
@@ -279,17 +279,16 @@ export default function SiteReadinessDetails({
           </div>
         </CardHeader>
 
-        <CardContent className="p-4 space-y-3 ">
+        <CardContent className="px-4 space-y-2">
           {checklistData.map((item, index) => (
             <div
               key={item.type}
               className={cn(
                 "relative p-4 rounded-lg border-2 transition-all duration-200",
-                "hover:border-primary/30 hover:shadow-sm",
                 item.value === true &&
-                  "border-green-200 bg-green-50/40 dark:border-green-900 dark:bg-green-950/30",
+                  "",
                 item.value === false &&
-                  "border-red-200 bg-red-50/40 dark:border-red-900 dark:bg-red-950/30"
+                  ""
               )}
             >
               {/* Checklist Header */}
@@ -298,12 +297,20 @@ export default function SiteReadinessDetails({
                   <div
                     className={cn(
                       "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors mt-0.5",
-                      item.value
+                      item.value === true
                         ? "bg-green-500 text-white ring-2 ring-green-500/20"
-                        : "bg-primary/10 text-primary"
+                        : item.value === false
+                        ? "bg-red-500 text-white ring-2 ring-red-500/20"
+                        : "bg-muted text-foreground ring-2 ring-border"
                     )}
                   >
-                    {item.value ? <Check className="h-3.5 w-3.5" /> : index + 1}
+                    {item.value === true ? (
+                      <Check className="h-3.5 w-3.5" />
+                    ) : item.value === false ? (
+                      <X className="h-3.5 w-3.5" />
+                    ) : (
+                      index + 1
+                    )}
                   </div>
                   <div className="space-y-0.5">
                     <Label className="text-sm font-semibold leading-tight cursor-default">

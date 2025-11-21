@@ -80,7 +80,7 @@ const QuotationTab = () => {
   // ✅ Show error state
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-[80vh]">
+      <div className="flex flex-col items-center justify-center h-[80vh] bg-[#fff] dark:bg-[#0a0a0a]">
         <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
           <Ban size={32} className="text-destructive" />
         </div>
@@ -113,7 +113,7 @@ const QuotationTab = () => {
       <motion.section
         variants={itemVariants}
         className="
-    bg-white dark:bg-neutral-900
+    bg-[#fff] dark:bg-[#0a0a0a]
     rounded-2xl
     border border-border
     shadow-soft
@@ -126,7 +126,7 @@ const QuotationTab = () => {
       flex items-center justify-between
       px-5 py-3
       border-b border-border
-      bg-mutedBg/50 dark:bg-neutral-900/50
+      bg-[#fff] dark:bg-[#0a0a0a]
     "
         >
           <div className="flex items-center gap-2">

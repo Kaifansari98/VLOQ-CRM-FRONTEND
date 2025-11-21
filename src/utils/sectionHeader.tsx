@@ -31,7 +31,7 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
   const hasRefresh = !!onRefresh;
 
   return (
-    <div className="px-6 py-4 border-b bg-muted/20 flex items-center justify-between">
+    <div className="px-6 py-4 border-b flex items-center justify-between bg-[#fff] dark:bg-[#0a0a0a]">
       {/* Left Section: Icon + Title + Count (if refresh is present) */}
       <div className="flex items-center gap-2">
         {icon || <FileText  className="w-5 h-5 text-primary"  />}
