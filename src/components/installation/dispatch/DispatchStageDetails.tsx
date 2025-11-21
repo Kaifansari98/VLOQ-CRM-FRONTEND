@@ -346,10 +346,11 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
             </p>
           </div>
 
-          {/* Save Button */}
+          {/* Save Button – stays in header but triggers form */}
           {canViewAndWork && (
             <Button
               type="submit"
+              form="dispatch-form"
               disabled={addDispatchMutation.isPending}
               className="w-full md:w-auto"
             >
@@ -374,7 +375,11 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               ))}
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form
+              id="dispatch-form"
+              onSubmit={handleSubmit}
+              className="space-y-6"
+            >
               {/* Form Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Dispatch Date */}
