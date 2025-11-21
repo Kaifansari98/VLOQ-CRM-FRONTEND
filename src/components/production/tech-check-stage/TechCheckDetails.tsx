@@ -74,6 +74,22 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
   const [openCarousel, setOpenCarousel] = useState(false);
   const [startIndex, setStartIndex] = useState(0);
 
+  // filter: "ALL" | "APPROVED" | "PENDING" | "REJECTED"
+  const [activeFilter, setActiveFilter] = useState<
+    "ALL" | "APPROVED" | "PENDING" | "REJECTED"
+  >("ALL");
+  const filterDocs = (docs: any[]) => {
+    if (activeFilter === "ALL") return docs;
+
+    if (activeFilter === "PENDING") {
+      return docs.filter(
+        (d) => !d.tech_check_status || d.tech_check_status === "PENDING"
+      );
+    }
+
+    return docs.filter((d) => d.tech_check_status === activeFilter);
+  };
+
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const pptDocs = clientDocs?.documents?.ppt ?? [];
   const pythaDocs = clientDocs?.documents?.pytha ?? [];
@@ -102,20 +118,25 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
     "pyo",
   ];
 
-  const pptImages = pptDocs.filter((file) => {
-    const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
-    return imageExtensions.includes(ext || "");
-  });
+  const filteredPptDocs = filterDocs(pptDocs);
+  const filteredPythaDocs = filterDocs(pythaDocs);
 
-  const pptDocuments = pptDocs.filter((file) => {
-    const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
-    return documentExtensions.includes(ext || "");
-  });
+  const filteredPptImages = filteredPptDocs.filter((file) =>
+    imageExtensions.includes(
+      file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
+    )
+  );
+  const filteredPptDocuments = filteredPptDocs.filter((file) =>
+    documentExtensions.includes(
+      file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
+    )
+  );
 
-  const pythaDocuments = pythaDocs.filter((file) => {
-    const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
-    return documentExtensions.includes(ext || "");
-  });
+  const filteredPythaDocuments = filteredPythaDocs.filter((file) =>
+    documentExtensions.includes(
+      file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
+    )
+  );
 
   // Calculate stats from ALL docs (ppt + pytha)
   const approvedDocs = allDocs.filter(
@@ -212,16 +233,19 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
 
       {/* -------- Header Stats (Premium CRM Style) -------- */}
       <motion.div variants={itemVariants} className="space-y-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-1">
           {/* Total Docs */}
           <div
-            className="
+            onClick={() => setActiveFilter("ALL")}
+            className={`
       bg-white dark:bg-neutral-900 
       rounded-xl p-4 
       border border-border 
       hover:bg-muted/60 dark:hover:bg-neutral-800/60 
       transition-all duration-200
-    "
+      cursor-pointer
+      ${activeFilter === "ALL" ? "ring-1 ring-blue-500" : ""}
+    `}
           >
             <div className="flex items-center gap-3">
               <div
@@ -249,13 +273,16 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
 
           {/* Approved */}
           <div
-            className="
+            onClick={() => setActiveFilter("APPROVED")}
+            className={`
       bg-white dark:bg-neutral-900 
       rounded-xl p-4 
       border border-border 
       hover:bg-muted/60 dark:hover:bg-neutral-800/60 
       transition-all duration-200
-    "
+      cursor-pointer
+      ${activeFilter === "APPROVED" ? "ring-1 ring-green-500" : ""}
+    `}
           >
             <div className="flex items-center gap-3">
               <div
@@ -283,13 +310,16 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
 
           {/* Pending */}
           <div
-            className="
+            onClick={() => setActiveFilter("PENDING")}
+            className={`
       bg-white dark:bg-neutral-900 
       rounded-xl p-4 
       border border-border 
       hover:bg-muted/60 dark:hover:bg-neutral-800/60 
       transition-all duration-200
-    "
+      cursor-pointer
+      ${activeFilter === "PENDING" ? "ring-1 ring-amber-500" : ""}
+    `}
           >
             <div className="flex items-center gap-3">
               <div
@@ -317,13 +347,16 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
 
           {/* Rejected */}
           <div
-            className="
+            onClick={() => setActiveFilter("REJECTED")}
+            className={`
       bg-white dark:bg-neutral-900 
       rounded-xl p-4 
       border border-border 
       hover:bg-muted/60 dark:hover:bg-neutral-800/60 
       transition-all duration-200
-    "
+      cursor-pointer
+      ${activeFilter === "REJECTED" ? "ring-1 ring-red-500" : ""}
+    `}
           >
             <div className="flex items-center gap-3">
               <div
@@ -397,14 +430,14 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
                     Project Files
                   </h2>
                   <span className="text-xs text-muted-foreground">
-                    ({pptDocs.length}{" "}
-                    {pptDocs.length === 1 ? "Document" : "Documents"})
+                    ({filteredPptDocs.length}{" "}
+                    {filteredPptDocs.length === 1 ? "Document" : "Documents"})
                   </span>
                 </div>
               </div>
 
               {/* Body */}
-              {pptDocs.length === 0 ? (
+              {filteredPptDocs.length === 0 ? (
                 <div
                   className="
             flex flex-col items-center justify-center 
@@ -425,7 +458,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {/* Image Files */}
-                  {pptImages.map((doc, index) => (
+                  {filteredPptImages?.map((doc: any, index: number) => (
                     <ImageComponent
                       key={doc.id}
                       doc={{
@@ -446,7 +479,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
                   ))}
 
                   {/* Document Files */}
-                  {pptDocuments.map((doc) => (
+                  {filteredPptDocuments.map((doc) => (
                     <DocumentCard
                       key={doc.id}
                       doc={{
@@ -479,14 +512,14 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
                     Design Files
                   </h2>
                   <span className="text-xs text-muted-foreground">
-                    ({pythaDocs.length}{" "}
-                    {pythaDocs.length === 1 ? "Document" : "Documents"})
+                    ({filteredPythaDocs.length}{" "}
+                    {filteredPythaDocs.length === 1 ? "Document" : "Documents"})
                   </span>
                 </div>
               </div>
 
               {/* Body */}
-              {pythaDocs.length === 0 ? (
+              {filteredPythaDocuments.length === 0 ? (
                 <div
                   className="
             flex flex-col items-center justify-center 
@@ -506,7 +539,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {pythaDocuments.map((doc) => (
+                  {filteredPythaDocuments.map((doc: any) => (
                     <DocumentCard
                       key={doc.id}
                       doc={{
@@ -696,7 +729,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
       </AlertDialog>
       {/* Image Preview Modal */}
       <ImageCarouselModal
-        images={pptImages}
+        images={filteredPptImages}
         open={openCarousel}
         initialIndex={startIndex}
         onClose={() => setOpenCarousel(false)}
