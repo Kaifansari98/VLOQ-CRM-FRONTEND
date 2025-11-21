@@ -153,7 +153,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 <div
                   className="
       w-12 h-12 rounded-xl flex items-center justify-center
-      bg-gray-100 dark:bg-gray-900/30
+      bg-[#fff] dark:bg-[#0a0a0a]
       text-gray-600 dark:text-gray-400
     "
                 >
@@ -185,7 +185,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 <div
                   className="
       w-12 h-12 rounded-xl flex items-center justify-center
-      bg-gray-100 dark:bg-gray-900/30
+      bg-[#fff] dark:bg-[#0a0a0a]
       text-gray-600 dark:text-gray-400
     "
                 >
@@ -218,7 +218,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 <div
                   className="
       w-12 h-12 rounded-xl flex items-center justify-center
-      bg-gray-100 dark:bg-gray-900/30
+      bg-[#fff] dark:bg-[#0a0a0a]
       text-gray-600 dark:text-gray-400
     "
                 >
@@ -247,7 +247,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
 
               <div
                 className="
-      bg-mutedBg dark:bg-neutral-800 
+      bg-[#fff] dark:bg-[#0a0a0a] 
       border border-border 
       rounded-xl 
       p-4 
@@ -264,7 +264,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
               {/* ----- Booking Documents Card ----- */}
               <div
                 className="
-      bg-white dark:bg-neutral-900
+      bg-[#fff] dark:bg-[#0a0a0a]
       rounded-2xl 
       border border-border 
       overflow-hidden
@@ -276,7 +276,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         flex items-center justify-between 
         px-5 py-3 
         border-b border-border
-        bg-mutedBg/50 dark:bg-neutral-900/50
+        bg-[#fff] dark:bg-[#0a0a0a]
       "
                 >
                   <div className="flex items-center gap-2">
@@ -343,7 +343,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
               {/* ----- Payment Proofs Card ----- */}
               <div
                 className="
-      bg-white dark:bg-neutral-900
+      bg-[#fff] dark:bg-[#0a0a0a]
       rounded-2xl 
       border border-border 
       overflow-hidden
@@ -355,7 +355,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         flex items-center justify-between 
         px-5 py-3 
         border-b border-border 
-        bg-mutedBg/50 dark:bg-neutral-900/50
+        bg-[#fff] dark:bg-[#0a0a0a]
       "
                 >
                   <div className="flex items-center gap-2">
