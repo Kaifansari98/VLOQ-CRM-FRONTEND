@@ -41,26 +41,44 @@ export default function PendingWorkTab({
   return (
     <div className="space-y-6">
       {/* Grid */}
-      <Card className="rounded-2xl border border-border/70 bg-white dark:bg-neutral-900 shadow-sm">
+      {/* Pending Work Grid */}
+      <Card
+        className="
+    rounded-2xl 
+    border border-border/60 
+    bg-background 
+    shadow-sm 
+    hover:shadow-md 
+    transition-all duration-300
+  "
+      >
         <CardHeader>
           <div className="flex items-center justify-between">
+            {/* LEFT SECTION */}
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-primary/10 rounded-xl border flex items-center justify-center">
+              <div
+                className="
+            p-3 bg-primary/10 border border-primary/20 
+            rounded-xl flex items-center justify-center
+          "
+              >
                 <Wrench className="h-5 w-5 text-primary" />
               </div>
+
               <div>
-                <CardTitle className="text-lg font-semibold">
+                <CardTitle className="text-lg font-semibold tracking-tight">
                   Pending Work
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground mt-1">
                   Track and update task status
                 </p>
               </div>
             </div>
 
+            {/* COUNT BADGE */}
             <Badge
               variant="secondary"
-              className="gap-1 px-3 py-1 rounded-lg text-xs"
+              className="gap-1 px-3 py-1 rounded-lg text-xs shadow-sm"
             >
               <Wrench className="w-3 h-3" />
               {tasks.length} {tasks.length === 1 ? "Task" : "Tasks"}
@@ -69,28 +87,35 @@ export default function PendingWorkTab({
         </CardHeader>
 
         <CardContent>
+          {/* LOADING STATE */}
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : tasks.length === 0 ? (
-            <div className="border-2 border-dashed rounded-xl p-12 text-center bg-neutral-50/40 dark:bg-neutral-800/30">
+            /* EMPTY STATE */
+            <div
+              className="
+          border-2 border-dashed rounded-xl p-12 text-center 
+          bg-muted/30 dark:bg-neutral-800/30
+        "
+            >
               <div className="flex flex-col items-center gap-3">
-                <div className="p-4 bg-neutral-200 dark:bg-neutral-700 rounded-full shadow-inner">
+                <div className="p-4 bg-muted rounded-full shadow-inner">
                   <Wrench className="h-7 w-7 text-muted-foreground" />
                 </div>
                 <div className="mt-2">
-
-                <p className="text-md font-medium">
-                  No Pending Work Found
-                </p>
-                <p className="text-xs font-medium text-muted-foreground">
-                  All the pending work of the site will get displayed here.
-                </p>
+                  <p className="text-md font-medium text-foreground">
+                    No Pending Work Found
+                  </p>
+                  <p className="text-xs font-medium text-muted-foreground mt-1">
+                    All the pending work of the site will get displayed here.
+                  </p>
                 </div>
               </div>
             </div>
           ) : (
+            /* GRID */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               <AnimatePresence>
                 {tasks.map((task: any, idx: number) => {
@@ -99,7 +124,7 @@ export default function PendingWorkTab({
                   );
                   const description = descParts.join("—").trim();
 
-                  const isLong = description.length > 120; // 👈 Tooltip only for LONG text
+                  const isLong = description.length > 120;
                   const preview = isLong
                     ? description.slice(0, 200) + "..."
                     : description;
@@ -113,11 +138,13 @@ export default function PendingWorkTab({
                     >
                       <Card
                         className="
-          group h-full rounded-xl border border-border/50 
-          bg-neutral-50 dark:bg-neutral-900 
-          hover:border-primary/50 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.12)]
-          cursor-pointer transition-all duration-300
-        "
+                    group h-full rounded-xl 
+                    border border-border/50 
+                    bg-background 
+                    hover:border-primary/50 
+                    hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.12)]
+                    cursor-pointer transition-all duration-300
+                  "
                         onClick={() => {
                           if (
                             task.status === "completed" ||
@@ -135,47 +162,53 @@ export default function PendingWorkTab({
                           setOpenTaskModal(true);
                         }}
                       >
-                        <CardContent className="px-5">
-                          {/* Header */}
+                        <CardContent className="px-5 pt-4 pb-5">
+                          {/* HEADER */}
                           <div className="flex items-start justify-between gap-3">
-                            <div className="p-2.5 rounded-lg border bg-primary/10">
+                            <div
+                              className="
+                          p-2.5 rounded-lg border 
+                          bg-primary/10 border-primary/20
+                        "
+                            >
                               <Wrench className="h-4 w-4 text-primary" />
                             </div>
 
                             <Badge
                               variant="outline"
-                              className={`text-[10px] h-5 mt-1 rounded-md ${getStatusColor(
-                                task.status
-                              )}`}
+                              className={`
+                          text-[10px] h-5 mt-1 rounded-md 
+                          shadow-sm ${getStatusColor(task.status)}
+                        `}
                             >
                               {task.status}
                             </Badge>
                           </div>
 
-                          {/* Title */}
+                          {/* TITLE */}
                           <h4 className="mt-3 font-semibold text-sm line-clamp-1">
                             {workTitle || "Untitled Work"}
                           </h4>
 
-                          {/* Description + Tooltip logic */}
+                          {/* DESCRIPTION */}
                           {description &&
                             (isLong ? (
                               <RemarkTooltip
-                              title="Additional Note"
+                                title="Additional Note"
                                 remark={
-                                  <span className="block line-clamp-3 text-xs text-left text-muted-foreground leading-relaxed">
+                                  <span className="block line-clamp-3 text-xs text-muted-foreground leading-relaxed">
                                     {preview}
                                   </span>
                                 }
                                 remarkFull={description}
                               />
                             ) : (
-                              <span className="block text-xs text-left text-muted-foreground leading-relaxed">
+                              <span className="block text-xs text-muted-foreground leading-relaxed mt-1">
                                 {preview}
                               </span>
                             ))}
 
-                          {/* Meta */}
+                          {/* META */}
                           <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
                             <Calendar className="h-3.5 w-3.5" />
                             <span>
