@@ -927,7 +927,7 @@ export default function InstallationMiscellaneous({
                         resolved_by: userId!,
                       })
                     }
-                    className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+                    className="gap-2"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     {resolveMisc.isPending ? "Resolving..." : "Mark Resolved"}
