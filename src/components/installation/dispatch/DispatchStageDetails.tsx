@@ -346,10 +346,11 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
             </p>
           </div>
 
-          {/* Save Button */}
+          {/* Save Button – stays in header but triggers form */}
           {canViewAndWork && (
             <Button
               type="submit"
+              form="dispatch-form"
               disabled={addDispatchMutation.isPending}
               className="w-full md:w-auto"
               form="dispatch-form"

@@ -120,6 +120,7 @@ const ViewOpenLeadTable = () => {
             ?.map((psm) => psm.productStructure.type)
             .join(", ") || "",
         source: lead.source?.type || "",
+        site_map_link: lead.site_map_link || "",
         siteType: lead.siteType?.type || "",
         createdAt: lead.created_at || "",
         updatedAt: lead.updated_at || "",

@@ -46,7 +46,7 @@ export default function LeadDetailsProductionUtil({
       color: "bg-zinc-900 hover:bg-zinc-900",
       disabled: !readyForPostProduction,
       disabledReason:
-        "You can access Post Production only after completing Pre-Production.",
+        "You can access Post Production only after completing Under-Production.",
       cardContent: (
         <PostProductionDetails leadId={leadId} accountId={accountId} />
       ),

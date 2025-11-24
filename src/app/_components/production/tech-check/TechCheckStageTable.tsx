@@ -115,7 +115,7 @@ const TechCheckStageTable = () => {
       altContact: lead.alt_contact_no ?? "",
       status: lead.statusType?.type ?? "",
       assign_to: lead.assignedTo?.user_name ?? "",
-
+      site_map_link: lead.site_map_link ?? "",
       accountId: lead.account_id ?? 0,
     }));
   }, [activeData]);

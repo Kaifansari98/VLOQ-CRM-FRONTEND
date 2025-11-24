@@ -21,7 +21,7 @@ export default function SiteReadinessTabs({
     {
       id: "checklist",
       title: (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 ">
           <ClipboardCheck className="w-4 h-4" />
           <span>Checklist</span>
         </div>

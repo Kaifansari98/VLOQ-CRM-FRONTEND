@@ -42,24 +42,12 @@ export default function PendingWorkTab({
     <div className="space-y-6">
       {/* Grid */}
       {/* Pending Work Grid */}
-      <Card
-        className="
-    rounded-2xl 
-    border 
-    bg-background  
-    transition-all duration-300
-  "
-      >
+      <Card className="rounded-2xl border bg-background transition-all duration-300">
         <CardHeader>
           <div className="flex items-center justify-between">
-            {/* LEFT SECTION */}
+            {/* LEFT */}
             <div className="flex items-center gap-3">
-              <div
-                className="
-            p-3 bg-primary/10 border border-primary/20 
-            rounded-xl flex items-center justify-center
-          "
-              >
+              <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center">
                 <Wrench className="h-5 w-5 text-primary" />
               </div>
 
@@ -68,12 +56,12 @@ export default function PendingWorkTab({
                   Pending Work
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Track and update task status
+                  Track tasks pending during installation
                 </p>
               </div>
             </div>
 
-            {/* COUNT BADGE */}
+            {/* RIGHT */}
             <Badge
               variant="secondary"
               className="gap-1 px-3 py-1 rounded-lg text-xs shadow-sm"
@@ -85,35 +73,25 @@ export default function PendingWorkTab({
         </CardHeader>
 
         <CardContent>
-          {/* LOADING STATE */}
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : tasks.length === 0 ? (
-            /* EMPTY STATE */
-            <div
-              className="
-          border-2 border-dashed rounded-xl p-12 text-center 
-          bg-muted/30 dark:bg-neutral-800/30
-        "
-            >
+            <div className="border-2 border-dashed rounded-xl p-12 text-center bg-muted/30">
               <div className="flex flex-col items-center gap-3">
                 <div className="p-4 bg-muted rounded-full shadow-inner">
                   <Wrench className="h-7 w-7 text-muted-foreground" />
                 </div>
-                <div className="mt-2">
-                  <p className="text-md font-medium text-foreground">
-                    No Pending Work Found
-                  </p>
-                  <p className="text-xs font-medium text-muted-foreground mt-1">
-                    All the pending work of the site will get displayed here.
-                  </p>
-                </div>
+                <p className="text-md font-medium text-foreground">
+                  No Pending Work Found
+                </p>
+                <p className="text-xs font-medium text-muted-foreground mt-1">
+                  All the pending work of the site will get displayed here.
+                </p>
               </div>
             </div>
           ) : (
-            /* GRID */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               <AnimatePresence>
                 {tasks.map((task: any, idx: number) => {
@@ -135,19 +113,12 @@ export default function PendingWorkTab({
                       transition={{ duration: 0.25, delay: idx * 0.05 }}
                     >
                       <Card
-                        className="
-                    group h-full rounded-xl 
-                    border 
-                    bg-background 
-                    cursor-pointer transition-all duration-300
-                  "
                         onClick={() => {
                           if (
                             task.status === "completed" ||
                             task.status === "cancelled"
                           )
                             return;
-
                           setSelectedTask({
                             id: task.id,
                             leadId,
@@ -157,25 +128,29 @@ export default function PendingWorkTab({
                           });
                           setOpenTaskModal(true);
                         }}
+                        className="
+                    group h-full rounded-xl 
+                    border 
+                    bg-background 
+                    cursor-pointer transition-all duration-300
+                    hover:border-primary/40 
+                    hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.12)]
+                  "
                       >
-                        <CardContent className="px-5 pt-4 pb-5">
+                        <CardContent className="px-5 space-y-3 flex flex-col h-full justify-between">
+                          <div>
+
                           {/* HEADER */}
                           <div className="flex items-start justify-between gap-3">
-                            <div
-                              className="
-                          p-2.5 rounded-lg border 
-                          bg-primary/10 border-primary/20
-                        "
-                            >
+                            <div className="p-2.5 rounded-lg border bg-primary/10 border-primary/20">
                               <Wrench className="h-4 w-4 text-primary" />
                             </div>
 
                             <Badge
                               variant="outline"
-                              className={`
-                          text-[10px] h-5 mt-1 rounded-md 
-                          shadow-sm ${getStatusColor(task.status)}
-                        `}
+                              className={`text-[10px] h-5 mt-1 rounded-md shadow-sm ${getStatusColor(
+                                task.status
+                              )}`}
                             >
                               {task.status}
                             </Badge>
@@ -192,7 +167,7 @@ export default function PendingWorkTab({
                               <RemarkTooltip
                                 title="Additional Note"
                                 remark={
-                                  <span className="block line-clamp-3 text-xs text-muted-foreground leading-relaxed">
+                                  <span className="block text-left line-clamp-3 text-xs text-muted-foreground leading-relaxed">
                                     {preview}
                                   </span>
                                 }
@@ -203,6 +178,7 @@ export default function PendingWorkTab({
                                 {preview}
                               </span>
                             ))}
+                          </div>
 
                           {/* META */}
                           <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
@@ -214,6 +190,8 @@ export default function PendingWorkTab({
                           </div>
                         </CardContent>
                       </Card>
+
+                      
                     </motion.div>
                   );
                 })}
@@ -222,7 +200,6 @@ export default function PendingWorkTab({
           )}
         </CardContent>
       </Card>
-
       {/* Follow up modal */}
       {selectedTask && (
         <FollowUpModal
