@@ -16,6 +16,7 @@ import {
   File,
   Wrench,
   User,
+  Currency,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -75,6 +76,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { useResolveMiscellaneousEntry } from "@/api/installation/useUnderInstallationStageLeads";
+import { ImageComponent } from "@/components/utils/ImageCard";
+import DocumentCard from "@/components/utils/documentCard";
 interface InstallationMiscellaneousProps {
   vendorId: number;
   leadId: number;
@@ -215,6 +218,8 @@ export default function InstallationMiscellaneous({
   }));
 
   const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
+
+  const entry = viewModal.data;
 
   return (
     <div className="px-2 bg-[#fff] dark:bg-[#0a0a0a]">
@@ -629,48 +634,58 @@ export default function InstallationMiscellaneous({
         open={viewModal.open}
         onOpenChange={(open) => setViewModal({ open, data: null })}
       >
-        <DialogContent className="min-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="min-w-4xl max-h-[90vh] overflow-hidden flex flex-col border-border bg-background">
+          {/* ------------ HEADER ------------- */}
           <DialogHeader className="space-y-3">
             <div className="flex items-start gap-3">
+              {/* Status Icon */}
               <div
-                className={`p-2.5 rounded-lg ${
-                  viewModal.data?.is_resolved
-                    ? "bg-green-50 dark:bg-green-950"
-                    : "bg-orange-50 dark:bg-orange-950"
-                }`}
+                className={`
+            p-2.5 rounded-lg border transition-colors
+            ${
+              viewModal.data?.is_resolved
+                ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
+                : "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
+            }
+          `}
               >
                 {viewModal.data?.is_resolved ? (
                   <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
                 ) : (
-                  <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                  <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 )}
               </div>
+
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-4">
-                  <DialogTitle className="text-lg">
+                  <DialogTitle className="text-lg font-semibold text-foreground">
                     {viewModal.data?.type.name}
                   </DialogTitle>
-                  <Badge
-                    variant={
-                      viewModal.data?.is_resolved ? "default" : "secondary"
-                    }
-                    className={`flex-shrink-0 ${
+
+                  {/* Status Badge */}
+                  {/* <Badge
+                    variant="outline"
+                    className={`text-xs px-2.5 py-0.5 rounded-md font-medium ${
                       viewModal.data?.is_resolved
-                        ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-0"
-                        : ""
+                        ? "bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
+                        : "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800"
                     }`}
                   >
                     {viewModal.data?.is_resolved ? "Resolved" : "Pending"}
-                  </Badge>
+                  </Badge> */}
                 </div>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1.5">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
+
+                {/* Meta Row */}
+                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" />
                     {viewModal.data && formatDate(viewModal.data.created_at)}
                   </div>
-                  <span>•</span>
-                  <div className="flex items-center gap-1">
-                    <User className="w-3 h-3" />
+
+                  <span className="text-muted-foreground/40">•</span>
+
+                  <div className="flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5" />
                     {viewModal.data?.created_user.user_name}
                   </div>
                 </div>
@@ -678,23 +693,27 @@ export default function InstallationMiscellaneous({
             </div>
           </DialogHeader>
 
-          <Separator />
+          <Separator className="my-2" />
 
-          <div className="flex-1 overflow-y-auto py-4 space-y-4">
+          {/* ----------- BODY ----------- */}
+          <div className="flex-1 overflow-y-auto py-2 space-y-6 px-1">
+            {/* Quick Stats Row */}
             {(viewModal.data?.quantity ||
               viewModal.data?.cost ||
               viewModal.data?.expected_ready_date) && (
               <div className="grid grid-cols-3 gap-3">
                 {viewModal.data?.quantity && (
-                  <Card className="border">
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4 text-blue-600" />
+                  <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
+                    <CardContent className="px-4">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
+                          <Package className="w-4 h-4 text-muted-foreground" />
+                        </div>
                         <div>
                           <p className="text-xs text-muted-foreground">
                             Quantity
                           </p>
-                          <p className="text-sm font-semibold mt-0.5">
+                          <p className="text-base font-semibold text-foreground">
                             {viewModal.data.quantity}
                           </p>
                         </div>
@@ -702,13 +721,19 @@ export default function InstallationMiscellaneous({
                     </CardContent>
                   </Card>
                 )}
+
                 {viewModal.data?.cost && (
-                  <Card className="border">
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-2">
+                  <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
+                    <CardContent className="px-4">
+                      <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
+                          <Currency className="w-4 h-4 text-muted-foreground" />
+                        </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Cost</p>
-                          <p className="text-sm font-semibold mt-0.5">
+                          <p className="text-xs text-muted-foreground">
+                            Cost
+                          </p>
+                          <p className="text-base font-semibold text-foreground">
                             ₹{viewModal.data.cost.toLocaleString()}
                           </p>
                         </div>
@@ -716,16 +741,19 @@ export default function InstallationMiscellaneous({
                     </CardContent>
                   </Card>
                 )}
+
                 {viewModal.data?.expected_ready_date && (
-                  <Card className="border">
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-amber-600" />
+                  <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
+                    <CardContent className="px-4">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
+                          <Calendar className="w-4 h-4 text-muted-foreground" />
+                        </div>
                         <div>
                           <p className="text-xs text-muted-foreground">
-                            Expected Date
+                            Expected Ready
                           </p>
-                          <p className="text-sm font-semibold mt-0.5">
+                          <p className="text-sm font-semibold text-foreground">
                             {formatDate(viewModal.data.expected_ready_date)}
                           </p>
                         </div>
@@ -736,214 +764,184 @@ export default function InstallationMiscellaneous({
               </div>
             )}
 
-            {viewModal.data?.problem_description && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-orange-600" />
-                  Problem Description
-                </h4>
-                <p className="text-sm text-muted-foreground leading-relaxed pl-6">
-                  {viewModal.data.problem_description}
-                </p>
-              </div>
-            )}
-
-            {viewModal.data?.reorder_material_details && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold flex items-center gap-2">
-                  <Package className="w-4 h-4 text-blue-600" />
-                  Reorder Material Details
-                </h4>
-                <p className="text-sm text-muted-foreground leading-relaxed pl-6">
-                  {viewModal.data.reorder_material_details}
-                </p>
-              </div>
-            )}
-
-            {viewModal.data?.supervisor_remark && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-purple-600" />
-                  Supervisor Remark
-                </h4>
-                <p className="text-sm text-muted-foreground leading-relaxed pl-6">
-                  {viewModal.data.supervisor_remark}
-                </p>
-              </div>
-            )}
-
-            {viewModal.data?.teams && viewModal.data.teams.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold flex items-center gap-2">
-                  <Users className="w-4 h-4 text-primary" />
-                  Team Responsible
-                </h4>
-                <div className="flex flex-wrap gap-2 pl-6">
-                  {viewModal.data.teams.map((team) => (
-                    <Badge key={team.team_id} variant="secondary">
-                      {team.team_name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {viewModal.data?.documents &&
-              viewModal.data.documents.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-primary" />
-                      Supporting Proofs
-                    </h4>
-                    <Badge variant="outline" className="text-xs">
-                      {viewModal.data.documents.length}
-                    </Badge>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 pl-6">
-                    {viewModal.data.documents.map((doc) => (
-                      <Card
-                        key={doc.document_id}
-                        className="group border hover:shadow-sm transition-all"
-                      >
-                        <CardContent className="p-3">
-                          <div className="flex items-start gap-2 mb-2">
-                            <div className="p-1.5 bg-muted rounded">
-                              {getFileIcon(doc.original_name)}
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium truncate">
-                                {doc.original_name}
-                              </p>
-                              <p className="text-[10px] text-muted-foreground mt-0.5">
-                                {formatDate(doc.uploaded_at)}
-                              </p>
-                            </div>
-
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <a
-                                href={doc.signed_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  title="View"
-                                >
-                                  <Eye className="w-3 h-3" />
-                                </Button>
-                              </a>
-                              <a
-                                href={doc.signed_url}
-                                download={doc.original_name}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  title="Download"
-                                >
-                                  <Download className="w-3 h-3" />
-                                </Button>
-                              </a>
-                            </div>
-                          </div>
-
-                          {isImageFile(doc.original_name) && (
-                            <div className="relative aspect-video w-full overflow-hidden rounded border">
-                              <img
-                                src={doc.signed_url}
-                                alt={doc.original_name}
-                                className="object-cover w-full h-full hover:scale-105 transition-transform"
-                              />
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
+            {/* ---- DETAILS SECTION (Two Column Premium Layout) ---- */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Problem Description */}
+              {viewModal.data?.problem_description && (
+                <div className="space-y-1.5">
+                  <p className="text-[13px] font-medium text-muted-foreground">
+                    Problem Description
+                  </p>
+                  <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {viewModal.data.problem_description}
+                    </p>
                   </div>
                 </div>
               )}
+
+              {/* Reorder Material Details */}
+              {viewModal.data?.reorder_material_details && (
+                <div className="space-y-1.5">
+                  <p className="text-[13px] font-medium text-muted-foreground">
+                    Reorder Material Details
+                  </p>
+                  <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {viewModal.data.reorder_material_details}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Supervisor Remark */}
+              {viewModal.data?.supervisor_remark && (
+                <div className="space-y-1.5">
+                  <p className="text-[13px] font-medium text-muted-foreground">
+                    Supervisor Remark
+                  </p>
+                  <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {viewModal.data.supervisor_remark}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Teams */}
+              {viewModal.data?.teams && viewModal.data.teams.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-[13px] font-medium text-muted-foreground">
+                    Team Responsible
+                  </p>
+                  <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
+                    <div className="flex flex-wrap gap-2">
+                      {viewModal.data.teams.map((team) => (
+                        <Badge
+                          key={team.team_id}
+                          variant="outline"
+                          className="px-3 py-1 bg-background dark:bg-neutral-800"
+                        >
+                          {team.team_name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Documents */}
+            {entry?.documents && entry.documents.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <div className="w-1 h-4 bg-primary rounded-full" />
+                    Supporting Documents
+                  </h4>
+                  <Badge
+                    variant="outline"
+                    className="text-xs px-2.5 py-0.5 bg-muted/30 dark:bg-neutral-900/50"
+                  >
+                    {entry.documents.length}{" "}
+                    {entry.documents.length === 1 ? "file" : "files"}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {entry.documents.map((doc) => {
+                    const isImage = isImageFile(doc.original_name);
+
+                    if (isImage) {
+                      return (
+                        <ImageComponent
+                          key={doc.document_id}
+                          doc={{
+                            id: doc.document_id,
+                            doc_og_name: doc.original_name,
+                            signedUrl: doc.signed_url,
+                            created_at: doc.uploaded_at,
+                          }}
+                          canDelete={false}
+                        />
+                      );
+                    }
+
+                    return (
+                      <DocumentCard
+                        key={doc.document_id}
+                        doc={{
+                          id: doc.document_id,
+                          originalName: doc.original_name,
+                          signedUrl: doc.signed_url,
+                          created_at: doc.uploaded_at,
+                        }}
+                        canDelete={false}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
-          <Separator />
+          <Separator className="my-2" />
 
-          <DialogFooter>
-            {!viewModal.data?.is_resolved && (
-              <div className="flex gap-3 flex-row items-center justify-between ">
-                {/* ⭐ FULL-WIDTH DATE PICKER */}
-
-                <CustomeDatePicker
-                  key={viewModal.data?.id}
-                  value={viewModal.data?.expected_ready_date || undefined}
-                  restriction="futureOnly"
-                  disabledReason={
-                    !canDoERDDate
-                      ? userType === "factory"
-                        ? "This lead has moved ahead. Changes aren’t allowed."
-                        : "Your role cannot perform this action."
-                      : undefined
-                  }
-                  onChange={(newDate) => {
-                    if (!canDoERDDate) return;
-                    if (!newDate) return;
-
-                    setSelectedERD(newDate);
-                    setShowConfirm(true);
-                  }}
-                />
-
-                {/* ⭐ RESOLVE BUTTON */}
-                {viewModal.data?.expected_ready_date && (
-                  <CustomeTooltip
-                    value={
+          {/* -------- FOOTER -------- */}
+          <DialogFooter className="flex-row items-center justify-between gap-3 pt-2">
+            {/* Expected Ready Date + Resolve */}
+            {!viewModal.data?.is_resolved ? (
+              <div className="flex items-center gap-3 flex-1">
+                {/* Date Picker */}
+                <div className="flex-1 max-w-xs">
+                  <CustomeDatePicker
+                    key={viewModal.data?.id}
+                    value={viewModal.data?.expected_ready_date || undefined}
+                    restriction="futureOnly"
+                    disabledReason={
                       !canDoERDDate
                         ? userType === "factory"
-                          ? "This lead has moved ahead. Changes aren't allowed."
-                          : "Your role can't perform this action."
-                        : ""
+                          ? "This lead has moved ahead."
+                          : "Insufficient permissions."
+                        : undefined
                     }
-                    truncateValue={
-                      <div
-                        className={
-                          !canDoERDDate ? "pointer-events-none opacity-60" : ""
-                        }
-                      >
-                        <Button
-                          variant="default"
-                          size="sm"
-                          disabled={!canDoERDDate || resolveMisc.isPending}
-                          onClick={() => {
-                            if (!viewModal.data) return;
-                            resolveMisc.mutate({
-                              vendorId,
-                              leadId,
-                              miscId: viewModal.data.id,
-                              resolved_by: userId!,
-                            });
-                          }}
-                        >
-                          <CheckCircle2 className="w-4 h-4 mr-2" />
-                          {resolveMisc.isPending
-                            ? "Resolving…"
-                            : "Mark as Resolved"}
-                        </Button>
-                      </div>
-                    }
+                    onChange={(newDate) => {
+                      if (!canDoERDDate || !newDate) return;
+                      setSelectedERD(newDate);
+                      setShowConfirm(true);
+                    }}
                   />
+                </div>
+
+                {/* Resolve Button */}
+                {viewModal.data?.expected_ready_date && (
+                  <Button
+                    variant="default"
+                    size="default"
+                    disabled={!canDoERDDate || resolveMisc.isPending}
+                    onClick={() =>
+                      resolveMisc.mutate({
+                        vendorId,
+                        leadId,
+                        miscId: viewModal?.data?.id || 0,
+                        resolved_by: userId!,
+                      })
+                    }
+                    className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    {resolveMisc.isPending ? "Resolving..." : "Mark Resolved"}
+                  </Button>
                 )}
               </div>
+            ) : (
+              <div className="flex-1" />
             )}
 
             <Button
               variant="outline"
               onClick={() => setViewModal({ open: false, data: null })}
+              className="min-w-[100px]"
             >
               Close
             </Button>
