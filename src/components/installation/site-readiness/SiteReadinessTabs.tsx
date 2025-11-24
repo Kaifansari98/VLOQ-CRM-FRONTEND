@@ -26,7 +26,7 @@ export default function SiteReadinessTabs({
           <span>Checklist</span>
         </div>
       ),
-      color: "bg-primary",
+      color: "bg-zinc-900 hover:bg-zinc-900",
       cardContent: (
         <div className="relative w-full h-full p-0">
           <SiteReadinessDetails
@@ -45,7 +45,7 @@ export default function SiteReadinessTabs({
           <span>Current Site Photos</span>
         </div>
       ),
-      color: "bg-primary",
+      color: "bg-zinc-900 hover:bg-zinc-900",
       cardContent: (
         <div className="relative w-full h-full p-0">
           <CurrentSitePhotosReadinessSection
@@ -61,9 +61,7 @@ export default function SiteReadinessTabs({
     <div className="w-full h-full">
       <SmoothTab
         items={tabItems}
-        defaultTabId="checklist"
-        activeColor="bg-primary"
-        className="!justify-start !w-fit border-none shadow-none bg-muted px-0 overflow-scroll"
+        defaultTabId="checklist"      
       />
     </div>
   );

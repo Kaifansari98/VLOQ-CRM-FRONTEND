@@ -387,7 +387,7 @@ export default function UsableHandover({
       </div>
 
       {/* Pending Work Details / Remarks */}
-      <Card className="rounded-2xl border bg-background transition-all duration-300">
+      {/* <Card className="rounded-2xl border bg-background transition-all duration-300">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -462,7 +462,7 @@ export default function UsableHandover({
             />
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
 
       <BaseModal
