@@ -181,14 +181,14 @@ export default function DispatchPlanningLeadDetails() {
                   variant="default"
                   onClick={() => setOpenMoveConfirm(true)}
                   disabled={moveMutation.isPending}
-                  className="bg-green-600 text-white hover:bg-green-700 cursor-pointer"
+                  className="cursor-pointer"
                 >
                   {moveMutation.isPending ? "Moving..." : "Move to Dispatch"}
                 </Button>
               ) : (
                 <CustomeTooltip
                   truncateValue={
-                    <Button size="sm" variant="secondary" disabled>
+                    <Button size="sm" variant="outline" disabled>
                       Move to Dispatch
                     </Button>
                   }

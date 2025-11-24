@@ -233,21 +233,86 @@ export default function ClientApprovalLeadDetails() {
             </Breadcrumb>
           </div>
           <div className="flex items-center space-x-2">
-            {/* ✅ Tech Check Button */}
-            {canTechCheck(userType) && (
-              <Button
-                variant="default"
-                onClick={() => setOpenRejectDocsModal(true)}
-                className="bg-blue-500/10 text-blue-500 border-blue-500 border hover:bg-blue-500/15 flex items-center gap-1"
-              >
-                <Settings2 />
-                Tech Check
-              </Button>
-            )}
-
             <Button size="sm" onClick={() => setAssignOpen(true)}>
               Assign Task
             </Button>
+
+            {/* ✅ Move To Order Login Button (Role & Status Based) */}
+            {canMoveToOrderLogin(userType) &&
+              (() => {
+                const approvedPPT = pptDocs.filter(
+                  (d) => d.tech_check_status === "APPROVED"
+                ).length;
+
+                const approvedPytha = pythaDocs.filter(
+                  (d) => d.tech_check_status === "APPROVED"
+                ).length;
+
+                const approvedCount = approvedPPT + approvedPytha;
+
+                const pendingCount = docs.filter(
+                  (d) =>
+                    !d.tech_check_status || d.tech_check_status === "PENDING"
+                ).length;
+
+                // Disabled if:
+                // 1. No approved docs
+                // 2. Still some pending docs
+                // 3. No PPT approved
+                // 4. No Pytha approved
+                const isDisabled =
+                  approvedCount <
+                    (no_of_client_documents_initially_submitted || 0) ||
+                  pendingCount > 0 ||
+                  approvedPPT === 0 ||
+                  approvedPytha === 0;
+
+                if (isDisabled) {
+                  let tooltipMsg = "";
+
+                  if (
+                    no_of_client_documents_initially_submitted &&
+                    approvedCount < no_of_client_documents_initially_submitted
+                  ) {
+                    tooltipMsg = `You must approve all initially submitted client documents (${no_of_client_documents_initially_submitted}) before moving to Order Login.`;
+                  } else if (approvedPPT === 0) {
+                    tooltipMsg =
+                      "At least one PPT file must be approved before moving to Order Login.";
+                  } else if (approvedPytha === 0) {
+                    tooltipMsg =
+                      "At least one Pytha file must be approved before moving to Order Login.";
+                  } else if (pendingCount > 0) {
+                    tooltipMsg = `You still have ${pendingCount} pending document${
+                      pendingCount > 1 ? "s" : ""
+                    }. Please review all before proceeding.`;
+                  }
+
+                  return (
+                    <CustomeTooltip
+                      truncateValue={
+                        <Button
+                          disabled
+                          className="bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-300 dark:border-gray-700 cursor-not-allowed flex items-center gap-2"
+                        >
+                          <CircleCheckBig size={16} />
+                          Move To Order Login
+                        </Button>
+                      }
+                      value={tooltipMsg}
+                    />
+                  );
+                }
+
+                return (
+                  <Button
+                    onClick={() => setOpenOrderLoginModal(true)}
+                    variant="default"
+                  >
+                    <CircleCheckBig size={16} />
+                    Move To Order Login
+                  </Button>
+                );
+              })()}
 
             <AnimatedThemeToggler />
 
@@ -356,6 +421,18 @@ export default function ClientApprovalLeadDetails() {
               </TabsList>
 
               <div className="flex items-center justify-between gap-2">
+
+                {/* ✅ Tech Check Button */}
+                {canTechCheck(userType) && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setOpenRejectDocsModal(true)}
+                  >
+                    <Settings2 />
+                    Tech-Check Workflow
+                  </Button>
+                )}
+
                 {/* ✅ Upload Revised Docs Button (Role & Rejection Status Based) */}
                 {(() => {
                   const canUpload =
@@ -401,92 +478,13 @@ export default function ClientApprovalLeadDetails() {
                   return (
                     <Button
                       onClick={() => setOpenUploadDocsModal(true)}
-                      className="bg-blue-50 border border-blue-500 text-blue-500 hover:bg-blue-100 flex items-center gap-2"
+                      variant="outline"
                     >
                       <UploadIcon size={16} />
                       Upload Revised Docs
                     </Button>
                   );
                 })()}
-
-                {/* ✅ Move To Order Login Button (Role & Status Based) */}
-                {canMoveToOrderLogin(userType) &&
-                  (() => {
-                    const approvedPPT = pptDocs.filter(
-                      (d) => d.tech_check_status === "APPROVED"
-                    ).length;
-
-                    const approvedPytha = pythaDocs.filter(
-                      (d) => d.tech_check_status === "APPROVED"
-                    ).length;
-
-                    const approvedCount = approvedPPT + approvedPytha;
-
-                    const pendingCount = docs.filter(
-                      (d) =>
-                        !d.tech_check_status ||
-                        d.tech_check_status === "PENDING"
-                    ).length;
-
-                    // Disabled if:
-                    // 1. No approved docs
-                    // 2. Still some pending docs
-                    // 3. No PPT approved
-                    // 4. No Pytha approved
-                    const isDisabled =
-                      approvedCount <
-                        (no_of_client_documents_initially_submitted || 0) ||
-                      pendingCount > 0 ||
-                      approvedPPT === 0 ||
-                      approvedPytha === 0;
-
-                    if (isDisabled) {
-                      let tooltipMsg = "";
-
-                      if (
-                        no_of_client_documents_initially_submitted &&
-                        approvedCount <
-                          no_of_client_documents_initially_submitted
-                      ) {
-                        tooltipMsg = `You must approve all initially submitted client documents (${no_of_client_documents_initially_submitted}) before moving to Order Login.`;
-                      } else if (approvedPPT === 0) {
-                        tooltipMsg =
-                          "At least one PPT file must be approved before moving to Order Login.";
-                      } else if (approvedPytha === 0) {
-                        tooltipMsg =
-                          "At least one Pytha file must be approved before moving to Order Login.";
-                      } else if (pendingCount > 0) {
-                        tooltipMsg = `You still have ${pendingCount} pending document${
-                          pendingCount > 1 ? "s" : ""
-                        }. Please review all before proceeding.`;
-                      }
-
-                      return (
-                        <CustomeTooltip
-                          truncateValue={
-                            <Button
-                              disabled
-                              className="bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-300 dark:border-gray-700 cursor-not-allowed flex items-center gap-2"
-                            >
-                              <CircleCheckBig size={16} />
-                              Move To Order Login
-                            </Button>
-                          }
-                          value={tooltipMsg}
-                        />
-                      );
-                    }
-
-                    return (
-                      <Button
-                        onClick={() => setOpenOrderLoginModal(true)}
-                        className="bg-green-500/10 text-green-500 border-green-500 border hover:bg-green-500/15 flex items-center gap-2"
-                      >
-                        <CircleCheckBig size={16} />
-                        Move To Order Login
-                      </Button>
-                    );
-                  })()}
               </div>
             </div>
 
@@ -583,74 +581,148 @@ export default function ClientApprovalLeadDetails() {
           description="Select documents to approve or reject. Review each document carefully before taking action."
         >
           <div className="space-y-6">
-            {/* Stats Summary */}
-            <div className="grid grid-cols-4 gap-3 px-6 pt-4">
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 rounded-xl p-3 border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-lg bg-blue-500 dark:bg-blue-600 flex items-center justify-center">
-                    <FileText className="text-white" size={18} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                      Total
-                    </p>
-                    <p className="text-xl font-bold text-gray-900 dark:text-white">
-                      {docs.length}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20 rounded-xl p-3 border border-green-200 dark:border-green-800">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-lg bg-green-500 dark:bg-green-600 flex items-center justify-center">
-                    <CheckCircle2 className="text-white" size={18} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                      Approved
-                    </p>
-                    <p className="text-xl font-bold text-gray-900 dark:text-white">
-                      {
-                        docs.filter((d) => d.tech_check_status === "APPROVED")
-                          .length
-                      }
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20 rounded-xl p-3 border border-amber-200 dark:border-amber-800">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-lg bg-amber-500 dark:bg-amber-600 flex items-center justify-center">
-                    <AlertCircle className="text-white" size={18} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                      Selected
-                    </p>
-                    <p className="text-xl font-bold text-gray-900 dark:text-white">
-                      {selectedDocs.length}
-                    </p>
+            {/* -------- Premium CRM Stats Summary -------- */}
+            <div className="px-6 pt-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {/* Total Docs */}
+                <div
+                  className="
+        bg-white dark:bg-neutral-900 
+        rounded-xl p-4 
+        border border-border 
+        hover:bg-muted/60 dark:hover:bg-neutral-800/60 
+        transition-all duration-200
+      "
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="
+            w-10 h-10 rounded-lg 
+            bg-blue-500/10 dark:bg-blue-500/20 
+            flex items-center justify-center
+          "
+                    >
+                      <FileText
+                        className="text-blue-600 dark:text-blue-400"
+                        size={20}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Total
+                      </p>
+                      <p className="text-2xl font-bold text-foreground">
+                        {docs.length}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20 rounded-xl p-3 border border-red-200 dark:border-red-800">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-lg bg-red-500 dark:bg-red-600 flex items-center justify-center">
-                    <XCircle className="text-white" size={18} />
+                {/* Approved */}
+                <div
+                  className="
+        bg-white dark:bg-neutral-900 
+        rounded-xl p-4 
+        border border-border 
+        hover:bg-muted/60 dark:hover:bg-neutral-800/60 
+        transition-all duration-200
+      "
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="
+            w-10 h-10 rounded-lg 
+            bg-green-500/10 dark:bg-green-500/20 
+            flex items-center justify-center
+          "
+                    >
+                      <CheckCircle2
+                        className="text-green-600 dark:text-green-400"
+                        size={20}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Approved
+                      </p>
+                      <p className="text-2xl font-bold text-foreground">
+                        {
+                          docs.filter((d) => d.tech_check_status === "APPROVED")
+                            .length
+                        }
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                      Rejected
-                    </p>
-                    <p className="text-xl font-bold text-gray-900 dark:text-white">
-                      {
-                        docs.filter((d) => d.tech_check_status === "REJECTED")
-                          .length
-                      }
-                    </p>
+                </div>
+
+                {/* Selected */}
+                <div
+                  className="
+        bg-white dark:bg-neutral-900 
+        rounded-xl p-4 
+        border border-border 
+        hover:bg-muted/60 dark:hover:bg-neutral-800/60 
+        transition-all duration-200
+      "
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="
+            w-10 h-10 rounded-lg 
+            bg-amber-500/10 dark:bg-amber-500/20 
+            flex items-center justify-center
+          "
+                    >
+                      <AlertCircle
+                        className="text-amber-600 dark:text-amber-400"
+                        size={20}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Selected
+                      </p>
+                      <p className="text-2xl font-bold text-foreground">
+                        {selectedDocs.length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rejected */}
+                <div
+                  className="
+        bg-white dark:bg-neutral-900 
+        rounded-xl p-4 
+        border border-border 
+        hover:bg-muted/60 dark:hover:bg-neutral-800/60 
+        transition-all duration-200
+      "
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="
+            w-10 h-10 rounded-lg 
+            bg-red-500/10 dark:bg-red-500/20 
+            flex items-center justify-center
+          "
+                    >
+                      <XCircle
+                        className="text-red-600 dark:text-red-400"
+                        size={20}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Rejected
+                      </p>
+                      <p className="text-2xl font-bold text-foreground">
+                        {
+                          docs.filter((d) => d.tech_check_status === "REJECTED")
+                            .length
+                        }
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -658,7 +730,7 @@ export default function ClientApprovalLeadDetails() {
 
             {/* Document List */}
             {docs.length === 0 ? (
-              <div className="text-center py-12 bg-gray-50 dark:bg-gray-900/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 mx-6">
+              <div className="text-center py-6 bg-gray-50 dark:bg-gray-900/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 mx-6">
                 <FileText
                   className="mx-auto text-gray-400 dark:text-gray-600 mb-3"
                   size={48}
@@ -671,7 +743,7 @@ export default function ClientApprovalLeadDetails() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3 px-6 pt-2">
+              <div className="space-y-3 px-6">
                 <div className="flex flex-col justify-between mb-2">
                   <h3 className="text-sm font-semibold text-gray-700 dark:text-white">
                     Document List
@@ -751,22 +823,22 @@ export default function ClientApprovalLeadDetails() {
                           {/* Divider for approved section */}
                           {isFirstApproved && (
                             <div className="flex items-center gap-3 py-3">
-                              <div className="flex-1 h-px bg-green-200 dark:bg-green-800"></div>
-                              <span className="text-xs font-semibold text-green-600 dark:text-green-400 px-3 py-1 bg-green-50 dark:bg-green-950/50 rounded-full border border-green-200 dark:border-green-800">
+                              <div className="flex-1 h-px bg-zinc-200 dark:bg-white"></div>
+                              <span className="text-xs font-semibold px-3 py-1 rounded-full border">
                                 Already Approved Documents
                               </span>
-                              <div className="flex-1 h-px bg-green-200 dark:bg-green-800"></div>
+                              <div className="flex-1 h-px bg-zinc-200 dark:bg-white"></div>
                             </div>
                           )}
 
                           {/* Divider for rejected section */}
                           {isFirstRejected && (
                             <div className="flex items-center gap-3 py-3">
-                              <div className="flex-1 h-px bg-red-200 dark:bg-red-800"></div>
-                              <span className="text-xs font-semibold text-red-600 dark:text-red-400 px-3 py-1 bg-red-50 dark:bg-red-950/50 rounded-full border border-red-200 dark:border-red-800">
+                              <div className="flex-1 h-px bg-zinc-200 dark:bg-white"></div>
+                              <span className="text-xs font-semibold px-3 py-1 rounded-full border">
                                 Already Rejected Documents
                               </span>
-                              <div className="flex-1 h-px bg-red-200 dark:bg-red-800"></div>
+                              <div className="flex-1 h-px bg-zinc-200 dark:bg-white"></div>
                             </div>
                           )}
 
@@ -777,12 +849,12 @@ export default function ClientApprovalLeadDetails() {
                                 ? "cursor-not-allowed opacity-75"
                                 : "cursor-pointer",
                               isRejected
-                                ? "bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
+                                ? ""
                                 : isApproved
-                                ? "bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
+                                ? ""
                                 : isSelected
-                                ? "border-amber-500 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/30 shadow-md"
-                                : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm"
+                                ? "border-zinc-900 dark:border-white dark:bg-zinc-950/30"
+                                : "border-gray-200 dark:border-gray-700 bg-white dark:bg-zinc-900/50 hover:border-zinc-300 dark:hover:border-zinc-700"
                             )}
                             onClick={() => {
                               if (isDisabled) return;
@@ -894,30 +966,6 @@ export default function ClientApprovalLeadDetails() {
 
               <div className="flex gap-3">
                 <Button
-                  variant="outline"
-                  onClick={() => {
-                    setOpenRejectDocsModal(false);
-                    setSelectedDocs([]);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  disabled={selectedDocs.length === 0}
-                  onClick={() => {
-                    if (selectedDocs.length === 0) {
-                      toast.error("Please select at least one document.");
-                      return;
-                    }
-                    setOpenRejectDocsModal(false);
-                    setOpenApproveConfirmModal(true);
-                  }}
-                  className="bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
-                >
-                  <CheckCircle2 size={16} className="mr-1" />
-                  Approve Selected ({selectedDocs.length})
-                </Button>
-                <Button
                   variant="destructive"
                   disabled={selectedDocs.length === 0}
                   onClick={() => {
@@ -931,6 +979,21 @@ export default function ClientApprovalLeadDetails() {
                 >
                   <XCircle size={16} className="mr-1" />
                   Reject Selected ({selectedDocs.length})
+                </Button>
+                <Button
+                  variant="default"
+                  disabled={selectedDocs.length === 0}
+                  onClick={() => {
+                    if (selectedDocs.length === 0) {
+                      toast.error("Please select at least one document.");
+                      return;
+                    }
+                    setOpenRejectDocsModal(false);
+                    setOpenApproveConfirmModal(true);
+                  }}
+                >
+                  <CheckCircle2 size={16} className="mr-1" />
+                  Approve Selected ({selectedDocs.length})
                 </Button>
               </div>
             </div>
@@ -947,16 +1010,13 @@ export default function ClientApprovalLeadDetails() {
         >
           <div className="space-y-5 px-4 py-4">
             {/* Info Banner */}
-            <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <AlertCircle
-                className="text-amber-600 flex-shrink-0 mt-0.5"
-                size={18}
-              />
+            <div className="flex items-start gap-3 p-4 border rounded-lg">
+              <AlertCircle className="flex-shrink-0 mt-0.5" size={18} />
               <div className="text-sm">
-                <p className="font-medium text-amber-900 mb-1">
+                <p className="font-medium">
                   Selected Documents: {selectedDocs.length}
                 </p>
-                <p className="text-amber-700 text-xs">
+                <p className="text-xs">
                   Your remark will be sent to the client for all selected
                   documents.
                 </p>
@@ -965,21 +1025,16 @@ export default function ClientApprovalLeadDetails() {
 
             {/* Selected Documents Preview */}
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-gray-700">
-                Documents to Reject:
-              </h4>
-              <div className="max-h-32 overflow-y-auto space-y-1.5 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <h4 className="text-sm font-semibold">Documents to Reject</h4>
+              <div className="max-h-32 overflow-y-auto space-y-1.5 p-3 rounded-lg border">
                 {docs
                   .filter((doc) => selectedDocs.includes(doc.id))
                   .map((doc) => (
                     <div
                       key={doc.id}
-                      className="flex items-center gap-2 text-xs text-gray-700 bg-white px-3 py-2 rounded-md border border-gray-200"
+                      className="flex items-center gap-2 text-xs px-3 py-2 rounded-md border"
                     >
-                      <FileText
-                        size={14}
-                        className="text-amber-600 flex-shrink-0"
-                      />
+                      <FileText size={14} className="flex-shrink-0" />
                       <span className="truncate font-medium">
                         {doc.doc_og_name}
                       </span>
@@ -1002,7 +1057,7 @@ export default function ClientApprovalLeadDetails() {
             </div>
 
             {/* Action Footer */}
-            <div className="flex items-center justify-end pt-4 border-t border-gray-200">
+            <div className="flex items-center justify-end pt-4">
               {/* <p className="text-xs text-gray-500">
                   This action will notify the client
                 </p> */}
@@ -1017,6 +1072,7 @@ export default function ClientApprovalLeadDetails() {
                   Cancel
                 </Button>
                 <Button
+                  variant="default"
                   onClick={() => {
                     if (!remark.trim()) {
                       toast.error("Remark is required.");
@@ -1025,7 +1081,6 @@ export default function ClientApprovalLeadDetails() {
                     setOpenRemarkModal(false);
                     setOpenFinalRejectConfirm(true);
                   }}
-                  className="bg-amber-600 hover:bg-amber-700"
                 >
                   Continue to Confirm
                 </Button>
@@ -1104,7 +1159,7 @@ export default function ClientApprovalLeadDetails() {
                   setSelectedDocs([]);
                 }}
                 disabled={approvingDocs}
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-zinc-900 hover:bg-zinc-800"
               >
                 {approvingDocs ? "Approving..." : "Confirm Approval"}
               </AlertDialogAction>

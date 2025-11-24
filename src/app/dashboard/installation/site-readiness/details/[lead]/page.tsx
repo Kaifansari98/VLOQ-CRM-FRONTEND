@@ -202,7 +202,7 @@ export default function ReadyToDispatchLeadDetails() {
             ) : isCompleted ? (
               <Button
                 size="sm"
-                className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                variant="default"
                 onClick={() => setOpenMoveConfirm(true)}
                 disabled={moveToDispatchMutation.isPending}
               >
@@ -212,7 +212,7 @@ export default function ReadyToDispatchLeadDetails() {
             ) : (
               <CustomeTooltip
                 truncateValue={
-                  <Button size="sm" disabled>
+                  <Button size="sm" disabled variant="outline">
                     Move to Dispatch Planning
                   </Button>
                 }

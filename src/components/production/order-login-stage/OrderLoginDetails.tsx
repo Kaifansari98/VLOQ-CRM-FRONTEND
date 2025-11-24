@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import ProductionFilesSection from "./ProductionFilesModal";
 import ApprovedDocsSection from "./ApprovedDocsModal";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
-import { Plus } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useClientRequiredCompletionDate } from "@/api/tech-check";
 import {
@@ -311,8 +311,10 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                       size="lg"
                       onClick={handleSubmitAll}
                       disabled={isPending}
-                      className="min-w-[130px]"
+                      variant="outline"
+                      className="cursor-pointer"
                     >
+                      <Check/>
                       {isPending ? "Processing..." : "Save Order Login"}
                     </Button>
                   )}

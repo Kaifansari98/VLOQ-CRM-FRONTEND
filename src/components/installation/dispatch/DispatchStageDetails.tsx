@@ -352,6 +352,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               type="submit"
               disabled={addDispatchMutation.isPending}
               className="w-full md:w-auto"
+              form="dispatch-form"
             >
               {addDispatchMutation.isPending ? (
                 <>
@@ -374,7 +375,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               ))}
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form id="dispatch-form" onSubmit={handleSubmit} className="space-y-6">
               {/* Form Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Dispatch Date */}
