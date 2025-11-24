@@ -72,6 +72,9 @@ export default function SiteReadinessDetails({
     }))
   );
 
+
+console.log("checklist data: ", checklistData)
+
   const { data: leadData } = useLeadStatus(leadId, vendor_id);
   const leadStatus = leadData?.status;
 
@@ -118,6 +121,38 @@ export default function SiteReadinessDetails({
     fetchRecords();
   }, [vendor_id, leadId, accountId]);
 
+  const refetchRecords = async () => {
+    if (!vendor_id || !leadId) return;
+
+    const response = await getSiteReadinessRecords(
+      vendor_id,
+      leadId,
+      accountId
+    );
+    if (response?.records) {
+      const updated = CHECKLIST_ITEMS.map((item) => {
+        const existing = response.records.find(
+          (r: any) => r.type === item.type
+        );
+        return existing
+          ? {
+              type: item.type,
+              label: item.label,
+              id: existing.id,
+              value: existing.value,
+              remark: existing.remark || "",
+            }
+          : {
+              type: item.type,
+              label: item.label,
+              value: null,
+              remark: "",
+            };
+      });
+      setChecklistData(updated);
+    }
+  };
+
   const handleChecklistChange = (
     index: number,
     field: "value" | "remark",
@@ -139,24 +174,41 @@ export default function SiteReadinessDetails({
     setSuccess(false);
 
     try {
-      const payload = checklistData.map((item) => ({
-        id: item.id,
+      // ✅ Only send items that have at least one field filled
+      const filledItems = checklistData.filter(
+        (item) =>
+          item.value !== null || (item.remark && item.remark.trim() !== "")
+      );
+
+      const toCreate = filledItems.filter((item) => !item.id);
+      const toUpdate = filledItems.filter((item) => item.id);
+
+      const createPayload = toCreate.map((item) => ({
         account_id: accountId,
         type: item.type,
-        remark: item.remark || null,
+        remark: item.remark?.trim() || null,
         value: item.value,
         created_by: user_id,
         updated_by: user_id,
       }));
 
-      const hasExistingRecords = checklistData.some((item) => item.id);
+      const updatePayload = toUpdate.map((item) => ({
+        id: item.id,
+        account_id: accountId,
+        type: item.type,
+        remark: item.remark?.trim() || null,
+        value: item.value,
+        updated_by: user_id,
+      }));
 
-      if (hasExistingRecords) {
-        await updateSiteReadiness(vendor_id, leadId, payload);
-      } else {
-        await createSiteReadiness(vendor_id, leadId, payload);
+      if (createPayload.length > 0) {
+        await createSiteReadiness(vendor_id, leadId, createPayload);
       }
 
+      if (updatePayload.length > 0) {
+        await updateSiteReadiness(vendor_id, leadId, updatePayload);
+      }
+      await refetchRecords();
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
@@ -165,7 +217,6 @@ export default function SiteReadinessDetails({
       setLoading(false);
     }
   };
-
   const completedCount = checklistData.filter(
     (item) => item.value !== null
   ).length;
@@ -231,8 +282,7 @@ export default function SiteReadinessDetails({
                 variant={completionPercentage === 100 ? "default" : "outline"}
                 className={cn(
                   "text-xs px-2 py-0.5",
-                  completionPercentage === 100 &&
-                    "bg-primary"
+                  completionPercentage === 100 && "bg-primary"
                 )}
               >
                 {completionPercentage}%
@@ -285,10 +335,8 @@ export default function SiteReadinessDetails({
               key={item.type}
               className={cn(
                 "relative p-4 rounded-lg border-2 transition-all duration-200",
-                item.value === true &&
-                  "",
-                item.value === false &&
-                  ""
+                item.value === true && "",
+                item.value === false && ""
               )}
             >
               {/* Checklist Header */}

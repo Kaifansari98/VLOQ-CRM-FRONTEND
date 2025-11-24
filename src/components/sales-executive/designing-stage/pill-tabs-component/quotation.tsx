@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDeleteDocument } from "@/api/leads";
 import DocumentCard from "@/components/utils/documentCard";
-import Loader from "@/components/utils/loader";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import ComingSoon from "@/components/generics/ComingSoon";
@@ -45,14 +44,6 @@ const QuotationTab = () => {
 
   const designQuotationDocs = data?.data?.documents || [];
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { duration: 0.3, staggerChildren: 0.05 },
-    },
-  };
-
   const itemVariants = {
     hidden: { opacity: 0, y: 10 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
@@ -69,13 +60,6 @@ const QuotationTab = () => {
       setConfirmDelete(null);
     }
   };
-
-  // ✅ Show loader in full screen when loading
-  if (isLoading) {
-    return (
-      <Loader fullScreen size={250} message="Loading Quotation Documents..." />
-    );
-  }
 
   // ✅ Show error state
   if (error) {
