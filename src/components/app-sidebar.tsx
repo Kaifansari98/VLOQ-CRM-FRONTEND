@@ -98,7 +98,7 @@ const data = {
       // showCount: "total_project_group" as const,
       items: [
         {
-          title: "Final Measurement",
+          title: "FM Sites",
           url: "/dashboard/project/final-measurement",
           showCount: "total_final_measurement_leads" as const, // ✅ added
         },

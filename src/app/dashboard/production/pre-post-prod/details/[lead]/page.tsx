@@ -297,9 +297,8 @@ export default function ProductionLeadDetails() {
                   truncateValue={
                     <Button
                       size="sm"
-                      variant="secondary"
+                      variant="outline"
                       disabled
-                      className="bg-gray-400 cursor-not-allowed text-white"
                     >
                       Ready To Dispatch
                     </Button>

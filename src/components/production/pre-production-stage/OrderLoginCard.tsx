@@ -100,7 +100,7 @@ export default function OrderLoginCard({
       >
         <Card
           className={cn(
-            "group relative overflow-hidden border bg-card transition-all duration-300 cursor-pointer"
+            "group relative h-full justify-between overflow-hidden border bg-card transition-all duration-300 cursor-pointer"
           )}
         >
           <div className="relative z-10">
@@ -141,47 +141,46 @@ export default function OrderLoginCard({
                 </p>
               </CardContent>
             )}
-
-            {/* 🔹 Vendor Info (optional) */}
-            {hasVendorInfo && (
-              <CardContent className="pt-4 border-t border-border/50 flex items-center gap-3">
-                {companyVendorName && (
-                  <div className="relative">
-                    <div
-                      className="
+          </div>
+          {/* 🔹 Vendor Info (optional) */}
+          {hasVendorInfo && (
+            <CardContent className="pt-4 border-t border-border/50 flex items-center gap-3">
+              {companyVendorName && (
+                <div className="relative">
+                  <div
+                    className="
   w-10 h-10 rounded-full 
   bg-muted 
   dark:bg-neutral-800 
   border border-border/70 
   flex items-center justify-center 
 "
-                    >
-                      <span className="font-semibold text-sm text-foreground">
-                        {initial}
-                      </span>
-                    </div>
-
-                    {isCompleted && (
-                      <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-background rounded-full flex items-center justify-center">
-                        <CheckCircle2 className="w-2 h-2 text-white" />
-                      </div>
-                    )}
+                  >
+                    <span className="font-semibold text-sm text-foreground">
+                      {initial}
+                    </span>
                   </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground truncate">
-                    {companyVendorName}
-                  </p>
-                  {companyVendorContact && (
-                    <p className="text-xs text-muted-foreground truncate">
-                      {companyVendorContact}
-                    </p>
+
+                  {isCompleted && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-background rounded-full flex items-center justify-center">
+                      <CheckCircle2 className="w-2 h-2 text-white" />
+                    </div>
                   )}
                 </div>
-                <Building2 className="w-4 h-4 text-muted-foreground opacity-60 flex-shrink-0" />
-              </CardContent>
-            )}
-          </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">
+                  {companyVendorName}
+                </p>
+                {companyVendorContact && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    {companyVendorContact}
+                  </p>
+                )}
+              </div>
+              <Building2 className="w-4 h-4 text-muted-foreground opacity-60 flex-shrink-0" />
+            </CardContent>
+          )}
         </Card>
       </motion.div>
 

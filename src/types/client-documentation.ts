@@ -36,7 +36,7 @@ export interface ClientDocumentationLead {
   created_at: string;
   updated_by: number;
   updated_at: string;
-
+  site_map_link: string;
   siteType: SiteType;
   source: SourceType;
   statusType: StatusType;
