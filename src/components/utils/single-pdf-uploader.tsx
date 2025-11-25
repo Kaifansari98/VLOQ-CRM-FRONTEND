@@ -10,6 +10,7 @@ import {
   FileUploadItemMetadata,
   FileUploadItemPreview,
   FileUploadItemProgress,
+  FileUploadList,
   type FileUploadProps,
   FileUploadTrigger,
 } from "@/components/ui/file-upload";
@@ -43,15 +44,15 @@ export function SinglePdfUploadField({
             );
             onProgress(file, (i / totalChunks) * 100);
           }
+          
           await new Promise((resolve) => setTimeout(resolve, 300));
           onSuccess(file);
-          onChange(file); // save single file
         }
       } catch (err) {
         console.error("Unexpected error during upload:", err);
       }
     },
-    [onChange]
+    []
   );
 
   const onFileReject = React.useCallback((file: File, message: string) => {
@@ -60,47 +61,64 @@ export function SinglePdfUploadField({
     toast.error(`${message}: "${fileName}" has been rejected`);
   }, []);
 
+  // ✅ Handle value change properly
+  const handleValueChange = React.useCallback(
+    (files: File[]) => {
+      onChange(files[0] ?? null);
+    },
+    [onChange]
+  );
+
   return (
     <FileUpload
       value={value ? [value] : []}
-      onValueChange={(files) => onChange(files[0] ?? null)}
+      onValueChange={handleValueChange}
       onUpload={onUpload}
       onFileReject={onFileReject}
-      multiple={false} // 🚀 only one file
+      multiple={false}
+      maxFiles={1}
       accept=".pdf"
       className="w-full"
     >
       <FileUploadDropzone>
-        <Upload className="size-7 text-blue-500" />
-        <p className="font-medium text-sm">Upload PDF Document</p>
-        <p className="text-muted-foreground text-xs">
-          Only 1 PDF allowed. Drag & drop or click below.
-        </p>
+        <div className="flex flex-col items-center gap-1 text-center">
+          <div className="flex items-center justify-center rounded-full border p-2.5">
+            <Upload className="size-6 text-muted-foreground" />
+          </div>
+          <p className="font-medium text-sm">Upload PDF Document</p>
+          <p className="text-muted-foreground text-xs">
+            Only 1 PDF allowed. Drag & drop or click below.
+          </p>
+        </div>
         <FileUploadTrigger asChild>
-          <Button variant="outline" size="sm" className="mt-2">
+          <Button variant="outline" size="sm" className="mt-2 w-fit">
             Select PDF
           </Button>
         </FileUploadTrigger>
       </FileUploadDropzone>
 
-      {value && (
-        <FileUploadItem value={value} className="flex-col mt-2">
-          <div className="flex w-full items-center gap-2">
-            <FileUploadItemPreview />
-            <FileUploadItemMetadata />
-            <FileUploadItemDelete asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onChange(null)}
-              >
-                <X />
-              </Button>
-            </FileUploadItemDelete>
-          </div>
-          <FileUploadItemProgress />
-        </FileUploadItem>
-      )}
+      {/* ✅ MUST wrap with FileUploadList */}
+      <FileUploadList>
+        {value && (
+          <FileUploadItem value={value} className="flex-col">
+            <div className="flex w-full items-center gap-2">
+              <FileUploadItemPreview />
+              <FileUploadItemMetadata />
+              <FileUploadItemDelete asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  onClick={() => onChange(null)}
+                >
+                  <X />
+                </Button>
+              </FileUploadItemDelete>
+            </div>
+            <FileUploadItemProgress />
+          </FileUploadItem>
+        )}
+      </FileUploadList>
     </FileUpload>
   );
-}
+} 
