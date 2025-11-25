@@ -78,6 +78,7 @@ import {
 import { useResolveMiscellaneousEntry } from "@/api/installation/useUnderInstallationStageLeads";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
+import { useQueryClient } from "@tanstack/react-query";
 interface InstallationMiscellaneousProps {
   vendorId: number;
   leadId: number;
@@ -96,6 +97,8 @@ export default function InstallationMiscellaneous({
     useMiscTypes(vendorId);
   const { data: miscTeams = [], isLoading: loadingTeams } =
     useMiscTeams(vendorId);
+
+  const queryClient = useQueryClient();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -726,13 +729,11 @@ export default function InstallationMiscellaneous({
                   <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
                     <CardContent className="px-4">
                       <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
+                        <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
                           <Currency className="w-4 h-4 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">
-                            Cost
-                          </p>
+                          <p className="text-xs text-muted-foreground">Cost</p>
                           <p className="text-base font-semibold text-foreground">
                             ₹{viewModal.data.cost.toLocaleString()}
                           </p>
@@ -920,12 +921,37 @@ export default function InstallationMiscellaneous({
                     size="default"
                     disabled={!canDoERDDate || resolveMisc.isPending}
                     onClick={() =>
-                      resolveMisc.mutate({
-                        vendorId,
-                        leadId,
-                        miscId: viewModal?.data?.id || 0,
-                        resolved_by: userId!,
-                      })
+                      resolveMisc.mutate(
+                        {
+                          vendorId,
+                          leadId,
+                          miscId: viewModal?.data?.id || 0,
+                          resolved_by: userId!,
+                        },
+                        {
+                          onSuccess: () => {
+                            queryClient.invalidateQueries({
+                              queryKey: [
+                                "miscellaneousEntries",
+                                vendorId,
+                                leadId,
+                              ],
+                            });
+
+                            setViewModal((prev) => ({
+                              ...prev,
+                              data: prev.data
+                                ? {
+                                    ...prev.data,
+                                    is_resolved: true, // immediate UI change
+                                    resolved_by: userId, // optional
+                                    resolved_at: new Date().toString(), // optional
+                                  }
+                                : null,
+                            }));
+                          },
+                        }
+                      )
                     }
                     className="gap-2"
                   >
@@ -952,9 +978,9 @@ export default function InstallationMiscellaneous({
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Update ERD Date?</AlertDialogTitle>
+            <AlertDialogTitle>Set ERD Date?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to update the Expected Ready Date?
+              Are you sure you want to set the Expected Ready Date?
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -976,10 +1002,20 @@ export default function InstallationMiscellaneous({
                   },
                   {
                     onSuccess: () => {
-                      // 🔥 Close ALL modals on success
+                      queryClient.invalidateQueries({
+                        queryKey: ["miscellaneousEntries", vendorId, leadId],
+                      });
+
+                      // 🔥 Update modal instantly
+                      setViewModal((prev) => ({
+                        ...prev,
+                        data: {
+                          ...prev.data!,
+                          expected_ready_date: selectedERD,
+                        },
+                      }));
+
                       setShowConfirm(false);
-                      setViewModal({ open: false, data: null });
-                      setIsAddModalOpen(false);
                     },
                   }
                 );
