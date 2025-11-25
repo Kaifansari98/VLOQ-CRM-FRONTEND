@@ -51,7 +51,6 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
     const [openMeetingsModal, setOpenMeetingsModal] = useState(false);
     const [openBookingModal, setOpenBookingModal] = useState(false);
 
-    console.log("ajhfldhfkldhfkjdsf :- ", userType);
 
     const leadCurrentStatus = leadStatus?.status_tag;
 

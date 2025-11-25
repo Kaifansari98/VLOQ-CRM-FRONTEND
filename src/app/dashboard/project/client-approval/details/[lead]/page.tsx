@@ -128,27 +128,20 @@ export default function ClientApprovalLeadDetails() {
   // Auto-open documentation modal
   /* ---------- DEFAULT MODAL ON MOUNT ---------- */
   useEffect(() => {
-    if (isLoading) return; // wait for lead data
-    if (userType !== "sales-executive") return; // only for SE
+    if (isLoading) return;
 
-    if (is_client_approval_submitted) {
-      setOpenRequestToTechCheckModal(true);
-    } else {
-      setOpenClientApprovalModal(true);
-    }
-    setActiveTab("todo");
-  }, [isLoading, userType, is_client_approval_submitted]);
+    // Auto-open only for Sales Executive
+    if (userType === "sales-executive") {
+      if (is_client_approval_submitted) {
+        setOpenRequestToTechCheckModal(true);
+      } else {
+        setOpenClientApprovalModal(true);
+      }
 
-  // Auto-open approval modal
-  useEffect(() => {
-    if (
-      !isLoading &&
-      !is_client_approval_submitted &&
-      canUploadClientApproval(userType)
-    ) {
-      setOpenClientApprovalModal(true);
+      setActiveTab("todo");
     }
   }, [isLoading, userType, is_client_approval_submitted]);
+
 
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
