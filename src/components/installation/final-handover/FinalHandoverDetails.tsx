@@ -20,15 +20,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+
 import { FileUploadField } from "@/components/custom/file-upload";
 import {
   useGetFinalHandoverDocuments,
@@ -53,6 +46,7 @@ import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkFinalHandoverStage } from "@/components/utils/privileges";
+import BaseModal from "@/components/utils/baseModal";
 
 interface FinalHandoverProps {
   leadId: number;
@@ -392,7 +386,7 @@ export default function FinalHandover({
       {/* Document Modal */}
       <AnimatePresence>
         {activeSection && (
-          <Dialog
+          <BaseModal
             open={!!activeSection}
             onOpenChange={(open) => {
               if (!open) {
@@ -400,166 +394,156 @@ export default function FinalHandover({
                 setSelectedFiles([]);
               }
             }}
-          >
-            <DialogContent className="min-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-              <DialogHeader>
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`p-2.5 rounded-lg ${activeSection.iconBg} ${activeSection.color}`}
-                  >
-                    {activeSection.icon}
-                  </div>
-                  <div>
-                    <DialogTitle>{activeSection.title}</DialogTitle>
-                    <DialogDescription>
-                      {activeSection.description}
-                    </DialogDescription>
-                  </div>
-                </div>
-              </DialogHeader>
-
-              <Separator />
-
-              <div className="flex-1 overflow-y-auto space-y-6 py-4">
-                {/* Upload Section */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-4"
-                >
-                  {canWork && (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-semibold">
-                          Upload New Files
-                        </h4>
-                        {selectedFiles.length > 0 && (
-                          <Badge variant="secondary">
-                            {selectedFiles.length} selected
-                          </Badge>
-                        )}
-                      </div>
-                      <FileUploadField
-                        value={selectedFiles}
-                        onChange={setSelectedFiles}
-                        accept={activeSection.accept}
-                        multiple
-                      />
-                    </>
-                  )}
-                  {selectedFiles.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      className="flex justify-end"
-                    >
-                      <Button
-                        onClick={handleUpload}
-                        disabled={uploadMutation.isPending}
-                        className="gap-2"
-                      >
-                        {uploadMutation.isPending ? (
-                          <>
-                            <Loader2 className="animate-spin w-4 h-4" />
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="w-4 h-4" />
-                            Upload {selectedFiles.length} File
-                            {selectedFiles.length > 1 ? "s" : ""}
-                          </>
-                        )}
-                      </Button>
-                    </motion.div>
-                  )}
-                </motion.div>
-
-                {/* Existing Files */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold">Uploaded Files</h4>
-                    <Badge variant="outline">
-                      {getDocumentsForSection(activeSection.id).length} total
-                    </Badge>
-                  </div>
-
-                  {(() => {
-                    const docs = getDocumentsForSection(activeSection.id);
-                    const { images, nonImages } = separateImageAndDocs(docs);
-
-                    if (docs.length === 0) {
-                      return (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="p-12 border border-dashed rounded-lg flex flex-col items-center justify-center text-center bg-muted/30"
-                        >
-                          <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
-                          <p className="text-sm font-medium text-muted-foreground">
-                            No files uploaded yet
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Upload your first file to get started
-                          </p>
-                        </motion.div>
-                      );
-                    }
-
-                    return (
-                      <ScrollArea className="max-h-[400px]">
-                        <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 gap-3">
-                          {images.map((doc: any, index: number) => (
-                            <motion.div
-                              key={doc.id}
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: index * 0.05 }}
-                            >
-                              <ImageComponent
-                                doc={{
-                                  id: doc.id,
-                                  doc_og_name: doc.doc_og_name,
-                                  signedUrl: doc.signed_url,
-                                  created_at: doc.created_at,
-                                }}
-                                index={index}
-                                canDelete={canDelete}
-                                onView={(i) => openImageCarousel(images, i)}
-                                onDelete={(id) => setConfirmDelete(Number(id))}
-                              />
-                            </motion.div>
-                          ))}
-
-                          {nonImages.map((doc: any, index: number) => (
-                            <motion.div
-                              key={doc.id}
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{
-                                delay: (images.length + index) * 0.05,
-                              }}
-                            >
-                              <DocumentCard
-                                doc={{
-                                  id: doc.id,
-                                  originalName: doc.doc_og_name,
-                                  signedUrl: doc.signed_url,
-                                  created_at: doc.created_at,
-                                }}
-                                canDelete={canDelete}
-                                onDelete={(id) => setConfirmDelete(id)}
-                              />
-                            </motion.div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    );
-                  })()}
-                </div>
+            title={activeSection.title}
+            description={activeSection.description}
+            icon={
+              <div
+                className={`p-2.5 rounded-lg ${activeSection.iconBg} ${activeSection.color}`}
+              >
+                {activeSection.icon}
               </div>
-            </DialogContent>
-          </Dialog>
+            }
+            size="lg"
+          >
+            <div className="flex-1  space-y-6 py-4 px-5">
+              {/* Upload Section */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4"
+              >
+                {canWork && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-semibold">
+                        Upload New Files
+                      </h4>
+                      {selectedFiles.length > 0 && (
+                        <Badge variant="secondary">
+                          {selectedFiles.length} selected
+                        </Badge>
+                      )}
+                    </div>
+                    <FileUploadField
+                      value={selectedFiles}
+                      onChange={setSelectedFiles}
+                      accept={activeSection.accept}
+                      multiple
+                    />
+                  </>
+                )}
+                {selectedFiles.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    className="flex justify-end"
+                  >
+                    <Button
+                      onClick={handleUpload}
+                      disabled={uploadMutation.isPending}
+                      className="gap-2"
+                    >
+                      {uploadMutation.isPending ? (
+                        <>
+                          <Loader2 className="animate-spin w-4 h-4" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4" />
+                          Upload {selectedFiles.length} File
+                          {selectedFiles.length > 1 ? "s" : ""}
+                        </>
+                      )}
+                    </Button>
+                  </motion.div>
+                )}
+              </motion.div>
+
+              {/* Existing Files */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold">Uploaded Files</h4>
+                  <Badge variant="outline">
+                    {getDocumentsForSection(activeSection.id).length} total
+                  </Badge>
+                </div>
+
+                {(() => {
+                  const docs = getDocumentsForSection(activeSection.id);
+                  const { images, nonImages } = separateImageAndDocs(docs);
+
+                  if (docs.length === 0) {
+                    return (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="p-12 border border-dashed rounded-lg flex flex-col items-center justify-center text-center bg-muted/30"
+                      >
+                        <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
+                        <p className="text-sm font-medium text-muted-foreground">
+                          No files uploaded yet
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Upload your first file to get started
+                        </p>
+                      </motion.div>
+                    );
+                  }
+
+                  return (
+                    <ScrollArea className="max-h-[400px]">
+                      <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 gap-3">
+                        {images.map((doc: any, index: number) => (
+                          <motion.div
+                            key={doc.id}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: index * 0.05 }}
+                          >
+                            <ImageComponent
+                              doc={{
+                                id: doc.id,
+                                doc_og_name: doc.doc_og_name,
+                                signedUrl: doc.signed_url,
+                                created_at: doc.created_at,
+                              }}
+                              index={index}
+                              canDelete={canDelete}
+                              onView={(i) => openImageCarousel(images, i)}
+                              onDelete={(id) => setConfirmDelete(Number(id))}
+                            />
+                          </motion.div>
+                        ))}
+
+                        {nonImages.map((doc: any, index: number) => (
+                          <motion.div
+                            key={doc.id}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{
+                              delay: (images.length + index) * 0.05,
+                            }}
+                          >
+                            <DocumentCard
+                              doc={{
+                                id: doc.id,
+                                originalName: doc.doc_og_name,
+                                signedUrl: doc.signed_url,
+                                created_at: doc.created_at,
+                              }}
+                              canDelete={canDelete}
+                              onDelete={(id) => setConfirmDelete(id)}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  );
+                })()}
+              </div>
+            </div>
+          </BaseModal>
         )}
       </AnimatePresence>
 

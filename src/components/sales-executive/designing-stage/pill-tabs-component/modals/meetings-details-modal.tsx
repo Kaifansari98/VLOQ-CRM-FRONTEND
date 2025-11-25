@@ -110,6 +110,7 @@ const MeetingDetailsModal = ({
         open={open}
         onOpenChange={onOpenChange}
         title="Meeting Details"
+        description="View meeting records, attached assets, and submission history."
         size="lg"
       >
         <div className="px-6 py-5 space-y-4">

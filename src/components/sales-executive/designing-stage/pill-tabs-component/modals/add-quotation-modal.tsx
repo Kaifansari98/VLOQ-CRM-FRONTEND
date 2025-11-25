@@ -1,13 +1,7 @@
 "use client";
 
 import React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { useDetails } from "../details-context";
 import {
   Form,
@@ -26,8 +20,9 @@ import { DocumentsUploader } from "@/components/document-upload";
 import { useAppSelector } from "@/redux/store";
 import { useSubmitQuotation } from "@/hooks/designing-stage/designing-leads-hooks";
 import { useQueryClient } from "@tanstack/react-query";
+import BaseModal from "@/components/utils/baseModal";
 
-// ✅ Schema (without PDF rules)
+// Schema
 const quotationSchema = z.object({
   upload_pdf: z
     .array(z.instanceof(File))
@@ -84,45 +79,40 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] md:max-w-2xl p-0 gap-0">
-        <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle>Add Quotation</DialogTitle>
-        </DialogHeader>
-        <ScrollArea className="max-h-[calc(90vh-100px)]">
-          <div className="px-6">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-6 py-3"
-              >
-                <FormField
-                  control={form.control}
-                  name="upload_pdf"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Quotation File</FormLabel>
-                      <FormControl>
-                        <DocumentsUploader
-                          value={field.value}
-                          onChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={isPending}>
-                    {isPending ? "Uploading..." : "Submit Quotation"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
+    <BaseModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Add Quotation"
+      description="Upload the official quotation document for this lead."
+      size="lg"
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
+          <FormField
+            control={form.control}
+            name="upload_pdf"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Quotation File</FormLabel>
+                <FormControl>
+                  <DocumentsUploader
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Uploading..." : "Submit Quotation"}
+            </Button>
           </div>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+        </form>
+      </Form>
+    </BaseModal>
   );
 };
 

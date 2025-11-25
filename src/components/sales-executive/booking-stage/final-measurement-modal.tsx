@@ -36,7 +36,9 @@ interface LeadViewModalProps {
 const formSchema = z.object({
   finalMeasurementDocs: z
     .array(z.custom<File>((file) => file instanceof File))
-    .nonempty({ message: "At least one Final Measurement Document is required" })
+    .nonempty({
+      message: "At least one Final Measurement Document is required",
+    })
     .refine((files) => files.every((file) => file.type === "application/pdf"), {
       message: "Only PDF files are allowed",
     })
@@ -61,7 +63,6 @@ const FinalMeasurementModal = ({
   onOpenChange,
   data,
 }: LeadViewModalProps) => {
-
   const queryClient = useQueryClient();
   const router = useRouter();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -117,96 +118,86 @@ const FinalMeasurementModal = ({
       size="lg"
       description="Submit final measurement details with optional notes and attachments."
     >
-      <div className="px-5 py-4">
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-5 flex flex-col h-full"
-          >
-            {/* ---- PDF Upload ---- */}
-            <FormField
-              control={form.control}
-              name="finalMeasurementDocs"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">
-                    Final Measurement Documents (max 10) *
-                  </FormLabel>
-                  <FormControl>
-                    <FileUploadField
-                      value={field.value}
-                      onChange={field.onChange}
-                      accept="application/pdf"
-                      multiple // ✅ allow multiple PDFs
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5  p-5">
+          {/* ---- PDF Upload ---- */}
+          <FormField
+            control={form.control}
+            name="finalMeasurementDocs"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">
+                  Final Measurement Documents (max 10) *
+                </FormLabel>
+                <FormControl>
+                  <FileUploadField
+                    value={field.value}
+                    onChange={field.onChange}
+                    accept="application/pdf"
+                    multiple // ✅ allow multiple PDFs
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-            {/* ---- Site Photos ---- */}
-            <FormField
-              control={form.control}
-              name="currentSitePhotos"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">
-                    Current Site Photos *
-                  </FormLabel>
-                  <FormControl>
-                    <FileUploadField
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          {/* ---- Site Photos ---- */}
+          <FormField
+            control={form.control}
+            name="currentSitePhotos"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Current Site Photos *</FormLabel>
+                <FormControl>
+                  <FileUploadField
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-            {/* ---- Notes ---- */}
-            <FormField
-              control={form.control}
-              name="criticalDiscussion"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">
-                    Critical Discussion Notes
-                  </FormLabel>
-                  <FormControl>
-                    <TextAreaInput
-                      placeholder="Enter your remarks"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          {/* ---- Notes ---- */}
+          <FormField
+            control={form.control}
+            name="criticalDiscussion"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">
+                  Critical Discussion Notes
+                </FormLabel>
+                <FormControl>
+                  <TextAreaInput placeholder="Enter your remarks" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-            {/* ---- Buttons ---- */}
-            <div className="flex justify-end gap-3 pt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  form.reset({
-                    finalMeasurementDocs: [],
-                    currentSitePhotos: [],
-                    criticalDiscussion: "",
-                  })
-                }
-              >
-                Reset
-              </Button>
-              <Button type="submit" disabled={finalMeasurementMutation.isPending}>
-                {finalMeasurementMutation.isPending ? "Submitting..." : "Submit"}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </div>
+          {/* ---- Buttons ---- */}
+          <div className="flex justify-end gap-3 pt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                form.reset({
+                  finalMeasurementDocs: [],
+                  currentSitePhotos: [],
+                  criticalDiscussion: "",
+                })
+              }
+            >
+              Reset
+            </Button>
+            <Button type="submit" disabled={finalMeasurementMutation.isPending}>
+              {finalMeasurementMutation.isPending ? "Submitting..." : "Submit"}
+            </Button>
+          </div>
+        </form>
+      </Form>
     </BaseModal>
   );
 };

@@ -418,9 +418,9 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   };
 
   return (
-    <div className="w-full max-w-none pt-3 pb-6">
+  
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-5">
           {/* File Upload */}
 
           {/* First Name & Last Name */}
@@ -862,6 +862,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           </div>
         </form>
       </Form>
-    </div>
+
   );
 }

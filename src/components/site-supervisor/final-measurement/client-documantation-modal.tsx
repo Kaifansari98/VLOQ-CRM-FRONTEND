@@ -122,8 +122,8 @@ const ClientDocumentationModal: React.FC<Props> = ({
       open={open}
       onOpenChange={onOpenChange}
       title={`Client Documentation`}
-      size="md"
-      description="View, upload, and manage client-related documentation in one place."
+      size="lg"
+      description="upload and manage client-related documentation in one place."
     >
       <div className="px-5 py-4">
         <Form {...form}>

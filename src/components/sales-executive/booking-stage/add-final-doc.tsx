@@ -24,6 +24,7 @@ import { toast } from "react-toastify";
 import { useAppSelector } from "@/redux/store";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { useUploadBookingDoc } from "@/hooks/booking-stage/use-booking";
+import BaseModal from "@/components/utils/baseModal";
 
 // ✅ Schema
 const uploadSchema = z.object({
@@ -83,48 +84,42 @@ const UploadFinalDoc: React.FC<LeadViewModalProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] md:max-w-2xl p-0 gap-0">
-        <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle>Upload Booking Document</DialogTitle>
-        </DialogHeader>
-        <ScrollArea className="max-h-[calc(90vh-100px)]">
-          <div className="px-6">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-6 py-3"
-              >
-                <FormField
-                  control={form.control}
-                  name="final_documents"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">
-                        Booking Documents (Quotations + Design) *
-                      </FormLabel>
-                      <FormControl>
-                        <FileUploadField
-                          value={field.value}
-                          onChange={field.onChange}
-                          accept=".pptx,.ppt,.pdf,.jpg,.jpeg,.png,.pyo"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={isPending}>
-                    {isPending ? "Uploading..." : "Upload"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
+    <BaseModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Upload Booking Document"
+      description="Upload final booking documents including quotations and design files."
+      size="lg"
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
+          <FormField
+            control={form.control}
+            name="final_documents"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">
+                  Booking Documents (Quotations + Design) *
+                </FormLabel>
+                <FormControl>
+                  <FileUploadField
+                    value={field.value}
+                    onChange={field.onChange}
+                    accept=".pptx,.ppt,.pdf,.jpg,.jpeg,.png,.pyo"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Uploading..." : "Upload"}
+            </Button>
           </div>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+        </form>
+      </Form>
+    </BaseModal>
   );
 };
 

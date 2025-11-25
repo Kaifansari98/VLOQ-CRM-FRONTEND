@@ -1,13 +1,7 @@
 "use client";
 
 import React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,6 +23,7 @@ import CustomeDatePicker from "@/components/date-picker";
 import { usePaymentLogs } from "@/hooks/booking-stage/use-booking";
 import { formatCurrencyINR } from "@/utils/formatCurrency";
 import CurrencyInput from "@/components/custom/CurrencyInput";
+import BaseModal from "@/components/utils/baseModal";
 
 interface ClientApprovalModalProps {
   open: boolean;
@@ -193,145 +188,143 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-3xl p-0 gap-0">
-        <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle className="capitalize">Client Approval Form</DialogTitle>
-        </DialogHeader>
+    <BaseModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Client Approval Form"
+      description="Submit client approval screenshots and payment details."
+      size="lg"
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
+          {/* Screenshots (Mandatory) */}
+          <FormField
+            control={form.control}
+            name="approvalScreenshots"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Client Approval Screenshots *</FormLabel>
+                <FormControl>
+                  <FileUploadField
+                    value={field.value}
+                    onChange={field.onChange}
+                    accept=".jpg,.jpeg,.png"
+                    multiple
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <ScrollArea className="max-h-[calc(90vh-100px)] px-6 py-4">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Screenshots (Mandatory) */}
-              <FormField
-                control={form.control}
-                name="approvalScreenshots"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Client Approval Screenshots *</FormLabel>
-                    <FormControl>
-                      <FileUploadField
-                        value={field.value}
-                        onChange={field.onChange}
-                        accept=".jpg,.jpeg,.png"
-                        multiple
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          {/* ✅ Amount + Date (Perfectly Aligned Layout) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Amount Field */}
+            <FormField
+              control={form.control}
+              name="amount_paid"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel className="text-sm">Amount Received</FormLabel>
+                  <FormControl>
+                    <CurrencyInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Enter amount"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              {/* ✅ Amount + Date (Perfectly Aligned Layout) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Amount Field */}
-                <FormField
-                  control={form.control}
-                  name="amount_paid"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel className="text-sm">Amount Received</FormLabel>
-                      <FormControl>
-                        <CurrencyInput
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Enter amount"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            {/* Date Field */}
+            <FormField
+              control={form.control}
+              name="advance_payment_date"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel className="text-sm">
+                    Advance Payment Date
+                  </FormLabel>
+                  <FormControl>
+                    <CustomeDatePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      restriction="pastMonthOnly"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-                {/* Date Field */}
-                <FormField
-                  control={form.control}
-                  name="advance_payment_date"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel className="text-sm">
-                        Advance Payment Date
-                      </FormLabel>
-                      <FormControl>
-                        <CustomeDatePicker
-                          value={field.value}
-                          onChange={field.onChange}
-                          restriction="pastMonthOnly"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+          {/* ✅ Remaining Amount (Placed Uniformly Below Both Fields) */}
+          <div className="mt-1">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-bold">
+                {formatCurrencyINR(projectFinance.pending_amount)}
+              </span>{" "}
+              is the remaining amount.
+            </p>
+          </div>
 
-              {/* ✅ Remaining Amount (Placed Uniformly Below Both Fields) */}
-              <div className="mt-1">
-                <p className="text-sm text-muted-foreground">
-                  <span className="font-bold">
-                    {formatCurrencyINR(projectFinance.pending_amount)}
-                  </span>{" "}
-                  is the remaining amount.
-                </p>
-              </div>
+          {/* Payment Proof (Optional) */}
+          <FormField
+            control={form.control}
+            name="payment_files"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Payment Proof (Image only)</FormLabel>
+                <FormControl>
+                  <FileUploadField
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                    accept=".jpg,.jpeg,.png"
+                    multiple={false}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-              {/* Payment Proof (Optional) */}
-              <FormField
-                control={form.control}
-                name="payment_files"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Payment Proof (Image only)</FormLabel>
-                    <FormControl>
-                      <FileUploadField
-                        value={field.value ?? []}
-                        onChange={field.onChange}
-                        accept=".jpg,.jpeg,.png"
-                        multiple={false}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          {/* Remarks (Optional) */}
+          <FormField
+            control={form.control}
+            name="payment_text"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Transaction ID / Remarks</FormLabel>
+                <FormControl>
+                  <TextAreaInput
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Enter transaction ID or remarks"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-              {/* Remarks (Optional) */}
-              <FormField
-                control={form.control}
-                name="payment_text"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Transaction ID / Remarks</FormLabel>
-                    <FormControl>
-                      <TextAreaInput
-                        value={field.value}
-                        onChange={field.onChange}
-                        placeholder="Enter transaction ID or remarks"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Submit */}
-              <div className="flex justify-end space-x-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => form.reset()}
-                >
-                  Reset
-                </Button>
-                <Button type="submit" disabled={isPending}>
-                  {isPending ? "Submitting..." : "Submit"}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+          {/* Submit */}
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => form.reset()}
+            >
+              Reset
+            </Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Submitting..." : "Submit"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </BaseModal>
   );
 };
 

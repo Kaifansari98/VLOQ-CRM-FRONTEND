@@ -61,13 +61,18 @@ export default function LeadsGenerationPage() {
             <div className="flex gap-2 items-center">
               {/* ✅ Show only for admin, super-admin, sales-executive */}
               {canCreateLead(userType) && (
-                <GenerateLeadFormModal
-                  open={openCreateLead}
-                  onOpenChange={setOpenCreateLead}
-                >
-                  <Button>Add New Lead</Button>
-                </GenerateLeadFormModal>
+                <>
+                  <Button onClick={() => setOpenCreateLead(true)}>
+                    Add New Lead
+                  </Button>
+
+                  <GenerateLeadFormModal
+                    open={openCreateLead}
+                    onOpenChange={setOpenCreateLead}
+                  />
+                </>
               )}
+
               <AnimatedThemeToggler />
             </div>
           </div>

@@ -1008,7 +1008,7 @@ export default function ClientApprovalLeadDetails() {
           size="md"
           description="Provide a detailed reason for rejecting the selected documents."
         >
-          <div className="space-y-5 px-4 py-4">
+          <div className="space-y-6 p-5">
             {/* Info Banner */}
             <div className="flex items-start gap-3 p-4 border rounded-lg">
               <AlertCircle className="flex-shrink-0 mt-0.5" size={18} />

@@ -43,6 +43,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatCurrencyINR } from "@/utils/formatCurrency";
 import CurrencyInput from "@/components/custom/CurrencyInput";
+import BaseModal from "@/components/utils/baseModal";
 
 // ✅ Enhanced Zod schema with proper file validation
 const bookingSchema = z
@@ -239,199 +240,189 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     });
   };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] md:max-w-3xl p-0 gap-0">
-        {/* Header */}
-        <DialogHeader className="flex items-start justify-between px-6 py-4 border-b">
-          <DialogTitle className="capitalize">Booking Form</DialogTitle>
-        </DialogHeader>
+    <BaseModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Booking Form"
+      description="Complete the booking details and attach all required documents."
+      size="lg"
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
+          {/* File Upload Section */}
 
-        <ScrollArea className="max-h-[calc(90vh-100px)]">
-          <div className="px-5 py-4">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-6"
-              >
-                {/* File Upload Section */}
-
-                <FormField
-                  control={form.control}
-                  name="final_documents"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm flex  justify-between">
-                        Booking Documents (Quotations + Design) *
-                        <Button
-                          type="button"
-                          onClick={() => setOpenSelectDocModal(true)}
-                        >
-                          Select Documents
-                        </Button>
-                      </FormLabel>
-                      <FormControl>
-                        <FileUploadField
-                          value={field.value}
-                          onChange={field.onChange}
-                          accept=".pptx.,.ppt, .pdf, .jpg, .jpeg, .png, .pyo"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {/* Amount fields */}
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                    <FormField
-                      control={form.control}
-                      name="final_booking_amount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm">
-                            Total Booking Value *
-                          </FormLabel>
-                          <FormControl>
-                            <CurrencyInput
-                              value={field.value}
-                              onChange={
-                                (val) => field.onChange(val ?? 0) // fallback to 0 if undefined
-                              }
-                              placeholder="Enter Total Booking Value"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="amount_received"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm">
-                            Booking Amount Received
-                          </FormLabel>
-                          <FormControl>
-                            <CurrencyInput
-                              value={field.value}
-                              onChange={(val) =>
-                                field.onChange(val ? Number(val) : 0)
-                              }
-                              placeholder="Enter received amount"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {ismPaymentInfo?.amount && (
-                    <p className="text-sm">
-                      <span className="font-bold">
-                        {formatCurrencyINR(ismPaymentInfo.amount)}
-                      </span>{" "}
-                      ISM amount has already been paid by the client.
-                    </p>
-                  )}
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="assign_to"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">
-                        Assign Lead To Site Supervisor *
-                      </FormLabel>
-                      <Select
-                        value={field.value || ""}
-                        onValueChange={field.onChange}
-                        disabled={isLoading}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="text-sm w-full">
-                            <SelectValue placeholder="Select assignee" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {vendorUser.map((user: any) => (
-                            <SelectItem key={user.id} value={String(user.id)}>
-                              {user.user_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {/* Payment Details fields */}
-                <FormField
-                  control={form.control}
-                  name="payment_details_document"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">
-                        Booking Amount Payment Details Document
-                      </FormLabel>
-                      <FormControl>
-                        <FileUploadField
-                          value={field.value}
-                          onChange={field.onChange}
-                          accept=".jpg,.jpeg,.png"
-                          multiple={false}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="payment_text"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">
-                        Payment Details
-                      </FormLabel>
-                      <FormControl>
-                        <TextAreaInput
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Enter your payment details"
-                        />
-                      </FormControl>
-                      <FormMessage className="-mt-7" />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex justify-end space-x-3 pt-4 ">
+          <FormField
+            control={form.control}
+            name="final_documents"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm flex  justify-between">
+                  Booking Documents (Quotations + Design) *
                   <Button
                     type="button"
-                    variant="outline"
-                    onClick={handleReset}
-                    className="rounded-md"
+                    onClick={() => setOpenSelectDocModal(true)}
                   >
-                    Reset
+                    Select Documents
                   </Button>
-                  <Button
-                    type="submit"
-                    className="rounded-md"
-                    disabled={isPending || form.formState.isSubmitting} // <- mutate ka pending bhi disable karega
-                  >
-                    {isPending ? "Submitting..." : "Submit Booking"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
+                </FormLabel>
+                <FormControl>
+                  <FileUploadField
+                    value={field.value}
+                    onChange={field.onChange}
+                    accept=".pptx.,.ppt, .pdf, .jpg, .jpeg, .png, .pyo"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          {/* Amount fields */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+              <FormField
+                control={form.control}
+                name="final_booking_amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">
+                      Total Booking Value *
+                    </FormLabel>
+                    <FormControl>
+                      <CurrencyInput
+                        value={field.value}
+                        onChange={
+                          (val) => field.onChange(val ?? 0) // fallback to 0 if undefined
+                        }
+                        placeholder="Enter Total Booking Value"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="amount_received"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">
+                      Booking Amount Received
+                    </FormLabel>
+                    <FormControl>
+                      <CurrencyInput
+                        value={field.value}
+                        onChange={(val) =>
+                          field.onChange(val ? Number(val) : 0)
+                        }
+                        placeholder="Enter received amount"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {ismPaymentInfo?.amount && (
+              <p className="text-sm">
+                <span className="font-bold">
+                  {formatCurrencyINR(ismPaymentInfo.amount)}
+                </span>{" "}
+                ISM amount has already been paid by the client.
+              </p>
+            )}
           </div>
-        </ScrollArea>
-      </DialogContent>
+
+          <FormField
+            control={form.control}
+            name="assign_to"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">
+                  Assign Lead To Site Supervisor *
+                </FormLabel>
+                <Select
+                  value={field.value || ""}
+                  onValueChange={field.onChange}
+                  disabled={isLoading}
+                >
+                  <FormControl>
+                    <SelectTrigger className="text-sm w-full">
+                      <SelectValue placeholder="Select assignee" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {vendorUser.map((user: any) => (
+                      <SelectItem key={user.id} value={String(user.id)}>
+                        {user.user_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          {/* Payment Details fields */}
+          <FormField
+            control={form.control}
+            name="payment_details_document"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">
+                  Booking Amount Payment Details Document
+                </FormLabel>
+                <FormControl>
+                  <FileUploadField
+                    value={field.value}
+                    onChange={field.onChange}
+                    accept=".jpg,.jpeg,.png"
+                    multiple={false}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="payment_text"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Payment Details</FormLabel>
+                <FormControl>
+                  <TextAreaInput
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Enter your payment details"
+                  />
+                </FormControl>
+                <FormMessage className="-mt-7" />
+              </FormItem>
+            )}
+          />
+
+          <div className="flex justify-end space-x-3 pt-4 ">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleReset}
+              className="rounded-md"
+            >
+              Reset
+            </Button>
+            <Button
+              type="submit"
+              className="rounded-md"
+              disabled={isPending || form.formState.isSubmitting} // <- mutate ka pending bhi disable karega
+            >
+              {isPending ? "Submitting..." : "Submit Booking"}
+            </Button>
+          </div>
+        </form>
+      </Form>
 
       <SelectDocumentModal
         open={openSelectDocModal}
@@ -444,7 +435,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
           });
         }}
       />
-    </Dialog>
+    </BaseModal>
   );
 };
 
