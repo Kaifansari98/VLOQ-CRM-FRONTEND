@@ -171,17 +171,6 @@ export default function DispatchPlanningDetails({
   const saveInfoMutation = useSaveDispatchPlanningInfo();
   const savePaymentMutation = useSaveDispatchPlanningPayment();
 
-  // Calculate minimum date based on current time
-  const getMinimumDate = () => {
-    const now = new Date();
-    const currentHour = now.getHours();
-    const daysToAdd = currentHour >= 15 ? 3 : 2;
-    const minDate = new Date();
-    minDate.setDate(minDate.getDate() + daysToAdd);
-    minDate.setHours(0, 0, 0, 0);
-    return minDate.toISOString().split("T")[0];
-  };
-
   // Load dispatch info data
   useEffect(() => {
     if (dispatchInfoData) {

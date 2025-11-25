@@ -90,8 +90,9 @@ export default function DispatchPlanningLeadDetails() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("details");
-  const [previousTab, setPreviousTab] = useState("details");
+  const [activeTab, setActiveTab] = useState(
+    userType?.toLowerCase() === "sales-executive" ? "todo" : "details"
+  );
   const [openMoveConfirm, setOpenMoveConfirm] = useState(false);
 
   const { data: readinessStatus, isLoading: readinessLoading } =
@@ -110,19 +111,15 @@ export default function DispatchPlanningLeadDetails() {
 
   const deleteLeadMutation = useDeleteLead();
 
+   useEffect(() => {
+    if (userType?.toLowerCase() === "sales-executive") {
+      setActiveTab("todo");
+    }
+  }, [userType]);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
 
   const updateStatusMutation = useUpdateActivityStatus();
-
-  // 🔥 Auto-open To-Do modal for Sales Executive
-  useEffect(() => {
-    if (userType === "sales-executive") {
-      setPreviousTab("details"); // so closing modal returns to details
-      setAssignOpen(true); // open modal on load
-      setActiveTab("todo"); // switch tab to To-Do
-    }
-  }, [userType]);
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -145,6 +142,8 @@ export default function DispatchPlanningLeadDetails() {
   if (isLoading) {
     return <p className="p-6">Loading Dispatch Planning lead details...</p>;
   }
+
+ 
 
   const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
@@ -258,15 +257,7 @@ export default function DispatchPlanningLeadDetails() {
         {/* Tabs */}
         <Tabs
           value={activeTab}
-          onValueChange={(val) => {
-            if (val === "todo") {
-              setPreviousTab(activeTab);
-              setAssignOpen(true);
-              setActiveTab("todo");
-              return;
-            }
-            setActiveTab(val);
-          }}
+          onValueChange={(val) => setActiveTab(val)}
           className="w-full px-6 pt-4"
         >
           <ScrollArea>
@@ -281,10 +272,7 @@ export default function DispatchPlanningLeadDetails() {
 
                   {/* ✅ To-Do Task (Conditional Access) */}
                   {canDoDispatchPlanning(userType) ? (
-                    <TabsTrigger
-                      value="todo"
-                      onClick={() => setAssignOpen(true)}
-                    >
+                    <TabsTrigger value="todo">
                       <PanelsTopLeftIcon
                         size={16}
                         className="mr-1 opacity-60"
@@ -335,6 +323,18 @@ export default function DispatchPlanningLeadDetails() {
             </main>
           </TabsContent>
 
+          <TabsContent value="todo">
+            <main className="flex-1 h-fit">
+              <LeadDetailsGrouped
+                status="dispatchPlanning"
+                defaultTab="dispatchPlanning"
+                leadId={leadIdNum}
+                accountId={accountId}
+                defaultParentTab="installation"
+              />
+            </main>
+          </TabsContent>
+
           <TabsContent value="history">
             <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
           </TabsContent>
@@ -359,10 +359,7 @@ export default function DispatchPlanningLeadDetails() {
 
         <AssignTaskSiteMeasurementForm
           open={assignOpen}
-          onOpenChange={(open) => {
-            setAssignOpen(open);
-            if (!open) setActiveTab(previousTab);
-          }}
+          onOpenChange={setAssignOpen}
           onlyFollowUp={true}
           data={{ id: leadIdNum, name: "" }}
         />
