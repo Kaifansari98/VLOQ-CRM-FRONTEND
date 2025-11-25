@@ -55,7 +55,7 @@ export default function PendingWorkTab({
                 <CardTitle className="text-lg font-semibold tracking-tight">
                   Pending Work
                 </CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-muted-foreground">
                   Track tasks pending during installation
                 </p>
               </div>

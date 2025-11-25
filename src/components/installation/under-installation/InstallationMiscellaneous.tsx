@@ -953,6 +953,7 @@ export default function InstallationMiscellaneous({
                         }
                       )
                     }
+                    className="gap-2"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     {resolveMisc.isPending ? "Resolving..." : "Mark Resolved"}
