@@ -43,7 +43,7 @@ export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
         label: "Name",
         placeholder: "Search names...",
         variant: "text",
-        icon: Text,
+      
       },
       cell: ({ row }) => {
         const name = row.getValue("name") as string;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import BaseModal from "@/components/utils/baseModal";
 import { useAppSelector } from "@/redux/store";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,9 +24,7 @@ const uploadMoreDocsSchema = z.object({
   pythaDocuments: z.array(z.instanceof(File)).default([]),
 });
 
-type UploadMoreDocsForm = z.output<typeof uploadMoreDocsSchema>; // ✅ fixed
-
-
+type UploadMoreDocsForm = z.output<typeof uploadMoreDocsSchema>;
 
 interface Props {
   open: boolean;
@@ -48,14 +46,12 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
   const accountId = data?.accountId ?? 0;
   
   const form = useForm<UploadMoreDocsForm>({
-    resolver: zodResolver(uploadMoreDocsSchema) as any, // ✅ prevents generic mismatch errors
+    resolver: zodResolver(uploadMoreDocsSchema) as any,
     defaultValues: {
       pptDocuments: [],
       pythaDocuments: [],
     },
   });
-  const [pptFiles, setPptFiles] = useState<File[]>([]);
-  const [pythaFiles, setPythaFiles] = useState<File[]>([]);
 
   const { mutate: uploadDocs, isPending } = useUploadMoreClientDocumentation();
 
@@ -85,8 +81,6 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       {
         onSuccess: () => {
           form.reset({ pptDocuments: [], pythaDocuments: [] });
-          setPptFiles([]);
-          setPythaFiles([]);
           onOpenChange(false);
         },
       }
@@ -96,10 +90,8 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
   useEffect(() => {
     if (!open) {
       form.reset({ pptDocuments: [], pythaDocuments: [] });
-      setPptFiles([]);
-      setPythaFiles([]);
     }
-  }, [open]);
+  }, [open, form]);
 
   return (
     <BaseModal
@@ -121,11 +113,8 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
                   <FormLabel className="text-sm">PPT Documents</FormLabel>
                   <FormControl>
                     <FileUploadField
-                      value={pptFiles}
-                      onChange={(newFiles: File[]) => {
-                        setPptFiles(newFiles);
-                        field.onChange(newFiles);
-                      }}
+                      value={field.value}
+                      onChange={field.onChange}
                       accept=".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx"
                     />
                   </FormControl>
@@ -146,11 +135,8 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
                   <FormLabel className="text-sm">Design Files</FormLabel>
                   <FormControl>
                     <FileUploadField
-                      value={pythaFiles}
-                      onChange={(newFiles: File[]) => {
-                        setPythaFiles(newFiles);
-                        field.onChange(newFiles);
-                      }}
+                      value={field.value}
+                      onChange={field.onChange}
                       accept=".pyo,.pytha,.pdf,.zip"
                     />
                   </FormControl>
