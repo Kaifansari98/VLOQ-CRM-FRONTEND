@@ -1,13 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,8 +25,6 @@ import {
   CreditCard,
   Loader2,
   CheckCircle2,
-  ExternalLink,
-  FileCheck,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
@@ -49,12 +43,10 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import TextAreaInput from "@/components/origin-text-area";
 import { useDeleteDocument } from "@/api/leads";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkDispatchPlanningStage } from "@/components/utils/privileges";
-import CustomeTooltip from "@/components/cutome-tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface DispatchPlanningDetailsProps {
@@ -140,8 +132,6 @@ export default function DispatchPlanningDetails({
   const leadStatus = leadData?.status;
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-  const [openCarousel, setOpenCarousel] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
   const [infoSaved, setInfoSaved] = useState(false);
   const [paymentSaved, setPaymentSaved] = useState(false);
   const [existingPaymentDoc, setExistingPaymentDoc] = useState<{
@@ -767,10 +757,6 @@ export default function DispatchPlanningDetails({
                       created_at: doc.created_at,
                     }}
                     index={index}
-                    onView={(i) => {
-                      setStartIndex(i);
-                      setOpenCarousel(true);
-                    }}
                     onDelete={(id) => setConfirmDelete(Number(id))}
                   />
                 ))}
@@ -862,7 +848,7 @@ export default function DispatchPlanningDetails({
                   <span className="font-medium">Amount:</span>
                   <span>₹{pendingPayment || "0"}</span>
                 </div>
-             
+
                 <div className="flex justify-between">
                   <span className="font-medium">Details:</span>
                   <span className="text-right max-w-[200px] truncate">
@@ -915,13 +901,6 @@ export default function DispatchPlanningDetails({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <ImageCarouselModal
-        images={images}
-        open={openCarousel}
-        initialIndex={startIndex}
-        onClose={() => setOpenCarousel(false)}
-      />
     </div>
   );
 }

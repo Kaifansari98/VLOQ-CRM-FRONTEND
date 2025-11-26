@@ -4,14 +4,7 @@ import React, { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
-import {
-  FolderOpen,
-  Upload,
-  FileImage,
-  ExternalLink,
-  Loader2,
-} from "lucide-react";
+import { FolderOpen, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { toast } from "react-toastify";
@@ -31,7 +24,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useDeleteDocument } from "@/api/leads";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
@@ -62,8 +54,6 @@ export default function CurrentSitePhotosReadinessSection({
 
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
-  const [openCarousel, setOpenCarousel] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
   // 🔹 Upload mutation
@@ -235,10 +225,6 @@ export default function CurrentSitePhotosReadinessSection({
                   }}
                   index={index}
                   canDelete={canDelete}
-                  onView={(i) => {
-                    setStartIndex(i);
-                    setOpenCarousel(true);
-                  }}
                   onDelete={(id) => setConfirmDelete(Number(id))}
                 />
               ))}
@@ -285,14 +271,6 @@ export default function CurrentSitePhotosReadinessSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* -------------------------------- IMAGE CAROUSEL -------------------------------- */}
-      <ImageCarouselModal
-        images={images}
-        open={openCarousel}
-        initialIndex={startIndex}
-        onClose={() => setOpenCarousel(false)}
-      />
     </div>
   );
 }

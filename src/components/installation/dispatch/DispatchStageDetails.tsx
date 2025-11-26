@@ -35,7 +35,6 @@ import {
   useAddDispatchDetails,
   useDispatchDocuments,
   useUploadDispatchDocuments,
-  AddDispatchDetailsPayload,
 } from "@/api/installation/useDispatchStageLeads";
 import { useAppSelector } from "@/redux/store";
 import { useUpdateNoOfBoxes } from "@/api/production/production-api";
@@ -65,7 +64,6 @@ import PendingMaterialDetails from "./PendingMaterialDetails";
 import VehicleNumberInput from "@/components/custom/VehicleNumberInput";
 import { useDeleteDocument } from "@/api/leads";
 import DocumentCard from "@/components/utils/documentCard";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkDispatchStage } from "@/components/utils/privileges";
@@ -91,7 +89,6 @@ interface DispatchStageDetailsProps {
 const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   leadId,
   accountId,
-  name,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id) || 0;
@@ -138,8 +135,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     requiredDateData?.no_of_boxes?.toString() || ""
   );
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-  const [openCarousel, setOpenCarousel] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
+
   const queryClient = useQueryClient();
   const { mutateAsync: updateNoBoxes, isPending: updatingBoxes } =
     useUpdateNoOfBoxes(vendorId, leadId);
@@ -593,10 +589,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                         }}
                         index={index}
                         canDelete={canDelete}
-                        onView={() => {
-                          setStartIndex(index);
-                          setOpenCarousel(true);
-                        }}
                         onDelete={(id) => setConfirmDelete(Number(id))}
                       />
                     ) : (
@@ -642,14 +634,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-        {/* ---------------------- IMAGE VIEWER ---------------------- */}
-        <ImageCarouselModal
-          images={images}
-          open={openCarousel}
-          initialIndex={startIndex}
-          onClose={() => setOpenCarousel(false)}
-        />
       </div>
 
       {/* Pending Material Details Section */}
@@ -761,13 +745,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <ImageCarouselModal
-        images={images}
-        open={openCarousel}
-        initialIndex={startIndex}
-        onClose={() => setOpenCarousel(false)}
-      />
     </div>
   );
 };

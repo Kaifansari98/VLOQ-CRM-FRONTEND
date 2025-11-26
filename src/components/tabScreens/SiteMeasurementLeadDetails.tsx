@@ -3,17 +3,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import {
-  Edit2,
-  FileText,
-  Plus,
-  Download,
-  Eye,
-  RefreshCcw,
-  Images,
-  Receipt,
-  Ban,
-} from "lucide-react";
+import { Edit2, FileText, Plus, RefreshCcw, Receipt, Ban } from "lucide-react";
 import { useSiteMeasurementLeadById } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import { SiteMeasurementFile } from "@/types/site-measrument-types";
 import SiteMesurementEditModal from "../sales-executive/siteMeasurement/site-mesurement-edit-modal";
@@ -33,7 +23,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useDeleteDocument } from "@/api/leads";
-import ImageCarouselModal from "../utils/image-carousel-modal";
 import DocumentCard from "@/components/utils/documentCard";
 import Loader from "@/components/utils/loader";
 
@@ -70,11 +59,6 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openImageModal, setOpenImageModal] = useState(false);
   const [openImageModal2, setOpenImageModal2] = useState(false);
-
-  const [isCarouselOpen, setIsCarouselOpen] = useState(false);
-  const [initialImageIndex, setInitialImageIndex] = useState(0);
-  const [isCarouselPaymentOpen, setIsCarouselPaymentOpen] = useState(false);
-  const [initialPaymentImageIndex, setInitialPaymentImageIndex] = useState(0);
 
   // 🧩 --- Data Extraction ---
   const accountId = leadId;
@@ -341,7 +325,10 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
         </div>
 
         {/* Body */}
-        <motion.div variants={itemVariants} className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
+        <motion.div
+          variants={itemVariants}
+          className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {currentSitePhotos.map((doc, index) => (
               <ImageComponent
@@ -354,10 +341,6 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                 }}
                 index={index}
                 canDelete={canDelete}
-                onView={(i) => {
-                  setInitialImageIndex(i);
-                  setIsCarouselOpen(true);
-                }}
                 onDelete={(id) => setConfirmDelete(Number(id))}
               />
             ))}
@@ -432,7 +415,10 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           </div>
 
           {/* Body */}
-          <motion.div variants={itemVariants} className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
+          <motion.div
+            variants={itemVariants}
+            className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
+          >
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {paymentImages.map((doc, index) => (
                 <ImageComponent
@@ -445,39 +431,12 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                   }}
                   index={index}
                   canDelete={false}
-                  onView={(i) => {
-                    setInitialPaymentImageIndex(i);
-                    setIsCarouselPaymentOpen(true);
-                  }}
                 />
               ))}
             </div>
           </motion.div>
         </motion.section>
       )}
-
-      {/* -------- Image Carousels -------- */}
-      <ImageCarouselModal
-        open={isCarouselOpen}
-        initialIndex={initialImageIndex}
-        onClose={() => setIsCarouselOpen(false)}
-        images={currentSitePhotos.map((photo) => ({
-          id: photo.id,
-          signed_url: photo.signedUrl,
-          doc_og_name: photo.originalName,
-        }))}
-      />
-
-      <ImageCarouselModal
-        open={isCarouselPaymentOpen}
-        initialIndex={initialPaymentImageIndex}
-        onClose={() => setIsCarouselPaymentOpen(false)}
-        images={paymentImages.map((photo) => ({
-          id: photo.id,
-          signed_url: photo.signedUrl,
-          doc_og_name: photo.originalName,
-        }))}
-      />
 
       {/* -------- Modals -------- */}
       <SiteMesurementEditModal

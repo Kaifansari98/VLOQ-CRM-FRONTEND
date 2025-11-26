@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent } from "@/components/ui/card";
 import { useBookingLeadById } from "@/hooks/booking-stage/use-booking";
 import { useAppSelector } from "@/redux/store";
 import {
@@ -33,9 +32,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ImageComponent } from "@/components/utils/ImageCard";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import Loader from "@/components/utils/loader";
-import SectionHeader from "@/utils/sectionHeader";
 import { canUploadOrDeleteBookingDone } from "@/components/utils/privileges";
 
 interface Props {
@@ -64,8 +61,6 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   // 🧩 States
   const [openFinalDocModal, setOpenFinalDocModal] = useState<boolean>(false);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-  const [isCarouselOpen, setIsCarouselOpen] = useState(false);
-  const [initialImageIndex, setInitialImageIndex] = useState(0);
 
   // 🧩 API Hooks
   const { mutate: deleteDocument, isPending: deleting } =
@@ -394,10 +389,6 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                           }}
                           index={index}
                           canDelete={canDelete}
-                          onView={(i) => {
-                            setInitialImageIndex(i);
-                            setIsCarouselOpen(true);
-                          }}
                           onDelete={(id) => setConfirmDelete(Number(id))}
                         />
                       ))}
@@ -431,18 +422,6 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
           onOpenChange={setOpenFinalDocModal}
           leadId={leadId}
           accountId={accountId}
-        />
-
-        {/* -------- Image Carousel -------- */}
-        <ImageCarouselModal
-          open={isCarouselOpen}
-          initialIndex={initialImageIndex}
-          onClose={() => setIsCarouselOpen(false)}
-          images={bookingPaymentDocs.map((photo) => ({
-            id: photo.id,
-            signed_url: photo.signedUrl,
-            doc_og_name: photo.originalName,
-          }))}
         />
 
         {/* -------- Delete Confirmation Dialog -------- */}

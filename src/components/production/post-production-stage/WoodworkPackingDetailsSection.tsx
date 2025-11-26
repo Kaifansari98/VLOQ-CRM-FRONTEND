@@ -31,7 +31,6 @@ import {
 import { useDeleteDocument } from "@/api/leads";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
@@ -72,8 +71,6 @@ export default function WoodworkPackingDetailsSection({
   const [remark, setRemark] = useState(packingDetails?.remark || "");
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
-  const [openCarousel, setOpenCarousel] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
 
   const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatus);
   const canDelete = userType === "admin" || userType === "super-admin";
@@ -280,10 +277,7 @@ export default function WoodworkPackingDetailsSection({
                   }}
                   index={index}
                   canDelete={canDelete}
-                  onView={() => {
-                    setStartIndex(index);
-                    setOpenCarousel(true);
-                  }}
+                  
                   onDelete={(id) => setConfirmDelete(Number(id))}
                 />
               ))}
@@ -331,12 +325,7 @@ export default function WoodworkPackingDetailsSection({
         </AlertDialogContent>
       </AlertDialog>
 
-      <ImageCarouselModal
-        images={images}
-        open={openCarousel}
-        initialIndex={startIndex}
-        onClose={() => setOpenCarousel(false)}
-      />
+     
     </div>
   );
 }

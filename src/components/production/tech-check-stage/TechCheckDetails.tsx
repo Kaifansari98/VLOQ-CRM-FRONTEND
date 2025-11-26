@@ -6,24 +6,17 @@ import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
 import { useSiteMeasurementLeadById } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import { useFinalMeasurementLeadById } from "@/hooks/final-measurement/use-final-measurement";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import {
   FileText,
-  Image as ImageIcon,
-  File,
   Camera,
   CheckCircle2,
   XCircle,
   AlertCircle,
-  RefreshCcw,
   Ban,
-  ClipboardList,
   Layers3,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useClientRequiredCompletionDate } from "@/api/tech-check";
 import { useDeleteDocument } from "@/api/leads";
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,10 +62,6 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
 
   console.log("Client Documentation: ", clientDocs);
   const { data, isLoading } = useClientRequiredCompletionDate(vendorId, leadId);
-
-  // ✅ State for image preview
-  const [openCarousel, setOpenCarousel] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
 
   // filter: "ALL" | "APPROVED" | "PENDING" | "REJECTED"
   const [activeFilter, setActiveFilter] = useState<
@@ -470,10 +459,6 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
                       index={index}
                       status={doc.tech_check_status ?? "PENDING"}
                       canDelete={canDelete}
-                      onView={() => {
-                        setStartIndex(index);
-                        setOpenCarousel(true);
-                      }}
                       onDelete={(id) => setConfirmDelete(Number(id))}
                     />
                   ))}
@@ -727,13 +712,6 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {/* Image Preview Modal */}
-      <ImageCarouselModal
-        images={filteredPptImages}
-        open={openCarousel}
-        initialIndex={startIndex}
-        onClose={() => setOpenCarousel(false)}
-      />
     </motion.div>
   );
 }

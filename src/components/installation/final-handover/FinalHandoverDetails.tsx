@@ -5,16 +5,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload,
   FileText,
-  Download,
-  Trash2,
   FolderOpen,
   Loader2,
   FileCheck,
   Award,
   BookOpen,
   ClipboardCheck,
-  Plus,
-  X,
   Image,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -41,7 +37,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
@@ -78,10 +73,8 @@ export default function FinalHandover({
   const [activeSection, setActiveSection] = useState<DocumentSection | null>(
     null
   );
-  const [openCarousel, setOpenCarousel] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-  const [carouselImages, setCarouselImages] = useState<any[]>([]);
+
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
@@ -209,12 +202,6 @@ export default function FinalHandover({
       });
       setConfirmDelete(null);
     }
-  };
-
-  const openImageCarousel = (docs: any[], index: number) => {
-    setCarouselImages(docs);
-    setStartIndex(index);
-    setOpenCarousel(true);
   };
 
   const getDocumentsForSection = (sectionId: string) => {
@@ -510,7 +497,6 @@ export default function FinalHandover({
                               }}
                               index={index}
                               canDelete={canDelete}
-                              onView={(i) => openImageCarousel(images, i)}
                               onDelete={(id) => setConfirmDelete(Number(id))}
                             />
                           </motion.div>
@@ -571,14 +557,6 @@ export default function FinalHandover({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Image Carousel */}
-      <ImageCarouselModal
-        images={carouselImages}
-        open={openCarousel}
-        initialIndex={startIndex}
-        onClose={() => setOpenCarousel(false)}
-      />
     </div>
   );
 }

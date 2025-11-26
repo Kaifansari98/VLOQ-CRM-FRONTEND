@@ -24,7 +24,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
@@ -61,8 +60,6 @@ export default function PostProductionQcPhotosSection({
     leadId
   );
 
-  const [openCarousel, setOpenCarousel] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -217,10 +214,6 @@ export default function PostProductionQcPhotosSection({
                   }}
                   index={index}
                   canDelete={canDelete}
-                  onView={(i) => {
-                    setStartIndex(i);
-                    setOpenCarousel(true);
-                  }}
                   onDelete={(id) => setConfirmDelete(Number(id))}
                 />
               ))}
@@ -267,14 +260,6 @@ export default function PostProductionQcPhotosSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* -------------------------------- IMAGE CAROUSEL -------------------------------- */}
-      <ImageCarouselModal
-        images={images}
-        open={openCarousel}
-        initialIndex={startIndex}
-        onClose={() => setOpenCarousel(false)}
-      />
     </div>
   );
 }

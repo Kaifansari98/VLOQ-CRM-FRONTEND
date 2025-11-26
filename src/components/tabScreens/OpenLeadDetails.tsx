@@ -34,7 +34,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
-import ImageCarouselModal from "../utils/image-carousel-modal";
 import { ImageComponent } from "../utils/ImageCard";
 import { Button } from "../ui/button";
 
@@ -69,9 +68,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     (state) => state.auth.user?.user_type.user_type
   );
 
-  const [isCarouselOpen, setIsCarouselOpen] = useState(false);
-  const [initialImageIndex, setInitialImageIndex] = useState(0);
-
   const { data, isLoading } = useLeadById(leadId, vendorId, userId);
   const lead = data?.data?.lead;
   console.log("Data", lead);
@@ -83,16 +79,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const { mutate: deleteDocument, isPending: deleting } = useDeleteDocument();
 
   const { data: leadStatusData } = useLeadStatus(leadId, vendorId);
-
-  const currentStageTag = leadStatusData?.status_tag;
-
-  const sitePhotos = lead?.documents
-    .filter((doc: any) => doc.signedUrl)
-    .map((doc: any) => ({
-      id: doc.id,
-      signed_url: doc.signedUrl,
-      doc_og_name: doc.doc_og_name,
-    }));
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {
@@ -113,16 +99,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     );
   }
 
-  const InfoField = ({ label, value, icon: Icon }: any) => (
-    <motion.div variants={itemVariants} className="space-y-1">
-      <div className="flex items-center gap-2">
-        {Icon && <Icon className="w-4 h-4 text-gray-400" />}
-        <label className="text-sm font-medium ">{label}</label>
-      </div>
-      <p className="pl-6">{value || "—"}</p>
-    </motion.div>
-  );
-
+ 
   const SectionCard = ({ title, children }: any) => (
     <motion.section
       variants={itemVariants}
@@ -371,10 +348,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                             (userType === "sales-executive" &&
                               leadStage === "open")
                           }
-                          onView={(i) => {
-                            setInitialImageIndex(i);
-                            setIsCarouselOpen(true);
-                          }}
                           onDelete={(id) => setConfirmDelete(Number(id))}
                         />
                       </motion.div>
@@ -445,12 +418,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           </AlertDialog>
         </div>
       </motion.div>
-      <ImageCarouselModal
-        open={isCarouselOpen}
-        initialIndex={initialImageIndex}
-        images={sitePhotos}
-        onClose={() => setIsCarouselOpen(false)}
-      />
     </>
   );
 }

@@ -9,7 +9,6 @@ import { Plus, FileText, Images } from "lucide-react";
 import SectionHeader from "@/utils/sectionHeader";
 import DocumentCard from "@/components/utils/documentCard";
 import { ImageComponent } from "@/components/utils/ImageCard";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import UploadMoreClientDocumentationModal from "./uploadmore-client-documentaition-modal";
 import { canUploadMoreClientDocumentationFiles } from "@/components/utils/privileges";
 import Loader from "@/components/utils/loader";
@@ -58,9 +57,6 @@ export default function ClientDocumentationDetails({
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
-  // 🧩 Local states
-  const [openCarouselModal, setOpenCarouselModal] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
   const [addMoreDoc, setAddMoreDoc] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
@@ -173,10 +169,6 @@ export default function ClientDocumentationDetails({
                     }}
                     index={index}
                     canDelete={canDelete}
-                    onView={(i) => {
-                      setStartIndex(i);
-                      setOpenCarouselModal(true);
-                    }}
                     onDelete={(id) => setConfirmDelete(Number(id))}
                   />
                 ))
@@ -197,7 +189,6 @@ export default function ClientDocumentationDetails({
           {/* -------- Documents -------- */}
           {documentDocs.length > 0 && (
             <div className="space-y-3 bg-[#fff] dark:bg-[#0a0a0a]">
-
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {documentDocs.map((doc) => (
                   <DocumentCard
@@ -272,17 +263,6 @@ export default function ClientDocumentationDetails({
         open={addMoreDoc}
         onOpenChange={setAddMoreDoc}
         data={{ leadId, accountId }}
-      />
-
-      <ImageCarouselModal
-        open={openCarouselModal}
-        initialIndex={startIndex}
-        onClose={() => setOpenCarouselModal(false)}
-        images={imageDocs.map((p) => ({
-          id: p.id,
-          signed_url: p.signed_url,
-          doc_og_name: p.doc_og_name,
-        }))}
       />
 
       {/* -------- Delete Confirmation Dialog -------- */}

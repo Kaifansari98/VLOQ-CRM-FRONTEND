@@ -9,7 +9,6 @@ import { useDeleteDocument } from "@/api/leads";
 import SectionHeader from "@/utils/sectionHeader";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { Ban } from "lucide-react";
 import {
   AlertDialog,
@@ -41,9 +40,6 @@ export default function ApprovedDocsSection({
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
-  // ✅ Image Preview State
-  const [openCarousel, setOpenCarousel] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
   // ✅ File type separation
@@ -107,7 +103,6 @@ export default function ApprovedDocsSection({
       transition={{ duration: 0.3 }}
       className="rounded-xl bg-background overflow-hidden shadow-sm"
     >
-
       {/* 🌟 Empty State */}
       {totalDocs === 0 ? (
         <div className="flex flex-col items-center justify-center h-[40vh] px-4">
@@ -145,10 +140,6 @@ export default function ApprovedDocsSection({
                     }}
                     index={index}
                     canDelete={canDelete}
-                    onView={(i) => {
-                      setStartIndex(i);
-                      setOpenCarousel(true);
-                    }}
                     onDelete={(id) => setConfirmDelete(Number(id))}
                   />
                 ))}
@@ -209,14 +200,6 @@ export default function ApprovedDocsSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* 🌟 Image Carousel Modal */}
-      <ImageCarouselModal
-        images={approvedImages}
-        open={openCarousel}
-        initialIndex={startIndex}
-        onClose={() => setOpenCarousel(false)}
-      />
     </motion.div>
   );
 }

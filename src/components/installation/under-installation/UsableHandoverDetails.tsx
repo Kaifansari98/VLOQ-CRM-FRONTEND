@@ -1,22 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Upload,
-  FileText,
-  ImageIcon,
-  Save,
-  FolderOpen,
-  Loader2,
-  ClipboardList,
-} from "lucide-react";
+import { motion } from "framer-motion";
+import { Upload, FileText, ImageIcon, FolderOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import TextAreaInput from "@/components/origin-text-area";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileUploadField } from "@/components/custom/file-upload";
 import {
   useGetUsableHandover,
@@ -37,19 +26,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import PendingWorkDetails from "../dispatch/PendingWorkDetails";
 import { canViewAndWorkUnderInstallationStage } from "@/components/utils/privileges";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+
 import BaseModal from "@/components/utils/baseModal";
 
 interface UsableHandoverProps {
@@ -78,15 +60,12 @@ export default function UsableHandover({
   const queryClient = useQueryClient();
 
   const [pendingWorkDetails, setPendingWorkDetails] = useState("");
-  const [isEditingRemarks, setIsEditingRemarks] = useState(false);
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [activeSection, setActiveSection] = useState<DocumentSection | null>(
     null
   );
 
-  const [openCarousel, setOpenCarousel] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [carouselImages, setCarouselImages] = useState<any[]>([]);
 
@@ -206,16 +185,6 @@ export default function UsableHandover({
       });
       setConfirmDelete(null);
     }
-  };
-
-  const openImageCarousel = (docs: any[], index: number) => {
-    const normalized = docs.map((d) => ({
-      ...d,
-      signed_url: d.signedUrl ?? d.signed_url,
-    }));
-    setCarouselImages(normalized);
-    setStartIndex(index);
-    setOpenCarousel(true);
   };
 
   if (isLoading) {
@@ -497,7 +466,6 @@ export default function UsableHandover({
                           }}
                           index={index}
                           canDelete={canDelete}
-                          onView={(i) => openImageCarousel(images, i)}
                           onDelete={(id) => setConfirmDelete(Number(id))}
                         />
                       </motion.div>
@@ -556,14 +524,6 @@ export default function UsableHandover({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Image Carousel Modal */}
-      <ImageCarouselModal
-        images={carouselImages}
-        open={openCarousel}
-        initialIndex={startIndex}
-        onClose={() => setOpenCarousel(false)}
-      />
     </div>
   );
 }
