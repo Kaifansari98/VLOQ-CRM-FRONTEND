@@ -10,16 +10,11 @@ import {
   Package,
   MapPin,
   MessageSquare,
-  SquareArrowOutUpRight,
-  Eye,
-  Download,
-  Images,
   RefreshCcw,
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { useAppSelector } from "@/redux/store";
-import { Trash2 } from "lucide-react";
 import { useDeleteDocument } from "@/api/leads";
 
 import {

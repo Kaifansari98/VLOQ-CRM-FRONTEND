@@ -14,7 +14,6 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { ModeToggle } from "@/components/ModeToggle";
 import { Suspense } from "react";
 import DesigningStageSkeleton from "@/components/sales-executive/designing-stage/designing-stage-skeleton";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";

@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import BaseModal from "@/components/utils/baseModal";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import EditLeadForm from "./lead-edit-form";
 
 interface EditLeadModalProps {

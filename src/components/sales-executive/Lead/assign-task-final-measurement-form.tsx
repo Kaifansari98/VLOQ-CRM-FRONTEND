@@ -18,7 +18,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import BaseModal from "@/components/utils/baseModal";
-import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 import { useAppSelector } from "@/redux/store";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";

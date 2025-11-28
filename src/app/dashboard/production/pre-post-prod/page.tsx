@@ -15,7 +15,6 @@ import {
   BreadcrumbSeparator,
   BreadcrumbLink,
 } from "@/components/ui/breadcrumb";
-import { ModeToggle } from "@/components/ModeToggle";
 import { Suspense } from "react";
 import ProductionTable from "@/components/production/pre-production-stage/ProductionTable";
 import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";

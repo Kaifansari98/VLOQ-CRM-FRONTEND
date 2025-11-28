@@ -15,7 +15,6 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { ModeToggle } from "@/components/ModeToggle";
 import { Suspense } from "react";
 import TechCheckStageSkeleton from "@/components/production/tech-check-stage/tech-check-skeleton";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";

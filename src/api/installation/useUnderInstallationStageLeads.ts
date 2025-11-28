@@ -170,7 +170,7 @@ export const useMoveLeadToUnderInstallation = () => {
       updated_by: number;
     }) => moveLeadToUnderInstallation(vendorId, leadId, updated_by),
 
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast.success("Lead successfully moved to Under Installation stage");
       // 🔄 Refresh any affected lists (e.g., dispatch or under-installation leads)
       queryClient.invalidateQueries({
@@ -289,7 +289,7 @@ export const useSetActualInstallationStartDate = () => {
   return useMutation({
     mutationFn: setActualInstallationStartDate,
 
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast.success("Installation start date updated!");
 
       // 🔄 Refetch relevant queries
@@ -1102,7 +1102,7 @@ export async function moveToFinalHandoverApi(
 }
 
 export function useMoveToFinalHandover() {
-  const queryClient = useQueryClient();
+ 
   const router = useRouter();
 
   return useMutation({

@@ -31,8 +31,6 @@ import DocumentCard from "@/components/utils/documentCard";
 import { ImageComponent } from "@/components/utils/ImageCard";
 type Props = {
   leadId: number;
-  accountId: number;
-  name?: string;
 };
 
 const containerVariants = {
@@ -45,7 +43,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
 };
 
-export default function TechCheckDetails({ leadId, accountId, name }: Props) {
+export default function TechCheckDetails({ leadId }: Props) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)!;
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type
@@ -61,7 +59,7 @@ export default function TechCheckDetails({ leadId, accountId, name }: Props) {
   );
 
   console.log("Client Documentation: ", clientDocs);
-  const { data, isLoading } = useClientRequiredCompletionDate(vendorId, leadId);
+  const { data } = useClientRequiredCompletionDate(vendorId, leadId);
 
   // filter: "ALL" | "APPROVED" | "PENDING" | "REJECTED"
   const [activeFilter, setActiveFilter] = useState<

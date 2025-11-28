@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, type LucideIcon } from "lucide-react";
+import { LucideIcon } from "lucide-react";
 import { useLeadStats } from "@/hooks/useLeadStats";
 import { useAppSelector } from "@/redux/store";
 import { Badge } from "./ui/badge";

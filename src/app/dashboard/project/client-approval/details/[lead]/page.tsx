@@ -65,8 +65,6 @@ import RequestToTechCheckModal from "@/components/site-supervisor/client-approva
 
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 import {
-  canReassingLead,
-  canDeleteLead,
   canRequestToTeckCheck,
   canUploadClientApproval,
   canEditLeadButton,

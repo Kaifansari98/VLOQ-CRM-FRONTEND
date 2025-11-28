@@ -13,7 +13,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { ModeToggle } from "@/components/ModeToggle";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useEffect, useState } from "react";
@@ -65,8 +64,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import {
-  canReassingLead,
-  canDeleteLead,
   canUploadISM,
   canReassignLeadButton,
   canEditLeadForSalesExecutiveButton,
@@ -76,7 +73,6 @@ import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
-import ImageViewerModal from "@/components/utils/ImageViewerModal";
 
 export default function SiteMeasurementLead() {
   const router = useRouter();

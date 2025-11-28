@@ -1,16 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { file, z } from "zod";
+import { z } from "zod";
 import {
   Form,
   FormField,
@@ -37,7 +30,6 @@ import {
 import { BookingPayload } from "@/api/booking";
 import { toast } from "react-toastify";
 import { useISMPaymentInfo } from "@/hooks/booking-stage/use-booking";
-import { formatAmount } from "@/components/utils/general.utils";
 import SelectDocumentModal from "@/components/modal/select-doc-modal";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";

@@ -15,7 +15,6 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
-import { ModeToggle } from "@/components/ModeToggle";
 import PendingLeadsTable from "./pending-leads-table";
 import PendingLeadsSkeleton from "./PendingLeadsSkeleton";
 import { Suspense } from "react";

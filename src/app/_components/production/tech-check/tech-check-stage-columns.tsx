@@ -22,7 +22,6 @@ interface GetTechCheckTableColumnsProps {
 }
 
 export function getTechCheckTableColumns({
-  setRowAction,
   userType,
 }: GetTechCheckTableColumnsProps): ColumnDef<ProcessedBookingLead>[] {
   return [

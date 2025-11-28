@@ -9,9 +9,7 @@ import { Button } from "../../ui/button";
 import { Blinds } from "lucide-react";
 import { ScrollArea } from "../../ui/scroll-area";
 // import InitialSiteMeasuresMent from "./initial-site-measurement-form";
-import {
-  sanitize,
-} from "../../utils/sanitizeCapitalize";
+import { sanitize } from "../../utils/sanitizeCapitalize";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -38,7 +36,6 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
   onOpenChange,
   data,
 }) => {
-  const [openModal, setOpenModal] = useState<boolean>(false);
   const formatDateTime = (dateString?: string) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
@@ -51,11 +48,6 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
     });
   };
 
-  const handleOpenModal = () => {
-    setOpenModal(true);
-    // onOpenChange(false)
-  };
-
   const status = data?.status;
   console.log(status);
 
@@ -66,7 +58,7 @@ const ViewLeadModal: React.FC<LeadViewModalProps> = ({
 
         <DialogHeader className="flex items-start justify-end  px-6 py-4 border-b">
           {status === "open" ? (
-            <Button onClick={handleOpenModal}>
+            <Button>
               <Blinds size={20} className="mr-2" /> Initial Site Measurement
             </Button>
           ) : (

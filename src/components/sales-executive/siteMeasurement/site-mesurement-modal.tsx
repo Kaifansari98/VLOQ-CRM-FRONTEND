@@ -182,7 +182,7 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
               <h3 className="text-lg font-semibold">Current Site Photos</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5  gap-3 sm:gap-4">
                 {currentSitePhotos.map((doc, idx) => (
-                  <div key={doc.id} className="relative group">
+                  <div key={idx} className="relative group">
                     <img
                       src={doc.signed_url}
                       alt={doc.doc_og_name ?? "site photo"}

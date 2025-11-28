@@ -1,13 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+
 import { motion } from "framer-motion";
 import { useCompanyVendors } from "@/api/production/order-login";
 import {
@@ -69,7 +63,7 @@ export default function OrderLoginModal({
   const [selectedVendorId, setSelectedVendorId] = useState<number | null>(
     currentCompanyVendorId || null
   );
-  const { data: leadData, error } = useLeadStatus(leadId, vendorId);
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
   const [remarkModalOpen, setRemarkModalOpen] = useState(false);
   const [pendingVendorId, setPendingVendorId] = useState<number | null>(null);

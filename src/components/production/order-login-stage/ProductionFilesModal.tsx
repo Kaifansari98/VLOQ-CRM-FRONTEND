@@ -7,10 +7,7 @@ import {
   useUploadProductionFiles,
 } from "@/api/production/order-login";
 import { useAppSelector } from "@/redux/store";
-import { format } from "date-fns";
 import {
-  FileText,
-  ExternalLink,
   FolderOpen,
   Upload,
   Loader2,
@@ -47,7 +44,7 @@ export default function ProductionFilesSection({
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-  const { data: leadData, error } = useLeadStatus(leadId, vendorId);
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
   const queryClient = useQueryClient();

@@ -27,7 +27,6 @@ import { useDeleteDocument } from "@/api/leads";
 type Props = {
   leadId: number;
   accountId: number;
-  name?: string;
 };
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"];
@@ -39,7 +38,6 @@ const getFileExtension = (filename: string): string =>
 export default function ClientDocumentationDetails({
   leadId,
   accountId,
-  name,
 }: Props) {
   // 🧩 Redux data
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);

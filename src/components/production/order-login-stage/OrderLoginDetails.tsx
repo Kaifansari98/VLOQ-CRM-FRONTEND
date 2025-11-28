@@ -23,7 +23,6 @@ import {
   canAccessAddNewSectionButton,
   canAccessInputField,
   canAccessSaveOrderLoginButton,
-  canWorkTodoTaskOrderLoginStage,
 } from "@/components/utils/privileges";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 
@@ -46,7 +45,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   );
   const { data: companyVendors } = useCompanyVendors(vendorId);
   const { data: orderLoginData } = useOrderLoginByLead(vendorId, leadId);
-  const { data: leadData, isLoading, error } = useLeadStatus(leadId, vendorId);
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
 
   const queryClient = useQueryClient();
 
@@ -88,10 +87,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     leadStatus
   );
 
-  const canViewTodoTask = canWorkTodoTaskOrderLoginStage(userType);
-
-  console.log("lead Status: ", leadStatus);
-  // 🧩 Vendors for dropdowns
+ 
   const users =
     companyVendors?.map((vendor: any) => ({
       id: vendor.id,

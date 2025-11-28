@@ -45,7 +45,6 @@ const FollowUpModal: React.FC<Props> = ({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const leadId = data?.id;
-  const accountId = data?.accountId;
   const taskId = data?.taskId;
 
   const [openCompletedModal, setOpenCompletedModal] = useState<boolean>(false);

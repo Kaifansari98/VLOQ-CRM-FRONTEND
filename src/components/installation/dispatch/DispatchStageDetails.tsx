@@ -2,13 +2,11 @@
 
 import React, { useState } from "react";
 import { format } from "date-fns";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { PhoneInput } from "@/components/ui/phone-input";
 import CustomeDatePicker from "@/components/date-picker";
@@ -21,12 +19,7 @@ import {
   FileText,
   Loader2,
   CheckCircle2,
-  Download,
-  Eye,
   Package,
-  X,
-  FileCheck,
-  ExternalLink,
   Pencil,
 } from "lucide-react";
 import {
@@ -127,7 +120,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
   // File Upload State
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [detailsSaved, setDetailsSaved] = useState(false);
 
   // 🧩 For Edit No. of Boxes Modal
   const [openBoxesModal, setOpenBoxesModal] = useState(false);
@@ -153,7 +145,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
         dispatch_remark: dispatchDetails.dispatch_remark || "",
         updated_by: userId,
       });
-      setDetailsSaved(true);
     }
   }, [dispatchDetails, userId]);
 
@@ -180,11 +171,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
         leadId,
         payload: formData,
       },
-      {
-        onSuccess: () => {
-          setDetailsSaved(true);
-        },
-      }
+      {}
     );
   };
 

@@ -18,7 +18,6 @@ import {
 
 import { Suspense } from "react";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
-import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import SiteMeasurementTable from "@/app/_components/site-measurement-table";
 

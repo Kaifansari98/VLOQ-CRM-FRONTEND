@@ -36,7 +36,7 @@ const QuotationTab = () => {
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
-  const { data, error, isLoading } = useQuotationDoc(vendorId, leadId);
+  const { data, error } = useQuotationDoc(vendorId, leadId);
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 

@@ -23,7 +23,6 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { useAppSelector } from "@/redux/store";
-import { isAction } from "@reduxjs/toolkit";
 
 // Updated navigation data with showCount properties
 const data = {

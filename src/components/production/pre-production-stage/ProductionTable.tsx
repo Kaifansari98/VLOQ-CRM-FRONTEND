@@ -33,9 +33,7 @@ import { getUniversalTableColumns } from "@/components/utils/column/Universal-co
 const ProductionTable = () => {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
-  const userType = useAppSelector(
-    (s) => s.auth.user?.user_type.user_type as string | undefined
-  );
+
 
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const router = useRouter();

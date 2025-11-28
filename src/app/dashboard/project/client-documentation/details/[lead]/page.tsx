@@ -64,8 +64,6 @@ import ClientDocumentationModal from "@/components/site-supervisor/final-measure
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 
 import {
-  canReassingLead,
-  canDeleteLead,
   canUploadClientDocumentation,
   canEditLeadButton,
   canDeleteLeadButton,

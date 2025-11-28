@@ -128,7 +128,7 @@ export default function DispatchPlanningDetails({
   const userId = useAppSelector((state) => state.auth.user?.id) || 0;
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
 
-  const { data: leadData, isLoading, error } = useLeadStatus(leadId, vendorId);
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
@@ -158,7 +158,6 @@ export default function DispatchPlanningDetails({
     getValues: getValuesDispatch,
     formState: { errors: errorsDispatch },
     watch: watchDispatch,
-    control: controlDispatch,
   } = useForm<DispatchFormData>({
     resolver: zodResolver(dispatchSchema),
     defaultValues: {
@@ -178,8 +177,6 @@ export default function DispatchPlanningDetails({
   const {
     control: controlPayment,
     handleSubmit: handleSubmitPayment,
-    setValue: setValuePayment,
-    getValues: getValuesPayment,
     formState: { errors: errorsPayment },
     watch: watchPayment,
     reset: resetPayment,
@@ -346,7 +343,7 @@ export default function DispatchPlanningDetails({
   });
 
   // Handle payment save button click (show confirmation)
-  const handlePaymentSaveClick = handleSubmitPayment((data) => {
+  const handlePaymentSaveClick = handleSubmitPayment(() => {
     if (!infoSaved) {
       toast.error("Please save dispatch planning info first");
       return;

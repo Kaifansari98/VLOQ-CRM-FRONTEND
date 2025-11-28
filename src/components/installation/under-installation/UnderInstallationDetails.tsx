@@ -35,7 +35,6 @@ import { useQueryClient } from "@tanstack/react-query";
 export default function UnderInstallationDetails({
   leadId,
   accountId,
-  name,
 }: {
   leadId: number;
   accountId?: number;
@@ -83,14 +82,7 @@ export default function UnderInstallationDetails({
       label: i.installer_name,
     })) ?? [];
 
-  // 🚀 Validation: if all installation data already exists → hide update button
-  const isFullyCompleted =
-    !!details?.expected_installation_end_date &&
-    mappedInstallers?.length > 0 &&
-    (!!details?.carcass_installation_completion_date ||
-      details?.is_carcass_installation_completed) &&
-    (!!details?.shutter_installation_completion_date ||
-      details?.is_shutter_installation_completed);
+
 
   // 🔹 Initialize data
   useEffect(() => {

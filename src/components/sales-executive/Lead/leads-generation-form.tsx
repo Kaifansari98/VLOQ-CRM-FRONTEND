@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -171,15 +171,8 @@ export default function LeadsGenerationForm({
   // fetch data once at top of component (after form etc.)
   const { data: vendorUsers, isLoading } =
     useVendorSalesExecutiveUsers(vendorId);
-  const { data: vendorUsersAssignedBy, isLoading: isLoadingAssignedBy } =
-    useVendorSalesExecutiveUsers(vendorId);
-  console.log(
-    "userType:",
-    userType,
-    "canReassingLead:",
-    canReassingLead(userType)
-  );
-  console.log("vendorUsers response:", vendorUsers);
+
+ 
   const vendorUserss = vendorUsers?.data?.sales_executives ?? [];
 
   const createLeadMutation = useMutation({
@@ -847,7 +840,7 @@ export default function LeadsGenerationForm({
         <FormField
           control={form.control}
           name="documents"
-          render={({ field }) => (
+          render={() => (
             <FormItem>
               <FormLabel className="text-sm">Site Photos</FormLabel>
               <FormControl>

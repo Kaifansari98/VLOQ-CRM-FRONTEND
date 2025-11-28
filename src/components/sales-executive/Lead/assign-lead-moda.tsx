@@ -93,9 +93,6 @@ const AssignLeadModal = ({
   const userId = useAppSelector((state) => state.auth.user?.id);
   const [openConfirmation, setOpenConfirmation] = useState<boolean>(false);
   const queryClient = useQueryClient();
-  const [assignToId, setAssignToId] = useState<number | null>(
-    leadData?.assignTo?.id ?? null
-  );
   const currentAssignedId = leadData?.assignTo?.id ?? null;
   const [selectedId, setSelectedId] = useState<number | null>(null);
 

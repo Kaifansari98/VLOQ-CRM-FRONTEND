@@ -93,12 +93,7 @@ export interface EditLeadPayload {
   initial_site_measurement_date?: string;
 }
 
-interface FetchLeadLogsParams {
-  leadId: number;
-  vendorId: number;
-  limit?: number;
-  cursor?: number;
-}
+
 
 export const createLead = async (
   payload: CreateLeadPayload,

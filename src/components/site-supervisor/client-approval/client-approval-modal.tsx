@@ -45,7 +45,7 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
 
   const { mutate, isPending } = useSubmitClientApproval();
 
-  const { data: paymentData, isLoading: isFinanceLoading } = usePaymentLogs(
+  const { data: paymentData } = usePaymentLogs(
     data?.id || 0,
     vendorId || 0
   );
@@ -73,8 +73,7 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
       const hasPaymentFile =
         Array.isArray(values.payment_files) && values.payment_files.length > 0;
       const hasPaymentDate = !!values.advance_payment_date;
-      const anyPaymentField =
-        hasAmount || hasPaymentText || hasPaymentFile || hasPaymentDate;
+     
 
       // ✅ Rule 1: Amount should not exceed pending
       if (

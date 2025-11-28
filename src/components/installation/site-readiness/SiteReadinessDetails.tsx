@@ -54,7 +54,6 @@ const CHECKLIST_ITEMS = [
 export default function SiteReadinessDetails({
   leadId,
   accountId,
-  name,
 }: SiteReadinessDetailsProps) {
   const vendor_id = useAppSelector((state) => state.auth.user?.vendor_id);
   const user_id = useAppSelector((state) => state.auth.user?.id);

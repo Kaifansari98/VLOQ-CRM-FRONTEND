@@ -103,12 +103,12 @@ export const useVendorOverallLeads = (
   vendorId: number,
   tag: string,
   userId: number,
-  page: number,
-  pageSize: number
+  page?: number,
+  pageSize?: number
 ) => {
   return useQuery({
     queryKey: ["vendorOverallLeads", vendorId, tag, page, pageSize],
-    queryFn: () => getVendorOverallLeads(vendorId, tag, userId, page, pageSize),
+    queryFn: () => getVendorOverallLeads(vendorId, tag, userId, page!, pageSize!),
     enabled: !!vendorId && !!tag,
     placeholderData: (prev) => prev,
     staleTime: 5 * 60 * 1000,

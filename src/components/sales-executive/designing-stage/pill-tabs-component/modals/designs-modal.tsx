@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import BaseModal from "@/components/utils/baseModal";// adjust path
-import { ScrollArea } from "@/components/ui/scroll-area";
+import BaseModal from "@/components/utils/baseModal";
 import {
   Form,
   FormControl,

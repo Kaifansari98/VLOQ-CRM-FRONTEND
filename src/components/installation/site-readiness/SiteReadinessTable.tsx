@@ -30,9 +30,6 @@ import { getUniversalTableColumns } from "@/components/utils/column/Universal-co
 const SiteReadinessTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type as string | undefined
-  );
 
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const router = useRouter();

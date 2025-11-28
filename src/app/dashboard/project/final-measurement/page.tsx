@@ -15,7 +15,6 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { ModeToggle } from "@/components/ModeToggle";
 import { Suspense } from "react";
 import FinalMeasurementSkeleton from "@/components/site-supervisor/final-measurement/final-measurement-skeleton";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";

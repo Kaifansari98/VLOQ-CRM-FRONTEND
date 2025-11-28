@@ -5,14 +5,10 @@ import {
   AlertCircle,
   Plus,
   Eye,
-  Download,
   Package,
-  Users,
   Calendar,
   FileText,
-  DollarSign,
   CheckCircle2,
-  Clock,
   File,
   Wrench,
   User,
@@ -20,10 +16,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -37,7 +29,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "react-toastify";
 import CustomeDatePicker from "@/components/date-picker";
 import { FileUploadField } from "@/components/custom/file-upload";
@@ -63,7 +54,6 @@ import {
   canViewAndWorkUnderInstallationStage,
 } from "@/components/utils/privileges";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
-import CustomeTooltip from "@/components/cutome-tooltip";
 import {
   AlertDialog,
   AlertDialogAction,

@@ -63,9 +63,7 @@ export const DocumentCardSkeleton: React.FC<{
 
 export const ImageComponent: React.FC<DocumentCardProps> = ({
   doc,
-  index = 0,
   canDelete = false,
-  onView,
   onDelete,
   status,
   isLoading = false,

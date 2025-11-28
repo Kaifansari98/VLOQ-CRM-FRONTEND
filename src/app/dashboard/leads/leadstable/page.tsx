@@ -19,13 +19,12 @@ import ViewLeadsSkeleton from "@/components/sales-executive/Lead/view-leads-skel
 import { Button } from "@/components/ui/button";
 import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-generation-form-modal";
 import { Suspense, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { canCreateLead } from "@/components/utils/privileges";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function LeadsGenerationPage() {
-  const router = useRouter();
+  
   const [openCreateLead, setOpenCreateLead] = useState(false);
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined

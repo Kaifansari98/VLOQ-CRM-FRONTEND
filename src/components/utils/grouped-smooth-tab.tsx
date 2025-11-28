@@ -7,10 +7,7 @@ import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 import { StageId } from "@/types/lead-stage-types";
 import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from "../ui/tooltip";
 import {
   canViewToOrderLoginDetails,

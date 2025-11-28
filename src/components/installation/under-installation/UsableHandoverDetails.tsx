@@ -10,7 +10,6 @@ import { FileUploadField } from "@/components/custom/file-upload";
 import {
   useGetUsableHandover,
   useUpdateUsableHandover,
-  useUpdateRemarks,
 } from "@/api/installation/useUnderInstallationStageLeads";
 import { useDeleteDocument } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
@@ -67,14 +66,13 @@ export default function UsableHandover({
   );
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-  const [carouselImages, setCarouselImages] = useState<any[]>([]);
 
   const { data: handoverData, isLoading } = useGetUsableHandover(
     vendorId,
     leadId
   );
   const updateMutation = useUpdateUsableHandover();
-  const updateRemarksMutation = useUpdateRemarks();
+  
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 

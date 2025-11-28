@@ -15,10 +15,9 @@ import {
 } from "../../ui/form";
 import { FileUploadField } from "../../custom/file-upload";
 import { Button } from "../../ui/button";
-import { Input } from "../../ui/input";
 import { useAppSelector } from "@/redux/store";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getLeadById, uploadInitialSiteMeasurement } from "@/api/leads";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { uploadInitialSiteMeasurement } from "@/api/leads";
 import { toast } from "react-toastify";
 import CustomeDatePicker from "@/components/date-picker";
 import TextAreaInput from "@/components/origin-text-area";
