@@ -2,35 +2,38 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
+
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Map, MapPin, Text } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
-import CustomeStatusBadge from "@/components/origin-status-badge";
+
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/cutome-tooltip";
+
 import { LeadColumn } from "./column-type";
 
 export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
   return [
+    // 1) Lead Code
     {
       accessorKey: "lead_code",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Lead Code" />
       ),
       cell: ({ row }) => (
-        <div className="text-center font-medium">
-          {row.getValue("lead_code")}
-        </div>
+        <div className=" font-medium">{row.getValue("lead_code")}</div>
       ),
       meta: {
         label: "Lead Code",
+        variant: "text",
+        placeholder: "Search Lead Code...",
       },
       enableSorting: true,
-      enableColumnFilter: true,
       enableHiding: true,
+      enableColumnFilter: true,
     },
 
-    // First name and lastname: 1
+    // 2) Name
     {
       accessorKey: "name",
       header: ({ column }) => (
@@ -39,28 +42,22 @@ export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
-      meta: {
-        label: "Name",
-        placeholder: "Search names...",
-        variant: "text",
-      
-      },
       cell: ({ row }) => {
         const name = row.getValue("name") as string;
         const maxLength = 25;
 
-        // Agar name chhota hai, sirf text dikhaye
-        if (name.length <= maxLength) {
-          return <span>{name}</span>;
-        }
+        if (name.length <= maxLength) return <span>{name}</span>;
 
-        // Agar name bada hai, truncate + tooltip dikhaye
-        const truncateValue = name.slice(0, maxLength) + "...";
-
-        return <CustomeTooltip value={name} truncateValue={truncateValue} />;
+        return (
+          <CustomeTooltip
+            value={name}
+            truncateValue={name.slice(0, maxLength) + "..."}
+          />
+        );
       },
     },
-    // contact: 2
+
+    // 3) Contact
     {
       accessorKey: "contact",
       header: ({ column }) => (
@@ -69,36 +66,29 @@ export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
-      meta: {
-        label: "Contact",
-      },
     },
 
-    // Product Types
+    // 4) Product Types
     {
       accessorKey: "productTypes",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Product Types" />
       ),
-      meta: {
-        label: "Product Types",
-      },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
     },
 
+    // 5) Address / Map Link
     {
       accessorKey: "site_map_link",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Address" />
       ),
-      meta: {
-        label: "Address",
-      },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
+
       cell: ({ row }) => {
         const link = row.getValue("site_map_link") as string;
 
@@ -107,16 +97,7 @@ export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
           (link.startsWith("http://") || link.startsWith("https://"));
 
         return (
-          <div
-            className="
-          inline-flex items-center gap-1.5
-          px-3 py-1.5 rounded-lg
-          text-xs font-medium
-          min-h-[32px]
-          border border-black/20
-          bg-white
-        "
-          >
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-black/20 bg-white min-h-[32px]">
             {isValidLink ? (
               <a
                 href={link}
@@ -134,136 +115,108 @@ export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
         );
       },
     },
-    // Site Type: 6
+
+    // 6) Site Type
     {
       accessorKey: "siteType",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Site Type" />
       ),
-      meta: {
-        label: "Site Type",
-      },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
     },
 
-    // Sales Executive: 7
-    // ...(canReassingLead(userType)
-    //   ? [
-    //       {
-    //         accessorKey: "assign_to",
-    //         header: ({ column }) => (
-    //           <DataTableColumnHeader column={column} title="Sales Executive" />
-    //         ),
-    //         cell: ({ row }) => row.getValue("assign_to"),
-    //         meta: {
-    //           label: "Sales Executive",
-    //         },
-    //         enableSorting: true,
-    //         enableHiding: true,
-    //         enableColumnFilter: true,
-    //       } as ColumnDef<Lead>,
-    //     ]
-    //   : []),
-
+    // 7) Sales Executive
     {
       accessorKey: "assign_to",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Sales Executive" />
       ),
-      cell: ({ row }) => row.getValue("assign_to"),
-      meta: {
-        label: "Sales Executive",
-      },
+
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
-    } as ColumnDef<LeadColumn>,
+    },
 
-    // Site Address: 8
+    // 8) Site Address
     {
       accessorKey: "siteAddress",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Site Address" />
       ),
-      meta: {
-        label: "Site Address",
-      },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
       cell: ({ row }) => {
         const address = row.getValue("siteAddress") as string;
-        const maxLength = 30;
+        const maxLen = 30;
 
-        if (address.length <= maxLength) {
-          return <span>{address}</span>;
-        }
+        if (!address) return "—";
+        if (address.length <= maxLen) return address;
 
-        const truncateAddress = address.slice(0, maxLength) + "...";
-
-        return <RemarkTooltip remark={truncateAddress} remarkFull={address} title="Site Address"/>;
+        return (
+          <RemarkTooltip
+            title="Site Address"
+            remarkFull={address}
+            remark={address.slice(0, maxLen) + "..."}
+          />
+        );
       },
     },
 
-    // ArchitechName
+    // 9) Architect Name
     {
       accessorKey: "architechName",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Architect Name" />
       ),
-      meta: {
-        label: "Architech Name",
-      },
+
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
     },
 
-    // Source
+    // 10) Source
     {
       accessorKey: "source",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Source" />
       ),
-      meta: {
-        label: "Source",
-      },
+
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
     },
-    // Create At
+
+    // 11) Created At (DATE)
     {
       accessorKey: "createdAt",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Created At" />
       ),
-      cell: ({ getValue }) => {
-        const dateValue = getValue() as string;
-        if (!dateValue) return "";
-        const date = new Date(dateValue);
-        return (
-          <span className="text-gray-700">
-            {date.toLocaleDateString("en-IN", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            })}
-          </span>
-        );
-      },
-
       meta: {
         label: "Created At",
+        variant: "dateRange",
       },
-
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
+
+      cell: ({ getValue }) => {
+        const value = getValue() as string;
+        if (!value) return "";
+        const date = new Date(value);
+
+        return date.toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+      },
     },
-    // Alt contact
+
+    // 12) Alt Contact
     {
       accessorKey: "altContact",
       header: ({ column }) => (
@@ -271,89 +224,80 @@ export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
           <DataTableColumnHeader column={column} title="Alt Contact" />
         </div>
       ),
-      meta: {
-        label: "Alt Contact",
-      },
+
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
+
       cell: ({ getValue }) => {
-        const rawValue = getValue() as string | null;
+        const raw = getValue() as string | null;
+        if (!raw) return "—";
 
-        let formatted = "–";
-        if (rawValue) {
-          try {
-            const phone = parsePhoneNumberFromString(rawValue); // ✅ correct method
-            if (phone) {
-              formatted = phone.formatInternational(); // e.g. +91 98765 43210
-            } else {
-              formatted = rawValue;
-            }
-          } catch {
-            formatted = rawValue; // fallback
-          }
+        try {
+          const phone = parsePhoneNumberFromString(raw);
+          return (
+            <div className="w-full text-center">
+              {phone ? phone.formatInternational() : raw}
+            </div>
+          );
+        } catch {
+          return <div className="w-full text-center">{raw}</div>;
         }
-
-        return <div className="w-full text-center">{formatted}</div>;
       },
     },
 
-    // Email : 3
+    // 13) Email
     {
       accessorKey: "email",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Email" />
       ),
-      meta: {
-        label: "Email",
-      },
+
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
+
       cell: ({ row }) => {
         const email = row.getValue("email") as string;
-        const maxLength = 20;
+        const max = 20;
+        if (email.length <= max) return email;
 
-        if (email.length <= maxLength) {
-          return <span>{email}</span>;
-        }
-
-        const truncateValue = email.slice(0, maxLength) + "...";
-
-        return <CustomeTooltip truncateValue={truncateValue} value={email} />;
+        return (
+          <CustomeTooltip
+            value={email}
+            truncateValue={email.slice(0, max) + "..."}
+          />
+        );
       },
     },
 
-    // Product Structures
+    // 14) Product Structures
     {
       accessorKey: "productStructures",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Product Structures" />
       ),
-      meta: {
-        label: "Product Structures",
-      },
+
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
     },
 
-    // design Remark
+    // 15) Designer Remark
     {
       accessorKey: "designerRemark",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Designer Remark" />
       ),
+
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
-      meta: {
-        label: "Designer's Remark",
-      },
       cell: ({ row }) => {
-        const fullRemark = row.getValue("designerRemark") as string;
-        const truncatedRemark =
-          fullRemark.length > 15 ? fullRemark.slice(0, 15) + "..." : fullRemark;
-        return (
-          <RemarkTooltip remark={truncatedRemark} remarkFull={fullRemark} />
-        );
+        const full = row.getValue("designerRemark") as string;
+        const trunc = full.length > 15 ? full.slice(0, 15) + "..." : full;
+
+        return <RemarkTooltip remark={trunc} remarkFull={full} />;
       },
     },
   ];

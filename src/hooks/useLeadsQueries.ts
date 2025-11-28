@@ -87,11 +87,13 @@ export const getVendorOverallLeads = async (
   vendorId: number,
   tag: string,
   userId: number,
+  page: number,
+  pageSize: number
 ): Promise<VendorOverallLeadsResponse> => {
   const response = await apiClient.get(
     `/leads/bookingStage/vendorId/${vendorId}/all-leads`,
     {
-      params: { tag, userId },
+      params: { userId ,tag, page, pageSize },
     }
   );
   return response.data; // keep full shape: { count, data }
@@ -100,14 +102,16 @@ export const getVendorOverallLeads = async (
 export const useVendorOverallLeads = (
   vendorId: number,
   tag: string,
-  userId: number
-): UseQueryResult<VendorOverallLeadsResponse, Error> => {
+  userId: number,
+  page: number,
+  pageSize: number
+) => {
   return useQuery({
-    queryKey: ["vendorOverallLeads", vendorId, tag],
-    queryFn: () => getVendorOverallLeads(vendorId, tag, userId),
+    queryKey: ["vendorOverallLeads", vendorId, tag, page, pageSize],
+    queryFn: () => getVendorOverallLeads(vendorId, tag, userId, page, pageSize),
     enabled: !!vendorId && !!tag,
-    staleTime: 5 * 60 * 1000, // cache 5min
-    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev,
+    staleTime: 5 * 60 * 1000,
   });
 };
 
