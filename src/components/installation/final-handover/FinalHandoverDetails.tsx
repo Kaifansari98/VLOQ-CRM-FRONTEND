@@ -170,27 +170,23 @@ export default function FinalHandover({
       return;
     }
 
-    try {
-      const formData = new FormData();
-      formData.append("vendorId", vendorId.toString());
-      formData.append("leadId", leadId.toString());
-      formData.append("accountId", accountId.toString());
-      formData.append("userId", userId.toString());
+    const formData = new FormData();
+    formData.append("vendorId", vendorId.toString());
+    formData.append("leadId", leadId.toString());
+    formData.append("accountId", accountId.toString());
+    formData.append("userId", userId.toString());
 
-      selectedFiles.forEach((file) => {
-        formData.append(activeSection.fieldName, file);
-      });
+    selectedFiles.forEach((file) => {
+      formData.append(activeSection.fieldName, file);
+    });
 
-      await uploadMutation.mutateAsync(formData);
-      toast.success("Files uploaded successfully!");
-      setSelectedFiles([]);
+    await uploadMutation.mutateAsync(formData);
+    toast.success("Files uploaded successfully!");
+    setSelectedFiles([]);
 
-      queryClient.invalidateQueries({
-        queryKey: ["finalHandoverDocuments", vendorId, leadId],
-      });
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to upload files.");
-    }
+    queryClient.invalidateQueries({
+      queryKey: ["finalHandoverDocuments", vendorId, leadId],
+    });
   };
 
   const handleConfirmDelete = () => {

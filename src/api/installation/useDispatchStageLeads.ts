@@ -2,10 +2,17 @@ import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
+import type { AxiosError } from "axios";
+
 /* ==========================================================
    🔹 1️⃣ GET Dispatch Stage Leads (Paginated)
    @route GET /leads/installation/dispatch/vendorId/:vendorId/userId/:userId
    ========================================================== */
+
+interface ApiErrorResponse {
+  message?: string;
+}
+
 export const getDispatchStageLeads = async (
   vendorId: number,
   userId: number,
@@ -127,7 +134,7 @@ export const useAddDispatchDetails = () => {
       queryClient.invalidateQueries({ queryKey: ["dispatchDetails"] });
       queryClient.invalidateQueries({ queryKey: ["readyForPostDispatch"] });
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<ApiErrorResponse>) => {
       toast.error(err?.message || "Failed to save dispatch details");
     },
   });
@@ -221,7 +228,7 @@ export const useUploadDispatchDocuments = () => {
       queryClient.invalidateQueries({ queryKey: ["readyForPostDispatch"] });
     },
 
-    onError: (err: any) => {
+    onError: (err: AxiosError<ApiErrorResponse>) => {
       toast.error(err?.message || "Failed to upload Dispatch Documents");
     },
   });
@@ -343,7 +350,7 @@ export const useUploadPostDispatchDocuments = () => {
       queryClient.invalidateQueries({ queryKey: ["postDispatchDocuments"] }); // ✅ auto-refresh document list
     },
 
-    onError: (err: any) => {
+    onError: (err: AxiosError<ApiErrorResponse>) => {
       toast.error(err?.message || "Failed to upload Post Dispatch Documents");
     },
   });
@@ -395,7 +402,7 @@ export const useCreatePendingMaterialTask = () => {
       queryClient.invalidateQueries({ queryKey: ["leadTasks"] });
     },
 
-    onError: (err: any) => {
+    onError: (err: AxiosError<ApiErrorResponse>) => {
       toast.error(
         err?.response?.data?.message ||
           "Failed to create Pending Material task."
@@ -473,7 +480,7 @@ export const useCreatePendingWorkTask = () => {
       queryClient.invalidateQueries({ queryKey: ["pendingWorkTasks"] });
     },
 
-    onError: (err: any) => {
+    onError: (err: AxiosError<ApiErrorResponse>) => {
       toast.error(
         err?.response?.data?.message || "Failed to create Pending Work task."
       );

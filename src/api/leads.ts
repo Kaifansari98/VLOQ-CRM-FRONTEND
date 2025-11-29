@@ -11,8 +11,13 @@ import {
   User,
 } from "@/types/comman-types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import { toast } from "react-toastify";
 
+interface ApiErrorResponse {
+  message?: string;
+  error?: string;
+}
 export interface CreateLeadPayload {
   firstname: string;
   lastname: string;
@@ -93,15 +98,11 @@ export interface EditLeadPayload {
   initial_site_measurement_date?: string;
 }
 
-
-
 export const createLead = async (
   payload: CreateLeadPayload,
   files: File[] = []
 ) => {
   const formData = new FormData();
-
-  console.log("[DEBUG] Frontend payload:", payload);
 
   // Append all form fields
   Object.entries(payload).forEach(([key, value]) => {
@@ -121,8 +122,6 @@ export const createLead = async (
     formData.append("documents", file);
   });
 
-  // Debug FormData contents
-  console.log("[DEBUG] FormData entries:");
   for (const pair of formData.entries()) {
     console.log(pair[0] + ": " + pair[1]);
   }
@@ -135,9 +134,10 @@ export const createLead = async (
     });
 
     return response.data;
-  } catch (error: any) {
-    console.error("[DEBUG] API Error:", error.response?.data);
-    throw error;
+  } catch (error: unknown) {
+    const err = error as AxiosError<ApiErrorResponse>;
+    console.error("Failed to create lead:", err.response?.data?.error);
+    throw err;
   }
 };
 
@@ -233,7 +233,7 @@ export const assignLeadToAnotherSalesExecutive = async (
   return response.data;
 };
 
-export const uploadInitialSiteMeasurement = async (payload: any) => {
+export const uploadInitialSiteMeasurement = async (payload: FormData) => {
   const response = await apiClient.post(
     "/leads/initial-site-measurement/payment-upload",
     payload,
@@ -370,8 +370,10 @@ export const useDeleteDocument = (leadId?: number) => {
         });
       }
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Failed to delete document");
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toast.error(
+        error?.response?.data?.message || "Failed to delete document"
+      );
     },
   });
 };

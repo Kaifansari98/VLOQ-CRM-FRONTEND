@@ -40,10 +40,20 @@ export const useSiteReadinessLeads = (
    🔹 1️⃣ CREATE Site Readiness Entries
    @route POST /leads/installation/site-readiness/vendorId/:vendorId/leadId/:leadId/create
    ========================================================== */
+
+export interface SiteReadinessCreateItem {
+  account_id: number;
+  type: string;
+  remark: string | null;
+  value: boolean | null;
+  created_by: number;
+  updated_by: number;
+}
+
 export const createSiteReadiness = async (
   vendorId: number,
   leadId: number,
-  payload: any
+  payload: SiteReadinessCreateItem[]
 ) => {
   const { data } = await apiClient.post(
     `/leads/installation/site-readiness/vendorId/${vendorId}/leadId/${leadId}/create`,
@@ -64,7 +74,7 @@ export const useCreateSiteReadiness = () => {
     }: {
       vendorId: number;
       leadId: number;
-      payload: any;
+      payload: SiteReadinessCreateItem[];
     }) => createSiteReadiness(vendorId, leadId, payload),
   });
 };
@@ -103,10 +113,20 @@ export const useSiteReadinessRecords = (
      🔹 3️⃣ UPDATE Site Readiness Entries
      @route PUT /leads/installation/site-readiness/vendorId/:vendorId/leadId/:leadId/update
      ========================================================== */
+
+export interface SiteReadinessUpdateItem {
+  id: number;
+  account_id: number;
+  type: string;
+  remark: string | null;
+  value: boolean | null;
+  updated_by: number;
+}
+
 export const updateSiteReadiness = async (
   vendorId: number,
   leadId: number,
-  payload: any
+  payload: SiteReadinessUpdateItem[]
 ) => {
   const { data } = await apiClient.put(
     `/leads/installation/site-readiness/vendorId/${vendorId}/leadId/${leadId}/update`,
@@ -127,7 +147,7 @@ export const useUpdateSiteReadiness = () => {
     }: {
       vendorId: number;
       leadId: number;
-      payload: any;
+      payload: SiteReadinessUpdateItem[];
     }) => updateSiteReadiness(vendorId, leadId, payload),
   });
 };

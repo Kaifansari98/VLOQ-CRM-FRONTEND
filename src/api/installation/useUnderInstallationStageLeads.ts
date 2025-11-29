@@ -2,6 +2,13 @@ import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import { AxiosError } from "axios";
+
+export interface ApiErrorResponse<T = unknown> {
+  message?: string;
+  error?: string;
+  data?: T;
+}
 
 export interface MiscellaneousDocument {
   document_id: number;
@@ -178,7 +185,7 @@ export const useMoveLeadToUnderInstallation = () => {
       });
     },
 
-    onError: (error: any) => {
+    onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(
         error?.response?.data?.message ||
           "Failed to move lead to Under Installation stage"
@@ -301,8 +308,8 @@ export const useSetActualInstallationStartDate = () => {
       });
     },
 
-    onError: (err: any) => {
-      toast.error(err?.message || "Failed to update installation start date");
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toast.error(error?.message || "Failed to update installation start date");
     },
   });
 };
@@ -628,7 +635,7 @@ export const useCreateMiscellaneousEntry = () => {
       });
     },
 
-    onError: (error: any) => {
+    onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(
         error?.response?.data?.error || "Failed to create miscellaneous entry"
       );
@@ -743,8 +750,8 @@ export const useUpdateMiscERD = () => {
       client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
     },
 
-    onError: (err: any) => {
-      toast.error(err?.message || "Failed to update date");
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toast.error(error?.message || "Failed to update date");
     },
   });
 };
@@ -885,7 +892,7 @@ export const useCreateInstallationIssueLog = () => {
       });
     },
 
-    onError: (error: any) => {
+    onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(
         error?.response?.data?.message || "Failed to create issue log"
       );
@@ -922,7 +929,7 @@ export const useUpdateInstallationIssueLog = () => {
       });
     },
 
-    onError: (error: any) => {
+    onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(
         error?.response?.data?.message || "Failed to update issue log"
       );
@@ -990,10 +997,8 @@ export const getUsableHandover = async (
  * 🔄 POST - Update Usable Handover (Upload Files)
  * @route POST /leads/installation/under-installation/usable-handover/update
  */
-export const updateUsableHandover = async (
-  formData: FormData
-): Promise<any> => {
-  const { data } = await apiClient.post(
+export const updateUsableHandover = async (formData: FormData) => {
+  const { data } = await apiClient.post<ApiErrorResponse<UsableHandoverData>>(
     `/leads/installation/under-installation/usable-handover/update`,
     formData,
     {
@@ -1002,16 +1007,15 @@ export const updateUsableHandover = async (
       },
     }
   );
-  return data?.data;
+
+  return data.data;
 };
 
 /**
  * 🔄 PUT - Update Remarks Only
  * @route PUT /leads/installation/under-installation/update-remarks
  */
-export const updateRemarks = async (
-  payload: UpdateRemarksPayload
-): Promise<any> => {
+export const updateRemarks = async (payload: UpdateRemarksPayload) => {
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/update-remarks`,
     payload
@@ -1057,7 +1061,7 @@ export const useUpdateUsableHandover = () => {
       });
     },
 
-    onError: (error: any) => {
+    onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(error?.response?.data?.message || "Failed to upload files");
     },
   });
@@ -1081,7 +1085,7 @@ export const useUpdateRemarks = () => {
       });
     },
 
-    onError: (error: any) => {
+    onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(error?.response?.data?.message || "Failed to update remarks");
     },
   });
@@ -1102,7 +1106,6 @@ export async function moveToFinalHandoverApi(
 }
 
 export function useMoveToFinalHandover() {
- 
   const router = useRouter();
 
   return useMutation({
@@ -1121,8 +1124,8 @@ export function useMoveToFinalHandover() {
       router.push("/dashboard/installation/under-installation");
     },
 
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.error || "Failed to move lead");
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toast.error(error?.response?.data?.error || "Failed to move lead");
     },
   });
 }
@@ -1210,7 +1213,7 @@ export const useResolveMiscellaneousEntry = () => {
       });
     },
 
-    onError: (error: any) => {
+    onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(
         error?.response?.data?.error || "Failed to resolve miscellaneous entry"
       );
