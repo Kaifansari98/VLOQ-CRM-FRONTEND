@@ -51,6 +51,12 @@ const data = {
   ],
   navMain: [
     {
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: Command, // or any icon you want
+      isActive: false,
+    },
+    {
       title: "My Task",
       url: "/dashboard/my-tasks",
       icon: CalendarCheck2,
