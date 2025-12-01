@@ -19,7 +19,12 @@ import {
 import { Suspense } from "react";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
-import SiteMeasurementTable from "@/app/_components/site-measurement-table";
+
+import { UniversalTable } from "@/components/custom/UniversalTable";
+
+// Navigation logic for row
+const navigateSiteMeasurement = (row: any) =>
+  `/dashboard/leads/initial-site-measurement/details/${row.id}?accountId=${row.accountId}`;
 
 export default function InitialSiteMeasurement() {
   return (
@@ -28,14 +33,11 @@ export default function InitialSiteMeasurement() {
 
       <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
         {/* ---------------- HEADER ---------------- */}
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
 
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
+            <Separator orientation="vertical" className="h-4" />
 
             <Breadcrumb>
               <BreadcrumbList>
@@ -58,11 +60,17 @@ export default function InitialSiteMeasurement() {
         </header>
 
         {/* ---------------- MAIN CONTENT ---------------- */}
-        <main className="flex-1  overflow-x-hidden">
+        <main className="flex-1 overflow-x-hidden">
           <Suspense
             fallback={<DataTableSkeleton columnCount={10} rowCount={8} />}
           >
-            <SiteMeasurementTable />
+            <UniversalTable
+              title="Initial Site Measurement"
+              description="Centralized record of all initial site-measurement entries for quick review and action."
+              type="Type 2"
+              enableAdminTabs={true}
+              onRowNavigate={navigateSiteMeasurement}
+            />
           </Suspense>
         </main>
       </SidebarInset>

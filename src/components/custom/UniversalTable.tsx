@@ -25,77 +25,67 @@ import { DataTableFilterList } from "@/components/data-table/data-table-filter-l
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 
-/**
- * NOTE:
- * - This UniversalTable assumes server-side (backend) pagination.
- * - fetchMyFn and fetchOverallFn are expected to be data hooks or functions
- *   that accept (vendorId, userId, page, pageSize) and return an object
- *   with { data, isLoading, count, ... } similar to your designing-stage hooks.
- */
+import { useUniversalStageLeads } from "@/api/universalstage";
+import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
+import { getUniversalTableColumns } from "../utils/column/Universal-column";
+import { LeadColumn } from "../utils/column/column-type";
 
-export interface UniversalTableProps<T> {
-  // API Logic (server-side pagination)
-  fetchMyFn: (
-    vendorId: number,
-    userId: number,
-    page: number,
-    pageSize: number
-  ) => any;
-  fetchOverallFn?: (
-    vendorId: number,
-    type: string,
-    userId: number,
-    page: number,
-    pageSize: number
-  ) => any;
+//
+// -------------------------------------------------------
+// 🔵 UNIVERSAL ROW TYPE
+// -------------------------------------------------------
+//
 
-  type?: string;
-  enableAdminTabs?: boolean; // show My vs Overall
-
-  // Data Transformation
-  rowMapper: (item: any, index: number) => T;
-  getRowId?: (row: T) => string;
-
-  // Column Builder
-  getColumns: () => any[];
-
-  // Routing
-  onRowNavigate: (row: T) => string;
-
-  // Header
+//
+// -------------------------------------------------------
+// 🟣 UNIVERSAL TABLE PROPS
+// -------------------------------------------------------
+//
+export interface UniversalTableProps {
+  getRowId?: (row: LeadColumn) => string;
+  onRowNavigate: (row: LeadColumn) => string;
+  type: string; // "Type 2" or any stage type
   title?: string;
   description?: string;
+  enableAdminTabs?: boolean;
 }
 
-export function UniversalTable<T>({
-  fetchMyFn,
-  fetchOverallFn,
-  enableAdminTabs = false,
-  rowMapper,
-  getColumns,
+//
+// -------------------------------------------------------
+// 🟩 UNIVERSAL TABLE COMPONENT
+// -------------------------------------------------------
+//
+export function UniversalTable({
   getRowId,
   onRowNavigate,
-  type,
   title,
   description,
-}: UniversalTableProps<T>) {
+  enableAdminTabs = true,
+  type,
+}: UniversalTableProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
-
   const router = useRouter();
+
   const isAdmin = userType === "admin" || userType === "super_admin";
 
-  // view tabs
+  //
+  // 🔵 Tabs (My / Overall)
+  //
   const [viewType, setViewType] = useState<"my" | "overall">("my");
 
-  // pagination: server-side (pageIndex is 0-based in UI, backend expects 1-based)
+  //
+  // 🔵 Pagination State
+  //
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   });
 
-  // table states
+  //
+  // 🔵 Table Controls
+  //
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: true },
@@ -113,59 +103,114 @@ export function UniversalTable<T>({
     designerRemark: false,
   });
 
-  // ----------------- API CALLS (server-side) -----------------
-  // Pass backend page (1-based) and pageSize from pagination state
-  const { data: leadsData, isLoading: isMyLoading } = fetchMyFn(
+  //
+  // -------------------------------------------------------
+  // 🔵 API CALLS — Stage data dynamically depends on `type`
+  // -------------------------------------------------------
+  //
+  const { data: myData, isLoading: isMyLoading } = useUniversalStageLeads(
     vendorId!,
     userId!,
+    type,
     pagination.pageIndex + 1,
     pagination.pageSize
   );
 
-  const { data: overallData, isLoading: isOverallLoading } = fetchOverallFn
-    ? fetchOverallFn(
-        vendorId!,
-        type ?? "",
-        userId!,
-        pagination.pageIndex + 1,
-        pagination.pageSize
-      )
-    : { data: [], isLoading: false };
+  const { data: overallData, isLoading: isOverallLoading } =
+    useVendorOverallLeads(
+      vendorId!,
+      userId!,
+      type,
+      pagination.pageIndex + 1,
+      pagination.pageSize
+    );
 
-  // Choose active dataset based on viewType
+  //
+  // 🔵 Active Dataset
+  //
   const activeData =
-    viewType === "overall" ? overallData?.data || [] : leadsData?.data || [];
+    viewType === "overall" ? overallData?.data ?? [] : myData?.data ?? [];
 
-  // pageCount should come from backend pagination metadata (totalPages)
-  const pageCountData =
-    enableAdminTabs && viewType === "overall"
-      ? overallData?.pagination?.totalPages ?? -1
-      : leadsData?.pagination?.totalPages ?? -1;
+  //
+  // 🔵 Pagination Meta
+  //
+  const totalPages =
+    viewType === "overall"
+      ? overallData?.pagination?.totalPages ?? 1
+      : myData?.pagination?.totalPages ?? 1;
 
-  console.log("Total pages from backend: ", pageCountData);
+  const isLoading = viewType === "overall" ? isOverallLoading : isMyLoading;
 
-  const isLoading =
-    enableAdminTabs && viewType === "overall" ? isOverallLoading : isMyLoading;
-
-  const myCount = leadsData?.count ?? 0;
+  const myCount = myData?.count ?? 0;
   const overallCount = overallData?.count ?? 0;
 
-  // --------- row mapper ----------
-  const tableData = useMemo<T[]>(() => {
+  //
+  // -------------------------------------------------------
+  // 🔵 ROW MAPPER — converts Lead → UniversalRow
+  // -------------------------------------------------------
+  //
+  const mapUniversalRow = (lead: any, index: number): LeadColumn => ({
+    id: lead.id,
+    srNo: index + 1,
+
+    lead_code: lead.lead_code ?? "",
+    name: `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim(),
+    email: lead.email ?? "",
+    contact: `${lead.country_code ?? ""} ${lead.contact_no ?? ""}`.trim(),
+
+    siteAddress: lead.site_address ?? "",
+    site_map_link: lead.site_map_link ?? "",
+
+    architechName: lead.archetech_name ?? "",
+    designerRemark: lead.designer_remark ?? "",
+
+    productTypes:
+      lead.productMappings?.map((p: any) => p.productType?.type).join(", ") ??
+      "",
+    productStructures:
+      lead.leadProductStructureMapping
+        ?.map((p: any) => p.productStructure?.type)
+        .join(", ") ?? "",
+
+    source: lead.source?.type ?? "",
+    siteType: lead.siteType?.type ?? "",
+
+    createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",
+    updatedAt: lead.updated_at ?? "",
+
+    altContact: lead.alt_contact_no ?? "",
+    status: lead.statusType?.type ?? "",
+
+    assign_to: lead.assignedTo?.user_name ?? "",
+    accountId: lead.account?.id ?? lead.account_id ?? 0,
+  });
+
+  //
+  // -------------------------------------------------------
+  // 🔵 TABLE DATA
+  // -------------------------------------------------------
+  //
+  const tableData = useMemo<LeadColumn[]>(() => {
     if (!Array.isArray(activeData)) return [];
-    return activeData.map(rowMapper);
-  }, [activeData, rowMapper]);
+    return activeData.map((item, idx) => mapUniversalRow(item, idx));
+  }, [activeData]);
 
-  const columns = useMemo(() => getColumns(), [getColumns]);
+  //
+  // 🔵 COLUMN BUILDER
+  //
+  const columns = useMemo(() => getUniversalTableColumns(), []);
 
-  // ----------------- useReactTable (server-side pagination enabled) -----------------
-  const table = useReactTable({
+  //
+  // -------------------------------------------------------
+  // 🔵 TANSTACK TABLE SETUP
+  // -------------------------------------------------------
+  //
+  const table = useReactTable<LeadColumn>({
     data: tableData,
     columns,
 
-    // server-side pagination config
     manualPagination: true,
-    pageCount: pageCountData ?? -1,
+    pageCount: totalPages,
 
     state: {
       pagination,
@@ -176,7 +221,6 @@ export function UniversalTable<T>({
       rowSelection,
     },
 
-    // handlers
     onPaginationChange: setPagination,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -184,49 +228,56 @@ export function UniversalTable<T>({
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
 
-    // row models
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
 
-    // misc
-    getRowId: getRowId ?? ((row: any) => row.id?.toString()),
+    getRowId: getRowId ?? ((row) => row.id.toString()),
     globalFilterFn: "includesString",
   });
 
-  if (isLoading) return <DataTableSkeleton rowCount={8} columnCount={10} />;
+  //
+  // 🔵 Loading State
+  //
+  // if (isLoading) {
+  //  return  <DataTableSkeleton rowCount={8} columnCount={10} />;
+  // }
 
-  // ---------- Row Navigation ----------
-  const handleRowClick = (row: T) => {
-    const route = onRowNavigate(row);
-    router.push(route);
+  //
+  // 🔵 Row Navigation
+  //
+  const handleRowClick = (row: LeadColumn) => {
+    router.push(onRowNavigate(row));
   };
 
+  //
+  // -------------------------------------------------------
+  // 🔵 UI
+  // -------------------------------------------------------
+  //
   return (
-    <div className="px-4 py-3 ">
-      {/* ------ Header: Title + Tabs ------ */}
-      <div className="flex justify-between items-end px-2">
+    <div className="py-2">
+      {/* HEADER */}
+      <div className="flex justify-between items-end px-4">
         <div className="hidden md:block">
           <h1 className="text-lg font-semibold">{title}</h1>
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
 
+        {/* MY / OVERALL TABS */}
         {enableAdminTabs && !isAdmin && (
-          <div className="flex items-center gap-2 mb-2 flex-wrap w-full md:w-auto justify-center md:justify-end">
+          <div className="flex items-center gap-2 mb-2">
             <Button
               size="sm"
               variant={viewType === "my" ? "default" : "secondary"}
               onClick={() => {
                 setViewType("my");
-                setPagination((p) => ({ ...p, pageIndex: 0 })); // reset to first page
+                setPagination({ ...pagination, pageIndex: 0 });
               }}
-              className="flex items-center gap-2"
             >
               My Leads
-              <Badge variant={viewType === "my" ? "secondary" : "default"}>
-                {myCount}
-              </Badge>
+              <Badge>{myCount}</Badge>
             </Button>
 
             <Button
@@ -234,36 +285,32 @@ export function UniversalTable<T>({
               variant={viewType === "overall" ? "default" : "secondary"}
               onClick={() => {
                 setViewType("overall");
-                setPagination((p) => ({ ...p, pageIndex: 0 })); // reset to first page
+                setPagination({ ...pagination, pageIndex: 0 });
               }}
-              className="flex items-center gap-2"
             >
               Overall Leads
-              <Badge variant={viewType === "overall" ? "secondary" : "default"}>
-                {overallCount}
-              </Badge>
+              <Badge>{overallCount}</Badge>
             </Button>
           </div>
         )}
       </div>
 
-      {/* ------ Toolbar + Filters ------ */}
+      {/* TABLE */}
       <DataTable
         table={table}
         onRowDoubleClick={handleRowClick}
-        className="px-2 py-3"
+        className=" pt-3 px-4"
       >
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 ">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <div className="flex flex-col md:flex-row justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-start gap-3">
             <ClearInput
               value={globalFilter ?? ""}
               onChange={(e) => {
                 setGlobalFilter(e.target.value);
-                // when filter changes, reset to first page
-                setPagination((p) => ({ ...p, pageIndex: 0 }));
+                setPagination({ ...pagination, pageIndex: 0 });
               }}
               placeholder="Search…"
-              className="w-full h-8 sm:w-64"
+              className="w-full sm:w-64"
             />
 
             <DataTableDateFilter

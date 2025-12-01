@@ -29,9 +29,18 @@ interface UseLeadLogsOptions {
   limit?: number;
 }
 
+export interface pagination {
+  currentPage: number;
+  totalPages: number;
+  totalRecoards: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
 export interface VendorOverallLeadsResponse {
   count: number;
   data: Lead[];
+  pagination: pagination;
 }
 
 export interface VendorUserLeadsOpenResponse {
@@ -88,12 +97,12 @@ export const getVendorOverallLeads = async (
   tag: string,
   userId: number,
   page: number,
-  pageSize: number
+  limit: number
 ): Promise<VendorOverallLeadsResponse> => {
   const response = await apiClient.get(
     `/leads/bookingStage/vendorId/${vendorId}/all-leads`,
     {
-      params: { userId ,tag, page, pageSize },
+      params: { userId, tag, page, limit },
     }
   );
   return response.data; // keep full shape: { count, data }
@@ -101,16 +110,17 @@ export const getVendorOverallLeads = async (
 
 export const useVendorOverallLeads = (
   vendorId: number,
-  tag: string,
   userId: number,
+  tag: string,
   page?: number,
   pageSize?: number
 ) => {
   return useQuery({
     queryKey: ["vendorOverallLeads", vendorId, tag, page, pageSize],
-    queryFn: () => getVendorOverallLeads(vendorId, tag, userId, page!, pageSize!),
+    queryFn: () =>
+      getVendorOverallLeads(vendorId, tag, userId, page!, pageSize!),
     enabled: !!vendorId && !!tag,
-    placeholderData: (prev) => prev,
+    refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,
   });
 };

@@ -15,29 +15,41 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+
 import { Suspense } from "react";
-import TechCheckStageSkeleton from "@/components/production/tech-check-stage/tech-check-skeleton";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
+
+import { UniversalTable } from "@/components/custom/UniversalTable";
+
+// 🔵 Navigation for Tech-Check rows
+const navigateTechCheck = (row: any) =>
+  `/dashboard/production/tech-check/details/${row.id}?accountId=${row.accountId}`;
 
 export default function TechCheckStagePage() {
   return (
     <SidebarProvider>
       <AppSidebar />
+
       <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
-        {/* Header */}
+        {/* ---------------- HEADER ---------------- */}
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
+
             <Separator
               orientation="vertical"
               className="mr-2 data-[orientation=vertical]:h-4"
             />
+
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
+                  <BreadcrumbLink href="/dashboard">Production</BreadcrumbLink>
                 </BreadcrumbItem>
+
                 <BreadcrumbSeparator className="hidden md:block" />
+
                 <BreadcrumbItem>
                   <BreadcrumbPage>Tech-Check Stage</BreadcrumbPage>
                 </BreadcrumbItem>
@@ -45,15 +57,23 @@ export default function TechCheckStagePage() {
             </Breadcrumb>
           </div>
 
-          <div className="flex items-center gap-2">
-          <AnimatedThemeToggler />
+          <div className="flex items-center gap-2 pr-2">
+            <AnimatedThemeToggler />
           </div>
         </header>
 
-        {/* Content */}
-        <main className="flex-1 p-4 pt-0 overflow-x-hidden">
-          <Suspense fallback={<p>Loading Tech-Check Leads…</p>}>
-            <TechCheckStageSkeleton />
+        {/* ---------------- MAIN CONTENT ---------------- */}
+        <main className="flex-1 overflow-x-hidden">
+          <Suspense
+            fallback={<DataTableSkeleton columnCount={10} rowCount={8} />}
+          >
+            <UniversalTable
+              title="Tech-Check Stage"
+              description="Monitor and validate all technical review tasks before transitioning to order login, ensuring accuracy and production-readiness."
+              type="Type 8"
+              enableAdminTabs={true}
+              onRowNavigate={navigateTechCheck}
+            />
           </Suspense>
         </main>
       </SidebarInset>

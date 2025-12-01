@@ -25,8 +25,6 @@ export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
       ),
       meta: {
         label: "Lead Code",
-        variant: "text",
-        placeholder: "Search Lead Code...",
       },
       enableSorting: true,
       enableHiding: true,
@@ -54,6 +52,10 @@ export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
             truncateValue={name.slice(0, maxLength) + "..."}
           />
         );
+      },
+
+        meta: {
+        label: "Name",
       },
     },
 
