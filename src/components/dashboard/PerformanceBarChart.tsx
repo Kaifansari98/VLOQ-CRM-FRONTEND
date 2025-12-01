@@ -12,8 +12,8 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   CartesianGrid,
   Tooltip,
@@ -41,21 +41,13 @@ export default function PerformanceLineChart({
 }: PerformanceBarChartProps) {
   const [mode, setMode] = useState<ChartMode>("year");
 
-  // Dummy fallback values
-  // const weekly = data?.bookedThisWeek || [45, 52, 38, 65, 48, 55, 42];
   const weekly = [45, 52, 38, 65, 48, 55, 42];
-  // const monthly = data?.bookedThisMonth || [180, 220, 195, 240];
   const monthly = [80, 220, 145, 240];
-  // const yearly = data?.bookedThisYear || [
-  //   850, 920, 880, 1050, 980, 1100, 1020, 1150, 1080, 1200, 1140, 1280,
-  // ];
   const yearly = [
     850, 190, 880, 350, 450, 750, 920, 1150, 1480, 1200, 1140, 1280,
   ];
 
   const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
-
-  console.log(data?.bookedThisWeek);
 
   const totalsByMode = {
     week: data?.bookedThisWeekTotal ?? sum(weekly),
@@ -101,11 +93,10 @@ export default function PerformanceLineChart({
   }, [mode, weekly, monthly, yearly]);
 
   const totalBookings = selectedTotal;
-
   const avgBookings = Math.round(totalBookings / chartData.length);
 
   return (
-    <Card className="w-full h-full border flex flex-col justify-between">
+    <Card className="w-full h-full border flex flex-col justify-between bg-[#fff] dark:bg-[#0a0a0a]">
       <CardHeader className="flex flex-row justify-between items-start pb-2 space-y-0">
         <div className="space-y-0">
           <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
@@ -165,7 +156,6 @@ export default function PerformanceLineChart({
         </DropdownMenu>
       </CardHeader>
 
-      {/* Line Chart */}
       <CardContent>
         {isLoading ? (
           <div className="h-[250px] flex items-center justify-center">
@@ -180,21 +170,27 @@ export default function PerformanceLineChart({
             className="h-[200px]"
           >
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart
+              <AreaChart
                 data={chartData}
-                margin={{ left: 30, right: 10, top: 5, bottom: 0 }}
+                margin={{ left: 15, right: 5, top: 5, bottom: 0 }}
               >
                 <defs>
-                  <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient
+                    id="darkGrayGradient"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
                     <stop
-                      offset="0%"
-                      stopColor="hsl(var(--primary))"
-                      stopOpacity={0.25}
+                      offset="5%"
+                      stopColor="hsl(240, 6%, 25%)"
+                      stopOpacity={0.4}
                     />
                     <stop
                       offset="95%"
-                      stopColor="hsl(var(--primary))"
-                      stopOpacity={0}
+                      stopColor="hsl(240, 6%, 25%)"
+                      stopOpacity={0.05}
                     />
                   </linearGradient>
                 </defs>
@@ -223,15 +219,16 @@ export default function PerformanceLineChart({
                   cursor={{ stroke: "hsl(240, 6%, 10%)", strokeWidth: 1 }}
                 />
 
-                <Line
+                <Area
                   type="monotone"
                   dataKey="bookings"
                   stroke="hsl(240, 6%, 10%)"
-                  strokeWidth={3}
+                  strokeWidth={2}
+                  fill="url(#darkGrayGradient)"
                   dot={{ r: 3, fill: "hsl(240, 6%, 10%)" }}
                   activeDot={{ r: 5 }}
                 />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </motion.div>
         )}

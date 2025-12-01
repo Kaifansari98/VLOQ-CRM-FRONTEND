@@ -130,6 +130,7 @@ export default function SalesExecutiveDashboard() {
             isLoading={isLoading}
           />
         </div>
+        
         <div className="w-[60%] h-full">
           <LeadStatusComparisonCard
             overall={overallLeadCounts}

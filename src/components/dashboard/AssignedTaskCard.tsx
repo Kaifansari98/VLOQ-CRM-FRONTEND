@@ -24,7 +24,7 @@ export function AssignedTaskCard() {
   }
 
   return (
-    <div className="w-full h-fit md:w-full border bg-background py-4 rounded-2xl">
+    <div className="w-full h-fit md:w-full border py-4 rounded-2xl">
       {/* Header */}
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
