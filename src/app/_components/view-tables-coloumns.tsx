@@ -25,7 +25,7 @@ export type ProcessedLead = {
   productStructures: string;
   source: string;
   siteType: string;
-  createdAt: string;
+  createdAt: string | number;
   updatedAt: string;
   altContact?: string;
   status: string;
@@ -45,7 +45,6 @@ export function getViewOpenLeadsTableColumns({
   userType,
 }: GetVendorLeadsTableColumnsProps): ColumnDef<ProcessedLead>[] {
   return [
-
     {
       accessorKey: "lead_code",
       header: ({ column }) => (

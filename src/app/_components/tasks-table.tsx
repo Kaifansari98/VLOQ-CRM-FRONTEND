@@ -131,7 +131,7 @@ const MyTaskTable = () => {
 
     return vendorUserTasksQuery.data.map((task, index) => ({
       id: task.userLeadTask.id,
-      lead_code: task.userLeadTask.lead_code,
+      lead_code: task.leadMaster.lead_code,
       leadId: task.leadMaster.id,
       accountId: task.leadMaster.account_id,
       srNo: index + 1,
@@ -143,6 +143,7 @@ const MyTaskTable = () => {
       productStructures: task.leadMaster.product_structure.join(", "),
       taskType: task.userLeadTask.task_type,
       dueDate: task.userLeadTask.due_date,
+      site_map_link: task.leadMaster.site_map_link,
       assignedBy: task.userLeadTask.created_by,
       assignedByName: task.userLeadTask.created_by_name || "-",
       assignedAt: task.userLeadTask.created_at,
@@ -297,8 +298,6 @@ const MyTaskTable = () => {
     }),
     []
   );
-
-
 
   const followUpVariant: "Follow Up" | "Pending Materials" | "Pending Work" =
     rowAction?.variant === "Pending Materials"

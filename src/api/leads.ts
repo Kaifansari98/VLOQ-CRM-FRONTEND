@@ -52,7 +52,7 @@ export interface Lead {
   archetech_name: string;
   designer_remark: string;
   created_by: number;
-  created_at: string;
+  created_at: number;
   updated_by: number | null;
   updated_at: string;
   vendor_id: number;
