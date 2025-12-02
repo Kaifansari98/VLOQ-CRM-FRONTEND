@@ -38,7 +38,9 @@ export default function PendingLeadsPage() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard/leads/leadstable">Open Leads</BreadcrumbLink>
+                  <BreadcrumbLink href="/dashboard/leads/leadstable">
+                    Open Leads
+                  </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
@@ -52,10 +54,14 @@ export default function PendingLeadsPage() {
 
         {/* Table */}
         <main className="flex-1 p-6 overflow-x-hidden">
-        <FeatureFlagsProvider>
-          <Suspense fallback={<PendingLeadsSkeleton />}>
-            <PendingLeadsTable tab="onHold"/>
-          </Suspense>
+          <FeatureFlagsProvider>
+            <Suspense fallback={<PendingLeadsSkeleton />}>
+              <PendingLeadsTable
+                tab="onHold"
+                stageTitle="On Hold Leads"
+                stageDescription="Leads currently on hold."
+              />
+            </Suspense>
           </FeatureFlagsProvider>
         </main>
       </SidebarInset>
