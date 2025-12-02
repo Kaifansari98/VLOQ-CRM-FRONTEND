@@ -212,7 +212,7 @@ export default function LeadsGenerationPage() {
         </header>
 
         <main className="flex-1 overflow-x-hidden">
-          <div className="py-2">
+          <div className="">
             <div>
               {tab === "open" && <ViewOpenLeadTable />}
               {tab === "onHold" && (

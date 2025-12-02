@@ -485,7 +485,7 @@ export default function ClientApprovalLeadDetails() {
                     queryKey: ["leadById", leadIdNum],
                   });
                 },
-                onError: (err: any) =>
+                onError: (err) =>
                   toast.error(err?.message || "Failed to update status"),
               }
             );

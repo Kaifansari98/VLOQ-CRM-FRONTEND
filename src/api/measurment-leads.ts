@@ -50,7 +50,7 @@ export const CompletedUpdateTheTaskIsmAndFollowUp = async (
       payload
     );
     return data;
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating completed task:", error);
     throw error;
   }
@@ -74,7 +74,7 @@ export const CancelledUpdateTheTaskIsmAndFollowUp = async (
       payload
     );
     return data;
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating cancelled task:", error);
     throw error;
   }
@@ -99,7 +99,7 @@ export const RescheduleTaskFollowUp = async (
       payload
     );
     return data;
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating cancelled task:", error);
     throw error;
   }
