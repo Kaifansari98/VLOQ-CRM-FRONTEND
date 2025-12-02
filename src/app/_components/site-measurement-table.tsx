@@ -24,7 +24,6 @@ import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
 
 import { useFeatureFlags } from "./feature-flags-provider";
 import type { DataTableRowActionSiteMeasurement } from "@/types/data-table";
-import { getSiteMeasurementColumn } from "./site-measurment-columns";
 import {
   AlertDialog,
   AlertDialogAction,

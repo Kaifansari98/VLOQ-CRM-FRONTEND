@@ -117,7 +117,7 @@ export default function ProductionLeadDetails() {
     leadIdNum
   );
 
-  const { data: latestOrderLoginData, isLoading: latestOrderLoginLoading } =
+  const { data: latestOrderLoginData } =
     useLatestOrderLoginByLead(vendorId, Number(leadIdNum));
 
   const canMoveReadyToDispatchStage = canMoveToReadyToDispatch(userType);
