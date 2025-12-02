@@ -86,7 +86,7 @@ export default function PendingLeadDetails() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbLink>Pending Leads Details</BreadcrumbLink>
+                  <BreadcrumbPage>Details</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>

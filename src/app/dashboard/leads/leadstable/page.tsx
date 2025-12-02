@@ -16,7 +16,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-generation-form-modal";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppSelector } from "@/redux/store";
 import { canCreateLead } from "@/components/utils/privileges";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
@@ -31,6 +31,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import clsx from "clsx";
+import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 type LeadTab = "open" | "onHold" | "lostApproval" | "lost";
 
 interface TabItem {
@@ -41,24 +43,51 @@ interface TabItem {
 }
 
 export default function LeadsGenerationPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
 
   const [openCreateLead, setOpenCreateLead] = useState(false);
-  const [tab, setTab] = useState<LeadTab>("open");
-  const [openPopover, setOpenPopover] = useState(false);
 
-  // utils/privileges.ts
-
-  const isPrivilegedUser = (userType?: string) => {
-    return userType === "admin" || userType === "super-admin";
-  };
-
-  const { data: counts } = useActivityStatusCounts(vendorId);
+  // Utility
+  const isPrivilegedUser = (userType?: string) =>
+    userType === "admin" || userType === "super-admin";
 
   const privileged = isPrivilegedUser(userType);
+  // --- Read tab from URL initially ---
+  const initialTab = useMemo<LeadTab>(() => {
+    const urlParam = searchParams.get("tab") as LeadTab | null;
+    if (!privileged && (urlParam === "lost" || urlParam === "lostApproval")) {
+      return "open"; // restrict access
+    }
+    return urlParam || "open";
+  }, [searchParams, privileged]);
+
+  const [tab, setTab] = useState<LeadTab>(initialTab);
+
+  // Sync tab state with URL when privilege changes or URL changes
+  useEffect(() => {
+    if (
+      !privileged &&
+      (initialTab === "lostApproval" || initialTab === "lost")
+    ) {
+      handleTabChange("open");
+      return;
+    }
+    setTab(initialTab);
+  }, [initialTab, privileged]);
+
+  // Handle tab changes + update URL
+  const handleTabChange = (newTab: LeadTab) => {
+    setTab(newTab);
+    router.push(`?tab=${newTab}`, { scroll: false });
+  };
+  const [openPopover, setOpenPopover] = useState(false);
+
+  const { data: counts } = useActivityStatusCounts(vendorId);
 
   let tabItems: TabItem[] = [
     {
@@ -170,7 +199,7 @@ export default function LeadsGenerationPage() {
                       <button
                         key={item.value}
                         onClick={() => {
-                          setTab(item.value);
+                          handleTabChange(item.value);
                           setOpenPopover(false);
                         }}
                         className={clsx(
