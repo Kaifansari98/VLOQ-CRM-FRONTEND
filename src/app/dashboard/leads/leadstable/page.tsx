@@ -18,13 +18,12 @@ import {
 import ViewLeadsSkeleton from "@/components/sales-executive/Lead/view-leads-skeleton";
 import { Button } from "@/components/ui/button";
 import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-generation-form-modal";
-import { Suspense, useState } from "react";
+import {  useState } from "react";
 import { useAppSelector } from "@/redux/store";
 import { canCreateLead } from "@/components/utils/privileges";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function LeadsGenerationPage() {
-  
   const [openCreateLead, setOpenCreateLead] = useState(false);
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined
@@ -77,12 +76,9 @@ export default function LeadsGenerationPage() {
           </div>
         </header>
 
-        {/* Content */}
-        <main className="flex-1 p-4 pt-0 overflow-x-hidden">
-          <Suspense fallback={<p>Loading...</p>}>
-            <ViewLeadsSkeleton />
-          </Suspense>
-        </main>
+       
+
+        <ViewLeadsSkeleton />
       </SidebarInset>
     </SidebarProvider>
   );

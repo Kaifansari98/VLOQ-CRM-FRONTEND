@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 
@@ -84,7 +84,7 @@ import {
 } from "@/components/utils/privileges";
 
 export default function UnderInstallationLeadDetails() {
-  const router = useRouter();
+
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
   const queryClient = useQueryClient();

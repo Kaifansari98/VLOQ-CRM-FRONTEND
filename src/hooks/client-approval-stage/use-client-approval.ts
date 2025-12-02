@@ -8,7 +8,6 @@ import {
   uploadMoreClientApprovalDocs,
   UploadApprovalDocPayload,
 } from "@/api/client-approval";
-import { useVendorOverallLeads } from "../useLeadsQueries";
 
 // ✅ Get all leads
 export const useClientApprovalLeads = () => {
@@ -56,6 +55,3 @@ export const useUploadMoreClientApprovalDocs = () => {
   });
 };
 
-export const useVendorOverallClientApprovalLeads = (vendorId: number, userId: number) => {
-  return useVendorOverallLeads(vendorId, "Type 7", userId);
-};

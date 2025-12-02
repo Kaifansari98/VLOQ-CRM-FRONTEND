@@ -53,7 +53,8 @@ export interface DataTableRowAction<TData> {
     | "uploadfinalmeasurement"
     | "Follow Up"
     | "Pending Materials"
-    | "Pending Work";
+    | "Pending Work"
+    | "sitereadinessstage"
 }
 
 export interface DataTableRowActionOpen<TData> {

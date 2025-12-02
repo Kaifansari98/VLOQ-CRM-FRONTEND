@@ -13,7 +13,6 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { ModeToggle } from "@/components/ModeToggle";
 import { Card } from "@/components/ui/card";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 

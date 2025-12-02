@@ -45,7 +45,9 @@ import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useQueryClient } from "@tanstack/react-query";
-import { useFeatureFlags } from "@/app/_components/feature-flags-provider";
+import ClearInput from "@/components/origin-input";
+import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
+import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 
 export default function PendingLeadsTable({
   tab,
@@ -56,8 +58,6 @@ export default function PendingLeadsTable({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const router = useRouter();
-
-  const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
 
   const { data: onHoldData = [], isLoading: onHoldLoading } = useOnHoldLeads(
     vendorId!
@@ -262,14 +262,14 @@ export default function PendingLeadsTable({
     (tab === "lostApproval" && lostApprovalLoading) ||
     (tab === "lost" && lostLoading);
 
-  const mockProps = React.useMemo(
-    () => ({
-      shallow: true,
-      debounceMs: 300,
-      throttleMs: 50,
-    }),
-    []
-  );
+  // const mockProps = React.useMemo(
+  //   () => ({
+  //     shallow: true,
+  //     debounceMs: 300,
+  //     throttleMs: 50,
+  //   }),
+  //   []
+  // );
 
   if (isLoading) {
     return <p>Loading...</p>;
@@ -277,32 +277,32 @@ export default function PendingLeadsTable({
 
   return (
     <>
-      <DataTable table={table} onRowDoubleClick={handleRowDoubleClick}>
-        {enableAdvancedFilter ? (
-          <DataTableAdvancedToolbar table={table}>
-            <DataTableSortList table={table} align="start" />
-            {filterFlag === "advancedFilters" ? (
-              <DataTableFilterList
-                table={table}
-                shallow={mockProps.shallow}
-                debounceMs={mockProps.debounceMs}
-                throttleMs={mockProps.throttleMs}
-                align="start"
-              />
-            ) : (
-              <DataTableFilterMenu
-                table={table}
-                shallow={mockProps.shallow}
-                debounceMs={mockProps.debounceMs}
-                throttleMs={mockProps.throttleMs}
-              />
-            )}
-          </DataTableAdvancedToolbar>
-        ) : (
-          <DataTableToolbar table={table}>
+      <DataTable table={table} className=" pt-3 px-4">
+        <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+          <div className="flex flex-col sm:flex-row items-end gap-3">
+            <ClearInput
+              value={globalFilter ?? ""}
+              // onChange={(e) => {
+              //   setGlobalFilter(e.target.value);
+              //   setPagination({ ...pagination, pageIndex: 0 });
+              // }}
+              placeholder="Search…"
+              className="w-full h-8 sm:w-64"
+            />
+
+            <DataTableDateFilter
+              column={table.getColumn("createdAt")!}
+              title="Created At"
+              multiple
+            />
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
             <DataTableSortList table={table} />
-          </DataTableToolbar>
-        )}
+            <DataTableFilterList table={table} />
+            <DataTableViewOptions table={table} />
+          </div>
+        </div>
       </DataTable>
 
       {/* Confirmation Dialog */}

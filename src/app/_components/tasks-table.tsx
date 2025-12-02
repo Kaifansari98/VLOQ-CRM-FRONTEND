@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useAppSelector } from "@/redux/store";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import {
   useReactTable,
@@ -16,25 +15,24 @@ import {
 } from "@tanstack/react-table";
 
 import { DataTable } from "@/components/data-table/data-table";
-import { DataTableAdvancedToolbar } from "@/components/data-table/data-table-advanced-toolbar";
-import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
-import { DataTableFilterMenu } from "@/components/data-table/data-table-filter-menu";
 import { DataTableSortList } from "@/components/data-table/data-table-sort-list";
-import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 
 import InitialSiteMeasuresMent from "@/components/sales-executive/Lead/initial-site-measurement-form";
 
-import { useFeatureFlags } from "./feature-flags-provider";
 import type { DataTableRowAction } from "@/types/data-table";
 import {
   getVendorLeadsTableColumns,
   ProcessedTask,
 } from "./tasks-table-columns";
 import { useRouter } from "next/navigation";
-import Loader from "@/components/utils/loader";
 import { useVendorUserTasks } from "@/hooks/useTasksQueries";
 import FinalMeasurementModal from "@/components/sales-executive/booking-stage/final-measurement-modal";
 import FollowUpModal from "@/components/follow-up-modal";
+import ClearInput from "@/components/origin-input";
+import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
+import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
+import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
+import CustomTabs from "@/components/custom/customeTab";
 
 const MyTaskTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -54,7 +52,6 @@ const MyTaskTable = () => {
     shouldFetch
   );
 
-  const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const [openFollowUp, setOpenFollowUp] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
@@ -113,6 +110,14 @@ const MyTaskTable = () => {
           variant: "Pending Work",
         });
         setOpenFollowUp(true);
+      } else if (row.taskType === "Site Readiness") {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "sitereadinessstage",
+        });
+        router.push(
+          `/dashboard/installation/site-readiness/details/${row.leadId}?accountId=${row.accountId}`
+        );
       } else {
         console.log("follow up is under development");
       }
@@ -144,6 +149,8 @@ const MyTaskTable = () => {
       remark: task.userLeadTask?.remark || "",
     }));
   }, [vendorUserTasksQuery.data]);
+
+  console.log("My Task data: ", vendorUserTasksQuery);
 
   // Calculate task counts - Memoized to prevent re-renders
   const taskCounts = useMemo(() => {
@@ -240,76 +247,47 @@ const MyTaskTable = () => {
     }
   }, [table, dueDateFilterFn]);
 
-  const DueDateTabs = useMemo(() => {
-    return ({
-      table,
-      taskCounts,
-    }: {
-      table: any;
-      taskCounts: { today: number; upcoming: number; overdue: number };
-    }) => {
-      const column = table.getColumn("dueDate");
-      const currentFilter = (column?.getFilterValue() as string) || "today";
+  const DueDateTabs = ({
+    table,
+    taskCounts,
+  }: {
+    table: any;
+    taskCounts: { today: number; upcoming: number; overdue: number };
+  }) => {
+    const column = table.getColumn("dueDate");
+    const currentFilter = (column?.getFilterValue() as string) || "today";
 
-      const handleTabChange = useCallback(
-        (value: string) => {
-          column?.setFilterValue(value);
-        },
-        [column]
-      );
-
-      return (
-        <div className="flex items-center justify-start h-full">
-          <Tabs
-            value={currentFilter}
-            onValueChange={handleTabChange}
-            className="w-fit h-full"
-          >
-            <TabsList className="grid grid-cols-3 p-1 rounded-lg w-fit h-full min-h-[40px]">
-              <TabsTrigger
-                value="today"
-                className="flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm h-full"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="text-xs">Today</span>
-                  <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-600 rounded-full min-w-[20px] text-center">
-                    {taskCounts.today}
-                  </span>
-                </div>
-              </TabsTrigger>
-
-              <TabsTrigger
-                value="upcoming"
-                className="flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-green-600 data-[state=active]:shadow-sm h-full"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-xs">Upcoming</span>
-                  <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-600 rounded-full min-w-[20px] text-center">
-                    {taskCounts.upcoming}
-                  </span>
-                </div>
-              </TabsTrigger>
-
-              <TabsTrigger
-                value="overdue"
-                className="flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-red-600 data-[state=active]:shadow-sm h-full"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  <span className="text-xs">Overdue</span>
-                  <span className="px-1.5 py-0.5 text-xs bg-red-100 text-red-600 rounded-full min-w-[20px] text-center">
-                    {taskCounts.overdue}
-                  </span>
-                </div>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-      );
+    const handleChange = (value: string) => {
+      column?.setFilterValue(value);
     };
-  }, []);
+
+    return (
+      <CustomTabs
+        value={currentFilter}
+        onChange={handleChange}
+        tabs={[
+          {
+            value: "today",
+            label: "Today",
+            count: taskCounts.today,
+            dotColor: "#3b82f6", // blue
+          },
+          {
+            value: "upcoming",
+            label: "Upcoming",
+            count: taskCounts.upcoming,
+            dotColor: "#22c55e", // green
+          },
+          {
+            value: "overdue",
+            label: "Overdue",
+            count: taskCounts.overdue,
+            dotColor: "#ef4444", // red
+          },
+        ]}
+      />
+    );
+  };
 
   const mockProps = useMemo(
     () => ({
@@ -320,9 +298,7 @@ const MyTaskTable = () => {
     []
   );
 
-  const isInitialLoading =
-    vendorUserTasksQuery.isLoading && !vendorUserTasksQuery.data;
-  const isFetching = vendorUserTasksQuery.isFetching;
+
 
   const followUpVariant: "Follow Up" | "Pending Materials" | "Pending Work" =
     rowAction?.variant === "Pending Materials"
@@ -332,59 +308,48 @@ const MyTaskTable = () => {
       : "Follow Up";
 
   return (
-    <div className="relative space-y-4">
-      <DataTable
-        table={table}
-        // onRowClick={handleRowClick}
-        onRowDoubleClick={handleRowDoubleClick}
-      >
-        {enableAdvancedFilter ? (
-          <DataTableAdvancedToolbar table={table}>
-            <DueDateTabs table={table} taskCounts={taskCounts} />
-            <DataTableSortList table={table} align="start" />
+    <>
+      <div className="py-2">
+        <div className="flex justify-between items-end px-4">
+          <div className="hidden md:block">
+            <h1 className="text-lg font-semibold">My Task </h1>
+            <p className="text-sm text-muted-foreground">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit. Quae,
+              numquam.
+            </p>
+          </div>
 
-            {filterFlag === "advancedFilters" ? (
-              <DataTableFilterList
-                table={table}
-                shallow={mockProps.shallow}
-                debounceMs={mockProps.debounceMs}
-                throttleMs={mockProps.throttleMs}
-                align="start"
+          <DueDateTabs table={table} taskCounts={taskCounts} />
+        </div>
+        <DataTable
+          table={table}
+          onRowDoubleClick={handleRowDoubleClick}
+          className=" pt-3 px-4"
+        >
+          <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+            <div className="flex flex-col sm:flex-row items-end gap-3">
+              <ClearInput
+                value={globalFilter ?? ""}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Search…"
+                className="w-full h-8 sm:w-64"
               />
-            ) : (
-              <DataTableFilterMenu
-                table={table}
-                shallow={mockProps.shallow}
-                debounceMs={mockProps.debounceMs}
-                throttleMs={mockProps.throttleMs}
+
+              <DataTableDateFilter
+                column={table.getColumn("assignedAt")!}
+                title="Assigned At"
+                multiple
               />
-            )}
-          </DataTableAdvancedToolbar>
-        ) : (
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="shrink-0">
-              <DueDateTabs table={table} taskCounts={taskCounts} />
             </div>
 
-            <DataTableToolbar
-              table={table}
-              className="flex items-center gap-6 md:justify-end w-full md:w-auto"
-            >
+            <div className="flex items-center gap-2 flex-wrap">
               <DataTableSortList table={table} />
-            </DataTableToolbar>
+              <DataTableFilterList table={table} />
+              <DataTableViewOptions table={table} />
+            </div>
           </div>
-        )}
-      </DataTable>
-
-      {/* Refetch overlay loader */}
-      {isFetching && !isInitialLoading && (
-        <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-40 rounded-md">
-          <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
-            <Loader size={24} />
-            <span className="text-sm text-gray-600">Refreshing tasks...</span>
-          </div>
-        </div>
-      )}
+        </DataTable>
+      </div>
 
       <InitialSiteMeasuresMent
         open={openMeasurement}
@@ -418,7 +383,7 @@ const MyTaskTable = () => {
           dueDate: rowAction?.row.original.dueDate,
         }}
       />
-    </div>
+    </>
   );
 };
 

@@ -37,7 +37,6 @@ import {
   BoxIcon,
   UsersRoundIcon,
   Clock,
-  ClipboardCheck,
 } from "lucide-react";
 
 import {
