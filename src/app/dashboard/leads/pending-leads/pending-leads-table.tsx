@@ -51,12 +51,12 @@ import { DataTableViewOptions } from "@/components/data-table/data-table-view-op
 
 export default function PendingLeadsTable({
   tab,
-  stageTitle,
-  stageDescription,
+  stageTitle = "Pending Leads",
+  stageDescription = "",
 }: {
   tab: "onHold" | "lostApproval" | "lost";
   stageTitle: string;
-  stageDescription: string;
+  stageDescription?: string;
 }) {
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
