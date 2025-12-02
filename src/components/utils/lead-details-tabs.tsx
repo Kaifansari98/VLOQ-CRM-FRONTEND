@@ -79,7 +79,7 @@ export default function LeadDetailsUtil({
         <ClientDocumentationDetails
           leadId={leadId ?? 0}
           accountId={accountId ?? 0}
-          name={leadInfo?.name}
+      
         />
       ),
     },
@@ -96,8 +96,7 @@ export default function LeadDetailsUtil({
       cardContent: (
         <TechCheckDetails
           leadId={leadId ?? 0}
-          accountId={accountId ?? 0}
-          name={leadInfo?.name}
+
         />
       ),
     },

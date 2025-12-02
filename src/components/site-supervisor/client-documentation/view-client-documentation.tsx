@@ -38,6 +38,7 @@ const getFileExtension = (filename: string): string =>
 export default function ClientDocumentationDetails({
   leadId,
   accountId,
+
 }: Props) {
   // 🧩 Redux data
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);

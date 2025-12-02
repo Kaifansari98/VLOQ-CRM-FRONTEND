@@ -1,4 +1,4 @@
-import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
+
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
@@ -33,12 +33,7 @@ export const useOrderLoginLeads = (
   });
 };
 
-export const useVendorOrderLoginOverallLeads = (
-  vendorId: number,
-  userId: number
-) => {
-  return useVendorOverallLeads(vendorId, "Type 9", userId);
-};
+
 
 // ✅ --- Fetch all company vendors by vendor_id ---
 export const getCompanyVendorsByVendorId = async (vendorId: number) => {

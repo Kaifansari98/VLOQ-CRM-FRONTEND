@@ -34,12 +34,6 @@ export const useTechCheckLeads = (
   });
 };
 
-export const useVendorTechCheckOverallLeads = (
-  vendorId: number,
-  userId: number
-) => {
-  return useVendorOverallLeads(vendorId, "Type 8", userId);
-};
 
 // ✅ --- Approve Tech Check ---
 export const approveTechCheck = async ({

@@ -18,8 +18,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
 import { apiClient } from "@/lib/apiClient";
 import { addAdditionalPayment, AddPaymentPayload } from "@/api/booking";
-import { useVendorOverallLeads } from "../useLeadsQueries";
-
 export const useMoveToBookingStage = () => {
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -117,6 +115,3 @@ export const useAddPayment = () => {
   });
 };
 
-export const useVendorBookingLeads = (vendorId: number, userId: number) => {
-  return useVendorOverallLeads(vendorId, "Type 4", userId);
-};

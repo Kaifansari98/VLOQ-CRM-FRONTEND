@@ -20,18 +20,15 @@ import {
 } from "@tanstack/react-table";
 
 import { DataTable } from "@/components/data-table/data-table";
-import { DataTableAdvancedToolbar } from "@/components/data-table/data-table-advanced-toolbar";
-import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
-import { DataTableFilterMenu } from "@/components/data-table/data-table-filter-menu";
-import { DataTableSortList } from "@/components/data-table/data-table-sort-list";
-import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
-
-import { useFeatureFlags } from "./feature-flags-provider";
 
 import { useRouter } from "next/navigation";
 import { getUniversalTableColumns } from "@/components/utils/column/Universal-column";
 import { LeadColumn } from "@/components/utils/column/column-type";
-
+import ClearInput from "@/components/origin-input";
+import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
+import { DataTableSortList } from "@/components/data-table/data-table-sort-list";
+import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
+import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 
 const ViewOpenLeadTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -40,13 +37,20 @@ const ViewOpenLeadTable = () => {
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
 
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
   const [viewType, setViewType] = useState<"my" | "overall">("my");
 
   const vendorUserLeadsQuery = useVendorUserLeadsOpen(vendorId!, userId!);
   const vendorOverallLeadsQuery = useVendorOverallLeads(
     vendorId!,
+    userId!,
     "Type 1",
-    userId!
+    pagination.pageIndex + 1,
+    pagination.pageSize
   );
 
   const isAdmin =
@@ -66,7 +70,6 @@ const ViewOpenLeadTable = () => {
       ? vendorUserLeadsQuery.isLoading
       : vendorOverallLeadsQuery.isLoading;
 
-  const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({
@@ -171,112 +174,34 @@ const ViewOpenLeadTable = () => {
     return <div className="p-4 text-gray-600">Loading {viewType} leads...</div>;
   }
 
-  const mockProps = { shallow: true, debounceMs: 300, throttleMs: 50 };
-
   return (
-    <>
-      <DataTable table={table} onRowDoubleClick={handleRowClick}>
-        {enableAdvancedFilter ? (
-          <DataTableAdvancedToolbar table={table}>
-            <DataTableSortList table={table} align="start" />
-            {filterFlag === "advancedFilters" ? (
-              <DataTableFilterList
-                table={table}
-                shallow={mockProps.shallow}
-                debounceMs={mockProps.debounceMs}
-                throttleMs={mockProps.throttleMs}
-                align="start"
-              />
-            ) : (
-              <DataTableFilterMenu
-                table={table}
-                shallow={mockProps.shallow}
-                debounceMs={mockProps.debounceMs}
-                throttleMs={mockProps.throttleMs}
-              />
-            )}
+    <DataTable table={table} onRowDoubleClick={handleRowClick} className=" pt-3 px-4">
+      <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+        <div className="flex flex-col sm:flex-row items-end gap-3">
+          <ClearInput
+            value={globalFilter ?? ""}
+            onChange={(e) => {
+              setGlobalFilter(e.target.value);
+              setPagination({ ...pagination, pageIndex: 0 });
+            }}
+            placeholder="Search…"
+            className="w-full h-8 sm:w-64"
+          />
 
-            {/* 🧭 My Leads / Overall Leads Tabs — before View */}
-            {!isAdmin && (
-              <div className="ml-auto flex items-center gap-1.5 flex-wrap">
-                <button
-                  onClick={() => setViewType("my")}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
-                    viewType === "my"
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "bg-muted text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  My Leads
-                  {vendorUserLeadsQuery.data && (
-                    <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
-                      {vendorUserLeadsQuery.data?.count}
-                    </span>
-                  )}
-                </button>
+          <DataTableDateFilter
+            column={table.getColumn("createdAt")!}
+            title="Created At"
+            multiple
+          />
+        </div>
 
-                <button
-                  onClick={() => setViewType("overall")}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
-                    viewType === "overall"
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "bg-muted text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  Overall Leads
-                  {vendorOverallLeadsQuery.data && (
-                    <span className="ml-2 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
-                      {vendorOverallLeadsQuery.data?.count}
-                    </span>
-                  )}
-                </button>
-              </div>
-            )}
-          </DataTableAdvancedToolbar>
-        ) : (
-          <DataTableToolbar table={table}>
-            {/* 🧭 My Leads / Overall Leads Tabs */}
-            {!isAdmin && (
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setViewType("my")}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
-                    viewType === "my"
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "bg-muted text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  My Leads
-                  {vendorUserLeadsQuery.data && (
-                    <span className="ml-3 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
-                      {vendorUserLeadsQuery.data?.count}
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => setViewType("overall")}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out ${
-                    viewType === "overall"
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "bg-muted text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  Overall Leads
-                  {vendorOverallLeadsQuery.data && (
-                    <span className="ml-3 py-0.5 px-1.5 rounded-full bg-blue-100 text-xs text-blue-500 opacity-100">
-                      {vendorOverallLeadsQuery.data?.count}
-                    </span>
-                  )}
-                </button>
-              </div>
-            )}
-
-            <DataTableSortList table={table} align="end" />
-          </DataTableToolbar>
-        )}
-      </DataTable>
-    </>
+        <div className="flex items-center gap-2 flex-wrap">
+          <DataTableSortList table={table} />
+          <DataTableFilterList table={table} />
+          <DataTableViewOptions table={table} />
+        </div>
+      </div>
+    </DataTable>
   );
 };
 

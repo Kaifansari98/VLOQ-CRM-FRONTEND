@@ -10,8 +10,8 @@ export default function PendingLeadsSkeleton() {
         <main className="flex-1 p-6 overflow-x-hidden">
           <DataTableSkeleton
             columnCount={8}
-            filterCount={2}
-            cellWidths={["10rem", "12rem", "12rem", "10rem", "8rem", "12rem"]}
+            // filterCount={2}
+            // cellWidths={["10rem", "12rem", "12rem", "10rem", "8rem", "12rem"]}
           />
         </main>
       </SidebarInset>

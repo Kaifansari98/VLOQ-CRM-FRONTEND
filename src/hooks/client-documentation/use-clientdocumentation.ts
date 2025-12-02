@@ -11,7 +11,6 @@ import {
   UploadMoreDocPayload,
 } from "@/api/client-documentation";
 import { toast } from "react-toastify";
-import { useVendorOverallLeads } from "../useLeadsQueries";
 
 export interface ClientDoc {
   id: number;
@@ -80,11 +79,4 @@ export const useUploadMoreClientDocumentation = () => {
       toast.error(message);
     },
   });
-};
-
-export const useVendorOverallClientDocumentationLeads = (
-  vendorId: number,
-  userId: number
-) => {
-  return useVendorOverallLeads(vendorId, "Type 6", userId);
 };

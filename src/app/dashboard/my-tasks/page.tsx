@@ -14,11 +14,9 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Suspense } from "react";
-import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
 import MyTaskTable from "@/app/_components/tasks-table";
-import { Shell } from "@/components/ui/shell";
-import { TableLoader } from "@/components/utils/table-skeleton";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 
 export default function MyTaskLeadPage() {
   return (
@@ -45,19 +43,13 @@ export default function MyTaskLeadPage() {
           <AnimatedThemeToggler />
         </header>
 
-        <Shell className="flex-1 overflow-y-auto px-2 sm:px-4 lg:px-6 gap-2">
-          <FeatureFlagsProvider>
-            <Suspense fallback={<TableLoader isLoading={true} />}>
-              <div className="w-full overflow-x-auto">
-                <div className="min-w-[800px]">
-                  <Suspense fallback={<TableLoader isLoading={true} />}>
-                    <MyTaskTable />
-                  </Suspense>
-                </div>
-              </div>
-            </Suspense>
-          </FeatureFlagsProvider>
-        </Shell>
+        <main className="flex-1 overflow-x-hidden">
+          <Suspense
+            fallback={<DataTableSkeleton columnCount={10} rowCount={8} />}
+          >
+            <MyTaskTable />
+          </Suspense>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

@@ -16,9 +16,7 @@ import {
 } from "@tanstack/react-table";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import ClearInput from "@/components/origin-input";
-import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSortList } from "@/components/data-table/data-table-sort-list";
 import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
@@ -270,6 +268,7 @@ export function UniversalTable({
           <div className="flex items-center gap-2 mb-2">
             <Button
               size="sm"
+              className="flex gap-2"
               variant={viewType === "my" ? "default" : "secondary"}
               onClick={() => {
                 setViewType("my");
@@ -277,11 +276,12 @@ export function UniversalTable({
               }}
             >
               My Leads
-              <Badge>{myCount}</Badge>
+              <p>{myCount}</p>
             </Button>
 
             <Button
               size="sm"
+              className="flex gap-2"
               variant={viewType === "overall" ? "default" : "secondary"}
               onClick={() => {
                 setViewType("overall");
@@ -289,7 +289,7 @@ export function UniversalTable({
               }}
             >
               Overall Leads
-              <Badge>{overallCount}</Badge>
+              <p>{overallCount}</p>
             </Button>
           </div>
         )}
@@ -301,8 +301,8 @@ export function UniversalTable({
         onRowDoubleClick={handleRowClick}
         className=" pt-3 px-4"
       >
-        <div className="flex flex-col md:flex-row justify-between gap-4">
-          <div className="flex flex-col sm:flex-row items-start gap-3">
+        <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+          <div className="flex flex-col sm:flex-row items-end gap-3">
             <ClearInput
               value={globalFilter ?? ""}
               onChange={(e) => {
@@ -310,7 +310,7 @@ export function UniversalTable({
                 setPagination({ ...pagination, pageIndex: 0 });
               }}
               placeholder="Search…"
-              className="w-full sm:w-64"
+              className="w-full h-8 sm:w-64"
             />
 
             <DataTableDateFilter

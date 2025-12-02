@@ -96,13 +96,21 @@ export function getVendorLeadsTableColumns({}: {
     //   size: 40,
     // },
     // Sr No
-    {
-      accessorKey: "srNo",
+  {
+      accessorKey: "lead_code",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Sr. No." />
+        <DataTableColumnHeader column={column} title="Lead Code" />
       ),
+      cell: ({ row }) => (
+        <div className=" font-medium">{row.getValue("lead_code")}</div>
+      ),
+      meta: {
+        label: "Lead Code",
+      },
       enableSorting: true,
+      enableHiding: true,
     },
+
 
     // Lead name
     {

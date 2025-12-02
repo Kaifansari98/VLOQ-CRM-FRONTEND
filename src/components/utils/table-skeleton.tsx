@@ -12,8 +12,8 @@ export const TableLoader = ({ isLoading, children }: TableLoaderProps) => {
     return (
       <DataTableSkeleton
         columnCount={10}
-        filterCount={2}
-        cellWidths={["10rem", "20rem", "10rem", "10rem", "8rem", "8rem"]}
+        // filterCount={2}
+        // cellWidths={["10rem", "20rem", "10rem", "10rem", "8rem", "8rem"]}
       />
     );
   }
