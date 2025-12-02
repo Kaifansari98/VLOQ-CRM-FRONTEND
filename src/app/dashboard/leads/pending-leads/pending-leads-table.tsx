@@ -51,8 +51,12 @@ import { DataTableViewOptions } from "@/components/data-table/data-table-view-op
 
 export default function PendingLeadsTable({
   tab,
+  stageTitle,
+  stageDescription,
 }: {
   tab: "onHold" | "lostApproval" | "lost";
+  stageTitle: string;
+  stageDescription: string;
 }) {
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
@@ -133,7 +137,8 @@ export default function PendingLeadsTable({
           .join(", ") || "",
       source: lead.source?.type || "",
       siteType: lead.siteType?.type || "",
-      createdAt: lead.created_at || "",
+      createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",
+
       updatedAt: lead.updated_at || "",
       altContact: lead.alt_contact_no || "",
       status: lead.statusType?.type || "",
@@ -222,17 +227,6 @@ export default function PendingLeadsTable({
     );
   };
 
-  const handleRowDoubleClick = React.useCallback(
-    (row: PendingLeadRow) => {
-      const leadId = row.id;
-      const accountId = row.accountId;
-      router.push(
-        `/dashboard/leads/pending-leads/details/${leadId}?accountId=${accountId}&tab=${tab}`
-      );
-    },
-    [router]
-  );
-
   // ✅ Create table with proper state management
   const table = useReactTable({
     data: tableData,
@@ -262,14 +256,14 @@ export default function PendingLeadsTable({
     (tab === "lostApproval" && lostApprovalLoading) ||
     (tab === "lost" && lostLoading);
 
-  // const mockProps = React.useMemo(
-  //   () => ({
-  //     shallow: true,
-  //     debounceMs: 300,
-  //     throttleMs: 50,
-  //   }),
-  //   []
-  // );
+  const mockProps = React.useMemo(
+    () => ({
+      shallow: true,
+      debounceMs: 300,
+      throttleMs: 50,
+    }),
+    []
+  );
 
   if (isLoading) {
     return <p>Loading...</p>;
@@ -277,7 +271,12 @@ export default function PendingLeadsTable({
 
   return (
     <>
-      <DataTable table={table} className=" pt-3 px-4">
+      <DataTable table={table} className=" px-4">
+        <div className="hidden md:block">
+          <h1 className="text-lg font-semibold">{stageTitle}</h1>
+          <p className="text-sm text-muted-foreground">{stageDescription}</p>
+        </div>
+
         <div className="flex flex-col md:flex-row justify-between items-end gap-4">
           <div className="flex flex-col sm:flex-row items-end gap-3">
             <ClearInput

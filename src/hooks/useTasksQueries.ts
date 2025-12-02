@@ -21,6 +21,8 @@ export interface VendorUserTask {
     lead_code: string;
   };
   leadMaster: {
+    site_map_link: any;
+    lead_code: any;
     id: number;
     name: string;
     account_id: number;

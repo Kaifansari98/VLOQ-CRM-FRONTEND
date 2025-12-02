@@ -118,7 +118,6 @@ export default function DispatchPlanningLeadDetails() {
   useEffect(() => {
     if (userType === "factory") {
       setPreviousTab("details"); // so closing modal returns to details
-      setAssignOpen(true); // open modal on load
       setActiveTab("todo"); // switch tab to To-Do
     }
   }, [userType]);
@@ -251,7 +250,6 @@ export default function DispatchPlanningLeadDetails() {
           onValueChange={(val) => {
             if (val === "todo") {
               setPreviousTab(activeTab);
-              setAssignOpen(true);
               setActiveTab("todo");
               return;
             }
@@ -273,7 +271,6 @@ export default function DispatchPlanningLeadDetails() {
                   {canAccessTodoTaskTabDispatchStage(userType) ? (
                     <TabsTrigger
                       value="todo"
-                      onClick={() => setAssignOpen(true)}
                     >
                       <PanelsTopLeftIcon
                         size={16}
@@ -314,6 +311,21 @@ export default function DispatchPlanningLeadDetails() {
           </ScrollArea>
 
           <TabsContent value="details">
+            <main className="flex-1 h-fit">
+              {!isLoading && accountId && (
+                <LeadDetailsGrouped
+                  status="dispatch"
+                  defaultTab="dispatch"
+                  leadId={leadIdNum}
+                  accountId={accountId}
+                  defaultParentTab="installation"
+                />
+              )}
+            </main>
+          </TabsContent>
+
+
+          <TabsContent value="todo">
             <main className="flex-1 h-fit">
               {!isLoading && accountId && (
                 <LeadDetailsGrouped
