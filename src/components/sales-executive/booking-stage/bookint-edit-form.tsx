@@ -76,9 +76,7 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
 
   const {
     mutate: editBooking,
-    isPending,
-    isError,
-    isSuccess,
+
   } = useEditBooking();
 
   const { data: siteSupervisors, isLoading } = useSiteSupervisors(vendorId!);

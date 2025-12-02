@@ -111,7 +111,6 @@ interface EditLeadFormProps {
 }
 
 export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
-  const [files, setFiles] = useState<File[]>(leadData?.documents || []);
   const [isLoadingLead, setIsLoadingLead] = useState(false);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const createdBy = useAppSelector((state) => state.auth.user?.id);
@@ -175,9 +174,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   });
 
   const {
-    handleSubmit,
-    control,
-    reset,
     formState: { dirtyFields },
   } = form;
 
@@ -303,11 +299,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             });
           }
         }
-
-        // Handle documents if they exist
-        if (lead.documents && Array.isArray(lead.documents)) {
-          setFiles(lead.documents);
-        }
       } catch (error) {
         console.error("Error fetching lead data:", error);
         toast.error("Failed to load lead data");
@@ -418,450 +409,448 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   };
 
   return (
-    <div className="w-full max-w-none pt-3 pb-6">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {/* File Upload */}
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-5">
+        {/* File Upload */}
 
-          {/* First Name & Last Name */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <FormField
-              control={form.control}
-              name="firstname"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">First Name *</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Enter first name"
-                      type="text"
-                      className="text-sm"
-                      {...field}
-                    />
-                  </FormControl>
-                  {/* <FormDescription className="text-xs">
-                    Lead's first name.
-                  </FormDescription> */}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="lastname"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">Last Name *</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Enter last name"
-                      type="text"
-                      className="text-sm"
-                      {...field}
-                    />
-                  </FormControl>
-                  {/* <FormDescription className="text-xs">
-                    Lead's last name.
-                  </FormDescription> */}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          {/* Contact Numbers */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-            <FormField
-              control={form.control}
-              name="contact_no"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">Phone Number *</FormLabel>
-                  <FormControl>
-                    <PhoneInput
-                      defaultCountry={primaryCountry}
-                      placeholder="Enter phone number"
-                      className="text-sm"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="alt_contact_no"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">Alt. Phone Number</FormLabel>
-                  <FormControl>
-                    <PhoneInput
-                      defaultCountry={altCountry}
-                      placeholder="Enter alt number"
-                      className="text-sm"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          {/* Email */}
+        {/* First Name & Last Name */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <FormField
             control={form.control}
-            name="email"
+            name="firstname"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm">Email</FormLabel>
+                <FormLabel className="text-sm">First Name *</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Enter email address"
-                    type="email"
+                    placeholder="Enter first name"
+                    type="text"
                     className="text-sm"
                     {...field}
                   />
                 </FormControl>
                 {/* <FormDescription className="text-xs">
-                  Lead's email address.
-                </FormDescription> */}
+                    Lead's first name.
+                  </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
           />
-          
-          {/* Site Type & Source */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-            {/* 🔹 Site Type Picker */}
-            <FormField
-              control={form.control}
-              name="site_type_id"
-              render={({ field }) => {
-                const { data: siteTypes, isLoading } = useSiteTypes();
 
-                // Transform API response → Picker data format
-                const pickerData =
-                  siteTypes?.data?.map((site: any) => ({
-                    id: site.id,
-                    label: site.type,
-                  })) || [];
-
-                return (
-                  <FormItem>
-                    <FormLabel className="text-sm">Site Type *</FormLabel>
-
-                    {isLoading ? (
-                      <p className="text-xs text-muted-foreground">
-                        Loading site types...
-                      </p>
-                    ) : (
-                      <AssignToPicker
-                        data={pickerData}
-                        value={field.value ? Number(field.value) : undefined}
-                        onChange={(selectedId: number | null) => {
-                          // ✅ Convert number → string for form
-                          field.onChange(selectedId ? String(selectedId) : "");
-                        }}
-                        placeholder="Search site type..."
-                      />
-                    )}
-
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-
-            {/* 🔹 Source Picker */}
-            <FormField
-              control={form.control}
-              name="source_id"
-              render={({ field }) => {
-                const { data: sourceTypes, isLoading } = useSourceTypes();
-
-                const pickerData =
-                  sourceTypes?.data?.map((source: any) => ({
-                    id: source.id,
-                    label: source.type,
-                  })) || [];
-
-                return (
-                  <FormItem>
-                    <FormLabel className="text-sm">Source *</FormLabel>
-
-                    {isLoading ? (
-                      <p className="text-xs text-muted-foreground">
-                        Loading sources...
-                      </p>
-                    ) : (
-                      <AssignToPicker
-                        data={pickerData}
-                        value={field.value ? Number(field.value) : undefined}
-                        onChange={(selectedId: number | null) => {
-                          // ✅ Convert number → string for form
-                          field.onChange(selectedId ? String(selectedId) : "");
-                        }}
-                        placeholder="Search source..."
-                      />
-                    )}
-
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-          </div>
-
-          {/* Site Address */}
           <FormField
             control={form.control}
-            name="site_address"
+            name="lastname"
             render={({ field }) => (
               <FormItem>
-                <div className="w-full flex justify-between">
-                  <FormLabel className="text-sm">Site Address *</FormLabel>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setMapOpen(true)}
-                    className="flex items-center gap-1"
-                  >
-                    <MapPin className="h-4 w-4" />
-                    {savedMapLocation ? "Update Map" : "Open Map"}
-                  </Button>
-                </div>
+                <FormLabel className="text-sm">Last Name *</FormLabel>
                 <FormControl>
-                  <TextAreaInput
-                    value={field.value}
-                    onChange={(value) => {
-                      field.onChange(value);
-                      // Don't reset map link when manually editing
-                      if (
-                        savedMapLocation &&
-                        value !== savedMapLocation.address
-                      ) {
-                        // just update address text, keep link
-                        setSavedMapLocation((prev) =>
-                          prev ? { ...prev, address: value } : null
-                        );
-                      }
-                    }}
-                    placeholder="Enter address or use map"
-                  />
-                </FormControl>
-                <FormMessage />
-
-                <MapPicker
-                  open={mapOpen}
-                  onClose={() => setMapOpen(false)}
-                  savedLocation={savedMapLocation}
-                  onSelect={(address, link) => {
-                    // Autofill address
-                    field.onChange(address);
-                    // Save coords
-                    const coords = link.match(/q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-                    if (coords) {
-                      setSavedMapLocation({
-                        lat: parseFloat(coords[1]),
-                        lng: parseFloat(coords[2]),
-                        address,
-                      });
-                    }
-                    // Also push into form state for site_map_link
-                    form.setValue("site_map_link", link);
-                    form.trigger("site_map_link"); // ensures validation + marks as touched
-                  }}
-                />
-              </FormItem>
-            )}
-          />
-
-          {/* Product Types & Structures */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-            <FormField
-              control={form.control}
-              name="product_types"
-              render={({ field }) => {
-                const { data: productTypes, isLoading } = useProductTypes();
-
-                // Transform API data to options
-                const options: Option[] =
-                  productTypes?.data?.map((p: any) => ({
-                    value: String(p.id),
-                    label: p.type,
-                  })) ?? [];
-
-                // Transform selected IDs back to Option[] format for display
-                const selectedOptions = (field.value || []).map((id) => {
-                  const option = options.find((opt) => opt.value === id);
-                  return option || { value: id, label: id }; // fallback if option not found
-                });
-
-                return (
-                  <FormItem>
-                    <FormLabel className="text-sm">Furniture Type *</FormLabel>
-                    <FormControl>
-                      <MultipleSelector
-                        value={selectedOptions} // Pass Option[] with proper labels
-                        onChange={(selectedOptions) => {
-                          // Extract IDs from selected options and store as string[]
-                          const selectedIds = selectedOptions.map(
-                            (opt) => opt.value
-                          );
-                          field.onChange(selectedIds);
-                        }}
-                        options={options}
-                        maxSelected={1}
-                        placeholder="Select furniture types"
-                        disabled={isLoading}
-                        hidePlaceholderWhenSelected
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-
-            <FormField
-              control={form.control}
-              name="product_structures"
-              render={({ field }) => {
-                const { data: productStructures, isLoading } =
-                  useProductStructureTypes();
-
-                // Transform API data to options
-                const options: Option[] =
-                  productStructures?.data?.map((p: any) => ({
-                    value: String(p.id),
-                    label: p.type,
-                  })) ?? [];
-
-                // Transform selected IDs back to Option[] format for display
-                const selectedOptions = (field.value || []).map((id) => {
-                  const option = options.find((opt) => opt.value === id);
-                  return option || { value: id, label: id }; // fallback if option not found
-                });
-
-                return (
-                  <FormItem>
-                    <FormLabel className="text-sm">
-                      Furniture Structure *
-                    </FormLabel>
-                    <FormControl>
-                      <MultipleSelector
-                        value={selectedOptions} // Pass Option[] with proper labels
-                        onChange={(selectedOptions) => {
-                          // Extract IDs from selected options and store as string[]
-                          const selectedIds = selectedOptions.map(
-                            (opt) => opt.value
-                          );
-                          field.onChange(selectedIds);
-                        }}
-                        options={options}
-                        placeholder="Select furniture structures"
-                        disabled={isLoading}
-                        hidePlaceholderWhenSelected
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-            {/* Architect Name */}
-            <FormField
-              control={form.control}
-              name="archetech_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">Architect Name</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Enter architect name"
-                      type="text"
-                      className="text-sm"
-                      {...field}
-                    />
-                  </FormControl>
-                  {/* <FormDescription className="text-xs">
-                  Project architect name.
-                </FormDescription> */}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="initial_site_measurement_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">
-                    Initial Site Measurement Date
-                  </FormLabel>
-                  <FormControl>
-                    <CustomeDatePicker
-                      value={field.value}
-                      onChange={field.onChange}
-                      restriction="futureOnly" // 👈 only allow future dates
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          {/* Designer Remark */}
-          <FormField
-            control={form.control}
-            name="designer_remark"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">Designer's Remark</FormLabel>
-                <FormControl>
-                  <TextAreaInput
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Enter Designer's Remark"
+                  <Input
+                    placeholder="Enter last name"
+                    type="text"
+                    className="text-sm"
+                    {...field}
                   />
                 </FormControl>
                 {/* <FormDescription className="text-xs">
-                  Additional remarks or notes.
+                    Lead's last name.
+                  </FormDescription> */}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* Contact Numbers */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+          <FormField
+            control={form.control}
+            name="contact_no"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Phone Number *</FormLabel>
+                <FormControl>
+                  <PhoneInput
+                    defaultCountry={primaryCountry}
+                    placeholder="Enter phone number"
+                    className="text-sm"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="alt_contact_no"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Alt. Phone Number</FormLabel>
+                <FormControl>
+                  <PhoneInput
+                    defaultCountry={altCountry}
+                    placeholder="Enter alt number"
+                    className="text-sm"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* Email */}
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm">Email</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="Enter email address"
+                  type="email"
+                  className="text-sm"
+                  {...field}
+                />
+              </FormControl>
+              {/* <FormDescription className="text-xs">
+                  Lead's email address.
+                </FormDescription> */}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Site Type & Source */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+          {/* 🔹 Site Type Picker */}
+          <FormField
+            control={form.control}
+            name="site_type_id"
+            render={({ field }) => {
+              const { data: siteTypes, isLoading } = useSiteTypes();
+
+              // Transform API response → Picker data format
+              const pickerData =
+                siteTypes?.data?.map((site: any) => ({
+                  id: site.id,
+                  label: site.type,
+                })) || [];
+
+              return (
+                <FormItem>
+                  <FormLabel className="text-sm">Site Type *</FormLabel>
+
+                  {isLoading ? (
+                    <p className="text-xs text-muted-foreground">
+                      Loading site types...
+                    </p>
+                  ) : (
+                    <AssignToPicker
+                      data={pickerData}
+                      value={field.value ? Number(field.value) : undefined}
+                      onChange={(selectedId: number | null) => {
+                        // ✅ Convert number → string for form
+                        field.onChange(selectedId ? String(selectedId) : "");
+                      }}
+                      placeholder="Search site type..."
+                    />
+                  )}
+
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+
+          {/* 🔹 Source Picker */}
+          <FormField
+            control={form.control}
+            name="source_id"
+            render={({ field }) => {
+              const { data: sourceTypes, isLoading } = useSourceTypes();
+
+              const pickerData =
+                sourceTypes?.data?.map((source: any) => ({
+                  id: source.id,
+                  label: source.type,
+                })) || [];
+
+              return (
+                <FormItem>
+                  <FormLabel className="text-sm">Source *</FormLabel>
+
+                  {isLoading ? (
+                    <p className="text-xs text-muted-foreground">
+                      Loading sources...
+                    </p>
+                  ) : (
+                    <AssignToPicker
+                      data={pickerData}
+                      value={field.value ? Number(field.value) : undefined}
+                      onChange={(selectedId: number | null) => {
+                        // ✅ Convert number → string for form
+                        field.onChange(selectedId ? String(selectedId) : "");
+                      }}
+                      placeholder="Search source..."
+                    />
+                  )}
+
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+        </div>
+
+        {/* Site Address */}
+        <FormField
+          control={form.control}
+          name="site_address"
+          render={({ field }) => (
+            <FormItem>
+              <div className="w-full flex justify-between">
+                <FormLabel className="text-sm">Site Address *</FormLabel>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMapOpen(true)}
+                  className="flex items-center gap-1"
+                >
+                  <MapPin className="h-4 w-4" />
+                  {savedMapLocation ? "Update Map" : "Open Map"}
+                </Button>
+              </div>
+              <FormControl>
+                <TextAreaInput
+                  value={field.value}
+                  onChange={(value) => {
+                    field.onChange(value);
+                    // Don't reset map link when manually editing
+                    if (
+                      savedMapLocation &&
+                      value !== savedMapLocation.address
+                    ) {
+                      // just update address text, keep link
+                      setSavedMapLocation((prev) =>
+                        prev ? { ...prev, address: value } : null
+                      );
+                    }
+                  }}
+                  placeholder="Enter address or use map"
+                />
+              </FormControl>
+              <FormMessage />
+
+              <MapPicker
+                open={mapOpen}
+                onClose={() => setMapOpen(false)}
+                savedLocation={savedMapLocation}
+                onSelect={(address, link) => {
+                  // Autofill address
+                  field.onChange(address);
+                  // Save coords
+                  const coords = link.match(/q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+                  if (coords) {
+                    setSavedMapLocation({
+                      lat: parseFloat(coords[1]),
+                      lng: parseFloat(coords[2]),
+                      address,
+                    });
+                  }
+                  // Also push into form state for site_map_link
+                  form.setValue("site_map_link", link);
+                  form.trigger("site_map_link"); // ensures validation + marks as touched
+                }}
+              />
+            </FormItem>
+          )}
+        />
+
+        {/* Product Types & Structures */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+          <FormField
+            control={form.control}
+            name="product_types"
+            render={({ field }) => {
+              const { data: productTypes, isLoading } = useProductTypes();
+
+              // Transform API data to options
+              const options: Option[] =
+                productTypes?.data?.map((p: any) => ({
+                  value: String(p.id),
+                  label: p.type,
+                })) ?? [];
+
+              // Transform selected IDs back to Option[] format for display
+              const selectedOptions = (field.value || []).map((id) => {
+                const option = options.find((opt) => opt.value === id);
+                return option || { value: id, label: id }; // fallback if option not found
+              });
+
+              return (
+                <FormItem>
+                  <FormLabel className="text-sm">Furniture Type *</FormLabel>
+                  <FormControl>
+                    <MultipleSelector
+                      value={selectedOptions} // Pass Option[] with proper labels
+                      onChange={(selectedOptions) => {
+                        // Extract IDs from selected options and store as string[]
+                        const selectedIds = selectedOptions.map(
+                          (opt) => opt.value
+                        );
+                        field.onChange(selectedIds);
+                      }}
+                      options={options}
+                      maxSelected={1}
+                      placeholder="Select furniture types"
+                      disabled={isLoading}
+                      hidePlaceholderWhenSelected
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+
+          <FormField
+            control={form.control}
+            name="product_structures"
+            render={({ field }) => {
+              const { data: productStructures, isLoading } =
+                useProductStructureTypes();
+
+              // Transform API data to options
+              const options: Option[] =
+                productStructures?.data?.map((p: any) => ({
+                  value: String(p.id),
+                  label: p.type,
+                })) ?? [];
+
+              // Transform selected IDs back to Option[] format for display
+              const selectedOptions = (field.value || []).map((id) => {
+                const option = options.find((opt) => opt.value === id);
+                return option || { value: id, label: id }; // fallback if option not found
+              });
+
+              return (
+                <FormItem>
+                  <FormLabel className="text-sm">
+                    Furniture Structure *
+                  </FormLabel>
+                  <FormControl>
+                    <MultipleSelector
+                      value={selectedOptions} // Pass Option[] with proper labels
+                      onChange={(selectedOptions) => {
+                        // Extract IDs from selected options and store as string[]
+                        const selectedIds = selectedOptions.map(
+                          (opt) => opt.value
+                        );
+                        field.onChange(selectedIds);
+                      }}
+                      options={options}
+                      placeholder="Select furniture structures"
+                      disabled={isLoading}
+                      hidePlaceholderWhenSelected
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+          {/* Architect Name */}
+          <FormField
+            control={form.control}
+            name="archetech_name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Architect Name</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter architect name"
+                    type="text"
+                    className="text-sm"
+                    {...field}
+                  />
+                </FormControl>
+                {/* <FormDescription className="text-xs">
+                  Project architect name.
                 </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              className="text-sm"
-              onClick={() => form.reset()}
-            >
-              Reset
-            </Button>
-            <Button
-              type="submit"
-              className="text-sm"
-              disabled={updateLeadMutation.isPending}
-            >
-              {updateLeadMutation.isPending ? "Updating..." : "Update Lead"}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+          <FormField
+            control={form.control}
+            name="initial_site_measurement_date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">
+                  Initial Site Measurement Date
+                </FormLabel>
+                <FormControl>
+                  <CustomeDatePicker
+                    value={field.value}
+                    onChange={field.onChange}
+                    restriction="futureOnly" // 👈 only allow future dates
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* Designer Remark */}
+        <FormField
+          control={form.control}
+          name="designer_remark"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm">Designer's Remark</FormLabel>
+              <FormControl>
+                <TextAreaInput
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Enter Designer's Remark"
+                />
+              </FormControl>
+              {/* <FormDescription className="text-xs">
+                  Additional remarks or notes.
+                </FormDescription> */}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="text-sm"
+            onClick={() => form.reset()}
+          >
+            Reset
+          </Button>
+          <Button
+            type="submit"
+            className="text-sm"
+            disabled={updateLeadMutation.isPending}
+          >
+            {updateLeadMutation.isPending ? "Updating..." : "Update Lead"}
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }

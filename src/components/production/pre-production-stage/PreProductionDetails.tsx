@@ -13,15 +13,12 @@ interface PreProductionDetailsProps {
 
 export default function PreProductionDetails({
   leadId,
-  accountId,
 }: PreProductionDetailsProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const { data, isLoading, isError } = useOrderLoginByLead(vendorId, leadId);
 
-  const {
-    data: ClientRequiredCompletionDate,
-    isLoading: ClientRequiredCompletionDateIsLoading,
-  } = useClientRequiredCompletionDate(vendorId, leadId);
+  const { data: ClientRequiredCompletionDate } =
+    useClientRequiredCompletionDate(vendorId, leadId);
 
   if (isLoading)
     return (
@@ -37,13 +34,6 @@ export default function PreProductionDetails({
 
   const orders = Array.isArray(data) ? data : [];
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { duration: 0.3, staggerChildren: 0.05 },
-    },
-  };
 
   return (
     <div className="space-y-4 bg-[#fff] dark:bg-[#0a0a0a]">

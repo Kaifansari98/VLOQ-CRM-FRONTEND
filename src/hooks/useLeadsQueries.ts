@@ -29,9 +29,18 @@ interface UseLeadLogsOptions {
   limit?: number;
 }
 
+export interface pagination {
+  currentPage: number;
+  totalPages: number;
+  totalRecoards: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
 export interface VendorOverallLeadsResponse {
   count: number;
   data: Lead[];
+  pagination: pagination;
 }
 
 export interface VendorUserLeadsOpenResponse {
@@ -87,11 +96,13 @@ export const getVendorOverallLeads = async (
   vendorId: number,
   tag: string,
   userId: number,
+  page: number,
+  limit: number
 ): Promise<VendorOverallLeadsResponse> => {
   const response = await apiClient.get(
     `/leads/bookingStage/vendorId/${vendorId}/all-leads`,
     {
-      params: { tag, userId },
+      params: { userId, tag, page, limit },
     }
   );
   return response.data; // keep full shape: { count, data }
@@ -99,15 +110,18 @@ export const getVendorOverallLeads = async (
 
 export const useVendorOverallLeads = (
   vendorId: number,
+  userId: number,
   tag: string,
-  userId: number
-): UseQueryResult<VendorOverallLeadsResponse, Error> => {
+  page?: number,
+  pageSize?: number
+) => {
   return useQuery({
-    queryKey: ["vendorOverallLeads", vendorId, tag],
-    queryFn: () => getVendorOverallLeads(vendorId, tag, userId),
+    queryKey: ["vendorOverallLeads", vendorId, tag, page, pageSize],
+    queryFn: () =>
+      getVendorOverallLeads(vendorId, tag, userId, page!, pageSize!),
     enabled: !!vendorId && !!tag,
-    staleTime: 5 * 60 * 1000, // cache 5min
     refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
   });
 };
 

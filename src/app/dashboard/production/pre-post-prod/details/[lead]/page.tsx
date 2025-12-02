@@ -13,11 +13,9 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { ModeToggle } from "@/components/ModeToggle";
 import { useParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
-import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import {
@@ -58,9 +56,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 import {
-  canReassingLead,
-  canDeleteLead,
-  canViewToOrderLoginDetails,
   handledproductionDefaultTab,
   canMoveToReadyToDispatch,
   canViewAndWorkEditProcutionExpectedDate,
@@ -184,7 +179,6 @@ export default function ProductionLeadDetails() {
     lead?.id, // ✅ To ensure lead is loaded
   ]);
 
-  const expected_order_login_ready_date = lead?.expected_order_login_ready_date;
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();

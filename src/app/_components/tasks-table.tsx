@@ -114,7 +114,6 @@ const MyTaskTable = () => {
         });
         setOpenFollowUp(true);
       } else {
-        const leadId = row.id;
         console.log("follow up is under development");
       }
     },

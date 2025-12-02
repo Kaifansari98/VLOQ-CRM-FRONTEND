@@ -16,7 +16,6 @@ import { cn } from "@/lib/utils";
 interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   table: TanstackTable<TData>;
   actionBar?: React.ReactNode;
-  onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
 }
 
@@ -25,7 +24,6 @@ export function DataTable<TData>({
   actionBar,
   children,
   className,
-  onRowClick, // ✅ destructure here
   onRowDoubleClick,
   ...props
 }: DataTableProps<TData>) {

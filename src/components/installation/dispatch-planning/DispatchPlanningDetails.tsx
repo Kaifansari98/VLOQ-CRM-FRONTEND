@@ -1,13 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,8 +25,6 @@ import {
   CreditCard,
   Loader2,
   CheckCircle2,
-  ExternalLink,
-  FileCheck,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
@@ -44,17 +38,15 @@ import {
 import { useAppSelector } from "@/redux/store";
 import CurrencyInput from "@/components/custom/CurrencyInput";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import TextAreaInput from "@/components/origin-text-area";
 import { useDeleteDocument } from "@/api/leads";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkDispatchPlanningStage } from "@/components/utils/privileges";
-import CustomeTooltip from "@/components/cutome-tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface DispatchPlanningDetailsProps {
@@ -83,7 +75,49 @@ const dispatchSchema = z.object({
   dispatch_planning_remark: z.string().optional(),
 });
 
+const paymentSchema = z
+  .object({
+    pending_payment: z.string().optional(),
+    pending_payment_details: z.string().optional(),
+    payment_proof_file: z.array(z.instanceof(File)).optional(),
+  })
+  .superRefine((data, ctx) => {
+    const hasAmount =
+      data.pending_payment && data.pending_payment.trim() !== "";
+    const hasDetails =
+      data.pending_payment_details &&
+      data.pending_payment_details.trim() !== "";
+    const hasFile =
+      data.payment_proof_file && data.payment_proof_file.length > 0;
+
+    // If any field is filled, all fields must be filled
+    if (hasAmount || hasDetails || hasFile) {
+      if (!hasAmount) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Pending payment amount is required",
+          path: ["pending_payment"],
+        });
+      }
+      if (!hasDetails) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Pending payment details are required",
+          path: ["pending_payment_details"],
+        });
+      }
+      if (!hasFile) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Payment proof file is required",
+          path: ["payment_proof_file"],
+        });
+      }
+    }
+  });
+
 type DispatchFormData = z.infer<typeof dispatchSchema>;
+type PaymentFormData = z.infer<typeof paymentSchema>;
 
 export default function DispatchPlanningDetails({
   leadId,
@@ -94,30 +128,10 @@ export default function DispatchPlanningDetails({
   const userId = useAppSelector((state) => state.auth.user?.id) || 0;
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
 
-  const { data: leadData, isLoading, error } = useLeadStatus(leadId, vendorId);
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
-  // State for Dispatch Planning Info
-  const [dispatchInfo, setDispatchInfo] = useState({
-    required_date_for_dispatch: "",
-    onsite_contact_person_name: "",
-    onsite_contact_person_number: "",
-    alt_onsite_contact_person_name: "",
-    alt_onsite_contact_person_number: "",
-    material_lift_availability: null as boolean | null,
-    dispatch_planning_remark: "",
-  });
-
-  // State for Payment Info
-  const [paymentInfo, setPaymentInfo] = useState({
-    pending_payment: "",
-    pending_payment_details: "",
-    payment_proof_file: [] as File[],
-  });
-
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-  const [openCarousel, setOpenCarousel] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
   const [infoSaved, setInfoSaved] = useState(false);
   const [paymentSaved, setPaymentSaved] = useState(false);
   const [existingPaymentDoc, setExistingPaymentDoc] = useState<{
@@ -128,7 +142,6 @@ export default function DispatchPlanningDetails({
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   // Queries
-
   const {
     data: dispatchInfoData,
     isLoading: loadingDispatchInfo,
@@ -136,13 +149,15 @@ export default function DispatchPlanningDetails({
   } = useDispatchPlanningInfo(vendorId, leadId);
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
+
+  // Dispatch Form
   const {
-    register,
-    handleSubmit,
-    setValue,
-    getValues,
-    formState: { errors },
-    watch,
+    register: registerDispatch,
+    handleSubmit: handleSubmitDispatch,
+    setValue: setValueDispatch,
+    getValues: getValuesDispatch,
+    formState: { errors: errorsDispatch },
+    watch: watchDispatch,
   } = useForm<DispatchFormData>({
     resolver: zodResolver(dispatchSchema),
     defaultValues: {
@@ -156,7 +171,23 @@ export default function DispatchPlanningDetails({
     },
   });
 
-  const watchLiftAvailability = watch("material_lift_availability");
+  const watchLiftAvailability = watchDispatch("material_lift_availability");
+
+  // Payment Form
+  const {
+    control: controlPayment,
+    handleSubmit: handleSubmitPayment,
+    formState: { errors: errorsPayment },
+    watch: watchPayment,
+    reset: resetPayment,
+  } = useForm<PaymentFormData>({
+    resolver: zodResolver(paymentSchema),
+    defaultValues: {
+      pending_payment: "",
+      pending_payment_details: "",
+      payment_proof_file: [],
+    },
+  });
 
   const {
     data: paymentData,
@@ -200,19 +231,19 @@ export default function DispatchPlanningDetails({
 
       // Update React Hook Form
       Object.entries(formValues).forEach(([key, value]) => {
-        setValue(key as keyof DispatchFormData, value as any, {
+        setValueDispatch(key as keyof DispatchFormData, value as any, {
           shouldValidate: false,
         });
       });
 
       setInfoSaved(true);
     }
-  }, [dispatchInfoData, setValue]);
+  }, [dispatchInfoData, setValueDispatch]);
 
   // Load payment info data
   useEffect(() => {
     if (paymentData) {
-      setPaymentInfo({
+      resetPayment({
         pending_payment: paymentData.amount?.toString() || "",
         pending_payment_details: paymentData.payment_text || "",
         payment_proof_file: [],
@@ -228,10 +259,10 @@ export default function DispatchPlanningDetails({
         });
       }
     }
-  }, [paymentData]);
+  }, [paymentData, resetPayment]);
 
   // Handle Save Dispatch Planning Info
-  const handleSaveInfo = handleSubmit(async (values) => {
+  const handleSaveInfo = handleSubmitDispatch(async (values) => {
     try {
       const payload = {
         ...values,
@@ -259,46 +290,16 @@ export default function DispatchPlanningDetails({
     }
   });
 
-  // Validate payment fields
-  const validatePaymentFields = () => {
-    const hasAmount = paymentInfo.pending_payment.trim() !== "";
-    const hasDetails = paymentInfo.pending_payment_details.trim() !== "";
-    const hasFile =
-      paymentInfo.payment_proof_file.length > 0 || existingPaymentDoc !== null;
-
-    // If any field is filled, all fields must be filled
-    if (hasAmount || hasDetails || hasFile) {
-      if (!hasAmount) {
-        toast.error("Pending payment amount is required");
-        return false;
-      }
-      if (!hasDetails) {
-        toast.error("Pending payment details are required");
-        return false;
-      }
-      if (!hasFile) {
-        toast.error("Payment proof file is required");
-        return false;
-      }
-    }
-
-    return true;
-  };
-
   // Handle Save Payment Info (after confirmation)
-  const handleSavePayment = async () => {
+  const handleSavePayment = handleSubmitPayment(async (data) => {
     try {
       if (!infoSaved) {
         toast.error("Please save dispatch planning info first");
         return;
       }
 
-      if (!validatePaymentFields()) {
-        return;
-      }
-
       // 🚫 Restrict entering amount > project pending amount
-      const pendingAmt = Number(paymentInfo.pending_payment);
+      const pendingAmt = Number(data.pending_payment);
       if (
         project_pending_amount !== undefined &&
         pendingAmt > project_pending_amount
@@ -310,19 +311,16 @@ export default function DispatchPlanningDetails({
       }
 
       const formData = new FormData();
-      formData.append("pending_payment", paymentInfo.pending_payment || "0");
+      formData.append("pending_payment", data.pending_payment || "0");
       formData.append(
         "pending_payment_details",
-        paymentInfo.pending_payment_details
+        data.pending_payment_details || ""
       );
       formData.append("account_id", accountId.toString());
       formData.append("created_by", userId.toString());
 
-      if (paymentInfo.payment_proof_file.length > 0) {
-        formData.append(
-          "payment_proof_file",
-          paymentInfo.payment_proof_file[0]
-        );
+      if (data.payment_proof_file && data.payment_proof_file.length > 0) {
+        formData.append("payment_proof_file", data.payment_proof_file[0]);
       }
 
       await savePaymentMutation.mutateAsync({
@@ -342,21 +340,16 @@ export default function DispatchPlanningDetails({
       );
       setShowConfirmDialog(false);
     }
-  };
+  });
 
   // Handle payment save button click (show confirmation)
-  const handlePaymentSaveClick = () => {
+  const handlePaymentSaveClick = handleSubmitPayment(() => {
     if (!infoSaved) {
       toast.error("Please save dispatch planning info first");
       return;
     }
-
-    if (!validatePaymentFields()) {
-      return;
-    }
-
     setShowConfirmDialog(true);
-  };
+  });
 
   if (loadingDispatchInfo && loadingPaymentInfo) {
     return (
@@ -404,7 +397,10 @@ export default function DispatchPlanningDetails({
     leadStatus
   );
 
-  console.log("can View And Work: ", canViewAndWork);
+  const pendingPayment = watchPayment("pending_payment");
+  const pendingPaymentDetails = watchPayment("pending_payment_details");
+  const paymentProofFile = watchPayment("payment_proof_file");
+
   return (
     <div className="space-y-4 pb-6">
       {/* Dispatch Planning Information */}
@@ -453,12 +449,12 @@ export default function DispatchPlanningDetails({
               </Label>
               <Input
                 placeholder="Enter contact person name"
-                {...register("onsite_contact_person_name")}
+                {...registerDispatch("onsite_contact_person_name")}
                 disabled={!canViewAndWork}
               />
-              {errors.onsite_contact_person_name && (
+              {errorsDispatch.onsite_contact_person_name && (
                 <p className="text-xs text-red-500">
-                  {errors.onsite_contact_person_name.message}
+                  {errorsDispatch.onsite_contact_person_name.message}
                 </p>
               )}
             </div>
@@ -474,14 +470,14 @@ export default function DispatchPlanningDetails({
                 placeholder="Enter contact number"
                 defaultCountry="IN"
                 disabled={!canViewAndWork}
-                value={getValues("onsite_contact_person_number")}
+                value={getValuesDispatch("onsite_contact_person_number")}
                 onChange={(value) =>
-                  setValue("onsite_contact_person_number", value || "")
+                  setValueDispatch("onsite_contact_person_number", value || "")
                 }
               />
-              {errors.onsite_contact_person_number && (
+              {errorsDispatch.onsite_contact_person_number && (
                 <p className="text-xs text-red-500">
-                  {errors.onsite_contact_person_number.message}
+                  {errorsDispatch.onsite_contact_person_number.message}
                 </p>
               )}
             </div>
@@ -494,7 +490,7 @@ export default function DispatchPlanningDetails({
               </Label>
               <Input
                 placeholder="Enter alternate contact person name"
-                {...register("alt_onsite_contact_person_name")}
+                {...registerDispatch("alt_onsite_contact_person_name")}
                 disabled={!canViewAndWork}
               />
             </div>
@@ -509,9 +505,12 @@ export default function DispatchPlanningDetails({
                 placeholder="Enter alternate contact number"
                 defaultCountry="IN"
                 disabled={!canViewAndWork}
-                value={getValues("alt_onsite_contact_person_number")}
+                value={getValuesDispatch("alt_onsite_contact_person_number")}
                 onChange={(value) =>
-                  setValue("alt_onsite_contact_person_number", value || "")
+                  setValueDispatch(
+                    "alt_onsite_contact_person_number",
+                    value || ""
+                  )
                 }
               />
             </div>
@@ -531,20 +530,23 @@ export default function DispatchPlanningDetails({
                 }
               >
                 <CustomeDatePicker
-                  value={getValues("required_date_for_dispatch")}
+                  value={getValuesDispatch("required_date_for_dispatch")}
                   onChange={
                     !canViewAndWork
                       ? () => {}
                       : (value) =>
-                          setValue("required_date_for_dispatch", value || "")
+                          setValueDispatch(
+                            "required_date_for_dispatch",
+                            value || ""
+                          )
                   }
                   restriction="futureAfterTwoDays"
                 />
               </div>
 
-              {errors.required_date_for_dispatch && (
+              {errorsDispatch.required_date_for_dispatch && (
                 <p className="text-xs text-red-500">
-                  {errors.required_date_for_dispatch.message}
+                  {errorsDispatch.required_date_for_dispatch.message}
                 </p>
               )}
             </div>
@@ -566,7 +568,7 @@ export default function DispatchPlanningDetails({
                     checked={watchLiftAvailability === true}
                     onCheckedChange={(checked) => {
                       if (checked) {
-                        setValue("material_lift_availability", true, {
+                        setValueDispatch("material_lift_availability", true, {
                           shouldValidate: true,
                         });
                       }
@@ -583,7 +585,7 @@ export default function DispatchPlanningDetails({
                     checked={watchLiftAvailability === false}
                     onCheckedChange={(checked) => {
                       if (checked) {
-                        setValue("material_lift_availability", false, {
+                        setValueDispatch("material_lift_availability", false, {
                           shouldValidate: true,
                         });
                       }
@@ -593,18 +595,12 @@ export default function DispatchPlanningDetails({
                 </div>
               </div>
 
-              {errors.material_lift_availability && (
+              {errorsDispatch.material_lift_availability && (
                 <p className="text-xs text-red-500">
-                  {errors.material_lift_availability.message}
+                  {errorsDispatch.material_lift_availability.message}
                 </p>
               )}
             </div>
-
-            {dispatchInfo.material_lift_availability === null && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Please select whether a material lift is available at the site.
-              </p>
-            )}
           </div>
 
           {/* Remarks */}
@@ -615,9 +611,9 @@ export default function DispatchPlanningDetails({
             </Label>
             <TextAreaInput
               placeholder="Enter any additional remarks..."
-              value={watch("dispatch_planning_remark") || ""}
+              value={watchDispatch("dispatch_planning_remark") || ""}
               onChange={(value) =>
-                setValue("dispatch_planning_remark", value || "")
+                setValueDispatch("dispatch_planning_remark", value || "")
               }
               maxLength={1000}
               disabled={!canViewAndWork}
@@ -664,30 +660,35 @@ export default function DispatchPlanningDetails({
             <div className="space-y-2">
               <Label>
                 Pending Payment
-                {(paymentInfo.pending_payment_details ||
-                  paymentInfo.payment_proof_file.length > 0 ||
+                {(pendingPaymentDetails ||
+                  (paymentProofFile && paymentProofFile.length > 0) ||
                   existingPaymentDoc) && (
                   <span className="text-red-500 ml-1">*</span>
                 )}
               </Label>
 
-              <CurrencyInput
-                value={
-                  paymentInfo.pending_payment
-                    ? Number(paymentInfo.pending_payment)
-                    : undefined
-                }
-                onChange={(val) =>
-                  setPaymentInfo({
-                    ...paymentInfo,
-                    pending_payment: val?.toString() || "",
-                  })
-                }
-                placeholder="Enter amount"
-                disabled={
-                  !canViewAndWork || !infoSaved || existingPaymentDoc !== null
-                }
+              <Controller
+                name="pending_payment"
+                control={controlPayment}
+                render={({ field }) => (
+                  <CurrencyInput
+                    value={field.value ? Number(field.value) : undefined}
+                    onChange={(val) => field.onChange(val?.toString() || "")}
+                    placeholder="Enter amount"
+                    disabled={
+                      !canViewAndWork ||
+                      !infoSaved ||
+                      existingPaymentDoc !== null
+                    }
+                  />
+                )}
               />
+
+              {errorsPayment.pending_payment && (
+                <p className="text-xs text-red-500">
+                  {errorsPayment.pending_payment.message}
+                </p>
+              )}
 
               <p className="text-sm font-medium mt-2">
                 Project Pending Amount: {project_pending_amount}
@@ -698,26 +699,35 @@ export default function DispatchPlanningDetails({
             <div className="space-y-2">
               <Label>
                 Pending Payment Details
-                {(paymentInfo.pending_payment ||
-                  paymentInfo.payment_proof_file.length > 0 ||
+                {(pendingPayment ||
+                  (paymentProofFile && paymentProofFile.length > 0) ||
                   existingPaymentDoc) && (
                   <span className="text-red-500 ml-1">*</span>
                 )}
               </Label>
 
-              <Input
-                placeholder="Enter payment details"
-                value={paymentInfo.pending_payment_details}
-                onChange={(e) =>
-                  setPaymentInfo({
-                    ...paymentInfo,
-                    pending_payment_details: e.target.value,
-                  })
-                }
-                disabled={
-                  !canViewAndWork || !infoSaved || existingPaymentDoc !== null
-                }
+              <Controller
+                name="pending_payment_details"
+                control={controlPayment}
+                render={({ field }) => (
+                  <Input
+                    placeholder="Enter payment details"
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    disabled={
+                      !canViewAndWork ||
+                      !infoSaved ||
+                      existingPaymentDoc !== null
+                    }
+                  />
+                )}
               />
+
+              {errorsPayment.pending_payment_details && (
+                <p className="text-xs text-red-500">
+                  {errorsPayment.pending_payment_details.message}
+                </p>
+              )}
             </div>
           </div>
 
@@ -726,8 +736,7 @@ export default function DispatchPlanningDetails({
             {(existingPaymentDoc || canViewAndWork) && (
               <Label>
                 Payment Screenshot
-                {(paymentInfo.pending_payment ||
-                  paymentInfo.pending_payment_details) && (
+                {(pendingPayment || pendingPaymentDetails) && (
                   <span className="text-red-500 ml-1">*</span>
                 )}
               </Label>
@@ -745,10 +754,6 @@ export default function DispatchPlanningDetails({
                       created_at: doc.created_at,
                     }}
                     index={index}
-                    onView={(i) => {
-                      setStartIndex(i);
-                      setOpenCarousel(true);
-                    }}
                     onDelete={(id) => setConfirmDelete(Number(id))}
                   />
                 ))}
@@ -769,28 +774,35 @@ export default function DispatchPlanningDetails({
               </div>
             ) : (
               canViewAndWork && (
-                <FileUploadField
-                  value={paymentInfo.payment_proof_file}
-                  onChange={(files) =>
-                    setPaymentInfo({
-                      ...paymentInfo,
-                      payment_proof_file: files,
-                    })
-                  }
-                  disabled={!canViewAndWork}
-                  accept=".jpg,.jpeg,.png,.pdf"
-                  multiple={false}
+                <Controller
+                  name="payment_proof_file"
+                  control={controlPayment}
+                  render={({ field }) => (
+                    <FileUploadField
+                      value={field.value || []}
+                      onChange={field.onChange}
+                      disabled={!canViewAndWork}
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      multiple={false}
+                    />
+                  )}
                 />
               )
+            )}
+
+            {errorsPayment.payment_proof_file && (
+              <p className="text-xs text-red-500">
+                {errorsPayment.payment_proof_file.message}
+              </p>
             )}
           </div>
 
           {/* Note */}
           {canViewAndWork &&
             !existingPaymentDoc &&
-            (paymentInfo.pending_payment ||
-              paymentInfo.pending_payment_details ||
-              paymentInfo.payment_proof_file.length > 0) && (
+            (pendingPayment ||
+              pendingPaymentDetails ||
+              (paymentProofFile && paymentProofFile.length > 0)) && (
               <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
                 <strong>Note:</strong> If you fill any payment field, all three
                 fields (Amount, Details, and Screenshot) become mandatory.
@@ -831,19 +843,20 @@ export default function DispatchPlanningDetails({
               <div className="bg-muted p-3 rounded-lg space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="font-medium">Amount:</span>
-                  <span>₹{paymentInfo.pending_payment || "0"}</span>
+                  <span>₹{pendingPayment || "0"}</span>
                 </div>
+
                 <div className="flex justify-between">
                   <span className="font-medium">Details:</span>
                   <span className="text-right max-w-[200px] truncate">
-                    {paymentInfo.pending_payment_details || "N/A"}
+                    {pendingPaymentDetails || "N/A"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="font-medium">Proof:</span>
                   <span>
-                    {paymentInfo.payment_proof_file.length > 0
-                      ? paymentInfo.payment_proof_file[0].name
+                    {paymentProofFile && paymentProofFile.length > 0
+                      ? paymentProofFile[0].name
                       : "Existing file"}
                   </span>
                 </div>
@@ -885,13 +898,6 @@ export default function DispatchPlanningDetails({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <ImageCarouselModal
-        images={images}
-        open={openCarousel}
-        initialIndex={startIndex}
-        onClose={() => setOpenCarousel(false)}
-      />
     </div>
   );
 }

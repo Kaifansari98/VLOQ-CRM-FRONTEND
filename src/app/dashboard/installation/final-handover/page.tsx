@@ -16,22 +16,27 @@ import {
   BreadcrumbLink,
 } from "@/components/ui/breadcrumb";
 import { Suspense } from "react";
-import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 
-// ⬇️ You will create this component next
-import FinalHandoverStageTable from "@/components/installation/final-handover/FinalHandoverStageTable";
+import { UniversalTable } from "@/components/custom/UniversalTable";
+
+// 🔵 Navigation for Final Handover Stage
+const navigateFinalHandover = (row: any) =>
+  `/dashboard/installation/final-handover/details/${row.id}?accountId=${row.accountId}`;
 
 export default function FinalHandoverStagePage() {
   return (
     <SidebarProvider>
       <AppSidebar />
+
       <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
 
         {/* 🔹 Header */}
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
+
             <Separator orientation="vertical" className="h-4 mr-2" />
 
             <Breadcrumb>
@@ -55,14 +60,18 @@ export default function FinalHandoverStagePage() {
         </header>
 
         {/* 🔹 Content */}
-        <main className="flex-1 p-4 pt-0 overflow-x-hidden">
-          <Suspense fallback={<p>Loading Final Handover Leads...</p>}>
-            <FeatureFlagsProvider>
-              <FinalHandoverStageTable />
-            </FeatureFlagsProvider>
+        <main className="flex-1 overflow-x-hidden">
+          <Suspense fallback={<DataTableSkeleton columnCount={10} rowCount={8} />}>
+            <UniversalTable
+              title="Final Handover Stage"
+              description="Review, manage, and close handover-ready projects with complete documentation and field validation."
+              type="Type 16"
+              enableAdminTabs={true}
+              onRowNavigate={navigateFinalHandover}
+            />
           </Suspense>
         </main>
-        
+
       </SidebarInset>
     </SidebarProvider>
   );

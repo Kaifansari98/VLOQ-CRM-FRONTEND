@@ -1,6 +1,5 @@
 import { apiClient } from "@/lib/apiClient";
 import { Lead } from "./leads";
-import { vendored } from "next/dist/server/route-modules/app-page/module.compiled";
 
 export interface UpdateActivityStatusPayload {
   vendorId: number;

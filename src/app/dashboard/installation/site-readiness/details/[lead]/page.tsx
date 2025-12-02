@@ -55,8 +55,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 import {
-  canReassingLead,
-  canDeleteLead,
   canDoSR,
   canEditLeadButton,
   canDeleteLeadButton,
@@ -94,7 +92,7 @@ export default function ReadyToDispatchLeadDetails() {
   const [activeTab, setActiveTab] = useState(
     userType?.toLowerCase() === "site-supervisor" ? "todo" : "details"
   );
-  const [previousTab, setPreviousTab] = useState("details");
+
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;

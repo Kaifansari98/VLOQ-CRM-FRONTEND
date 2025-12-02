@@ -13,7 +13,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
@@ -56,8 +56,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 import {
-  canReassingLead,
-  canDeleteLead,
   canAssignSR,
   canEditLeadButton,
   canDeleteLeadButton,
@@ -65,7 +63,6 @@ import {
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
-import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import CustomeDatePicker from "@/components/date-picker";
 import {
   useLatestOrderLoginByLead,
@@ -74,15 +71,13 @@ import {
 } from "@/api/production/production-api";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
-import { useCheckPostProductionReady } from "@/api/production/production-api";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
-import { useMoveLeadToReadyToDispatch } from "@/api/production/useReadyToDispatchLeads";
 import AssignTaskSiteReadinessForm from "@/components/production/ready-to-dispatch/assign-task-site-readiness-form";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 
 export default function ReadyToDispatchLeadDetails() {
-  const router = useRouter();
+
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
 
@@ -262,7 +257,7 @@ export default function ReadyToDispatchLeadDetails() {
             if (val === "todo") {
               setPreviousTab(activeTab);
               setAssignOpen(true);
-              setActiveTab("todo"); 
+              setActiveTab("todo");
               return;
             }
             setActiveTab(val);

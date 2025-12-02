@@ -1,13 +1,6 @@
 "use client";
 
 import React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDetails } from "../details-context";
 import { useAppSelector } from "@/redux/store";
 import z from "zod";
@@ -29,6 +22,7 @@ import { FileUploadField } from "@/components/custom/file-upload";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { submitMeeting } from "@/api/designingStageQueries";
 import { toast } from "react-toastify";
+import BaseModal from "@/components/utils/baseModal";
 
 export const meetingSchema = z.object({
   date: z.string().min(1, "Meeting date is required"),
@@ -96,128 +90,97 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="
-        min-w-2xl 
-        p-0 
-        rounded-2xl 
-        border border-border 
-        shadow-soft 
-        overflow-hidden
-        bg-white dark:bg-neutral-900
-      "
-      >
-        {/* Header */}
-        <div
-          className="
-          px-6 py-4 
-          border-b border-border 
-          bg-mutedBg/50 dark:bg-neutral-900/50
-        "
-        >
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold tracking-tight">
-              Add Meeting
-            </DialogTitle>
-          </DialogHeader>
-        </div>
+    <BaseModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Add Meeting"
+      description="Capture meeting details and attach supporting files."
+      size="lg"
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 p-5">
+          {/* Date Picker */}
+          <FormField
+            control={form.control}
+            name="date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Meeting Date</FormLabel>
+                <FormControl>
+                  <CustomeDatePicker
+                    value={field.value}
+                    onChange={field.onChange}
+                    restriction="pastWeekOnly"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        {/* Body */}
-        <ScrollArea className="max-h-[70vh]">
-          <div className="px-6 pb-5">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-3"
-              >
-                {/* Date Picker */}
-                <FormField
-                  control={form.control}
-                  name="date"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">Meeting Date</FormLabel>
-                      <FormControl>
-                        <CustomeDatePicker
-                          value={field.value}
-                          onChange={field.onChange}
-                          restriction="pastWeekOnly"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+          {/* Description */}
+          <FormField
+            control={form.control}
+            name="desc"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Meeting Description</FormLabel>
+                <FormControl>
+                  <TextAreaInput
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Enter meeting details"
+                    className="min-h-[120px]"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-                {/* Description */}
-                <FormField
-                  control={form.control}
-                  name="desc"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">
-                        Meeting Description
-                      </FormLabel>
-                      <FormControl>
-                        <TextAreaInput
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Enter meeting details"
-                          className="min-h-[120px]"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+          {/* File Upload */}
+          <FormField
+            control={form.control}
+            name="files"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">
+                  Meeting Files (PDF/Image)
+                </FormLabel>
+                <FormControl>
+                  <FileUploadField
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                    accept="image/*,.pdf,.doc,.docx"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-                {/* File Upload */}
-                <FormField
-                  control={form.control}
-                  name="files"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">
-                        Meeting Files (PDF/Image)
-                      </FormLabel>
-                      <FormControl>
-                        <FileUploadField
-                          value={field.value ?? []}
-                          onChange={field.onChange}
-                          accept="image/*,.pdf,.doc,.docx"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+          {/* Footer */}
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => form.reset()}
+              className="rounded-lg"
+            >
+              Reset
+            </Button>
 
-                {/* Footer Buttons */}
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => form.reset()}
-                    className="rounded-lg"
-                  >
-                    Reset
-                  </Button>
-
-                  <Button
-                    type="submit"
-                    className="rounded-lg"
-                    disabled={mutation.isPending}
-                  >
-                    {mutation.isPending ? "Saving..." : "Save Meeting"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
+            <Button
+              type="submit"
+              className="rounded-lg"
+              disabled={mutation.isPending}
+            >
+              {mutation.isPending ? "Saving..." : "Save Meeting"}
+            </Button>
           </div>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+        </form>
+      </Form>
+    </BaseModal>
   );
 };
 

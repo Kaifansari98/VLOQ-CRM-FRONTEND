@@ -16,28 +16,36 @@ import {
   BreadcrumbLink,
 } from "@/components/ui/breadcrumb";
 import { Suspense } from "react";
-import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 
-// ⬇️ You will create/use this component
-import UnderInstallationStageTable from "@/components/installation/under-installation/UnderInstallationStageTable";
+import { UniversalTable } from "@/components/custom/UniversalTable";
+
+// 🔵 Navigation for Under Installation Stage
+const navigateUnderInstallation = (row: any) =>
+  `/dashboard/installation/under-installation/details/${row.id}?accountId=${row.accountId}`;
 
 export default function UnderInstallationStagePage() {
   return (
     <SidebarProvider>
       <AppSidebar />
+
       <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
-        {/* Header */}
+        {/* ---------------- HEADER ---------------- */}
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
+
             <Separator orientation="vertical" className="h-4 mr-2" />
+
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
                   <BreadcrumbLink href="/dashboard">Project</BreadcrumbLink>
                 </BreadcrumbItem>
+
                 <BreadcrumbSeparator className="hidden md:block" />
+
                 <BreadcrumbItem>
                   <BreadcrumbPage>Under Installation Stage</BreadcrumbPage>
                 </BreadcrumbItem>
@@ -50,12 +58,18 @@ export default function UnderInstallationStagePage() {
           </div>
         </header>
 
-        {/* Content */}
-        <main className="flex-1 p-4 pt-0 overflow-x-hidden">
-          <Suspense fallback={<p>Loading Under Installation Leads...</p>}>
-            <FeatureFlagsProvider>
-              <UnderInstallationStageTable />
-            </FeatureFlagsProvider>
+        {/* ---------------- CONTENT ---------------- */}
+        <main className="flex-1 overflow-x-hidden">
+          <Suspense
+            fallback={<DataTableSkeleton columnCount={10} rowCount={8} />}
+          >
+            <UniversalTable
+              title="Under Installation Stage"
+              description="Manage and track projects currently progressing through on-site installation workflows."
+              type="Type 15"
+              enableAdminTabs={true}
+              onRowNavigate={navigateUnderInstallation}
+            />
           </Suspense>
         </main>
       </SidebarInset>

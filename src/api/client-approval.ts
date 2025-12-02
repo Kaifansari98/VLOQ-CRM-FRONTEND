@@ -1,9 +1,17 @@
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
+import type { AxiosError } from "axios";
 
-// ✅ Fetch all client approval leads
+interface ApiErrorResponse {
+  message?: string;
+}
+
+// Utility to extract message safely
+const extractAxiosError = (err: AxiosError<ApiErrorResponse>) =>
+  err.response?.data?.message || "Unexpected server error";
+
 export const getClientApprovalLeads = async (
   vendorId: number,
   userId: number
@@ -14,7 +22,6 @@ export const getClientApprovalLeads = async (
   return data;
 };
 
-// ✅ Fetch client approval details
 export const getClientApprovalDetails = async (
   vendorId: number,
   leadId: number
@@ -25,7 +32,6 @@ export const getClientApprovalDetails = async (
   return data.data;
 };
 
-// ✅ Hook: useClientApprovalDetails
 export const useClientApprovalDetails = (
   vendorId?: number,
   leadId?: number
@@ -37,7 +43,6 @@ export const useClientApprovalDetails = (
   });
 };
 
-// Optional: upload more approval docs
 export interface UploadApprovalDocPayload {
   leadId: number;
   accountId: number;
@@ -54,6 +59,7 @@ export const uploadMoreClientApprovalDocs = async (
   formData.append("account_id", payload.accountId.toString());
   formData.append("vendor_id", payload.vendorId.toString());
   formData.append("created_by", payload.createdBy.toString());
+
   payload.documents.forEach((file) => {
     formData.append("documents", file);
   });
@@ -67,7 +73,6 @@ export const uploadMoreClientApprovalDocs = async (
   return data;
 };
 
-// ✅ Backend users
 export const useBackendUsers = (vendorId: number) => {
   return useQuery({
     queryKey: ["backendUsers", vendorId],
@@ -81,35 +86,33 @@ export const useBackendUsers = (vendorId: number) => {
   });
 };
 
-// ✅ Submit client approval
 export const useSubmitClientApproval = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (formData: FormData) => {
+      const vendorId = formData.get("vendor_id");
+      const leadId = formData.get("lead_id");
+
       const { data } = await apiClient.post(
-        `/leads/client-approval/vendorId/${formData.get(
-          "vendor_id"
-        )}/leadId/${formData.get("lead_id")}`,
+        `/leads/client-approval/vendorId/${vendorId}/leadId/${leadId}`,
         formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
+        { headers: { "Content-Type": "multipart/form-data" } }
       );
       return data;
     },
+
     onSuccess: () => {
       toast.success("Client Approval submitted successfully!");
       queryClient.invalidateQueries({ queryKey: ["clientApprovalDetails"] });
     },
-    onError: (err: any) => {
-      toast.error(
-        err?.response?.data?.message || "Failed to submit client approval"
-      );
+
+    onError: (err: AxiosError<ApiErrorResponse>) => {
+      toast.error(extractAxiosError(err));
     },
   });
 };
 
-// ✅ Request to Tech Check (with date)
 export const useRequestToTechCheck = () => {
   return useMutation({
     mutationFn: async ({
@@ -118,7 +121,7 @@ export const useRequestToTechCheck = () => {
       accountId,
       assign_to_user_id,
       created_by,
-      client_required_order_login_complition_date, // 👈 new field
+      client_required_order_login_complition_date,
     }: {
       vendorId: number;
       leadId: number;
@@ -138,14 +141,16 @@ export const useRequestToTechCheck = () => {
       );
       return data;
     },
-    onSuccess: () => toast.success("Request to Tech Check submitted successfully!"),
-    onError: (err: any) =>
-      toast.error(err?.response?.data?.message || "Failed to request Tech Check"),
+
+    onSuccess: () =>
+      toast.success("Request to Tech Check submitted successfully!"),
+
+    onError: (err: AxiosError<ApiErrorResponse>) => {
+      toast.error(extractAxiosError(err));
+    },
   });
 };
 
-
-// ✅ Fetch tech-check users
 export const useTechCheckUsers = (vendorId: number) => {
   return useQuery({
     queryKey: ["techCheckUsers", vendorId],

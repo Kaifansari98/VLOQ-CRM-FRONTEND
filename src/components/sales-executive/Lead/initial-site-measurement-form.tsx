@@ -15,10 +15,9 @@ import {
 } from "../../ui/form";
 import { FileUploadField } from "../../custom/file-upload";
 import { Button } from "../../ui/button";
-import { Input } from "../../ui/input";
 import { useAppSelector } from "@/redux/store";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getLeadById, uploadInitialSiteMeasurement } from "@/api/leads";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { uploadInitialSiteMeasurement } from "@/api/leads";
 import { toast } from "react-toastify";
 import CustomeDatePicker from "@/components/date-picker";
 import TextAreaInput from "@/components/origin-text-area";
@@ -120,22 +119,10 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     },
   });
 
-  const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
-  const userId = useAppSelector((state: any) => state.auth.user?.id);
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
   const leadId = data?.id;
   const accountId = data?.accountId;
-
-  // const { data: accountId } = useQuery({
-  //   queryKey: ["lead", leadId],
-  //   queryFn: () => getLeadById(leadId!, vendorId, userId),
-  //   select: (res) => {
-  //     const accountId = res?.data?.lead?.account?.id ?? res?.data?.lead?.account_id;
-  //     if (!accountId) {
-  //       console.warn("Lead missing account data:", res?.data?.lead);
-  //     }
-  //     return accountId;
-  //   }
-  // });
 
   const queryClient = useQueryClient();
 
@@ -170,7 +157,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     },
   });
 
-  let clientId = 1;
+  const clientId = 1;
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!leadId || !accountId) {

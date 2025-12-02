@@ -2,13 +2,12 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { IndianRupee, FileText, Ban, Images } from "lucide-react";
+import { FileText, Ban, Images } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useClientApprovalDetails } from "@/api/client-approval";
 import { useAppSelector } from "@/redux/store";
 import { useDeleteDocument } from "@/api/leads";
 import { ImageComponent } from "@/components/utils/ImageCard";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import Loader from "@/components/utils/loader";
 import {
   AlertDialog,
@@ -43,8 +42,6 @@ export default function ClientApprovalDetails({ leadId }: Props) {
 
   // 🧩 Local State
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-  const [isCarouselOpen, setIsCarouselOpen] = useState(false);
-  const [initialIndex, setInitialIndex] = useState(0);
 
   // 🧩 Permissions
   const canDelete = userType === "admin" || userType === "super-admin";
@@ -185,10 +182,6 @@ export default function ClientApprovalDetails({ leadId }: Props) {
                     }}
                     index={0}
                     canDelete={canDelete}
-                    onView={() => {
-                      setInitialIndex(0);
-                      setIsCarouselOpen(true);
-                    }}
                     onDelete={(id) => setConfirmDelete(Number(id))}
                   />
                 </div>
@@ -270,10 +263,6 @@ export default function ClientApprovalDetails({ leadId }: Props) {
                   }}
                   index={index}
                   canDelete={canDelete}
-                  onView={(i) => {
-                    setInitialIndex(i);
-                    setIsCarouselOpen(true);
-                  }}
                   onDelete={(id) => setConfirmDelete(Number(id))}
                 />
               ))}
@@ -281,36 +270,6 @@ export default function ClientApprovalDetails({ leadId }: Props) {
           </div>
         </div>
       )}
-
-      {/* -------- Image Carousel -------- */}
-      <ImageCarouselModal
-        open={isCarouselOpen}
-        initialIndex={initialIndex}
-        onClose={() => setIsCarouselOpen(false)}
-        images={
-          paymentFile
-            ? [
-                {
-                  id: paymentFile.id,
-                  signed_url: paymentFile.signedUrl || paymentFile.doc_sys_name,
-                  doc_og_name:
-                    paymentFile.doc_original_name || paymentFile.doc_og_name,
-                },
-                ...screenshots.map((s: any) => ({
-                  id: s.id,
-                  signed_url: s.signedUrl || s.doc_sys_name,
-                  doc_og_name:
-                    s.doc_original_name || s.doc_og_name || "Screenshot",
-                })),
-              ]
-            : screenshots.map((s: any) => ({
-                id: s.id,
-                signed_url: s.signedUrl || s.doc_sys_name,
-                doc_og_name:
-                  s.doc_original_name || s.doc_og_name || "Screenshot",
-              }))
-        }
-      />
 
       {/* -------- Delete Confirmation Dialog -------- */}
       <AlertDialog

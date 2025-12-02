@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import BaseModal from "@/components/utils/baseModal";
 import { useAppSelector } from "@/redux/store";
 import { FileUploadField } from "@/components/custom/file-upload";
@@ -15,7 +15,6 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormDescription,
   FormMessage,
 } from "@/components/ui/form";
 import { useUploadClientDocumentation } from "@/hooks/final-measurement/use-final-measurement";
@@ -59,11 +58,6 @@ const ClientDocumentationModal: React.FC<Props> = ({
   const leadId = data?.id;
   const accountId = data?.accountId;
 
-  const [files, setFiles] = useState<File[]>([]);
-
-  const [pptFiles, setPptFiles] = useState<File[]>([]);
-  const [pythaFiles, setPythaFiles] = useState<File[]>([]);
-
   const { mutateAsync, isPending } = useUploadClientDocumentation();
 
   const form = useForm<ClientDocFormValues>({
@@ -74,12 +68,10 @@ const ClientDocumentationModal: React.FC<Props> = ({
     },
   });
 
-  // Reset form & files when modal closes or data changes
+  // Reset form when modal closes or data changes
   useEffect(() => {
     if (!open) {
       form.reset({ pptDocuments: [], pythaDocuments: [] });
-      setPptFiles([]);
-      setPythaFiles([]);
     }
   }, [open, form]);
 
@@ -116,8 +108,6 @@ const ClientDocumentationModal: React.FC<Props> = ({
 
       onOpenChange(false);
       form.reset({ pptDocuments: [], pythaDocuments: [] });
-      setPptFiles([]);
-      setPythaFiles([]);
 
       // ✅ Redirect
       router.push("/dashboard/project/client-approval");
@@ -131,9 +121,9 @@ const ClientDocumentationModal: React.FC<Props> = ({
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title={`Client Documentation  `}
-      size="md"
-      description="View, upload, and manage client-related documentation in one place."
+      title={`Client Documentation`}
+      size="lg"
+      description="upload and manage client-related documentation in one place."
     >
       <div className="px-5 py-4">
         <Form {...form}>
@@ -148,17 +138,11 @@ const ClientDocumentationModal: React.FC<Props> = ({
                   </FormLabel>
                   <FormControl>
                     <FileUploadField
-                      value={pptFiles}
-                      onChange={(newFiles: File[]) => {
-                        setPptFiles(newFiles);
-                        field.onChange(newFiles);
-                      }}
+                      value={field.value}
+                      onChange={field.onChange}
                       accept=".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx"
                     />
                   </FormControl>
-                  {/* <FormDescription className="text-xs">
-                    Upload PPT or related files for client documentation.
-                  </FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -174,17 +158,11 @@ const ClientDocumentationModal: React.FC<Props> = ({
                   </FormLabel>
                   <FormControl>
                     <FileUploadField
-                      value={pythaFiles}
-                      onChange={(newFiles: File[]) => {
-                        setPythaFiles(newFiles);
-                        field.onChange(newFiles);
-                      }}
+                      value={field.value}
+                      onChange={field.onChange}
                       accept=".pdf,.zip"
                     />
                   </FormControl>
-                  {/* <FormDescription className="text-xs">
-                    Upload Pytha files (.pyo) for client documentation.
-                  </FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}

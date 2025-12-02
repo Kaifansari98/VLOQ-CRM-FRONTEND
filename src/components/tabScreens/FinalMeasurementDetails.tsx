@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import { useAppSelector } from "@/redux/store";
 import { useFinalMeasurementLeadById } from "@/hooks/final-measurement/use-final-measurement";
 import {
@@ -15,10 +14,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Ban, Images, FileText, Plus } from "lucide-react";
+import { Ban, Images, FileText } from "lucide-react";
 import { useDeleteDocument } from "@/api/leads";
 import { ImageComponent } from "@/components/utils/ImageCard";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import DocumentCard from "@/components/utils/documentCard";
 import Loader from "@/components/utils/loader";
 import SectionHeader from "@/utils/sectionHeader";
@@ -55,8 +53,6 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
 
   // 🧩 --- Local States ---
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-  const [isCarouselOpen, setIsCarouselOpen] = useState(false);
-  const [initialImageIndex, setInitialImageIndex] = useState(0);
 
   // 🧩 --- Permissions ---
   const canDelete = userType === "admin" || userType === "super_admin";
@@ -133,7 +129,10 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
           icon={<Images size={20} />}
         />
 
-        <motion.div variants={itemVariants} className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
+        <motion.div
+          variants={itemVariants}
+          className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {sitePhotos.length > 0 ? (
               sitePhotos.map((photo, index) => (
@@ -147,10 +146,6 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
                   }}
                   index={index}
                   canDelete={canDelete}
-                  onView={(i) => {
-                    setInitialImageIndex(i);
-                    setIsCarouselOpen(true);
-                  }}
                   onDelete={(id) => setConfirmDelete(Number(id))}
                 />
               ))
@@ -181,7 +176,10 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
             icon={<FileText size={20} />}
           />
 
-          <motion.div variants={itemVariants} className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
+          <motion.div
+            variants={itemVariants}
+            className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
+          >
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {measurementDocs.map((doc) => (
                 <DocumentCard
@@ -237,18 +235,6 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
           </div>
         </div>
       </div>
-
-      {/* -------- Image Carousel Modal -------- */}
-      <ImageCarouselModal
-        open={isCarouselOpen}
-        initialIndex={initialImageIndex}
-        onClose={() => setIsCarouselOpen(false)}
-        images={sitePhotos.map((photo) => ({
-          id: photo.id,
-          signed_url: photo.signedUrl,
-          doc_og_name: photo.doc_og_name,
-        }))}
-      />
 
       {/* -------- Delete Confirmation Dialog -------- */}
       <AlertDialog

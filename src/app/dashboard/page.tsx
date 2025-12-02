@@ -17,14 +17,19 @@ import {
 } from "@/components/ui/sidebar";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { useAppSelector } from "@/redux/store";
+import DashboardWrapper from "@/components/dashboard/DashboardWrapper";
+import { Bell, Settings } from "lucide-react";
 
 export default function Page() {
-  const userType = useAppSelector((state) => state.auth.user?.user_type.user_type);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type
+  );
+
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 border-b">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator
@@ -47,18 +52,24 @@ export default function Page() {
           </div>
 
           <div className="flex items-center gap-2 pr-4">
+            <Bell/>
             <AnimatedThemeToggler />
+            <Settings/>
           </div>
         </header>
 
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div className="bg-muted/50 aspect-video rounded-xl" />
-            <div className="bg-muted/50 aspect-video rounded-xl" />
-            <div className="bg-muted/50 aspect-video rounded-xl" />
+        {/* Wrap everything inside the conditional dashboard renderer */}
+        <DashboardWrapper>
+          {/* DEFAULT existing dashboard content */}
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            <div className="grid auto-rows-min gap-4 md:grid-cols-3">
+              <div className="bg-muted/50 aspect-video rounded-xl" />
+              <div className="bg-muted/50 aspect-video rounded-xl" />
+              <div className="bg-muted/50 aspect-video rounded-xl" />
+            </div>
+            <div className="bg-muted/50 min-h-[100vh] flex-1 rounded-xl md:min-h-min" />
           </div>
-          <div className="bg-muted/50 min-h-[100vh] flex-1 rounded-xl md:min-h-min" />
-        </div>
+        </DashboardWrapper>
       </SidebarInset>
     </SidebarProvider>
   );

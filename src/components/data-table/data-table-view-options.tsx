@@ -32,9 +32,9 @@ export function DataTableViewOptions<TData>({
         .getAllColumns()
         .filter(
           (column) =>
-            typeof column.accessorFn !== "undefined" && column.getCanHide(),
+            typeof column.accessorFn !== "undefined" && column.getCanHide()
         ),
-    [table],
+    [table]
   );
 
   return (
@@ -45,7 +45,7 @@ export function DataTableViewOptions<TData>({
           role="combobox"
           variant="outline"
           size="sm"
-          className="ml-auto hidden h-8 lg:flex"
+          className=" hidden h-8 lg:flex"
         >
           <Settings2 />
           View
@@ -71,7 +71,7 @@ export function DataTableViewOptions<TData>({
                   <Check
                     className={cn(
                       "ml-auto size-4 shrink-0",
-                      column.getIsVisible() ? "opacity-100" : "opacity-0",
+                      column.getIsVisible() ? "opacity-100" : "opacity-0"
                     )}
                   />
                 </CommandItem>

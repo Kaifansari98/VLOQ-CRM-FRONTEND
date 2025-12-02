@@ -84,7 +84,7 @@ const SelectDocumentModal: React.FC<Props> = ({
       description="Choose documents for the lead"
       size="md"
     >
-      <div className="max-h-[70vh] overflow-y-auto p-6 space-y-6">
+      <div className="p-5 space-y-6">
         {/* Quotations */}
         <div>
           <div className="flex items-center justify-between mb-3">

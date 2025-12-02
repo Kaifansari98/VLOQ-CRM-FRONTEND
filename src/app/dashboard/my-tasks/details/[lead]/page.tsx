@@ -15,12 +15,10 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { ModeToggle } from "@/components/ModeToggle";
 import { useParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function MyTaskLeadDetails() {
@@ -29,8 +27,7 @@ export default function MyTaskLeadDetails() {
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const [openMesurementModal, setOpenMeasurementModal] =
-    useState<boolean>(false);
+
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
 
@@ -82,7 +79,7 @@ export default function MyTaskLeadDetails() {
           </div>
           <div className="flex items-center gap-2">
             {leadStatus === "open" && (
-              <Button onClick={() => setOpenMeasurementModal(true)}>
+              <Button >
                 Assign Task
               </Button>
             )}

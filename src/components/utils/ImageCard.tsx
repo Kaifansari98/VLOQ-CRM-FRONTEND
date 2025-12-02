@@ -2,6 +2,9 @@
 
 import { Trash2, SquareArrowOutUpRight } from "lucide-react";
 import React from "react";
+import ImageViewerModal from "./ImageViewerModal";
+
+import { useState } from "react";
 
 interface DocumentCardProps {
   doc: {
@@ -58,137 +61,107 @@ export const DocumentCardSkeleton: React.FC<{
   );
 };
 
-// Main Component
 export const ImageComponent: React.FC<DocumentCardProps> = ({
   doc,
-  index = 0,
   canDelete = false,
-  onView,
   onDelete,
   status,
   isLoading = false,
 }) => {
-  // Status colors
-  const statusColor = {
-    APPROVED: "bg-green-500",
-    REJECTED: "bg-red-500",
-    PENDING: "bg-blue-500",
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState("");
+
+  const handleView = () => {
+    setViewerUrl(doc.signedUrl);
+    setViewerOpen(true);
   };
 
-  const statusKey = status
-    ? ["APPROVED", "REJECTED", "PENDING"].includes(status.toUpperCase())
-      ? (status.toUpperCase() as keyof typeof statusColor)
-      : undefined
-    : undefined;
-
-  const statusDot = (
-    <div className="flex items-center gap-2">
-      <div
-        className={`w-2 h-2 rounded-full ${
-          statusKey
-            ? statusColor[statusKey]
-            : "bg-neutral-400 dark:bg-neutral-600"
-        }`}
-      />
-      <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
-        {status
-          ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
-          : ""}
-      </span>
-    </div>
-  );
-
-  // Skeleton mode
-  if (isLoading) {
-    return (
-      <div className="group relative flex items-center gap-4 rounded-xl p-4 border border-border bg-white dark:bg-neutral-900">
-        {/* Delete Button */}
-        {canDelete && (
-          <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-muted dark:bg-neutral-700 animate-pulse" />
-        )}
-
-        <div className="w-20 h-20 rounded-lg bg-muted dark:bg-neutral-800 animate-pulse" />
-
-        <div className="flex flex-col justify-between flex-1 min-w-0 gap-2">
-          <div className="h-4 rounded bg-muted dark:bg-neutral-700 animate-pulse w-2/3" />
-          <div className="h-3 rounded bg-muted dark:bg-neutral-700 animate-pulse w-1/3" />
-          <div className="flex items-center justify-between mt-2">
-            <div className="h-6 rounded bg-muted dark:bg-neutral-700 animate-pulse w-16" />
-            <div className="h-3 rounded bg-muted dark:bg-neutral-700 animate-pulse w-10" />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <DocumentCardSkeleton />;
 
   return (
-    <div
-      className="
+    <>
+      <div
+        className="
         group relative flex items-center gap-4 rounded-xl p-4 
         border border-border bg-white dark:bg-neutral-900
         transition-all duration-200 hover:bg-muted/40 dark:hover:bg-neutral-800
       "
-    >
-      {/* Delete Button */}
-      {canDelete && (
-        <button
-          onClick={() => onDelete?.(doc.id)}
-          className="
+      >
+        {/* Delete Button */}
+        {canDelete && (
+          <button
+            onClick={() => onDelete?.(doc.id)}
+            className="
             absolute top-3 right-3 p-1 rounded-full 
             border border-border bg-white dark:bg-neutral-900 
             hover:bg-muted dark:hover:bg-neutral-800 
             transition-colors
           "
-        >
-          <Trash2 className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
-        </button>
-      )}
+          >
+            <Trash2 className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
+          </button>
+        )}
 
-      {/* Thumbnail */}
-      <div className="flex-shrink-0">
-        <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-border bg-muted dark:bg-neutral-800">
-          <img
-            src={doc.signedUrl}
-            alt={doc.doc_og_name}
-            className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
-          />
-        </div>
-      </div>
-
-      {/* Details */}
-      <div className="flex flex-col justify-between flex-1 min-w-0">
-        <div>
-          <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-200 truncate pr-6">
-            {doc.doc_og_name}
-          </h3>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-            Uploaded on{" "}
-            {new Date(doc.created_at!).toLocaleDateString("en-IN", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
-          </p>
+        {/* Thumbnail */}
+        <div className="flex-shrink-0">
+          <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-border bg-muted dark:bg-neutral-800">
+            <img
+              src={doc.signedUrl}
+              alt={doc.doc_og_name}
+              className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
+            />
+          </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="flex items-end justify-between mt-3">
-          <button
-            onClick={() => onView?.(index)}
-            className="
+        {/* Details */}
+        <div className="flex flex-col justify-between flex-1 min-w-0">
+          <div>
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-200 truncate pr-6">
+              {doc.doc_og_name}
+            </h3>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+              Uploaded on{" "}
+              {new Date(doc.created_at!).toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </p>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="flex items-end justify-between mt-3">
+            <button
+              onClick={handleView}
+              className="
               flex items-center gap-1.5 px-3 py-1.5 rounded-md 
               border border-border bg-muted/30 dark:bg-neutral-800/40 
               text-neutral-700 dark:text-neutral-300 text-xs font-medium
               hover:bg-muted transition dark:hover:bg-neutral-700
             "
-          >
-            <SquareArrowOutUpRight className="w-4 h-4" />
-            View
-          </button>
+            >
+              <SquareArrowOutUpRight className="w-4 h-4" />
+              View
+            </button>
 
-          {status && statusDot}
+            {status && (
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full bg-neutral-400`} />
+                <span className="text-xs">{status}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* ---------------------------
+            🔥 IMAGE VIEWER MODAL
+          --------------------------- */}
+      <ImageViewerModal
+        open={viewerOpen}
+        imageUrl={viewerUrl}
+        onClose={() => setViewerOpen(false)}
+      />
+    </>
   );
 };

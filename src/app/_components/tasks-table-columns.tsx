@@ -30,11 +30,7 @@ export type ProcessedTask = {
   remark?: string;
 };
 
-export function getVendorLeadsTableColumns({
-  setRowAction,
-  userType,
-  router,
-}: {
+export function getVendorLeadsTableColumns({}: {
   setRowAction: React.Dispatch<
     React.SetStateAction<DataTableRowAction<ProcessedTask> | null>
   >;

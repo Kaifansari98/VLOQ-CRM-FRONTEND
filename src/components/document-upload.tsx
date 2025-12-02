@@ -28,29 +28,6 @@ export function DocumentsUploader({
   onChange,
   accept,
 }: DocumentsFieldProps) {
-  // Extension -> Friendly label map
-  const extToLabel: Record<string, string> = {
-    ".pdf": "PDF",
-    ".doc": "Word",
-    ".docx": "Word",
-    ".xls": "Excel",
-    ".xlsx": "Excel",
-    ".jpg": "Image",
-    ".jpeg": "Image",
-    ".png": "Image",
-    ".pyo": "Word",
-    ".pytha": "Word",
-  };
-
-  // Dynamic accepted formats text
-  const acceptedFormats = React.useMemo(() => {
-    if (!accept) return ["PDF", "Word", "Excel"]; // fallback
-    return accept
-      .split(",")
-      .map((ext) => ext.trim())
-      .map((ext) => extToLabel[ext] || ext.toUpperCase());
-  }, [accept]);
-
   const description =
     "You can upload up to 10 files (PDF or any supported formats). Drag & drop or click below to select files.";
 
@@ -97,7 +74,10 @@ export function DocumentsUploader({
       onFileReject={onFileReject}
       onUpload={onUpload}
       multiple
-      accept={accept ?? ".pdf,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct"}
+      accept={
+        accept ??
+        ".pdf,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct"
+      }
       className="w-full"
     >
       <FileUploadDropzone>

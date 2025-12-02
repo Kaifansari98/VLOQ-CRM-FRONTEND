@@ -5,7 +5,7 @@ import PreProductionDetails from "./PreProductionDetails";
 import PostProductionDetails from "./PostProductionDetails";
 import { useCheckPostProductionReady } from "@/api/production/production-api";
 import { useAppSelector } from "@/redux/store";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { canViewDefaultSubTabProductionStage } from "@/components/utils/privileges";
 
 interface LeadDetailsProductionUtilProps {

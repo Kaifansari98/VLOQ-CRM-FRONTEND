@@ -64,8 +64,6 @@ import FinalMeasurementModal from "@/components/sales-executive/booking-stage/fi
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 
 import {
-  canReassingLead,
-  canDeleteLead,
   canUploadFinalMeasurements,
   canEditLeadButton,
   canDeleteLeadButton,

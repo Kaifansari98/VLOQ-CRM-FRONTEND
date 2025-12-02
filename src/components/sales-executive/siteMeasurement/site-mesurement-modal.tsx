@@ -5,7 +5,6 @@ import { Edit2, FileText, Plus, Download, Eye } from "lucide-react";
 import SiteMesurementEditModal from "./site-mesurement-edit-modal";
 import AddCurrentSitePhotos from "./current-site-image-add-modal";
 import AddPaymentDetailsPhotos from "./payment-details-image-add-modal";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import BaseModal from "@/components/utils/baseModal";
 
 interface ViewInitialSiteMeasurmentLeadProps {
@@ -22,11 +21,6 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
   const [openEditModal, setOpenEditModal] = useState<boolean>(false);
   const [openImageModal, setOpenImageModal] = useState<boolean>(false);
   const [openImageModal2, setOpenImageModal2] = useState<boolean>(false);
-  const [openCarouselModal, setOpenCarouselModal] = useState(false);
-  const [modalStartIndex, setModalStartIndex] = useState(0);
-  const [openPaymentCarouselModal, setOpenPaymentCarouselModal] =
-    useState(false);
-  const [paymentModalStartIndex, setPaymentModalStartIndex] = useState(0);
 
   const documents = data?.documentUrl || [];
   const payment = data?.paymentInfo;
@@ -188,7 +182,7 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
               <h3 className="text-lg font-semibold">Current Site Photos</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5  gap-3 sm:gap-4">
                 {currentSitePhotos.map((doc, idx) => (
-                  <div key={doc.id} className="relative group">
+                  <div key={idx} className="relative group">
                     <img
                       src={doc.signed_url}
                       alt={doc.doc_og_name ?? "site photo"}
@@ -198,10 +192,6 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
 
                     {/* Overlay with filename */}
                     <div
-                      onClick={() => {
-                        setModalStartIndex(idx);
-                        setOpenCarouselModal(true);
-                      }}
                       className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 
                    flex items-center justify-center rounded-lg transition-opacity"
                     >
@@ -241,13 +231,7 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
                       />
 
                       {/* Overlay with filename */}
-                      <div
-                        onClick={() => {
-                          setPaymentModalStartIndex(idx);
-                          setOpenPaymentCarouselModal(true);
-                        }}
-                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-lg transition-opacity"
-                      >
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-lg transition-opacity">
                         <span className="text-white text-xs font-medium px-2 text-center">
                           {doc.doc_og_name ?? "Payment Proof"}
                         </span>
@@ -311,19 +295,6 @@ const SiteMesurementModal: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
           }
         />
       </BaseModal>
-      <ImageCarouselModal
-        open={openCarouselModal}
-        initialIndex={modalStartIndex}
-        images={currentSitePhotos}
-        onClose={() => setOpenCarouselModal(false)}
-      />
-
-      <ImageCarouselModal
-        open={openPaymentCarouselModal}
-        initialIndex={paymentModalStartIndex}
-        images={paymentImages}
-        onClose={() => setOpenPaymentCarouselModal(false)}
-      />
     </>
   );
 };

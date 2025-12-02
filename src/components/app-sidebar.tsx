@@ -23,7 +23,6 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { useAppSelector } from "@/redux/store";
-import { isAction } from "@reduxjs/toolkit";
 
 // Updated navigation data with showCount properties
 const data = {
@@ -50,6 +49,12 @@ const data = {
     },
   ],
   navMain: [
+    {
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: Command, // or any icon you want
+      isActive: false,
+    },
     {
       title: "My Task",
       url: "/dashboard/my-tasks",

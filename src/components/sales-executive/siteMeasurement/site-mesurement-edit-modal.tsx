@@ -1,14 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,6 +17,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import CustomeDatePicker from "@/components/date-picker";
+import BaseModal from "@/components/utils/baseModal";
 
 // --------- Props ---------
 interface Data {
@@ -115,97 +109,89 @@ const SiteMesurementEditModal: React.FC<SiteMesurementEditModalProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-[95vw] max-h-[90vh] p-0 gap-0">
-        <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle>Edit Payment</DialogTitle>
-          <DialogDescription>
-            Update payment details for this site measurement.
-          </DialogDescription>
-        </DialogHeader>
+    <BaseModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Edit Payment"
+      description="Update payment details for this site measurement."
+      size="md"
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="p-5 space-y-6">
+          {/* Amount */}
+          <FormField
+            control={form.control}
+            name="amount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Amount</FormLabel>
+                <FormControl>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={field.value === 0 ? "" : field.value}
+                    onChange={(e) => field.onChange(Number(e.target.value))}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <ScrollArea className="max-h-[calc(90vh-100px)]">
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="px-5 py-4 space-y-6"
+          {/* Payment Date */}
+          <FormField
+            control={form.control}
+            name="payment_date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Payment Date</FormLabel>
+                <FormControl>
+                  <CustomeDatePicker
+                    value={field.value}
+                    onChange={field.onChange}
+                    restriction="futureOnly"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="payment_text"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl>
+                  <textarea
+                    rows={3}
+                    {...field}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm resize-none focus:outline-none"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Actions */}
+          <div className="flex justify-end gap-2 ">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
             >
-              {/* Amount */}
-              <FormField
-                control={form.control}
-                name="amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Amount</FormLabel>
-                    <FormControl>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={field.value === 0 ? "" : field.value}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Payment Date */}
-              <FormField
-                control={form.control}
-                name="payment_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Payment Date</FormLabel>
-                    <FormControl>
-                      <CustomeDatePicker
-                        value={field.value}
-                        onChange={field.onChange}
-                        restriction="futureOnly"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="payment_text"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <textarea
-                        rows={3}
-                        {...field}
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm resize-none focus:outline-none"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Actions */}
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? "Saving..." : "Save"}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </BaseModal>
   );
 };
 

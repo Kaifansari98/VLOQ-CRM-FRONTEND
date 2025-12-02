@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useAppSelector } from "@/redux/store";
 
 import {
@@ -20,226 +20,467 @@ import { DataTableFilterList } from "@/components/data-table/data-table-filter-l
 import { DataTableFilterMenu } from "@/components/data-table/data-table-filter-menu";
 import { DataTableSortList } from "@/components/data-table/data-table-sort-list";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
-
 import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
-import { useInitialSiteMeasurement } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 
 import { useFeatureFlags } from "./feature-flags-provider";
-import { getUniversalTableColumns } from "@/components/utils/column/Universal-column";
-import { LeadColumn } from "@/components/utils/column/column-type";
-
+import type { DataTableRowActionSiteMeasurement } from "@/types/data-table";
+import { getSiteMeasurementColumn } from "./site-measurment-columns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+  AlertDialogFooter,
+  AlertDialogHeader,
+} from "@/components/ui/alert-dialog";
+import { useDeleteLead } from "@/hooks/useDeleteLead";
+import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
+import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
+import { toast } from "react-toastify";
+import {
+  useCancelledUpdateTask,
+  useCompletedUpdateTask,
+  useInitialSiteMeasurement,
+} from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
+import {
+  Document,
+  ProcessedSiteMeasurementLead,
+  SiteMeasurmentLead,
+  Upload,
+} from "@/types/site-measrument-types";
 import { useRouter } from "next/navigation";
-import type { Lead } from "@/api/leads";
+import { useQueryClient } from "@tanstack/react-query";
+import InitialSiteMeasuresMent from "@/components/sales-executive/Lead/initial-site-measurement-form";
+import RescheduleModal from "@/components/sales-executive/siteMeasurement/reschedule-modal";
 
 const SiteMeasurementTable = () => {
+  // Redux selectors
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type
+    (state) => state.auth.user?.user_type.user_type as string | undefined
   );
 
-  const router = useRouter();
+  // Feature flags
   const { enableAdvancedFilter, filterFlag } = useFeatureFlags();
-
-  const isAdmin =
-    userType?.toLowerCase() === "admin" ||
-    userType?.toLowerCase() === "super_admin";
-
-  const [viewType, setViewType] = useState<"my" | "overall">("my");
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [sorting, setSorting] = useState<SortingState>([
+  const router = useRouter();
+  // State hooks
+  const [openDelete, setOpenDelete] = useState<boolean>(false);
+  const [assignOpenLead, setAssignOpenLead] = useState<boolean>(false);
+  const [editOpenLead, setEditOpenLead] = useState<boolean>(false);
+  const [openMesurement, setOpenMesurement] = useState<boolean>(false);
+  const [openCompletedModal, setOpenCompletedModal] = useState<boolean>(false);
+  const [openCancelModal, setOpenCancelModal] = useState<boolean>(false);
+  const [openRescheduleModal, setOpenRescheduleModal] =
+    useState<boolean>(false);
+  const [globalFilter, setGlobalFilter] = React.useState("");
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({
+      architechName: false,
+      source: false,
+      createdAt: false,
+      altContact: false,
+      productTypes: false,
+      productStructures: false,
+      designerRemark: false,
+    });
+  const [rowAction, setRowAction] =
+    React.useState<DataTableRowActionSiteMeasurement<ProcessedSiteMeasurementLead> | null>(
+      null
+    );
+  const [sorting, setSorting] = React.useState<SortingState>([
     { id: "createdAt", desc: true },
   ]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    []
+  );
+  const [rowSelection, setRowSelection] = React.useState({});
 
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [rowSelection, setRowSelection] = useState({});
+  // Query hooks - always called, but conditionally with null/undefined params
+  const { data, error, isLoading, isError } = useInitialSiteMeasurement(
+    vendorId || 0,
+    userId || 0
+  );
+  const completedUpdateMutation = useCompletedUpdateTask();
+  const cancelledUpdateMutation = useCancelledUpdateTask();
+  const queryClient = useQueryClient();
+  // Custom hooks
+  const deleteLeadMutation = useDeleteLead();
 
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
-    architechName: false,
-    source: false,
-    createdAt: false,
-    altContact: false,
-    email: false,
-    productTypes: true,
-    productStructures: false,
-    designerRemark: false,
-  });
+  // Effects
+  useEffect(() => {
+    if (rowAction?.variant === "delete" && rowAction.row) {
+      setOpenDelete(true);
+    }
+    if (rowAction?.variant === "reassignlead" && rowAction.row) {
+      console.log("Original Data row Leads: ", rowAction.row.original);
+      setAssignOpenLead(true);
+    }
+    if (rowAction?.variant === "edit" && rowAction.row) {
+      console.log("Original Edit Data row Leads: ", rowAction.row.original);
+      setEditOpenLead(true);
+    }
+    if (rowAction?.variant === "uploadmeasurement" && rowAction.row) {
+      console.log("Original Edit Data row Leads: ", rowAction.row.original);
+      setOpenMesurement(true);
+    }
+    if (rowAction?.variant === "completed" && rowAction.row) {
+      setOpenCompletedModal(true);
+    }
+    if (rowAction?.variant === "cancel" && rowAction.row) {
+      setOpenCancelModal(true);
+    }
+    if (rowAction?.variant === "reschedule" && rowAction.row) {
+      setOpenRescheduleModal(true);
+    }
+  }, [rowAction]);
 
-  // API CALLS
-  const {
-    data: myLeadsData,
-    isLoading: isMyLoading,
-    isError,
-    error,
-  } = useInitialSiteMeasurement(vendorId || 0, userId || 0);
+  // Memoized values
+  const rowData = useMemo<ProcessedSiteMeasurementLead[]>(() => {
+    if (!data?.data) return [];
 
-  const { data: overallLeadsData, isLoading: isOverallLoading } =
-    useVendorOverallLeads(vendorId!, "Type 2", userId!);
+    return data.data.map((lead: SiteMeasurmentLead, index: number) => {
+      const allDocumentUrls: Document[] = Array.isArray(lead.documents)
+        ? lead.documents
+            .filter(
+              (doc): doc is Document => !!doc.doc_og_name && !!doc.signed_url
+            )
+            .map((doc) => ({
+              id: doc.id,
+              doc_og_name: doc.doc_og_name,
+              doc_sys_name: doc.doc_sys_name,
+              signed_url: doc.signed_url,
+              file_type: doc.file_type,
+              is_image: doc.is_image,
+              created_at: doc.created_at,
+              doc_type_id: doc.doc_type_id,
+            }))
+        : [];
 
-  const isLoading = viewType === "my" ? isMyLoading : isOverallLoading;
-
-  const activeData =
-    viewType === "my" ? myLeadsData?.data || [] : overallLeadsData?.data || [];
-
-  // ⭐ LeadColumn mapping (IMPORTANT)
-  const rowData = useMemo<LeadColumn[]>(() => {
-    if (!Array.isArray(activeData)) return [];
-
-    console.log("Initial site measurment Data: ", activeData);
-    return activeData.map(
-      (lead: Lead, index: number): LeadColumn => ({
+      return {
         id: lead.id,
         srNo: index + 1,
+        name: `${lead.firstname || ""} ${lead.lastname || ""}`.trim(),
+        email: lead.email || "",
+        contact: `${lead.country_code || ""} ${lead.contact_no || ""}`.trim(),
+        siteAddress: lead.site_address || "",
+        architechName: lead.archetech_name || "",
+        designerRemark: lead.designer_remark || "",
+        source: lead.source?.type || "",
+        siteType: lead.siteType?.type || "",
+        createdAt: lead.created_at || "",
+        updatedAt: lead.updated_at || "",
+        altContact: lead.alt_contact_no || "",
+        status: lead.statusType?.type || "",
+        assignedTo: lead.assignedTo?.user_name || "Unassigned",
+        productTypes: "",
+        productStructures: "",
+        documentUrl: allDocumentUrls,
+        paymentInfo:
+          lead.uploads.find((item: Upload) => item.paymentInfo !== null)
+            ?.paymentInfo || null,
+        accountId: lead.account.id || "",
+      };
+    });
+  }, [data]);
 
-        lead_code: lead.lead_code ?? "",
-        name: `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim(),
-        email: lead.email ?? "",
-        contact: `${lead.country_code ?? ""} ${lead.contact_no ?? ""}`.trim(),
+  const columns = React.useMemo(
+    () => getSiteMeasurementColumn({ setRowAction, userType, router }),
+    [setRowAction, userType, router]
+  );
 
-        siteAddress: lead.site_address ?? "",
-        architechName: lead.archetech_name ?? "",
-        designerRemark: lead.designer_remark ?? "",
-
-        productTypes:
-          lead.productMappings?.map((pm) => pm.productType?.type).join(", ") ??
-          "",
-
-        productStructures:
-          lead.leadProductStructureMapping
-            ?.map((psm) => psm.productStructure?.type)
-            .join(", ") ?? "",
-
-        source: lead.source?.type ?? "",
-        siteType: lead.siteType?.type ?? "",
-        createdAt: lead.created_at ?? "",
-        updatedAt: lead.updated_at ?? "",
-        altContact: lead.alt_contact_no ?? "",
-        status: lead.statusType?.type ?? "",
-        site_map_link: lead?.site_map_link ?? "",
-        assign_to: lead.assignedTo?.user_name ?? "",
-        accountId: lead.account?.id ?? lead.account_id ?? 0,
-      })
-    );
-  }, [activeData]);
-
-  // Columns
-  const columns = useMemo(() => getUniversalTableColumns(), []);
-
-  // Table
+  // Table setup
   const table = useReactTable({
     data: rowData,
     columns,
-    state: {
-      sorting,
-      columnFilters,
-      globalFilter,
-      columnVisibility,
-      rowSelection,
-    },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
-
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-
     getRowId: (row) => row.id.toString(),
     globalFilterFn: "includesString",
+    state: {
+      sorting,
+      columnFilters,
+      rowSelection,
+      globalFilter,
+      columnVisibility,
+    },
   });
 
-  const handleRowClick = (row: LeadColumn) => {
-    router.push(
-      `/dashboard/leads/initial-site-measurement/details/${row.id}?accountId=${row.accountId}`
+  // Effect for logging
+  useEffect(() => {
+    console.log("📌 RowData:", rowData);
+    console.log(
+      "📌 Extracted Documents:",
+      rowData.map((row) => ({
+        id: row.id,
+        name: row.name,
+        documentUrls: row.documentUrl,
+      }))
     );
-  };
+  }, [rowData]);
 
-  if (!vendorId) return <p>No vendor selected</p>;
-  if (isLoading)
-    return (
-      <p className="p-4 text-gray-600">Loading Site Measurement Leads...</p>
-    );
+  if (!vendorId) {
+    return <p>No vendor selected</p>;
+  }
+
+  if (isLoading) {
+    return <p>Loading...</p>;
+  }
 
   if (isError) {
     console.log("API Error:", error);
     return <p>Something went wrong</p>;
   }
 
-  const mockProps = { shallow: true, debounceMs: 300, throttleMs: 50 };
+  const handleDeleteLead = async () => {
+    if (!rowAction?.row) return;
 
-  const myLeadsCount = myLeadsData?.count ?? 0;
-  const overallLeadsCount = overallLeadsData?.count ?? 0;
+    const leadId = rowAction.row.original.id;
 
+    if (!vendorId || !userId) {
+      toast.error("Vendor or User information is missing!");
+      return;
+    }
+
+    deleteLeadMutation.mutate(
+      {
+        leadId,
+        vendorId,
+        userId,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Lead deleted successfully!");
+        },
+        onError: (error: any) => {
+          toast.error(error?.message || "Failed to delete lead!");
+        },
+      }
+    );
+
+    setOpenDelete(false);
+    setRowAction(null);
+  };
+
+  const handleMarkCompleted = () => {
+    if (!rowAction?.row) return;
+
+    const lead = rowAction.row.original;
+
+    completedUpdateMutation.mutate(
+      {
+        leadId: lead?.id || 0,
+        taskId: lead?.taskId || 0,
+        payload: {
+          status: "completed",
+          updated_by: userId || 0,
+          closed_at: new Date().toISOString(),
+          closed_by: userId || 0,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success("Lead marked as completed!");
+          setOpenCompletedModal(false);
+
+          // Invalidate query to refresh data
+          if (vendorId) {
+            queryClient.invalidateQueries({
+              queryKey: ["siteMeasurementLeads", vendorId],
+            });
+          }
+        },
+        onError: (err: any) => {
+          toast.error(err?.message || "❌ Failed to update lead");
+        },
+      }
+    );
+  };
+
+  const handleCancelLead = () => {
+    if (!rowAction?.row) return;
+
+    const lead = rowAction.row.original;
+
+    cancelledUpdateMutation.mutate(
+      {
+        leadId: lead.id,
+        taskId: lead.taskId || 0,
+        payload: {
+          status: "cancelled",
+          updated_by: userId || 0,
+          closed_by: userId || 0,
+          closed_at: new Date().toISOString(),
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success("Lead cancelled successfully!");
+          setOpenCancelModal(false);
+
+          // Invalidate query to refresh data
+          if (vendorId) {
+            queryClient.invalidateQueries({
+              queryKey: ["siteMeasurementLeads", vendorId],
+            });
+          }
+        },
+        onError: (err: any) => {
+          toast.error(err?.message || "Failed to cancel lead");
+        },
+      }
+    );
+  };
+
+  const mockProps = {
+    shallow: true,
+    debounceMs: 300,
+    throttleMs: 50,
+  };
+
+  const handleRowClick = (row: ProcessedSiteMeasurementLead) => {
+    const lead = row.id;
+    const accountId = row.accountId;
+    router.push(
+      `/dashboard/sales-executive/initial-site-measurement/details/${lead}?accountId=${accountId}`
+    );
+  };
+
+  // Main render
   return (
-    <DataTable table={table} onRowDoubleClick={handleRowClick}>
-      {enableAdvancedFilter ? (
-        <DataTableAdvancedToolbar table={table}>
-          <DataTableSortList table={table} align="start" />
+    <>
+      <DataTable table={table} onRowDoubleClick={handleRowClick}>
+        {enableAdvancedFilter ? (
+          <>
+            <DataTableAdvancedToolbar table={table}>
+              <DataTableSortList table={table} align="start" />
+              {filterFlag === "advancedFilters" ? (
+                <DataTableFilterList
+                  table={table}
+                  shallow={mockProps.shallow}
+                  debounceMs={mockProps.debounceMs}
+                  throttleMs={mockProps.throttleMs}
+                  align="start"
+                />
+              ) : (
+                <DataTableFilterMenu
+                  table={table}
+                  shallow={mockProps.shallow}
+                  debounceMs={mockProps.debounceMs}
+                  throttleMs={mockProps.throttleMs}
+                />
+              )}
+            </DataTableAdvancedToolbar>
+          </>
+        ) : (
+          <DataTableToolbar table={table}>
+            <DataTableSortList table={table} align="end" />
+          </DataTableToolbar>
+        )}
+      </DataTable>
 
-          {filterFlag === "advancedFilters" ? (
-            <DataTableFilterList table={table} {...mockProps} align="start" />
-          ) : (
-            <DataTableFilterMenu table={table} {...mockProps} />
-          )}
+      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              lead from your system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteLead}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-          {!isAdmin && (
-            <div className="ml-auto flex items-center gap-1.5 flex-wrap">
-              <button
-                onClick={() => setViewType("my")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium ${
-                  viewType === "my" ? "bg-blue-600 text-white" : "bg-muted"
-                }`}
-              >
-                My Leads{" "}
-                <span className="ml-2 bg-blue-100 text-xs text-blue-500 px-1.5 py-0.5 rounded-full">
-                  {myLeadsCount}
-                </span>
-              </button>
+      {/* Completed Modal */}
+      <AlertDialog
+        open={openCompletedModal}
+        onOpenChange={setOpenCompletedModal}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark Follow Up As Completed?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to mark this follow up as completed? This
+              action can’t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMarkCompleted}
+              disabled={completedUpdateMutation.isPending}
+            >
+              {completedUpdateMutation.isPending
+                ? "Processing..."
+                : "Completed"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-              <button
-                onClick={() => setViewType("overall")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium ${
-                  viewType === "overall" ? "bg-blue-600 text-white" : "bg-muted"
-                }`}
-              >
-                Overall Leads{" "}
-                <span className="ml-2 bg-blue-100 text-xs text-blue-500 px-1.5 py-0.5 rounded-full">
-                  {overallLeadsCount}
-                </span>
-              </button>
-            </div>
-          )}
-        </DataTableAdvancedToolbar>
-      ) : (
-        <DataTableToolbar table={table}>
-          {!isAdmin && (
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setViewType("my")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium ${
-                  viewType === "my" ? "bg-blue-600 text-white" : "bg-muted"
-                }`}
-              >
-                My Leads
-              </button>
+      {/* Cancel Modal */}
+      <AlertDialog open={openCancelModal} onOpenChange={setOpenCancelModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Follow Up?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel this Follow Up? This action can’t
+              be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelLead}
+              disabled={cancelledUpdateMutation.isPending}
+            >
+              {cancelledUpdateMutation.isPending
+                ? "Processing..."
+                : "Completed"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-              <button
-                onClick={() => setViewType("overall")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium ${
-                  viewType === "overall" ? "bg-blue-600 text-white" : "bg-muted"
-                }`}
-              >
-                Overall Leads
-              </button>
-            </div>
-          )}
-          <DataTableSortList table={table} align="end" />
-        </DataTableToolbar>
-      )}
-    </DataTable>
+      <InitialSiteMeasuresMent
+        open={openMesurement}
+        onOpenChange={setOpenMesurement}
+        data={rowAction?.row.original}
+      />
+
+      <AssignLeadModal
+        open={assignOpenLead}
+        onOpenChange={setAssignOpenLead}
+        leadData={rowAction?.row.original}
+      />
+
+      <EditLeadModal
+        open={editOpenLead}
+        onOpenChange={setEditOpenLead}
+        leadData={rowAction?.row.original}
+      />
+
+      <RescheduleModal
+        open={openRescheduleModal}
+        onOpenChange={setOpenRescheduleModal}
+        data={rowAction?.row.original}
+      />
+    </>
   );
 };
 

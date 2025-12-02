@@ -1,12 +1,5 @@
 import React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,6 +16,7 @@ import {
 import { FileUploadField } from "@/components/custom/file-upload";
 import { useAppSelector } from "@/redux/store";
 import { useUpdateSiteMeasurementMutation } from "@/hooks/Site-measruement/useUpdateSiteMeasurement";
+import BaseModal from "@/components/utils/baseModal";
 
 // --------- Props ---------
 interface Data {
@@ -94,59 +88,52 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-[95vw] max-h-[90vh] p-0 gap-0">
-        <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle>Add Image</DialogTitle>
-          <DialogDescription>
-            Upload site-related images or documents
-          </DialogDescription>
-        </DialogHeader>
+    <BaseModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Add Site Photos"
+      description="Upload current site photos or supporting documents."
+      size="lg"
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
+          {/* Current Site Photos */}
+          <FormField
+            control={form.control}
+            name="current_site_photos"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Current Site Photos</FormLabel>
+                <FormControl>
+                  <FileUploadField
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                </FormControl>
+                <FormDescription className="text-xs">
+                  Upload photos or documents related to the site.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <ScrollArea className="max-h-[calc(90vh-100px)] p-6">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Current Site Photos */}
-              <FormField
-                control={form.control}
-                name="current_site_photos"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm">
-                      Current Site Photos
-                    </FormLabel>
-                    <FormControl>
-                      <FileUploadField
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormDescription className="text-xs">
-                      Upload photos or documents related to the site.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  disabled={isPending}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isPending}>
-                  {isPending ? "uploading..." : "Upload"}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "uploading..." : "Upload"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </BaseModal>
   );
 };
 

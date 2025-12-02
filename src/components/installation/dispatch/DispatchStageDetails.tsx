@@ -2,13 +2,11 @@
 
 import React, { useState } from "react";
 import { format } from "date-fns";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { PhoneInput } from "@/components/ui/phone-input";
 import CustomeDatePicker from "@/components/date-picker";
@@ -21,12 +19,7 @@ import {
   FileText,
   Loader2,
   CheckCircle2,
-  Download,
-  Eye,
   Package,
-  X,
-  FileCheck,
-  ExternalLink,
   Pencil,
 } from "lucide-react";
 import {
@@ -35,7 +28,6 @@ import {
   useAddDispatchDetails,
   useDispatchDocuments,
   useUploadDispatchDocuments,
-  AddDispatchDetailsPayload,
 } from "@/api/installation/useDispatchStageLeads";
 import { useAppSelector } from "@/redux/store";
 import { useUpdateNoOfBoxes } from "@/api/production/production-api";
@@ -65,7 +57,6 @@ import PendingMaterialDetails from "./PendingMaterialDetails";
 import VehicleNumberInput from "@/components/custom/VehicleNumberInput";
 import { useDeleteDocument } from "@/api/leads";
 import DocumentCard from "@/components/utils/documentCard";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkDispatchStage } from "@/components/utils/privileges";
@@ -91,7 +82,6 @@ interface DispatchStageDetailsProps {
 const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   leadId,
   accountId,
-  name,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id) || 0;
@@ -130,7 +120,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
   // File Upload State
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [detailsSaved, setDetailsSaved] = useState(false);
 
   // 🧩 For Edit No. of Boxes Modal
   const [openBoxesModal, setOpenBoxesModal] = useState(false);
@@ -138,8 +127,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     requiredDateData?.no_of_boxes?.toString() || ""
   );
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-  const [openCarousel, setOpenCarousel] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
+
   const queryClient = useQueryClient();
   const { mutateAsync: updateNoBoxes, isPending: updatingBoxes } =
     useUpdateNoOfBoxes(vendorId, leadId);
@@ -157,7 +145,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
         dispatch_remark: dispatchDetails.dispatch_remark || "",
         updated_by: userId,
       });
-      setDetailsSaved(true);
     }
   }, [dispatchDetails, userId]);
 
@@ -184,11 +171,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
         leadId,
         payload: formData,
       },
-      {
-        onSuccess: () => {
-          setDetailsSaved(true);
-        },
-      }
+      {}
     );
   };
 
@@ -593,10 +576,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                         }}
                         index={index}
                         canDelete={canDelete}
-                        onView={() => {
-                          setStartIndex(index);
-                          setOpenCarousel(true);
-                        }}
                         onDelete={(id) => setConfirmDelete(Number(id))}
                       />
                     ) : (
@@ -642,14 +621,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-        {/* ---------------------- IMAGE VIEWER ---------------------- */}
-        <ImageCarouselModal
-          images={images}
-          open={openCarousel}
-          initialIndex={startIndex}
-          onClose={() => setOpenCarousel(false)}
-        />
       </div>
 
       {/* Pending Material Details Section */}
@@ -761,13 +732,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <ImageCarouselModal
-        images={images}
-        open={openCarousel}
-        initialIndex={startIndex}
-        onClose={() => setOpenCarousel(false)}
-      />
     </div>
   );
 };
