@@ -225,17 +225,17 @@ export default function LeadStatusComparisonCard({
                       value === "overall" ? "Overall" : "My Leads"
                     }
                   /> */}
+                    <Bar
+                      dataKey="mine"
+                      name="mine"
+                      fill={chartColors.barMine}
+                      radius={[6, 6, 0, 0]}
+                      // barSize={18}
+                    />
                   <Bar
                     dataKey="overall"
                     name="overall"
                     fill={chartColors.barOverall}
-                    radius={[6, 6, 0, 0]}
-                    // barSize={18}
-                  />
-                  <Bar
-                    dataKey="mine"
-                    name="mine"
-                    fill={chartColors.barMine}
                     radius={[6, 6, 0, 0]}
                     // barSize={18}
                   />

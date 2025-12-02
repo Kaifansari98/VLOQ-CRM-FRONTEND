@@ -42,12 +42,13 @@ export default function BookingValueCard({
 }: BookingValueCardProps) {
   const [mode, setMode] = useState<ChartMode>("year");
 
-//   const weekly = data?.bookingValueThisWeekArray || [980, 2400, 1930, 2900, 2500, 3900, 3200];
-  const weekly = [980, 2400, 1930, 2900, 2500, 3900, 3200];
-//   const monthly = data?.bookingValueThisMonthArray || [0, 0, 0, 0];
-  const monthly = [1250, 920, 2000, 1400];
-//   const yearly = data?.bookingValueThisYearArray || [980, 2400, 1930, 2900, 2500, 3900, 3200, 2400, 1930, 2900, 2500, 3900];
-  const yearly = [980, 2400, 1930, 2900, 2500, 3900, 3200, 2400, 1930, 2900, 2500, 3900];
+  const weekly = data?.bookingValueThisWeekArray || [
+    980, 2400, 1930, 2900, 2500, 3900, 3200,
+  ];
+  const monthly = data?.bookingValueThisMonthArray || [1250, 920, 2000, 1400];
+  const yearly = data?.bookingValueThisYearArray || [
+    980, 2400, 1930, 2900, 2500, 3900, 3200, 2400, 1930, 2900, 2500, 3900,
+  ];
 
   const totalsByMode: Record<ChartMode, number> = {
     week: data?.bookingValueThisWeek ?? sum(weekly),
@@ -69,27 +70,31 @@ export default function BookingValueCard({
       }));
     }
     return yearly.map((value, i) => ({
-        name: [
-          "Jan",
-          "Feb",
-          "Mar",
-          "Apr",
-          "May",
-          "Jun",
-          "Jul",
-          "Aug",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dec",
-        ][i],
-        value,
-      }));
+      name: [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ][i],
+      value,
+    }));
   }, [mode, weekly, monthly, yearly]);
 
   const selectedTotal = totalsByMode[mode];
   const selectedLabel =
-    mode === "week" ? "This Week" : mode === "month" ? "This Month" : "This Year";
+    mode === "week"
+      ? "This Week"
+      : mode === "month"
+      ? "This Month"
+      : "This Year";
 
   return (
     <Card className="w-full h-full border flex flex-col justify-between">
@@ -103,7 +108,9 @@ export default function BookingValueCard({
               <span className="text-2xl font-semibold">
                 {selectedTotal?.toLocaleString() ?? "-"}
               </span>
-              <span className="text-xs text-muted-foreground">{selectedLabel}</span>
+              <span className="text-xs text-muted-foreground">
+                {selectedLabel}
+              </span>
             </div>
           )}
         </div>
@@ -142,7 +149,10 @@ export default function BookingValueCard({
         ) : (
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ left: 0, right: 0, top: 5, bottom: 0 }}>
+              <BarChart
+                data={chartData}
+                margin={{ left: 0, right: 0, top: 5, bottom: 0 }}
+              >
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="hsl(var(--border))"
@@ -164,7 +174,11 @@ export default function BookingValueCard({
                     fontSize: "12px",
                   }}
                 />
-                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                <Bar
+                  dataKey="value"
+                  fill="hsl(var(--primary))"
+                  radius={[6, 6, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

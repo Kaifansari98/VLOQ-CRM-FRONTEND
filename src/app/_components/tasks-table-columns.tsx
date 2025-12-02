@@ -9,10 +9,11 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import { useRouter } from "next/navigation";
 import RemarkTooltip from "@/components/origin-tooltip";
+import { MapPin } from "lucide-react";
 
 export type ProcessedTask = {
   id: number; // userLeadTask.id
-  lead_code?: string;
+  lead_code: string;
   accountId: number;
   leadId: number;
   srNo: number; // serial number in table
@@ -28,6 +29,7 @@ export type ProcessedTask = {
   assignedAt: string; // userLeadTask.created_at
   assignedByName: string;
   remark?: string;
+  site_map_link: string;
 };
 
 export function getVendorLeadsTableColumns({}: {
@@ -250,6 +252,43 @@ export function getVendorLeadsTableColumns({}: {
       },
     },
 
+
+
+    {
+          accessorKey: "site_map_link",
+          header: ({ column }) => (
+            <DataTableColumnHeader column={column} title="Address" />
+          ),
+          enableSorting: true,
+          enableHiding: true,
+          enableColumnFilter: true,
+    
+          cell: ({ row }) => {
+            const link = row.getValue("site_map_link") as string;
+    
+            const isValidLink =
+              typeof link === "string" &&
+              (link.startsWith("http://") || link.startsWith("https://"));
+    
+            return (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-black/20 bg-white min-h-[32px]">
+                {isValidLink ? (
+                  <a
+                    href={link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-black"
+                  >
+                    <MapPin size={14} strokeWidth={2} />
+                    Open Map
+                  </a>
+                ) : (
+                  <span className="text-gray-400 italic">No Map Available</span>
+                )}
+              </div>
+            );
+          },
+        },
     {
       accessorKey: "remark",
       header: ({ column }) => (

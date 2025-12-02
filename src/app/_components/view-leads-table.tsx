@@ -29,6 +29,7 @@ import { DataTableDateFilter } from "@/components/data-table/data-table-date-fil
 import { DataTableSortList } from "@/components/data-table/data-table-sort-list";
 import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
+import { Button } from "@/components/ui/button";
 
 const ViewOpenLeadTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -52,6 +53,10 @@ const ViewOpenLeadTable = () => {
     pagination.pageIndex + 1,
     pagination.pageSize
   );
+
+  const myLeads = vendorUserLeadsQuery.data?.count ?? 0;
+
+  const overallLeads = vendorOverallLeadsQuery.data?.count ?? 0;
 
   const isAdmin =
     userType?.toLowerCase() === "admin" ||
@@ -125,7 +130,7 @@ const ViewOpenLeadTable = () => {
         source: lead.source?.type || "",
         site_map_link: lead.site_map_link || "",
         siteType: lead.siteType?.type || "",
-        createdAt: lead.created_at || "",
+        createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",
         updatedAt: lead.updated_at || "",
         altContact: lead.alt_contact_no || "",
         status: lead.statusType?.type || "",
@@ -175,33 +180,81 @@ const ViewOpenLeadTable = () => {
   }
 
   return (
-    <DataTable table={table} onRowDoubleClick={handleRowClick} className=" pt-3 px-4">
-      <div className="flex flex-col md:flex-row justify-between items-end gap-4">
-        <div className="flex flex-col sm:flex-row items-end gap-3">
-          <ClearInput
-            value={globalFilter ?? ""}
-            onChange={(e) => {
-              setGlobalFilter(e.target.value);
-              setPagination({ ...pagination, pageIndex: 0 });
-            }}
-            placeholder="Search…"
-            className="w-full h-8 sm:w-64"
-          />
-
-          <DataTableDateFilter
-            column={table.getColumn("createdAt")!}
-            title="Created At"
-            multiple
-          />
+    <div className="py-2">
+      {/* HEADER */}
+      <div className="flex justify-between items-end px-4">
+        <div className="hidden md:block">
+          <h1 className="text-lg font-semibold">Open Leads</h1>
+          <p className="text-sm text-muted-foreground">
+            Fresh leads that have not yet been processed or contacted.
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <DataTableSortList table={table} />
-          <DataTableFilterList table={table} />
-          <DataTableViewOptions table={table} />
-        </div>
+        {/* MY / OVERALL TABS */}
+        {!isAdmin && (
+          <div className="flex items-center gap-2 mb-2">
+            <Button
+              size="sm"
+              className="flex gap-2"
+              variant={viewType === "my" ? "default" : "secondary"}
+              onClick={() => {
+                setViewType("my");
+                setPagination({ ...pagination, pageIndex: 0 });
+              }}
+            >
+              My Leads
+              <p>{myLeads}</p>
+            </Button>
+
+            <Button
+              size="sm"
+              className="flex gap-2"
+              variant={viewType === "overall" ? "default" : "secondary"}
+              onClick={() => {
+                setViewType("overall");
+                setPagination({ ...pagination, pageIndex: 0 });
+              }}
+            >
+              Overall Leads
+              <p>{overallLeads}</p>
+            </Button>
+          </div>
+        )}
       </div>
-    </DataTable>
+
+      {/* TABLE */}
+      <DataTable
+        table={table}
+        onRowDoubleClick={handleRowClick}
+        className=" pt-3 px-4"
+      >
+        <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+          <div className="flex flex-col sm:flex-row items-end gap-3">
+            <ClearInput
+              value={globalFilter ?? ""}
+              onChange={(e) => {
+                setGlobalFilter(e.target.value);
+                setPagination({ ...pagination, pageIndex: 0 });
+              }}
+              placeholder="Search…"
+              className="w-full h-8 sm:w-64"
+            />
+
+            <DataTableDateFilter
+              column={table.getColumn("createdAt")!}
+              title="Created At"
+              multiple
+            />
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <DataTableSortList table={table} />
+            <DataTableFilterList table={table} />
+            <DataTableViewOptions table={table} />
+          </div>
+        </div>
+      </DataTable>
+    </div>
   );
 };
 

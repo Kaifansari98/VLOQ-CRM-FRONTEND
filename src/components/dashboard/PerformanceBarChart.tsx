@@ -41,9 +41,9 @@ export default function PerformanceLineChart({
 }: PerformanceBarChartProps) {
   const [mode, setMode] = useState<ChartMode>("year");
 
-  const weekly = [45, 52, 38, 65, 48, 55, 42];
-  const monthly = [80, 220, 145, 240];
-  const yearly = [
+  const weekly = data?.bookedThisWeek || [45, 52, 38, 65, 48, 55, 42];
+  const monthly = data?.bookedThisMonth || [80, 220, 145, 240];
+  const yearly = data?.bookedThisYear || [
     850, 190, 880, 350, 450, 750, 920, 1150, 1480, 1200, 1140, 1280,
   ];
 
