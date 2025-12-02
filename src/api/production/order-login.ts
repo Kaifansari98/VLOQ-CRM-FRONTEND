@@ -33,13 +33,6 @@ export const useOrderLoginLeads = (
   });
 };
 
-export const useVendorOrderLoginOverallLeads = (
-  vendorId: number,
-  userId: number
-) => {
-  return useVendorOverallLeads(vendorId, "Type 9", userId);
-};
-
 // ✅ --- Fetch all company vendors by vendor_id ---
 export const getCompanyVendorsByVendorId = async (vendorId: number) => {
   const { data } = await apiClient.get(
