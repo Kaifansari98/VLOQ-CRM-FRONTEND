@@ -22,7 +22,7 @@ import { canCreateLead } from "@/components/utils/privileges";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { useActivityStatusCounts } from "@/hooks/useActivityStatus";
 import ViewOpenLeadTable from "@/app/_components/view-leads-table";
-import PendingLeadsTable from "@/app/dashboard/leads/pending-leads/pending-leads-table";
+import PendingLeadsTable from "../../../_components/pending-leads-table";
 import {
   Popover,
   PopoverContent,
@@ -137,7 +137,7 @@ export default function LeadsGenerationPage() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Open Leads</BreadcrumbPage>
+                  <BreadcrumbPage>{tabInfo[tab].title}</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -241,7 +241,6 @@ export default function LeadsGenerationPage() {
             </div>
           </div>
         </main>
-
       </SidebarInset>
     </SidebarProvider>
   );

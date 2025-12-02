@@ -81,25 +81,19 @@ export default function PendingLeadDetails() {
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbLink href="/dashboard/leads/leadstable">
-                    Open Leads
+                    {tab} Leads
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard/sales-executive/pending-leads">
-                    Pending Leads
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Details</BreadcrumbPage>
+                  <BreadcrumbLink>Pending Leads Details</BreadcrumbLink>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
           </div>
 
           <div className="flex items-center space-x-2">
-          <AnimatedThemeToggler />
+            <AnimatedThemeToggler />
 
             {/* 🔹 Dynamic Actions Menu */}
             <DropdownMenu>
@@ -224,9 +218,7 @@ export default function PendingLeadDetails() {
                   queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
 
                   // ✅ Redirect back to Lost Approval tab
-                  router.push(
-                    "/dashboard/leads/leadstable"
-                  );
+                  router.push("/dashboard/leads/leadstable");
                 },
                 onError: (err: any) => {
                   toast.error(err?.message || "Failed to approve lead!");

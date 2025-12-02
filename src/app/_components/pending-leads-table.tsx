@@ -29,6 +29,7 @@ import {
   getPendingLeadsColumns,
   PendingLeadRow,
 } from "./pending-leads-columns";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -256,22 +257,23 @@ export default function PendingLeadsTable({
     (tab === "lostApproval" && lostApprovalLoading) ||
     (tab === "lost" && lostLoading);
 
-  const mockProps = React.useMemo(
-    () => ({
-      shallow: true,
-      debounceMs: 300,
-      throttleMs: 50,
-    }),
-    []
-  );
-
   if (isLoading) {
     return <p>Loading...</p>;
   }
 
+  const handleRowClick = (row: PendingLeadRow) => {
+    router.push(
+      `/dashboard/leads/leadstable/pendingleaddetails/${row.id}?accountId=${row.accountId}&tab=${tab}`
+    );
+  };
+
   return (
     <>
-      <DataTable table={table} className="py-2 px-4">
+      <DataTable
+        table={table}
+        className="py-2 px-4"
+        onRowDoubleClick={handleRowClick}
+      >
         <div className="hidden md:block">
           <h1 className="text-lg font-semibold">{stageTitle}</h1>
           <p className="text-sm text-muted-foreground">{stageDescription}</p>
