@@ -2,12 +2,10 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, FileText, Plus } from "lucide-react";
 import { getFileExtension, isImageExt } from "@/components/utils/filehelper";
 import BaseModal from "@/components/utils/baseModal";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import AddMeetingFilesModal from "../../add-meeting-files-modal";
 import { useAppSelector } from "@/redux/store";
@@ -46,8 +44,7 @@ const MeetingDetailsModal = ({
     (state) => state.auth.user?.user_type?.user_type
   );
 
-  const [openCarouselModal, setOpenCarouselModal] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
+
   const [openAddFilesModal, setOpenAddFilesModal] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
@@ -110,6 +107,7 @@ const MeetingDetailsModal = ({
         open={open}
         onOpenChange={onOpenChange}
         title="Meeting Details"
+        description="View meeting records, attached assets, and submission history."
         size="lg"
       >
         <div className="px-6 py-5 space-y-4">
@@ -237,10 +235,7 @@ const MeetingDetailsModal = ({
                       }}
                       index={index}
                       canDelete={canDelete}
-                      onView={(i) => {
-                        setStartIndex(i);
-                        setOpenCarouselModal(true);
-                      }}
+                    
                       onDelete={(id) => setConfirmDelete(Number(id))}
                     />
                   ))}
@@ -274,13 +269,7 @@ const MeetingDetailsModal = ({
         </div>
       </BaseModal>
 
-      {/* 🖼️ Image Carousel Modal */}
-      <ImageCarouselModal
-        open={openCarouselModal}
-        initialIndex={startIndex}
-        images={meetingImages}
-        onClose={() => setOpenCarouselModal(false)}
-      />
+ 
 
       {/* ➕ Add Files Modal */}
       <AddMeetingFilesModal

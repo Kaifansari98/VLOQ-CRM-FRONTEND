@@ -1,3 +1,5 @@
+"use client";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -7,82 +9,59 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 
-interface DataTableSkeletonProps extends React.ComponentProps<"div"> {
-  columnCount: number;
+interface DataTableSkeletonProps {
+  columnCount?: number;
   rowCount?: number;
-  filterCount?: number;
-  cellWidths?: string[];
-  withViewOptions?: boolean;
-  withPagination?: boolean;
-  shrinkZero?: boolean;
 }
 
 export function DataTableSkeleton({
-  columnCount,
+  columnCount = 15, // matches your universal table columns
   rowCount = 10,
-  filterCount = 0,
-  cellWidths = ["auto"],
-  withViewOptions = true,
-  withPagination = true,
-  shrinkZero = false,
-  className,
-  ...props
 }: DataTableSkeletonProps) {
-  const cozyCellWidths = Array.from(
-    { length: columnCount },
-    (_, index) => cellWidths[index % cellWidths.length] ?? "auto",
-  );
-
   return (
-    <div
-      className={cn("flex w-full flex-col gap-2.5 overflow-auto", className)}
-      {...props}
-    >
-      <div className="flex w-full items-center justify-between gap-2 overflow-auto p-1">
-        <div className="flex flex-1 items-center gap-2">
-          {filterCount > 0
-            ? Array.from({ length: filterCount }).map((_, i) => (
-                <Skeleton key={i} className="h-7 w-[4.5rem] border-dashed" />
-              ))
-            : null}
-        </div>
-        {withViewOptions ? (
-          <Skeleton className="ml-auto hidden h-7 w-[4.5rem] lg:flex" />
-        ) : null}
+    <div className="px-4 py-4 flex flex-col gap-5 w-full">
+      {/* ----------- TOP SWITCH TABS / VIEWS ----------- */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Skeleton className="h-8 w-28 rounded-md" />
+        <Skeleton className="h-8 w-28 rounded-md" />
       </div>
-      <div className="rounded-md border">
-        <Table>
+
+      {/* ----------- FILTER BAR + SEARCH ----------- */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        {/* Left Filters */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
+          <Skeleton className="h-9 w-64 rounded-md" />
+          <Skeleton className="h-9 w-24 rounded-md" />
+        </div>
+
+        {/* Right Actions */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Skeleton className="h-9 w-24 rounded-md" />
+          <Skeleton className="h-9 w-24 rounded-md" />
+          <Skeleton className="h-9 w-28 rounded-md" />
+        </div>
+      </div>
+
+      {/* ----------- MAIN TABLE ----------- */}
+      <div className="rounded-md border overflow-hidden w-full">
+        <Table className="min-w-full">
           <TableHeader>
-            {Array.from({ length: 1 }).map((_, i) => (
-              <TableRow key={i} className="hover:bg-transparent">
-                {Array.from({ length: columnCount }).map((_, j) => (
-                  <TableHead
-                    key={j}
-                    style={{
-                      width: cozyCellWidths[j],
-                      minWidth: shrinkZero ? cozyCellWidths[j] : "auto",
-                    }}
-                  >
-                    <Skeleton className="h-6 w-full" />
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
+            <TableRow>
+              {Array.from({ length: columnCount }).map((_, i) => (
+                <TableHead key={i} className="px-2 py-2">
+                  <Skeleton className="h-5 w-[80%] mx-auto" />
+                </TableHead>
+              ))}
+            </TableRow>
           </TableHeader>
+
           <TableBody>
-            {Array.from({ length: rowCount }).map((_, i) => (
-              <TableRow key={i} className="hover:bg-transparent">
-                {Array.from({ length: columnCount }).map((_, j) => (
-                  <TableCell
-                    key={j}
-                    style={{
-                      width: cozyCellWidths[j],
-                      minWidth: shrinkZero ? cozyCellWidths[j] : "auto",
-                    }}
-                  >
-                    <Skeleton className="h-6 w-full" />
+            {Array.from({ length: rowCount }).map((_, rowIndex) => (
+              <TableRow key={rowIndex} className="hover:bg-transparent">
+                {Array.from({ length: columnCount }).map((_, colIndex) => (
+                  <TableCell key={colIndex} className="px-3 py-3">
+                    <Skeleton className="h-5 w-full" />
                   </TableCell>
                 ))}
               </TableRow>
@@ -90,26 +69,20 @@ export function DataTableSkeleton({
           </TableBody>
         </Table>
       </div>
-      {withPagination ? (
-        <div className="flex w-full items-center justify-between gap-4 overflow-auto p-1 sm:gap-8">
-          <Skeleton className="h-7 w-40 shrink-0" />
-          <div className="flex items-center gap-4 sm:gap-6 lg:gap-8">
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-7 w-24" />
-              <Skeleton className="h-7 w-[4.5rem]" />
-            </div>
-            <div className="flex items-center justify-center font-medium text-sm">
-              <Skeleton className="h-7 w-20" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Skeleton className="hidden size-7 lg:block" />
-              <Skeleton className="size-7" />
-              <Skeleton className="size-7" />
-              <Skeleton className="hidden size-7 lg:block" />
-            </div>
-          </div>
+
+      {/* ----------- PAGINATION ----------- */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-3">
+        {/* Rows per page */}
+        <Skeleton className="h-7 w-40 rounded-md" />
+
+        {/* Controls */}
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-7 w-16 rounded-md" />
+          <Skeleton className="h-7 w-16 rounded-md" />
+          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="h-7 w-7 rounded-md" />
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }

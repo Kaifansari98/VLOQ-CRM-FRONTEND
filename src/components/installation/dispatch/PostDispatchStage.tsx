@@ -4,8 +4,7 @@ import React, { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
-import { FolderOpen, Upload, ExternalLink, Loader2 } from "lucide-react";
+import { FolderOpen, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { toast } from "react-toastify";
@@ -59,8 +58,6 @@ export default function PostDispatchStage({
     useUploadPostDispatchDocuments();
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-  const [openCarousel, setOpenCarousel] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const hasFiles =
@@ -210,12 +207,9 @@ export default function PostDispatchStage({
                     signedUrl: doc.signed_url,
                     created_at: doc.created_at,
                   }}
+                  key={index}
                   index={index}
                   canDelete={canDelete}
-                  onView={(i) => {
-                    setStartIndex(i);
-                    setOpenCarousel(true);
-                  }}
                   onDelete={(id) => setConfirmDelete(Number(id))}
                 />
               ))}

@@ -16,7 +16,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { ModeToggle } from "@/components/ModeToggle";
 import PillTabs from "@/components/sales-executive/designing-stage/pill-tabs";
 import QuotationTab from "@/components/sales-executive/designing-stage/pill-tabs-component/quotation";
 import MettingsTab from "@/components/sales-executive/designing-stage/pill-tabs-component/meetings";
@@ -34,7 +33,7 @@ function DetailsContent() {
   const accountId = Number(searchParams.get("accountId") ?? 0);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
-  const { data, isLoading, isError } = useDesigningStageCounts(
+  const { data } = useDesigningStageCounts(
     vendorId,
     leadId
   );

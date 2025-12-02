@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from "react";
 import { useAppSelector } from "@/redux/store";
 import {
-  createSiteReadiness,
   getSiteReadinessRecords,
-  updateSiteReadiness,
+  useCreateSiteReadiness,
+  useUpdateSiteReadiness,
 } from "@/api/installation/useSiteReadinessLeads";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -54,7 +54,6 @@ const CHECKLIST_ITEMS = [
 export default function SiteReadinessDetails({
   leadId,
   accountId,
-  name,
 }: SiteReadinessDetailsProps) {
   const vendor_id = useAppSelector((state) => state.auth.user?.vendor_id);
   const user_id = useAppSelector((state) => state.auth.user?.id);
@@ -72,9 +71,6 @@ export default function SiteReadinessDetails({
     }))
   );
 
-
-console.log("checklist data: ", checklistData)
-
   const { data: leadData } = useLeadStatus(leadId, vendor_id);
   const leadStatus = leadData?.status;
 
@@ -82,6 +78,9 @@ console.log("checklist data: ", checklistData)
   const [fetchLoading, setFetchLoading] = useState(true);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const createMutation = useCreateSiteReadiness();
+  const updateMutation = useUpdateSiteReadiness();
 
   useEffect(() => {
     const fetchRecords = async () => {
@@ -193,7 +192,7 @@ console.log("checklist data: ", checklistData)
       }));
 
       const updatePayload = toUpdate.map((item) => ({
-        id: item.id,
+        id: item.id!,
         account_id: accountId,
         type: item.type,
         remark: item.remark?.trim() || null,
@@ -202,12 +201,21 @@ console.log("checklist data: ", checklistData)
       }));
 
       if (createPayload.length > 0) {
-        await createSiteReadiness(vendor_id, leadId, createPayload);
+        await createMutation.mutateAsync({
+          vendorId: vendor_id,
+          leadId,
+          payload: createPayload,
+        });
       }
 
       if (updatePayload.length > 0) {
-        await updateSiteReadiness(vendor_id, leadId, updatePayload);
+        await updateMutation.mutateAsync({
+          vendorId: vendor_id,
+          leadId,
+          payload: updatePayload,
+        });
       }
+
       await refetchRecords();
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);

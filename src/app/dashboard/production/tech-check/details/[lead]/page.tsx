@@ -13,7 +13,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { ModeToggle } from "@/components/ModeToggle";
 import { useParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
@@ -65,8 +64,6 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 import {
   canMoveToOrderLogin,
-  canReassingLead,
-  canDeleteLead,
   canTechCheck,
   canUploadRevisedClientDocumentationFiles,
   canViewThreeVerticalDocsOptionInTechCheck,
@@ -84,14 +81,12 @@ import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-
 import BaseModal from "@/components/utils/baseModal";
 import { cn } from "@/lib/utils";
 import TextAreaInput from "@/components/origin-text-area";
-import ClientDocumentationModal from "@/components/site-supervisor/final-measurement/client-documantation-modal";
 import UploadMoreClientDocumentationModal from "@/components/site-supervisor/client-documentation/uploadmore-client-documentaition-modal";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
-import { useBackendUsers } from "@/api/client-approval";
 import MoveToOrderLoginModal from "@/components/production/tech-check-stage/MoveToOrderLoginModal";
 
 export default function ClientApprovalLeadDetails() {
@@ -114,7 +109,6 @@ export default function ClientApprovalLeadDetails() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
-  const [prevTab, setPrevTab] = useState("details");
   const [assignOpen, setAssignOpen] = useState(false);
 
   const [openFinalApproveConfirm, setOpenFinalApproveConfirm] = useState(false);
@@ -153,7 +147,7 @@ export default function ClientApprovalLeadDetails() {
     leadIdNum
   );
 
-  const { data: backendUsers } = useBackendUsers(vendorId);
+
 
   const pptDocs = clientDocsData?.documents?.ppt ?? [];
   const pythaDocs = clientDocsData?.documents?.pytha ?? [];
@@ -375,7 +369,6 @@ export default function ClientApprovalLeadDetails() {
               }
 
               setOpenRejectDocsModal(true);
-              setPrevTab(activeTab);
               return;
             }
             setActiveTab(val);
@@ -1008,7 +1001,7 @@ export default function ClientApprovalLeadDetails() {
           size="md"
           description="Provide a detailed reason for rejecting the selected documents."
         >
-          <div className="space-y-5 px-4 py-4">
+          <div className="space-y-6 p-5">
             {/* Info Banner */}
             <div className="flex items-start gap-3 p-4 border rounded-lg">
               <AlertCircle className="flex-shrink-0 mt-0.5" size={18} />

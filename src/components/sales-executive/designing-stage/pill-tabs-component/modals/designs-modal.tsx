@@ -1,13 +1,7 @@
 "use client";
 
 import React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import BaseModal from "@/components/utils/baseModal";
 import {
   Form,
   FormControl,
@@ -27,7 +21,6 @@ import { useAppSelector } from "@/redux/store";
 import { useSubmitDesigns } from "@/api/designingStageQueries";
 import { useQueryClient } from "@tanstack/react-query";
 
-// ✅ Schema (can later extend with file type/size rules)
 const designsSchema = z.object({
   upload_pdf: z
     .any()
@@ -37,12 +30,13 @@ const designsSchema = z.object({
     .refine((files) => files.length <= 10, {
       message: "You can upload up to 10 files only.",
     })
-    .refine((files: File[]) =>
-      files.every((f) =>
-        /\.(pdf|zip|pyo|pytha|dwg|dxf|stl|step|stp|iges|igs|3ds|obj|skp|sldprt|sldasm|prt|catpart|catproduct)$/i.test(
-          f.name
-        )
-      ),
+    .refine(
+      (files: File[]) =>
+        files.every((f) =>
+          /\.(pdf|zip|pyo|pytha|dwg|dxf|stl|step|stp|iges|igs|3ds|obj|skp|sldprt|sldasm|prt|catpart|catproduct)$/i.test(
+            f.name
+          )
+        ),
       {
         message: "Only PDF, ZIP or supported design formats are allowed.",
       }
@@ -51,39 +45,28 @@ const designsSchema = z.object({
 
 type DesignsFormValues = z.infer<typeof designsSchema>;
 
-interface LeadViewModalProps {
+interface DesignsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const DesignsModal: React.FC<LeadViewModalProps> = ({ open, onOpenChange }) => {
+const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
   const { leadId, accountId } = useDetails();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id)!;
   const userId = useAppSelector((s) => s.auth.user?.id)!;
-  const queryClient = useQueryClient();
 
+  const queryClient = useQueryClient();
   const form = useForm<DesignsFormValues>({
     resolver: zodResolver(designsSchema),
     defaultValues: { upload_pdf: [] },
   });
 
-  // ✅ Use the mutation hook
   const submitDesignsMutation = useSubmitDesigns();
 
   const onSubmit = async (data: DesignsFormValues) => {
-    if (!data.upload_pdf || data.upload_pdf.length === 0) {
-      toast.error("Please upload design files.");
-      return;
-    }
-
-    if (!leadId || !accountId || !vendorId || !userId) {
-      toast.error("Missing required information.");
-      return;
-    }
-
     try {
       await submitDesignsMutation.mutateAsync({
-        files: Array.from(data.upload_pdf), // Convert FileList to Array
+        files: Array.from(data.upload_pdf),
         vendorId,
         leadId,
         userId,
@@ -96,80 +79,72 @@ const DesignsModal: React.FC<LeadViewModalProps> = ({ open, onOpenChange }) => {
         queryKey: ["getDesignsDoc", vendorId, leadId],
       });
 
-      // ✅ Also refresh design stage counts
       queryClient.invalidateQueries({
         queryKey: ["designingStageCounts", vendorId, leadId],
       });
 
-      // Reset form and close modal
       form.reset();
       onOpenChange(false);
     } catch (error: any) {
-      console.error("Error uploading designs:", error);
       toast.error(error?.message || "Failed to upload design files.");
     }
   };
 
-  const handleClose = () => {
-    form.reset();
-    onOpenChange(false);
-  };
-
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] md:max-w-2xl p-0 gap-0">
-        <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle>Add Designs</DialogTitle>
-        </DialogHeader>
-        <ScrollArea className="max-h-[calc(90vh-100px)]">
-          <div className="px-6">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-6 py-3"
-              >
-                <FormField
-                  control={form.control}
-                  name="upload_pdf"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Upload Design Files</FormLabel>{" "}
-                      {/* simplified label */}
-                      <FormControl>
-                        <DocumentsUploader
-                          value={field.value}
-                          onChange={field.onChange}
-                          accept=".pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleClose}
-                    disabled={submitDesignsMutation.isPending}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={submitDesignsMutation.isPending}
-                  >
-                    {submitDesignsMutation.isPending
-                      ? "Uploading..."
-                      : "Submit Designs"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </div>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+    <BaseModal
+      open={open}
+      onOpenChange={(state) => {
+        if (!state) form.reset();
+        onOpenChange(state);
+      }}
+      title="Add Designs"
+      description="Upload design files in supported CAD or document formats."
+      size="lg"
+    >
+       
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
+              <FormField
+                control={form.control}
+                name="upload_pdf"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Upload Design Files</FormLabel>
+                    <FormControl>
+                      <DocumentsUploader
+                        value={field.value}
+                        onChange={field.onChange}
+                        accept=".pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    form.reset();
+                    onOpenChange(false);
+                  }}
+                  disabled={submitDesignsMutation.isPending}
+                >
+                  Cancel
+                </Button>
+
+                <Button type="submit" disabled={submitDesignsMutation.isPending}>
+                  {submitDesignsMutation.isPending
+                    ? "Uploading..."
+                    : "Submit Designs"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        
+    </BaseModal>
   );
 };
 

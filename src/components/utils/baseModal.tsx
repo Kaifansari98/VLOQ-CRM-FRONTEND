@@ -17,7 +17,7 @@ interface BaseModalProps {
   description?: string;
   children: ReactNode;
   size?: "sm" | "md" | "lg" | "xl" | "smd";
-  icon?: ReactNode;                   // icon is optional
+  icon?: ReactNode; // icon is optional
 }
 
 const sizeClasses = {
@@ -25,7 +25,7 @@ const sizeClasses = {
   md: "max-w-md w-[95vw] md:max-w-lg",
   smd: "max-w-md w-[95vw] md:max-w-xl",
   lg: "max-w-lg w-[95vw] md:max-w-2xl lg:max-w-3xl",
-  xl: "max-w-xl w-[95vw] md:max-w-4xl lg:max-w-5xl xl:max-w-6xl",
+  xl: "max-w-xl w-[95vw] md:max-w-2xl lg:max-w-3xl xl:max-w-4xl",
 };
 
 const BaseModal: React.FC<BaseModalProps> = ({
@@ -46,14 +46,14 @@ const BaseModal: React.FC<BaseModalProps> = ({
           <DialogHeader className="flex flex-row items-center gap-4 px-6 py-4 border-b bg-muted/30">
             {icon}
 
-            <div className="space-y-1 overflow-hidden">
+            <div className="space-y-0.5 overflow-hidden">
               {title && (
-                <DialogTitle className="text-base font-semibold leading-tight truncate">
+                <DialogTitle className="text-base text-left  font-semibold leading-tight truncate">
                   {title}
                 </DialogTitle>
               )}
               {description && (
-                <DialogDescription className="text-sm text-muted-foreground leading-snug truncate">
+                <DialogDescription className="text-left text-xs md:text-sm text-muted-foreground leading-snug truncate break-words  whitespace-normal">
                   {description}
                 </DialogDescription>
               )}

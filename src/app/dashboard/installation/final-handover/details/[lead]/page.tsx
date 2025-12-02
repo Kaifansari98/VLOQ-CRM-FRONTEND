@@ -125,7 +125,7 @@ export default function FinalHandoverLeadDetails() {
   const [openProjectCompleteConfirm, setOpenProjectCompleteConfirm] =
     useState(false);
 
-  const canMarkCompleted = readiness?.can_move_to_project_completed;
+
 
   const isReady = readiness?.can_move_to_final_handover;
 

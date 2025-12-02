@@ -3,8 +3,11 @@ import type { DataTableConfig } from "@/config/data-table";
 import type { FilterItemSchema } from "@/lib/parsers";
 
 declare module "@tanstack/react-table" {
-  // biome-ignore lint/correctness/noUnusedVariables: TValue is used in the ColumnMeta interface
-  interface ColumnMeta<TData extends RowData, TValue> {
+  interface ColumnMeta<TData extends RowData = RowData, TValue = unknown> {
+    
+    readonly __tdata?: TData | undefined;
+    readonly __tvalue?: TValue | undefined;
+
     label?: string;
     placeholder?: string;
     variant?: FilterVariant;
@@ -53,22 +56,39 @@ export interface DataTableRowAction<TData> {
     | "Pending Work";
 }
 
-
 export interface DataTableRowActionOpen<TData> {
   row: Row<TData>;
-  variant: "view" | "assigntask"  | "edit" | "reassignlead" | "delete" ;
+  variant: "view" | "assigntask" | "edit" | "reassignlead" | "delete";
 }
 
 export interface DataTableRowActionSiteMeasurement<TData> {
   row: Row<TData>;
-  variant: "view" | "uploadmeasurement"  | "edit" | "reassignlead" | "delete" | "completed" | "reschedule" | "cancel" ;
+  variant:
+    | "view"
+    | "uploadmeasurement"
+    | "edit"
+    | "reassignlead"
+    | "delete"
+    | "completed"
+    | "reschedule"
+    | "cancel";
 }
 export interface DataTableRowActionFinalMeasurement<TData> {
   row: Row<TData>;
-  variant: "edit" | "delete" | "view"  | "reassignlead" | "clientdoc" | "finalMeasu" | "assignTask" | "completed" | "reschedule" | "cancel" ;
+  variant:
+    | "edit"
+    | "delete"
+    | "view"
+    | "reassignlead"
+    | "clientdoc"
+    | "finalMeasu"
+    | "assignTask"
+    | "completed"
+    | "reschedule"
+    | "cancel";
 }
 
 export interface DataTableRowActionClientDocumentation<TData> {
   row: Row<TData>;
-  variant: "edit" | "delete" | "view"  | "reassignlead" | "clientdoc" ;
+  variant: "edit" | "delete" | "view" | "reassignlead" | "clientdoc";
 }

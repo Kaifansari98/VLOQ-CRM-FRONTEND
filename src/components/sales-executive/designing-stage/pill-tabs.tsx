@@ -44,14 +44,13 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
     const userType = useAppSelector(
       (state) => state.auth.user?.user_type.user_type
     );
-    const { data: leadStatus, isLoading } = useLeadStatus(leadId, vendorId);
+    const { data: leadStatus } = useLeadStatus(leadId, vendorId);
     const [activeTab, setActiveTab] = React.useState(defaultActiveId);
     const [openQuotationModal, setOpenQuotationModal] = useState(false);
     const [openDesignsModal, setOpenDesignsModal] = useState(false);
     const [openMeetingsModal, setOpenMeetingsModal] = useState(false);
     const [openBookingModal, setOpenBookingModal] = useState(false);
 
-    console.log("ajhfldhfkldhfkjdsf :- ", userType);
 
     const leadCurrentStatus = leadStatus?.status_tag;
 

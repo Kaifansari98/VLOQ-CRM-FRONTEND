@@ -16,11 +16,10 @@ import SiteReadinessTabs from "../installation/site-readiness/SiteReadinessTabs"
 import DispatchPlanningDetails from "../installation/dispatch-planning/DispatchPlanningDetails";
 import DispatchTabsWrapper from "../installation/dispatch/DispatchTabsWrapper";
 
-type StatusKey = StageId;
+
 import GroupedSmoothTab from "./grouped-smooth-tab";
 import { StageId } from "@/types/lead-stage-types";
 import UnderInstallationTabsWrapper from "../installation/under-installation/UnderInstallationTabsWrapper";
-import FinalHandover from "../installation/final-handover/FinalHandoverDetails";
 import FinalHandoverWrapper from "../installation/final-handover/FinalHandoverWrapper";
 
 type GroupKey = "leads" | "project" | "production" | "installation";
@@ -90,7 +89,7 @@ export default function LeadDetailsGrouped({
           <ClientDocumentationDetails
             leadId={leadId}
             accountId={accountId}
-            name={leadName}
+           
           />
         ),
       },
@@ -107,8 +106,6 @@ export default function LeadDetailsGrouped({
         component: (
           <TechCheckDetails
             leadId={leadId}
-            accountId={accountId}
-            name={leadName}
           />
         ),
       },
@@ -137,7 +134,6 @@ export default function LeadDetailsGrouped({
           <ReadyToDispatchDetails
             leadId={leadId}
             accountId={accountId}
-            name={leadName}
           />
         ),
       },

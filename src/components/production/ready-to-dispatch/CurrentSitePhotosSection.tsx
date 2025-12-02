@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { useDeleteDocument } from "@/api/leads";
-import ImageCarouselModal from "@/components/utils/image-carousel-modal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { canUploadReadyToDispatchDocuments } from "@/components/utils/privileges";
@@ -58,9 +57,6 @@ export default function CurrentSitePhotosSection({
 
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-
-  const [openCarousel, setOpenCarousel] = useState(false);
-  const [startIndex, setStartIndex] = useState(0);
 
   const canDelete = userType === "admin" || userType === "super-admin";
   const canUploadDocuments = canUploadReadyToDispatchDocuments(userType);
@@ -223,10 +219,6 @@ export default function CurrentSitePhotosSection({
                   }}
                   index={index}
                   canDelete={canDelete}
-                  onView={() => {
-                    setStartIndex(index);
-                    setOpenCarousel(true);
-                  }}
                   onDelete={(id) => setConfirmDelete(Number(id))}
                 />
               ))}
@@ -274,13 +266,6 @@ export default function CurrentSitePhotosSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <ImageCarouselModal
-        images={images}
-        open={openCarousel}
-        initialIndex={startIndex}
-        onClose={() => setOpenCarousel(false)}
-      />
     </div>
   );
 }

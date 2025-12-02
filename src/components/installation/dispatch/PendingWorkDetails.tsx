@@ -333,46 +333,46 @@ export default function PendingWorkDetails({
                         <CardContent className="px-5 space-y-3 flex flex-col h-full justify-between">
                           {/* HEADER */}
                           <div>
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="p-2.5 rounded-lg border bg-primary/10 border-primary/20">
-                              <Wrench className="h-4 w-4 text-primary" />
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="p-2.5 rounded-lg border bg-primary/10 border-primary/20">
+                                <Wrench className="h-4 w-4 text-primary" />
+                              </div>
+
+                              <Badge
+                                variant="outline"
+                                className={`text-[10px] h-5 px-2 rounded-md ${getStatusColor(
+                                  task.status
+                                )}`}
+                              >
+                                {task.status}
+                              </Badge>
                             </div>
 
-                            <Badge
-                              variant="outline"
-                              className={`text-[10px] h-5 px-2 rounded-md ${getStatusColor(
-                                task.status
-                              )}`}
-                            >
-                              {task.status}
-                            </Badge>
-                          </div>
+                            {/* TITLE */}
+                            <h4 className="font-semibold text-sm line-clamp-1 mt-4">
+                              {workTitle || "Untitled Work"}
+                            </h4>
 
-                          {/* TITLE */}
-                          <h4 className="font-semibold text-sm line-clamp-1 mt-4">
-                            {workTitle || "Untitled Work"}
-                          </h4>
-
-                          {/* DESCRIPTION */}
-                          {description && (
-                            <p className="w-full text-xs text-muted-foreground leading-relaxed mt-1">
-                              {isLong ? (
-                                <RemarkTooltip
-                                  title="Additional Note"
-                                  remark={
-                                    <span className="block text-left line-clamp-3">
-                                      {shortDesc}
-                                    </span>
-                                  }
-                                  remarkFull={description}
-                                />
-                              ) : (
-                                <span className="block text-left line-clamp-3">
-                                  {shortDesc}
-                                </span>
-                              )}
-                            </p>
-                          )}
+                            {/* DESCRIPTION */}
+                            {description && (
+                              <p className="w-full text-xs text-muted-foreground leading-relaxed mt-1">
+                                {isLong ? (
+                                  <RemarkTooltip
+                                    title="Additional Note"
+                                    remark={
+                                      <span className="block text-left line-clamp-3">
+                                        {shortDesc}
+                                      </span>
+                                    }
+                                    remarkFull={description}
+                                  />
+                                ) : (
+                                  <span className="block text-left line-clamp-3">
+                                    {shortDesc}
+                                  </span>
+                                )}
+                              </p>
+                            )}
                           </div>
 
                           {/* META */}

@@ -63,8 +63,7 @@ import { useDeleteLead } from "@/hooks/useDeleteLead";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import {
-  canReassingLead,
-  canDeleteLead,
+  
   canAssignISM,
   canReassignLeadButton,
   canDeleteLedForSalesExecutiveButton,

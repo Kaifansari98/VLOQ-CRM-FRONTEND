@@ -11,31 +11,41 @@ import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
+  BreadcrumbLink,
   BreadcrumbPage,
   BreadcrumbSeparator,
-  BreadcrumbLink,
 } from "@/components/ui/breadcrumb";
 import { Suspense } from "react";
-import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
-import DispatchStageTable from "@/components/installation/dispatch/DispatchStageTable";
+import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
+
+import { UniversalTable } from "@/components/custom/UniversalTable";
+
+// 🔵 Navigation for Dispatch Stage
+const navigateDispatchStage = (row: any) =>
+  `/dashboard/installation/dispatch-stage/details/${row.id}?accountId=${row.accountId}`;
 
 export default function DispatchStagePage() {
   return (
     <SidebarProvider>
       <AppSidebar />
+
       <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
-        {/* Header */}
+        {/* HEADER */}
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
+
             <Separator orientation="vertical" className="h-4 mr-2" />
+
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
                   <BreadcrumbLink href="/dashboard">Project</BreadcrumbLink>
                 </BreadcrumbItem>
+
                 <BreadcrumbSeparator className="hidden md:block" />
+
                 <BreadcrumbItem>
                   <BreadcrumbPage>Dispatch Stage</BreadcrumbPage>
                 </BreadcrumbItem>
@@ -48,12 +58,18 @@ export default function DispatchStagePage() {
           </div>
         </header>
 
-        {/* Content */}
-        <main className="flex-1 p-4 pt-0 overflow-x-hidden">
-          <Suspense fallback={<p>Loading Dispatch Stage Leads...</p>}>
-            <FeatureFlagsProvider>
-              <DispatchStageTable />
-            </FeatureFlagsProvider>
+        {/* CONTENT */}
+        <main className="flex-1 overflow-x-hidden">
+          <Suspense
+            fallback={<DataTableSkeleton columnCount={10} rowCount={8} />}
+          >
+            <UniversalTable
+              title="Dispatch Stage"
+              description="Monitor and manage project dispatch workflows, ensuring seamless transition from warehouse to installation teams."
+              type="Type 14"
+              enableAdminTabs={true}
+              onRowNavigate={navigateDispatchStage}
+            />
           </Suspense>
         </main>
       </SidebarInset>

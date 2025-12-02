@@ -5,14 +5,10 @@ import {
   AlertCircle,
   Plus,
   Eye,
-  Download,
   Package,
-  Users,
   Calendar,
   FileText,
-  DollarSign,
   CheckCircle2,
-  Clock,
   File,
   Wrench,
   User,
@@ -20,10 +16,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -37,7 +29,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "react-toastify";
 import CustomeDatePicker from "@/components/date-picker";
 import { FileUploadField } from "@/components/custom/file-upload";
@@ -63,7 +54,6 @@ import {
   canViewAndWorkUnderInstallationStage,
 } from "@/components/utils/privileges";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
-import CustomeTooltip from "@/components/cutome-tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,6 +69,7 @@ import { useResolveMiscellaneousEntry } from "@/api/installation/useUnderInstall
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useQueryClient } from "@tanstack/react-query";
+import BaseModal from "@/components/utils/baseModal";
 interface InstallationMiscellaneousProps {
   vendorId: number;
   leadId: number;
@@ -451,165 +442,172 @@ export default function InstallationMiscellaneous({
       </div>
 
       {/* Add Modal */}
-      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-        <DialogContent className="min-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Add Miscellaneous Issue</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium">
-                  Miscellaneous Type *
-                </label>
-                <AssignToPicker
-                  data={typeSelectData}
-                  value={formData.misc_type_id}
-                  onChange={(id) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      misc_type_id: id || undefined,
-                    }))
-                  }
-                  placeholder="Select issue type"
-                  emptyLabel="Select issue type"
-                  disabled={loadingTypes}
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium">
-                  Team Responsible *
-                </label>
-                <MultipleSelector
-                  value={formData.selectedTeams}
-                  onChange={(options) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      selectedTeams: options,
-                    }))
-                  }
-                  defaultOptions={teamOptions}
-                  placeholder="Select teams..."
-                  emptyIndicator={
-                    <p className="text-center text-sm text-muted-foreground">
-                      No teams found
-                    </p>
-                  }
-                  disabled={loadingTeams}
-                />
-              </div>
-            </div>
-
+      <BaseModal
+        open={isAddModalOpen}
+        onOpenChange={(open) => {
+          setIsAddModalOpen(open);
+          if (!open) resetForm();
+        }}
+        title="Add Miscellaneous Issue"
+        description="Log a miscellaneous issue with required details, supporting proofs, and material information."
+        size="lg"
+      >
+        <div className="space-y-4 py-4 px-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Miscellaneous Type */}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium">
-                Problem Description *
+                Miscellaneous Type *
               </label>
-              <TextAreaInput
-                value={formData.problem_description}
-                onChange={(value) =>
+              <AssignToPicker
+                data={typeSelectData}
+                value={formData.misc_type_id}
+                onChange={(id) =>
                   setFormData((prev) => ({
                     ...prev,
-                    problem_description: value,
+                    misc_type_id: id || undefined,
                   }))
                 }
-                placeholder="Describe the issue in detail..."
-                maxLength={1000}
+                placeholder="Select issue type"
+                emptyLabel="Select issue type"
+                disabled={loadingTypes}
               />
             </div>
 
+            {/* Team Responsible */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">
-                Reorder Material Type *
-              </label>
-              <TextSelectPicker
-                options={
-                  orderLoginSummary.map(
-                    (item: any) =>
-                      item.item_desc || item.item_type || "Untitled Item"
-                  ) || []
-                }
-                value={formData.reorder_material_details}
-                onChange={(selectedText) =>
+              <label className="text-sm font-medium">Team Responsible *</label>
+              <MultipleSelector
+                value={formData.selectedTeams}
+                onChange={(options) =>
                   setFormData((prev) => ({
                     ...prev,
-                    reorder_material_details: selectedText,
+                    selectedTeams: options,
                   }))
                 }
-                placeholder={
-                  loadingSummary
-                    ? "Loading materials..."
-                    : "Select material details..."
+                defaultOptions={teamOptions}
+                placeholder="Select teams..."
+                emptyIndicator={
+                  <p className="text-center text-sm text-muted-foreground">
+                    No teams found
+                  </p>
                 }
-                emptyLabel="Select material details"
-                disabled={loadingSummary}
+                disabled={loadingTeams}
               />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">
-                Reorder Material Details *
-              </label>
-              <TextAreaInput
-                value={formData.supervisor_remark}
-                onChange={(value) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    supervisor_remark: value,
-                  }))
-                }
-                placeholder="Any remarks from supervisor..."
-                maxLength={1000}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Supporting Proofs *</label>
-              <FileUploadField
-                value={files}
-                onChange={setFiles}
-                accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx"
-                multiple={true}
-              />
-              <p className="text-xs text-muted-foreground">
-                Max 10 files. Supported: Images, PDFs, Documents
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium">Quantity</label>
-                <Input
-                  type="number"
-                  value={formData.quantity || ""}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      quantity: e.target.value
-                        ? Number(e.target.value)
-                        : undefined,
-                    }))
-                  }
-                  placeholder="Enter quantity"
-                  min="0"
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium">Cost (₹)</label>
-                <CurrencyInput
-                  value={formData.cost}
-                  onChange={(value) =>
-                    setFormData((prev) => ({ ...prev, cost: value }))
-                  }
-                  placeholder="Enter cost"
-                />
-              </div>
             </div>
           </div>
 
-          <DialogFooter>
+          {/* Problem Description */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Problem Description *</label>
+            <TextAreaInput
+              value={formData.problem_description}
+              onChange={(value) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  problem_description: value,
+                }))
+              }
+              placeholder="Describe the issue in detail..."
+              maxLength={1000}
+            />
+          </div>
+
+          {/* Reorder Material Type */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">
+              Reorder Material Type *
+            </label>
+            <TextSelectPicker
+              options={
+                orderLoginSummary.map(
+                  (item: any) =>
+                    item.item_desc || item.item_type || "Untitled Item"
+                ) || []
+              }
+              value={formData.reorder_material_details}
+              onChange={(selectedText) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  reorder_material_details: selectedText,
+                }))
+              }
+              placeholder={
+                loadingSummary
+                  ? "Loading materials..."
+                  : "Select material details..."
+              }
+              emptyLabel="Select material details"
+              disabled={loadingSummary}
+            />
+          </div>
+
+          {/* Reorder Material Details */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">
+              Reorder Material Details *
+            </label>
+            <TextAreaInput
+              value={formData.supervisor_remark}
+              onChange={(value) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  supervisor_remark: value,
+                }))
+              }
+              placeholder="Any remarks from supervisor..."
+              maxLength={1000}
+            />
+          </div>
+
+          {/* Supporting Proofs */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Supporting Proofs *</label>
+            <FileUploadField
+              value={files}
+              onChange={setFiles}
+              accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx"
+              multiple
+            />
+            <p className="text-xs text-muted-foreground">
+              Max 10 files. Supported: Images, PDFs, Documents
+            </p>
+          </div>
+
+          {/* Quantity + Cost */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Quantity</label>
+              <Input
+                type="number"
+                value={formData.quantity || ""}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    quantity: e.target.value
+                      ? Number(e.target.value)
+                      : undefined,
+                  }))
+                }
+                placeholder="Enter quantity"
+                min="0"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Cost (₹)</label>
+              <CurrencyInput
+                value={formData.cost}
+                onChange={(value) =>
+                  setFormData((prev) => ({ ...prev, cost: value }))
+                }
+                placeholder="Enter cost"
+              />
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
             <Button
               variant="outline"
               onClick={() => {
@@ -620,6 +618,7 @@ export default function InstallationMiscellaneous({
             >
               Cancel
             </Button>
+
             <Button
               onClick={handleCreateEntry}
               disabled={createMutation.isPending}
@@ -628,83 +627,67 @@ export default function InstallationMiscellaneous({
                 ? "Creating..."
                 : "Create Miscellaneous"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      </BaseModal>
 
       {/* View Modal */}
-      <Dialog
+      <BaseModal
         open={viewModal.open}
         onOpenChange={(open) => setViewModal({ open, data: null })}
-      >
-        <DialogContent className="min-w-4xl max-h-[90vh] overflow-hidden flex flex-col border-border bg-background">
-          {/* ------------ HEADER ------------- */}
-          <DialogHeader className="space-y-3">
-            <div className="flex items-start gap-3">
-              {/* Status Icon */}
-              <div
-                className={`
+        size="lg"
+        title={viewModal.data?.type.name}
+        icon={
+          <div
+            className={`
             p-2.5 rounded-lg border transition-colors
             ${
               viewModal.data?.is_resolved
                 ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
-                : "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
+                : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:red-blue-800"
             }
           `}
-              >
-                {viewModal.data?.is_resolved ? (
-                  <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
-                ) : (
-                  <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                )}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-4">
-                  <DialogTitle className="text-lg font-semibold text-foreground">
-                    {viewModal.data?.type.name}
-                  </DialogTitle>
-
-                  {/* Status Badge */}
-                  {/* <Badge
-                    variant="outline"
-                    className={`text-xs px-2.5 py-0.5 rounded-md font-medium ${
-                      viewModal.data?.is_resolved
-                        ? "bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
-                        : "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800"
-                    }`}
-                  >
-                    {viewModal.data?.is_resolved ? "Resolved" : "Pending"}
-                  </Badge> */}
-                </div>
-
-                {/* Meta Row */}
-                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" />
-                    {viewModal.data && formatDate(viewModal.data.created_at)}
-                  </div>
-
-                  <span className="text-muted-foreground/40">•</span>
-
-                  <div className="flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5" />
-                    {viewModal.data?.created_user.user_name}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <Separator className="my-2" />
-
-          {/* ----------- BODY ----------- */}
+          >
+            {viewModal.data?.is_resolved ? (
+              <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-600 dark:red-blue-400" />
+            )}
+          </div>
+        }
+        description="Detailed information and supporting documents for this miscellaneous entry."
+      >
+        {/* ----------- BODY ----------- */}
+        <div className="p-5">
           <div className="flex-1 overflow-y-auto py-2 space-y-6 px-1">
             {/* Quick Stats Row */}
             {(viewModal.data?.quantity ||
               viewModal.data?.cost ||
-              viewModal.data?.expected_ready_date) && (
-              <div className="grid grid-cols-3 gap-3">
+              viewModal.data?.expected_ready_date ||
+              viewModal.data?.created_user?.user_name ||
+              viewModal.data?.created_at) && (
+              <div className="grid grid-cols-2 gap-3">
+                {viewModal.data?.created_at && (
+                  <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
+                    <CardContent className="px-4">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
+                          <User className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">
+                            {viewModal.data?.created_user?.user_name}
+                          </p>
+                          <p className="text-base font-semibold text-foreground">
+                            {viewModal.data &&
+                              formatDate(viewModal.data.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {viewModal.data?.quantity && (
                   <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
                     <CardContent className="px-4">
@@ -886,8 +869,6 @@ export default function InstallationMiscellaneous({
             )}
           </div>
 
-          <Separator className="my-2" />
-
           {/* -------- FOOTER -------- */}
           <DialogFooter className="flex-row items-center justify-between gap-3 pt-2">
             {/* Expected Ready Date + Resolve */}
@@ -972,8 +953,8 @@ export default function InstallationMiscellaneous({
               Close
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </BaseModal>
 
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
         <AlertDialogContent>

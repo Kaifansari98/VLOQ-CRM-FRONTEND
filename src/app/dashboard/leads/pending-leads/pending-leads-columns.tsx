@@ -4,7 +4,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import CustomeTooltip from "@/components/cutome-tooltip";
 import CustomeStatusBadge from "@/components/origin-status-badge";
-import CustomeBadge from "@/components/origin-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import { Text } from "lucide-react";
 import type { ProcessedLead } from "@/app/_components/view-tables-coloumns";

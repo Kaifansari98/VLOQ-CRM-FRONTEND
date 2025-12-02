@@ -80,7 +80,6 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   open,
   onOpenChange,
   data,
-  onlyFollowUp,
   userType,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);

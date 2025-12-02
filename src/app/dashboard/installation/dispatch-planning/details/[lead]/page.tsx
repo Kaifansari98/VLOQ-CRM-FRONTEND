@@ -54,8 +54,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 import {
-  canReassingLead,
-  canDeleteLead,
   canDoDispatchPlanning,
   canEditLeadButton,
   canDeleteLeadButton,

@@ -15,9 +15,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +30,7 @@ import {
 } from "@/api/installation/useUnderInstallationStageLeads";
 import { useAppSelector } from "@/redux/store";
 import { motion } from "framer-motion";
+import BaseModal from "@/components/utils/baseModal";
 
 interface InstallationDayWiseReportsProps {
   vendorId: number;
@@ -307,50 +306,51 @@ export default function InstallationDayWiseReports({
       </div>
 
       {/* Add Report Modal */}
-      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-        <DialogContent className="min-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Add Day-Wise Installation Report</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {/* Date Picker */}
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Update Date *</label>
-              <CustomeDatePicker
-                value={selectedDate}
-                onChange={setSelectedDate}
-                restriction="installationInterval"
-                intervalStartDate={underDetails?.actual_installation_start_date}
-                intervalEndDate={underDetails?.expected_installation_end_date}
-              />
-            </div>
-
-            {/* Remark */}
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Remark (Optional)</label>
-              <Textarea
-                value={remark}
-                onChange={(e) => setRemark(e.target.value)}
-                placeholder="Add any notes or comments about today's progress..."
-                rows={3}
-                className="resize-none"
-              />
-            </div>
-
-            {/* File Upload */}
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Upload Documents *</label>
-              <FileUploadField
-                value={files}
-                onChange={setFiles}
-                accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.avi,.mkv,.webm"
-                multiple={true}
-              />
-            </div>
+      <BaseModal
+        open={isAddModalOpen}
+        onOpenChange={setIsAddModalOpen}
+        title="Add Day-Wise Installation Report"
+        description="Track installation progress with daily updates and documentation"
+        size="lg"
+      >
+        <div className="space-y-4 py-4 px-6">
+          {/* Date Picker */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Update Date *</label>
+            <CustomeDatePicker
+              value={selectedDate}
+              onChange={setSelectedDate}
+              restriction="installationInterval"
+              intervalStartDate={underDetails?.actual_installation_start_date}
+              intervalEndDate={underDetails?.expected_installation_end_date}
+            />
           </div>
 
-          <DialogFooter>
+          {/* Remark */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Remark (Optional)</label>
+            <Textarea
+              value={remark}
+              onChange={(e) => setRemark(e.target.value)}
+              placeholder="Add any notes or comments about today's progress..."
+              rows={3}
+              className="resize-none"
+            />
+          </div>
+
+          {/* File Upload */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Upload Documents *</label>
+            <FileUploadField
+              value={files}
+              onChange={setFiles}
+              accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.avi,.mkv,.webm"
+              multiple
+            />
+          </div>
+
+          {/* Footer Actions */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
             <Button
               variant="outline"
               onClick={() => setIsAddModalOpen(false)}
@@ -364,9 +364,9 @@ export default function InstallationDayWiseReports({
             >
               {uploadMutation.isPending ? "Uploading..." : "Upload Report"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      </BaseModal>
 
       {/* View Documents Modal (Redesigned) */}
       <Dialog

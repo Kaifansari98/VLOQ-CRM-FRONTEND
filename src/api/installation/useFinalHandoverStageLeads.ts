@@ -6,11 +6,16 @@
 
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import { toast } from "react-toastify";
 
 /* ==========================================================
       🔹 TYPES & INTERFACES
       ========================================================== */
+
+interface ApiErrorResponse {
+  message?: string;
+}
 
 export interface FinalHandoverLead {
   id: number;
@@ -142,7 +147,7 @@ export const useUploadFinalHandoverDocuments = () => {
     mutationFn: (formData: FormData) => uploadFinalHandoverDocuments(formData),
 
     onSuccess: (data, variables) => {
-      toast.success("Documents uploaded successfully");
+      toast.success("Documents uploaded successfully dsfsaaaaaaaaffafasss");
 
       // Extract vendorId and leadId from FormData
       const vendorId = variables.get("vendorId");
@@ -162,10 +167,8 @@ export const useUploadFinalHandoverDocuments = () => {
       });
     },
 
-    onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message || "Failed to upload documents"
-      );
+    onError: (err: AxiosError<ApiErrorResponse>) => {
+      toast.error(err?.response?.data?.message || "Failed to upload documents");
     },
   });
 };

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useDetails } from "./details-context";
 import { useAppSelector } from "@/redux/store";
-import { Palette, Ban, Images, RefreshCcw } from "lucide-react";
+import { Palette, Images, RefreshCcw } from "lucide-react";
 import {
   useLeadStatus,
   useDesignsDoc,
@@ -47,13 +47,7 @@ const DesigningTab = () => {
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { duration: 0.3, staggerChildren: 0.05 },
-    },
-  };
+ 
 
   const itemVariants = {
     hidden: { opacity: 0, y: 10 },

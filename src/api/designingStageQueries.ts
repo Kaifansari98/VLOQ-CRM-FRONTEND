@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 import {
   DesignSelectionsResponse,
@@ -15,7 +15,7 @@ export interface DesigningStageLead {
   contact?: string;
   status?: number;
   createdAt?: string;
-  [key: string]: any; // fallback for unknown fields
+  [key: string]: unknown; // fallback for unknown fields
 }
 
 export interface MoveToDesigningStagePayload {
@@ -28,7 +28,7 @@ export interface MoveToDesigningStagePayload {
 export interface MoveToDesigningStageResponse {
   success: boolean;
   message: string;
-  data?: any;
+  data?: unknown;
 }
 
 // ✅ API function
@@ -176,7 +176,7 @@ export const submitDesigns = async (payload: SubmitDesignPayload) => {
 
 // ✅ NEW: Hook for Design Upload
 export const useSubmitDesigns = () => {
-  return useMutation<any, Error, SubmitDesignPayload>({
+  return useMutation<unknown, Error, SubmitDesignPayload>({
     mutationFn: submitDesigns,
   });
 };

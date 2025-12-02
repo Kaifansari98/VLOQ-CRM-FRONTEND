@@ -13,8 +13,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { ModeToggle } from "@/components/ModeToggle";
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
 import MyTaskTable from "@/app/_components/tasks-table";
 import { Shell } from "@/components/ui/shell";
@@ -22,8 +21,6 @@ import { TableLoader } from "@/components/utils/table-skeleton";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 export default function MyTaskLeadPage() {
-  const [openCreateLead, setOpenCreateLead] = useState(false);
-
   return (
     <SidebarProvider>
       <AppSidebar />

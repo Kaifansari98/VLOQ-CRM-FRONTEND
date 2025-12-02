@@ -1,36 +1,80 @@
 "use client";
 
-import React, { Suspense } from "react";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
-import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
-import TechCheckStageTable from "@/app/_components/production/tech-check/TechCheckStageTable";
+import { AppSidebar } from "@/components/app-sidebar";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Separator } from "@/components/ui/separator";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 
-export default function TechCheckStageSkeleton() {
+import { Suspense } from "react";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
+
+import { UniversalTable } from "@/components/custom/UniversalTable";
+
+// 🔵 Navigation for Tech-Check rows
+const navigateTechCheck = (row: any) =>
+  `/dashboard/production/tech-check/details/${row.id}?accountId=${row.accountId}`;
+
+export default function TechCheckStagePage() {
   return (
     <SidebarProvider>
-      <SidebarInset className="w-full h-full flex flex-col">
+      <AppSidebar />
+
+      <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
+        {/* ---------------- HEADER ---------------- */}
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1" />
+
+            <Separator
+              orientation="vertical"
+              className="mr-2 data-[orientation=vertical]:h-4"
+            />
+
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem className="hidden md:block">
+                  <BreadcrumbLink href="/dashboard">Production</BreadcrumbLink>
+                </BreadcrumbItem>
+
+                <BreadcrumbSeparator className="hidden md:block" />
+
+                <BreadcrumbItem>
+                  <BreadcrumbPage>Tech-Check Stage</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
+
+          <div className="flex items-center gap-2 pr-2">
+            <AnimatedThemeToggler />
+          </div>
+        </header>
+
+        {/* ---------------- MAIN CONTENT ---------------- */}
         <main className="flex-1 p-4 pt-0 overflow-x-hidden">
-          <FeatureFlagsProvider>
-            <Suspense
-              fallback={
-                <DataTableSkeleton
-                  columnCount={10}
-                  filterCount={2}
-                  cellWidths={[
-                    "10rem",
-                    "20rem",
-                    "10rem",
-                    "10rem",
-                    "8rem",
-                    "8rem",
-                  ]}
-                />
-              }
-            >
-              <TechCheckStageTable />
-            </Suspense>
-          </FeatureFlagsProvider>
+         <Suspense
+            fallback={<DataTableSkeleton columnCount={10} rowCount={8} />}
+          >
+            <UniversalTable
+              title="Tech-Check Stage"
+              description="Monitor and validate all technical review tasks before transitioning to order login, ensuring accuracy and production-readiness."
+              type="Type 8"
+              enableAdminTabs={true}
+              onRowNavigate={navigateTechCheck}
+            />
+          </Suspense>
         </main>
       </SidebarInset>
     </SidebarProvider>

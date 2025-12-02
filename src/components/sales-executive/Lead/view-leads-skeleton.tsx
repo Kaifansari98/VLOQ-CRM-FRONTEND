@@ -1,11 +1,10 @@
 import React, { useState } from "react";
-import { Suspense } from "react";
+
 import { FeatureFlagsProvider } from "@/app/_components/feature-flags-provider";
-import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import ViewOpenLeadTable from "@/app/_components/view-leads-table";
 import PendingLeadsTable from "@/app/dashboard/leads/pending-leads/pending-leads-table";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { LeadStatusTabs } from "./LeadStatusTabs";
 import { useAppSelector } from "@/redux/store";
 import { useActivityStatusCounts } from "@/hooks/useActivityStatus";
@@ -17,7 +16,7 @@ export default function ViewLeadsSkeleton() {
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
-  const { data: counts, isLoading } = useActivityStatusCounts(vendorId);
+  const { data: counts } = useActivityStatusCounts(vendorId);
 
   return (
     <SidebarProvider>

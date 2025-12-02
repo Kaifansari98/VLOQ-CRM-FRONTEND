@@ -9,22 +9,23 @@ import {
   ReschedulePayload,
   RescheduleTaskFollowUp,
 } from "@/api/measurment-leads";
-import { SiteMeasurementLeadData } from "@/types/site-measrument-types";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 export const useInitialSiteMeasurement = (
   vendorId: number,
   userId: number,
-  enabled: boolean = true
+  page: number = 1,
+  limit: number = 10
 ) => {
   return useQuery({
-    queryKey: ["siteMeasurementLeads", vendorId, userId],
-    queryFn: () => getInitialSiteMeasurement(vendorId, userId),
-    enabled: enabled && !!vendorId && !!userId, // ✅ ensure both exist
-    staleTime: 5 * 60 * 1000,
+    queryKey: ["siteMeasurementLeads", vendorId, userId, page, limit],
+    queryFn: () => getInitialSiteMeasurement(vendorId, userId, page, limit),
+    enabled: !!vendorId && !!userId,
     refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
   });
 };
+
 
 export const useCompletedUpdateTask = () => {
   return useMutation({

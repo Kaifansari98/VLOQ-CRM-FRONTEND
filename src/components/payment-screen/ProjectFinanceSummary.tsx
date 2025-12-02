@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import CustomeDatePicker from "@/components/date-picker";
 import { FileUploadField } from "@/components/custom/file-upload";
 import TextAreaInput from "@/components/origin-text-area";
@@ -95,7 +94,6 @@ export default function ProjectFinanceSummary({
   );
 
   const {
-    register,
     handleSubmit,
     setValue,
     watch,
