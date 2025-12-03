@@ -22,8 +22,13 @@ import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 
 import { UniversalTable } from "@/components/custom/UniversalTable";
 
+
+type row = {
+  id: number;
+  accountId: number;
+};
 // 🔵 Row navigation for Client Approval
-const navigateClientApproval = (row: any) =>
+const navigateClientApproval = (row: row) =>
   `/dashboard/project/client-approval/details/${row.id}?accountId=${row.accountId}`;
 
 export default function ClientApprovalPage() {

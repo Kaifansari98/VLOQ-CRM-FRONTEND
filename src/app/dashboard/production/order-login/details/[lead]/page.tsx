@@ -140,7 +140,7 @@ export default function OrderLoginLeadDetails() {
       { leadId: leadIdNum, vendorId, userId },
       {
         onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: (err: any) =>
+        onError: (err) =>
           toast.error(err?.message || "Failed to delete lead"),
       }
     );
@@ -381,7 +381,7 @@ export default function OrderLoginLeadDetails() {
                     queryKey: ["leadById", leadIdNum],
                   });
                 },
-                onError: (err: any) => {
+                onError: (err) => {
                   toast.error(err?.message || "Failed to update lead status");
                 },
               }

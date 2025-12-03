@@ -2,7 +2,7 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit"
 
 interface TypesState {
-  sourceTypes: any[]
+  sourceTypes: unknown[]
   productStructureTypes: any[]
   siteTypes: any[]
   productTypes: any[]

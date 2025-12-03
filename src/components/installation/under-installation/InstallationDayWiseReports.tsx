@@ -125,7 +125,7 @@ export default function InstallationDayWiseReports({
           setFiles([]);
           refetch();
         },
-        onError: (error: any) => {
+        onError: (error) => {
           toast.error(error?.message || "Failed to upload report");
         },
       }

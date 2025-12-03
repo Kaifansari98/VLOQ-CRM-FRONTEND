@@ -90,7 +90,7 @@ const FollowUpModal: React.FC<Props> = ({
             });
           }
         },
-        onError: (err: any) => {
+        onError: (err) => {
           toast.error(err?.message || "❌ Failed to update lead");
         },
       }
@@ -126,7 +126,7 @@ const FollowUpModal: React.FC<Props> = ({
             });
           }
         },
-        onError: (err: any) => {
+        onError: (err) => {
           toast.error(err?.message || "Failed to cancel lead");
         },
       }

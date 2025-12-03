@@ -22,7 +22,12 @@ import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { UniversalTable } from "@/components/custom/UniversalTable";
 
 // 🔵 Navigation for Under Installation Stage
-const navigateUnderInstallation = (row: any) =>
+
+type Row = {
+  id: number;
+  accountId: number;
+};
+const navigateUnderInstallation = (row: Row) =>
   `/dashboard/installation/under-installation/details/${row.id}?accountId=${row.accountId}`;
 
 export default function UnderInstallationStagePage() {

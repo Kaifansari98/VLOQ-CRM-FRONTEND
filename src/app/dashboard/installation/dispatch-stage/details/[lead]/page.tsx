@@ -70,6 +70,7 @@ import { useMoveLeadToUnderInstallation } from "@/api/installation/useUnderInsta
 import { useCheckReadyForPostDispatch } from "@/api/installation/useDispatchStageLeads";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
+import { getErrorMessage } from "@/lib/utils";
 
 export default function DispatchPlanningLeadDetails() {
   const router = useRouter();
@@ -131,8 +132,7 @@ export default function DispatchPlanningLeadDetails() {
       { leadId: leadIdNum, vendorId, userId },
       {
         onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: (err: any) =>
-          toast.error(err?.message || "Failed to delete lead"),
+        onError: (err: unknown) => toast.error(getErrorMessage(err)),
       }
     );
 
@@ -269,9 +269,7 @@ export default function DispatchPlanningLeadDetails() {
 
                   {/* ✅ To-Do Task (Conditional Access) */}
                   {canAccessTodoTaskTabDispatchStage(userType) ? (
-                    <TabsTrigger
-                      value="todo"
-                    >
+                    <TabsTrigger value="todo">
                       <PanelsTopLeftIcon
                         size={16}
                         className="mr-1 opacity-60"
@@ -323,7 +321,6 @@ export default function DispatchPlanningLeadDetails() {
               )}
             </main>
           </TabsContent>
-
 
           <TabsContent value="todo">
             <main className="flex-1 h-fit">
@@ -431,11 +428,8 @@ export default function DispatchPlanningLeadDetails() {
                           "/dashboard/installation/under-installation"
                         );
                       },
-                      onError: (err: any) => {
-                        toast.error(
-                          err?.response?.data?.message ||
-                            "Failed to move lead to Under Installation"
-                        );
+                      onError: (err: unknown) => {
+                        toast.error(getErrorMessage(err));
                       },
                     }
                   );

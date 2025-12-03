@@ -5,6 +5,7 @@ import React from "react";
 import ImageViewerModal from "./ImageViewerModal";
 
 import { useState } from "react";
+import Image from "next/image";
 
 interface DocumentCardProps {
   doc: {
@@ -105,9 +106,10 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
         {/* Thumbnail */}
         <div className="flex-shrink-0">
           <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-border bg-muted dark:bg-neutral-800">
-            <img
+            <Image
               src={doc.signedUrl}
               alt={doc.doc_og_name}
+              fill
               className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
             />
           </div>

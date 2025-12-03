@@ -25,6 +25,7 @@ import { SinglePdfUploadField } from "@/components/utils/single-pdf-uploader";
 import BaseModal from "@/components/utils/baseModal";
 import { useRouter } from "next/navigation";
 import CurrencyInput from "@/components/custom/CurrencyInput";
+import { toastError } from "@/lib/utils";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -146,14 +147,8 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       // ✅ Redirect to Designing Stage
       router.push("/dashboard/leads/designing-stage");
     },
-    onError: (error: any) => {
-      const backendMessage =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Something went wrong";
-
-      console.log(error.response?.data?.message);
-      toast.error(backendMessage);
+    onError: (error: unknown) => {
+      toastError(error)
     },
   });
 

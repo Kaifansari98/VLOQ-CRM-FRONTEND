@@ -22,7 +22,11 @@ import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { UniversalTable } from "@/components/custom/UniversalTable";
 
 // 🔵 Navigation for Dispatch Planning
-const navigateDispatchPlanning = (row: any) =>
+type Row = {
+  id: number;
+  accountId: number;
+};
+const navigateDispatchPlanning = (row: Row) =>
   `/dashboard/installation/dispatch-planning/details/${row.id}?accountId=${row.accountId}`;
 
 export default function DispatchPlanningPage() {

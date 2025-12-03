@@ -90,7 +90,7 @@ export default function DesigningStageLead() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
 
-  const { data: countsData, isLoading: countsLoading } =
+  const { data: countsData, } =
     useDesigningStageCounts(vendorId, leadIdNum);
 
   const userType = useAppSelector(

@@ -1,5 +1,5 @@
-import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
 import { apiClient } from "@/lib/apiClient";
+import { toastError } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -33,7 +33,6 @@ export const useTechCheckLeads = (
     enabled: !!vendorId && !!userId,
   });
 };
-
 
 // ✅ --- Approve Tech Check ---
 export const approveTechCheck = async ({
@@ -83,14 +82,14 @@ export const useApproveTechCheck = () => {
   const router = useRouter();
   return useMutation({
     mutationFn: approveTechCheck,
-    onSuccess: async (_, variables) => {
+    onSuccess: async () => {
       toast.success("Tech Check approved successfully!");
       await queryClient.invalidateQueries({ queryKey: ["techCheckLeads"] });
       router.push(`/dashboard/production/order-login`);
       await queryClient.invalidateQueries({ queryKey: ["leadStats"] });
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Approval failed");
+    onError: (error: unknown) => {
+      toastError(error);
     },
   });
 };
@@ -99,13 +98,15 @@ export const useRejectTechCheck = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: rejectTechCheck,
-    onSuccess: async (_, variables) => {
+    onSuccess: async () => {
       toast.success("Tech Check rejected successfully!");
       await queryClient.invalidateQueries({ queryKey: ["techCheckLeads"] });
-      await queryClient.invalidateQueries({ queryKey: ["clientDocumentationDetails"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["clientDocumentationDetails"],
+      });
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Rejection failed");
+    onError: (error: unknown) => {
+      toastError(error)
     },
   });
 };
@@ -134,7 +135,7 @@ export const useApproveMultipleDocuments = () => {
 
   return useMutation({
     mutationFn: approveMultipleDocuments,
-    onSuccess: async (_, variables) => {
+    onSuccess: async () => {
       toast.success("Selected documents approved successfully!");
       // Refresh the tech-check leads and client-doc details
       await Promise.all([
@@ -144,8 +145,8 @@ export const useApproveMultipleDocuments = () => {
         }),
       ]);
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Document approval failed");
+    onError: (error: unknown) => {
+      toastError(error);
     },
   });
 };

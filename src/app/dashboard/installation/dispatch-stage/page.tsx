@@ -21,8 +21,13 @@ import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 
 import { UniversalTable } from "@/components/custom/UniversalTable";
 
+
+type Row = {
+  id: number;
+  accountId: number;
+};
 // 🔵 Navigation for Dispatch Stage
-const navigateDispatchStage = (row: any) =>
+const navigateDispatchStage = (row: Row) =>
   `/dashboard/installation/dispatch-stage/details/${row.id}?accountId=${row.accountId}`;
 
 export default function DispatchStagePage() {

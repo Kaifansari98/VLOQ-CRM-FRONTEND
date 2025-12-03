@@ -205,6 +205,7 @@ export interface SalesExecutiveStageCounts {
   dispatchPlanning: number;
 }
 
+
 // Stage leads (minimal)
 export interface SalesExecutiveStageLead {
   id: number;

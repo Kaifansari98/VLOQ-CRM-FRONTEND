@@ -11,7 +11,7 @@ export const getOrderLoginLeads = async (
   limit: number = 10
 ) => {
   const { data } = await apiClient.get(
-    `/leads/production/order-login/vendorId/1/userId/1`,
+    `/leads/production/order-login/vendorId/${vendorId}/userId/${userId}`,
     {
       params: { page, limit },
     }
@@ -51,6 +51,17 @@ export const useCompanyVendors = (vendorId: number | undefined) => {
     enabled: !!vendorId,
   });
 };
+
+
+
+export interface uploadFileBreakupPropa {
+  lead_id: number | string;
+  account_id: number | string;
+  item_type: string;
+  item_desc: string;
+  company_vendor_id: number | string;
+  created_by: number | string;
+}
 
 // ✅ --- Upload File Breakup ---
 export const uploadFileBreakup = async (vendorId: number, payload: any) => {

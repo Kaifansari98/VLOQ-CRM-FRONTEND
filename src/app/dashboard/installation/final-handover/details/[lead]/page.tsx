@@ -79,6 +79,7 @@ import {
   useMoveProjectCompleted,
   useIsTotalProjectAmountPaid,
 } from "@/api/installation/useFinalHandoverStageLeads";
+import { toastError } from "@/lib/utils";
 
 export default function FinalHandoverLeadDetails() {
   const router = useRouter();
@@ -172,8 +173,8 @@ export default function FinalHandoverLeadDetails() {
       { leadId: leadIdNum, vendorId, userId },
       {
         onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: (err: any) =>
-          toast.error(err?.message || "Failed to delete lead"),
+        onError: (err: unknown) =>
+          toastError(err)
       }
     );
 

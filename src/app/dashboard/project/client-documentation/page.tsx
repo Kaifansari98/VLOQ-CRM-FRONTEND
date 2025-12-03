@@ -22,8 +22,13 @@ import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 
 import { UniversalTable } from "@/components/custom/UniversalTable";
 
+
+type row = {
+  id: number;
+  accountId: number;
+};
 // 🔵 Navigation for Client Documentation Stage
-const navigateClientDocumentation = (row: any) =>
+const navigateClientDocumentation = (row: row) =>
   `/dashboard/project/client-documentation/details/${row.id}?accountId=${row.accountId}`;
 
 export default function ClientDocumentationPage() {

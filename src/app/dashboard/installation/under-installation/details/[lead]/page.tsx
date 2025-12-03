@@ -109,7 +109,6 @@ export default function UnderInstallationLeadDetails() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
-  const [selectedLead, setSelectedLead] = useState<any>(null);
   const moveMutation = useMoveToFinalHandover();
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
@@ -243,7 +242,7 @@ export default function UnderInstallationLeadDetails() {
                 variant="default"
                 size="sm"
                 onClick={() => {
-                  setSelectedLead(lead);
+                  
                   setShowMoveModal(true);
                 }}
               >

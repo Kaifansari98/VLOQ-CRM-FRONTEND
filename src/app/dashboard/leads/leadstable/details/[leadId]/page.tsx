@@ -166,7 +166,7 @@ export default function LeadDetails() {
       setAssignOpen(true);
       setActiveTab("projects");
     }
-  }, [isLoading, lead?.is_draft, userType]);
+  }, [isLoading, lead, userType]);
 
   // 🔹 Tabs state
   const [activeTab, setActiveTab] = useState("details");
