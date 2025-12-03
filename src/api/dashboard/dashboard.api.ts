@@ -194,6 +194,7 @@ export const getAvgDaysToConvertLeadToBooking = async (
 
 // Stage counts
 export interface SalesExecutiveStageCounts {
+  [key: string]: number | undefined;
   openLead: number;
   ismLead: number;
   designing: number;
