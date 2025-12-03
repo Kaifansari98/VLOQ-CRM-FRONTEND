@@ -191,3 +191,55 @@ export const getAvgDaysToConvertLeadToBooking = async (
   );
   return res.data.data as UiAvgDaysToBooking;
 };
+
+// Stage counts
+export interface SalesExecutiveStageCounts {
+  openLead: number;
+  ismLead: number;
+  designing: number;
+  bookingDone: number;
+  clientDocumentation: number;
+  clientApproval: number;
+  techCheck: number;
+  readyToDispatch: number;
+  dispatchPlanning: number;
+}
+
+// Stage leads (minimal)
+export interface SalesExecutiveStageLead {
+  id: number;
+  lead_code: string | null;
+  account_id: number | null;
+  name: string;
+}
+export interface SalesExecutiveStageLeads {
+  openLead: SalesExecutiveStageLead[];
+  ismLead: SalesExecutiveStageLead[];
+  designing: SalesExecutiveStageLead[];
+  bookingDone: SalesExecutiveStageLead[];
+  clientDocumentation: SalesExecutiveStageLead[];
+  clientApproval: SalesExecutiveStageLead[];
+  techCheck: SalesExecutiveStageLead[];
+  readyToDispatch: SalesExecutiveStageLead[];
+  dispatchPlanning: SalesExecutiveStageLead[];
+}
+
+export const getSalesExecutiveStageCounts = async (
+  vendorId: number,
+  userId: number
+): Promise<SalesExecutiveStageCounts> => {
+  const res = await apiClient.get("/dashboard/sales-executive/stage-counts", {
+    params: { vendor_id: vendorId, user_id: userId },
+  });
+  return res.data.data as SalesExecutiveStageCounts;
+};
+
+export const getSalesExecutiveStageLeads = async (
+  vendorId: number,
+  userId: number
+): Promise<SalesExecutiveStageLeads> => {
+  const res = await apiClient.get("/dashboard/sales-executive/stage-leads", {
+    params: { vendor_id: vendorId, user_id: userId },
+  });
+  return res.data.data as SalesExecutiveStageLeads;
+};

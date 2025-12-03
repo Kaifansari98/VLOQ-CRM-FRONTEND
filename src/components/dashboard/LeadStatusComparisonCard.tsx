@@ -1,250 +1,222 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import {
-  BarChart,
-  Bar,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
-import { ChevronDown } from "lucide-react";
-import type { LeadStatusCounts } from "@/api/dashboard/dashboard.api";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import PipeLineActionModal from "./PipeLineActionModal";
+import { useAppSelector } from "@/redux/store";
+import { useRouter } from "next/navigation";
+import { Button } from "../ui/button";
+import { GenerateLeadFormModal } from "../sales-executive/Lead/leads-generation-form-modal";
 
-interface LeadStatusComparisonCardProps {
-  overall?: LeadStatusCounts | null;
-  mine?: LeadStatusCounts | null;
+interface SalesExecutiveStageCounts {
+  [key: string]: number | undefined;
+}
+
+interface PipelinePieChartProps {
+  data?: SalesExecutiveStageCounts | null;
   isLoading?: boolean;
 }
 
-type Category = "leads" | "project" | "production" | "installation";
-
-const CATEGORIES: Record<
-  Category,
-  { key: keyof LeadStatusCounts; label: string }[]
-> = {
-  leads: [
-    { key: "total_open_leads", label: "Open" },
-    { key: "total_initial_site_measurement_leads", label: "Initial Site Measurements" },
-    { key: "total_designing_stage_leads", label: "Booking" },
-    { key: "total_booking_stage_leads", label: "Designing" },
-  ],
-  project: [
-    { key: "total_final_measurement_leads", label: "Final Measurements" },
-    { key: "total_client_documentation_leads", label: "Client Documentation" },
-    { key: "total_client_approval_leads", label: "Client Approval" },
-  ],
-  production: [
-    { key: "total_tech_check_leads", label: "Tech Check" },
-    { key: "total_order_login_leads", label: "Order Login" },
-    { key: "total_production_stage_leads", label: "Production" },
-    { key: "total_ready_to_dispatch_leads", label: "Ready To Dispatch" },
-  ],
-  installation: [
-    { key: "total_site_readiness_stage_leads", label: "Site Readiness" },
-    { key: "total_dispatch_planning_stage_leads", label: "Dispatch Planning" },
-    { key: "total_dispatch_stage_leads", label: "Dispatch" },
-    { key: "total_under_installation_stage_leads", label: "Under Installation" },
-    { key: "total_final_handover_stage_leads", label: "Final Handover" },
-    { key: "total_project_completed_stage_leads", label: "Completed Projects" },
-  ],
+const STAGE_COLORS = {
+  Open: "#c7c4bf",
+  ISM: "#A29C95",
+  Design: "#8F8880",
+  Booking: "#6D6561",
+  Docs: "#5B5551",
+  Approval: "#4B4643",
+  "Tech Check": "#272423",
+  "RTD Stage": "#1F2022",
+  "Dispatch Plan": "#16161d",
 };
 
-const chartColors = {
-  grid: "hsl(var(--border))",
-  tick: "hsl(var(--muted-foreground))",
-  barOverall: "hsl(var(--primary))",
-  barMine: "#737373",
-  tooltipBg: "hsl(var(--popover))",
-  tooltipBorder: "hsl(var(--border))",
-  tooltipText: "hsl(var(--foreground))",
-  cursor: "hsl(var(--muted))",
-};
+const STAGE_MAPPING = [
+  { key: "openLead", label: "Open", type: "Type 1" },
+  { key: "ismLead", label: "ISM", type: "Type 2" },
+  { key: "designing", label: "Design", type: "Type 3" },
+  { key: "bookingDone", label: "Booking", type: "Type 4" },
+  { key: "clientDocumentation", label: "Docs", type: "Type 6" },
+  { key: "clientApproval", label: "Approval", type: "Type 7" },
+  { key: "techCheck", label: "Tech Check", type: "Type 8" },
+  { key: "readyToDispatch", label: "RTD Stage", type: "Type 11" },
+  { key: "dispatchPlanning", label: "Dispatch Plan", type: "Type 13" },
+];
 
-export default function LeadStatusComparisonCard({
-  overall,
-  mine,
-  isLoading = false,
-}: LeadStatusComparisonCardProps) {
-  const [category, setCategory] = useState<Category>("leads");
+export default function PipelinePieChart({
+  data,
+  isLoading,
+}: PipelinePieChartProps) {
+  const router = useRouter();
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
+  const userId = useAppSelector((s) => s.auth.user?.id) || 0;
+  const [selectedStage, setSelectedStage] = useState<{
+    name: string;
+    type: string;
+  } | null>(null);
+  const [openCreateLead, setOpenCreateLead] = useState(false);
 
-  const chartData = useMemo(() => {
-    const labels = CATEGORIES[category];
-    return labels.map(({ key, label }) => ({
-      label,
-      overall: overall ? (overall[key] as number) : 0,
-      mine: mine ? (mine[key] as number) : 0,
-    }));
-  }, [category, overall, mine]);
+  // Prepare Pie Data
+  const pieData = STAGE_MAPPING.map((s) => ({
+    name: s.label,
+    type: s.type,
+    value: data?.[s.key] ?? 0,
+    fill: STAGE_COLORS[s.label as keyof typeof STAGE_COLORS] || "#94a3b8",
+  })).filter((item) => item.value > 0);
 
-  const totalOverall =
-    chartData.reduce((acc, item) => acc + (item.overall || 0), 0) || 0;
-  const totalMine =
-    chartData.reduce((acc, item) => acc + (item.mine || 0), 0) || 0;
+  const [modalData, setModalData] = useState<{
+    open: boolean;
+    stageKey: string | null;
+    stageName: string | null;
+    stageType: string | null;
+  }>();
 
-  const categoryLabel =
-    category === "leads"
-      ? "Leads"
-      : category === "project"
-      ? "Project"
-      : category === "production"
-      ? "Production"
-      : "Installation";
+  const handleSliceDoubleClick = (entry: any) => {
+    const matched = STAGE_MAPPING.find((s) => s.label === entry.name);
+
+    setModalData({
+      open: true,
+      stageKey: matched?.key ?? null,
+      stageName: entry.name,
+      stageType: matched?.type ?? null,
+    });
+  };
 
   return (
-    <Card className="w-full h-full border flex flex-col justify-between rounded-2xl pb-4">
-      <CardHeader className="flex flex-row justify-between items-start space-y-0">
-        <div className="space-y-0">
-          <CardTitle className="text-sm font-medium">
-            Leads Overview
-          </CardTitle>
+    <>
+      <Card className="w-full h-full border flex flex-col justify-between">
+        {/* Header */}
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-sm font-medium">
+              Pipeline Breakdown
+            </CardTitle>
+            <p className="text-xs text-muted-foreground ">
+              Breakdown of leads across stages
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setOpenCreateLead(true)}
+              className="px-3 py-1.5 text-xs bg-zinc-900 text-white dark:white dark:text-zinc-900 rounded-md"
+            >
+              Add New Lead
+            </button>
+
+            <button
+              onClick={() =>
+                router.push("/dashboard/accounting/payments/create")
+              }
+              className="px-3 py-1.5 text-xs border bg-zinc-900 text-white dark:white dark:text-zinc-900 rounded-md"
+            >
+              Add Payment
+            </button>
+          </div>
+        </CardHeader>
+
+        {/* Chart */}
+        <CardContent className="flex-1 flex items-center">
           {isLoading ? (
-            <div className="flex gap-3">
-              <div className="h-6 w-16 bg-muted animate-pulse rounded" />
-              <div className="h-6 w-16 bg-muted animate-pulse rounded" />
+            <div className="h-[220px] flex items-center justify-center">
+              <div className="h-10 w-10 border-4 border-muted border-t-primary rounded-full animate-spin"></div>
             </div>
           ) : (
-            <div className="flex gap-4 text-xs text-muted-foreground">
-                <p className="flex flex-col">
-              <span>
-                My Leads
-              </span>
-                <span className="text-foreground font-semibold">
-                  {totalMine}
-                </span>
-                </p>
+            <div className="h-[220px] w-full flex items-center gap-6">
+              {/* PIE */}
+              <div className="h-full w-1/2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Tooltip
+                      formatter={(value: number) => value.toLocaleString()}
+                      contentStyle={{
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "10px",
+                        boxShadow: "0px 4px 12px rgba(0,0,0,0.1)",
+                        fontSize: "12px",
+                      }}
+                    />
+                    <Pie
+                      data={pieData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={90}
+                      paddingAngle={2}
+                      onDoubleClick={handleSliceDoubleClick}
+                    >
+                      {pieData.map((entry, idx) => (
+                        <Cell
+                          key={idx}
+                          fill={entry.fill}
+                          className="cursor-pointer transition-all"
+                        />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
 
-                <p className="flex flex-col">
+              {/* LEGENDS */}
+              <div className="flex-1 h-full flex flex-col justify-center">
+                {pieData.length === 0 ? (
+                  <p className="text-muted-foreground text-xs">
+                    No data to display
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-3 text-sm h-full gap-y-4">
+                    {pieData.map((entry) => (
+                      <div
+                        key={entry.name}
+                        className="flex flex-col items-start gap-1"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="inline-block h-3 w-3 rounded-full"
+                            style={{ backgroundColor: entry.fill }}
+                          ></span>
+                          <span className="text-muted-foreground text-xs">
+                            {entry.name}
+                          </span>
+                        </div>
 
-              <span>
-                Overall Leads
-              </span>
-                <span className="text-foreground font-semibold">
-                  {totalOverall}
-                </span>
-                </p>
+                        <span className="text-md font-semibold pl-5">
+                          {entry.value.toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
-        </div>
+        </CardContent>
+      </Card>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 gap-1 text-xs"
-              disabled={isLoading}
-            >
-              {categoryLabel}
-              <ChevronDown className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-36">
-            <DropdownMenuItem onClick={() => setCategory("leads")}>
-              Leads
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setCategory("project")}>
-              Project
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setCategory("production")}>
-              Production
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setCategory("installation")}>
-              Installation
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </CardHeader>
+      <PipeLineActionModal
+        open={modalData?.open ?? false}
+        onOpenChange={(val) =>
+          setModalData((prev) => ({ ...prev!, open: val }))
+        }
+        vendorId={vendorId}
+        userId={userId}
+        stageKey={modalData?.stageKey ?? null}
+        stageName={modalData?.stageName ?? null}
+        stageType={modalData?.stageType ?? null}
+      />
 
-      <CardContent className="py-0">
-        {isLoading ? (
-          <div className="h-[220px] flex items-center justify-center">
-            <div className="h-10 w-10 border-4 border-muted border-t-primary rounded-full animate-spin" />
-          </div>
-        ) : (
-          <div className="h-[240px] overflow-x-auto">
-            <div className="min-w-[500px] h-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={chartData}
-                  margin={{ left: -10, right: 8, top: 8, bottom: 18 }}
-                  barCategoryGap={12}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke={chartColors.grid}
-                    opacity={0.3}
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="label"
-                    interval={0}
-                    tick={{ fill: chartColors.tick, fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  {/* <YAxis
-                    tick={{ fill: chartColors.tick, fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={false}
-                    allowDecimals={false}
-                  /> */}
-                  <Tooltip
-                    formatter={(value: number, name, entry) => [
-                      value.toLocaleString(),
-                      name === "overall" ? "Overall" : "My Leads",
-                    ]}
-                    contentStyle={{
-                      color: chartColors.tooltipText,
-                      border: `1px solid ${chartColors.tooltipBorder}`,
-                      borderRadius: "10px",
-                      boxShadow: "0px 4px 12px rgba(0,0,0,0.1)",
-                      fontSize: "12px",
-                    }}
-                    cursor={{ fill: chartColors.cursor, opacity: 0.12 }}
-                  />
-                  {/* <Legend
-                    verticalAlign="top"
-                    height={24}
-                    wrapperStyle={{
-                      fontSize: 12,
-                      color: chartColors.tick,
-                    }}
-                    formatter={(value) =>
-                      value === "overall" ? "Overall" : "My Leads"
-                    }
-                  /> */}
-                    <Bar
-                      dataKey="mine"
-                      name="mine"
-                      fill={chartColors.barMine}
-                      radius={[6, 6, 0, 0]}
-                      // barSize={18}
-                    />
-                  <Bar
-                    dataKey="overall"
-                    name="overall"
-                    fill={chartColors.barOverall}
-                    radius={[6, 6, 0, 0]}
-                    // barSize={18}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      <GenerateLeadFormModal
+        open={openCreateLead}
+        onOpenChange={setOpenCreateLead}
+      />
+    </>
   );
 }
