@@ -45,6 +45,12 @@ export interface FinalHandoverDocument {
   doc_type_tag: string;
 }
 
+export interface TotalProjectPaymentStatus {
+  is_paid: boolean;
+  pending_amount: number;
+  total_project_amount: number;
+}
+
 /* ==========================================================
       🔹 API FUNCTIONS
       ========================================================== */
@@ -192,6 +198,29 @@ export const useFinalHandoverReadiness = (
     queryKey: ["finalHandoverReadiness", vendorId, leadId],
     queryFn: () => fetchFinalHandoverReadiness(vendorId!, leadId!),
     enabled: !!vendorId && !!leadId,
+  });
+};
+
+export const fetchIsTotalProjectAmountPaid = async (
+  vendorId: number,
+  leadId: number
+): Promise<TotalProjectPaymentStatus> => {
+  const { data } = await apiClient.get(
+    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/is-total-project-amount-paid`
+  );
+
+  return data?.data;
+};
+
+export const useIsTotalProjectAmountPaid = (
+  vendorId?: number,
+  leadId?: number
+) => {
+  return useQuery({
+    queryKey: ["isTotalProjectAmountPaid", vendorId, leadId],
+    queryFn: () => fetchIsTotalProjectAmountPaid(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+    refetchOnMount: true,
   });
 };
 

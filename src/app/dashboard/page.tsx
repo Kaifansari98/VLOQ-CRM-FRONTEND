@@ -54,7 +54,7 @@ export default function Page() {
           <div className="flex items-center gap-2 pr-4">
             <Bell/>
             <AnimatedThemeToggler />
-            <Settings/>
+            {/* <Settings/> */}
           </div>
         </header>
 

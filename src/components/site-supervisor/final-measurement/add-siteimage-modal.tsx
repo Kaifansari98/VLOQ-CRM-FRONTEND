@@ -87,7 +87,7 @@ const AddSiteImageModal = ({ open, onOpenChange, data }: Props) => {
           form.reset({ currentSitePhotos: [] }); // 🔑 clear files
           onOpenChange(false);
         },
-        onError: (error: any) => {
+        onError: (error) => {
           toast.error(error?.message || "Failed to upload photos");
         },
       }

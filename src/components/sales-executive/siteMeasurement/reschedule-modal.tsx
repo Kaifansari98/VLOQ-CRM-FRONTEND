@@ -21,6 +21,7 @@ import { useRescheduleTask } from "@/hooks/Site-measruement/useSiteMeasruementLe
 import { useAppSelector } from "@/redux/store";
 import { toast } from "react-toastify";
 import { ReschedulePayload } from "@/api/measurment-leads";
+import { toastError } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -44,7 +45,12 @@ const formSchema = z.object({
   remark: z.string().min(1, "Remark is required"),
 });
 
-const RescheduleModal: React.FC<Props> = ({ open, onOpenChange, data, onRescheduleSuccess }) => {
+const RescheduleModal: React.FC<Props> = ({
+  open,
+  onOpenChange,
+  data,
+  onRescheduleSuccess,
+}) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const queryClient = useQueryClient();
@@ -98,12 +104,12 @@ const RescheduleModal: React.FC<Props> = ({ open, onOpenChange, data, onReschedu
 
           onOpenChange(false);
         },
-        onError: (err: any) => {
-          toast.error(err?.message || "❌ Failed to reschedule lead");
+        onError: (err: unknown) => {
+          toastError(err);
         },
       }
     );
-    onOpenChange(false)
+    onOpenChange(false);
     onRescheduleSuccess?.(false);
   };
 

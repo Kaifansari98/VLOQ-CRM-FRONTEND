@@ -71,7 +71,7 @@ const EditNotesModal = ({ open, onOpenChange, data }: Props) => {
           });
           onOpenChange(false);
         },
-        onError: (err: any) => {
+        onError: (err) => {
           toast.error(err?.message || "Failed to update notes");
         },
       }

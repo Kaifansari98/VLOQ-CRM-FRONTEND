@@ -22,8 +22,12 @@ import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 
 import { UniversalTable } from "@/components/custom/UniversalTable";
 
+type row = {
+  id: number;
+  accountId: number;
+};
 // 🔵 Navigation for Final Measurement Stage
-const navigateFinalMeasurement = (row: any) =>
+const navigateFinalMeasurement = (row: row) =>
   `/dashboard/project/final-measurement/details/${row.id}?accountId=${row.accountId}`;
 
 export default function FinalMeasurementPage() {

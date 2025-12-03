@@ -15,7 +15,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { ModeToggle } from "@/components/ModeToggle";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
@@ -81,13 +80,7 @@ export default function PendingLeadDetails() {
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbLink href="/dashboard/leads/leadstable">
-                    Open Leads
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard/sales-executive/pending-leads">
-                    Pending Leads
+                    {tab} Leads
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
@@ -99,7 +92,7 @@ export default function PendingLeadDetails() {
           </div>
 
           <div className="flex items-center space-x-2">
-          <AnimatedThemeToggler />
+            <AnimatedThemeToggler />
 
             {/* 🔹 Dynamic Actions Menu */}
             <DropdownMenu>
@@ -224,12 +217,10 @@ export default function PendingLeadDetails() {
                   queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
 
                   // ✅ Redirect back to Lost Approval tab
-                  router.push(
-                    "/dashboard/leads/leadstable"
-                  );
+                  router.push("/dashboard/leads/leadstable");
                 },
-                onError: (err: any) => {
-                  toast.error(err?.message || "Failed to approve lead!");
+                onError: (err) => {
+                  toast.error(err || "Failed to approve lead!");
                 },
               }
             );
@@ -271,8 +262,8 @@ export default function PendingLeadDetails() {
                   // ✅ Redirect back to Pending Leads On Hold tab
                   router.push("/dashboard/leads/leadstable");
                 },
-                onError: (err: any) => {
-                  toast.error(err?.message || "Failed to mark as Lost!");
+                onError: (err) => {
+                  toast.error(err || "Failed to mark as Lost!");
                 },
               }
             );
@@ -314,7 +305,7 @@ export default function PendingLeadDetails() {
                   // ✅ Redirect back
                   router.push("/dashboard/leads/leadstable");
                 },
-                onError: (err: any) => {
+                onError: (err) => {
                   toast.error(err?.message || "Failed to mark as active!");
                 },
               }

@@ -54,6 +54,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import AssignToPicker from "@/components/assign-to-picker";
+import { useRouter } from "next/navigation";
 
 // Schema for Create Lead - all fields required as per business logic
 const createFormSchema = (userType: string | undefined) => {
@@ -171,20 +172,20 @@ export default function LeadsGenerationForm({
   // fetch data once at top of component (after form etc.)
   const { data: vendorUsers, isLoading } =
     useVendorSalesExecutiveUsers(vendorId);
+  const router = useRouter();
 
- 
   const vendorUserss = vendorUsers?.data?.sales_executives ?? [];
 
   const createLeadMutation = useMutation({
     mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
       createLead(payload, files),
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast.success("Lead created successfully!");
       queryClient.invalidateQueries({
         queryKey: ["leadStats", vendorId, userId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["vendorUserLeadsOpen", vendorId],
+        queryKey: ["universal-stage-leads", vendorId],
       });
       queryClient.invalidateQueries({
         queryKey: ["vendorUserLeads", vendorId, userId],
@@ -206,7 +207,7 @@ export default function LeadsGenerationForm({
   const saveDraftMutation = useMutation({
     mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
       createLead(payload, files),
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast.success("Lead saved as draft!");
       queryClient.invalidateQueries({
         queryKey: ["leadStats", vendorId, userId],
@@ -299,6 +300,8 @@ export default function LeadsGenerationForm({
           queryClient.invalidateQueries({
             queryKey: ["leadStats", vendorId, userId],
           });
+
+          router.push("/dashboard/leads/leadstable");
         },
       }
     );

@@ -110,7 +110,7 @@ export default function SiteReadinessDetails({
           });
           setChecklistData(updatedChecklist);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error("Error fetching records:", err);
       } finally {
         setFetchLoading(false);
