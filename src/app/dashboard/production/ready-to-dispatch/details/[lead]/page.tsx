@@ -63,7 +63,6 @@ import {
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/cutome-tooltip";
-import CustomeDatePicker from "@/components/date-picker";
 import {
   useLatestOrderLoginByLead,
   usePostProductionCompleteness,
@@ -77,7 +76,6 @@ import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 
 export default function ReadyToDispatchLeadDetails() {
-
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
 
@@ -153,8 +151,7 @@ export default function ReadyToDispatchLeadDetails() {
       { leadId: leadIdNum, vendorId, userId },
       {
         onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: (err) =>
-          toast.error(err?.message || "Failed to delete lead"),
+        onError: (err) => toast.error(err?.message || "Failed to delete lead"),
       }
     );
 
@@ -172,6 +169,18 @@ export default function ReadyToDispatchLeadDetails() {
 
   if (isLoading) {
     return <p className="p-6">Loading Ready-To-Dispatch lead details...</p>;
+  }
+
+  function formatDate(input: string | Date): string {
+    const date = input instanceof Date ? input : new Date(input);
+
+    if (isNaN(date.getTime())) return "-";
+
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   }
 
   return (
@@ -313,27 +322,17 @@ export default function ReadyToDispatchLeadDetails() {
                     Payment Information
                   </TabsTrigger>
                 </TabsList>
-
-                <div className="w-60 flex flex-col">
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1 ml-1">
-                    <CalendarCheck2 size={12} />
+                <div className="flex flex-col items-start">
+                  <p className="text-xs font-semibold">
                     Expected Dispatch Date
-                  </label>
-                  <CustomeDatePicker
-                    value={lead?.expected_order_login_ready_date}
-                    onChange={handleExpectedDateChange}
-                    restriction="futureOnly"
-                    minDate={
-                      latestOrderLoginDate
-                        ? latestOrderLoginDate.split("T")[0]
-                        : undefined
-                    }
-                    disabledReason={
-                      completeness?.any_exists
-                        ? "Cannot change date as the lead is already in dispatch."
-                        : undefined
-                    }
-                  />
+                  </p>
+
+                  {/* Stylish formatted date & time */}
+                  <div className="mt-1">
+                    <p className="text-sm">
+                      {formatDate(lead?.expected_order_login_ready_date)}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

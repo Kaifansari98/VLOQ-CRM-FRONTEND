@@ -23,7 +23,12 @@ import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { UniversalTable } from "@/components/custom/UniversalTable";
 
 // ✅ Navigation for Designing Stage rows
-const navigateDesigningStage = (row: any) =>
+
+type Row = {
+  id: number;
+  accountId: number;
+};
+const navigateDesigningStage = (row: Row) =>
   `/dashboard/leads/designing-stage/details/${row.id}?accountId=${row.accountId}`;
 
 export default function DesigningStage() {

@@ -32,6 +32,7 @@ import MapPicker from "@/components/MapPicker";
 import { MapPin } from "lucide-react";
 import CustomeDatePicker from "@/components/date-picker";
 import AssignToPicker from "@/components/assign-to-picker";
+import { toastError } from "@/lib/utils";
 
 // Form validation schema
 const formSchema = z.object({
@@ -345,8 +346,8 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           payload.country_code = `+${parsed.countryCallingCode}`;
           payload.contact_no = parsed.nationalNumber.toString();
         }
-      } catch (error) {
-        toast.error("Invalid primary phone number format");
+      } catch (error: unknown) {
+        toastError(error);
         return;
       }
     }

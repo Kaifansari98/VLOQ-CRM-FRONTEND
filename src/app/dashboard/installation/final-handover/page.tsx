@@ -20,9 +20,12 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 
 import { UniversalTable } from "@/components/custom/UniversalTable";
-
+type Row = {
+  id: number;
+  accountId: number;
+};
 // 🔵 Navigation for Final Handover Stage
-const navigateFinalHandover = (row: any) =>
+const navigateFinalHandover = (row: Row) =>
   `/dashboard/installation/final-handover/details/${row.id}?accountId=${row.accountId}`;
 
 export default function FinalHandoverStagePage() {

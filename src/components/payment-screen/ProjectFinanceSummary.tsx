@@ -130,8 +130,8 @@ export default function ProjectFinanceSummary({
           reset();
           refetch(); // refresh finance after adding payment
         },
-        onError: (err: any) => {
-          toast.error(err?.response?.data?.message || "Failed to add payment");
+        onError: () => {
+          toast.error("Failed to add payment");
         },
       }
     );

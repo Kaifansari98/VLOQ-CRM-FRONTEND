@@ -178,13 +178,13 @@ export default function LeadsGenerationForm({
   const createLeadMutation = useMutation({
     mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
       createLead(payload, files),
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast.success("Lead created successfully!");
       queryClient.invalidateQueries({
         queryKey: ["leadStats", vendorId, userId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["vendorUserLeadsOpen", vendorId],
+        queryKey: ["universal-stage-leads", vendorId],
       });
       queryClient.invalidateQueries({
         queryKey: ["vendorUserLeads", vendorId, userId],
@@ -206,7 +206,7 @@ export default function LeadsGenerationForm({
   const saveDraftMutation = useMutation({
     mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
       createLead(payload, files),
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast.success("Lead saved as draft!");
       queryClient.invalidateQueries({
         queryKey: ["leadStats", vendorId, userId],

@@ -103,7 +103,7 @@ export const useEditSelectionData = () => {
       selectionId: number;
       payload: EditSelectionPayload;
     }) => editSelection(selectionId, payload),
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       // We need to invalidate queries but we don't have vendorId/leadId in the variables
       // So invalidate all getSelectionData queries
       queryClient.invalidateQueries({

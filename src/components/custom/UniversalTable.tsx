@@ -137,7 +137,7 @@ export function UniversalTable({
       ? overallData?.pagination?.totalPages ?? 1
       : myData?.pagination?.totalPages ?? 1;
 
-  const isLoading = viewType === "overall" ? isOverallLoading : isMyLoading;
+  // const isLoading = viewType === "overall" ? isOverallLoading : isMyLoading;
 
   const myCount = myData?.count ?? 0;
   const overallCount = overallData?.count ?? 0;

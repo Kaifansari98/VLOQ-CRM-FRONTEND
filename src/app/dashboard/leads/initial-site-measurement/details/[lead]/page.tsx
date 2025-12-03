@@ -124,7 +124,7 @@ export default function SiteMeasurementLead() {
     ) {
       setOpenMeasurement(true);
     }
-  }, [isLoading, lead?.is_draft, userType]);
+  }, [isLoading, lead, userType]);
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -148,8 +148,8 @@ export default function SiteMeasurementLead() {
 
           router.push("/dashboard/leads/initial-site-measurement");
         },
-        onError: (error: any) => {
-          toast.error(error?.message || "Failed to delete lead!");
+        onError: () => {
+          toast.error("Failed to delete lead!");
         },
       }
     );
@@ -415,8 +415,6 @@ export default function SiteMeasurementLead() {
           data={{ id: leadIdNum, accountId, name: "" }}
         />
       </SidebarProvider>
-
-    
     </>
   );
 }

@@ -1,6 +1,6 @@
-// hooks/useDeleteLead.ts
-import { deleteLead } from "@/api/leads";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { deleteLead } from "@/api/leads";
+import { toastError } from "@/lib/utils";
 
 export function useDeleteLead() {
   const queryClient = useQueryClient();
@@ -16,10 +16,14 @@ export function useDeleteLead() {
     }) => deleteLead(leadId, userId),
 
     onSuccess: (_, { vendorId, userId }) => {
-      // invalidate the cache so UI refreshes automatically
       queryClient.invalidateQueries({
         queryKey: ["vendorUserLeads", vendorId, userId],
       });
+    },
+
+    // ✅ Centralized onError handling
+    onError: (error) => {
+      toastError(error); // automatically formats backend error
     },
   });
 }

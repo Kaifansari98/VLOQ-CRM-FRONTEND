@@ -89,7 +89,7 @@ export default function LeadsGenerationPage() {
 
   const { data: counts } = useActivityStatusCounts(vendorId);
 
-  let tabItems: TabItem[] = [
+  const tabItems: TabItem[] = [
     {
       value: "open",
       label: "Open",

@@ -23,7 +23,12 @@ import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { UniversalTable } from "@/components/custom/UniversalTable";
 
 // 🔵 Navigation for Booking Stage rows
-const navigateBookingStage = (row: any) =>
+
+type Row = {
+  id: number;
+  accountId: number;
+};
+const navigateBookingStage = (row: Row) =>
   `/dashboard/leads/booking-stage/details/${row.id}?accountId=${row.accountId}`;
 
 export default function LeadsBookingPage() {

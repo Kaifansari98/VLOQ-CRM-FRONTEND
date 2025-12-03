@@ -71,6 +71,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
+import { toastError } from "@/lib/utils";
 
 export default function DispatchPlanningLeadDetails() {
   const router = useRouter();
@@ -109,7 +110,7 @@ export default function DispatchPlanningLeadDetails() {
 
   const deleteLeadMutation = useDeleteLead();
 
-   useEffect(() => {
+  useEffect(() => {
     if (userType?.toLowerCase() === "sales-executive") {
       setActiveTab("todo");
     }
@@ -129,8 +130,7 @@ export default function DispatchPlanningLeadDetails() {
       { leadId: leadIdNum, vendorId, userId },
       {
         onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: (err: any) =>
-          toast.error(err?.message || "Failed to delete lead"),
+        onError: () => toast.error("Failed to delete lead"),
       }
     );
 
@@ -140,8 +140,6 @@ export default function DispatchPlanningLeadDetails() {
   if (isLoading) {
     return <p className="p-6">Loading Dispatch Planning lead details...</p>;
   }
-
- 
 
   const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
@@ -408,11 +406,8 @@ export default function DispatchPlanningLeadDetails() {
                     queryClient.invalidateQueries({ queryKey: ["leadStats"] });
                     router.push("/dashboard/installation/dispatch-stage/");
                     setOpenMoveConfirm(false);
-                  } catch (err: any) {
-                    toast.error(
-                      err?.response?.data?.message ||
-                        "Failed to move lead to Dispatch stage"
-                    );
+                  } catch (err: unknown) {
+                    toastError(err);
                   }
                 }}
               >
@@ -455,8 +450,8 @@ export default function DispatchPlanningLeadDetails() {
                     queryKey: ["leadById", leadIdNum],
                   });
                 },
-                onError: (err: any) => {
-                  toast.error(err?.message || "Failed to update lead status");
+                onError: (err) => {
+                  toast.error(err || "Failed to update lead status");
                 },
               }
             );

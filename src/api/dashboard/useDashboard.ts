@@ -13,7 +13,8 @@ import {
   getLeadStatusCounts,
   LeadStatusCounts,
 } from "./dashboard.api";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { logError } from "@/lib/utils";
 
 interface UsePerformanceSnapshotResult {
   data: UiPerformanceSnapshot | null;
@@ -44,7 +45,7 @@ export function usePerformanceSnapshot(
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!vendorId || !userId) {
       setIsLoading(false);
       return;
@@ -55,17 +56,17 @@ export function usePerformanceSnapshot(
       setError(null);
       const snapshot = await getPerformanceSnapshot(vendorId, userId);
       setData(snapshot);
-    } catch (err: any) {
-      console.error("Failed to fetch performance snapshot:", err);
-      setError(err.message || "Failed to load performance data");
+    } catch (err) {
+      logError("Failed to fetch performance snapshot:", err);
+      setError("Failed to load performance data");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [vendorId, userId]); // ADD dependencies here
 
   useEffect(() => {
     fetchData();
-  }, [vendorId, userId]);
+  }, [fetchData]); // use the function as dependency
 
   return {
     data,
@@ -143,7 +144,7 @@ export function useLeadStatusCounts(
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!vendorId) {
       setIsLoading(false);
       return;
@@ -165,11 +166,11 @@ export function useLeadStatusCounts(
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [vendorId, userId]); // <<– Add dependencies here
 
   useEffect(() => {
     fetchData();
-  }, [vendorId, userId]);
+  }, [fetchData]); // <<– Only this dependency
 
   return { overall, mine, isLoading, error, refetch: fetchData };
 }
