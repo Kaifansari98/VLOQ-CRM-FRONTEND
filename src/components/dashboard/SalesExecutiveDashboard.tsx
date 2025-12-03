@@ -37,12 +37,6 @@ export default function SalesExecutiveDashboard() {
     userId
   );
 
-  const {
-    overall: overallLeadCounts,
-    mine: myLeadCounts,
-    isLoading: isLoadingLeadCounts,
-  } = useLeadStatusCounts(vendorId, userId);
-
   const { data: stageCounts, isLoading: isLoadingStageCounts } =
     useSalesExecutiveStageCounts(vendorId, userId);
 
