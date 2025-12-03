@@ -12,6 +12,10 @@ import {
   UiAvgDaysToBooking,
   getLeadStatusCounts,
   LeadStatusCounts,
+  getSalesExecutiveStageLeads,
+  getSalesExecutiveStageCounts,
+  SalesExecutiveStageLeads,
+  SalesExecutiveStageCounts,
 } from "./dashboard.api";
 import { useCallback, useEffect, useState } from "react";
 import { logError } from "@/lib/utils";
@@ -173,4 +177,84 @@ export function useLeadStatusCounts(
   }, [fetchData]); // <<– Only this dependency
 
   return { overall, mine, isLoading, error, refetch: fetchData };
+}
+
+// Stage counts hook
+export interface UseStageCountsResult {
+  data: SalesExecutiveStageCounts | null;
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
+export function useSalesExecutiveStageCounts(
+  vendorId: number,
+  userId: number
+): UseStageCountsResult {
+  const [data, setData] = useState<SalesExecutiveStageCounts | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    if (!vendorId || !userId) {
+      setIsLoading(false);
+      return;
+    }
+    try {
+      setIsLoading(true);
+      setError(null);
+      const res = await getSalesExecutiveStageCounts(vendorId, userId);
+      setData(res);
+    } catch (err: any) {
+      console.error("Failed to fetch stage counts:", err);
+      setError(err.message || "Failed to load stage counts");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [vendorId, userId]);
+
+  return { data, isLoading, error, refetch: fetchData };
+}
+
+// Stage leads hook (not used yet)
+export interface UseStageLeadsResult {
+  data: SalesExecutiveStageLeads | null;
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
+export function useSalesExecutiveStageLeads(
+  vendorId: number,
+  userId: number
+): UseStageLeadsResult {
+  const [data, setData] = useState<SalesExecutiveStageLeads | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    if (!vendorId || !userId) {
+      setIsLoading(false);
+      return;
+    }
+    try {
+      setIsLoading(true);
+      setError(null);
+      const res = await getSalesExecutiveStageLeads(vendorId, userId);
+      setData(res);
+    } catch (err: any) {
+      console.error("Failed to fetch stage leads:", err);
+      setError(err.message || "Failed to load stage leads");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [vendorId, userId]);
+
+  return { data, isLoading, error, refetch: fetchData };
 }

@@ -12,10 +12,13 @@ import {
   useAvgDaysToBooking,
   useLeadStatusCounts,
   usePerformanceSnapshot,
+  useSalesExecutiveStageCounts,
 } from "@/api/dashboard/useDashboard";
 import BookingValueCard from "./BookingValueCard";
 import AvgDaysToBookingCard from "./AvgDaysToBookingCard";
 import LeadStatusComparisonCard from "./LeadStatusComparisonCard";
+import LeadsSummaryCardCounts from "./LeadStatusComparisonCard";
+import EnhancedStageOverview from "./LeadStatusComparisonCard";
 
 export default function SalesExecutiveDashboard() {
   const user = useAppSelector((s) => s.auth.user);
@@ -27,18 +30,21 @@ export default function SalesExecutiveDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { data, isLoading: isLoadingSummaryData } = usePerformanceSnapshot(
-    vendorId,
-    userId
-  );
+  const { data } = usePerformanceSnapshot(vendorId, userId);
 
   const { data: avgBookingData, isLoading: isLoadingAvg } = useAvgDaysToBooking(
     vendorId,
     userId
   );
 
-  const { overall: overallLeadCounts, mine: myLeadCounts, isLoading: isLoadingLeadCounts } =
-  useLeadStatusCounts(vendorId, userId);
+  const {
+    overall: overallLeadCounts,
+    mine: myLeadCounts,
+    isLoading: isLoadingLeadCounts,
+  } = useLeadStatusCounts(vendorId, userId);
+
+  const { data: stageCounts, isLoading: isLoadingStageCounts } =
+    useSalesExecutiveStageCounts(vendorId, userId);
 
   useEffect(() => {
     const fetchPerformanceData = async () => {
@@ -70,23 +76,11 @@ export default function SalesExecutiveDashboard() {
       <DashboardHeader />
 
       {/* Performance Chart + Assigned Tasks */}
-      <div className="w-full h-fit flex items-start gap-4">
+      <div className="w-full h-full flex items-start gap-4">
         <div className="w-[60%]">
-          <PerformanceBarChart
-            data={
-              performanceData
-                ? {
-                    bookedThisWeek: performanceData.bookedThisWeek,
-                    bookedThisMonth: performanceData.bookedThisMonth,
-                    bookedThisYear: performanceData.bookedThisYear,
-                    bookedOverall: performanceData.bookedOverall,
-                    bookedThisWeekTotal: performanceData.bookedThisWeekTotal,
-                    bookedThisMonthTotal: performanceData.bookedThisMonthTotal,
-                    bookedThisYearTotal: performanceData.bookedThisYearTotal,
-                  }
-                : undefined
-            }
-            isLoading={isLoading}
+          <EnhancedStageOverview
+            data={stageCounts}
+            isLoading={isLoadingStageCounts}
           />
         </div>
         <div className="w-[40%] h-full flex flex-col">
@@ -130,12 +124,23 @@ export default function SalesExecutiveDashboard() {
             isLoading={isLoading}
           />
         </div>
-        
+
         <div className="w-[60%] h-full">
-          <LeadStatusComparisonCard
-            overall={overallLeadCounts}
-            mine={myLeadCounts}
-            isLoading={isLoadingLeadCounts}
+          <PerformanceBarChart
+            data={
+              performanceData
+                ? {
+                    bookedThisWeek: performanceData.bookedThisWeek,
+                    bookedThisMonth: performanceData.bookedThisMonth,
+                    bookedThisYear: performanceData.bookedThisYear,
+                    bookedOverall: performanceData.bookedOverall,
+                    bookedThisWeekTotal: performanceData.bookedThisWeekTotal,
+                    bookedThisMonthTotal: performanceData.bookedThisMonthTotal,
+                    bookedThisYearTotal: performanceData.bookedThisYearTotal,
+                  }
+                : undefined
+            }
+            isLoading={isLoading}
           />
         </div>
       </div>
