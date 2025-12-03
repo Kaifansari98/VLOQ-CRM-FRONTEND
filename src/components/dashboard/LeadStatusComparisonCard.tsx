@@ -124,7 +124,7 @@ export default function PipelinePieChart({
         {/* Chart */}
         <CardContent className="flex-1 flex items-center">
           {isLoading ? (
-            <div className="h-[220px] flex items-center justify-center">
+            <div className="h-[220px] w-1/2 flex items-center justify-center">
               <div className="h-10 w-10 border-4 border-muted border-t-primary rounded-full animate-spin"></div>
             </div>
           ) : (

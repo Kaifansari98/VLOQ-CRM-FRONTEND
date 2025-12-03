@@ -19,9 +19,7 @@ export function GenerateLeadFormModal({
       description="Fill in the details to create a new lead for your sales pipeline."
       size="lg"
     >
-
-        <LeadsGenerationForm onClose={() => onOpenChange(false)} />
-   
+      <LeadsGenerationForm onClose={() => onOpenChange(false)} />
     </BaseModal>
   );
 }

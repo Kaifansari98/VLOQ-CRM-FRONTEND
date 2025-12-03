@@ -31,7 +31,7 @@ export default function LeadsSummaryCard({
   };
 
   return (
-    <div className="border py-4 w-1/2 h-full rounded-2xl mt-4 flex flex-col justify-between">
+    <div className="border py-4 w-1/2  rounded-2xl mt-4 flex flex-col justify-between">
       <CardHeader className="flex flex-row justify-between items-start">
 
         {/* LEFT — Title */}

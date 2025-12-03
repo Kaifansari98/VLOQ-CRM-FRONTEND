@@ -16,8 +16,6 @@ import {
 } from "@/api/dashboard/useDashboard";
 import BookingValueCard from "./BookingValueCard";
 import AvgDaysToBookingCard from "./AvgDaysToBookingCard";
-import LeadStatusComparisonCard from "./LeadStatusComparisonCard";
-import LeadsSummaryCardCounts from "./LeadStatusComparisonCard";
 import EnhancedStageOverview from "./LeadStatusComparisonCard";
 
 export default function SalesExecutiveDashboard() {
@@ -76,16 +74,16 @@ export default function SalesExecutiveDashboard() {
       <DashboardHeader />
 
       {/* Performance Chart + Assigned Tasks */}
-      <div className="w-full h-full flex items-start gap-4">
-        <div className="w-[60%]">
+      <div className="w-full h-full flex gap-4 items-stretch  ">
+        <div className="w-[60%] ">
           <EnhancedStageOverview
             data={stageCounts}
             isLoading={isLoadingStageCounts}
           />
         </div>
-        <div className="w-[40%] h-full flex flex-col">
+        <div className="w-[40%] flex flex-col">
           <AssignedTaskCard />
-          <div className="flex flex-row gap-4">
+          <div className="flex  flex-row gap-4">
             <LeadsSummaryCard
               assigned={data?.totalLeadsAssigned || 0}
               completed={data?.totalCompletedLeads || 0}
@@ -102,6 +100,7 @@ export default function SalesExecutiveDashboard() {
           </div>
         </div>
       </div>
+
       <div className="w-full h-fit flex items-start gap-4">
         <div className="w-[40%]">
           <BookingValueCard

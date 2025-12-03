@@ -54,6 +54,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import AssignToPicker from "@/components/assign-to-picker";
+import { useRouter } from "next/navigation";
 
 // Schema for Create Lead - all fields required as per business logic
 const createFormSchema = (userType: string | undefined) => {
@@ -171,8 +172,8 @@ export default function LeadsGenerationForm({
   // fetch data once at top of component (after form etc.)
   const { data: vendorUsers, isLoading } =
     useVendorSalesExecutiveUsers(vendorId);
+  const router = useRouter();
 
- 
   const vendorUserss = vendorUsers?.data?.sales_executives ?? [];
 
   const createLeadMutation = useMutation({
@@ -299,6 +300,8 @@ export default function LeadsGenerationForm({
           queryClient.invalidateQueries({
             queryKey: ["leadStats", vendorId, userId],
           });
+
+          router.push("/dashboard/leads/leadstable");
         },
       }
     );
