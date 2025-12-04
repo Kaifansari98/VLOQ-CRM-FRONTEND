@@ -102,7 +102,7 @@ export default function PipelinePieChart({
             </p>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setOpenCreateLead(true)}
               className="px-3 py-1.5 text-xs border  bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-md"

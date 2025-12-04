@@ -246,48 +246,58 @@ export const getSalesExecutiveStageLeads = async (
   return res.data.data as SalesExecutiveStageLeads;
 };
 
-  export interface LeadStageItem {
-    id: number;
-    lead_code: string;
-    account_id: number;
-    name: string;
-  }
+export interface LeadStageItem {
+  id: number;
+  lead_code: string;
+  account_id: number;
+  name: string;
+}
 
-  export interface StageData {
-    bookingStage: LeadStageItem[];
-    finalSiteMeasurementStage: LeadStageItem[];
-    clientDocumentationStage: LeadStageItem[];
-    clientApprovalStage: LeadStageItem[];
-    techCheckStage: LeadStageItem[];
-    orderLoginStage: LeadStageItem[];
-    productionStage: LeadStageItem[];
-    readyToDispatchStage: LeadStageItem[];
-    siteReadinessStage: LeadStageItem[];
-    dispatchPlanningStage: LeadStageItem[];
-    dispatchStage: LeadStageItem[];
-    underInstallationStage: LeadStageItem[];
-    finalHandoverStage: LeadStageItem[];
-  }
+export interface StageData {
+  bookingStage: LeadStageItem[];
+  finalSiteMeasurementStage: LeadStageItem[];
+  clientDocumentationStage: LeadStageItem[];
+  clientApprovalStage: LeadStageItem[];
+  techCheckStage: LeadStageItem[];
+  orderLoginStage: LeadStageItem[];
+  productionStage: LeadStageItem[];
+  readyToDispatchStage: LeadStageItem[];
+  siteReadinessStage: LeadStageItem[];
+  dispatchPlanningStage: LeadStageItem[];
+  dispatchStage: LeadStageItem[];
+  underInstallationStage: LeadStageItem[];
+  finalHandoverStage: LeadStageItem[];
+}
 
-  export interface StageResponse {
-    success: boolean;
-    data: StageData;
-  }
+export interface StageResponse {
+  success: boolean;
+  data: StageData;
+}
 
-  export const addPaymentLeads = async (
-    vendorId: number,
-    userId: number
-  ): Promise<StageData> => {
-    const res = await apiClient.get<StageResponse>(
-      "/dashboard/sales-executive/post-booking-stage-leads",
-      {
-        params: { vendor_id: vendorId, user_id: userId },
-      }
-    );
+export const addPaymentLeads = async (
+  vendorId: number,
+  userId: number
+): Promise<StageData> => {
+  const res = await apiClient.get<StageResponse>(
+    "/dashboard/sales-executive/post-booking-stage-leads",
+    {
+      params: { vendor_id: vendorId, user_id: userId },
+    }
+  );
 
-    return res.data.data;
-  };
+  return res.data.data;
+};
 
+export const getDashboardAllLeads = async (
+  vendorId: number,
+  userId: number
+): Promise<StageData> => {
+  const res = await apiClient.get<StageResponse>(
+    "/dashboard/sales-executive/all-stage-leads",
+    {
+      params: { vendor_id: vendorId, user_id: userId },
+    }
+  );
 
-
-  
+  return res.data.data;
+};
