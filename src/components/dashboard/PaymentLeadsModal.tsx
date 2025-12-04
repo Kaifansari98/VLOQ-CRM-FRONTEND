@@ -132,9 +132,8 @@ export default function PaymentStageLeadModal({ open, onOpenChange }: Props) {
         open={openAddPaymentModal}
         onOpenChange={setOpenAddPaymentModal}
         size="xl"
-      
       >
-      <div className="p-2 ">
+      <div className="p-2">
 
         {selectedLeadId && selectedAccountId && (
           <PaymentInformation

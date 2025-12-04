@@ -3,17 +3,9 @@
 import { useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import PipeLineActionModal from "./PipeLineActionModal";
 import { useAppSelector } from "@/redux/store";
 import { useRouter } from "next/navigation";
-import { Button } from "../ui/button";
 import { GenerateLeadFormModal } from "../sales-executive/Lead/leads-generation-form-modal";
 import { useAddPaymentLeads } from "@/api/dashboard/useDashboard";
 import PaymentStageLeadModal from "./PaymentLeadsModal";
