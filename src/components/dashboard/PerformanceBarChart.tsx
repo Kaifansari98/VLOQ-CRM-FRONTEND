@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -41,9 +41,15 @@ export default function PerformanceLineChart({
 }: PerformanceBarChartProps) {
   const [mode, setMode] = useState<ChartMode>("year");
 
-  const weekly = data?.bookedThisWeek || [45, 52, 38, 65, 48, 55, 42];
-  const monthly = data?.bookedThisMonth || [80, 220, 145, 240];
-  const yearly = data?.bookedThisYear || [
+  // const weekly = data?.bookedThisWeek || [45, 52, 38, 65, 48, 55, 42];
+  // const monthly = data?.bookedThisMonth || [80, 220, 145, 240];
+  // const yearly = data?.bookedThisYear || [
+  //   850, 190, 880, 350, 450, 750, 920, 1150, 1480, 1200, 1140, 1280,
+  // ];
+
+  const weekly = [45, 52, 38, 65, 48, 55, 42];
+  const monthly = [80, 220, 145, 240];
+  const yearly = [
     850, 190, 880, 350, 450, 750, 920, 1150, 1480, 1200, 1140, 1280,
   ];
 
@@ -94,6 +100,15 @@ export default function PerformanceLineChart({
 
   const totalBookings = selectedTotal;
   const avgBookings = Math.round(totalBookings / chartData.length);
+
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const root = document.documentElement;
+      setIsDark(root.classList.contains("dark"));
+    }
+  }, []);
 
   return (
     <Card className="w-full h-full border flex flex-col justify-between bg-[#fff] dark:bg-[#0a0a0a]">
@@ -175,6 +190,27 @@ export default function PerformanceLineChart({
                 margin={{ left: 15, right: 5, top: 5, bottom: 0 }}
               >
                 <defs>
+                  {/* Light Mode – Neutral */}
+                  <linearGradient
+                    id="lightGrayGradient"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="5%"
+                      stopColor="hsl(240, 5%, 75%)"
+                      stopOpacity={0.55}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor="hsl(240, 5%, 92%)"
+                      stopOpacity={0.15}
+                    />
+                  </linearGradient>
+
+                  {/* Dark Mode – Neutral */}
                   <linearGradient
                     id="darkGrayGradient"
                     x1="0"
@@ -184,27 +220,28 @@ export default function PerformanceLineChart({
                   >
                     <stop
                       offset="5%"
-                      stopColor="hsl(240, 6%, 25%)"
+                      stopColor="hsl(0, 0%, 90%)"
                       stopOpacity={0.4}
                     />
                     <stop
                       offset="95%"
-                      stopColor="hsl(240, 6%, 25%)"
-                      stopOpacity={0.05}
+                      stopColor="hsl(240, 6%, 10%)"
+                      stopOpacity={0.1}
                     />
                   </linearGradient>
                 </defs>
 
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="hsl(var(--border))"
+                  stroke="var(--border)"
+                  // fill="var(--border)"
                   opacity={0.3}
                   vertical={false}
                 />
 
                 <XAxis
                   dataKey="name"
-                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                  tick={{ fill: "var(--foreground)", fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
                 />
@@ -213,6 +250,7 @@ export default function PerformanceLineChart({
                   contentStyle={{
                     border: "1px solid hsl(var(--border))",
                     borderRadius: "10px",
+                    color: "hsl(var(--tooltip-text)",
                     boxShadow: "0px 4px 12px rgba(0,0,0,0.1)",
                     fontSize: "12px",
                   }}
@@ -222,11 +260,13 @@ export default function PerformanceLineChart({
                 <Area
                   type="monotone"
                   dataKey="bookings"
-                  stroke="hsl(240, 6%, 10%)"
+                  stroke="var(--primary)"
                   strokeWidth={2}
-                  fill="url(#darkGrayGradient)"
+                  fill={`url(#${
+                    isDark ? "darkGrayGradient" : "lightGrayGradient"
+                  })`}
                   dot={{ r: 3, fill: "hsl(240, 6%, 10%)" }}
-                  activeDot={{ r: 5 }}
+                  activeDot={{ r: 5, fill: "" }}
                 />
               </AreaChart>
             </ResponsiveContainer>
