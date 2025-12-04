@@ -100,7 +100,7 @@ export default function SalesExecutiveDashboard() {
         </div>
       </div>
 
-      <div className="w-full h-fit flex items-start gap-4">
+      <div className="w-full h-full flex gap-4 items-stretch ">
         <div className="w-[40%]">
           <BookingValueCard
             data={
