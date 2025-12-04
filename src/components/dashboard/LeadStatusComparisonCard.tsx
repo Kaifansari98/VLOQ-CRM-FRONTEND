@@ -26,15 +26,15 @@ interface PipelinePieChartProps {
 }
 
 const STAGE_COLORS = {
-  Open: "#c7c4bf",
-  ISM: "#A29C95",
-  Design: "#8F8880",
-  Booking: "#6D6561",
-  Docs: "#5B5551",
-  Approval: "#4B4643",
-  "Tech Check": "#272423",
-  "RTD Stage": "#1F2022",
-  "Dispatch Plan": "#16161d",
+  Open: "var(--stage-open)",
+  ISM: "var(--stage-ism)",
+  Design: "var(--stage-design)",
+  Booking: "var(--stage-booking)",
+  Docs: "var(--stage-docs)",
+  Approval: "var(--stage-approval)",
+  "Tech Check": "var(--stage-tech-check)",
+  "RTD Stage": "var(--stage-rtd)",
+  "Dispatch Plan": "var(--stage-dispatch)",
 };
 
 const STAGE_MAPPING = [
@@ -86,7 +86,7 @@ export default function PipelinePieChart({
 
   return (
     <>
-      <Card className="w-full h-full border flex flex-col justify-between">
+      <Card className="w-full h-full border flex flex-col justify-between bg-background">
         {/* Header */}
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
@@ -98,10 +98,10 @@ export default function PipelinePieChart({
             </p>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-4">
             <button
               onClick={() => setOpenCreateLead(true)}
-              className="px-3 py-1.5 text-xs bg-zinc-900 text-white dark:white dark:text-zinc-900 rounded-md"
+              className="px-3 py-1.5 text-xs border  bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-md"
             >
               Add New Lead
             </button>
@@ -110,7 +110,7 @@ export default function PipelinePieChart({
               onClick={() =>
                 router.push("/dashboard/accounting/payments/create")
               }
-              className="px-3 py-1.5 text-xs border bg-zinc-900 text-white dark:white dark:text-zinc-900 rounded-md"
+              className="px-3 py-1.5 text-xs border bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-md"
             >
               Add Payment
             </button>
@@ -147,6 +147,7 @@ export default function PipelinePieChart({
                       innerRadius={50}
                       outerRadius={90}
                       paddingAngle={2}
+                      stroke="none"
                       onDoubleClick={handleSliceDoubleClick}
                     >
                       {pieData.map((entry, idx) => (

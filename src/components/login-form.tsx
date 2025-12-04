@@ -55,7 +55,7 @@ export function LoginForm({
         })
       );
       toast.success("Login successful 🎉");
-      router.push("/dashboard/leads/leadstable");
+      router.push("/dashboard");
     }
   }, [loginMutation.isSuccess, loginMutation.data, dispatch, router]);
 

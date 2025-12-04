@@ -97,7 +97,7 @@ export default function BookingValueCard({
       : "This Year";
 
   return (
-    <Card className="w-full h-full border flex flex-col justify-between">
+    <Card className="w-full h-full border flex flex-col justify-between bg-[#fff] dark:bg-[#0a0a0a]">
       <CardHeader className="flex flex-row justify-between items-start pb-2 space-y-0">
         <div className="space-y-1">
           <CardTitle className="text-sm font-medium">Booking Value</CardTitle>
@@ -143,7 +143,7 @@ export default function BookingValueCard({
 
       <CardContent>
         {isLoading ? (
-          <div className="h-[220px] flex items-center justify-center">
+          <div className="h-[220px] flex items-center justify-center ">
             <div className="h-10 w-10 border-4 border-muted border-t-primary rounded-full animate-spin"></div>
           </div>
         ) : (
@@ -161,23 +161,26 @@ export default function BookingValueCard({
                 />
                 <XAxis
                   dataKey="name"
-                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                  tick={{ fill: "var(--foreground)", fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
                 />
                 <Tooltip
                   formatter={(value: number) => value.toLocaleString()}
+                
                   contentStyle={{
-                    border: "1px solid hsl(var(--border))",
+                    border: "1px solid var(--border)",
                     borderRadius: "10px",
+                    color: "var(--tooltip-text)",
                     boxShadow: "0px 4px 12px rgba(0,0,0,0.1)",
                     fontSize: "12px",
                   }}
                 />
                 <Bar
                   dataKey="value"
-                  fill="hsl(var(--primary))"
+                  fill="var(--primary)"
                   radius={[6, 6, 0, 0]}
+                
                 />
               </BarChart>
             </ResponsiveContainer>

@@ -313,8 +313,7 @@ const MyTaskTable = () => {
           <div className="hidden md:block">
             <h1 className="text-lg font-semibold">My Task </h1>
             <p className="text-sm text-muted-foreground">
-              Lorem ipsum dolor sit amet consectetur adipisicing elit. Quae,
-              numquam.
+              Your active tasks for the day.
             </p>
           </div>
 

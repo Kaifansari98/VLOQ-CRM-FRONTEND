@@ -36,3 +36,9 @@ export function logError(context: string, err: unknown) {
 export function toastError(err: unknown) {
   toast.error(getErrorMessage(err));
 }
+
+
+export function getCssVariable(name: string) {
+  if (typeof window === "undefined") return "";
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}

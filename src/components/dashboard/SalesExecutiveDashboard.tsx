@@ -74,7 +74,7 @@ export default function SalesExecutiveDashboard() {
 
       {/* Performance Chart + Assigned Tasks */}
       <div className="w-full h-full flex gap-4 items-stretch  ">
-        <div className="w-[60%] ">
+        <div className="w-[60%]">
           <EnhancedStageOverview
             data={stageCounts}
             isLoading={isLoadingStageCounts}
