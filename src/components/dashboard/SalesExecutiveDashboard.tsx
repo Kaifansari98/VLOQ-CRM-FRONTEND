@@ -39,6 +39,10 @@ export default function SalesExecutiveDashboard() {
   const { data: stageCounts, isLoading: isLoadingStageCounts } =
     useSalesExecutiveStageCounts(vendorId, userId);
 
+  const [leadFilter, setLeadFilter] = useState<"week" | "month" | "year">(
+    "month"
+  );
+
   useEffect(() => {
     const fetchPerformanceData = async () => {
       if (!vendorId || !userId) {
