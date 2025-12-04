@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, MoreHorizontal } from "lucide-react";
+import { ArrowUpRight, BadgeInfo, Info, MoreHorizontal } from "lucide-react";
 
 interface LeadsSummaryCardProps {
   assigned: number;
@@ -49,7 +49,7 @@ export default function LeadsSummaryCard({
           size="icon"
           className="h-8 w-8 rounded-full p-0"
         >
-          <ArrowUpRight className="h-4 w-4" onClick={() => {console.log("over here")}}/>
+          <BadgeInfo className="h-4 w-4" onClick={() => {console.log("over here")}}/>
         </Button>
       </div>
 
