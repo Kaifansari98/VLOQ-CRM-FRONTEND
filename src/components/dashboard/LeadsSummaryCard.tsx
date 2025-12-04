@@ -31,17 +31,17 @@ export default function LeadsSummaryCard({
   };
 
   return (
-    <div className="border py-4 w-1/2  rounded-2xl mt-4 flex flex-col justify-between">
-      <CardHeader className="flex flex-row justify-between items-start">
+    <div className="border py-4 w-1/2 rounded-2xl mt-4 flex flex-col justify-between">
+      <div className="flex flex-row justify-between items-start px-5">
 
         {/* LEFT — Title */}
         <div>
           <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
-          <p className="text-xs text-muted-foreground">Assigned</p>
+          <p className="text-xs text-muted-foreground">Assigned To You.</p>
         </div>
 
         {/* RIGHT — Dropdown Icon */}
-        <DropdownMenu>
+        {/* <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
@@ -63,10 +63,10 @@ export default function LeadsSummaryCard({
               This Year
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
-      </CardHeader>
+        </DropdownMenu> */}
+      </div>
 
-      <div className="px-6 flex flex-col">
+      <div className="px-5 flex flex-col pt-2">
         {/* Total Assigned */}
         <div>
           {isLoading ? (
@@ -78,7 +78,7 @@ export default function LeadsSummaryCard({
 
         <div className="flex flex-row justify-between">
           {/* Completed */}
-          <div className="flex flex-col pt-2">
+          <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
               <span className="text-xs text-muted-foreground">Completed</span>
@@ -92,7 +92,7 @@ export default function LeadsSummaryCard({
           </div>
 
           {/* Pending */}
-          <div className="flex flex-col pt-2">
+          <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-orange-500"></span>
               <span className="text-xs text-muted-foreground">Pending</span>

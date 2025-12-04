@@ -4,8 +4,10 @@ import { ArrowBigRight, ArrowRight, ArrowUpRight } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useAppSelector } from "@/redux/store";
 import { useSalesExecutiveTaskStats } from "@/api/dashboard/useDashboard";
+import { useRouter } from "next/navigation";
 
 export function AssignedTaskCard() {
+  const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
 
   const vendorId = user?.vendor?.id!;
@@ -29,14 +31,14 @@ export function AssignedTaskCard() {
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle className="text-base font-semibold">
-            🗓️ Assigned Tasks
+            Assigned Tasks
           </CardTitle>
           <p className="text-xs text-muted-foreground">
             Overview of all tasks assigned to you.
           </p>
         </div>
 
-        <div className="p-2 rounded-full border cursor-pointer hover:bg-muted">
+        <div className="p-2 rounded-full border cursor-pointer hover:bg-muted" onClick={() => {router.push("/dashboard/my-tasks")}}>
           <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
         </div>
       </CardHeader>
@@ -46,26 +48,27 @@ export function AssignedTaskCard() {
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col">
             <span className="text-sm text-muted-foreground flex items-center">
-            <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>
-
-                Today's Tasks</span>
+              <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+              Today's Tasks
+            </span>
             <span className="text-4xl font-semibold">{data?.today ?? 0}</span>
           </div>
 
           <div className="flex justify-end items-end gap-5">
-          <div className="flex flex-col">
-            <span className="flex items-center text-xs text-muted-foreground">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500 mr-2"></span>
-              Upcoming
-            </span>
-            <span className="text-3xl font-semibold">
-              {data?.upcoming ?? 0}
-            </span>
-          </div>
+            <div className="flex flex-col">
+              <span className="flex items-center text-xs text-muted-foreground">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500 mr-2"></span>
+                Upcoming
+              </span>
+              <span className="text-3xl font-semibold">
+                {data?.upcoming ?? 0}
+              </span>
+            </div>
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 mr-2"></span>
-                Overdue</span>
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 mr-2"></span>
+                Overdue
+              </span>
               <span className="text-3xl font-semibold">
                 {data?.overdue ?? 0}
               </span>

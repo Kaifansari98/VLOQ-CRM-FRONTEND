@@ -17,6 +17,8 @@ import { Suspense } from "react";
 import MyTaskTable from "@/app/_components/tasks-table";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
+import { motion } from "framer-motion";
+import { FadeInProvider } from "@/components/framer-motion/FadeInProvider";
 
 export default function MyTaskLeadPage() {
   return (
@@ -44,11 +46,13 @@ export default function MyTaskLeadPage() {
         </header>
 
         <main className="flex-1 overflow-x-hidden">
-          <Suspense
-            fallback={<DataTableSkeleton columnCount={10} rowCount={8} />}
-          >
-            <MyTaskTable />
-          </Suspense>
+        <FadeInProvider>
+            <Suspense
+              fallback={<DataTableSkeleton columnCount={10} rowCount={8} />}
+            >
+              <MyTaskTable />
+            </Suspense>
+          </FadeInProvider>
         </main>
       </SidebarInset>
     </SidebarProvider>

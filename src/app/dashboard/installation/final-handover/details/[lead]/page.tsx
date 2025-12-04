@@ -77,6 +77,7 @@ import {
 import {
   useFinalHandoverReadiness,
   useMoveProjectCompleted,
+  useIsTotalProjectAmountPaid,
 } from "@/api/installation/useFinalHandoverStageLeads";
 import { toastError } from "@/lib/utils";
 
@@ -122,13 +123,20 @@ export default function FinalHandoverLeadDetails() {
     useFinalHandoverReadiness(vendorId!, leadIdNum);
   const { mutate: moveProjectCompleted, isPending: movingProject } =
     useMoveProjectCompleted();
+  const {
+    data: paymentStatus,
+    isLoading: paymentStatusLoading,
+    refetch: refetchPaymentStatus,
+  } = useIsTotalProjectAmountPaid(vendorId!, leadIdNum);
 
   const [openProjectCompleteConfirm, setOpenProjectCompleteConfirm] =
     useState(false);
+  const [validatingPayment, setValidatingPayment] = useState(false);
 
 
 
   const isReady = readiness?.can_move_to_final_handover;
+  const canMarkCompleted = isReady && paymentStatus?.is_paid;
 
   const tooltipMessage = (() => {
     if (readinessLoading) return "Checking project readiness...";
@@ -140,6 +148,16 @@ export default function FinalHandoverLeadDetails() {
     if (!readiness.pending_tasks_clear)
       return "Resolve all pending work tasks before marking project as completed.";
 
+    return "";
+  })();
+
+  const completionBlockMessage = (() => {
+    if (readinessLoading || paymentStatusLoading)
+      return "Checking readiness and payment status...";
+    if (!isReady) return tooltipMessage;
+    if (!paymentStatus) return "Unable to verify payment status.";
+    if (!paymentStatus.is_paid)
+      return `Pending amount remaining: ${paymentStatus.pending_amount.toLocaleString()}`;
     return "";
   })();
 
@@ -188,8 +206,20 @@ export default function FinalHandoverLeadDetails() {
           </div>
 
           {/* 🔹 Header Actions */}
-          <div className="flex items-center space-x-2">
-            {isReady && (
+          <div className="flex items-center space-x-3">
+            {/* {!paymentStatusLoading &&
+              paymentStatus &&
+              !paymentStatus.is_paid && (
+                <div className="text-xs leading-tight text-right">
+                  <div className="font-semibold">Pending amount</div>
+                  <div>
+                    {paymentStatus.pending_amount.toLocaleString()} /{" "}
+                    {paymentStatus.total_project_amount.toLocaleString()}
+                  </div>
+                </div>
+              )} */}
+
+            {canMarkCompleted ? (
               <Button
                 className="flex items-center gap-2"
                 onClick={() => setOpenProjectCompleteConfirm(true)}
@@ -197,10 +227,9 @@ export default function FinalHandoverLeadDetails() {
                 <CheckCircle2 size={18} />
                 Mark Project as Completed
               </Button>
-            )}
-            {!isReady && (
+            ) : (
               <CustomeTooltip
-                value={tooltipMessage}
+                value={completionBlockMessage}
                 truncateValue={
                   <div>
                     <Button
@@ -452,30 +481,60 @@ export default function FinalHandoverLeadDetails() {
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                disabled={movingProject}
-                onClick={() => {
-                  moveProjectCompleted(
-                    {
-                      vendorId: vendorId!,
-                      leadId: leadIdNum,
-                      updated_by: userId!,
-                    },
-                    {
-                      onSuccess: () => {
-                        toast.success("Project marked as Completed!");
-                        setOpenProjectCompleteConfirm(false);
-                        queryClient.invalidateQueries();
-                        router.push("/dashboard/installation/final-handover");
-                      },
-                      onError: (err: any) =>
-                        toast.error(
-                          err?.message || "Failed to mark project completed"
-                        ),
+                disabled={movingProject || validatingPayment}
+                onClick={async () => {
+                  try {
+                    setValidatingPayment(true);
+                    const { data: latestPayment } = await refetchPaymentStatus();
+                    const payment = latestPayment ?? paymentStatus;
+
+                    if (!payment || !payment.is_paid) {
+                      const pending =
+                        payment?.pending_amount !== undefined
+                          ? payment.pending_amount
+                          : 0;
+                      toast.error(
+                        payment
+                          ? `Pending amount remaining: ${pending.toLocaleString()}`
+                          : "Unable to verify payment status."
+                      );
+                      setValidatingPayment(false);
+                      setOpenProjectCompleteConfirm(false);
+                      return;
                     }
-                  );
+
+                    moveProjectCompleted(
+                      {
+                        vendorId: vendorId!,
+                        leadId: leadIdNum,
+                        updated_by: userId!,
+                      },
+                      {
+                        onSuccess: () => {
+                          toast.success("Project marked as Completed!");
+                          setOpenProjectCompleteConfirm(false);
+                          queryClient.invalidateQueries();
+                          router.push(
+                            "/dashboard/installation/final-handover"
+                          );
+                        },
+                        onError: (err: any) =>
+                          toast.error(
+                            err?.message || "Failed to mark project completed"
+                          ),
+                        onSettled: () => setValidatingPayment(false),
+                      }
+                    );
+                  } catch (err: any) {
+                    toast.error(
+                      err?.message || "Unable to validate payment status"
+                    );
+                    setValidatingPayment(false);
+                    setOpenProjectCompleteConfirm(false);
+                  }
                 }}
               >
-                {movingProject ? "Processing..." : "Confirm"}
+                {movingProject || validatingPayment ? "Processing..." : "Confirm"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

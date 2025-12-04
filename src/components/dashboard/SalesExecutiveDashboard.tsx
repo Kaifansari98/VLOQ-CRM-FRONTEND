@@ -17,6 +17,7 @@ import {
 import BookingValueCard from "./BookingValueCard";
 import AvgDaysToBookingCard from "./AvgDaysToBookingCard";
 import EnhancedStageOverview from "./LeadStatusComparisonCard";
+import { SalesExecutiveStageCounts } from "@/api/dashboard/dashboard.api";
 
 export default function SalesExecutiveDashboard() {
   const user = useAppSelector((s) => s.auth.user);
@@ -35,10 +36,12 @@ export default function SalesExecutiveDashboard() {
     userId
   );
 
-
-
   const { data: stageCounts, isLoading: isLoadingStageCounts } =
     useSalesExecutiveStageCounts(vendorId, userId);
+
+  const [leadFilter, setLeadFilter] = useState<"week" | "month" | "year">(
+    "month"
+  );
 
   useEffect(() => {
     const fetchPerformanceData = async () => {
