@@ -76,6 +76,22 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  --stage-open: #16161d;
+  --stage-ism: #a29c95;
+  --stage-design: #8f8880;
+  --stage-booking: #6d6561;
+  --stage-docs: #5b5551;
+  --stage-approval: #4b4643;
+  --stage-tech-check: #272423;
+  --stage-rtd: #1f2022;
+  --stage-dispatch: #16161d;
+
+  --chart-stroke: hsl(var(--primary));
+  --chart-dot: hsl(var(--foreground));
+  --chart-active-dot: hsl(var(--primary));
+
+  --tooltip-text: #000;
 }
 
 .dark {
@@ -110,6 +126,23 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  --stage-open: #d1d1d0;
+  --stage-ism: #b0aba5;
+  --stage-design: #a59e96;
+  --stage-booking: #847c78;
+  --stage-docs: #6a6460;
+  --stage-approval: #5a5451;
+  --stage-tech-check: #383736;
+  --stage-rtd: #2a2b2d;
+  --stage-dispatch: #21212a;
+
+  --chart-stroke: hsl(var(--primary));
+  --chart-dot: hsl(var(--foreground));
+  --chart-active-dot: hsl(var(--primary));
+
+  --tooltip-text: #000;
+
 }
 
 @layer base {
@@ -121,11 +154,11 @@
   }
 }
 
-::view-transition-old(root), ::view-transition-new(root) {
-    animation: none;
-    mix-blend-mode: normal;
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }
-
 
 .no-drag {
   -webkit-user-drag: none;
@@ -134,5 +167,3 @@
   -moz-user-select: none;
   -ms-user-select: none;
 }
-
-
