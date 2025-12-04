@@ -56,10 +56,6 @@ export default function PipelinePieChart({
   const router = useRouter();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
-  const [selectedStage, setSelectedStage] = useState<{
-    name: string;
-    type: string;
-  } | null>(null);
   const [openCreateLead, setOpenCreateLead] = useState(false);
 
   // Prepare Pie Data
