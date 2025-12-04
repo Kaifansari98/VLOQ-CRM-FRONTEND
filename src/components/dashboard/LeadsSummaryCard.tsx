@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { CardHeader, CardTitle } from "@/components/ui/card";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ArrowUpRight, MoreHorizontal } from "lucide-react";
 
@@ -33,37 +38,19 @@ export default function LeadsSummaryCard({
   return (
     <div className="border py-4 w-1/2 rounded-2xl mt-4 flex flex-col justify-between">
       <div className="flex flex-row justify-between items-start px-5">
-
         {/* LEFT — Title */}
         <div>
           <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
           <p className="text-xs text-muted-foreground">Assigned To You.</p>
         </div>
 
-        {/* RIGHT — Dropdown Icon */}
-        {/* <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 rounded-full p-0"
-            >
-              <ArrowUpRight className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-
-          <DropdownMenuContent align="end" className="w-32">
-            <DropdownMenuItem onClick={() => handleSelect("week")}>
-              This Week
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleSelect("month")}>
-              This Month
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleSelect("year")}>
-              This Year
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu> */}
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-full p-0"
+        >
+          <ArrowUpRight className="h-4 w-4" onClick={() => {console.log("over here")}}/>
+        </Button>
       </div>
 
       <div className="px-5 flex flex-col pt-2">
