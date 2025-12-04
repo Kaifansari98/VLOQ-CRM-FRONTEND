@@ -18,6 +18,7 @@ import {
   SalesExecutiveStageCounts,
   StageData,
   addPaymentLeads,
+  getDashboardAllLeads,
 } from "./dashboard.api";
 import { useCallback, useEffect, useState } from "react";
 import { logError } from "@/lib/utils";
@@ -261,12 +262,20 @@ export function useSalesExecutiveStageLeads(
   return { data, isLoading, error, refetch: fetchData };
 }
 
-
-
 export const useAddPaymentLeads = (vendorId: number, userId: number) => {
   return useQuery<StageData>({
     queryKey: ["payment-leads", vendorId, userId],
     queryFn: () => addPaymentLeads(vendorId, userId),
+    enabled: !!vendorId && !!userId, // Prevents undefined requests
+    staleTime: 1000 * 60 * 5, // 5 minutes caching
+    refetchOnWindowFocus: false, // avoid unnecessary refetch
+  });
+};
+
+export const useGetDashboardAllLeads = (vendorId: number, userId: number) => {
+  return useQuery<StageData>({
+    queryKey: ["dashboard-leads", vendorId, userId],
+    queryFn: () => getDashboardAllLeads(vendorId, userId),
     enabled: !!vendorId && !!userId, // Prevents undefined requests
     staleTime: 1000 * 60 * 5, // 5 minutes caching
     refetchOnWindowFocus: false, // avoid unnecessary refetch
