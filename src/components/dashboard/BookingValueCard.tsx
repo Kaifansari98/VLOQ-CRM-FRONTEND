@@ -97,7 +97,7 @@ export default function BookingValueCard({
       : "This Year";
 
   return (
-    <Card className="w-full h-full border flex flex-col justify-between bg-[#fff] dark:bg-[#0a0a0a]">
+    <Card className="w-full border flex flex-col justify-between bg-[#fff] dark:bg-[#0a0a0a]">
       <CardHeader className="flex flex-row justify-between items-start pb-2 space-y-0">
         <div className="space-y-1">
           <CardTitle className="text-sm font-medium">Booking Value</CardTitle>
