@@ -7,6 +7,8 @@ import PipeLineActionModal from "./PipeLineActionModal";
 import { useAppSelector } from "@/redux/store";
 import { useRouter } from "next/navigation";
 import { GenerateLeadFormModal } from "../sales-executive/Lead/leads-generation-form-modal";
+import { useAddPaymentLeads } from "@/api/dashboard/useDashboard";
+import PaymentStageLeadModal from "./PaymentLeadsModal";
 
 interface SalesExecutiveStageCounts {
   [key: string]: number | undefined;
@@ -49,7 +51,9 @@ export default function PipelinePieChart({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
   const [openCreateLead, setOpenCreateLead] = useState(false);
-
+  const [openPaymentModal, setOpenPaymentModal] = useState(false);
+  const { data: LeadPaymentData } = useAddPaymentLeads(vendorId, userId);
+  console.log("Add Payment Lead data: ", LeadPaymentData);
   // Prepare Pie Data
   const pieData = STAGE_MAPPING.map((s) => ({
     name: s.label,
@@ -99,9 +103,7 @@ export default function PipelinePieChart({
             </button>
 
             <button
-              onClick={() =>
-                router.push("/dashboard/accounting/payments/create")
-              }
+              onClick={() => setOpenPaymentModal(true)}
               className="px-3 py-1.5 text-xs border bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-md"
             >
               Add Payment
@@ -172,12 +174,18 @@ export default function PipelinePieChart({
                             className="inline-block h-3 w-3 rounded-full"
                             style={{ backgroundColor: entry.fill }}
                           ></span>
-                          <span className="text-muted-foreground text-xs cursor-pointer" onDoubleClick={() => handleSliceDoubleClick(entry)}>
+                          <span
+                            className="text-muted-foreground text-xs cursor-pointer"
+                            onDoubleClick={() => handleSliceDoubleClick(entry)}
+                          >
                             {entry.name}
                           </span>
                         </div>
 
-                        <span className="text-md font-semibold pl-5 cursor-pointer" onDoubleClick={() => handleSliceDoubleClick(entry)}>
+                        <span
+                          className="text-md font-semibold pl-5 cursor-pointer"
+                          onDoubleClick={() => handleSliceDoubleClick(entry)}
+                        >
                           {entry.value.toLocaleString()}
                         </span>
                       </div>
@@ -205,6 +213,11 @@ export default function PipelinePieChart({
       <GenerateLeadFormModal
         open={openCreateLead}
         onOpenChange={setOpenCreateLead}
+      />
+
+      <PaymentStageLeadModal
+        open={openPaymentModal}
+        onOpenChange={setOpenPaymentModal}
       />
     </>
   );

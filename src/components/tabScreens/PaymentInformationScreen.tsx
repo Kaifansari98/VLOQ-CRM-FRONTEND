@@ -13,18 +13,30 @@ const containerVariants = {
   },
 };
 
-
-
 interface PaymentInformationProps {
   accountId: number;
+  leadIdProps?: number;
 }
 
-// 🔹 Wrapper
+// Wrapper
 export default function PaymentInformation({
   accountId,
+  leadIdProps,
 }: PaymentInformationProps) {
-  const { lead: leadId } = useParams();
-  const leadIdNum = Number(leadId);
+  const { lead } = useParams();
+  const leadIdNum = lead ? Number(lead) : null;
+
+  // 🔥 Priority-based leadId resolution
+  const finalLeadId = leadIdNum || leadIdProps;
+
+  // ⛔ If no leadId, do not render UI that depends on it
+  if (!finalLeadId) {
+    return (
+      <div className="p-6 text-center text-sm text-muted-foreground">
+        Lead ID not available.
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -33,11 +45,9 @@ export default function PaymentInformation({
       animate="visible"
       className="grid grid-cols-1 lg:grid-cols-2 gap-2 pb-4 max-h-[100vh]"
     >
-      <PaymentLogs />
-      <ProjectFinanceSummary
-        leadId={leadIdNum}
-        accountId={accountId}
-      />
+      <PaymentLogs leadIdProps={finalLeadId} />
+
+      <ProjectFinanceSummary leadId={finalLeadId} accountId={accountId} />
     </motion.div>
   );
 }

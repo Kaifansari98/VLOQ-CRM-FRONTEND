@@ -96,13 +96,28 @@ const lineVariants = {
   },
 };
 
-export default function PaymentLogs() {
-  const { lead: leadId } = useParams();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const leadIdNum = Number(leadId);
+type PaymentLogsProps = {
+  leadIdProps?: number;
+};
+export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
+  const { lead } = useParams();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
 
-  const { data, isLoading } = usePaymentLogs(leadIdNum, vendorId || 0);
+  // 1. URL param → 2. props → 3. null fallback
+  const urlLeadId = lead ? Number(lead) : null;
+  const finalLeadId = urlLeadId || leadIdProps;
 
+  // If still null → show fallback UI
+  if (!finalLeadId) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px] text-muted-foreground">
+        Lead ID not available.
+      </div>
+    );
+  }
+
+  // Use finalLeadId for API
+  const { data, isLoading } = usePaymentLogs(finalLeadId, vendorId);
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
