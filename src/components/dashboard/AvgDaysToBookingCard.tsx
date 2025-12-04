@@ -39,7 +39,7 @@ export default function AvgDaysToBookingCard({
 
   return (
     <div className="border py-4 w-1/2 rounded-2xl mt-4 flex flex-col justify-between">
-      <CardHeader className="flex flex-row justify-between items-start">
+      <div className="flex flex-row justify-between items-start px-5">
         <div>
           <CardTitle className="text-sm font-medium">
             Avg Days to Booking
@@ -70,9 +70,9 @@ export default function AvgDaysToBookingCard({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </CardHeader>
+      </div>
 
-      <CardContent>
+      <div className="px-5">
         {isLoading ? (
           <>
             <div className="h-8 w-24 bg-muted animate-pulse rounded" />
@@ -86,7 +86,7 @@ export default function AvgDaysToBookingCard({
             <p className="text-xs text-muted-foreground mt-1">{readableLabel}</p>
           </>
         )}
-      </CardContent>
+      </div>
     </div>
   );
 }

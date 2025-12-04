@@ -183,12 +183,12 @@ export default function PipelinePieChart({
                             className="inline-block h-3 w-3 rounded-full"
                             style={{ backgroundColor: entry.fill }}
                           ></span>
-                          <span className="text-muted-foreground text-xs">
+                          <span className="text-muted-foreground text-xs cursor-pointer" onDoubleClick={() => handleSliceDoubleClick(entry)}>
                             {entry.name}
                           </span>
                         </div>
 
-                        <span className="text-md font-semibold pl-5">
+                        <span className="text-md font-semibold pl-5 cursor-pointer" onDoubleClick={() => handleSliceDoubleClick(entry)}>
                           {entry.value.toLocaleString()}
                         </span>
                       </div>
