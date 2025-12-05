@@ -19,6 +19,8 @@ import {
   StageData,
   addPaymentLeads,
   getDashboardAllLeads,
+  getSalesExecutiveActivityStatusCounts,
+  SalesExecutiveActivityStatusCounts,
 } from "./dashboard.api";
 import { useCallback, useEffect, useState } from "react";
 import { logError } from "@/lib/utils";
@@ -279,5 +281,17 @@ export const useGetDashboardAllLeads = (vendorId: number, userId: number) => {
     enabled: !!vendorId && !!userId, // Prevents undefined requests
     staleTime: 1000 * 60 * 5, // 5 minutes caching
     refetchOnWindowFocus: false, // avoid unnecessary refetch
+  });
+};
+
+export const useSalesExecutiveActivityStatusCounts = (
+  vendorId?: number,
+  userId?: number
+) => {
+  return useQuery<SalesExecutiveActivityStatusCounts>({
+    queryKey: ["sales-executive-activity-status-counts", vendorId, userId],
+    queryFn: () => getSalesExecutiveActivityStatusCounts(vendorId!, userId!),
+    enabled: !!vendorId && !!userId,
+    staleTime: 1000 * 60, // 1 minute cache to avoid spamming
   });
 };
