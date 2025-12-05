@@ -17,12 +17,11 @@ import {
 import BookingValueCard from "./BookingValueCard";
 import AvgDaysToBookingCard from "./AvgDaysToBookingCard";
 import EnhancedStageOverview from "./LeadStatusComparisonCard";
-import { SalesExecutiveStageCounts } from "@/api/dashboard/dashboard.api";
 
 export default function SalesExecutiveDashboard() {
   const user = useAppSelector((s) => s.auth.user);
-  const vendorId = user?.vendor?.id!;
-  const userId = user?.id!;
+  const vendorId = user?.vendor_id ?? 0;
+  const userId = user?.id ?? 0;
 
   const [performanceData, setPerformanceData] =
     useState<UiPerformanceSnapshot | null>(null);
