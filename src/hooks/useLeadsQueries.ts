@@ -16,6 +16,9 @@ import {
   Lead,
   VendorLeadsResponse,
   VendorUserLeadsResponse,
+  checkContactOrEmailExists,
+  ContactOrEmailCheckPayload,
+  ContactOrEmailCheckResult,
 } from "@/api/leads";
 import {
   assignToFinalMeasurement,
@@ -170,5 +173,16 @@ export const useLeadLogs = ({
     initialPageParam: undefined, // ✅ REQUIRED in v5+
     staleTime: 60 * 1000, // 1 min cache
     refetchOnWindowFocus: false,
+  });
+};
+
+export const useCheckContactOrEmailExists = () => {
+  return useMutation<
+    ContactOrEmailCheckResult,
+    Error,
+    { vendorId: number; payload: ContactOrEmailCheckPayload }
+  >({
+    mutationFn: ({ vendorId, payload }) =>
+      checkContactOrEmailExists(vendorId, payload),
   });
 };
