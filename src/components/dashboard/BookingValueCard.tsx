@@ -106,7 +106,9 @@ export default function BookingValueCard({
           ) : (
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-semibold">
-                {selectedTotal?.toLocaleString() ?? "-"}
+                {typeof selectedTotal === "number"
+                  ? selectedTotal.toLocaleString("en-IN")
+                  : "-"}
               </span>
               <span className="text-xs text-muted-foreground">
                 {selectedLabel}
@@ -166,7 +168,9 @@ export default function BookingValueCard({
                   axisLine={false}
                 />
                 <Tooltip
-                  formatter={(value: number) => value.toLocaleString()}
+                  formatter={(value: number) =>
+                    value.toLocaleString("en-IN")
+                  }
                 
                   contentStyle={{
                     border: "1px solid var(--border)",
@@ -180,7 +184,6 @@ export default function BookingValueCard({
                   dataKey="value"
                   fill="var(--primary)"
                   radius={[6, 6, 0, 0]}
-                
                 />
               </BarChart>
             </ResponsiveContainer>
