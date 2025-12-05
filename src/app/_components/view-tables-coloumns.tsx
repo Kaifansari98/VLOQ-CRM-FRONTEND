@@ -31,6 +31,7 @@ export type ProcessedLead = {
   status: string;
   initial_site_measurement_date: string;
   accountId: number;
+  site_map_link: string;
 };
 
 interface GetVendorLeadsTableColumnsProps {
