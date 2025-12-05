@@ -5,26 +5,32 @@ import { DataTableColumnHeader } from "@/components/data-table/data-table-column
 import CustomeTooltip from "@/components/cutome-tooltip";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
-import { Text } from "lucide-react";
+import { MapPin, Text } from "lucide-react";
 import type { ProcessedLead } from "@/app/_components/view-tables-coloumns";
 
 export type PendingLeadRow = ProcessedLead & { accountId?: number };
 
 // ✅ Columns for Pending Leads (OnHold + Lost)
-export function getPendingLeadsColumns({
-}: {
+export function getPendingLeadsColumns({}: {
   tab: "onHold" | "lostApproval" | "lost";
   onRevert: (lead: PendingLeadRow) => void;
   onMarkAsLost: (lead: PendingLeadRow) => void;
 }): ColumnDef<PendingLeadRow>[] {
   return [
     {
-      accessorKey: "srNo",
+      accessorKey: "lead_code",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Sr. No." />
+        <DataTableColumnHeader column={column} title="Lead Code" />
       ),
+      cell: ({ row }) => (
+        <div className=" font-medium">{row.getValue("lead_code")}</div>
+      ),
+      meta: {
+        label: "Lead Code",
+      },
       enableSorting: true,
-      enableColumnFilter: false,
+      enableHiding: true,
+      enableColumnFilter: true,
     },
     {
       accessorKey: "name",
@@ -86,6 +92,42 @@ export function getPendingLeadsColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Site Type" />
       ),
+    },
+
+    {
+      accessorKey: "site_map_link",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Address" />
+      ),
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+
+      cell: ({ row }) => {
+        const link = row.getValue("site_map_link") as string;
+
+        const isValidLink =
+          typeof link === "string" &&
+          (link.startsWith("http://") || link.startsWith("https://"));
+
+        return (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-border   min-h-[32px]">
+            {isValidLink ? (
+              <a
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center  text-foreground bg-bac gap-1 "
+              >
+                <MapPin size={14} strokeWidth={2} />
+                Open Map
+              </a>
+            ) : (
+              <span className="text-foreground italic ">No Map Available</span>
+            )}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "siteAddress",

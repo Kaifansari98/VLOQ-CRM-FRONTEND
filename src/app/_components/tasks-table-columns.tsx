@@ -98,7 +98,7 @@ export function getVendorLeadsTableColumns({}: {
     //   size: 40,
     // },
     // Sr No
-  {
+    {
       accessorKey: "lead_code",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Lead Code" />
@@ -112,7 +112,6 @@ export function getVendorLeadsTableColumns({}: {
       enableSorting: true,
       enableHiding: true,
     },
-
 
     // Lead name
     {
@@ -252,43 +251,41 @@ export function getVendorLeadsTableColumns({}: {
       },
     },
 
-
-
     {
-          accessorKey: "site_map_link",
-          header: ({ column }) => (
-            <DataTableColumnHeader column={column} title="Address" />
-          ),
-          enableSorting: true,
-          enableHiding: true,
-          enableColumnFilter: true,
-    
-          cell: ({ row }) => {
-            const link = row.getValue("site_map_link") as string;
-    
-            const isValidLink =
-              typeof link === "string" &&
-              (link.startsWith("http://") || link.startsWith("https://"));
-    
-            return (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-black/20 bg-white min-h-[32px]">
-                {isValidLink ? (
-                  <a
-                    href={link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-black"
-                  >
-                    <MapPin size={14} strokeWidth={2} />
-                    Open Map
-                  </a>
-                ) : (
-                  <span className="text-gray-400 italic">No Map Available</span>
-                )}
-              </div>
-            );
-          },
-        },
+      accessorKey: "site_map_link",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Address" />
+      ),
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+
+      cell: ({ row }) => {
+        const link = row.getValue("site_map_link") as string;
+
+        const isValidLink =
+          typeof link === "string" &&
+          (link.startsWith("http://") || link.startsWith("https://"));
+
+        return (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-border   min-h-[32px]">
+            {isValidLink ? (
+              <a
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center  text-foreground bg-bac gap-1 "
+              >
+                <MapPin size={14} strokeWidth={2} />
+                Open Map
+              </a>
+            ) : (
+              <span className="text-foreground italic ">No Map Available</span>
+            )}
+          </div>
+        );
+      },
+    },
     {
       accessorKey: "remark",
       header: ({ column }) => (

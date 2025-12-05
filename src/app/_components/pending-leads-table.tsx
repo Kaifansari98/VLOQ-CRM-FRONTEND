@@ -46,6 +46,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import ClearInput from "@/components/origin-input";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
+import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 
 export default function PendingLeadsTable({
   tab,
@@ -69,6 +70,10 @@ export default function PendingLeadsTable({
   );
   const { data: lostApprovalData = [], isLoading: lostApprovalLoading } =
     useLostApprovalLeads(vendorId!);
+
+  console.log("On Hold data: ", onHoldData);
+  console.log("Lost data: ", lostData);
+  console.log("Lost Approval data: ", lostApprovalData);
 
   const [activeLead, setActiveLead] = React.useState<PendingLeadRow | null>(
     null
@@ -119,6 +124,7 @@ export default function PendingLeadsTable({
   const processLeads = React.useCallback((leads: Lead[]): PendingLeadRow[] => {
     return leads.map((lead, index) => ({
       id: lead.id,
+      lead_code: lead.lead_code,
       srNo: index + 1,
       name: `${lead.firstname} ${lead.lastname}`.trim(),
       email: lead.email || "",
@@ -142,6 +148,7 @@ export default function PendingLeadsTable({
       status: lead.statusType?.type || "",
       initial_site_measurement_date: lead.initial_site_measurement_date || "",
       accountId: (lead as any).account?.id ?? (lead as any).account_id ?? 0,
+      site_map_link: lead.site_map_link || "",
     }));
   }, []);
 
@@ -254,8 +261,21 @@ export default function PendingLeadsTable({
     (tab === "lostApproval" && lostApprovalLoading) ||
     (tab === "lost" && lostLoading);
 
+  // -----------------------------------------------
+  // 🔥 Replace this:
+  // if (isLoading) {
+  //   return <p>Loading...</p>;
+  // }
+  // -----------------------------------------------
+
+  // ✅ New loading state with Skeleton
   if (isLoading) {
-    return <p>Loading...</p>;
+    return (
+      <DataTableSkeleton
+        columnCount={columns.length} // dynamic column count
+        rowCount={10} // adjust as needed
+      />
+    );
   }
 
   const handleRowClick = (row: PendingLeadRow) => {
