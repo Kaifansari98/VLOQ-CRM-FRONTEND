@@ -83,10 +83,11 @@ export default function AvgDaysToBookingCard({
             <div className="text-3xl font-semibold">
               {avgDays
                 ? avgDays < 1
-                  ? avgDays.toFixed(2) // Keep decimals for values < 1
-                  : Math.floor(avgDays) // Show only integer for >= 1
-                : "0.00"}{" "}
-              days
+                  ? `${avgDays.toFixed(2)} day`
+                  : Math.floor(avgDays) === 1
+                  ? `1 day`
+                  : `${Math.floor(avgDays)} days`
+                : "0.00 day"}
             </div>
 
             <p className="text-xs text-muted-foreground mt-1">
