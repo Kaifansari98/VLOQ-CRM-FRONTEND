@@ -73,6 +73,22 @@ export interface Lead {
   site_map_link: string;
 }
 
+export interface ContactOrEmailCheckPayload {
+  phone_number?: string;
+  alt_phone_number?: string;
+  email?: string;
+}
+
+export interface ContactOrEmailCheckResult {
+  exists: boolean;
+  checked_field: "phone_number" | "alt_phone_number" | "email";
+  lead: {
+    lead_id: number;
+    lead_code: string | null;
+    lead_name: string;
+  } | null;
+}
+
 export interface AssignToPayload {
   assign_to: number;
   assign_by: number;
@@ -219,6 +235,17 @@ export const getLeadById = async (
     `/leads/get-lead/${leadId}/vendor/${vendorId}/user/${userId}`
   );
   return response.data;
+};
+
+export const checkContactOrEmailExists = async (
+  vendorId: number,
+  payload: ContactOrEmailCheckPayload
+): Promise<ContactOrEmailCheckResult> => {
+  const { data } = await apiClient.post(
+    `/leads/vendorId/${vendorId}/check-contact-number`,
+    payload
+  );
+  return data?.data as ContactOrEmailCheckResult;
 };
 
 export const assignLeadToAnotherSalesExecutive = async (

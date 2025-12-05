@@ -55,6 +55,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import AssignToPicker from "@/components/assign-to-picker";
 import { useRouter } from "next/navigation";
+import { useCheckContactOrEmailExists } from "@/hooks/useLeadsQueries";
 
 // Schema for Create Lead - all fields required as per business logic
 const createFormSchema = (userType: string | undefined) => {
@@ -132,6 +133,16 @@ export default function LeadsGenerationForm({
   const createdBy = useAppSelector((state: any) => state.auth.user?.id);
   const [mapOpen, setMapOpen] = useState(false);
   const [openDraftModal, setOpenDraftModal] = useState(false);
+  const [duplicatePrompt, setDuplicatePrompt] = useState<{
+    open: boolean;
+    field?: "contact_no" | "alt_contact_no" | "email";
+    lead?: { lead_id: number; lead_code: string | null; lead_name: string };
+  }>({ open: false });
+  const [lastCheckedValue, setLastCheckedValue] = useState<{
+    contact_no: string;
+    alt_contact_no: string;
+    email: string;
+  }>({ contact_no: "", alt_contact_no: "", email: "" });
 
   const [savedMapLocation, setSavedMapLocation] = useState<{
     lat: number;
@@ -168,6 +179,7 @@ export default function LeadsGenerationForm({
   type FormValues = z.infer<ReturnType<typeof createFormSchema>>;
 
   const queryClient = useQueryClient();
+  const checkContactMutation = useCheckContactOrEmailExists();
 
   // fetch data once at top of component (after form etc.)
   const { data: vendorUsers, isLoading } =
@@ -231,6 +243,77 @@ export default function LeadsGenerationForm({
       toast.error(errorMessage);
     },
   });
+
+  const normalizePhone = (value?: string) => {
+    if (!value) return "";
+    const parsed = parsePhoneNumberFromString(value);
+    if (parsed) return parsed.nationalNumber;
+    return value.replace(/\D/g, "");
+  };
+
+  const handleDuplicateCheck = (
+    field: "contact_no" | "alt_contact_no" | "email"
+  ) => {
+    if (!vendorId) return;
+
+    const rawValue = form.getValues(field) || "";
+    const trimmed = rawValue.trim();
+    if (!trimmed) return;
+
+    let payload:
+      | { phone_number: string }
+      | { alt_phone_number: string }
+      | { email: string };
+    let normalized = trimmed;
+
+    if (field === "email") {
+      normalized = trimmed.toLowerCase();
+      payload = { email: normalized };
+    } else if (field === "contact_no") {
+      normalized = normalizePhone(trimmed);
+      if (!normalized) return;
+      payload = { phone_number: normalized };
+    } else {
+      normalized = normalizePhone(trimmed);
+      if (!normalized) return;
+      payload = { alt_phone_number: normalized };
+    }
+
+    if (lastCheckedValue[field] === normalized) return;
+    setLastCheckedValue((prev) => ({ ...prev, [field]: normalized }));
+
+    checkContactMutation.mutate(
+      { vendorId, payload },
+      {
+        onSuccess: (res) => {
+          if (res?.exists) {
+            setDuplicatePrompt({
+              open: true,
+              field,
+              lead: res.lead || undefined,
+            });
+          }
+        },
+        onError: (err: any) => {
+          toast.error(
+            err?.message || "Could not verify contact/email uniqueness"
+          );
+        },
+      }
+    );
+  };
+
+  const handleDuplicateDecision = (proceed: boolean) => {
+    if (!proceed && duplicatePrompt.field) {
+      form.setValue(duplicatePrompt.field, "");
+      setLastCheckedValue((prev) => ({
+        ...prev,
+        [duplicatePrompt.field as "contact_no" | "alt_contact_no" | "email"]:
+          "",
+      }));
+    }
+    setDuplicatePrompt({ open: false });
+  };
 
   function onSubmit(values: FormValues) {
     if (!vendorId || !createdBy) {
@@ -444,7 +527,12 @@ export default function LeadsGenerationForm({
                     defaultCountry="IN"
                     placeholder="Enter phone number"
                     className="text-sm"
-                    {...field}
+                    value={field.value}
+                    onChange={(val) => field.onChange(val)}
+                    onBlur={() => {
+                      field.onBlur();
+                      handleDuplicateCheck("contact_no");
+                    }}
                   />
                 </FormControl>
                 {/* <FormDescription className="text-xs">
@@ -473,7 +561,12 @@ export default function LeadsGenerationForm({
                     defaultCountry="IN"
                     placeholder="Enter alt number"
                     className="text-sm"
-                    {...field}
+                    value={field.value}
+                    onChange={(val) => field.onChange(val)}
+                    onBlur={() => {
+                      field.onBlur();
+                      handleDuplicateCheck("alt_contact_no");
+                    }}
                   />
                 </FormControl>
                 {/* <FormDescription className="text-xs">
@@ -497,7 +590,12 @@ export default function LeadsGenerationForm({
                   placeholder="Enter email address"
                   type="email"
                   className="text-sm"
-                  {...field}
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={(e) => {
+                    field.onBlur();
+                    handleDuplicateCheck("email");
+                  }}
                 />
               </FormControl>
               {/* <FormDescription className="text-xs">
@@ -856,6 +954,46 @@ export default function LeadsGenerationForm({
             </FormItem>
           )}
         />
+
+        <AlertDialog
+          open={duplicatePrompt.open}
+          onOpenChange={(open) => {
+            if (!open) setDuplicatePrompt({ open: false });
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Duplicate lead detected</AlertDialogTitle>
+              <AlertDialogDescription>
+                This{" "}
+                {duplicatePrompt.field === "contact_no"
+                  ? "phone number"
+                  : duplicatePrompt.field === "alt_contact_no"
+                  ? "alternate phone number"
+                  : "email"}{" "}
+                already exists for another lead.
+              </AlertDialogDescription>
+              {duplicatePrompt.lead && (
+                <div className="text-sm rounded-md border p-3 bg-muted/30">
+                  <div className="font-semibold text-md">
+                    {duplicatePrompt.lead.lead_code ?? "N/A"}
+                  </div>
+                  <div className="text-muted-foreground">
+                    {duplicatePrompt.lead.lead_name || "Unknown lead"}
+                  </div>
+                </div>
+              )}
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => handleDuplicateDecision(false)}>
+                Clear field
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={() => handleDuplicateDecision(true)}>
+                Continue anyway
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
           {/* Save as Draft */}

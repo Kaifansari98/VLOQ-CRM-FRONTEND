@@ -288,6 +288,27 @@ export const addPaymentLeads = async (
   return res.data.data;
 };
 
+// Activity status counts (onHold, lostApproval, lost)
+export interface SalesExecutiveActivityStatusCounts {
+  onHold: number;
+  lostApproval: number;
+  lost: number;
+}
+
+export const getSalesExecutiveActivityStatusCounts = async (
+  vendorId: number,
+  userId: number
+): Promise<SalesExecutiveActivityStatusCounts> => {
+  const res = await apiClient.get(
+    "/dashboard/sales-executive/activity-status-counts",
+    {
+      params: { vendor_id: vendorId, user_id: userId },
+    }
+  );
+
+  return res.data.data as SalesExecutiveActivityStatusCounts;
+};
+
 export const getDashboardAllLeads = async (
   vendorId: number,
   userId: number
