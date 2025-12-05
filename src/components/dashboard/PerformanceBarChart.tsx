@@ -127,15 +127,6 @@ export default function PerformanceLineChart({
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <TrendingUp className="h-3 w-3 text-emerald-500" />
-            <span>
-              Avg.{" "}
-              <span className="font-medium text-foreground">{avgBookings}</span>{" "}
-              per{" "}
-              {mode === "year" ? "month" : mode === "month" ? "week" : "day"}
-            </span>
-          </div>
         </div>
 
         <DropdownMenu>
