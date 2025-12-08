@@ -36,6 +36,8 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_PRIVATE_KEY }}
+          timeout: 60m
+          command_timeout: 60m
           script: |
             cd ${{ env.TARGET_PATH }}
             docker compose down || true
