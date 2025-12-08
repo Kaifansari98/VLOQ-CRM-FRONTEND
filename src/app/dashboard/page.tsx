@@ -18,7 +18,7 @@ import {
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { useAppSelector } from "@/redux/store";
 import DashboardWrapper from "@/components/dashboard/DashboardWrapper";
-import { Bell, Settings } from "lucide-react";
+import { Bell } from "lucide-react";
 import { useEffect, useState } from "react";
 import GlobalLeadSearchModal from "@/components/dashboard/GlobalLeadSearchModal";
 import { Kbd } from "@/components/ui/kbd";
@@ -31,11 +31,13 @@ export default function Page() {
   );
 
   const [openSearchModal, setOpenSearchModal] = useState(false);
+  const [isMac, setIsMac] = useState(false); // <-- FIX
 
+  // Runs only in the browser → safe
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      const isMac = navigator.platform.toUpperCase().includes("MAC");
+    setIsMac(typeof navigator !== "undefined" && navigator.platform.includes("Mac"));
 
+    const handleKey = (e: KeyboardEvent) => {
       if (
         (isMac && e.metaKey && e.key === "k") ||
         (!isMac && e.ctrlKey && e.key === "k")
@@ -47,20 +49,18 @@ export default function Page() {
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, []);
+  }, [isMac]);
 
   return (
     <>
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
-          <header className="flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 border-b">
-            <div className="flex items-center gap-2 px-4">
+          <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
+            <div className="flex items-center gap-2">
               <SidebarTrigger className="-ml-1" />
-              <Separator
-                orientation="vertical"
-                className="mr-2 data-[orientation=vertical]:h-4"
-              />
+              <Separator orientation="vertical" className="mr-2 h-4" />
+
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem className="hidden md:block">
@@ -74,29 +74,25 @@ export default function Page() {
               </Breadcrumb>
             </div>
 
-            <div className="flex items-center gap-2 pr-4">
+            <div className="flex items-center gap-2">
               <div
                 onClick={() => setOpenSearchModal(true)}
-                className="flex items-center justify-between w-full sm:w-[260px] rounded-md border border-input bg-background px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition cursor-pointer"
+                className="flex items-center justify-between w-full sm:w-[260px] rounded-md border bg-background px-3 py-1.5 text-sm hover:bg-accent cursor-pointer"
               >
                 <span className="truncate">Search leads...</span>
 
                 <div className="hidden sm:flex items-center gap-1">
-                  <Kbd>{navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}</Kbd>
-
-                  <Kbd className="">K</Kbd>
+                  <Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd>
+                  <Kbd>K</Kbd>
                 </div>
               </div>
 
               <Bell />
               <AnimatedThemeToggler />
-              {/* <Settings/> */}
             </div>
           </header>
 
-          {/* Wrap everything inside the conditional dashboard renderer */}
           <DashboardWrapper>
-            {/* DEFAULT existing dashboard content */}
             <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
               <div className="grid auto-rows-min gap-4 md:grid-cols-3">
                 <div className="bg-muted/50 aspect-video rounded-xl" />
