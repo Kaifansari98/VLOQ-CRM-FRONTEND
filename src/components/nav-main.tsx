@@ -22,6 +22,7 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { useEffect } from "react";
 
 interface NavItem {
   title: string;
@@ -80,7 +81,15 @@ interface NavItem {
   }[];
 }
 
-export function NavMain({ items }: { items: NavItem[] }) {
+export function NavMain({
+  items,
+  openGroups,
+  onToggleGroup,
+}: {
+  items: NavItem[];
+  openGroups: string[];
+  onToggleGroup: (groupTitle: string) => void;
+}) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data: leadStats, isLoading } = useLeadStats(vendorId, userId);
@@ -89,60 +98,69 @@ export function NavMain({ items }: { items: NavItem[] }) {
 
   const getCountForItem = (showCount?: string) => {
     if (!leadStats?.data || !showCount) return undefined;
-    const data = leadStats.data;
-    return data[showCount as keyof typeof data];
+    return leadStats.data[showCount as keyof typeof leadStats.data];
   };
+
+  useEffect(() => {
+    // find which parent group matches the current pathname
+    const activeParent = items.find((item) =>
+      item.items?.some((sub) => pathname.startsWith(sub.url))
+    );
+
+    if (activeParent) {
+      // 👉 Only active parent will open
+      onToggleGroup(activeParent.title);
+    } else {
+      // 👉 No active parent? Only then open Leads
+      onToggleGroup("Leads");
+    }
+  }, [pathname]);
 
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
+
       <SidebarMenu>
         {items.map((item) => {
+          const isParent = item.items && item.items.length > 0;
+          const isOpen = openGroups.includes(item.title);
           const isActive = pathname.startsWith(item.url);
 
           return (
             <SidebarMenuItem key={item.title}>
-              {item.items ? (
+              {isParent ? (
                 <Collapsible
                   asChild
-                  defaultOpen={isActive || item.isActive}
+                  open={isOpen}
+                  onOpenChange={() => onToggleGroup(item.title)}
                   className="group/collapsible"
                 >
                   <div>
+                    {/* PARENT BUTTON */}
                     <CollapsibleTrigger asChild>
                       <SidebarMenuButton asChild tooltip={item.title}>
-                        <a
-                          href={item.url}
-                          className={cn(
-                            "flex items-center gap-2 w-full justify-between transition-all duration-200",
-                            isActive && "font-semibold text-primary rounded-md"
-                          )}
-                        >
+                        <div className="flex items-center justify-between w-full cursor-pointer">
                           <div className="flex items-center gap-2">
                             {item.icon && <item.icon />}
                             <span>{item.title}</span>
                           </div>
 
-                          {item.showCount && (
-                            <Badge
-                              className={cn(
-                                "ml-2 rounded-full",
-                                item.showCount === "total_my_tasks" &&
-                                  "bg-blue-100 text-blue-600"
-                              )}
-                            >
+                          {/* PARENT COUNT → HIDE WHEN OPEN */}
+                          {item.showCount && !isOpen && (
+                            <Badge className="rounded-full ml-2">
                               {isLoading
                                 ? "…"
                                 : getCountForItem(item.showCount) ?? 0}
                             </Badge>
                           )}
-                        </a>
+                        </div>
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
 
+                    {/* CHILD ITEMS */}
                     <CollapsibleContent>
                       <SidebarMenuSub>
-                        {item.items.map((subItem) => {
+                        {item.items?.map((subItem) => {
                           const isSubActive = pathname.startsWith(subItem.url);
 
                           return (
@@ -151,17 +169,17 @@ export function NavMain({ items }: { items: NavItem[] }) {
                                 <a
                                   href={subItem.url}
                                   className={cn(
-                                    "flex items-center justify-between w-full transition-all duration-200",
-                                    isSubActive &&
-                                      "font-bold text-primary rounded-md"
+                                    "flex items-center justify-between w-full",
+                                    isSubActive && "text-primary font-semibold"
                                   )}
                                 >
                                   <span>{subItem.title}</span>
 
+                                  {/* CHILD COUNT ALWAYS VISIBLE IF > 0 */}
                                   {subItem.showCount &&
                                     (getCountForItem(subItem.showCount) ?? 0) >
                                       0 && (
-                                      <Badge className="ml-2 rounded-full">
+                                      <Badge className="rounded-full ml-2">
                                         {isLoading
                                           ? "…"
                                           : getCountForItem(subItem.showCount)}
@@ -177,11 +195,12 @@ export function NavMain({ items }: { items: NavItem[] }) {
                   </div>
                 </Collapsible>
               ) : (
+                // NORMAL MENU ITEM
                 <SidebarMenuButton asChild tooltip={item.title}>
                   <a
                     href={item.url}
                     className={cn(
-                      "flex items-center justify-between w-full gap-2 transition-all duration-200",
+                      "flex items-center justify-between w-full gap-2",
                       isActive &&
                         "font-bold text-primary bg-muted/50 rounded-md"
                     )}
@@ -192,13 +211,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                     </div>
 
                     {item.showCount && (
-                      <Badge
-                        className={cn(
-                          "ml-2 rounded-full",
-                          item.showCount === "total_my_tasks" &&
-                            "bg-blue-100 text-blue-600"
-                        )}
-                      >
+                      <Badge className="rounded-full ml-2">
                         {isLoading ? "…" : getCountForItem(item.showCount) ?? 0}
                       </Badge>
                     )}

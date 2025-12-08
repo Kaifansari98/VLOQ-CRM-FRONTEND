@@ -99,8 +99,9 @@ export default function SalesExecutiveDashboard() {
           </div>
         </div>
       </div>
-
-      <div className="w-full h-full flex gap-4 items-stretch ">
+      
+      {/* Booking value and  Total booking */}
+      <div className="w-full h-full flex gap-4 items-stretch  bg-red-500">
         <div className="w-[40%]">
           <BookingValueCard
             data={
@@ -123,7 +124,7 @@ export default function SalesExecutiveDashboard() {
           />
         </div>
 
-        <div className="w-[60%] h-full">
+        <div className="w-[60%]">
           <PerformanceBarChart
             data={
               performanceData

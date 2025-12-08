@@ -42,3 +42,27 @@ export function getCssVariable(name: string) {
   if (typeof window === "undefined") return "";
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
+
+
+export function getInitials(name:string) {
+  if (!name || typeof name !== "string") return "";
+
+  // Remove special chars except spaces
+  const clean = name.replace(/[^a-zA-Z\s]/g, " ").trim();
+
+  // Split words
+  const parts = clean.split(/\s+/).filter(Boolean);
+
+  if (parts.length === 0) return "";
+
+  // First initial
+  const first = parts[0][0].toUpperCase();
+
+  // Check if second word is alphabet-only (true last name)
+  if (parts.length > 1 && /^[A-Za-z]+$/.test(parts[1])) {
+    const second = parts[1][0].toUpperCase();
+    return first + second;   // Return two initials
+  }
+
+  return first;              // Return only one initial
+}

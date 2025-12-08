@@ -11,7 +11,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 import { useSalesExecutiveStageLeads } from "@/api/dashboard/useDashboard";
 import { SalesExecutiveStageLead } from "@/api/dashboard/dashboard.api";
 import { useRouter } from "next/navigation";
@@ -97,14 +97,7 @@ const getColorForName = (name: string) => {
   return avatarColors[index];
 };
 
-// Initials
-const getInitials = (name: string) => {
-  if (!name) return "";
-  const parts = name.trim().split(" ");
-  return parts.length === 1
-    ? parts[0].slice(0, 2).toUpperCase()
-    : (parts[0][0] + parts[1][0]).toUpperCase();
-};
+
 
 export default function PipeLineActionModal({
   open,

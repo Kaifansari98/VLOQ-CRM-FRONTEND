@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useState } from "react";
 import {
   AudioWaveform,
   BookOpen,
@@ -67,7 +67,7 @@ const data = {
       url: "#",
       icon: BookOpenCheck,
       isActive: true,
-      // showCount: "total_leads_group" as const,
+      showCount: "total_leads_group" as const,
       items: [
         // {
         //   title: "Dashboard",
@@ -99,8 +99,7 @@ const data = {
       title: "Project",
       url: "#",
       icon: Bot,
-      isActive: true,
-      // showCount: "total_project_group" as const,
+      showCount: "total_project_group" as const,
       items: [
         {
           title: "FM Sites",
@@ -123,8 +122,7 @@ const data = {
       title: "Production",
       url: "#",
       icon: BookOpen,
-      isActive: true,
-      // showCount: "total_production_group" as const,
+      showCount: "total_production_group" as const,
       items: [
         {
           title: "Tech Check",
@@ -152,8 +150,7 @@ const data = {
       title: "Installation",
       url: "#",
       icon: Settings2,
-      isActive: true,
-      // showCount: "total_installation_group" as const,
+      showCount: "total_installation_group" as const,
       items: [
         {
           title: "Site Readiness",
@@ -208,6 +205,7 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const user = useAppSelector((state) => state.auth.user);
+  const [openGroups, setOpenGroups] = useState<string[]>([]);
 
   const userData = user
     ? {
@@ -234,7 +232,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain
+          items={data.navMain}
+          openGroups={openGroups}
+          onToggleGroup={(groupTitle) =>
+            setOpenGroups((prev) =>
+              prev.includes(groupTitle)
+                ? prev.filter((g) => g !== groupTitle)
+                : [...prev, groupTitle]
+            )
+          }
+        />
+
         {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>

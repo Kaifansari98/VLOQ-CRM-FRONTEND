@@ -77,7 +77,7 @@ export default function Page() {
             <div className="flex items-center gap-2 pr-4">
               <div
                 onClick={() => setOpenSearchModal(true)}
-                className="flex items-center justify-between w-full sm:w-[260px] rounded-md border border-input bg-background px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition cursor-pointer"
+                className="flex items-center justify-between w-full sm:w-[260px] rounded-md border border-input bg-background px-3 py-1.5 text-sm text-muted-foreground cursor-pointer"
               >
                 <span className="truncate">Search leads...</span>
 
