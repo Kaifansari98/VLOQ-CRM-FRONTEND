@@ -21,6 +21,7 @@
     COPY . .
     
     # Build Next.js (standalone mode)
+    RUN pnpm approve-builds
     RUN pnpm build
     
     # --------------------------------------------------------
