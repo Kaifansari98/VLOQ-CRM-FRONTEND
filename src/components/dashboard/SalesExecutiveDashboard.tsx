@@ -101,6 +101,25 @@ export default function SalesExecutiveDashboard() {
 
       <div className="w-full h-full flex gap-4 items-stretch ">
         <div className="w-[40%]">
+          <PerformanceBarChart
+            data={
+              performanceData
+                ? {
+                    bookedThisWeek: performanceData.bookedThisWeek,
+                    bookedThisMonth: performanceData.bookedThisMonth,
+                    bookedThisYear: performanceData.bookedThisYear,
+                    bookedOverall: performanceData.bookedOverall,
+                    bookedThisWeekTotal: performanceData.bookedThisWeekTotal,
+                    bookedThisMonthTotal: performanceData.bookedThisMonthTotal,
+                    bookedThisYearTotal: performanceData.bookedThisYearTotal,
+                  }
+                : undefined
+            }
+            isLoading={isLoading}
+          />
+        </div>
+
+        <div className="w-[60%] h-full">
           <BookingValueCard
             data={
               performanceData
@@ -115,25 +134,6 @@ export default function SalesExecutiveDashboard() {
                     bookingValueThisMonth:
                       performanceData.bookingValueThisMonth,
                     bookingValueThisYear: performanceData.bookingValueThisYear,
-                  }
-                : undefined
-            }
-            isLoading={isLoading}
-          />
-        </div>
-
-        <div className="w-[60%] h-full">
-          <PerformanceBarChart
-            data={
-              performanceData
-                ? {
-                    bookedThisWeek: performanceData.bookedThisWeek,
-                    bookedThisMonth: performanceData.bookedThisMonth,
-                    bookedThisYear: performanceData.bookedThisYear,
-                    bookedOverall: performanceData.bookedOverall,
-                    bookedThisWeekTotal: performanceData.bookedThisWeekTotal,
-                    bookedThisMonthTotal: performanceData.bookedThisMonthTotal,
-                    bookedThisYearTotal: performanceData.bookedThisYearTotal,
                   }
                 : undefined
             }
