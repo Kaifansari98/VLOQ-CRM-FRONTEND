@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import InstallationDayWiseReports from "./InstallationDayWiseReports";
 import { canViewAndWorkUnderInstallationStage } from "@/components/utils/privileges";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import CustomeTooltip from "@/components/custom-tooltip";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -81,8 +81,6 @@ export default function UnderInstallationDetails({
       value: String(i.id),
       label: i.installer_name,
     })) ?? [];
-
-
 
   // 🔹 Initialize data
   useEffect(() => {

@@ -97,8 +97,8 @@ export const useVendorUserLeadsOpen = (
 // ✅ Get all vendor leads (Overall Leads) for a given tag (e.g. Type 1)
 export const getVendorOverallLeads = async (
   vendorId: number,
-  tag: string,
   userId: number,
+  tag: string,
   page: number,
   limit: number
 ): Promise<VendorOverallLeadsResponse> => {
@@ -107,6 +107,9 @@ export const getVendorOverallLeads = async (
     {
       params: { userId, tag, page, limit },
     }
+
+
+    
   );
   return response.data; // keep full shape: { count, data }
 };
@@ -115,13 +118,12 @@ export const useVendorOverallLeads = (
   vendorId: number,
   userId: number,
   tag: string,
-  page?: number,
-  pageSize?: number
+  page: number,
+  limit: number
 ) => {
   return useQuery({
-    queryKey: ["vendorOverallLeads", vendorId, tag, page, pageSize],
-    queryFn: () =>
-      getVendorOverallLeads(vendorId, tag, userId, page!, pageSize!),
+    queryKey: ["vendorOverallLeads", vendorId, userId, tag, page, limit], 
+    queryFn: () => getVendorOverallLeads(vendorId, userId, tag, page, limit),
     enabled: !!vendorId && !!tag,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,

@@ -1,11 +1,6 @@
 "use client";
 
-import { AppSidebar } from "@/components/app-sidebar";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -63,14 +58,13 @@ import { useDeleteLead } from "@/hooks/useDeleteLead";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import {
-  
   canAssignISM,
   canReassignLeadButton,
   canDeleteLedForSalesExecutiveButton,
   canEditLeadForSalesExecutiveButton,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import CustomeTooltip from "@/components/custom-tooltip";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
 
@@ -172,192 +166,186 @@ export default function LeadDetails() {
   const [activeTab, setActiveTab] = useState("details");
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset className="w-full h-full flex flex-col">
-        {/* Header */}
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b bg-background">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbPage>
-                    <p className="font-bold">
-                      {leadCode || "Loading…"}
-                      {leadCode && (clientName ? ` - ${clientName}` : "")}
-                    </p>
-                  </BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-          <div className="flex items-center space-x-2">
+    <>
+      {/* Header */}
+      <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b bg-background">
+        <div className="flex items-center gap-2">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbPage>
+                  <p className="font-bold">
+                    {leadCode || "Loading…"}
+                    {leadCode && (clientName ? ` - ${clientName}` : "")}
+                  </p>
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+        <div className="flex items-center space-x-2">
+          {isDraftLead ? (
+            <CustomeTooltip
+              truncateValue={
+                <Button size="sm" disabled>
+                  Assign Task
+                </Button>
+              }
+              value="This action cannot be performed because the lead is still in Draft mode."
+            />
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => setAssignOpen(true)}
+              disabled={uiDisabled}
+            >
+              Assign Task
+            </Button>
+          )}
+
+          <AnimatedThemeToggler />
+
+          {/* Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <EllipsisVertical size={22} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {canEdit && (
+                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                  <SquarePen className=" h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+              )}
+
+              {canReassign && (
+                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                  <Users className="h-4 w-4" />
+                  Reassign Lead
+                </DropdownMenuItem>
+              )}
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="flex items-center gap-2">
+                  <CircleArrowOutUpRight className="h-4 w-4" />
+                  <span>Lead Status</span>
+                </DropdownMenuSubTrigger>
+
+                {!uiDisabled && (
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setActivityType("onHold");
+                        setActivityModalOpen(true);
+                      }}
+                    >
+                      <Clock className="h-4 w-4 mr-2" />
+                      Mark On Hold
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setActivityType("lostApproval");
+                        setActivityModalOpen(true);
+                      }}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Mark As Lost
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                )}
+              </DropdownMenuSub>
+
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  {uiDisabled ? (
+                    <CustomeTooltip
+                      truncateValue={
+                        <DropdownMenuItem disabled>Delete</DropdownMenuItem>
+                      }
+                      value="Please wait while the lead loads."
+                    />
+                  ) : (
+                    <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
+                      Delete
+                    </DropdownMenuItem>
+                  )}
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+
+      {/* 🔹 Tabs bar above content */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(val) => {
+          if (val === "projects") {
+            if (isDraftLead || uiDisabled) return; // ✅ block in draft/loading
+            setAssignOpen(true);
+            return;
+          }
+          setActiveTab(val);
+        }}
+        className="w-full px-6 pt-4"
+      >
+        <ScrollArea>
+          <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
+            <TabsTrigger value="details">
+              <HouseIcon size={16} className="mr-1 opacity-60" />
+              Lead Details
+            </TabsTrigger>
+
             {isDraftLead ? (
               <CustomeTooltip
                 truncateValue={
-                  <Button size="sm" disabled>
-                    Assign Task
-                  </Button>
+                  <TabsTrigger value="projects" disabled>
+                    <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                    To-Do Task
+                  </TabsTrigger>
                 }
                 value="This action cannot be performed because the lead is still in Draft mode."
               />
             ) : (
-              <Button
-                size="sm"
-                onClick={() => setAssignOpen(true)}
-                disabled={uiDisabled}
-              >
-                Assign Task
-              </Button>
+              <TabsTrigger value="projects" disabled={uiDisabled}>
+                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                To-Do Task
+              </TabsTrigger>
             )}
 
-            <AnimatedThemeToggler />
+            <TabsTrigger value="history" disabled={uiDisabled}>
+              <BoxIcon size={16} className="mr-1 opacity-60" />
+              Site History
+            </TabsTrigger>
+            <TabsTrigger value="team" disabled={uiDisabled}>
+              <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+              Payment Information
+            </TabsTrigger>
+          </TabsList>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
-            {/* Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <EllipsisVertical size={22} />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {canEdit && (
-                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                    <SquarePen className=" h-4 w-4" />
-                    Edit
-                  </DropdownMenuItem>
-                )}
+        {/* 🔹 Tab Contents */}
+        <TabsContent value="details">
+          <main className="flex-1 h-fit">
+            <LeadDetailsUtil status="details" leadId={leadIdNum} />
+          </main>
+        </TabsContent>
 
-                {canReassign && (
-                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                    <Users className="h-4 w-4" />
-                    Reassign Lead
-                  </DropdownMenuItem>
-                )}
+        <TabsContent value="history">
+          <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
+        </TabsContent>
 
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="flex items-center gap-2">
-                    <CircleArrowOutUpRight className="h-4 w-4" />
-                    <span>Lead Status</span>
-                  </DropdownMenuSubTrigger>
-
-                  {!uiDisabled && (
-                    <DropdownMenuSubContent>
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          setActivityType("onHold");
-                          setActivityModalOpen(true);
-                        }}
-                      >
-                        <Clock className="h-4 w-4 mr-2" />
-                        Mark On Hold
-                      </DropdownMenuItem>
-
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          setActivityType("lostApproval");
-                          setActivityModalOpen(true);
-                        }}
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Mark As Lost
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  )}
-                </DropdownMenuSub>
-
-                {canDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    {uiDisabled ? (
-                      <CustomeTooltip
-                        truncateValue={
-                          <DropdownMenuItem disabled>Delete</DropdownMenuItem>
-                        }
-                        value="Please wait while the lead loads."
-                      />
-                    ) : (
-                      <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
-                        Delete
-                      </DropdownMenuItem>
-                    )}
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
-
-        {/* 🔹 Tabs bar above content */}
-        <Tabs
-          value={activeTab}
-          onValueChange={(val) => {
-            if (val === "projects") {
-              if (isDraftLead || uiDisabled) return; // ✅ block in draft/loading
-              setAssignOpen(true);
-              return;
-            }
-            setActiveTab(val);
-          }}
-          className="w-full px-6 pt-4"
-        >
-          <ScrollArea>
-            <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-              <TabsTrigger value="details">
-                <HouseIcon size={16} className="mr-1 opacity-60" />
-                Lead Details
-              </TabsTrigger>
-
-              {isDraftLead ? (
-                <CustomeTooltip
-                  truncateValue={
-                    <TabsTrigger value="projects" disabled>
-                      <PanelsTopLeftIcon
-                        size={16}
-                        className="mr-1 opacity-60"
-                      />
-                      To-Do Task
-                    </TabsTrigger>
-                  }
-                  value="This action cannot be performed because the lead is still in Draft mode."
-                />
-              ) : (
-                <TabsTrigger value="projects" disabled={uiDisabled}>
-                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                  To-Do Task
-                </TabsTrigger>
-              )}
-
-              <TabsTrigger value="history" disabled={uiDisabled}>
-                <BoxIcon size={16} className="mr-1 opacity-60" />
-                Site History
-              </TabsTrigger>
-              <TabsTrigger value="team" disabled={uiDisabled}>
-                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                Payment Information
-              </TabsTrigger>
-            </TabsList>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-
-          {/* 🔹 Tab Contents */}
-          <TabsContent value="details">
-            <main className="flex-1 h-fit">
-              <LeadDetailsUtil status="details" leadId={leadIdNum} />
-            </main>
-          </TabsContent>
-
-          <TabsContent value="history">
-            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
-          </TabsContent>
-
-          <TabsContent value="team">
-            <PaymentComingSoon />
-          </TabsContent>
-        </Tabs>
-      </SidebarInset>
+        <TabsContent value="team">
+          <PaymentComingSoon />
+        </TabsContent>
+      </Tabs>
 
       {/* ✅ Modals */}
       <AssignTaskSiteMeasurementForm
@@ -437,6 +425,6 @@ export default function LeadDetails() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </SidebarProvider>
+    </>
   );
 }

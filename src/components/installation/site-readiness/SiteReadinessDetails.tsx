@@ -26,7 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkSiteRedinessStage } from "@/components/utils/privileges";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import CustomeTooltip from "@/components/custom-tooltip";
 
 interface SiteReadinessDetailsProps {
   leadId: number;

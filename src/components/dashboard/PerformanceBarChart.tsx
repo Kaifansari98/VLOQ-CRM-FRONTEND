@@ -156,19 +156,13 @@ export default function PerformanceLineChart({
         </DropdownMenu>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="h-[200px]">
         {isLoading ? (
           <div className="h-[250px] flex items-center justify-center">
             <div className="h-10 w-10 border-4 border-muted border-t-primary rounded-full animate-spin"></div>
           </div>
         ) : (
-          <motion.div
-            key={mode}
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="h-[200px]"
-          >
+    
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={chartData}
@@ -255,7 +249,7 @@ export default function PerformanceLineChart({
                 />
               </AreaChart>
             </ResponsiveContainer>
-          </motion.div>
+         
         )}
       </CardContent>
     </Card>

@@ -1,17 +1,12 @@
 "use client";
 
-import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
@@ -70,7 +65,7 @@ import {
   canDeleteLeadButton,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import CustomeTooltip from "@/components/custom-tooltip";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
 
@@ -170,17 +165,14 @@ export default function SiteMeasurementLead() {
 
   return (
     <>
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset className="w-full h-full flex flex-col">
-          {/* Header */}
-          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b bg-background">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="-ml-1" />
-              <Separator orientation="vertical" className="mr-2 h-4" />
-              <Breadcrumb>
-                <BreadcrumbList>
-                  {/* <BreadcrumbItem>
+      {/* Header */}
+      <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b bg-background">
+        <div className="flex items-center gap-2">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              {/* <BreadcrumbItem>
                   <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
@@ -189,232 +181,230 @@ export default function SiteMeasurementLead() {
                     Site Measurement
                   </BreadcrumbLink>
                 </BreadcrumbItem> */}
-                  {/* <BreadcrumbSeparator />
+              {/* <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbPage>Details</BreadcrumbPage>
                 </BreadcrumbItem> */}
-                  {/* <BreadcrumbSeparator /> */}
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>
-                      <p className="font-bold">
-                        {leadCode || "Loading…"}
-                        {leadCode && (clientName ? ` - ${clientName}` : "")}
-                      </p>
-                    </BreadcrumbPage>
-                  </BreadcrumbItem>
-                </BreadcrumbList>
-              </Breadcrumb>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button size="sm" onClick={() => setAssignOpen(true)}>
-                Assign Task
+              {/* <BreadcrumbSeparator /> */}
+              <BreadcrumbItem>
+                <BreadcrumbPage>
+                  <p className="font-bold">
+                    {leadCode || "Loading…"}
+                    {leadCode && (clientName ? ` - ${clientName}` : "")}
+                  </p>
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button size="sm" onClick={() => setAssignOpen(true)}>
+            Assign Task
+          </Button>
+          <AnimatedThemeToggler />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <EllipsisVertical size={25} />
               </Button>
-              <AnimatedThemeToggler />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <EllipsisVertical size={25} />
-                  </Button>
-                </DropdownMenuTrigger>
+            </DropdownMenuTrigger>
 
-                <DropdownMenuContent align="end">
-                  {canUploadISM(userType) && !lead?.is_draft ? (
-                    <DropdownMenuItem onSelect={() => setOpenMeasurement(true)}>
-                      <ClipboardCheck size={20} />
-                      Upload Measurement
+            <DropdownMenuContent align="end">
+              {canUploadISM(userType) && !lead?.is_draft ? (
+                <DropdownMenuItem onSelect={() => setOpenMeasurement(true)}>
+                  <ClipboardCheck size={20} />
+                  Upload Measurement
+                </DropdownMenuItem>
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <DropdownMenuItem disabled>
+                      <ClipboardCheck size={20} /> Upload Measurement
                     </DropdownMenuItem>
-                  ) : (
-                    <CustomeTooltip
-                      truncateValue={
-                        <DropdownMenuItem disabled>
-                          <ClipboardCheck size={20} /> Upload Measurement
-                        </DropdownMenuItem>
-                      }
-                      value={
-                        lead?.is_draft
-                          ? "This action cannot be performed because the lead is still in Draft mode."
-                          : "You don't have permission to upload measurements."
-                      }
-                    />
-                  )}
+                  }
+                  value={
+                    lead?.is_draft
+                      ? "This action cannot be performed because the lead is still in Draft mode."
+                      : "You don't have permission to upload measurements."
+                  }
+                />
+              )}
 
-                  {/* Lead Status */}
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger className="flex items-center gap-2">
-                      <CircleArrowOutUpRight className="h-4 w-4" />
-                      <span>Lead Status</span>
-                    </DropdownMenuSubTrigger>
+              {/* Lead Status */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="flex items-center gap-2">
+                  <CircleArrowOutUpRight className="h-4 w-4" />
+                  <span>Lead Status</span>
+                </DropdownMenuSubTrigger>
 
-                    <DropdownMenuSubContent>
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          setActivityType("onHold");
-                          setActivityModalOpen(true);
-                        }}
-                      >
-                        <Clock className="h-4 w-4 " />
-                        Mark On Hold
-                      </DropdownMenuItem>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setActivityType("onHold");
+                      setActivityModalOpen(true);
+                    }}
+                  >
+                    <Clock className="h-4 w-4 " />
+                    Mark On Hold
+                  </DropdownMenuItem>
 
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          setActivityType("lostApproval");
-                          setActivityModalOpen(true);
-                        }}
-                      >
-                        <XCircle className="h-4 w-4" />
-                        Mark As Lost
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setActivityType("lostApproval");
+                      setActivityModalOpen(true);
+                    }}
+                  >
+                    <XCircle className="h-4 w-4" />
+                    Mark As Lost
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
 
-                  {/* Edit */}
-                  {canEdit && (
-                    <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                      <SquarePen size={20} />
-                      Edit
-                    </DropdownMenuItem>
-                  )}
+              {/* Edit */}
+              {canEdit && (
+                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                  <SquarePen size={20} />
+                  Edit
+                </DropdownMenuItem>
+              )}
 
-                  {/* Reassign */}
-                  {canReassign && (
-                    <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                      <Users size={20} />
-                      Reassign Lead
-                    </DropdownMenuItem>
-                  )}
+              {/* Reassign */}
+              {canReassign && (
+                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                  <Users size={20} />
+                  Reassign Lead
+                </DropdownMenuItem>
+              )}
 
-                  {/* Delete */}
-                  {canDelete && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
-                        Delete
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </header>
+              {/* Delete */}
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
 
-          {/* Tabs */}
-          <Tabs
-            value={activeTab}
-            onValueChange={(val) => {
-              if (val === "tasks") {
-                setOpenMeasurement(true); // open modal
-                return; // don't change tab
-              }
-              setActiveTab(val);
-            }}
-            className="w-full px-6 pt-4"
-          >
-            <ScrollArea>
-              <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-                <TabsTrigger value="details">
-                  <HouseIcon size={16} className="mr-1 opacity-60" />
-                  Lead Details
-                </TabsTrigger>
-                <TabsTrigger value="tasks">
-                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                  To-Do Task
-                </TabsTrigger>
-                <TabsTrigger value="history">
-                  <BoxIcon size={16} className="mr-1 opacity-60" />
-                  Site History
-                </TabsTrigger>
-                <TabsTrigger value="payments">
-                  <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                  Payment Information
-                </TabsTrigger>
-              </TabsList>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+      {/* Tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(val) => {
+          if (val === "tasks") {
+            setOpenMeasurement(true); // open modal
+            return; // don't change tab
+          }
+          setActiveTab(val);
+        }}
+        className="w-full px-6 pt-4"
+      >
+        <ScrollArea>
+          <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
+            <TabsTrigger value="details">
+              <HouseIcon size={16} className="mr-1 opacity-60" />
+              Lead Details
+            </TabsTrigger>
+            <TabsTrigger value="tasks">
+              <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+              To-Do Task
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <BoxIcon size={16} className="mr-1 opacity-60" />
+              Site History
+            </TabsTrigger>
+            <TabsTrigger value="payments">
+              <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+              Payment Information
+            </TabsTrigger>
+          </TabsList>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
-            {/* Tab contents */}
-            <TabsContent value="details">
-              <main className="flex-1 h-fit">
-                <LeadDetailsUtil status="details" leadId={leadIdNum} />
-              </main>
-            </TabsContent>
+        {/* Tab contents */}
+        <TabsContent value="details">
+          <main className="flex-1 h-fit">
+            <LeadDetailsUtil status="details" leadId={leadIdNum} />
+          </main>
+        </TabsContent>
 
-            <TabsContent value="history">
-              <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
-            </TabsContent>
+        <TabsContent value="history">
+          <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
+        </TabsContent>
 
-            <TabsContent value="payments">
-              <PaymentComingSoon />
-            </TabsContent>
-          </Tabs>
-        </SidebarInset>
+        <TabsContent value="payments">
+          <PaymentComingSoon />
+        </TabsContent>
+      </Tabs>
 
-        {/* Modals */}
-        <AssignTaskSiteMeasurementForm
-          open={assignOpen}
-          onOpenChange={setAssignOpen}
-          onlyFollowUp
-          data={{ id: leadIdNum, name: "" }}
-        />
-        <AssignLeadModal
-          open={assignOpenLead}
-          onOpenChange={setAssignOpenLead}
-          leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
-        />
-        <EditLeadModal
-          open={openEditModal}
-          onOpenChange={setOpenEditModal}
-          leadData={{ id: leadIdNum }}
-        />
-        <ActivityStatusModal
-          open={activityModalOpen}
-          onOpenChange={setActivityModalOpen}
-          statusType={activityType}
-          onSubmitRemark={(remark) => {
-            if (!vendorId || !userId || !accountId) return;
-            updateStatusMutation.mutate({
-              leadId: leadIdNum,
-              payload: {
-                vendorId,
-                accountId,
-                userId,
-                status: activityType,
-                remark,
-                createdBy: userId,
-              },
-            });
-          }}
-          loading={updateStatusMutation.isPending}
-        />
-        <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the
-                lead.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteLead}>
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+      {/* Modals */}
+      <AssignTaskSiteMeasurementForm
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        onlyFollowUp
+        data={{ id: leadIdNum, name: "" }}
+      />
+      <AssignLeadModal
+        open={assignOpenLead}
+        onOpenChange={setAssignOpenLead}
+        leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
+      />
+      <EditLeadModal
+        open={openEditModal}
+        onOpenChange={setOpenEditModal}
+        leadData={{ id: leadIdNum }}
+      />
+      <ActivityStatusModal
+        open={activityModalOpen}
+        onOpenChange={setActivityModalOpen}
+        statusType={activityType}
+        onSubmitRemark={(remark) => {
+          if (!vendorId || !userId || !accountId) return;
+          updateStatusMutation.mutate({
+            leadId: leadIdNum,
+            payload: {
+              vendorId,
+              accountId,
+              userId,
+              status: activityType,
+              remark,
+              createdBy: userId,
+            },
+          });
+        }}
+        loading={updateStatusMutation.isPending}
+      />
+      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              lead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteLead}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-        <InitialSiteMeasuresMent
-          open={openMeasurement}
-          onOpenChange={(open) => {
-            setOpenMeasurement(open);
-            if (!open) {
-              setActiveTab("details"); // return to details tab
-            }
-          }}
-          data={{ id: leadIdNum, accountId, name: "" }}
-        />
-      </SidebarProvider>
+      <InitialSiteMeasuresMent
+        open={openMeasurement}
+        onOpenChange={(open) => {
+          setOpenMeasurement(open);
+          if (!open) {
+            setActiveTab("details"); // return to details tab
+          }
+        }}
+        data={{ id: leadIdNum, accountId, name: "" }}
+      />
     </>
   );
 }

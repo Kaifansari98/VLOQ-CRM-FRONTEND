@@ -72,6 +72,7 @@
     "react-redux": "^9.2.0",
     "react-toastify": "^11.0.5",
     "recharts": "^3.5.1",
+    "redux-persist": "^6.0.0",
     "styled-components": "^6.1.19",
     "tailwind-merge": "^3.3.1",
     "tailwind-variants": "^3.2.2",

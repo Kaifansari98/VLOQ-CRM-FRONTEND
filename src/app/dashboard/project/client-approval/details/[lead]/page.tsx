@@ -1,17 +1,12 @@
 "use client";
 
-import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
@@ -73,7 +68,7 @@ import {
 } from "@/components/utils/privileges";
 
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import CustomeTooltip from "@/components/custom-tooltip";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
@@ -140,7 +135,6 @@ export default function ClientApprovalLeadDetails() {
     }
   }, [isLoading, userType, is_client_approval_submitted]);
 
-
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -168,330 +162,324 @@ export default function ClientApprovalLeadDetails() {
   const canEdit = canEditLeadButton(userType);
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
-        {/* HEADER */}
-        <header className="flex h-16 shrink-0 items-center justify-between px-4 border-b">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger />
-            <Separator orientation="vertical" className="h-4" />
+    <>
+      {/* HEADER */}
+      <header className="flex h-16 shrink-0 items-center justify-between px-4 border-b">
+        <div className="flex items-center gap-2">
+          <SidebarTrigger />
+          <Separator orientation="vertical" className="h-4" />
 
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbPage>
-                    <p className="font-bold">
-                      {leadCode}
-                      {clientName ? ` - ${clientName}` : ""}
-                    </p>
-                  </BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbPage>
+                  <p className="font-bold">
+                    {leadCode}
+                    {clientName ? ` - ${clientName}` : ""}
+                  </p>
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
 
-          {/* ACTION BUTTONS */}
-          <div className="flex items-center space-x-2">
-            {/* Tech Check */}
-            {!is_client_approval_submitted ? (
-              <CustomeTooltip
-                truncateValue={
-                  <Button size="sm" disabled variant="secondary">
-                    Request To Tech Check
-                  </Button>
-                }
-                value="Submit approval first"
-              />
-            ) : canRequestToTeckCheck(userType) ? (
-              <Button
-                size="sm"
-                onClick={() => setOpenRequestToTechCheckModal(true)}
-              >
-                Request To Tech Check
+        {/* ACTION BUTTONS */}
+        <div className="flex items-center space-x-2">
+          {/* Tech Check */}
+          {!is_client_approval_submitted ? (
+            <CustomeTooltip
+              truncateValue={
+                <Button size="sm" disabled variant="secondary">
+                  Request To Tech Check
+                </Button>
+              }
+              value="Submit approval first"
+            />
+          ) : canRequestToTeckCheck(userType) ? (
+            <Button
+              size="sm"
+              onClick={() => setOpenRequestToTechCheckModal(true)}
+            >
+              Request To Tech Check
+            </Button>
+          ) : (
+            <CustomeTooltip
+              truncateValue={
+                <Button size="sm" disabled variant="secondary">
+                  Request To Tech Check
+                </Button>
+              }
+              value="No permission"
+            />
+          )}
+
+          <Button size="sm" onClick={() => setAssignOpen(true)}>
+            Assign Task
+          </Button>
+
+          <AnimatedThemeToggler />
+
+          {/* DROPDOWN */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <EllipsisVertical size={25} />
               </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end">
+              {/* ⭐ ONLY MARK ON HOLD */}
+              <DropdownMenuItem onSelect={() => setActivityModalOpen(true)}>
+                <Clock className="m h-4 w-4" />
+                Mark On Hold
+              </DropdownMenuItem>
+
+              {/* CLIENT APPROVAL */}
+              {!is_client_approval_submitted ? (
+                canUploadClientApproval(userType) ? (
+                  <DropdownMenuItem
+                    onClick={() => setOpenClientApprovalModal(true)}
+                  >
+                    <FileText size={20} />
+                    Client Approval
+                  </DropdownMenuItem>
+                ) : (
+                  <CustomeTooltip truncateValue="..." value="No permission" />
+                )
+              ) : (
+                <DropdownMenuItem
+                  onClick={() => setOpenRequestToTechCheckModal(true)}
+                >
+                  <FileText size={20} />
+                  Request To Tech Check
+                </DropdownMenuItem>
+              )}
+
+              {/* EDIT */}
+
+              {canEdit && (
+                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                  <SquarePen size={20} />
+                  Edit
+                </DropdownMenuItem>
+              )}
+
+              {/* REASSIGN */}
+              {canReassign && (
+                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                  <Users size={20} />
+                  Reassign Lead
+                </DropdownMenuItem>
+              )}
+
+              {/* DELETE */}
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                    <XCircle size={20} className="text-red-500" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+
+      {/* TABS */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(val) => {
+          // When user selects "todo"
+          if (val === "todo") {
+            // Save previous tab (common in both functions)
+            setPreviousTab(activeTab);
+
+            // First logic: access privilege + tech-check flow
+            if (canRequestToTeckCheck?.(userType)) {
+              if (!is_client_approval_submitted) {
+                setOpenClientApprovalModal(true);
+              } else {
+                setOpenRequestToTechCheckModal(true);
+              }
+            } else {
+              // Second logic: open client document modal
+              setOpenClientApprovalModal(true);
+            }
+
+            // Keep tab on "todo"
+            setActiveTab("todo");
+            return;
+          }
+
+          // Default case for normal tab switching
+          setActiveTab(val);
+        }}
+        className="w-full px-6 pt-4"
+      >
+        <ScrollArea>
+          <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
+            <TabsTrigger value="details">
+              <HouseIcon size={16} className="mr-1 opacity-60" />
+              Lead Details
+            </TabsTrigger>
+
+            {canUploadClientApproval(userType) ? (
+              <TabsTrigger value="todo">
+                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                To-Do Task
+              </TabsTrigger>
             ) : (
               <CustomeTooltip
                 truncateValue={
-                  <Button size="sm" disabled variant="secondary">
-                    Request To Tech Check
-                  </Button>
+                  <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                    <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                    To-Do Task
+                  </div>
                 }
-                value="No permission"
+                value="Only Sales Executive can access this tab"
               />
             )}
 
-            <Button size="sm" onClick={() => setAssignOpen(true)}>
-              Assign Task
-            </Button>
+            <TabsTrigger value="history">
+              <BoxIcon size={16} className="mr-1 opacity-60" />
+              Site History
+            </TabsTrigger>
 
-            <AnimatedThemeToggler />
+            <TabsTrigger value="payment">
+              <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+              Payment Information
+            </TabsTrigger>
+          </TabsList>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
-            {/* DROPDOWN */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <EllipsisVertical size={25} />
-                </Button>
-              </DropdownMenuTrigger>
+        <TabsContent value="details">
+          <main className="flex-1 h-fit">
+            {is_client_approval_submitted ? (
+              <LeadDetailsUtil
+                status="clientApproval"
+                leadId={leadIdNum}
+                accountId={accountId}
+                defaultTab="clientApproval"
+              />
+            ) : (
+              <LeadDetailsUtil
+                status="clientdocumentation"
+                leadId={leadIdNum}
+                accountId={accountId}
+                defaultTab="clientdocumentation"
+              />
+            )}
+          </main>
+        </TabsContent>
 
-              <DropdownMenuContent align="end">
-                {/* ⭐ ONLY MARK ON HOLD */}
-                <DropdownMenuItem onSelect={() => setActivityModalOpen(true)}>
-                  <Clock className="m h-4 w-4" />
-                  Mark On Hold
-                </DropdownMenuItem>
+        <TabsContent value="history">
+          <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
+        </TabsContent>
 
-                {/* CLIENT APPROVAL */}
-                {!is_client_approval_submitted ? (
-                  canUploadClientApproval(userType) ? (
-                    <DropdownMenuItem
-                      onClick={() => setOpenClientApprovalModal(true)}
-                    >
-                      <FileText size={20} />
-                      Client Approval
-                    </DropdownMenuItem>
-                  ) : (
-                    <CustomeTooltip truncateValue="..." value="No permission" />
-                  )
-                ) : (
-                  <DropdownMenuItem
-                    onClick={() => setOpenRequestToTechCheckModal(true)}
-                  >
-                    <FileText size={20} />
-                    Request To Tech Check
-                  </DropdownMenuItem>
-                )}
+        <TabsContent value="payment">
+          <PaymentInformation accountId={accountId} />
+        </TabsContent>
+      </Tabs>
 
-                {/* EDIT */}
+      {/* MODALS */}
+      <AssignLeadModal
+        open={assignOpenLead}
+        onOpenChange={setAssignOpenLead}
+        leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
+      />
 
-                {canEdit && (
-                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                    <SquarePen size={20} />
-                    Edit
-                  </DropdownMenuItem>
-                )}
+      <EditLeadModal
+        open={openEditModal}
+        onOpenChange={setOpenEditModal}
+        leadData={{ id: leadIdNum }}
+      />
 
-                {/* REASSIGN */}
-                {canReassign && (
-                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                    <Users size={20} />
-                    Reassign Lead
-                  </DropdownMenuItem>
-                )}
+      <ClientApprovalModal
+        open={openClientApprovalModal}
+        onOpenChange={(open) => {
+          setOpenClientApprovalModal(open);
+          if (!open) setActiveTab(previousTab);
+        }}
+        data={{ id: leadIdNum, accountId }}
+      />
 
-                {/* DELETE */}
-                {canDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                      <XCircle size={20} className="text-red-500" />
-                      Delete
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
+      <RequestToTechCheckModal
+        open={openRequestToTechCheckModal}
+        onOpenChange={(open) => {
+          setOpenRequestToTechCheckModal(open);
+          if (!open) setActiveTab(previousTab);
+        }}
+        data={{ id: leadIdNum, accountId }}
+      />
 
-        {/* TABS */}
-        <Tabs
-          value={activeTab}
-          onValueChange={(val) => {
-            // When user selects "todo"
-            if (val === "todo") {
-              // Save previous tab (common in both functions)
-              setPreviousTab(activeTab);
+      <AssignTaskSiteMeasurementForm
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        onlyFollowUp
+        data={{ id: leadIdNum, name: "" }}
+      />
 
-              // First logic: access privilege + tech-check flow
-              if (canRequestToTeckCheck?.(userType)) {
-                if (!is_client_approval_submitted) {
-                  setOpenClientApprovalModal(true);
-                } else {
-                  setOpenRequestToTechCheckModal(true);
-                }
-              } else {
-                // Second logic: open client document modal
-                setOpenClientApprovalModal(true);
-              }
+      {/* DELETE CONFIRMATION */}
+      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteLead}>
+              Confirm Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-              // Keep tab on "todo"
-              setActiveTab("todo");
-              return;
-            }
+      {/* ⭐ ONLY MARK ON HOLD */}
+      <ActivityStatusModal
+        open={activityModalOpen}
+        onOpenChange={setActivityModalOpen}
+        statusType="onHold"
+        loading={updateStatusMutation.isPending}
+        onSubmitRemark={(remark, dueDate) => {
+          if (!vendorId || !userId) {
+            toast.error("Vendor or User info missing!");
+            return;
+          }
 
-            // Default case for normal tab switching
-            setActiveTab(val);
-          }}
-          className="w-full px-6 pt-4"
-        >
-          <ScrollArea>
-            <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-              <TabsTrigger value="details">
-                <HouseIcon size={16} className="mr-1 opacity-60" />
-                Lead Details
-              </TabsTrigger>
-
-              {canUploadClientApproval(userType) ? (
-                <TabsTrigger value="todo">
-                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                  To-Do Task
-                </TabsTrigger>
-              ) : (
-                <CustomeTooltip
-                  truncateValue={
-                    <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                      <PanelsTopLeftIcon
-                        size={16}
-                        className="mr-1 opacity-60"
-                      />
-                      To-Do Task
-                    </div>
-                  }
-                  value="Only Sales Executive can access this tab"
-                />
-              )}
-
-              <TabsTrigger value="history">
-                <BoxIcon size={16} className="mr-1 opacity-60" />
-                Site History
-              </TabsTrigger>
-
-              <TabsTrigger value="payment">
-                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                Payment Information
-              </TabsTrigger>
-            </TabsList>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-
-          <TabsContent value="details">
-            <main className="flex-1 h-fit">
-              {is_client_approval_submitted ? (
-                <LeadDetailsUtil
-                  status="clientApproval"
-                  leadId={leadIdNum}
-                  accountId={accountId}
-                  defaultTab="clientApproval"
-                />
-              ) : (
-                <LeadDetailsUtil
-                  status="clientdocumentation"
-                  leadId={leadIdNum}
-                  accountId={accountId}
-                  defaultTab="clientdocumentation"
-                />
-              )}
-            </main>
-          </TabsContent>
-
-          <TabsContent value="history">
-            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
-          </TabsContent>
-
-          <TabsContent value="payment">
-            <PaymentInformation accountId={accountId} />
-          </TabsContent>
-        </Tabs>
-
-        {/* MODALS */}
-        <AssignLeadModal
-          open={assignOpenLead}
-          onOpenChange={setAssignOpenLead}
-          leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
-        />
-
-        <EditLeadModal
-          open={openEditModal}
-          onOpenChange={setOpenEditModal}
-          leadData={{ id: leadIdNum }}
-        />
-
-        <ClientApprovalModal
-          open={openClientApprovalModal}
-          onOpenChange={(open) => {
-            setOpenClientApprovalModal(open);
-            if (!open) setActiveTab(previousTab);
-          }}
-          data={{ id: leadIdNum, accountId }}
-        />
-
-        <RequestToTechCheckModal
-          open={openRequestToTechCheckModal}
-          onOpenChange={(open) => {
-            setOpenRequestToTechCheckModal(open);
-            if (!open) setActiveTab(previousTab);
-          }}
-          data={{ id: leadIdNum, accountId }}
-        />
-
-        <AssignTaskSiteMeasurementForm
-          open={assignOpen}
-          onOpenChange={setAssignOpen}
-          onlyFollowUp
-          data={{ id: leadIdNum, name: "" }}
-        />
-
-        {/* DELETE CONFIRMATION */}
-        <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteLead}>
-                Confirm Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* ⭐ ONLY MARK ON HOLD */}
-        <ActivityStatusModal
-          open={activityModalOpen}
-          onOpenChange={setActivityModalOpen}
-          statusType="onHold"
-          loading={updateStatusMutation.isPending}
-          onSubmitRemark={(remark, dueDate) => {
-            if (!vendorId || !userId) {
-              toast.error("Vendor or User info missing!");
-              return;
-            }
-
-            updateStatusMutation.mutate(
-              {
-                leadId: leadIdNum,
-                payload: {
-                  vendorId,
-                  accountId,
-                  userId,
-                  status: "onHold",
-                  remark,
-                  createdBy: userId,
-                  dueDate,
-                },
+          updateStatusMutation.mutate(
+            {
+              leadId: leadIdNum,
+              payload: {
+                vendorId,
+                accountId,
+                userId,
+                status: "onHold",
+                remark,
+                createdBy: userId,
+                dueDate,
               },
-              {
-                onSuccess: () => {
-                  toast.success("Lead marked On Hold");
-                  setActivityModalOpen(false);
+            },
+            {
+              onSuccess: () => {
+                toast.success("Lead marked On Hold");
+                setActivityModalOpen(false);
 
-                  queryClient.invalidateQueries({
-                    queryKey: ["leadById", leadIdNum],
-                  });
-                },
-                onError: (err) =>
-                  toast.error(err?.message || "Failed to update status"),
-              }
-            );
-          }}
-        />
-      </SidebarInset>
-    </SidebarProvider>
+                queryClient.invalidateQueries({
+                  queryKey: ["leadById", leadIdNum],
+                });
+              },
+              onError: (err) =>
+                toast.error(err?.message || "Failed to update status"),
+            }
+          );
+        }}
+      />
+    </>
   );
 }

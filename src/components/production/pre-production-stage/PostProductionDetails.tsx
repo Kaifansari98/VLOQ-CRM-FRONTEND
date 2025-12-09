@@ -28,7 +28,7 @@ import { Hammer, Wrench, Camera, PackagePlus, Pencil } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import CustomeTooltip from "@/components/custom-tooltip";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import {
   useGetNoOfBoxes,

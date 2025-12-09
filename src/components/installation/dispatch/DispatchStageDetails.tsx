@@ -61,12 +61,52 @@ import { ImageComponent } from "@/components/utils/ImageCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkDispatchStage } from "@/components/utils/privileges";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
 
 const DispatchDetailsSchema = z.object({
   dispatch_date: z.string().nonempty("Dispatch date is required"),
   vehicle_no: z.string().min(2, "Vehicle number is required"),
   driver_name: z.string().optional(),
-  driver_number: z.string().optional(),
+  driver_number: z
+    .string()
+    .trim()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true;
+
+        const digits = val.replace(/\D/g, "");
+
+        // Reject repeated digits like 0000000000, 1111111111, etc.
+        const isRepeated =
+          /^(\d)\1{9}$/.test(digits) ||
+          (digits.length === 12 && /^(\d)\1{9}$/.test(digits.slice(2)));
+
+        if (isRepeated) return false;
+
+        // CASE 1 → Exactly 10 digits
+        if (digits.length === 10) return true;
+
+        // CASE 2 → Country code + 10 digits
+        if (digits.length === 12 && digits.startsWith("91")) return true;
+
+        return false;
+      },
+      {
+        message: "Enter a valid 10-digit mobile number",
+      }
+    ),
+
   dispatch_remark: z.string().optional(),
   updated_by: z.number(),
 });
@@ -89,6 +129,18 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     (state) => state.auth.user?.user_type?.user_type
   );
 
+  const form = useForm<DispatchDetailsForm>({
+    resolver: zodResolver(DispatchDetailsSchema),
+    defaultValues: {
+      dispatch_date: "",
+      driver_name: "",
+      driver_number: "",
+      vehicle_no: "",
+      dispatch_remark: "",
+      updated_by: userId,
+    },
+  });
+
   console.log("parent", Number(accountId));
 
   // API Hooks
@@ -108,16 +160,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   const addDispatchMutation = useAddDispatchDetails();
   const uploadDocsMutation = useUploadDispatchDocuments();
 
-  // Form State
-  const [formData, setFormData] = useState<DispatchDetailsForm>({
-    dispatch_date: dispatchDetails?.dispatch_date || "",
-    driver_name: dispatchDetails?.driver_name || "",
-    driver_number: dispatchDetails?.driver_number || "",
-    vehicle_no: dispatchDetails?.vehicle_no || "",
-    dispatch_remark: dispatchDetails?.dispatch_remark || "",
-    updated_by: userId,
-  });
-
   // File Upload State
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
@@ -133,9 +175,24 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     useUpdateNoOfBoxes(vendorId, leadId);
 
   // Update form when dispatch details load
+  // React.useEffect(() => {
+  //   if (dispatchDetails) {
+  //     setFormData({
+  //       dispatch_date: dispatchDetails.dispatch_date
+  //         ? format(new Date(dispatchDetails.dispatch_date), "yyyy-MM-dd")
+  //         : "",
+  //       driver_name: dispatchDetails.driver_name || "",
+  //       driver_number: dispatchDetails.driver_number || "",
+  //       vehicle_no: dispatchDetails.vehicle_no || "",
+  //       dispatch_remark: dispatchDetails.dispatch_remark || "",
+  //       updated_by: userId,
+  //     });
+  //   }
+  // }, [dispatchDetails, userId]);
+
   React.useEffect(() => {
     if (dispatchDetails) {
-      setFormData({
+      form.reset({
         dispatch_date: dispatchDetails.dispatch_date
           ? format(new Date(dispatchDetails.dispatch_date), "yyyy-MM-dd")
           : "",
@@ -146,34 +203,15 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
         updated_by: userId,
       });
     }
-  }, [dispatchDetails, userId]);
+  }, [dispatchDetails]);
 
-  // Handlers
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const validation = DispatchDetailsSchema.safeParse(formData);
-    if (!validation.success) {
-      toast.error(validation.error.issues[0].message);
-      return;
-    }
-
-    addDispatchMutation.mutate(
-      {
-        vendorId,
-        leadId,
-        payload: formData,
-      },
-      {}
-    );
-  };
+  const onSubmit = form.handleSubmit((values) => {
+    addDispatchMutation.mutate({
+      vendorId,
+      leadId,
+      payload: values,
+    });
+  });
 
   const handleUploadDocuments = () => {
     if (selectedFiles.length === 0) return;
@@ -358,97 +396,144 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               ))}
             </div>
           ) : (
-            <form
-              id="dispatch-form"
-              onSubmit={handleSubmit}
-              className="space-y-6"
-            >
-              {/* Form Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Dispatch Date */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    Dispatch Date <span className="text-red-500">*</span>
-                  </Label>
+            <Form {...form}>
+              <form
+                id="dispatch-form"
+                onSubmit={onSubmit}
+                className="space-y-6"
+              >
+                {/* Form Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Dispatch Date */}
+                  <FormField
+                    control={form.control}
+                    name="dispatch_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Dispatch Date</FormLabel>
 
-                  <div
-                    className={
-                      !canViewAndWork ? "opacity-50 pointer-events-none" : ""
-                    }
-                  >
-                    <CustomeDatePicker
-                      value={formData.dispatch_date}
-                      onChange={(value) =>
-                        setFormData({ ...formData, dispatch_date: value || "" })
-                      }
-                      restriction="futureOnly"
-                    />
-                  </div>
-                </div>
+                        <div
+                          className={
+                            !canViewAndWork
+                              ? "opacity-50 pointer-events-none"
+                              : ""
+                          }
+                        >
+                          <FormControl>
+                            <CustomeDatePicker
+                              value={field.value}
+                              onChange={field.onChange}
+                              restriction="futureOnly"
+                            />
+                          </FormControl>
+                        </div>
 
-                {/* Vehicle Number */}
-                <div className="space-y-2">
-                  <VehicleNumberInput
-                    value={formData.vehicle_no}
-                    onChange={(val) =>
-                      setFormData({ ...formData, vehicle_no: val })
-                    }
-                    disabled={!canViewAndWork}
-                    required
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
 
-                {/* Driver Name */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
-                    <User className="h-4 w-4" />
-                    Driver Name
-                  </Label>
-                  <Input
-                    type="text"
+                  {/* Vehicle Number */}
+                  <FormField
+                    control={form.control}
+                    name="vehicle_no"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div
+                          className={
+                            !canViewAndWork
+                              ? "opacity-50 pointer-events-none"
+                              : ""
+                          }
+                        >
+                          <FormControl>
+                            <VehicleNumberInput
+                              value={field.value}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Driver Name */}
+                  <FormField
+                    control={form.control}
                     name="driver_name"
-                    value={formData.driver_name}
-                    onChange={handleInputChange}
-                    placeholder="Enter driver name"
-                    disabled={!canViewAndWork}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Driver Name</FormLabel>
+                        <div
+                          className={
+                            !canViewAndWork
+                              ? "opacity-50 pointer-events-none"
+                              : ""
+                          }
+                        >
+                          <FormControl>
+                            <Input placeholder="Enter driver name" {...field} />
+                          </FormControl>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Driver Contact Number */}
+                  <FormField
+                    control={form.control}
+                    name="driver_number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Driver Contact Number</FormLabel>
+
+                        <div
+                          className={
+                            !canViewAndWork
+                              ? "opacity-50 pointer-events-none"
+                              : ""
+                          }
+                        >
+                          <FormControl>
+                            <PhoneInput
+                              value={field.value}
+                              onChange={field.onChange}
+                              defaultCountry="IN"
+                            />
+                          </FormControl>
+                        </div>
+
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
 
-                {/* Driver Contact Number */}
+                {/* Dispatch Remark */}
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
-                    <Phone className="h-4 w-4" />
-                    Driver Contact Number
-                  </Label>
-                  <PhoneInput
-                    placeholder="Enter phone number"
-                    defaultCountry="IN"
-                    disabled={!canViewAndWork}
-                    value={formData.driver_number}
-                    onChange={(value) =>
-                      setFormData({ ...formData, driver_number: value || "" })
-                    }
+                  <FormField
+                    control={form.control}
+                    name="dispatch_remark"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Dispatch Remark</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Add any remarks..."
+                            rows={3}
+                            {...field}
+                            disabled={!canViewAndWork}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-              </div>
-
-              {/* Dispatch Remark */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1">
-                  <FileText className="h-4 w-4" />
-                  Dispatch Remark
-                </Label>
-                <Textarea
-                  name="dispatch_remark"
-                  value={formData.dispatch_remark}
-                  onChange={handleInputChange}
-                  placeholder="Add any additional notes or remarks..."
-                  rows={3}
-                  disabled={!canViewAndWork}
-                />
-              </div>
-            </form>
+              </form>
+            </Form>
           )}
         </div>
       </div>

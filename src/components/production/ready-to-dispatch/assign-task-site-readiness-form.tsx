@@ -35,7 +35,7 @@ import {
 } from "@/api/production/useReadyToDispatchLeads";
 import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUsers"; // ✅ now using supervisors
 import { canAssignSR } from "@/components/utils/privileges";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import CustomeTooltip from "@/components/custom-tooltip";
 
 // ✅ Validation schema
 const formSchema = z

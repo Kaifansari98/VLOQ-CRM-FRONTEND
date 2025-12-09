@@ -14,6 +14,7 @@ import {
 import { useAppSelector } from "@/redux/store";
 import { useGetDashboardAllLeads } from "@/api/dashboard/useDashboard";
 import { useRouter } from "next/navigation";
+import { getInitials } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -32,7 +33,8 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
   // -----------------------------------------------
   const STAGE_PATH_MAP: Record<string, string> = {
     openStage: "/dashboard/leads/leadstable/details",
-    initialSiteMeasurementStage: "/dashboard/leads/initial-site-measurement/details",
+    initialSiteMeasurementStage:
+      "/dashboard/leads/initial-site-measurement/details",
     designingStage: "/dashboard/leads/designing-stage/details",
     bookingStage: "/dashboard/leads/booking-stage/details",
 
@@ -48,7 +50,8 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
     dispatchPlanningStage: "/dashboard/installation/dispatch-planning/details",
     dispatchStage: "/dashboard/installation/dispatch-stage/details",
     siteReadinessStage: "/dashboard/installation/site-readiness/details",
-    underInstallationStage: "/dashboard/installation/under-installation/details",
+    underInstallationStage:
+      "/dashboard/installation/under-installation/details",
     finalHandoverStage: "/dashboard/installation/final-handover/details",
 
     projectCompletedStage: "", // no details page
@@ -89,13 +92,8 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
   // -----------------------------------------------
   // 4️⃣ Helper - Avatar Initials
   // -----------------------------------------------
-  const getInitials = (name: string) => {
-    if (!name) return "";
-    const parts = name.trim().split(" ");
-    return parts.length === 1
-      ? parts[0].slice(0, 2).toUpperCase()
-      : (parts[0][0] + parts[1][0]).toUpperCase();
-  };
+
+
 
   // -----------------------------------------------
   // 5️⃣ Handle Lead Click → Navigate to details
@@ -126,7 +124,11 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
               const stageName = stageLabels[stageKey] ?? stageKey;
 
               return (
-                <CommandGroup key={stageKey} heading={stageName} className="px-2">
+                <CommandGroup
+                  key={stageKey}
+                  heading={stageName}
+                  className="px-2"
+                >
                   {leads.map((lead: LeadStageItem) => (
                     <CommandItem
                       key={lead.id}
@@ -142,7 +144,9 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
 
                         {/* Lead details */}
                         <div className="flex flex-col flex-1">
-                          <span className="text-sm font-medium">{lead.name}</span>
+                          <span className="text-sm font-medium">
+                            {lead.name}
+                          </span>
                           <span className="text-xs text-gray-500">
                             {lead.lead_code || "No Code"}
                           </span>
