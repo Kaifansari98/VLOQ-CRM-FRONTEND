@@ -99,19 +99,19 @@ export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
           (link.startsWith("http://") || link.startsWith("https://"));
 
         return (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-black/20 bg-white min-h-[32px]">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-border   min-h-[32px]">
             {isValidLink ? (
               <a
                 href={link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-black"
+                className="flex items-center  text-foreground bg-bac gap-1 "
               >
                 <MapPin size={14} strokeWidth={2} />
                 Open Map
               </a>
             ) : (
-              <span className="text-gray-400 italic">No Map Available</span>
+              <span className="text-foreground italic ">No Map Available</span>
             )}
           </div>
         );
