@@ -1,17 +1,12 @@
 "use client";
 
-import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
@@ -62,10 +57,8 @@ import {
   canReassignLeadButton,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import CustomeTooltip from "@/components/custom-tooltip";
 import {
-  useLatestOrderLoginByLead,
-  usePostProductionCompleteness,
   useUpdateExpectedOrderLoginReadyDate,
 } from "@/api/production/production-api";
 import { useQueryClient } from "@tanstack/react-query";
@@ -105,21 +98,9 @@ export default function ReadyToDispatchLeadDetails() {
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = Number(lead?.account_id);
 
-  const { data: latestOrderLoginData } = useLatestOrderLoginByLead(
-    vendorId,
-    Number(leadIdNum)
-  );
-  const latestOrderLoginDate =
-    latestOrderLoginData?.data?.estimated_completion_date;
-
   const deleteLeadMutation = useDeleteLead();
   const { mutateAsync: updateExpectedDate } =
     useUpdateExpectedOrderLoginReadyDate();
-
-  const { data: completeness } = usePostProductionCompleteness(
-    vendorId,
-    leadIdNum
-  );
 
   const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
@@ -184,266 +165,254 @@ export default function ReadyToDispatchLeadDetails() {
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
-        {/* Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbPage>
-                    <p className="font-bold">
-                      {leadCode || "Loading…"}
-                      {leadCode && (clientName ? ` - ${clientName}` : "")}
-                    </p>
-                  </BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Button size="sm" onClick={() => setAssignOpen(true)}>
-              Assign Task
-            </Button>
-
-            <AnimatedThemeToggler />
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <EllipsisVertical size={25} />
-                </Button>
-              </DropdownMenuTrigger>
-
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setActivityType("onHold");
-                    setActivityModalOpen(true);
-                  }}
-                >
-                  <Clock className=" h-4 w-4" />
-                  Mark On Hold
-                </DropdownMenuItem>
-
-                {canEdit && (
-                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                    <SquarePen size={20} />
-                    Edit
-                  </DropdownMenuItem>
-                )}
-
-                {canReassign && (
-                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                    <Users size={20} />
-                    Reassign Lead
-                  </DropdownMenuItem>
-                )}
-
-                {canDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                      <XCircle size={20} className="text-red-500" />
-                      Delete
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
-
-        {/* Tabs */}
-        <Tabs
-          value={activeTab}
-          onValueChange={(val) => {
-            if (val === "todo") {
-              setPreviousTab(activeTab);
-              setAssignOpen(true);
-              setActiveTab("todo");
-              return;
-            }
-            setActiveTab(val);
-          }}
-          className="w-full px-6 pt-4"
-        >
-          <ScrollArea>
-            <div className="w-full h-full flex justify-between items-center mb-4">
-              <div className="w-full flex items-center gap-2 justify-between">
-                <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-                  {/* ✅ Ready To Dispatch Details */}
-                  <TabsTrigger value="details">
-                    <Truck size={16} className="mr-1 opacity-60" />
-                    Ready To Dispatch Details
-                  </TabsTrigger>
-
-                  {/* ✅ To-Do Task (Conditional Access) */}
-                  {canAssignSR(userType) ? (
-                    <TabsTrigger
-                      value="todo"
-                      onClick={() => setAssignOpen(true)}
-                    >
-                      <PanelsTopLeftIcon
-                        size={16}
-                        className="mr-1 opacity-60"
-                      />
-                      To-Do Task
-                    </TabsTrigger>
-                  ) : (
-                    <CustomeTooltip
-                      truncateValue={
-                        <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                          <PanelsTopLeftIcon
-                            size={16}
-                            className="mr-1 opacity-60"
-                          />
-                          To-Do Task
-                        </div>
-                      }
-                      value="Only Admin or Sales Executive can access this tab"
-                    />
-                  )}
-
-                  {/* ✅ Site History */}
-                  <TabsTrigger value="history">
-                    <BoxIcon size={16} className="mr-1 opacity-60" />
-                    Site History
-                  </TabsTrigger>
-
-                  {/* ✅ Payment Info */}
-                  <TabsTrigger value="payment">
-                    <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                    Payment Information
-                  </TabsTrigger>
-                </TabsList>
-                <div className="flex flex-col items-start">
-                  <p className="text-xs font-semibold">
-                    Expected Dispatch Date
+    <>
+      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
+        <div className="flex items-center gap-2">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbPage>
+                  <p className="font-bold">
+                    {leadCode || "Loading…"}
+                    {leadCode && (clientName ? ` - ${clientName}` : "")}
                   </p>
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
 
-                  {/* Stylish formatted date & time */}
-                  <div className="mt-1">
-                    <p className="text-sm">
-                      {formatDate(lead?.expected_order_login_ready_date)}
-                    </p>
-                  </div>
+        <div className="flex items-center space-x-2">
+          <Button size="sm" onClick={() => setAssignOpen(true)}>
+            Assign Task
+          </Button>
+
+          <AnimatedThemeToggler />
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <EllipsisVertical size={25} />
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={() => {
+                  setActivityType("onHold");
+                  setActivityModalOpen(true);
+                }}
+              >
+                <Clock className=" h-4 w-4" />
+                Mark On Hold
+              </DropdownMenuItem>
+
+              {canEdit && (
+                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                  <SquarePen size={20} />
+                  Edit
+                </DropdownMenuItem>
+              )}
+
+              {canReassign && (
+                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                  <Users size={20} />
+                  Reassign Lead
+                </DropdownMenuItem>
+              )}
+
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                    <XCircle size={20} className="text-red-500" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+
+      {/* Tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(val) => {
+          if (val === "todo") {
+            setPreviousTab(activeTab);
+            setAssignOpen(true);
+            setActiveTab("todo");
+            return;
+          }
+          setActiveTab(val);
+        }}
+        className="w-full px-6 pt-4"
+      >
+        <ScrollArea>
+          <div className="w-full h-full flex justify-between items-center mb-4">
+            <div className="w-full flex items-center gap-2 justify-between">
+              <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
+                {/* ✅ Ready To Dispatch Details */}
+                <TabsTrigger value="details">
+                  <Truck size={16} className="mr-1 opacity-60" />
+                  Ready To Dispatch Details
+                </TabsTrigger>
+
+                {/* ✅ To-Do Task (Conditional Access) */}
+                {canAssignSR(userType) ? (
+                  <TabsTrigger value="todo" onClick={() => setAssignOpen(true)}>
+                    <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                    To-Do Task
+                  </TabsTrigger>
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                        <PanelsTopLeftIcon
+                          size={16}
+                          className="mr-1 opacity-60"
+                        />
+                        To-Do Task
+                      </div>
+                    }
+                    value="Only Admin or Sales Executive can access this tab"
+                  />
+                )}
+
+                {/* ✅ Site History */}
+                <TabsTrigger value="history">
+                  <BoxIcon size={16} className="mr-1 opacity-60" />
+                  Site History
+                </TabsTrigger>
+
+                {/* ✅ Payment Info */}
+                <TabsTrigger value="payment">
+                  <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                  Payment Information
+                </TabsTrigger>
+              </TabsList>
+              <div className="flex flex-col items-start">
+                <p className="text-xs font-semibold">Expected Dispatch Date</p>
+
+                {/* Stylish formatted date & time */}
+                <div className="mt-1">
+                  <p className="text-sm">
+                    {formatDate(lead?.expected_order_login_ready_date)}
+                  </p>
                 </div>
               </div>
             </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
-          <TabsContent value="details">
-            <main className="flex-1 h-fit">
-              <LeadDetailsGrouped
-                status="readyToDispatch"
-                defaultTab="readyToDispatch"
-                leadId={leadIdNum}
-                accountId={accountId}
-                defaultParentTab="production"
-              />
-            </main>
-          </TabsContent>
+        <TabsContent value="details">
+          <main className="flex-1 h-fit">
+            <LeadDetailsGrouped
+              status="readyToDispatch"
+              defaultTab="readyToDispatch"
+              leadId={leadIdNum}
+              accountId={accountId}
+              defaultParentTab="production"
+            />
+          </main>
+        </TabsContent>
 
-          <TabsContent value="history">
-            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
-          </TabsContent>
+        <TabsContent value="history">
+          <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
+        </TabsContent>
 
-          <TabsContent value="payment">
-            <PaymentInformation accountId={accountId} />
-          </TabsContent>
-        </Tabs>
+        <TabsContent value="payment">
+          <PaymentInformation accountId={accountId} />
+        </TabsContent>
+      </Tabs>
 
-        {/* Modals */}
-        <AssignLeadModal
-          open={assignOpenLead}
-          onOpenChange={setAssignOpenLead}
-          leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
-        />
+      {/* Modals */}
+      <AssignLeadModal
+        open={assignOpenLead}
+        onOpenChange={setAssignOpenLead}
+        leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
+      />
 
-        <EditLeadModal
-          open={openEditModal}
-          onOpenChange={setOpenEditModal}
-          leadData={{ id: leadIdNum }}
-        />
+      <EditLeadModal
+        open={openEditModal}
+        onOpenChange={setOpenEditModal}
+        leadData={{ id: leadIdNum }}
+      />
 
-        <AssignTaskSiteReadinessForm
-          open={assignOpen}
-          onOpenChange={(open) => {
-            setAssignOpen(open);
-            if (!open) setActiveTab(previousTab);
-          }}
-          data={{ id: leadIdNum, name: "" }}
-          userType={userType}
-        />
+      <AssignTaskSiteReadinessForm
+        open={assignOpen}
+        onOpenChange={(open) => {
+          setAssignOpen(open);
+          if (!open) setActiveTab(previousTab);
+        }}
+        data={{ id: leadIdNum, name: "" }}
+        userType={userType}
+      />
 
-        <ActivityStatusModal
-          open={activityModalOpen}
-          onOpenChange={setActivityModalOpen}
-          statusType={activityType}
-          onSubmitRemark={(remark, dueDate) => {
-            if (!vendorId || !userId) {
-              toast.error("Vendor or User info is missing!");
-              return;
-            }
-            updateStatusMutation.mutate(
-              {
-                leadId: leadIdNum,
-                payload: {
-                  vendorId,
-                  accountId: Number(accountId),
-                  userId,
-                  status: activityType,
-                  remark,
-                  createdBy: userId,
-                  ...(activityType === "onHold" ? { dueDate } : {}),
-                },
+      <ActivityStatusModal
+        open={activityModalOpen}
+        onOpenChange={setActivityModalOpen}
+        statusType={activityType}
+        onSubmitRemark={(remark, dueDate) => {
+          if (!vendorId || !userId) {
+            toast.error("Vendor or User info is missing!");
+            return;
+          }
+          updateStatusMutation.mutate(
+            {
+              leadId: leadIdNum,
+              payload: {
+                vendorId,
+                accountId: Number(accountId),
+                userId,
+                status: activityType,
+                remark,
+                createdBy: userId,
+                ...(activityType === "onHold" ? { dueDate } : {}),
               },
-              {
-                onSuccess: () => {
-                  toast.success("Lead marked as On Hold!");
+            },
+            {
+              onSuccess: () => {
+                toast.success("Lead marked as On Hold!");
 
-                  setActivityModalOpen(false);
+                setActivityModalOpen(false);
 
-                  // Invalidate related queries to refresh UI
-                  queryClient.invalidateQueries({
-                    queryKey: ["leadById", leadIdNum],
-                  });
-                },
-                onError: (err) => {
-                  toast.error(err?.message || "Failed to update lead status");
-                },
-              }
-            );
-          }}
-          loading={updateStatusMutation.isPending}
-        />
+                // Invalidate related queries to refresh UI
+                queryClient.invalidateQueries({
+                  queryKey: ["leadById", leadIdNum],
+                });
+              },
+              onError: (err) => {
+                toast.error(err?.message || "Failed to update lead status");
+              },
+            }
+          );
+        }}
+        loading={updateStatusMutation.isPending}
+      />
 
-        {/* Delete Dialog */}
-        <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the
-                lead from your system.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteLead}>
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </SidebarInset>
-    </SidebarProvider>
+      {/* Delete Dialog */}
+      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              lead from your system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteLead}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

@@ -10,11 +10,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import PillTabs from "@/components/sales-executive/designing-stage/pill-tabs";
 import QuotationTab from "@/components/sales-executive/designing-stage/pill-tabs-component/quotation";
@@ -33,10 +29,7 @@ function DetailsContent() {
   const accountId = Number(searchParams.get("accountId") ?? 0);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
-  const { data } = useDesigningStageCounts(
-    vendorId,
-    leadId
-  );
+  const { data } = useDesigningStageCounts(vendorId, leadId);
 
   const canBook =
     !!data &&
@@ -46,9 +39,8 @@ function DetailsContent() {
 
   console.log("Designing stage count: ", data);
   return (
-    <SidebarInset className="w-full h-full flex flex-col">
-      {/* Header */}
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b bg-background">
+    <>
+      <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b bg-background">
         <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
@@ -96,18 +88,18 @@ function DetailsContent() {
           />
         </DetailsProvider>
       </main>
-    </SidebarInset>
+    </>
   );
 }
 
 export default function Details() {
   return (
-    <SidebarProvider>
+    <>
       <AppSidebar />
       {/* ✅ Wrap in Suspense */}
       <Suspense fallback={<div>Loading...</div>}>
         <DetailsContent />
       </Suspense>
-    </SidebarProvider>
+    </>
   );
 }

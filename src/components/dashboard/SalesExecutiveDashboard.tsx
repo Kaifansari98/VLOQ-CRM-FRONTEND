@@ -101,7 +101,7 @@ export default function SalesExecutiveDashboard() {
       </div>
       
       {/* Booking value and  Total booking */}
-      <div className="w-full h-full flex gap-4 items-stretch  bg-red-500">
+      <div className="w-full h-full flex gap-4 items-stretch">
         <div className="w-[40%]">
           <BookingValueCard
             data={
@@ -142,6 +142,10 @@ export default function SalesExecutiveDashboard() {
             isLoading={isLoading}
           />
         </div>
+
+        {/* <div className="w-[60%]">
+          <div className="h-[200px] bg-red-800"></div>
+        </div> */}
       </div>
 
       {/* Error State */}

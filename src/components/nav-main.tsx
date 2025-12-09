@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { LucideIcon } from "lucide-react";
 import { useLeadStats } from "@/hooks/useLeadStats";
 import { useAppSelector } from "@/redux/store";
@@ -11,6 +12,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -21,14 +23,15 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import { cn } from "@/lib/utils";
-import { useEffect } from "react";
 
-interface NavItem {
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+
+// ----------------- TYPES -----------------
+
+interface NavSubItem {
   title: string;
   url: string;
-  icon?: LucideIcon;
-  isActive?: boolean;
   showCount?:
     | "total_leads"
     | "total_open_leads"
@@ -52,140 +55,190 @@ interface NavItem {
     | "total_production_group"
     | "total_installation_group"
     | "total_my_tasks";
-  items?: {
-    title: string;
-    url: string;
-    showCount?:
-      | "total_leads"
-      | "total_open_leads"
-      | "total_initial_site_measurement_leads"
-      | "total_designing_stage_leads"
-      | "total_booking_stage_leads"
-      | "total_final_measurement_leads"
-      | "total_client_documentation_leads"
-      | "total_client_approval_leads"
-      | "total_tech_check_leads"
-      | "total_order_login_leads"
-      | "total_production_stage_leads"
-      | "total_ready_to_dispatch_leads"
-      | "total_site_readiness_stage_leads"
-      | "total_dispatch_planning_stage_leads"
-      | "total_dispatch_stage_leads"
-      | "total_under_installation_stage_leads"
-      | "total_final_handover_stage_leads"
-      | "total_leads_group"
-      | "total_project_group"
-      | "total_production_group"
-      | "total_installation_group"
-      | "total_my_tasks";
-  }[];
 }
 
-export function NavMain({
-  items,
-  openGroups,
-  onToggleGroup,
-}: {
-  items: NavItem[];
-  openGroups: string[];
-  onToggleGroup: (groupTitle: string) => void;
-}) {
+interface NavItem {
+  title: string;
+  url: string;
+  icon?: LucideIcon;
+  showCount?:
+    | "total_leads"
+    | "total_open_leads"
+    | "total_initial_site_measurement_leads"
+    | "total_designing_stage_leads"
+    | "total_booking_stage_leads"
+    | "total_final_measurement_leads"
+    | "total_client_documentation_leads"
+    | "total_client_approval_leads"
+    | "total_tech_check_leads"
+    | "total_order_login_leads"
+    | "total_production_stage_leads"
+    | "total_ready_to_dispatch_leads"
+    | "total_site_readiness_stage_leads"
+    | "total_dispatch_planning_stage_leads"
+    | "total_dispatch_stage_leads"
+    | "total_under_installation_stage_leads"
+    | "total_final_handover_stage_leads"
+    | "total_leads_group"
+    | "total_project_group"
+    | "total_production_group"
+    | "total_installation_group"
+    | "total_my_tasks";
+  items?: NavSubItem[];
+}
+
+// --------------- HELPERS ------------------
+
+// find which group contains the current path (for auto-open on refresh)
+function findGroupForPath(items: NavItem[], pathname: string): string | null {
+  for (const item of items) {
+    if (item.items && item.items.length > 0) {
+      const hasActiveChild = item.items.some((sub) =>
+        pathname.startsWith(sub.url)
+      );
+      if (hasActiveChild) return item.title;
+    }
+  }
+  return null;
+}
+
+export function NavMain({ items }: { items: NavItem[] }) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data: leadStats, isLoading } = useLeadStats(vendorId, userId);
 
   const pathname = usePathname();
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+
+    const activeGroup = findGroupForPath(items, pathname);
+
+    if (activeGroup) {
+      // If route belongs to a group → only that group open
+      initial.add(activeGroup);
+    } else {
+      // If no group matches → Leads open as default
+      initial.add("Leads");
+    }
+
+    return initial;
+  });
+
+  // When pathname changes (navigation / refresh),
+  // automatically open the group for the new route,
+  // but DO NOT close any previously opened groups.
+  useEffect(() => {
+    const activeGroup = findGroupForPath(items, pathname);
+    if (!activeGroup) return;
+
+    setOpenGroups((prev) => {
+      if (prev.has(activeGroup)) return prev;
+      const next = new Set(prev);
+      next.add(activeGroup);
+      return next;
+    });
+  }, [items, pathname]);
 
   const getCountForItem = (showCount?: string) => {
     if (!leadStats?.data || !showCount) return undefined;
-    return leadStats.data[showCount as keyof typeof leadStats.data];
+    const data = leadStats.data;
+    return data[showCount as keyof typeof data];
   };
-
-  useEffect(() => {
-    // find which parent group matches the current pathname
-    const activeParent = items.find((item) =>
-      item.items?.some((sub) => pathname.startsWith(sub.url))
-    );
-
-    if (activeParent) {
-      // 👉 Only active parent will open
-      onToggleGroup(activeParent.title);
-    } else {
-      // 👉 No active parent? Only then open Leads
-      onToggleGroup("Leads");
-    }
-  }, [pathname]);
 
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
-
       <SidebarMenu>
         {items.map((item) => {
-          const isParent = item.items && item.items.length > 0;
-          const isOpen = openGroups.includes(item.title);
-          const isActive = pathname.startsWith(item.url);
+          const isSingle = !item.items || item.items.length === 0;
+          const isSingleActive =
+            isSingle && pathname.startsWith(item.url ?? "");
 
-          return (
-            <SidebarMenuItem key={item.title}>
-              {isParent ? (
+          // For grouped items (Leads / Project / Production / Installation)
+          if (!isSingle) {
+            const isOpen = openGroups.has(item.title);
+            const isGroupActive = item.items!.some((sub) =>
+              pathname.startsWith(sub.url)
+            );
+
+            return (
+              <SidebarMenuItem key={item.title}>
                 <Collapsible
                   asChild
                   open={isOpen}
-                  onOpenChange={() => onToggleGroup(item.title)}
+                  onOpenChange={(isNowOpen) => {
+                    setOpenGroups((prev) => {
+                      const next = new Set(prev);
+                      if (isNowOpen) {
+                        next.add(item.title); // open this group
+                      } else {
+                        next.delete(item.title); // close this group
+                      }
+                      return next;
+                    });
+                  }}
                   className="group/collapsible"
                 >
                   <div>
-                    {/* PARENT BUTTON */}
                     <CollapsibleTrigger asChild>
                       <SidebarMenuButton asChild tooltip={item.title}>
-                        <div className="flex items-center justify-between w-full cursor-pointer">
+                        <Link
+                          href={item.url}
+                          className={cn(
+                            "flex items-center gap-2 w-full justify-between transition-all duration-200",
+                            isGroupActive &&
+                              "font-semibold text-primary rounded-md"
+                          )}
+                        >
                           <div className="flex items-center gap-2">
                             {item.icon && <item.icon />}
                             <span>{item.title}</span>
                           </div>
 
-                          {/* PARENT COUNT → HIDE WHEN OPEN */}
+                          {/* 
+                            Parent count logic:
+                            - Group CLOSED → show parent count
+                            - Group OPEN   → hide parent count
+                          */}
                           {item.showCount && !isOpen && (
-                            <Badge className="rounded-full ml-2">
+                            <Badge className="ml-2 rounded-full">
                               {isLoading
                                 ? "…"
                                 : getCountForItem(item.showCount) ?? 0}
                             </Badge>
                           )}
-                        </div>
+                        </Link>
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
 
-                    {/* CHILD ITEMS */}
                     <CollapsibleContent>
                       <SidebarMenuSub>
-                        {item.items?.map((subItem) => {
+                        {item.items!.map((subItem) => {
                           const isSubActive = pathname.startsWith(subItem.url);
 
                           return (
                             <SidebarMenuSubItem key={subItem.title}>
                               <SidebarMenuSubButton asChild>
-                                <a
+                                <Link
                                   href={subItem.url}
                                   className={cn(
-                                    "flex items-center justify-between w-full",
-                                    isSubActive && "text-primary font-semibold"
+                                    "flex items-center justify-between w-full transition-all duration-200",
+                                    isSubActive &&
+                                      "font-bold text-primary rounded-md"
                                   )}
                                 >
                                   <span>{subItem.title}</span>
 
-                                  {/* CHILD COUNT ALWAYS VISIBLE IF > 0 */}
                                   {subItem.showCount &&
                                     (getCountForItem(subItem.showCount) ?? 0) >
                                       0 && (
-                                      <Badge className="rounded-full ml-2">
+                                      <Badge className="ml-2 rounded-full">
                                         {isLoading
                                           ? "…"
                                           : getCountForItem(subItem.showCount)}
                                       </Badge>
                                     )}
-                                </a>
+                                </Link>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                           );
@@ -194,30 +247,34 @@ export function NavMain({
                     </CollapsibleContent>
                   </div>
                 </Collapsible>
-              ) : (
-                // NORMAL MENU ITEM
-                <SidebarMenuButton asChild tooltip={item.title}>
-                  <a
-                    href={item.url}
-                    className={cn(
-                      "flex items-center justify-between w-full gap-2",
-                      isActive &&
-                        "font-bold text-primary bg-muted/50 rounded-md"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      {item.icon && <item.icon />}
-                      <span>{item.title}</span>
-                    </div>
+              </SidebarMenuItem>
+            );
+          }
 
-                    {item.showCount && (
-                      <Badge className="rounded-full ml-2">
-                        {isLoading ? "…" : getCountForItem(item.showCount) ?? 0}
-                      </Badge>
-                    )}
-                  </a>
-                </SidebarMenuButton>
-              )}
+          // ---------- SINGLE ITEMS (Dashboard, My Task, etc.) ----------
+          return (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton asChild tooltip={item.title}>
+                <Link
+                  href={item.url}
+                  className={cn(
+                    "flex items-center justify-between w-full gap-2 transition-all duration-200",
+                    isSingleActive &&
+                      "font-bold text-primary bg-muted/50 rounded-md"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                  </div>
+
+                  {item.showCount && (
+                    <Badge className="ml-2 rounded-full">
+                      {isLoading ? "…" : getCountForItem(item.showCount) ?? 0}
+                    </Badge>
+                  )}
+                </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           );
         })}

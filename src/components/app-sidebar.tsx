@@ -1,6 +1,7 @@
+// AppSidebar.tsx
 "use client";
 
-import { useState } from "react";
+import * as React from "react";
 import {
   AudioWaveform,
   BookOpen,
@@ -24,7 +25,6 @@ import {
 } from "@/components/ui/sidebar";
 import { useAppSelector } from "@/redux/store";
 
-// Updated navigation data with showCount properties
 const data = {
   user: {
     name: "Vloq PVT LTD.",
@@ -52,27 +52,20 @@ const data = {
     {
       title: "Dashboard",
       url: "/dashboard",
-      icon: Command, // or any icon you want
-      isActive: false,
+      icon: Command,
     },
     {
       title: "My Task",
       url: "/dashboard/my-tasks",
       icon: CalendarCheck2,
-      isActive: false,
       showCount: "total_my_tasks" as const,
     },
     {
       title: "Leads",
       url: "#",
       icon: BookOpenCheck,
-      isActive: true,
       showCount: "total_leads_group" as const,
       items: [
-        // {
-        //   title: "Dashboard",
-        //   url: "/dashboard/sales-executive",
-        // },
         {
           title: "Open Leads",
           url: "/dashboard/leads/leadstable",
@@ -104,17 +97,17 @@ const data = {
         {
           title: "FM Sites",
           url: "/dashboard/project/final-measurement",
-          showCount: "total_final_measurement_leads" as const, // ✅ added
+          showCount: "total_final_measurement_leads" as const,
         },
         {
           title: "Client Documents",
           url: "/dashboard/project/client-documentation",
-          showCount: "total_client_documentation_leads" as const, // ✅ added
+          showCount: "total_client_documentation_leads" as const,
         },
         {
           title: "Client Approval",
           url: "/dashboard/project/client-approval",
-          showCount: "total_client_approval_leads" as const, // ✅ added
+          showCount: "total_client_approval_leads" as const,
         },
       ],
     },
@@ -132,12 +125,12 @@ const data = {
         {
           title: "Order Login",
           url: "/dashboard/production/order-login",
-          showCount: "total_order_login_leads" as const, // ✅ added
+          showCount: "total_order_login_leads" as const,
         },
         {
           title: "Production",
           url: "/dashboard/production/pre-post-prod",
-          showCount: "total_production_stage_leads" as const, // ✅ Added
+          showCount: "total_production_stage_leads" as const,
         },
         {
           title: "Ready To Dispatch",
@@ -184,28 +177,10 @@ const data = {
       ],
     },
   ],
-  // projects: [
-  //   // {
-  //   //   name: "Design Engineering",
-  //   //   url: "#",
-  //   //   icon: Frame,
-  //   // },
-  //   // {
-  //   //   name: "Sales & Marketing",
-  //   //   url: "#",
-  //   //   icon: PieChart,
-  //   // },
-  //   // {
-  //   //   name: "Travel",
-  //   //   url: "#",
-  //   //   icon: Map,
-  //   // },
-  // ],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const user = useAppSelector((state) => state.auth.user);
-  const [openGroups, setOpenGroups] = useState<string[]>([]);
 
   const userData = user
     ? {
@@ -232,23 +207,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        <NavMain
-          items={data.navMain}
-          openGroups={openGroups}
-          onToggleGroup={(groupTitle) =>
-            setOpenGroups((prev) =>
-              prev.includes(groupTitle)
-                ? prev.filter((g) => g !== groupTitle)
-                : [...prev, groupTitle]
-            )
-          }
-        />
-
-        {/* <NavProjects projects={data.projects} /> */}
+        <NavMain items={data.navMain} />
       </SidebarContent>
+
       <SidebarFooter>
         <NavUser user={userData} />
       </SidebarFooter>
+
       <SidebarRail />
     </Sidebar>
   );

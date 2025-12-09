@@ -14,7 +14,7 @@ import {
   canViewAndWorkProductionDetails,
 } from "./privileges";
 import { useAppSelector } from "@/redux/store";
-import CustomeTooltip from "../cutome-tooltip";
+import CustomeTooltip from "../custom-tooltip";
 
 type GroupKey = "leads" | "project" | "production" | "installation";
 

@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/popover";
 import { format, parseISO } from "date-fns";
 import { Calendar as CalendarIcon, X } from "lucide-react";
-import CustomeTooltip from "./cutome-tooltip";
+import CustomeTooltip from "./custom-tooltip";
 
 interface CustomeDatePickerProps {
   value?: string;

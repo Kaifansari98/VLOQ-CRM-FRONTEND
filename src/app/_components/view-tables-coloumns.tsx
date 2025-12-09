@@ -9,7 +9,7 @@ import { canReassingLead } from "@/components/utils/privileges";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import CustomeTooltip from "@/components/custom-tooltip";
 import { useRouter } from "next/navigation";
 
 export type ProcessedLead = {

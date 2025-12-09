@@ -1,11 +1,6 @@
 "use client";
 
-import { AppSidebar } from "@/components/app-sidebar";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import {
   Breadcrumb,
@@ -30,52 +25,48 @@ const navigateFinalHandover = (row: Row) =>
 
 export default function FinalHandoverStagePage() {
   return (
-    <SidebarProvider>
-      <AppSidebar />
+    <>
+      {/* 🔹 Header */}
+      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
+        <div className="flex items-center gap-2">
+          <SidebarTrigger className="-ml-1" />
 
-      <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
+          <Separator orientation="vertical" className="h-4 mr-2" />
 
-        {/* 🔹 Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="/dashboard">Project</BreadcrumbLink>
+              </BreadcrumbItem>
 
-            <Separator orientation="vertical" className="h-4 mr-2" />
+              <BreadcrumbSeparator className="hidden md:block" />
 
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/dashboard">Project</BreadcrumbLink>
-                </BreadcrumbItem>
+              <BreadcrumbItem>
+                <BreadcrumbPage>Final Handover Stage</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
 
-                <BreadcrumbSeparator className="hidden md:block" />
+        <div className="flex items-center gap-2">
+          <AnimatedThemeToggler />
+        </div>
+      </header>
 
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Final Handover Stage</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <AnimatedThemeToggler />
-          </div>
-        </header>
-
-        {/* 🔹 Content */}
-        <main className="flex-1 overflow-x-hidden">
-          <Suspense fallback={<DataTableSkeleton columnCount={10} rowCount={8} />}>
-            <UniversalTable
-              title="Final Handover Stage"
-              description="Review, manage, and close handover-ready projects with complete documentation and field validation."
-              type="Type 16"
-              enableAdminTabs={true}
-              onRowNavigate={navigateFinalHandover}
-            />
-          </Suspense>
-        </main>
-
-      </SidebarInset>
-    </SidebarProvider>
+      {/* 🔹 Content */}
+      <main className="flex-1 overflow-x-hidden">
+        <Suspense
+          fallback={<DataTableSkeleton columnCount={10} rowCount={8} />}
+        >
+          <UniversalTable
+            title="Final Handover Stage"
+            description="Review, manage, and close handover-ready projects with complete documentation and field validation."
+            type="Type 16"
+            enableAdminTabs={true}
+            onRowNavigate={navigateFinalHandover}
+          />
+        </Suspense>
+      </main>
+    </>
   );
 }

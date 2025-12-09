@@ -1,5 +1,4 @@
 import React from "react";
-import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
@@ -25,17 +24,14 @@ export default function CustomeTooltip({
     <TooltipProvider delayDuration={0}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
-            size="sm"
+          <span
             className="border-0 shadow-none p-0 font-normal text-inherit bg-transparent 
                        hover:bg-transparent focus:bg-transparent active:bg-transparent"
           >
             {truncateValue}
-          </Button>
+          </span>
         </TooltipTrigger>
-        <TooltipContent
-          className="dark px-2 py-1 text-xs  leading-snug break-words"
-        >
+        <TooltipContent className="dark px-2 py-1 text-xs  leading-snug break-words">
           {value}
         </TooltipContent>
       </Tooltip>

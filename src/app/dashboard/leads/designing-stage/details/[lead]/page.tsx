@@ -1,17 +1,12 @@
 "use client";
 
-import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
@@ -64,7 +59,7 @@ import BookingModal from "@/components/sales-executive/designing-stage/booking-m
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useDesigningStageCounts } from "@/hooks/designing-stage/designing-leads-hooks";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import CustomeTooltip from "@/components/custom-tooltip";
 import {
   canMoveToBookingStage,
   canReassignLeadButton,
@@ -90,8 +85,7 @@ export default function DesigningStageLead() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
 
-  const { data: countsData, } =
-    useDesigningStageCounts(vendorId, leadIdNum);
+  const { data: countsData } = useDesigningStageCounts(vendorId, leadIdNum);
 
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type
@@ -176,18 +170,16 @@ export default function DesigningStageLead() {
   };
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset className="w-full h-full flex flex-col">
-        {/* Header */}
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                {/* <BreadcrumbItem> */}
-                {/* <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
+    <>
+      {/* Header */}
+      <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
+        <div className="flex items-center gap-2">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              {/* <BreadcrumbItem> */}
+              {/* <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
@@ -196,21 +188,57 @@ export default function DesigningStageLead() {
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator /> */}
-                <BreadcrumbItem>
-                  <BreadcrumbPage>
-                    <p className="font-bold">
-                      {leadCode || "Loading…"}
-                      {leadCode && (clientName ? ` - ${clientName}` : "")}
-                    </p>
-                  </BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+              <BreadcrumbItem>
+                <BreadcrumbPage>
+                  <p className="font-bold">
+                    {leadCode || "Loading…"}
+                    {leadCode && (clientName ? ` - ${clientName}` : "")}
+                  </p>
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+        <div className="flex items-center space-x-2">
+          <div>
+            {/* Move to Booking */}
+            {!canMoveToBooking ? (
+              <CustomeTooltip
+                truncateValue={
+                  <div className="flex items-center opacity-50 cursor-not-allowed px-2">
+                    <ClipboardCheck className="mr-2 h-4 w-4" />
+                    Move To Booking
+                  </div>
+                }
+                value="Requires at least 1 Quotation and 1 Design"
+              />
+            ) : (
+              <Button size="sm" onClick={() => setBookingOpenLead(true)}>
+                <ClipboardCheck className="h-3 w-3" />
+                Move To Booking
+              </Button>
+            )}
           </div>
-          <div className="flex items-center space-x-2">
-            <div>
+          <Button size="sm" onClick={() => setAssignOpen(true)}>
+            Assign Task
+          </Button>
+          <AnimatedThemeToggler />
+
+          {/* 🔹 Dropdown for actions */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <EllipsisVertical size={20} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
               {/* Move to Booking */}
-              {!canMoveToBooking ? (
+              {canMoveToBookingStage(userType) && canMoveToBooking ? (
+                <Button onClick={() => setBookingOpenLead(true)}>
+                  <ClipboardCheck className="h-4 w-4" />
+                  Move To Booking
+                </Button>
+              ) : (
                 <CustomeTooltip
                   truncateValue={
                     <div className="flex items-center opacity-50 cursor-not-allowed px-2">
@@ -218,283 +246,243 @@ export default function DesigningStageLead() {
                       Move To Booking
                     </div>
                   }
-                  value="Requires at least 1 Quotation and 1 Design"
+                  value={
+                    !canMoveToBooking
+                      ? "Requires at least 1 Quotation and 1 Design"
+                      : "You don't have permission to move this lead to booking stage"
+                  }
                 />
-              ) : (
-                <Button size="sm" onClick={() => setBookingOpenLead(true)}>
-                  <ClipboardCheck className="h-3 w-3" />
-                  Move To Booking
-                </Button>
               )}
-            </div>
-            <Button size="sm" onClick={() => setAssignOpen(true)}>
-              Assign Task
-            </Button>
-            <AnimatedThemeToggler />
 
-            {/* 🔹 Dropdown for actions */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <EllipsisVertical size={20} />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {/* Move to Booking */}
-                {canMoveToBookingStage(userType) && canMoveToBooking ? (
-                  <Button onClick={() => setBookingOpenLead(true)}>
-                    <ClipboardCheck className="h-4 w-4" />
-                    Move To Booking
-                  </Button>
+              {/* Lead Status submenu */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <CircleArrowOutUpRight className="mr-2 h-4 w-4" />
+                  Lead Status
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setActivityType("onHold");
+                      setActivityModalOpen(true);
+                    }}
+                  >
+                    <Clock className="h-4 w-4" />
+                    Mark On Hold
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setActivityType("lostApproval");
+                      setActivityModalOpen(true);
+                    }}
+                  >
+                    <XCircle className="h-4 w-4" />
+                    Mark As Lost
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              {canReassign && (
+                <DropdownMenuItem onSelect={() => setAssignOpenLead(true)}>
+                  <Users className="h-4 w-4" />
+                  Reassign Lead
+                </DropdownMenuItem>
+              )}
+
+              {/* Edit Lead */}
+
+              {canEdit && (
+                <DropdownMenuItem onSelect={() => setOpenEditModal(true)}>
+                  <SquarePen className="h-4 w-4" />
+                  Edit Lead
+                </DropdownMenuItem>
+              )}
+
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
+                    <XCircle className="h-4 w-4 text-red-500" />
+                    Delete Lead
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+
+      {/* 🔹 Tabs bar above content */}
+
+      <Tabs
+        value={activeTab}
+        onValueChange={(val) => {
+          if (val === "projects") {
+            if (canMoveToBooking) {
+              // ✅ If booking possible → open BookingModal directly
+              setBookingOpenLead(true);
+            } else {
+              // ✅ Otherwise behave like Lead Details tab
+              setActiveTab("details");
+            }
+          } else {
+            setActiveTab(val);
+          }
+        }}
+        className="w-full px-6 pt-4 "
+      >
+        <ScrollArea>
+          <div className="w-full h-full flex justify-between items-center">
+            <div>
+              <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
+                <TabsTrigger value="details">
+                  <HouseIcon size={16} className="mr-1 opacity-60" />
+                  Lead Details
+                </TabsTrigger>
+
+                {canAccessTodoTab ? (
+                  <TabsTrigger value="todo">
+                    <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                    To-Do Task
+                  </TabsTrigger>
                 ) : (
                   <CustomeTooltip
                     truncateValue={
-                      <div className="flex items-center opacity-50 cursor-not-allowed px-2">
-                        <ClipboardCheck className="mr-2 h-4 w-4" />
-                        Move To Booking
+                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                        <PanelsTopLeftIcon
+                          size={16}
+                          className="mr-1 opacity-60"
+                        />
+                        To-Do Task
                       </div>
                     }
-                    value={
-                      !canMoveToBooking
-                        ? "Requires at least 1 Quotation and 1 Design"
-                        : "You don't have permission to move this lead to booking stage"
-                    }
+                    value="Only Sales Executive can access this tab"
                   />
                 )}
-
-                {/* Lead Status submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <CircleArrowOutUpRight className="mr-2 h-4 w-4" />
-                    Lead Status
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        setActivityType("onHold");
-                        setActivityModalOpen(true);
-                      }}
-                    >
-                      <Clock className="h-4 w-4" />
-                      Mark On Hold
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        setActivityType("lostApproval");
-                        setActivityModalOpen(true);
-                      }}
-                    >
-                      <XCircle className="h-4 w-4" />
-                      Mark As Lost
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-
-                {canReassign && (
-                  <DropdownMenuItem onSelect={() => setAssignOpenLead(true)}>
-                    <Users className="h-4 w-4" />
-                    Reassign Lead
-                  </DropdownMenuItem>
-                )}
-
-                {/* Edit Lead */}
-
-                {canEdit && (
-                  <DropdownMenuItem onSelect={() => setOpenEditModal(true)}>
-                    <SquarePen className="h-4 w-4" />
-                    Edit Lead
-                  </DropdownMenuItem>
-                )}
-
-                {canDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
-                      <XCircle className="h-4 w-4 text-red-500" />
-                      Delete Lead
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
-
-        {/* 🔹 Tabs bar above content */}
-
-        <Tabs
-          value={activeTab}
-          onValueChange={(val) => {
-            if (val === "projects") {
-              if (canMoveToBooking) {
-                // ✅ If booking possible → open BookingModal directly
-                setBookingOpenLead(true);
-              } else {
-                // ✅ Otherwise behave like Lead Details tab
-                setActiveTab("details");
-              }
-            } else {
-              setActiveTab(val);
-            }
-          }}
-          className="w-full px-6 pt-4 "
-        >
-          <ScrollArea>
-            <div className="w-full h-full flex justify-between items-center">
-              <div>
-                <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-                  <TabsTrigger value="details">
-                    <HouseIcon size={16} className="mr-1 opacity-60" />
-                    Lead Details
-                  </TabsTrigger>
-
-                  {canAccessTodoTab ? (
-                    <TabsTrigger value="todo">
-                      <PanelsTopLeftIcon
-                        size={16}
-                        className="mr-1 opacity-60"
-                      />
-                      To-Do Task
-                    </TabsTrigger>
-                  ) : (
-                    <CustomeTooltip
-                      truncateValue={
-                        <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                          <PanelsTopLeftIcon
-                            size={16}
-                            className="mr-1 opacity-60"
-                          />
-                          To-Do Task
-                        </div>
-                      }
-                      value="Only Sales Executive can access this tab"
-                    />
-                  )}
-                  <TabsTrigger value="history">
-                    <BoxIcon size={16} className="mr-1 opacity-60" />
-                    Site History
-                  </TabsTrigger>
-                  <TabsTrigger value="team">
-                    <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                    Payment Information
-                  </TabsTrigger>
-                </TabsList>
-                <ScrollBar orientation="horizontal" />
-              </div>
+                <TabsTrigger value="history">
+                  <BoxIcon size={16} className="mr-1 opacity-60" />
+                  Site History
+                </TabsTrigger>
+                <TabsTrigger value="team">
+                  <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                  Payment Information
+                </TabsTrigger>
+              </TabsList>
+              <ScrollBar orientation="horizontal" />
             </div>
-          </ScrollArea>
+          </div>
+        </ScrollArea>
 
-          {/* 🔹 Tab Contents */}
-          <TabsContent value="details" >
-            <main className="flex-1 h-fit  ">
-              <LeadDetailsUtil
-                status="designing"
-                leadId={leadIdNum}
-                defaultTab="designing"
-              />
-            </main>
-          </TabsContent>
+        {/* 🔹 Tab Contents */}
+        <TabsContent value="details">
+          <main className="flex-1 h-fit  ">
+            <LeadDetailsUtil
+              status="designing"
+              leadId={leadIdNum}
+              defaultTab="designing"
+            />
+          </main>
+        </TabsContent>
 
-          <TabsContent value="todo">
-            <main className="flex-1 h-fit ">
-              <LeadDetailsUtil
-                status="designing"
-                leadId={leadIdNum}
-                defaultTab="designing"
-              />
-            </main>
-          </TabsContent>
+        <TabsContent value="todo">
+          <main className="flex-1 h-fit ">
+            <LeadDetailsUtil
+              status="designing"
+              leadId={leadIdNum}
+              defaultTab="designing"
+            />
+          </main>
+        </TabsContent>
 
-          <TabsContent value="history">
-            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
-          </TabsContent>
+        <TabsContent value="history">
+          <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
+        </TabsContent>
 
-          <TabsContent value="team">
-            <PaymentComingSoon />
-          </TabsContent>
-        </Tabs>
+        <TabsContent value="team">
+          <PaymentComingSoon />
+        </TabsContent>
+      </Tabs>
 
-        {/* ✅ Modals */}
-        <AssignTaskSiteMeasurementForm
-          open={assignOpen}
-          onOpenChange={setAssignOpen}
-          onlyFollowUp={true}
-          data={{ id: leadIdNum, name: "" }}
-        />
+      {/* ✅ Modals */}
+      <AssignTaskSiteMeasurementForm
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        onlyFollowUp={true}
+        data={{ id: leadIdNum, name: "" }}
+      />
 
-        <EditLeadModal
-          open={openEditModal}
-          onOpenChange={setOpenEditModal}
-          leadData={{ id: leadIdNum }}
-        />
+      <EditLeadModal
+        open={openEditModal}
+        onOpenChange={setOpenEditModal}
+        leadData={{ id: leadIdNum }}
+      />
 
-        <AssignLeadModal
-          open={assignOpenLead}
-          onOpenChange={setAssignOpenLead}
-          leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
-        />
+      <AssignLeadModal
+        open={assignOpenLead}
+        onOpenChange={setAssignOpenLead}
+        leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
+      />
 
-        <BookingModal
-          open={bookingOpenLead}
-          onOpenChange={setBookingOpenLead}
-          data={{ id: leadIdNum, accountId: Number(accountId) }}
-        />
+      <BookingModal
+        open={bookingOpenLead}
+        onOpenChange={setBookingOpenLead}
+        data={{ id: leadIdNum, accountId: Number(accountId) }}
+      />
 
-        <ActivityStatusModal
-          open={activityModalOpen}
-          onOpenChange={setActivityModalOpen}
-          statusType={activityType}
-          onSubmitRemark={(remark, dueDate) => {
-            if (!vendorId || !userId) {
-              toast.error("Vendor or User info is missing!");
-              return;
-            }
-            updateStatusMutation.mutate(
-              {
-                leadId: leadIdNum,
-                payload: {
-                  vendorId,
-                  accountId: Number(accountId),
-                  userId,
-                  status: activityType,
-                  remark,
-                  createdBy: userId,
-                  ...(activityType === "onHold" ? { dueDate } : {}),
-                },
+      <ActivityStatusModal
+        open={activityModalOpen}
+        onOpenChange={setActivityModalOpen}
+        statusType={activityType}
+        onSubmitRemark={(remark, dueDate) => {
+          if (!vendorId || !userId) {
+            toast.error("Vendor or User info is missing!");
+            return;
+          }
+          updateStatusMutation.mutate(
+            {
+              leadId: leadIdNum,
+              payload: {
+                vendorId,
+                accountId: Number(accountId),
+                userId,
+                status: activityType,
+                remark,
+                createdBy: userId,
+                ...(activityType === "onHold" ? { dueDate } : {}),
               },
-              {
-                onSuccess: () => {
-                  toast.success(
-                    activityType === "onHold"
-                      ? "Lead marked as On Hold!"
-                      : "Lead sent for Lost Approval!"
-                  );
-                  setActivityModalOpen(false);
-                },
-              }
-            );
-          }}
-          loading={updateStatusMutation.isPending}
-        />
+            },
+            {
+              onSuccess: () => {
+                toast.success(
+                  activityType === "onHold"
+                    ? "Lead marked as On Hold!"
+                    : "Lead sent for Lost Approval!"
+                );
+                setActivityModalOpen(false);
+              },
+            }
+          );
+        }}
+        loading={updateStatusMutation.isPending}
+      />
 
-        <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the
-                lead from your system.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteLead}>
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </SidebarInset>
-    </SidebarProvider>
+      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              lead from your system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteLead}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

@@ -8,7 +8,7 @@ import { MapPin } from "lucide-react";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 import RemarkTooltip from "@/components/origin-tooltip";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import CustomeTooltip from "@/components/custom-tooltip";
 
 import { LeadColumn } from "./column-type";
 

@@ -6,7 +6,7 @@ import { DataTableColumnHeader } from "@/components/data-table/data-table-column
 import type { DataTableRowAction } from "@/types/data-table";
 import CustomeBadge from "@/components/origin-badge";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import CustomeTooltip from "@/components/custom-tooltip";
 import { useRouter } from "next/navigation";
 import RemarkTooltip from "@/components/origin-tooltip";
 import { MapPin } from "lucide-react";
