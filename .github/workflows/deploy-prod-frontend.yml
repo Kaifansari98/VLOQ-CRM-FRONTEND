@@ -1,0 +1,42 @@
+name: 🚀 Deploy Frontend to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            echo "🔄 Pulling latest frontend code..."
+            cd /var/www/furnixcrm/production/frontend-prod
+            git fetch --all
+            git reset --hard origin/main
+
+            echo "📦 Installing dependencies..."
+            pnpm install --frozen-lockfile
+
+            echo "🏗 Building frontend..."
+            pnpm build
+
+            echo "🚀 Restarting PM2..."
+            pm2 restart furnix-frontend-prod
+
+            echo "💾 Saving PM2 state..."
+            pm2 save
+
+            echo "🎉 Frontend deployed in production successfully!"
