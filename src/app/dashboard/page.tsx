@@ -24,11 +24,13 @@ export default function Page() {
   );
 
   const [openSearchModal, setOpenSearchModal] = useState(false);
-  const [isMac, setIsMac] = useState(false); // <-- FIX
+  const [isMac, setIsMac] = useState(true); // <-- FIX
 
   // Runs only in the browser → safe
   useEffect(() => {
-    setIsMac(typeof navigator !== "undefined" && navigator.platform.includes("Mac"));
+    setIsMac(
+      typeof navigator !== "undefined" && navigator.platform.includes("Mac")
+    );
 
     const handleKey = (e: KeyboardEvent) => {
       if (
@@ -74,9 +76,8 @@ export default function Page() {
             <span className="truncate">Search leads...</span>
 
             <div className="hidden sm:flex items-center gap-1">
-              <Kbd>{navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}</Kbd>
-
-              <Kbd className="">K</Kbd>
+              <Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd>
+              <Kbd>K</Kbd>
             </div>
           </div>
 
