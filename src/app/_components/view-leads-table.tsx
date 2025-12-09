@@ -11,7 +11,7 @@ export default function ViewOpenLeadTable() {
     <UniversalTable
       type="Type 1"
       title="Open Leads"
-      description="Fresh leads awaiting initial action."
+      description="This stage displays newly generated leads that require immediate attention."
       enableAdminTabs={true}
       onRowNavigate={navigateOpenLeads}
     />
