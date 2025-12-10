@@ -46,6 +46,11 @@ export interface MiscellaneousEntry {
     id: number;
     user_name: string;
   };
+  task?: {
+    id: number;
+    task_type: string;
+    remark?: string | null;
+  } | null;
   teams: MiscellaneousTeam[];
   documents: MiscellaneousDocument[];
 }

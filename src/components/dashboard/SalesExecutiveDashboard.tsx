@@ -17,12 +17,11 @@ import {
 import BookingValueCard from "./BookingValueCard";
 import AvgDaysToBookingCard from "./AvgDaysToBookingCard";
 import EnhancedStageOverview from "./LeadStatusComparisonCard";
-import { SalesExecutiveStageCounts } from "@/api/dashboard/dashboard.api";
 
 export default function SalesExecutiveDashboard() {
   const user = useAppSelector((s) => s.auth.user);
-  const vendorId = user?.vendor?.id!;
-  const userId = user?.id!;
+  const vendorId = user?.vendor_id ?? 0;
+  const userId = user?.id ?? 0;
 
   const [performanceData, setPerformanceData] =
     useState<UiPerformanceSnapshot | null>(null);
@@ -103,6 +102,25 @@ export default function SalesExecutiveDashboard() {
       {/* Booking value and  Total booking */}
       <div className="w-full h-full flex gap-4 items-stretch">
         <div className="w-[40%]">
+          <PerformanceBarChart
+            data={
+              performanceData
+                ? {
+                    bookedThisWeek: performanceData.bookedThisWeek,
+                    bookedThisMonth: performanceData.bookedThisMonth,
+                    bookedThisYear: performanceData.bookedThisYear,
+                    bookedOverall: performanceData.bookedOverall,
+                    bookedThisWeekTotal: performanceData.bookedThisWeekTotal,
+                    bookedThisMonthTotal: performanceData.bookedThisMonthTotal,
+                    bookedThisYearTotal: performanceData.bookedThisYearTotal,
+                  }
+                : undefined
+            }
+            isLoading={isLoading}
+          />
+        </div>
+
+        <div className="w-[60%] h-full">
           <BookingValueCard
             data={
               performanceData
@@ -123,29 +141,6 @@ export default function SalesExecutiveDashboard() {
             isLoading={isLoading}
           />
         </div>
-
-        <div className="w-[60%]">
-          <PerformanceBarChart
-            data={
-              performanceData
-                ? {
-                    bookedThisWeek: performanceData.bookedThisWeek,
-                    bookedThisMonth: performanceData.bookedThisMonth,
-                    bookedThisYear: performanceData.bookedThisYear,
-                    bookedOverall: performanceData.bookedOverall,
-                    bookedThisWeekTotal: performanceData.bookedThisWeekTotal,
-                    bookedThisMonthTotal: performanceData.bookedThisMonthTotal,
-                    bookedThisYearTotal: performanceData.bookedThisYearTotal,
-                  }
-                : undefined
-            }
-            isLoading={isLoading}
-          />
-        </div>
-
-        {/* <div className="w-[60%]">
-          <div className="h-[200px] bg-red-800"></div>
-        </div> */}
       </div>
 
       {/* Error State */}

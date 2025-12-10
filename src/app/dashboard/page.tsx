@@ -24,11 +24,15 @@ export default function Page() {
   );
 
   const [openSearchModal, setOpenSearchModal] = useState(false);
+  const [isMac, setIsMac] = useState(true); // <-- FIX
 
+  // Runs only in the browser → safe
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      const isMac = navigator.platform.toUpperCase().includes("MAC");
+    setIsMac(
+      typeof navigator !== "undefined" && navigator.platform.includes("Mac")
+    );
 
+    const handleKey = (e: KeyboardEvent) => {
       if (
         (isMac && e.metaKey && e.key === "k") ||
         (!isMac && e.ctrlKey && e.key === "k")
@@ -40,7 +44,7 @@ export default function Page() {
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, []);
+  }, [isMac]);
 
   return (
     <>
@@ -72,9 +76,8 @@ export default function Page() {
             <span className="truncate">Search leads...</span>
 
             <div className="hidden sm:flex items-center gap-1">
-              <Kbd>{navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}</Kbd>
-
-              <Kbd className="">K</Kbd>
+              <Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd>
+              <Kbd>K</Kbd>
             </div>
           </div>
 

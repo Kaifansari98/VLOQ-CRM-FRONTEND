@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone", // ✅ REQUIRED for Docker standalone builds
+  
   images: {
     remotePatterns: [
       {
