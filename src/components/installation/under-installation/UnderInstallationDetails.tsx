@@ -381,7 +381,7 @@ export default function UnderInstallationDetails({
 
       {/* Installation Completion */}
       {installationStarted && (
-        <div className="mt-10 border-t pt-6">
+        <div className="mt-10 border-t pt-6 pb-20">
           <h3 className="text-lg font-semibold">Installation Completion</h3>
           <p className="text-sm text-muted-foreground mb-6">
             Update the completion status for carcass and shutter installation.

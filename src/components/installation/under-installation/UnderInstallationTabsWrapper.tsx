@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useSearchParams } from "next/navigation";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import UnderInstallationDetails from "./UnderInstallationDetails";
 import InstallationMiscellaneous from "./InstallationMiscellaneous";
@@ -25,6 +26,12 @@ export default function UnderInstallationTabsWrapper({
 }) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const account_id = accountId || 0;
+  const searchParams = useSearchParams();
+  const taskIdParam = searchParams.get("taskId");
+  const taskId =
+    taskIdParam && !Number.isNaN(Number(taskIdParam))
+      ? Number(taskIdParam)
+      : undefined;
 
   // 🔹 Fetch installation details
   const { data: underDetails } = useUnderInstallationDetails(vendorId, leadId);
@@ -71,6 +78,7 @@ export default function UnderInstallationTabsWrapper({
           vendorId={vendorId}
           leadId={leadId}
           accountId={account_id}
+          initialTaskId={taskId}
         />
       ),
     },
@@ -108,11 +116,19 @@ export default function UnderInstallationTabsWrapper({
     },
   ];
 
+  const preferredTabId = searchParams.get("tab");
+  const resolvedDefaultTabId =
+    preferredTabId &&
+    tabs.some((tab) => !tab.disabled && tab.id === preferredTabId)
+      ? preferredTabId
+      : "underInstallation";
+
   return (
     <div className="w-full h-full bg-[#fff] dark:bg-[#0a0a0a]">
       <SmoothTab
+        key={resolvedDefaultTabId}
         items={tabs}
-        defaultTabId="underInstallation"
+        defaultTabId={resolvedDefaultTabId}
         activeColor="bg-blue-500"
       />
     </div>

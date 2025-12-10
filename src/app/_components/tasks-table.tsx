@@ -118,6 +118,10 @@ const MyTaskTable = () => {
         router.push(
           `/dashboard/installation/site-readiness/details/${row.leadId}?accountId=${row.accountId}`
         );
+      } else if (row.taskType === "Miscellaneous") {
+        router.push(
+          `/dashboard/installation/under-installation/details/${row.leadId}?accountId=${row.accountId}&tab=misc&taskId=${row.id}`
+        );
       } else {
         console.log("follow up is under development");
       }

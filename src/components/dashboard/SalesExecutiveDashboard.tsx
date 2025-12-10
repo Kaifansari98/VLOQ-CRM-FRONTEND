@@ -141,29 +141,6 @@ export default function SalesExecutiveDashboard() {
             isLoading={isLoading}
           />
         </div>
-
-        <div className="w-[60%]">
-          <PerformanceBarChart
-            data={
-              performanceData
-                ? {
-                    bookedThisWeek: performanceData.bookedThisWeek,
-                    bookedThisMonth: performanceData.bookedThisMonth,
-                    bookedThisYear: performanceData.bookedThisYear,
-                    bookedOverall: performanceData.bookedOverall,
-                    bookedThisWeekTotal: performanceData.bookedThisWeekTotal,
-                    bookedThisMonthTotal: performanceData.bookedThisMonthTotal,
-                    bookedThisYearTotal: performanceData.bookedThisYearTotal,
-                  }
-                : undefined
-            }
-            isLoading={isLoading}
-          />
-        </div>
-
-        {/* <div className="w-[60%]">
-          <div className="h-[200px] bg-red-800"></div>
-        </div> */}
       </div>
 
       {/* Error State */}
