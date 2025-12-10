@@ -79,8 +79,9 @@ import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 
 export default function ProductionLeadDetails() {
   const router = useRouter();
-  const { lead: leadId } = useParams();
+  const { lead: leadId, remark } = useParams();
   const leadIdNum = Number(leadId);
+  console.log("Remark param:", remark);
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);

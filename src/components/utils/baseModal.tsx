@@ -25,7 +25,8 @@ const sizeClasses = {
   md: "max-w-md w-[95vw] md:max-w-lg",
   smd: "max-w-md w-[95vw] md:max-w-xl",
   lg: "max-w-lg w-[95vw] md:max-w-2xl lg:max-w-3xl",
-  xl: "max-w-[95vw] w-[95vw] md:max-w-[90vw] lg:max-w-[90vw] xl:max-w-[90vw]",
+  xl: "max-w-lg w-[95vw] md:max-w-2xl lg:max-w-4xl",
+  xxl: "max-w-[95vw] w-[95vw] md:max-w-[90vw] lg:max-w-[90vw] xl:max-w-[90vw]",
 };
 
 const BaseModal: React.FC<BaseModalProps> = ({

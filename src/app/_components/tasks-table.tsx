@@ -33,6 +33,7 @@ import { DataTableDateFilter } from "@/components/data-table/data-table-date-fil
 import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import CustomTabs from "@/components/custom/customeTab";
+import { extractTitleText } from "@/lib/utils";
 
 const MyTaskTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -118,6 +119,17 @@ const MyTaskTable = () => {
         router.push(
           `/dashboard/installation/site-readiness/details/${row.leadId}?accountId=${row.accountId}`
         );
+      } else if (row.taskType === "Production Ready") {
+        const clearnRemark = extractTitleText(row.remark);
+
+        console.log("Remark Text: ", clearnRemark);
+        setRowAction({
+          row: { original: row } as any,
+          variant: "productionready",
+        });
+        router.push(
+          `/dashboard/production/pre-post-prod/details/${row.leadId}?accountId=${row.accountId}&remark=${clearnRemark}`
+        );
       } else {
         console.log("follow up is under development");
       }
@@ -151,7 +163,7 @@ const MyTaskTable = () => {
     }));
   }, [vendorUserTasksQuery.data]);
 
-  console.log("My Task data: ", vendorUserTasksQuery);
+  console.log("My Task data: ", vendorUserTasksQuery.data);
 
   // Calculate task counts - Memoized to prevent re-renders
   const taskCounts = useMemo(() => {
