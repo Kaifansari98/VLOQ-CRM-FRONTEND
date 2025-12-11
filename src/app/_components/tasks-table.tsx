@@ -34,6 +34,7 @@ import { DataTableFilterList } from "@/components/data-table/data-table-filter-l
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import CustomTabs from "@/components/custom/customeTab";
 import { extractTitleText } from "@/lib/utils";
+import TaskTypeFilter from "@/components/data-table/data-table-task-filter";
 
 const MyTaskTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -76,6 +77,7 @@ const MyTaskTable = () => {
 
   const [rowAction, setRowAction] =
     useState<DataTableRowAction<ProcessedTask> | null>(null);
+  const [taskTypeFilter, setTaskTypeFilter] = useState<string[]>([]);
 
   const router = useRouter();
 
@@ -229,9 +231,15 @@ const MyTaskTable = () => {
     []
   );
 
+  const filteredRowData = useMemo(() => {
+    if (taskTypeFilter.length === 0) return rowData;
+
+    return rowData.filter((task) => taskTypeFilter.includes(task.taskType));
+  }, [rowData, taskTypeFilter]);
+
   // Create table with custom filter - Memoized to prevent re-creation
   const table = useReactTable({
-    data: rowData,
+    data: filteredRowData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -348,7 +356,11 @@ const MyTaskTable = () => {
                 placeholder="Search…"
                 className="w-full h-8 sm:w-64"
               />
-
+              <TaskTypeFilter
+                selected={taskTypeFilter}
+                onChange={setTaskTypeFilter}
+                userType={userType || ""}
+              />
               <DataTableDateFilter
                 column={table.getColumn("assignedAt")!}
                 title="Assigned At"

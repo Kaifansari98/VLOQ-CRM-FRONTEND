@@ -16,6 +16,7 @@ import {
   Truck,
   User,
   Phone,
+  Clock,
   FileText,
   Loader2,
   CheckCircle2,
@@ -28,6 +29,7 @@ import {
   useAddDispatchDetails,
   useDispatchDocuments,
   useUploadDispatchDocuments,
+  usePendingMaterialTasks,
 } from "@/api/installation/useDispatchStageLeads";
 import { useAppSelector } from "@/redux/store";
 import { useUpdateNoOfBoxes } from "@/api/production/production-api";
@@ -72,6 +74,9 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/form";
+import { Badge } from "@/components/ui/badge";
+import { AnimatePresence, motion } from "framer-motion";
+import UploadDispatchDocument from "./UploadDispatchDocument";
 
 const DispatchDetailsSchema = z.object({
   dispatch_date: z.string().nonempty("Dispatch date is required"),
@@ -150,7 +155,8 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     useDispatchDetails(vendorId, leadId);
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
-  const { data: documents, isLoading: loadingDocuments } = useDispatchDocuments(
+
+  const { data: tasks = [], isLoading } = usePendingMaterialTasks(
     vendorId,
     leadId
   );
@@ -158,10 +164,8 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
   const addDispatchMutation = useAddDispatchDetails();
-  const uploadDocsMutation = useUploadDispatchDocuments();
 
   // File Upload State
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // 🧩 For Edit No. of Boxes Modal
   const [openBoxesModal, setOpenBoxesModal] = useState(false);
@@ -173,22 +177,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   const queryClient = useQueryClient();
   const { mutateAsync: updateNoBoxes, isPending: updatingBoxes } =
     useUpdateNoOfBoxes(vendorId, leadId);
-
-  // Update form when dispatch details load
-  // React.useEffect(() => {
-  //   if (dispatchDetails) {
-  //     setFormData({
-  //       dispatch_date: dispatchDetails.dispatch_date
-  //         ? format(new Date(dispatchDetails.dispatch_date), "yyyy-MM-dd")
-  //         : "",
-  //       driver_name: dispatchDetails.driver_name || "",
-  //       driver_number: dispatchDetails.driver_number || "",
-  //       vehicle_no: dispatchDetails.vehicle_no || "",
-  //       dispatch_remark: dispatchDetails.dispatch_remark || "",
-  //       updated_by: userId,
-  //     });
-  //   }
-  // }, [dispatchDetails, userId]);
 
   React.useEffect(() => {
     if (dispatchDetails) {
@@ -213,26 +201,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     });
   });
 
-  const handleUploadDocuments = () => {
-    if (selectedFiles.length === 0) return;
-
-    uploadDocsMutation.mutate(
-      {
-        vendorId,
-        leadId,
-        payload: {
-          files: selectedFiles,
-          account_id: accountId,
-          created_by: userId,
-        },
-      },
-      {
-        onSuccess: () => {
-          setSelectedFiles([]);
-        },
-      }
-    );
-  };
+  // updload documents
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {
@@ -245,21 +214,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     }
   };
 
-  const imageExtensions = ["jpg", "jpeg", "png", "webp"];
-  const documentExtensions = ["pdf", "doc", "docx"];
-
-  const images =
-    documents?.filter((file: any) => {
-      const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
-      return imageExtensions.includes(ext || "");
-    }) || [];
-
-  const Documents =
-    documents?.filter((file: any) => {
-      const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
-      return documentExtensions.includes(ext || "");
-    }) || [];
-
   if (loadingRequiredDate && loadingDispatchDetails) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -267,6 +221,19 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
       </div>
     );
   }
+
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "completed":
+        return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+      case "pending":
+        return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
+      case "overdue":
+        return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+      default:
+        return "bg-muted text-muted-foreground";
+    }
+  };
 
   const canDelete = userType === "admin" || userType === "super-admin";
   const canViewAndWork = canViewAndWorkDispatchStage(userType, leadStatus);
@@ -540,181 +507,138 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
       <Separator />
 
-      {/* Dispatch Photos & Documents (Premium Container) */}
-      <div className="border rounded-lg bg-background overflow-hidden">
-        {/* ---------------------- HEADER ---------------------- */}
-        <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
-          <div className="space-y-0">
-            <div className="flex items-center gap-2">
-              <Upload className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-semibold tracking-tight">
-                Dispatch Photos & Documents
-              </h2>
-              <span className="text-red-500">*</span>
-            </div>
-
-            <p className="text-xs text-muted-foreground ml-7">
-              Upload and manage dispatch images & files for this lead.
-            </p>
-          </div>
-
-          {documents?.length > 0 && (
-            <span className="text-xs text-muted-foreground">
-              {documents.length} File{documents.length > 1 && "s"}
-            </span>
-          )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-fr ">
+        <div className="h-full">
+          <UploadDispatchDocument leadId={leadId} accountId={accountId} disabled={canViewAndWork} />
         </div>
 
-        {/* ---------------------- UPLOAD AREA ---------------------- */}
-        {canViewAndWork && (
-          <div className="p-6 border-b space-y-4">
-            <FileUploadField
-              value={selectedFiles}
-              onChange={setSelectedFiles}
-              accept="image/*,.pdf,.doc,.docx"
-              multiple
-            />
+        <div className="h-full">
+          <PendingMaterialDetails
+            leadId={leadId}
+            accountId={accountId}
+            disabled={canViewAndWork}
+          />
+        </div>
+      </div>
 
-            {selectedFiles.length > 0 && (
-              <div className="flex justify-end">
-                <Button
-                  size="sm"
-                  onClick={handleUploadDocuments}
-                  disabled={uploadDocsMutation.isPending}
-                  className="flex items-center gap-2"
-                >
-                  {uploadDocsMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4" />
-                      Upload Files
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ---------------------- FILE LIST ---------------------- */}
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-semibold text-foreground">
-              Uploaded Documents
-            </h4>
-          </div>
-
-          {loadingDocuments ? (
-            <div className="flex justify-center py-10 text-sm text-muted-foreground">
-              <Loader2 className="animate-spin mr-2 size-4" />
-              Loading documents...
+      {/* Pending Materials List */}
+      <div className="border rounded-lg bg-background overflow-hidden">
+        {/* ---------- HEADER ---------- */}
+        <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Clock className="h-5 w-5 text-primary" />
             </div>
-          ) : documents?.length === 0 ? (
-            <div className="p-10 border border-dashed rounded-xl flex flex-col items-center justify-center text-center bg-muted/40">
-              <FileText className="w-10 h-10 text-muted-foreground mb-3" />
-              <p className="text-sm font-medium text-muted-foreground">
-                No documents uploaded yet.
+
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">
+                Pending Materials
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Materials awaiting dispatch
+              </p>
+            </div>
+          </div>
+
+          <Badge variant="secondary" className="gap-1">
+            <Package className="h-3 w-3" />
+            {tasks.length} {tasks.length === 1 ? "Item" : "Items"}
+          </Badge>
+        </div>
+
+        {/* ---------- CONTENT ---------- */}
+        <div className="p-6">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : tasks.length === 0 ? (
+            <div className="p-10 border border-dashed rounded-xl flex flex-col items-center justify-center bg-muted/40">
+              <div className="p-4 bg-muted rounded-full">
+                <Package className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground mt-3">
+                No pending materials yet
               </p>
               <p className="text-xs text-muted-foreground">
-                Upload dispatch photos and files above.
+                Add materials using the form above
               </p>
             </div>
           ) : (
-            <ScrollArea className="max-h-[420px] pr-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
-                {[...images, ...Documents]
-                  .sort(
-                    (a, b) =>
-                      new Date(b.created_at).getTime() -
-                      new Date(a.created_at).getTime()
-                  )
-                  .map((doc: any, index: number) => {
-                    const ext = doc.doc_og_name
-                      ?.split(".")
-                      .pop()
-                      ?.toLowerCase();
-                    const isImage = [
-                      "jpg",
-                      "jpeg",
-                      "png",
-                      "gif",
-                      "bmp",
-                      "webp",
-                      "tiff",
-                      "heic",
-                      "avif",
-                      "svg",
-                    ].includes(ext);
+            <div className="space-y-4 max-h-[460px] overflow-y-auto pr-2">
+              <AnimatePresence mode="popLayout">
+                {tasks.map((task: any, idx: number) => {
+                  const [taskTitle, ...descParts] = (task.remark || "").split(
+                    "—"
+                  );
+                  const description = descParts.join("—").trim();
 
-                    return isImage ? (
-                      <ImageComponent
-                        key={`img-${doc.id}`}
-                        doc={{
-                          id: doc.id,
-                          doc_og_name: doc.doc_og_name,
-                          signedUrl: doc.signed_url,
-                          created_at: doc.created_at,
-                        }}
-                        index={index}
-                        canDelete={canDelete}
-                        onDelete={(id) => setConfirmDelete(Number(id))}
-                      />
-                    ) : (
-                      <DocumentCard
-                        key={`doc-${doc.id}`}
-                        doc={{
-                          id: doc.id,
-                          originalName: doc.doc_og_name,
-                          signedUrl: doc.signed_url,
-                          created_at: doc.created_at,
-                        }}
-                        canDelete={canDelete}
-                        onDelete={(id) => setConfirmDelete(id)}
-                      />
-                    );
-                  })}
-              </div>
-            </ScrollArea>
+                  return (
+                    <motion.div
+                      key={task.id || idx}
+                      initial={{ opacity: 0, y: 20, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.3, delay: idx * 0.05 }}
+                      layout
+                    >
+                      {/* ---------- ITEM CARD ---------- */}
+                      <div
+                        className="
+                    border rounded-xl px-4 py-4
+                    bg-background/60 backdrop-blur-sm
+                    transition-all duration-300
+                  "
+                      >
+                        <div className="flex items-start gap-3">
+                          {/* Left Icon */}
+                          <div className="p-2 bg-primary/10 rounded-lg">
+                            <Package className="h-4 w-4 text-primary" />
+                          </div>
+
+                          {/* Text Block */}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-semibold text-foreground">
+                              {taskTitle || "Untitled Material"}
+                            </h4>
+
+                            {description && (
+                              <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                                {description}
+                              </p>
+                            )}
+
+                            {/* Meta Row */}
+                            <div className="flex flex-wrap items-center gap-3 mt-3">
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <Calendar className="h-3.5 w-3.5" />
+                                Due:{" "}
+                                {format(new Date(task.due_date), "dd MMM yyyy")}
+                              </div>
+
+                              <Badge
+                                variant="outline"
+                                className={`text-xs ${getStatusColor(
+                                  task.status
+                                )} capitalize`}
+                              >
+                                {task.status === "completed" && (
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                )}
+                                {task.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
           )}
         </div>
-
-        {/* ---------------------- DELETE CONFIRMATION MODAL ---------------------- */}
-        <AlertDialog
-          open={!!confirmDelete}
-          onOpenChange={() => setConfirmDelete(null)}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Document?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. The document will be permanently
-                removed.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleConfirmDelete}
-                disabled={deleting}
-              >
-                {deleting ? "Deleting..." : "Delete"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
-
-      {/* Pending Material Details Section */}
-
-      <PendingMaterialDetails
-        leadId={leadId}
-        accountId={accountId}
-        disabled={canViewAndWork}
-      />
 
       {/* ✨ Edit No. of Boxes Modal */}
       <Dialog open={openBoxesModal} onOpenChange={setOpenBoxesModal}>
