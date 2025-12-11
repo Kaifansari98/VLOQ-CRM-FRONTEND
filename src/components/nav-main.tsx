@@ -195,18 +195,20 @@ export function NavMain({ items }: { items: NavItem[] }) {
                             <span>{item.title}</span>
                           </div>
 
-                          {/* 
-                            Parent count logic:
-                            - Group CLOSED → show parent count
-                            - Group OPEN   → hide parent count
-                          */}
-                          {item.showCount && !isOpen && (
-                            <Badge className="ml-2 rounded-full">
-                              {isLoading
-                                ? "…"
-                                : getCountForItem(item.showCount) ?? 0}
-                            </Badge>
-                          )}
+                          {(() => {
+                            if (!item.showCount || isOpen) return null;
+
+                            const count = getCountForItem(item.showCount);
+
+                            // hide when 0 or undefined
+                            if (!count) return null;
+
+                            return (
+                              <Badge className="ml-2 rounded-full">
+                                {isLoading ? "…" : count}
+                              </Badge>
+                            );
+                          })()}
                         </Link>
                       </SidebarMenuButton>
                     </CollapsibleTrigger>

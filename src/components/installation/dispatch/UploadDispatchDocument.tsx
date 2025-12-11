@@ -9,6 +9,7 @@ import {
   FolderOpen,
   Upload,
   Loader2,
+  File,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -159,7 +160,7 @@ export default function UploadDispatchDocument({
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center border bg-neutral-50 dark:bg-neutral-800 text-green-600">
-                  <ClipboardCheck className="w-6 h-6" />
+                  <File className="w-6 h-6" />
                 </div>
 
                 <div>
@@ -233,7 +234,7 @@ export default function UploadDispatchDocument({
         description="Upload or view dispatch documents"
         icon={
           <div className="p-2.5 rounded-lg bg-green-100 dark:bg-green-900 text-green-700">
-            <ClipboardCheck className="w-6 h-6" />
+            <File className="w-6 h-6" />
           </div>
         }
         size="lg"

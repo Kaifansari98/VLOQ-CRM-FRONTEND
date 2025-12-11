@@ -155,6 +155,30 @@ export function getVendorLeadsTableColumns({}: {
       enableSorting: true,
     },
 
+    {
+      accessorKey: "remark",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Remark" />
+      ),
+      meta: {
+        label: "remark",
+      },
+      enableSorting: true,
+      enableHiding: true,
+      enableColumnFilter: true,
+      cell: ({ row }) => {
+        const remark = row.getValue("remark") as string;
+        const maxLength = 20;
+
+        if (remark.length <= maxLength) {
+          return <span>{remark}</span>;
+        }
+
+        const truncateValue = remark.slice(0, maxLength) + "...";
+
+        return <RemarkTooltip remark={truncateValue} remarkFull={remark} />;
+      },
+    },
     // Task status
     {
       accessorKey: "leadStatus",
@@ -284,30 +308,6 @@ export function getVendorLeadsTableColumns({}: {
             )}
           </div>
         );
-      },
-    },
-    {
-      accessorKey: "remark",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Remark" />
-      ),
-      meta: {
-        label: "remark",
-      },
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
-      cell: ({ row }) => {
-        const remark = row.getValue("remark") as string;
-        const maxLength = 20;
-
-        if (remark.length <= maxLength) {
-          return <span>{remark}</span>;
-        }
-
-        const truncateValue = remark.slice(0, maxLength) + "...";
-
-        return <RemarkTooltip remark={truncateValue} remarkFull={remark} />;
       },
     },
 

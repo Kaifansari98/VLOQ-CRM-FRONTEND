@@ -407,6 +407,8 @@ export function canViewAndWorkUnderInstallationStage(
   );
 }
 
+
+
 export function canAccessTodoTaskTabUnderInstallationStage(
   role: string
 ): boolean {
@@ -448,6 +450,18 @@ export function canDoERDMiscellaneousDate(
     role === "admin" ||
     role === "super-admin" ||
     (role === "factory" && stage === "under-installation-stage")
+  );
+}
+
+export function canMiscellaneousMarkAsResolved(
+  role: string,
+  stage: string
+): boolean {
+  // can work and view both and factory work only final-handover-stage.
+  return (
+    role === "admin" ||
+    role === "super-admin" ||
+    (role === "site-supervisor" && stage === "under-installation-stage")
   );
 }
 

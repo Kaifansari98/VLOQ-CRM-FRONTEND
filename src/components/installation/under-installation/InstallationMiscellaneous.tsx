@@ -15,9 +15,7 @@ import {
   Currency,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { DialogFooter } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -51,6 +49,7 @@ import { useOrderLoginSummary } from "@/api/installation/useDispatchStageLeads";
 import RemarkTooltip from "@/components/origin-tooltip";
 import {
   canDoERDMiscellaneousDate,
+  canMiscellaneousMarkAsResolved,
   canViewAndWorkUnderInstallationStage,
 } from "@/components/utils/privileges";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
@@ -122,6 +121,10 @@ export default function InstallationMiscellaneous({
   const [selectedERD, setSelectedERD] = useState<string | undefined>(undefined);
   const [showConfirm, setShowConfirm] = useState(false); // confirmation modal toggle
   const canDoERDDate = canDoERDMiscellaneousDate(userType, leadStatus);
+  const canDoMarkAsResolved = canMiscellaneousMarkAsResolved(
+    userType,
+    leadStatus
+  );
   const { data: orderLoginSummary = [], isLoading: loadingSummary } =
     useOrderLoginSummary(vendorId, leadId);
   const [initialModalHandled, setInitialModalHandled] = useState(false);
@@ -900,7 +903,7 @@ export default function InstallationMiscellaneous({
                       !canDoERDDate
                         ? userType === "factory"
                           ? "This lead has moved ahead."
-                          : "Insufficient permissions."
+                          : "Only factory user can do this."
                         : undefined
                     }
                     onChange={(newDate) => {
@@ -912,11 +915,11 @@ export default function InstallationMiscellaneous({
                 </div>
 
                 {/* Resolve Button */}
-                {viewModal.data?.expected_ready_date && (
+                {viewModal.data?.expected_ready_date && canDoMarkAsResolved && (
                   <Button
                     variant="default"
                     size="default"
-                    disabled={!canDoERDDate || resolveMisc.isPending}
+                    disabled={resolveMisc.isPending}
                     onClick={() =>
                       resolveMisc.mutate(
                         {
