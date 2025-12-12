@@ -135,12 +135,8 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
         queryKey: ["leadStats", vendorId, userId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["siteMeasurementLeads", vendorId],
+        queryKey: ["universal-stage-leads"],
       });
-      queryClient.invalidateQueries({
-        queryKey: ["designingStageLeads", vendorId], // ✅ NEW
-      });
-
       handleReset();
       onOpenChange(false);
 
@@ -148,7 +144,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       router.push("/dashboard/leads/designing-stage");
     },
     onError: (error: unknown) => {
-      toastError(error)
+      toastError(error);
     },
   });
 

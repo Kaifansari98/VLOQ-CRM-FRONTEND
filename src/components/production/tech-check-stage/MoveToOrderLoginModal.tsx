@@ -120,6 +120,7 @@ export default function MoveToOrderLoginModal({
           toast.success("Lead moved to Order Login successfully!");
           router.push("/dashboard/production/order-login");
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
           setConfirmOpen(false);
           onOpenChange(false);
         },

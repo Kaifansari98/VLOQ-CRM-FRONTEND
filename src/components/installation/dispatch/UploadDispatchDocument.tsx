@@ -1,10 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  ClipboardCheck,
   FileText,
   FolderOpen,
   Upload,
@@ -66,6 +64,9 @@ export default function UploadDispatchDocument({
   const [openModal, setOpenModal] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+
+
+  console.log("Dispatch stage disabled: ", disabled);
 
   /* -----------------------------------------------------------
      🔹 HELPERS (PURE FUNCTIONS)
@@ -242,7 +243,7 @@ export default function UploadDispatchDocument({
         <div className="space-y-6 p-4">
           {/* Upload Section */}
           <div className="space-y-4">
-            {!disabled && (
+            {disabled && (
               <>
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold">Upload New Files</h4>

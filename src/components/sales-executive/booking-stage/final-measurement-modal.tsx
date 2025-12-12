@@ -96,6 +96,9 @@ const FinalMeasurementModal = ({
           queryClient.invalidateQueries({
             queryKey: ["leadStats", vendorId, userId],
           });
+          queryClient.invalidateQueries({
+            queryKey: ["universal-stage-leads"],
+          });
           form.reset();
           onOpenChange(false);
 

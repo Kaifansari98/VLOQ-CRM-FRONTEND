@@ -491,8 +491,12 @@ export default function UnderInstallationLeadDetails() {
                   vendorId: lead.vendor_id,
                   leadId: lead.id,
                   updated_by: userId!,
-                });
+                }
+              
+              );
                 setShowMoveModal(false);
+              
+                
               }}
             >
               Confirm

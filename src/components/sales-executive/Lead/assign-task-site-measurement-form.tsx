@@ -118,7 +118,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
           queryKey: ["leadStats", vendorId, userId],
         });
         queryClient.invalidateQueries({
-          queryKey: ["siteMeasurementLeads", vendorId],
+          queryKey: ["universal-stage-leads"],
         });
         onOpenChange(false);
 

@@ -197,7 +197,7 @@ export default function LeadsGenerationForm({
         queryKey: ["leadStats", vendorId, userId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["universal-stage-leads", vendorId],
+        queryKey: ["universal-stage-leads"],
       });
       queryClient.invalidateQueries({
         queryKey: ["vendorUserLeads", vendorId, userId],
@@ -225,7 +225,7 @@ export default function LeadsGenerationForm({
         queryKey: ["leadStats", vendorId, userId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["vendorUserLeadsOpen", vendorId],
+        queryKey: ["universal-stage-leads"],
       });
       queryClient.invalidateQueries({
         queryKey: ["vendorUserLeads", vendorId, userId],

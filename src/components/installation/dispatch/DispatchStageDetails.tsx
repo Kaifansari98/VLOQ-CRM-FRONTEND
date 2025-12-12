@@ -235,7 +235,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     }
   };
 
-  const canDelete = userType === "admin" || userType === "super-admin";
+  // const canDelete = userType === "admin" || userType === "super-admin";
   const canViewAndWork = canViewAndWorkDispatchStage(userType, leadStatus);
 
   return (

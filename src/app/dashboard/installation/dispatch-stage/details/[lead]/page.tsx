@@ -408,10 +408,10 @@ export default function DispatchPlanningLeadDetails() {
                       );
                       setOpenMoveConfirm(false);
                       queryClient.invalidateQueries({
-                        queryKey: ["dispatchStageLeads"],
+                        queryKey: ["universal-stage-leads"],
                       });
                       queryClient.invalidateQueries({
-                        queryKey: ["underInstallationStageLeads"],
+                        queryKey: ["vendorOverallLeads"],
                       });
                       // Optionally redirect to the new stage’s page
                       router.push("/dashboard/installation/under-installation");

@@ -231,15 +231,22 @@ export function NavMain({ items }: { items: NavItem[] }) {
                                 >
                                   <span>{subItem.title}</span>
 
-                                  {subItem.showCount &&
-                                    (getCountForItem(subItem.showCount) ?? 0) >
-                                      0 && (
+                                  {(() => {
+                                    if (!subItem.showCount) return null;
+
+                                    const count = getCountForItem(
+                                      subItem.showCount
+                                    );
+
+                                    // Hide when 0, undefined, null
+                                    if (!count) return null;
+
+                                    return (
                                       <Badge className="ml-2 rounded-full">
-                                        {isLoading
-                                          ? "…"
-                                          : getCountForItem(subItem.showCount)}
+                                        {isLoading ? "…" : count}
                                       </Badge>
-                                    )}
+                                    );
+                                  })()}
                                 </Link>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>

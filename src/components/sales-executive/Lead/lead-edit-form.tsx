@@ -140,7 +140,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       });
 
       queryClient.invalidateQueries({
-        queryKey: ["vendorUserLeadsOpen", vendorId],
+        queryKey: ["universal-stage-leads"],
       });
 
       queryClient.invalidateQueries({
