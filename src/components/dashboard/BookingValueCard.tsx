@@ -143,51 +143,54 @@ export default function BookingValueCard({
         </DropdownMenu>
       </CardHeader>
 
-      <CardContent  className="h-[200px]">
+      <CardContent className="h-[200px]">
         {isLoading ? (
           <div className="h-[220px] flex items-center justify-center ">
             <div className="h-10 w-10 border-4 border-muted border-t-primary rounded-full animate-spin"></div>
           </div>
         ) : (
-       
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={chartData}
-                margin={{ left: 0, right: 0, top: 5, bottom: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="hsl(var(--border))"
-                  opacity={0.3}
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fill: "var(--foreground)", fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  formatter={(value: number) =>
-                    value.toLocaleString("en-IN")
-                  }
-                
-                  contentStyle={{
-                    border: "1px solid var(--border)",
-                    borderRadius: "10px",
-                    color: "var(--tooltip-text)",
-                    boxShadow: "0px 4px 12px rgba(0,0,0,0.1)",
-                    fontSize: "12px",
-                  }}
-                />
-                <Bar
-                  dataKey="value"
-                  fill="var(--primary)"
-                  radius={[6, 6, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={chartData}
+              margin={{ left: 0, right: 0, top: 5, bottom: 0 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(var(--border))"
+                opacity={0.3}
+                vertical={false}
+              />
+              <XAxis
+                dataKey="name"
+                tick={{ fill: "var(--foreground)", fontSize: 12 }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <Tooltip
+                formatter={(value: number) => value.toLocaleString("en-IN")}
+                contentStyle={{
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "10px",
+                  boxShadow: "0px 4px 12px rgba(0,0,0,0.15)",
+                }}
+                labelStyle={{
+                  color: "var(--tooltip-text)",
+                  fontSize: "12px",
+                  fontWeight: 500,
+                }}
+                itemStyle={{
+                  color: "var(--tooltip-text)",
+                  fontSize: "12px",
+                }}
+              />
+
+              <Bar
+                dataKey="value"
+                fill="var(--primary)"
+                radius={[6, 6, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
         )}
       </CardContent>
     </Card>

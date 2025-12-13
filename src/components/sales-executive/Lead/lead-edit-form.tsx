@@ -141,6 +141,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
 
       queryClient.invalidateQueries({
         queryKey: ["universal-stage-leads"],
+        exact: false,
       });
 
       queryClient.invalidateQueries({

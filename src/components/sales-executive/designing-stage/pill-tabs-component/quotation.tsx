@@ -37,19 +37,11 @@ const QuotationTab = () => {
   const leadStatus = leadData?.status;
 
   const { data, error } = useQuotationDoc(vendorId, leadId);
+
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
-
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
-  const designQuotationDocs = data?.data?.documents || [];
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
-  };
-
-  // ✅ Delete confirmation handler
   const handleConfirmDelete = () => {
     if (confirmDelete) {
       deleteDocument({
@@ -60,6 +52,14 @@ const QuotationTab = () => {
       setConfirmDelete(null);
     }
   };
+  const designQuotationDocs = data?.data?.documents || [];
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+  };
+
+  // ✅ Delete confirmation handler
 
   // ✅ Show error state
   if (error) {
@@ -91,6 +91,7 @@ const QuotationTab = () => {
     userType === "super-admin" ||
     (userType === "sales-executive" && leadStatus === "designing-stage");
 
+  console.log("leads stage current: ", leadStatus);
   return (
     <div>
       {/* -------- Quotation Section (Matched UI) -------- */}

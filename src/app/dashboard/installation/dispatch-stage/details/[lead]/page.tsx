@@ -257,7 +257,7 @@ export default function DispatchPlanningLeadDetails() {
                 {/* ✅ Dispatch Planning Details */}
                 <TabsTrigger value="details">
                   <Truck size={16} className="mr-1 opacity-60" />
-                  Dispatch Planning Details
+                  Dispatch Details
                 </TabsTrigger>
 
                 {/* ✅ To-Do Task (Conditional Access) */}
@@ -409,6 +409,7 @@ export default function DispatchPlanningLeadDetails() {
                       setOpenMoveConfirm(false);
                       queryClient.invalidateQueries({
                         queryKey: ["universal-stage-leads"],
+                        exact: false,
                       });
                       queryClient.invalidateQueries({
                         queryKey: ["vendorOverallLeads"],

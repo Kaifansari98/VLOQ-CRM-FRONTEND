@@ -212,6 +212,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
 
         queryClient.invalidateQueries({
           queryKey: ["universal-stage-leads"],
+          exact: false,
         });
 
         onOpenChange(false);

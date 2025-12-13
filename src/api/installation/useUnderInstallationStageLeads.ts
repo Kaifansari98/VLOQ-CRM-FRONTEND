@@ -1130,6 +1130,7 @@ export function useMoveToFinalHandover() {
       queryClient.invalidateQueries({ queryKey: ["leadStats"] });
       queryClient.invalidateQueries({
         queryKey: ["universal-stage-leads"],
+          exact: false,
       });
       queryClient.invalidateQueries({
         queryKey: ["vendorOverallLeads"],

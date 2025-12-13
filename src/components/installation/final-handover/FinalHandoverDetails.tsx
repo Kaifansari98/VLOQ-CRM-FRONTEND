@@ -86,7 +86,6 @@ export default function FinalHandover({
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
-  const canDelete = userType === "admin" || userType === "super-admin";
   const canWork = canViewAndWorkFinalHandoverStage(userType, leadStatus);
 
   const sections: DocumentSection[] = [
@@ -492,7 +491,7 @@ export default function FinalHandover({
                                 created_at: doc.created_at,
                               }}
                               index={index}
-                              canDelete={canDelete}
+                              canDelete={canWork}
                               onDelete={(id) => setConfirmDelete(Number(id))}
                             />
                           </motion.div>
@@ -514,7 +513,7 @@ export default function FinalHandover({
                                 signedUrl: doc.signed_url,
                                 created_at: doc.created_at,
                               }}
-                              canDelete={canDelete}
+                              canDelete={canWork}
                               onDelete={(id) => setConfirmDelete(id)}
                             />
                           </motion.div>

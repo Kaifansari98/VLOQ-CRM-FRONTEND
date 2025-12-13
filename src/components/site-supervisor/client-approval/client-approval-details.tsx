@@ -19,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 
 interface Props {
   leadId: number;
@@ -37,14 +38,22 @@ export default function ClientApprovalDetails({ leadId }: Props) {
     vendorId,
     leadId
   );
+
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
+
+  console.log("Client Approval Data:", data);
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
   // 🧩 Local State
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
-  // 🧩 Permissions
-  const canDelete = userType === "admin" || userType === "super-admin";
+  //🧩 Permissions
+  const canDelete =
+    userType === "admin" ||
+    userType === "super-admin" ||
+    (userType === "sales-executive" && leadStatus === "client-approval-stage");
 
   // 🧩 Handlers
   const handleConfirmDelete = () => {

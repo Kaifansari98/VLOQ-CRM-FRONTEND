@@ -28,6 +28,7 @@ import { useDeleteDocument } from "@/api/leads";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { canUploadReadyToDispatchDocuments } from "@/components/utils/privileges";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 
 export default function CurrentSitePhotosSection({
   leadId,
@@ -39,6 +40,8 @@ export default function CurrentSitePhotosSection({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
 
   const queryClient = useQueryClient();
 
@@ -58,7 +61,12 @@ export default function CurrentSitePhotosSection({
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
-  const canDelete = userType === "admin" || userType === "super-admin";
+  const canDelete =
+    userType === "admin" ||
+    userType === "super-admin" ||
+    (userType === "sales-executive" &&
+      leadStatus === "ready-to-dispatch-stage");
+
   const canUploadDocuments = canUploadReadyToDispatchDocuments(userType);
 
   const hasFiles = Array.isArray(sitePhotos) && sitePhotos.length > 0;

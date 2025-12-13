@@ -347,14 +347,30 @@ export default function UnderInstallationLeadDetails() {
           </div>
           <div className="flex px-6">
             {!underDetails?.actual_installation_start_date ? (
-              <Button size="sm" onClick={() => setOpenStartModal(true)}>
-                Start Installation
-              </Button>
+              canAccessTodoTab ? (
+                // ✅ User allowed — normal working button
+                <Button size="sm" onClick={() => setOpenStartModal(true)}>
+                  Start Installation
+                </Button>
+              ) : (
+                // ❌ No access — show tooltip + disabled button
+                <CustomeTooltip
+                  value="Only site supervisor can access this button"
+                  truncateValue={
+                    <Button
+                      size="sm"
+                      disabled
+                      className="cursor-not-allowed opacity-60"
+                    >
+                      Start Installation
+                    </Button>
+                  }
+                />
+              )
             ) : (
+              // Existing installation date display block (unchanged)
               <div className="flex flex-col items-start">
                 <p className="text-xs font-semibold">Installation Started On</p>
-
-                {/* Stylish formatted date & time */}
                 <div className="mt-1">
                   <p className="text-sm">
                     {formatInstallationDate(
@@ -491,12 +507,8 @@ export default function UnderInstallationLeadDetails() {
                   vendorId: lead.vendor_id,
                   leadId: lead.id,
                   updated_by: userId!,
-                }
-              
-              );
+                });
                 setShowMoveModal(false);
-              
-                
               }}
             >
               Confirm

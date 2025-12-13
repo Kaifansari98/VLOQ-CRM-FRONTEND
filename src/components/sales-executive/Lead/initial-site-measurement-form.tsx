@@ -136,6 +136,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       });
       queryClient.invalidateQueries({
         queryKey: ["universal-stage-leads"],
+        exact: false,
       });
       handleReset();
       onOpenChange(false);

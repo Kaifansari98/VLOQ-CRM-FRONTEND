@@ -90,11 +90,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     ) || [];
 
   const status = leadStatus?.status;
-  // 🧩 Permissions
-  console.log("userType: ", userType);
-  console.log("status: ", status);
+
   const canDelete = canUploadOrDeleteBookingDone(userType, status);
-  console.log("CandDelete or upload: ", canDelete);
+
+  console.log("Lead Status: ", status);
 
   // 🧩 Delete handler
   const handleConfirmDelete = () => {

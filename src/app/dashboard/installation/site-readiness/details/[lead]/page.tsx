@@ -136,6 +136,7 @@ export default function ReadyToDispatchLeadDetails() {
 
       queryClient.invalidateQueries({
         queryKey: ["universal-stage-leads"],
+        exact: false,
       });
       queryClient.invalidateQueries({
         queryKey: ["vendorOverallLeads"],

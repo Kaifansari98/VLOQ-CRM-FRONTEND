@@ -68,6 +68,7 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import { useQueryClient } from "@tanstack/react-query";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
+import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 
 export default function OrderLoginLeadDetails() {
   const { lead: leadId } = useParams();
@@ -305,23 +306,24 @@ export default function OrderLoginLeadDetails() {
 
         <TabsContent value="details">
           <main className="flex-1 h-fit">
-            <LeadDetailsUtil
+            <LeadDetailsGrouped
               status="orderLogin"
+              defaultTab={canOrderLogin(userType) ? "orderLogin" : "techcheck"}
               leadId={leadIdNum}
               accountId={accountId}
-              defaultTab={canOrderLogin(userType) ? "orderLogin" : "techcheck"}
+              defaultParentTab="production"
             />
           </main>
         </TabsContent>
 
         <TabsContent value="todo">
           <main className="flex-1 h-fit">
-            <LeadDetailsUtil
+            <LeadDetailsGrouped
               status="orderLogin"
+              defaultTab={canOrderLogin(userType) ? "orderLogin" : "techcheck"}
               leadId={leadIdNum}
               accountId={accountId}
-              defaultTab={canOrderLogin(userType) ? "orderLogin" : "techcheck"}
-              forceDefaultTab="order-login"
+              defaultParentTab="production"
             />
           </main>
         </TabsContent>

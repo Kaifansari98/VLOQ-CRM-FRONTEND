@@ -2,13 +2,7 @@
 
 import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  FileText,
-  FolderOpen,
-  Upload,
-  Loader2,
-  File,
-} from "lucide-react";
+import { FileText, FolderOpen, Upload, Loader2, File } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import BaseModal from "@/components/utils/baseModal";
@@ -52,6 +46,7 @@ export default function UploadDispatchDocument({
   ------------------------------------------------------------ */
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const queryClient = useQueryClient();
 
   const { data: docsData, isLoading } = useDispatchDocuments(vendorId, leadId);
@@ -64,7 +59,6 @@ export default function UploadDispatchDocument({
   const [openModal, setOpenModal] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
-
 
   console.log("Dispatch stage disabled: ", disabled);
 
@@ -178,7 +172,7 @@ export default function UploadDispatchDocument({
                 className="text-xs"
                 onClick={() => setOpenModal(true)}
               >
-                {docs.length === 0 ? "Upload" : "View"}
+                {docs.length === 0 && disabled ? "Upload" : "View"}
               </Button>
             </div>
 
@@ -265,24 +259,26 @@ export default function UploadDispatchDocument({
             )}
 
             {selectedFiles.length > 0 && (
-              <Button
-                onClick={handleUpload}
-                disabled={uploadDocsMutation.isPending}
-                className="gap-2"
-              >
-                {uploadDocsMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4" />
-                    Upload {selectedFiles.length} File
-                    {selectedFiles.length > 1 ? "s" : ""}
-                  </>
-                )}
-              </Button>
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleUpload}
+                  disabled={uploadDocsMutation.isPending}
+                  className="gap-2"
+                >
+                  {uploadDocsMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4" />
+                      Upload {selectedFiles.length} File
+                      {selectedFiles.length > 1 ? "s" : ""}
+                    </>
+                  )}
+                </Button>
+              </div>
             )}
           </div>
 
@@ -311,7 +307,7 @@ export default function UploadDispatchDocument({
                       signedUrl: doc.signedUrl ?? doc.signed_url,
                       created_at: doc.created_at,
                     }}
-                    canDelete
+                    canDelete={disabled}
                     onDelete={(id) =>
                       setConfirmDelete(typeof id === "string" ? +id : id)
                     }
@@ -327,7 +323,7 @@ export default function UploadDispatchDocument({
                       signedUrl: doc.signedUrl ?? doc.signed_url,
                       created_at: doc.created_at,
                     }}
-                    canDelete
+                    canDelete={disabled}
                     onDelete={(id) =>
                       setConfirmDelete(typeof id === "string" ? +id : id)
                     }

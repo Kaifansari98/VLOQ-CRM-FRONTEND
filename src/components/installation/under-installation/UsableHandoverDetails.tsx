@@ -79,7 +79,7 @@
     const { data: leadData } = useLeadStatus(leadId, vendorId);
     const leadStatus = leadData?.status;
 
-    const canDelete = userType === "admin" || userType === "super-admin";
+    
     const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
 
     useEffect(() => {
@@ -463,7 +463,7 @@
                               created_at: doc.created_at,
                             }}
                             index={index}
-                            canDelete={canDelete}
+                            canDelete={canWork}
                             onDelete={(id) => setConfirmDelete(Number(id))}
                           />
                         </motion.div>
@@ -485,7 +485,7 @@
                               signedUrl: doc.signedUrl ?? doc.signed_url,
                               created_at: doc.created_at,
                             }}
-                            canDelete={canDelete}
+                            canDelete={canWork}
                             onDelete={(id) => setConfirmDelete(id)}
                           />
                         </motion.div>

@@ -69,6 +69,7 @@ import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useQueryClient } from "@tanstack/react-query";
 import BaseModal from "@/components/utils/baseModal";
+import { useDeleteDocument } from "@/api/leads";
 interface InstallationMiscellaneousProps {
   vendorId: number;
   leadId: number;
@@ -128,7 +129,20 @@ export default function InstallationMiscellaneous({
   const { data: orderLoginSummary = [], isLoading: loadingSummary } =
     useOrderLoginSummary(vendorId, leadId);
   const [initialModalHandled, setInitialModalHandled] = useState(false);
+  const { mutate: deleteDocument, isPending: deleting } =
+    useDeleteDocument(leadId);
+  const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
+  const handleConfirmDelete = () => {
+    if (confirmDelete) {
+      deleteDocument({
+        vendorId: vendorId!,
+        documentId: confirmDelete,
+        deleted_by: userId!,
+      });
+      setConfirmDelete(null);
+    }
+  };
   useEffect(() => {
     setInitialModalHandled(false);
   }, [initialTaskId]);
@@ -865,7 +879,12 @@ export default function InstallationMiscellaneous({
                             signedUrl: doc.signed_url,
                             created_at: doc.uploaded_at,
                           }}
-                          canDelete={false}
+                          canDelete={canWork}
+                          onDelete={(id) =>
+                            setConfirmDelete(
+                              typeof id === "number" ? id : Number(id)
+                            )
+                          }
                         />
                       );
                     }
@@ -879,7 +898,7 @@ export default function InstallationMiscellaneous({
                           signedUrl: doc.signed_url,
                           created_at: doc.uploaded_at,
                         }}
-                        canDelete={false}
+                        canDelete={canWork}
                       />
                     );
                   })}
@@ -1022,6 +1041,30 @@ export default function InstallationMiscellaneous({
               }}
             >
               Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={() => setConfirmDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The selected document will be
+              permanently removed from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

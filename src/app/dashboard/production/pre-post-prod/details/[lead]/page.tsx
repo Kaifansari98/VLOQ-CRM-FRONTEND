@@ -548,6 +548,7 @@ export default function ProductionLeadDetails() {
 
                   queryClient.invalidateQueries({
                     queryKey: ["universal-stage-leads"],
+                    exact: false,
                   });
 
                   // ✅ Redirect after a short delay for smooth UX

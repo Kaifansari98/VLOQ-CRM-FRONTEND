@@ -121,7 +121,11 @@ export default function PostDispatchStage({
     }
   };
 
-  const canDelete = userType === "admin" || userType === "super-admin";
+  const canDelete =
+    userType === "admin" ||
+    userType === "super-admin" ||
+    (userType === "factory" && leadStatus === "dispatch-stage");
+
   const canViewAndWork = canViewAndWorkDispatchStage(userType, leadStatus);
   return (
     <div className="border rounded-lg overflow-hidden bg-background">

@@ -104,6 +104,7 @@ const ClientDocumentationModal: React.FC<Props> = ({
       });
       queryClient.invalidateQueries({
         queryKey: ["universal-stage-leads"],
+        exact: false,
       });
 
       onOpenChange(false);

@@ -153,6 +153,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
 
         queryClient.invalidateQueries({
           queryKey: ["universal-stage-leads"],
+          exact: false,
         });
         queryClient.invalidateQueries({
           queryKey: ["vendorOverallLeads"],
