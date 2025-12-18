@@ -20,6 +20,8 @@ import {
 import { useUploadClientDocumentation } from "@/hooks/final-measurement/use-final-measurement";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSelectionData } from "@/hooks/designing-stage/designing-leads-hooks";
+import SelectionsTabForClientDocs from "@/components/sales-executive/designing-stage/pill-tabs-component/SelectionsTabForClientDocs";
 
 // -------------------- Props --------------------
 interface Props {
@@ -57,6 +59,11 @@ const ClientDocumentationModal: React.FC<Props> = ({
   const createdBy = useAppSelector((state) => state.auth.user?.id);
   const leadId = data?.id;
   const accountId = data?.accountId;
+  const { data: selectionsData } = useSelectionData(vendorId!, leadId!);
+
+  const hasSelections =
+    Array.isArray(selectionsData?.data) &&
+    selectionsData.data.some((s: any) => s.desc && s.desc !== "NULL");
 
   const { mutateAsync, isPending } = useUploadClientDocumentation();
 
@@ -77,6 +84,12 @@ const ClientDocumentationModal: React.FC<Props> = ({
 
   // -------------------- Form Submit --------------------
   const onSubmit = async (values: ClientDocFormValues) => {
+    if (!hasSelections) {
+      toast.error(
+        "Please complete design selections before uploading documents"
+      );
+      return;
+    }
     if (!leadId || !accountId || !vendorId || !createdBy) {
       toast.error("Missing required information");
       console.log("lead id :- ", leadId);
@@ -123,10 +136,14 @@ const ClientDocumentationModal: React.FC<Props> = ({
       open={open}
       onOpenChange={onOpenChange}
       title={`Client Documentation`}
-      size="lg"
+      size="xl"
       description="upload and manage client-related documentation in one place."
     >
       <div className="px-5 py-4">
+        <div className="mb-6">
+          <SelectionsTabForClientDocs leadId={leadId!} accountId={accountId!} />
+        </div>
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -170,15 +187,7 @@ const ClientDocumentationModal: React.FC<Props> = ({
             />
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isPending}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" disabled={isPending || !hasSelections}>
                 {isPending ? "Uploading..." : "Upload"}
               </Button>
             </div>

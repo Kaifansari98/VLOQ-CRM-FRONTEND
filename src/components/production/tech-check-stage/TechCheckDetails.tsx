@@ -30,6 +30,9 @@ import {
 import DocumentCard from "@/components/utils/documentCard";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useSelectionData } from "@/hooks/designing-stage/designing-leads-hooks";
+import SectionHeader from "@/utils/sectionHeader";
+
 type Props = {
   leadId: number;
 };
@@ -61,6 +64,14 @@ export default function TechCheckDetails({ leadId }: Props) {
 
   console.log("Client Documentation: ", clientDocs);
   const { data } = useClientRequiredCompletionDate(vendorId, leadId);
+
+  const { data: selectionsData } = useSelectionData(vendorId!, leadId);
+
+  const selections = {
+    carcas: selectionsData?.data?.find((s: any) => s.type === "Carcas")?.desc,
+    shutter: selectionsData?.data?.find((s: any) => s.type === "Shutter")?.desc,
+    handles: selectionsData?.data?.find((s: any) => s.type === "Handles")?.desc,
+  };
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
@@ -549,6 +560,58 @@ export default function TechCheckDetails({ leadId }: Props) {
           </div>
         </div>
       </motion.div>
+
+      {/* ---------------------------------------------------------- */}
+      {/* -------- Design Selections -------- */}
+      {/* ---------------------------------------------------------- */}
+      <motion.section
+        variants={itemVariants}
+        className="
+    bg-white dark:bg-neutral-900
+    rounded-2xl 
+    border border-border 
+    overflow-hidden
+  "
+      >
+        <SectionHeader
+          title="Design Selections"
+          icon={<FileText size={20} />}
+        />
+
+        <div className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Carcas */}
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Carcas</p>
+              <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
+                {selections.carcas && selections.carcas !== "NULL"
+                  ? selections.carcas
+                  : "—"}
+              </div>
+            </div>
+
+            {/* Shutter */}
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Shutter</p>
+              <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
+                {selections.shutter && selections.shutter !== "NULL"
+                  ? selections.shutter
+                  : "—"}
+              </div>
+            </div>
+
+            {/* Handles */}
+            <div className="md:col-span-2">
+              <p className="text-sm text-muted-foreground mb-1">Handles</p>
+              <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
+                {selections.handles && selections.handles !== "NULL"
+                  ? selections.handles
+                  : "—"}
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.section>
 
       {/* ========== INITIAL SITE MEASUREMENT (PREMIUM CRM) ========== */}
       <div
