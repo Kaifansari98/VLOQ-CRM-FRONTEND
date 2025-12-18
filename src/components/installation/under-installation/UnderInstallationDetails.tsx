@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import InstallationDayWiseReports from "./InstallationDayWiseReports";
 import { canViewAndWorkUnderInstallationStage } from "@/components/utils/privileges";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import CustomeTooltip from "@/components/custom-tooltip";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -81,8 +81,6 @@ export default function UnderInstallationDetails({
       value: String(i.id),
       label: i.installer_name,
     })) ?? [];
-
-
 
   // 🔹 Initialize data
   useEffect(() => {
@@ -383,7 +381,7 @@ export default function UnderInstallationDetails({
 
       {/* Installation Completion */}
       {installationStarted && (
-        <div className="mt-10 border-t pt-6">
+        <div className="mt-10 border-t pt-6 pb-20">
           <h3 className="text-lg font-semibold">Installation Completion</h3>
           <p className="text-sm text-muted-foreground mb-6">
             Update the completion status for carcass and shutter installation.

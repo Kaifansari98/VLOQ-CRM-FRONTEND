@@ -97,7 +97,7 @@ export default function BookingValueCard({
       : "This Year";
 
   return (
-    <Card className="w-full border flex flex-col justify-between bg-[#fff] dark:bg-[#0a0a0a]">
+    <Card className="w-full h-full border flex flex-col justify-between bg-[#fff] dark:bg-[#0a0a0a]">
       <CardHeader className="flex flex-row justify-between items-start pb-2 space-y-0">
         <div className="space-y-1">
           <CardTitle className="text-sm font-medium">Booking Value</CardTitle>
@@ -143,13 +143,13 @@ export default function BookingValueCard({
         </DropdownMenu>
       </CardHeader>
 
-      <CardContent>
+      <CardContent  className="h-[200px]">
         {isLoading ? (
           <div className="h-[220px] flex items-center justify-center ">
             <div className="h-10 w-10 border-4 border-muted border-t-primary rounded-full animate-spin"></div>
           </div>
         ) : (
-          <div className="h-[220px]">
+       
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={chartData}
@@ -187,7 +187,7 @@ export default function BookingValueCard({
                 />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          
         )}
       </CardContent>
     </Card>

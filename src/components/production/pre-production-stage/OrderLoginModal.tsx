@@ -16,7 +16,7 @@ import CustomeDatePicker from "@/components/date-picker";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import CustomeTooltip from "@/components/custom-tooltip";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 import { useAppSelector } from "@/redux/store";
@@ -222,6 +222,7 @@ export default function OrderLoginModal({
         title="Under Production - Workflow"
         description="Control production workflow by updating vendor details, timelines, and completion status."
         size="xl"
+      
       >
         <motion.div
           initial={{ opacity: 0, y: 10 }}

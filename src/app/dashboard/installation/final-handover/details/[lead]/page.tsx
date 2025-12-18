@@ -1,17 +1,12 @@
 "use client";
 
-import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
@@ -61,7 +56,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import CustomeTooltip from "@/components/custom-tooltip";
 
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
@@ -133,8 +128,6 @@ export default function FinalHandoverLeadDetails() {
     useState(false);
   const [validatingPayment, setValidatingPayment] = useState(false);
 
-
-
   const isReady = readiness?.can_move_to_final_handover;
   const canMarkCompleted = isReady && paymentStatus?.is_paid;
 
@@ -173,8 +166,7 @@ export default function FinalHandoverLeadDetails() {
       { leadId: leadIdNum, vendorId, userId },
       {
         onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: (err: unknown) =>
-          toastError(err)
+        onError: (err: unknown) => toastError(err),
       }
     );
 
@@ -182,32 +174,30 @@ export default function FinalHandoverLeadDetails() {
   };
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
-        {/* 🔹 Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
+    <>
+      {/* 🔹 Header */}
+      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
+        <div className="flex items-center gap-2">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
 
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbPage>
-                    <p className="font-bold">
-                      {leadCode || "Loading…"}
-                      {leadCode && (clientName ? ` - ${clientName}` : "")}
-                    </p>
-                  </BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbPage>
+                  <p className="font-bold">
+                    {leadCode || "Loading…"}
+                    {leadCode && (clientName ? ` - ${clientName}` : "")}
+                  </p>
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
 
-          {/* 🔹 Header Actions */}
-          <div className="flex items-center space-x-3">
-            {/* {!paymentStatusLoading &&
+        {/* 🔹 Header Actions */}
+        <div className="flex items-center space-x-3">
+          {/* {!paymentStatusLoading &&
               paymentStatus &&
               !paymentStatus.is_paid && (
                 <div className="text-xs leading-tight text-right">
@@ -219,327 +209,324 @@ export default function FinalHandoverLeadDetails() {
                 </div>
               )} */}
 
-            {canMarkCompleted ? (
-              <Button
-                className="flex items-center gap-2"
-                onClick={() => setOpenProjectCompleteConfirm(true)}
-              >
-                <CheckCircle2 size={18} />
-                Mark Project as Completed
+          {canMarkCompleted ? (
+            <Button
+              className="flex items-center gap-2"
+              onClick={() => setOpenProjectCompleteConfirm(true)}
+            >
+              <CheckCircle2 size={18} />
+              Mark Project as Completed
+            </Button>
+          ) : (
+            <CustomeTooltip
+              value={completionBlockMessage}
+              truncateValue={
+                <div>
+                  <Button
+                    disabled
+                    className="bg-gray-200 text-gray-500 border border-gray-300 cursor-not-allowed flex items-center gap-2"
+                  >
+                    <CheckCircle2 size={18} />
+                    Mark Project as Completed
+                  </Button>
+                </div>
+              }
+            />
+          )}
+
+          <AnimatedThemeToggler />
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <EllipsisVertical size={25} />
               </Button>
-            ) : (
-              <CustomeTooltip
-                value={completionBlockMessage}
-                truncateValue={
-                  <div>
-                    <Button
-                      disabled
-                      className="bg-gray-200 text-gray-500 border border-gray-300 cursor-not-allowed flex items-center gap-2"
-                    >
-                      <CheckCircle2 size={18} />
-                      Mark Project as Completed
-                    </Button>
-                  </div>
-                }
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={() => {
+                  setActivityType("onHold");
+                  setActivityModalOpen(true);
+                }}
+              >
+                <Clock className="mh-4 w-4" />
+                Mark On Hold
+              </DropdownMenuItem>
+
+              {canEdit && (
+                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                  <SquarePen size={20} />
+                  Edit
+                </DropdownMenuItem>
+              )}
+              {canReassign && (
+                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                  <Users size={20} />
+                  Reassign Lead
+                </DropdownMenuItem>
+              )}
+
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                    <XCircle size={20} className="text-red-500" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+
+      {/* 🔹 Tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(val) => setActiveTab(val)}
+        className="w-full px-6 pt-4"
+      >
+        <div className="w-full flex justify-between">
+          <div>
+            <ScrollArea>
+              <div className="w-full h-full flex justify-between items-center mb-4">
+                <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
+                  {/* Final Handover Details */}
+                  <TabsTrigger value="details">
+                    <CheckCircle2 size={16} className="mr-1 opacity-60" />
+                    Final Handover Details
+                  </TabsTrigger>
+
+                  {/* To-Do Tab (still disabled) */}
+
+                  {canAccessTodoTab ? (
+                    <TabsTrigger value="todo">
+                      <PanelsTopLeftIcon
+                        size={16}
+                        className="mr-1 opacity-60"
+                      />
+                      To-Do Task
+                    </TabsTrigger>
+                  ) : (
+                    <CustomeTooltip
+                      truncateValue={
+                        <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                          <PanelsTopLeftIcon
+                            size={16}
+                            className="mr-1 opacity-60"
+                          />
+                          To-Do Task
+                        </div>
+                      }
+                      value="Only Site Supervisor can access this tab"
+                    />
+                  )}
+
+                  {/* Site History */}
+                  <TabsTrigger value="history">
+                    <BoxIcon size={16} className="mr-1 opacity-60" />
+                    Site History
+                  </TabsTrigger>
+
+                  {/* Payment */}
+                  <TabsTrigger value="payment">
+                    <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                    Payment Information
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </div>
+        </div>
+
+        {/* TAB CONTENTS */}
+
+        <TabsContent value="details">
+          <main className="flex-1 h-fit">
+            {!isLoading && accountId && (
+              <LeadDetailsGrouped
+                status="finalHandover"
+                defaultTab="finalHandover"
+                leadId={leadIdNum}
+                accountId={accountId}
+                defaultParentTab="installation"
               />
             )}
+          </main>
+        </TabsContent>
 
-            <AnimatedThemeToggler />
+        <TabsContent value="todo">
+          <main className="flex-1 h-fit">
+            {!isLoading && accountId && (
+              <LeadDetailsGrouped
+                status="finalHandover"
+                defaultTab="finalHandover"
+                leadId={leadIdNum}
+                accountId={accountId}
+                defaultParentTab="installation"
+              />
+            )}
+          </main>
+        </TabsContent>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <EllipsisVertical size={25} />
-                </Button>
-              </DropdownMenuTrigger>
+        <TabsContent value="history">
+          <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
+        </TabsContent>
 
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setActivityType("onHold");
-                    setActivityModalOpen(true);
-                  }}
-                >
-                  <Clock className="mh-4 w-4" />
-                  Mark On Hold
-                </DropdownMenuItem>
+        <TabsContent value="payment">
+          <PaymentInformation accountId={accountId} />
+        </TabsContent>
+      </Tabs>
 
-                {canEdit && (
-                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                    <SquarePen size={20} />
-                    Edit
-                  </DropdownMenuItem>
-                )}
-                {canReassign && (
-                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                    <Users size={20} />
-                    Reassign Lead
-                  </DropdownMenuItem>
-                )}
+      {/* 🔹 Modals */}
+      <AssignLeadModal
+        open={assignOpenLead}
+        onOpenChange={setAssignOpenLead}
+        leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
+      />
 
-                {canDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                      <XCircle size={20} className="text-red-500" />
-                      Delete
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
+      <EditLeadModal
+        open={openEditModal}
+        onOpenChange={setOpenEditModal}
+        leadData={{ id: leadIdNum }}
+      />
 
-        {/* 🔹 Tabs */}
-        <Tabs
-          value={activeTab}
-          onValueChange={(val) => setActiveTab(val)}
-          className="w-full px-6 pt-4"
-        >
-          <div className="w-full flex justify-between">
-            <div>
-              <ScrollArea>
-                <div className="w-full h-full flex justify-between items-center mb-4">
-                  <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-                    {/* Final Handover Details */}
-                    <TabsTrigger value="details">
-                      <CheckCircle2 size={16} className="mr-1 opacity-60" />
-                      Final Handover Details
-                    </TabsTrigger>
+      {/* Delete Dialog */}
+      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              lead from your system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
-                    {/* To-Do Tab (still disabled) */}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteLead}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-                    {canAccessTodoTab ? (
-                      <TabsTrigger value="todo">
-                        <PanelsTopLeftIcon
-                          size={16}
-                          className="mr-1 opacity-60"
-                        />
-                        To-Do Task
-                      </TabsTrigger>
-                    ) : (
-                      <CustomeTooltip
-                        truncateValue={
-                          <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                            <PanelsTopLeftIcon
-                              size={16}
-                              className="mr-1 opacity-60"
-                            />
-                            To-Do Task
-                          </div>
-                        }
-                        value="Only Site Supervisor can access this tab"
-                      />
-                    )}
-
-                    {/* Site History */}
-                    <TabsTrigger value="history">
-                      <BoxIcon size={16} className="mr-1 opacity-60" />
-                      Site History
-                    </TabsTrigger>
-
-                    {/* Payment */}
-                    <TabsTrigger value="payment">
-                      <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                      Payment Information
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-                <ScrollBar orientation="horizontal" />
-              </ScrollArea>
-            </div>
-          </div>
-
-          {/* TAB CONTENTS */}
-
-          <TabsContent value="details">
-            <main className="flex-1 h-fit">
-              {!isLoading && accountId && (
-                <LeadDetailsGrouped
-                  status="finalHandover"
-                  defaultTab="finalHandover"
-                  leadId={leadIdNum}
-                  accountId={accountId}
-                  defaultParentTab="installation"
-                />
-              )}
-            </main>
-          </TabsContent>
-
-          <TabsContent value="todo">
-            <main className="flex-1 h-fit">
-              {!isLoading && accountId && (
-                <LeadDetailsGrouped
-                  status="finalHandover"
-                  defaultTab="finalHandover"
-                  leadId={leadIdNum}
-                  accountId={accountId}
-                  defaultParentTab="installation"
-                />
-              )}
-            </main>
-          </TabsContent>
-
-          <TabsContent value="history">
-            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
-          </TabsContent>
-
-          <TabsContent value="payment">
-            <PaymentInformation accountId={accountId} />
-          </TabsContent>
-        </Tabs>
-
-        {/* 🔹 Modals */}
-        <AssignLeadModal
-          open={assignOpenLead}
-          onOpenChange={setAssignOpenLead}
-          leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
-        />
-
-        <EditLeadModal
-          open={openEditModal}
-          onOpenChange={setOpenEditModal}
-          leadData={{ id: leadIdNum }}
-        />
-
-        {/* Delete Dialog */}
-        <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the
-                lead from your system.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteLead}>
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        <ActivityStatusModal
-          open={activityModalOpen}
-          onOpenChange={setActivityModalOpen}
-          statusType={activityType}
-          onSubmitRemark={(remark, dueDate) => {
-            if (!vendorId || !userId) {
-              toast.error("Vendor or User info is missing!");
-              return;
-            }
-            updateStatusMutation.mutate(
-              {
-                leadId: leadIdNum,
-                payload: {
-                  vendorId,
-                  accountId: Number(accountId),
-                  userId,
-                  status: activityType,
-                  remark,
-                  createdBy: userId,
-                  ...(activityType === "onHold" ? { dueDate } : {}),
-                },
+      <ActivityStatusModal
+        open={activityModalOpen}
+        onOpenChange={setActivityModalOpen}
+        statusType={activityType}
+        onSubmitRemark={(remark, dueDate) => {
+          if (!vendorId || !userId) {
+            toast.error("Vendor or User info is missing!");
+            return;
+          }
+          updateStatusMutation.mutate(
+            {
+              leadId: leadIdNum,
+              payload: {
+                vendorId,
+                accountId: Number(accountId),
+                userId,
+                status: activityType,
+                remark,
+                createdBy: userId,
+                ...(activityType === "onHold" ? { dueDate } : {}),
               },
-              {
-                onSuccess: () => {
-                  toast.success("Lead marked as On Hold!");
+            },
+            {
+              onSuccess: () => {
+                toast.success("Lead marked as On Hold!");
 
-                  setActivityModalOpen(false);
+                setActivityModalOpen(false);
 
-                  // Invalidate related queries to refresh UI
-                  queryClient.invalidateQueries({
-                    queryKey: ["leadById", leadIdNum],
-                  });
-                },
-                onError: (err: any) => {
-                  toast.error(err?.message || "Failed to update lead status");
-                },
-              }
-            );
-          }}
-          loading={updateStatusMutation.isPending}
-        />
+                // Invalidate related queries to refresh UI
+                queryClient.invalidateQueries({
+                  queryKey: ["leadById", leadIdNum],
+                });
+              },
+              onError: (err: any) => {
+                toast.error(err?.message || "Failed to update lead status");
+              },
+            }
+          );
+        }}
+        loading={updateStatusMutation.isPending}
+      />
 
-        <AlertDialog
-          open={openProjectCompleteConfirm}
-          onOpenChange={setOpenProjectCompleteConfirm}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Mark Project as Completed?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action will move this project to “Completed” stage
-                permanently. Are you sure?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
+      <AlertDialog
+        open={openProjectCompleteConfirm}
+        onOpenChange={setOpenProjectCompleteConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark Project as Completed?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action will move this project to “Completed” stage
+              permanently. Are you sure?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                disabled={movingProject || validatingPayment}
-                onClick={async () => {
-                  try {
-                    setValidatingPayment(true);
-                    const { data: latestPayment } = await refetchPaymentStatus();
-                    const payment = latestPayment ?? paymentStatus;
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={movingProject || validatingPayment}
+              onClick={async () => {
+                try {
+                  setValidatingPayment(true);
+                  const { data: latestPayment } = await refetchPaymentStatus();
+                  const payment = latestPayment ?? paymentStatus;
 
-                    if (!payment || !payment.is_paid) {
-                      const pending =
-                        payment?.pending_amount !== undefined
-                          ? payment.pending_amount
-                          : 0;
-                      toast.error(
-                        payment
-                          ? `Pending amount remaining: ${pending.toLocaleString()}`
-                          : "Unable to verify payment status."
-                      );
-                      setValidatingPayment(false);
-                      setOpenProjectCompleteConfirm(false);
-                      return;
-                    }
-
-                    moveProjectCompleted(
-                      {
-                        vendorId: vendorId!,
-                        leadId: leadIdNum,
-                        updated_by: userId!,
-                      },
-                      {
-                        onSuccess: () => {
-                          toast.success("Project marked as Completed!");
-                          setOpenProjectCompleteConfirm(false);
-                          queryClient.invalidateQueries();
-                          router.push(
-                            "/dashboard/installation/final-handover"
-                          );
-                        },
-                        onError: (err: any) =>
-                          toast.error(
-                            err?.message || "Failed to mark project completed"
-                          ),
-                        onSettled: () => setValidatingPayment(false),
-                      }
-                    );
-                  } catch (err: any) {
+                  if (!payment || !payment.is_paid) {
+                    const pending =
+                      payment?.pending_amount !== undefined
+                        ? payment.pending_amount
+                        : 0;
                     toast.error(
-                      err?.message || "Unable to validate payment status"
+                      payment
+                        ? `Pending amount remaining: ${pending.toLocaleString()}`
+                        : "Unable to verify payment status."
                     );
                     setValidatingPayment(false);
                     setOpenProjectCompleteConfirm(false);
+                    return;
                   }
-                }}
-              >
-                {movingProject || validatingPayment ? "Processing..." : "Confirm"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </SidebarInset>
-    </SidebarProvider>
+
+                  moveProjectCompleted(
+                    {
+                      vendorId: vendorId!,
+                      leadId: leadIdNum,
+                      updated_by: userId!,
+                    },
+                    {
+                      onSuccess: () => {
+                        toast.success("Project marked as Completed!");
+                        setOpenProjectCompleteConfirm(false);
+                        queryClient.invalidateQueries();
+                        router.push("/dashboard/installation/final-handover");
+                      },
+                      onError: (err: any) =>
+                        toast.error(
+                          err?.message || "Failed to mark project completed"
+                        ),
+                      onSettled: () => setValidatingPayment(false),
+                    }
+                  );
+                } catch (err: any) {
+                  toast.error(
+                    err?.message || "Unable to validate payment status"
+                  );
+                  setValidatingPayment(false);
+                  setOpenProjectCompleteConfirm(false);
+                }
+              }}
+            >
+              {movingProject || validatingPayment ? "Processing..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

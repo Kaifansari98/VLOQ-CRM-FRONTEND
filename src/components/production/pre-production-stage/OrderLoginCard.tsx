@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   ChevronRight,
@@ -13,6 +13,7 @@ import { motion } from "framer-motion";
 import { useAppSelector } from "@/redux/store";
 import OrderLoginModal from "./OrderLoginModal";
 import { cn } from "@/lib/utils";
+import { useParams, useSearchParams } from "next/navigation";
 
 interface OrderLoginCardProps {
   title: string;
@@ -41,6 +42,19 @@ export default function OrderLoginCard({
 }: OrderLoginCardProps) {
   const [open, setOpen] = useState(false);
   const userId = useAppSelector((state) => state.auth.user?.id);
+
+  const searchParams = useSearchParams();
+  const remark = searchParams.get("remark") || "";
+
+  console.log("Remark from URL:", remark);
+
+  function hyphenToSpace(text: string = ""): string {
+    return text.replace(/-/g, " ").trim();
+  }
+
+  function normalizeString(str: string) {
+    return str.toLowerCase().trim();
+  }
 
   const hasVendorInfo =
     (companyVendorName && companyVendorName.trim() !== "") ||
@@ -88,6 +102,18 @@ export default function OrderLoginCard({
       <span>{isCompleted ? "Completed" : "Pending"}</span>
     </div>
   );
+
+  useEffect(() => {
+    if (!remark) return;
+
+    const cleanedRemark = hyphenToSpace(remark); // Outsourced-Shutter → Outsourced Shutter
+    const normalizedRemark = normalizeString(cleanedRemark);
+    const normalizedTitle = normalizeString(title);
+
+    if (normalizedRemark === normalizedTitle) {
+      setOpen(true); // 🔥 Auto-open modal
+    }
+  }, [remark, title]);
 
   return (
     <>
@@ -149,12 +175,12 @@ export default function OrderLoginCard({
                 <div className="relative">
                   <div
                     className="
-  w-10 h-10 rounded-full 
-  bg-muted 
-  dark:bg-neutral-800 
-  border border-border/70 
-  flex items-center justify-center 
-"
+    w-10 h-10 rounded-full 
+    bg-muted 
+    dark:bg-neutral-800 
+    border border-border/70 
+    flex items-center justify-center 
+  "
                   >
                     <span className="font-semibold text-sm text-foreground">
                       {initial}

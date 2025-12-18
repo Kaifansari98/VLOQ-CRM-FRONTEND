@@ -1,6 +1,5 @@
 "use client";
 
-import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -11,8 +10,6 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import {
-  SidebarInset,
-  SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-generation-form-modal";
@@ -147,130 +144,126 @@ export default function LeadsGenerationPage() {
 
   const activeItem = tabItems.find((t) => t.value === tab);
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
-        {/* Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          {/* Left side - SidebarTrigger + Breadcrumb */}
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{tabInfo[tab].title}</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
+    <>
+      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        {/* Left side - SidebarTrigger + Breadcrumb */}
+        <div className="flex items-center gap-2">
+          <SidebarTrigger className="-ml-1" />
+          <Separator
+            orientation="vertical"
+            className="mr-2 data-[orientation=vertical]:h-4"
+          />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{tabInfo[tab].title}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex gap-2 items-center">
-              <Popover open={openPopover} onOpenChange={setOpenPopover}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: activeItem?.dotColor }}
-                    ></span>
+        <div className="flex items-center gap-2">
+          <div className="flex gap-2 items-center">
+            <Popover open={openPopover} onOpenChange={setOpenPopover}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: activeItem?.dotColor }}
+                  ></span>
 
-                    <span>{tabInfo[tab].title}</span>
+                  <span>{tabInfo[tab].title}</span>
 
-                    {/* Icon */}
-                    <ChevronDown size={16} className="opacity-70 ml-1" />
-                  </Button>
-                </PopoverTrigger>
+                  {/* Icon */}
+                  <ChevronDown size={16} className="opacity-70 ml-1" />
+                </Button>
+              </PopoverTrigger>
 
-                <PopoverContent align="end" sideOffset={6} className="w-40 p-1">
-                  <div className="flex flex-col gap-1">
-                    {tabItems.map((item) => (
-                      <button
-                        key={item.value}
-                        onClick={() => {
-                          handleTabChange(item.value);
-                          setOpenPopover(false);
-                        }}
-                        className={clsx(
-                          "flex justify-between items-center px-3 py-2 rounded-md text-sm hover:bg-muted transition",
-                          item.value === tab && "bg-muted font-semibold"
-                        )}
-                      >
-                        <span className="flex items-center gap-2">
-                          <span
-                            className="w-2 h-2 rounded-full"
-                            style={{ backgroundColor: item.dotColor }}
-                          ></span>
-                          {item.label}
-                        </span>
+              <PopoverContent align="end" sideOffset={6} className="w-40 p-1">
+                <div className="flex flex-col gap-1">
+                  {tabItems.map((item) => (
+                    <button
+                      key={item.value}
+                      onClick={() => {
+                        handleTabChange(item.value);
+                        setOpenPopover(false);
+                      }}
+                      className={clsx(
+                        "flex justify-between items-center px-3 py-2 rounded-md text-sm hover:bg-muted transition",
+                        item.value === tab && "bg-muted font-semibold"
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: item.dotColor }}
+                        ></span>
+                        {item.label}
+                      </span>
 
-                        <span className="opacity-70">{item.count}</span>
-                      </button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-              {/* ✅ Show only for admin, super-admin, sales-executive */}
-              {canCreateLead(userType) && (
-                <>
-                  <Button onClick={() => setOpenCreateLead(true)}>
-                    Add New Lead
-                  </Button>
+                      <span className="opacity-70">{item.count}</span>
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+            {/* ✅ Show only for admin, super-admin, sales-executive */}
+            {canCreateLead(userType) && (
+              <>
+                <Button onClick={() => setOpenCreateLead(true)}>
+                  Add New Lead
+                </Button>
 
-                  <GenerateLeadFormModal
-                    open={openCreateLead}
-                    onOpenChange={setOpenCreateLead}
-                  />
-                </>
-              )}
-
-              <AnimatedThemeToggler />
-            </div>
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-x-hidden">
-          <div className="">
-            <div>
-              {tab === "open" && <ViewOpenLeadTable />}
-              {tab === "onHold" && (
-                <PendingLeadsTable
-                  tab="onHold"
-                  stageTitle={tabInfo.onHold.title}
-                  stageDescription={tabInfo.onHold.description}
+                <GenerateLeadFormModal
+                  open={openCreateLead}
+                  onOpenChange={setOpenCreateLead}
                 />
-              )}
+              </>
+            )}
 
-              {privileged && tab === "lostApproval" && (
-                <PendingLeadsTable
-                  tab="lostApproval"
-                  stageTitle={tabInfo.lostApproval.title}
-                  stageDescription={tabInfo.lostApproval.description}
-                />
-              )}
-
-              {privileged && tab === "lost" && (
-                <PendingLeadsTable
-                  tab="lost"
-                  stageTitle={tabInfo.lost.title}
-                  stageDescription={tabInfo.lost.description}
-                />
-              )}
-            </div>
+            <AnimatedThemeToggler />
           </div>
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+        </div>
+      </header>
+
+      <main className="flex-1 overflow-x-hidden">
+        <div className="">
+          <div>
+            {tab === "open" && <ViewOpenLeadTable />}
+            {tab === "onHold" && (
+              <PendingLeadsTable
+                tab="onHold"
+                stageTitle={tabInfo.onHold.title}
+                stageDescription={tabInfo.onHold.description}
+              />
+            )}
+
+            {privileged && tab === "lostApproval" && (
+              <PendingLeadsTable
+                tab="lostApproval"
+                stageTitle={tabInfo.lostApproval.title}
+                stageDescription={tabInfo.lostApproval.description}
+              />
+            )}
+
+            {privileged && tab === "lost" && (
+              <PendingLeadsTable
+                tab="lost"
+                stageTitle={tabInfo.lost.title}
+                stageDescription={tabInfo.lost.description}
+              />
+            )}
+          </div>
+        </div>
+      </main>
+    </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   AlertCircle,
   Plus,
@@ -74,12 +74,14 @@ interface InstallationMiscellaneousProps {
   vendorId: number;
   leadId: number;
   accountId: number;
+  initialTaskId?: number;
 }
 
 export default function InstallationMiscellaneous({
   vendorId,
   leadId,
   accountId,
+  initialTaskId,
 }: InstallationMiscellaneousProps) {
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
@@ -122,6 +124,20 @@ export default function InstallationMiscellaneous({
   const canDoERDDate = canDoERDMiscellaneousDate(userType, leadStatus);
   const { data: orderLoginSummary = [], isLoading: loadingSummary } =
     useOrderLoginSummary(vendorId, leadId);
+  const [initialModalHandled, setInitialModalHandled] = useState(false);
+
+  useEffect(() => {
+    setInitialModalHandled(false);
+  }, [initialTaskId]);
+
+  useEffect(() => {
+    if (!initialTaskId || initialModalHandled || !entries?.length) return;
+    const matched = entries.find((item) => item.task?.id === initialTaskId);
+    if (matched) {
+      setViewModal({ open: true, data: matched });
+      setInitialModalHandled(true);
+    }
+  }, [initialTaskId, entries, initialModalHandled]);
 
   const handleCreateEntry = () => {
     if (!formData.misc_type_id) {

@@ -2,11 +2,11 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import CustomeTooltip from "@/components/cutome-tooltip";
+import CustomeTooltip from "@/components/custom-tooltip";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import { MapPin, Text } from "lucide-react";
-import type { ProcessedLead } from "@/app/_components/view-tables-coloumns";
+import type { ProcessedLead } from "./view-tables-coloumns";
 
 export type PendingLeadRow = ProcessedLead & { accountId?: number };
 

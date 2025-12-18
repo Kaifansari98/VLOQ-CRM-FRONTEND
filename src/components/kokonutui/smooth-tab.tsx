@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import { canOrderLogin } from "../utils/privileges";
-import CustomeTooltip from "../cutome-tooltip";
+import CustomeTooltip from "../custom-tooltip";
 
 interface TabItem {
   id: string;

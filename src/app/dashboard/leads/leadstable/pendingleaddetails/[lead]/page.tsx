@@ -1,6 +1,5 @@
 "use client";
 
-import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -9,11 +8,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
@@ -64,99 +59,46 @@ export default function PendingLeadDetails() {
   const markAsLostMutation = useUpdateActivityStatus();
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset className="w-full h-full overflow-x-hidden flex flex-col">
-        {/* Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard/leads/leadstable">
-                    {tab} Leads
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Details</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
+    <>
+      {/* Header */}
+      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
+        <div className="flex items-center gap-2">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/dashboard/leads/leadstable">
+                  {tab} Leads
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Details</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
 
-          <div className="flex items-center space-x-2">
-            <AnimatedThemeToggler />
+        <div className="flex items-center space-x-2">
+          <AnimatedThemeToggler />
 
-            {/* 🔹 Dynamic Actions Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <EllipsisVertical size={20} />
-                </Button>
-              </DropdownMenuTrigger>
+          {/* 🔹 Dynamic Actions Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <EllipsisVertical size={20} />
+              </Button>
+            </DropdownMenuTrigger>
 
-              <DropdownMenuContent align="end" className="w-44">
-                {/* ✅ If navigated from On Hold */}
-                {tab === "onHold" && (
-                  <>
-                    <DropdownMenuItem
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        setRemarkLeadId(leadIdNum);
-                        setOpenRemark(true);
-                      }}
-                    >
-                      <CircleCheck size={18} className="mr-2" />
-                      Mark as Active
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        setOpenMarkLost(true);
-                      }}
-                    >
-                      <XCircle size={18} className="mr-2" />
-                      Mark as Lost
-                    </DropdownMenuItem>
-                  </>
-                )}
-
-                {/* ✅ If navigated from Lost Approval */}
-                {tab === "lostApproval" && (
-                  <>
-                    <DropdownMenuItem
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        setOpenApproveModal(true);
-                      }}
-                    >
-                      <CircleCheck size={18} className="mr-2" />
-                      Approve
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        setRemarkLeadId(leadIdNum);
-                        setOpenRemark(true);
-                      }}
-                    >
-                      <CircleX size={18} className="mr-2" />
-                      Reject
-                    </DropdownMenuItem>
-                  </>
-                )}
-
-                {/* ✅ If navigated from Lost */}
-                {tab === "lost" && (
+            <DropdownMenuContent align="end" className="w-44">
+              {/* ✅ If navigated from On Hold */}
+              {tab === "onHold" && (
+                <>
                   <DropdownMenuItem
                     onSelect={(e) => {
                       e.preventDefault();
@@ -167,153 +109,203 @@ export default function PendingLeadDetails() {
                     <CircleCheck size={18} className="mr-2" />
                     Mark as Active
                   </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
 
-        {/* Main Content */}
-        <main className="flex-1 px-6 pt-4">
-          <LeadDetailsUtil
-            status="details"
-            leadId={leadIdNum}
-            leadInfo={{ leadId: leadIdNum, accountId: accountId }}
-          />
-        </main>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setOpenMarkLost(true);
+                    }}
+                  >
+                    <XCircle size={18} className="mr-2" />
+                    Mark as Lost
+                  </DropdownMenuItem>
+                </>
+              )}
 
-        <ActivityStatusModal
-          open={openApproveModal}
-          onOpenChange={setOpenApproveModal}
-          statusType="lost"
-          onSubmitRemark={(remark) => {
-            if (!vendorId || !userId) {
-              toast.error("Missing vendor/user info");
-              return;
-            }
+              {/* ✅ If navigated from Lost Approval */}
+              {tab === "lostApproval" && (
+                <>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setOpenApproveModal(true);
+                    }}
+                  >
+                    <CircleCheck size={18} className="mr-2" />
+                    Approve
+                  </DropdownMenuItem>
 
-            // 🔹 Same flow as the table’s Mark as Lost
-            markAsLostMutation.mutate(
-              {
-                leadId: leadIdNum,
-                payload: {
-                  vendorId,
-                  accountId: Number(accountId),
-                  userId,
-                  status: "lost",
-                  remark,
-                  createdBy: userId,
-                },
-              },
-              {
-                onSuccess: () => {
-                  toast.success("Lead Approved!");
-                  setOpenApproveModal(false);
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setRemarkLeadId(leadIdNum);
+                      setOpenRemark(true);
+                    }}
+                  >
+                    <CircleX size={18} className="mr-2" />
+                    Reject
+                  </DropdownMenuItem>
+                </>
+              )}
 
-                  // ✅ Invalidate both queries
-                  queryClient.invalidateQueries({
-                    queryKey: ["lostApprovalLeads"],
-                  });
-                  queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
+              {/* ✅ If navigated from Lost */}
+              {tab === "lost" && (
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setRemarkLeadId(leadIdNum);
+                    setOpenRemark(true);
+                  }}
+                >
+                  <CircleCheck size={18} className="mr-2" />
+                  Mark as Active
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
 
-                  // ✅ Redirect back to Lost Approval tab
-                  router.push("/dashboard/leads/leadstable");
-                },
-                onError: (err) => {
-                  toast.error(err || "Failed to approve lead!");
-                },
-              }
-            );
-          }}
-          loading={markAsLostMutation.isPending}
+      {/* Main Content */}
+      <main className="flex-1 px-6 pt-4">
+        <LeadDetailsUtil
+          status="details"
+          leadId={leadIdNum}
+          leadInfo={{ leadId: leadIdNum, accountId: accountId }}
         />
+      </main>
 
-        <ActivityStatusModal
-          open={openMarkLost}
-          onOpenChange={setOpenMarkLost}
-          statusType="lostApproval"
-          onSubmitRemark={(remark) => {
-            if (!vendorId || !userId) {
-              toast.error("Missing vendor/user info");
-              return;
-            }
+      <ActivityStatusModal
+        open={openApproveModal}
+        onOpenChange={setOpenApproveModal}
+        statusType="lost"
+        onSubmitRemark={(remark) => {
+          if (!vendorId || !userId) {
+            toast.error("Missing vendor/user info");
+            return;
+          }
 
-            markAsLostMutation.mutate(
-              {
-                leadId: leadIdNum,
-                payload: {
-                  vendorId,
-                  accountId: Number(accountId),
-                  userId,
-                  status: "lostApproval",
-                  remark,
-                  createdBy: userId,
-                },
+          // 🔹 Same flow as the table’s Mark as Lost
+          markAsLostMutation.mutate(
+            {
+              leadId: leadIdNum,
+              payload: {
+                vendorId,
+                accountId: Number(accountId),
+                userId,
+                status: "lost",
+                remark,
+                createdBy: userId,
               },
-              {
-                onSuccess: () => {
-                  toast.success("Lead marked as Lost Approval!");
-                  setOpenMarkLost(false);
+            },
+            {
+              onSuccess: () => {
+                toast.success("Lead Approved!");
+                setOpenApproveModal(false);
 
-                  // ✅ Refresh related data
-                  queryClient.invalidateQueries({ queryKey: ["onHoldLeads"] });
-                  queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
+                // ✅ Invalidate both queries
+                queryClient.invalidateQueries({
+                  queryKey: ["lostApprovalLeads"],
+                });
+                queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
 
-                  // ✅ Redirect back to Pending Leads On Hold tab
-                  router.push("/dashboard/leads/leadstable");
-                },
-                onError: (err) => {
-                  toast.error(err || "Failed to mark as Lost!");
-                },
-              }
-            );
-          }}
-          loading={markAsLostMutation.isPending}
-        />
-
-        {/* 🔹 Remark Modal for reverting (Mark as Active) */}
-        <RevertRemarkModal
-          open={openRemark}
-          onOpenChange={setOpenRemark}
-          onSubmitRemark={(remark) => {
-            if (!vendorId || !userId || !remarkLeadId) {
-              toast.error("Missing vendor/user/lead info");
-              return;
-            }
-
-            revertMutation.mutate(
-              {
-                leadId: remarkLeadId,
-                payload: {
-                  vendorId,
-                  accountId: Number(accountId),
-                  userId,
-                  remark,
-                  createdBy: userId,
-                },
+                // ✅ Redirect back to Lost Approval tab
+                router.push("/dashboard/leads/leadstable");
               },
-              {
-                onSuccess: () => {
-                  toast.success("Lead marked as Active!");
-                  setOpenRemark(false);
-                  setRemarkLeadId(null);
+              onError: (err) => {
+                toast.error(err || "Failed to approve lead!");
+              },
+            }
+          );
+        }}
+        loading={markAsLostMutation.isPending}
+      />
 
-                  // ✅ Invalidate queries so table refreshes
-                  queryClient.invalidateQueries({ queryKey: ["onHoldLeads"] });
-                  queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+      <ActivityStatusModal
+        open={openMarkLost}
+        onOpenChange={setOpenMarkLost}
+        statusType="lostApproval"
+        onSubmitRemark={(remark) => {
+          if (!vendorId || !userId) {
+            toast.error("Missing vendor/user info");
+            return;
+          }
 
-                  // ✅ Redirect back
-                  router.push("/dashboard/leads/leadstable");
-                },
-                onError: (err) => {
-                  toast.error(err?.message || "Failed to mark as active!");
-                },
-              }
-            );
-          }}
-          loading={revertMutation.isPending}
-        />
-      </SidebarInset>
-    </SidebarProvider>
+          markAsLostMutation.mutate(
+            {
+              leadId: leadIdNum,
+              payload: {
+                vendorId,
+                accountId: Number(accountId),
+                userId,
+                status: "lostApproval",
+                remark,
+                createdBy: userId,
+              },
+            },
+            {
+              onSuccess: () => {
+                toast.success("Lead marked as Lost Approval!");
+                setOpenMarkLost(false);
+
+                // ✅ Refresh related data
+                queryClient.invalidateQueries({ queryKey: ["onHoldLeads"] });
+                queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
+
+                // ✅ Redirect back to Pending Leads On Hold tab
+                router.push("/dashboard/leads/leadstable");
+              },
+              onError: (err) => {
+                toast.error(err || "Failed to mark as Lost!");
+              },
+            }
+          );
+        }}
+        loading={markAsLostMutation.isPending}
+      />
+
+      {/* 🔹 Remark Modal for reverting (Mark as Active) */}
+      <RevertRemarkModal
+        open={openRemark}
+        onOpenChange={setOpenRemark}
+        onSubmitRemark={(remark) => {
+          if (!vendorId || !userId || !remarkLeadId) {
+            toast.error("Missing vendor/user/lead info");
+            return;
+          }
+
+          revertMutation.mutate(
+            {
+              leadId: remarkLeadId,
+              payload: {
+                vendorId,
+                accountId: Number(accountId),
+                userId,
+                remark,
+                createdBy: userId,
+              },
+            },
+            {
+              onSuccess: () => {
+                toast.success("Lead marked as Active!");
+                setOpenRemark(false);
+                setRemarkLeadId(null);
+
+                // ✅ Invalidate queries so table refreshes
+                queryClient.invalidateQueries({ queryKey: ["onHoldLeads"] });
+                queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+
+                // ✅ Redirect back
+                router.push("/dashboard/leads/leadstable");
+              },
+              onError: (err) => {
+                toast.error(err?.message || "Failed to mark as active!");
+              },
+            }
+          );
+        }}
+        loading={revertMutation.isPending}
+      />
+    </>
   );
 }

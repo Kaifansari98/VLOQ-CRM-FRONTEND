@@ -101,7 +101,7 @@ export default function PipelinePieChart({
             >
               Add New Lead
             </button>
-
+    
             <button
               onClick={() => setOpenPaymentModal(true)}
               className="px-3 py-1.5 text-xs border bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-md"

@@ -1,9 +1,5 @@
-import Page from "./dashboard/page"
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-background">
-      <Page />
-    </main>
-  )
+  redirect("/dashboard");
 }
