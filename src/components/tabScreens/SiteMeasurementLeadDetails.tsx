@@ -4,7 +4,10 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Edit2, FileText, Plus, RefreshCcw, Receipt, Ban } from "lucide-react";
-import { useSiteMeasurementLeadById } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
+import {
+  useBookingDoneIsmDetails,
+  useSiteMeasurementLeadById,
+} from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import { SiteMeasurementFile } from "@/types/site-measrument-types";
 import SiteMesurementEditModal from "../sales-executive/siteMeasurement/site-mesurement-edit-modal";
 import AddCurrentSitePhotos from "../sales-executive/siteMeasurement/current-site-image-add-modal";
@@ -51,6 +54,10 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   // 🧩 --- Hooks ---
   const { data } = useSiteMeasurementLeadById(leadId);
   const { data: leadData, isLoading, error } = useLeadStatus(leadId, vendorId);
+  const { data: bookingDoneIsm } = useBookingDoneIsmDetails(
+    leadId,
+    vendorId
+  );
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
@@ -70,6 +77,20 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const paymentImages: SiteMeasurementFile[] =
     data?.initial_site_measurement_payment_details || [];
   const payment = data?.payment_info;
+  const bookingDoneIsmCurrentSitePhotos =
+    bookingDoneIsm?.current_site_photos || [];
+  const bookingDoneIsmPdfDocs = bookingDoneIsm?.pdf_documents || [];
+  const bookingDoneIsmPaymentImages = bookingDoneIsm?.payment_images || [];
+  const bookingDoneIsmPaymentInfo = bookingDoneIsm?.payment_info;
+  const bookingDoneIsmLedgerEntry = bookingDoneIsm?.ledger_entry;
+  const bookingDoneIsmUploadedAt = bookingDoneIsm?.uploaded_at;
+  const hasBookingDoneIsmContent =
+    bookingDoneIsmCurrentSitePhotos.length > 0 ||
+    bookingDoneIsmPdfDocs.length > 0 ||
+    bookingDoneIsmPaymentImages.length > 0 ||
+    Boolean(bookingDoneIsmPaymentInfo) ||
+    Boolean(bookingDoneIsmLedgerEntry) ||
+    Boolean(bookingDoneIsmUploadedAt);
 
   // 🧩 --- Permissions ---
   const canEditOrUpload =
@@ -437,6 +458,152 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
               ))}
             </div>
           </motion.div>
+        </motion.section>
+      )}
+
+      {/* -------- Booking Done ISM Uploads -------- */}
+      {hasBookingDoneIsmContent && (
+        <motion.section
+          variants={itemVariants}
+          className="
+      bg-[#fff] dark:bg-[#0a0a0a]
+      rounded-2xl
+      border border-border
+      shadow-soft
+      overflow-hidden
+    "
+        >
+          <div
+            className="
+        flex items-center justify-between
+        px-5 py-3
+        border-b border-border
+        bg-[#fff] dark:bg-[#0a0a0a]
+      "
+          >
+            <div className="flex flex-col items-start">
+              <h1 className="text-lg font-semibold tracking-tight">
+                Booking Done ISM Uploads
+              </h1>
+              <p className="text-xs text-gray-500">
+                Documents and photos submitted for Booking Done ISM.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-8">
+            {(bookingDoneIsmPaymentInfo) && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {bookingDoneIsmPaymentInfo && (
+                  <div className="border border-border rounded-xl p-4 bg-muted/40 dark:bg-neutral-900 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Receipt size={18} />
+                      <h3 className="text-sm font-semibold">Payment Info</h3>
+                    </div>
+                    <div className="text-sm space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Amount</span>
+                        <span>{bookingDoneIsmPaymentInfo.amount ?? "N/A"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          Payment Date
+                        </span>
+                        <span>
+                          {bookingDoneIsmPaymentInfo.payment_date ?? "N/A"}
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-muted-foreground">
+                          Description
+                        </span>
+                        <div className="bg-background border border-border rounded-lg px-3 py-2 text-sm">
+                          {bookingDoneIsmPaymentInfo.payment_text || "N/A"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {bookingDoneIsmPdfDocs.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <FileText size={18} />
+                  <h2 className="text-base font-semibold">
+                    ISM Documents ({bookingDoneIsmPdfDocs.length})
+                  </h2>
+                </div>
+                <div className="space-y-3">
+                  {bookingDoneIsmPdfDocs.map((doc: any) => (
+                    <DocumentCard
+                      key={doc.id}
+                      doc={{
+                        id: doc.id,
+                        originalName: doc.originalName,
+                        created_at: doc.createdAt,
+                        signedUrl: doc.signedUrl,
+                      }}
+                      canDelete={false}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {bookingDoneIsmCurrentSitePhotos.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <FileText size={18} />
+                  <h2 className="text-base font-semibold">
+                    Current Site Photos ({bookingDoneIsmCurrentSitePhotos.length})
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {bookingDoneIsmCurrentSitePhotos.map((doc: any, index: any) => (
+                    <ImageComponent
+                      key={doc.id}
+                      doc={{
+                        id: doc.id,
+                        doc_og_name: doc.originalName,
+                        signedUrl: doc.signedUrl,
+                        created_at: doc.createdAt,
+                      }}
+                      index={index}
+                      canDelete={false}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {bookingDoneIsmPaymentImages.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <FileText size={18} />
+                  <h2 className="text-base font-semibold">
+                    Payment Images ({bookingDoneIsmPaymentImages.length})
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {bookingDoneIsmPaymentImages.map((doc: any, index: any) => (
+                    <ImageComponent
+                      key={doc.id}
+                      doc={{
+                        id: doc.id,
+                        doc_og_name: doc.originalName,
+                        signedUrl: doc.signedUrl,
+                        created_at: doc.createdAt,
+                      }}
+                      index={index}
+                      canDelete={false}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </motion.section>
       )}
 

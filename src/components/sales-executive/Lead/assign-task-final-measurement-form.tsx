@@ -31,6 +31,7 @@ import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUse
 import { useRouter } from "next/navigation";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { useUploadCSPBooking } from "@/hooks/useUploadCSPBooking";
+import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 
 interface Props {
   open: boolean;
@@ -45,7 +46,7 @@ interface Props {
 const formSchema = z
   .object({
     assign_lead_to: z.number().min(1, "Assign lead to is required"),
-    task_type: z.enum(["Final Measurements", "Follow Up"]),
+    task_type: z.enum(["Final Measurements", "Follow Up", "BookingDone - ISM"]),
     due_date: z.string().min(1, "Due Date is required"),
     remark: z.string().optional(),
     current_site_photos: z.array(z.instanceof(File)).optional(),
@@ -81,10 +82,15 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const {
-    data: vendorUsers,
-    isLoading: loadingUsers,
-    error,
+    data: siteSupervisors,
+    isLoading: loadingSupervisors,
+    error: supervisorError,
   } = useVendorSiteSupervisorUsers(vendorId!);
+  const {
+    data: salesExecutives,
+    isLoading: loadingSalesExecs,
+    error: salesExecError,
+  } = useVendorSalesExecutiveUsers(vendorId!);
   const router = useRouter();
   const leadId = data?.id!;
   const accountId = data?.accountId!;
@@ -97,12 +103,6 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const queryClient = useQueryClient();
   const uploadCSPMutation = useUploadCSPBooking();
 
-  const mappedData =
-    vendorUsers?.data?.site_supervisors?.map((user: any) => ({
-      id: user.id,
-      label: user.user_name,
-    })) ?? [];
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -113,6 +113,27 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       current_site_photos: [],
     },
   });
+
+  const taskType = form.watch("task_type");
+
+  const mappedData = React.useMemo(() => {
+    if (taskType === "BookingDone - ISM") {
+      return (
+        salesExecutives?.data?.sales_executives?.map((user: any) => ({
+          id: user.id,
+          label: user.user_name,
+        })) ?? []
+      );
+    }
+
+    // Default → Site Supervisors
+    return (
+      siteSupervisors?.data?.site_supervisors?.map((user: any) => ({
+        id: user.id,
+        label: user.user_name,
+      })) ?? []
+    );
+  }, [taskType, siteSupervisors, salesExecutives]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
@@ -166,7 +187,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     }
   };
 
-  if (loadingUsers) {
+  if (loadingSupervisors || loadingSalesExecs) {
     return (
       <BaseModal
         open={open}
@@ -174,12 +195,12 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         title="Loading..."
         size="lg"
       >
-        <div className="p-6">Loading...</div>
+        <div className="p-6">Loading users...</div>
       </BaseModal>
     );
   }
 
-  if (error) {
+  if (supervisorError || salesExecError) {
     return (
       <BaseModal
         open={open}
@@ -187,7 +208,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         title="Error"
         size="lg"
       >
-        <div className="p-6">Error: {error.message}</div>
+        <div className="p-6">Error loading users</div>
       </BaseModal>
     );
   }
@@ -229,6 +250,9 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                         Final Measurements
                       </SelectItem>
                       <SelectItem value="Follow Up">Follow Up</SelectItem>
+                      <SelectItem value="BookingDone - ISM">
+                        BookingDone - ISM
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

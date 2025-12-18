@@ -273,6 +273,30 @@ export const uploadInitialSiteMeasurement = async (payload: FormData) => {
   return response.data;
 };
 
+export const uploadBookingDoneIsm = async (payload: FormData) => {
+  const response = await apiClient.post(
+    "/leads/initial-site-measurement/booking-done-ism/upload",
+    payload,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+  return response.data;
+};
+
+export const getBookingDoneIsmDetails = async (
+  leadId: number,
+  vendorId: number
+) => {
+  const response = await apiClient.get(`/leads/initial-site-measurement/booking-done-ism/${leadId}`, {
+    params: { vendor_id: vendorId },
+  });
+
+  return response.data?.data;
+};
+
 export interface AssignToSiteMeasurementPayload {
   task_type: string;
   due_date: string;

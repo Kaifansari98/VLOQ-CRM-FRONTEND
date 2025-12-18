@@ -55,7 +55,8 @@ export interface DataTableRowAction<TData> {
     | "Pending Materials"
     | "Pending Work"
     | "sitereadinessstage"
-    | "productionready";
+    | "productionready"
+    | "bookingdoneism";
 }
 
 export interface DataTableRowActionOpen<TData> {

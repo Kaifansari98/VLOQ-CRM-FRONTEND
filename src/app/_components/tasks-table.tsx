@@ -28,6 +28,7 @@ import { useRouter } from "next/navigation";
 import { useVendorUserTasks } from "@/hooks/useTasksQueries";
 import FinalMeasurementModal from "@/components/sales-executive/booking-stage/final-measurement-modal";
 import FollowUpModal from "@/components/follow-up-modal";
+import BookingDoneIsmForm from "@/components/sales-executive/Lead/booking-done-ism-form";
 import ClearInput from "@/components/origin-input";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
@@ -46,6 +47,7 @@ const MyTaskTable = () => {
 
   const [openMeasurement, setOpenMeasurement] = useState(false);
   const [openFinalMeasurement, setOpenFinalMeasurement] = useState(false);
+  const [openBookingDoneIsm, setOpenBookingDoneIsm] = useState(false);
 
   // Fetch leads
   const vendorUserTasksQuery = useVendorUserTasks(
@@ -89,6 +91,12 @@ const MyTaskTable = () => {
           variant: "uploadmeasurement",
         });
         setOpenMeasurement(true);
+      } else if (row.taskType === "BookingDone - ISM") {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "bookingdoneism",
+        });
+        setOpenBookingDoneIsm(true);
       } else if (row.taskType === "Final Measurements") {
         setRowAction({
           row: { original: row } as any,
@@ -394,6 +402,16 @@ const MyTaskTable = () => {
           id: rowAction?.row.original.leadId || 0,
           accountId: rowAction?.row.original.accountId || 0,
           name: rowAction?.row.original.name,
+        }}
+      />
+
+      <BookingDoneIsmForm
+        open={openBookingDoneIsm}
+        onOpenChange={setOpenBookingDoneIsm}
+        data={{
+          id: rowAction?.row.original.leadId || 0,
+          accountId: rowAction?.row.original.accountId || 0,
+          name: rowAction?.row.original.name || "",
         }}
       />
 

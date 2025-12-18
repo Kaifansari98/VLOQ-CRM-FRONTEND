@@ -9,6 +9,7 @@ import {
   ReschedulePayload,
   RescheduleTaskFollowUp,
 } from "@/api/measurment-leads";
+import { getBookingDoneIsmDetails, uploadBookingDoneIsm } from "@/api/leads";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 export const useInitialSiteMeasurement = (
@@ -66,6 +67,25 @@ export const useRescheduleTask = () => {
       taskId: number;
       payload: ReschedulePayload;
     }) => RescheduleTaskFollowUp(leadId, taskId, payload),
+  });
+};
+
+export const useBookingDoneIsmUpload = () => {
+  return useMutation({
+    mutationFn: uploadBookingDoneIsm,
+  });
+};
+
+export const useBookingDoneIsmDetails = (
+  leadId: number | undefined,
+  vendorId: number | undefined
+) => {
+  return useQuery({
+    queryKey: ["bookingDoneIsmDetails", leadId, vendorId],
+    queryFn: () => getBookingDoneIsmDetails(leadId!, vendorId!),
+    enabled: Boolean(leadId && vendorId),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 };
 
