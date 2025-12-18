@@ -277,11 +277,13 @@ export default function BookingStageLeadsDetails() {
         open={assignOpen}
         onOpenChange={(open) => {
           setAssignOpen(open);
-          if (!open) {
-            setActiveTab("details");
-          }
+          if (!open) setActiveTab("details");
         }}
-        data={{ id: leadIdNum, name: "" }}
+        data={{
+          id: leadIdNum,
+          name: "",
+          accountId: accountId!, // ✅ PASS IT HERE
+        }}
       />
 
       <AssignLeadModal

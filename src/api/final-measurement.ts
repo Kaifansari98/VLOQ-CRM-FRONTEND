@@ -169,3 +169,64 @@ export const addFinalMeasurmentDoc = async (
 
   return data;
 };
+
+export interface UploadCSPBookingPayload {
+  lead_id: number;
+  account_id: number;
+  vendor_id: number;
+  assigned_to: number;
+  created_by: number;
+  site_photos: File[];
+}
+
+export const uploadCSPBooking = async (
+  payload: UploadCSPBookingPayload
+) => {
+  const formData = new FormData();
+
+  formData.append("lead_id", payload.lead_id.toString());
+  formData.append("account_id", payload.account_id.toString());
+  formData.append("vendor_id", payload.vendor_id.toString());
+  formData.append("assigned_to", payload.assigned_to.toString());
+  formData.append("created_by", payload.created_by.toString());
+
+  payload.site_photos.forEach((file) => {
+    formData.append("current_site_photos", file);
+  });
+
+  const { data } = await apiClient.post(
+    `/leads/bookingStage/upload-CSP-booking`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return data;
+};
+
+export interface CSPBookingPhoto {
+  id: number;
+  originalName: string;
+  s3Key: string;
+  signedUrl: string;
+  createdAt: string;
+}
+
+export interface GetCSPBookingResponse {
+  count: number;
+  documents: CSPBookingPhoto[];
+}
+
+export const getCSPBookingPhotos = async (
+  vendorId: number,
+  leadId: number
+): Promise<GetCSPBookingResponse> => {
+  const { data } = await apiClient.get(
+    `/leads/bookingStage/get-CSP-booking/${vendorId}/${leadId}`
+  );
+
+  return data.data;
+};

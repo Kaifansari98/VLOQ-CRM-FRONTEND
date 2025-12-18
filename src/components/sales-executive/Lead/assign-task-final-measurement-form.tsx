@@ -29,6 +29,8 @@ import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
 import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUsers";
 import { useRouter } from "next/navigation";
+import { FileUploadField } from "@/components/custom/file-upload";
+import { useUploadCSPBooking } from "@/hooks/useUploadCSPBooking";
 
 interface Props {
   open: boolean;
@@ -36,36 +38,41 @@ interface Props {
   data?: {
     id: number;
     name: string;
+    accountId: number; // ✅ REQUIRED
   };
 }
 
 const formSchema = z
   .object({
     assign_lead_to: z.number().min(1, "Assign lead to is required"),
-    task_type: z.enum(["Final Measurements", "Follow Up"], {
-      message: "Task Type is required",
-    }),
-    due_date: z
-      .string()
-      .min(1, "Due Date is required")
-      .refine((val) => !isNaN(Date.parse(val)), {
-        message: "Invalid date format",
-      }),
-    remark: z.string().optional(), // ✅ Make remark optional
+    task_type: z.enum(["Final Measurements", "Follow Up"]),
+    due_date: z.string().min(1, "Due Date is required"),
+    remark: z.string().optional(),
+    current_site_photos: z.array(z.instanceof(File)).optional(),
   })
-  .refine(
-    (data) => {
-      // ✅ Make remark required ONLY if task type is Follow Up
-      if (data.task_type === "Follow Up") {
-        return data.remark && data.remark.trim().length > 0;
+  .superRefine((data, ctx) => {
+    // 🔴 Final Measurements → site photos mandatory
+    if (data.task_type === "Final Measurements") {
+      if (!data.current_site_photos || data.current_site_photos.length === 0) {
+        ctx.addIssue({
+          path: ["current_site_photos"],
+          message: "Current site photos are mandatory",
+          code: z.ZodIssueCode.custom,
+        });
       }
-      return true;
-    },
-    {
-      message: "Remark is required for Follow Up",
-      path: ["remark"], // ✅ Attach validation error to remark field
     }
-  );
+
+    // 🔴 Follow Up → remark mandatory
+    if (data.task_type === "Follow Up") {
+      if (!data.remark || !data.remark.trim()) {
+        ctx.addIssue({
+          path: ["remark"],
+          message: "Remark is required for Follow Up",
+          code: z.ZodIssueCode.custom,
+        });
+      }
+    }
+  });
 
 const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   open,
@@ -80,9 +87,15 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   } = useVendorSiteSupervisorUsers(vendorId!);
   const router = useRouter();
   const leadId = data?.id!;
+  const accountId = data?.accountId!;
+  if (!leadId || !accountId) {
+    toast.error("Lead or Account information is missing");
+    return null;
+  }
   const userId = useAppSelector((state) => state.auth.user?.id);
   const mutation = useAssignToFinalMeasurement(leadId);
   const queryClient = useQueryClient();
+  const uploadCSPMutation = useUploadCSPBooking();
 
   const mappedData =
     vendorUsers?.data?.site_supervisors?.map((user: any) => ({
@@ -97,44 +110,60 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       task_type: "Final Measurements",
       due_date: "",
       remark: "N/A",
+      current_site_photos: [],
     },
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    const payload: AssignToFinalMeasurementPayload = {
-      task_type: values.task_type,
-      due_date: values.due_date,
-      remark: values.remark,
-      user_id: values.assign_lead_to!,
-      created_by: userId!,
-    };
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      // 🔴 STEP 1: Upload CSP Photos (ONLY for Final Measurements)
+      if (values.task_type === "Final Measurements") {
+        await uploadCSPMutation.mutateAsync({
+          lead_id: leadId,
+          account_id: accountId, // ✅ guaranteed value
+          vendor_id: vendorId!,
+          assigned_to: values.assign_lead_to!,
+          created_by: userId!,
+          site_photos: values.current_site_photos!,
+        });
+      }
 
-    mutation.mutate(payload, {
-      onSuccess: (data) => {
-        console.log("API Response:", data); // Backend response
-        toast.success("Task assigned successfully!");
-        queryClient.invalidateQueries({
-          queryKey: ["leadStats", vendorId, userId],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ["universal-stage-leads"],
-          exact: false,
-        });
-        onOpenChange(false);
-        // ✅ Redirect conditionally
-        if (values.task_type === "Final Measurements") {
-          router.push("/dashboard/project/final-measurement");
-        }
-      },
-      onError: (error: any) => {
-        console.error("API Error:", error);
-        const backendMessage =
-          error?.response?.data?.message ||
-          error.message ||
-          "Something went wrong";
-        toast.error(backendMessage);
-      },
-    });
+      // 🔴 STEP 2: Assign Task
+      const payload: AssignToFinalMeasurementPayload = {
+        task_type: values.task_type,
+        due_date: values.due_date,
+        remark: values.remark,
+        user_id: values.assign_lead_to!,
+        created_by: userId!,
+      };
+
+      mutation.mutate(payload, {
+        onSuccess: () => {
+          toast.success("Final Measurement assigned successfully!");
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadStats", vendorId, userId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["universal-stage-leads"],
+            exact: false,
+          });
+
+          onOpenChange(false);
+
+          if (values.task_type === "Final Measurements") {
+            router.push("/dashboard/project/final-measurement");
+          }
+        },
+        onError: (error: any) => {
+          toast.error(
+            error?.response?.data?.message || "Failed to assign task"
+          );
+        },
+      });
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to upload site photos");
+    }
   };
 
   if (loadingUsers) {
@@ -177,7 +206,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
           ? "Use this form to assign a follow up task."
           : "Use this form to assign a final measurement task."
       }
-      size="smd"
+      size="lg"
     >
       <div className="px-6 py-6 space-y-8">
         <Form {...form}>
@@ -265,6 +294,30 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
               )}
             />
 
+            {form.watch("task_type") === "Final Measurements" && (
+              <FormField
+                control={form.control}
+                name="current_site_photos"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">
+                      Current Site Photos{" "}
+                      <span className="text-red-500">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <FileUploadField
+                        value={field.value || []}
+                        onChange={field.onChange}
+                        accept=".png,.jpg,.jpeg"
+                        multiple
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             {/* Buttons */}
             <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
               <Button
@@ -278,9 +331,16 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
               <Button
                 type="submit"
                 className="text-sm"
-                disabled={mutation.isPending}
+                disabled={
+                  mutation.isPending ||
+                  uploadCSPMutation.isPending ||
+                  (form.watch("task_type") === "Final Measurements" &&
+                    form.watch("current_site_photos")?.length === 0)
+                }
               >
-                {mutation.isPending ? "Submitting..." : "Submit"}
+                {uploadCSPMutation.isPending || mutation.isPending
+                  ? "Submitting..."
+                  : "Submit"}
               </Button>
             </div>
           </form>

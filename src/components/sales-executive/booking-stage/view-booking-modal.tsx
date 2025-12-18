@@ -34,6 +34,8 @@ import {
 import { ImageComponent } from "@/components/utils/ImageCard";
 import Loader from "@/components/utils/loader";
 import { canUploadOrDeleteBookingDone } from "@/components/utils/privileges";
+import { useCSPBookingPhotos } from "@/hooks/useCSPBookingPhotos";
+import SectionHeader from "@/utils/sectionHeader";
 
 interface Props {
   leadId: number;
@@ -72,6 +74,13 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   } = useBookingLeadById(vendorId, leadId);
   const { data, isLoading: loading } = useLeadById(leadId, vendorId, userId);
   const { data: leadStatus, error } = useLeadStatus(leadId, vendorId);
+
+  const { data: cspBookingData, isLoading: cspLoading } = useCSPBookingPhotos(
+    vendorId!,
+    leadId
+  );
+
+  const bookingStagePhotos = cspBookingData?.documents ?? [];
 
   if (isLoading || loading)
     return <Loader size={250} message="Loading Booking Lead Details..." />;
@@ -263,6 +272,41 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 </div>
               </div>
             </div>
+
+            {/* -------- Booking Stage – Current Site Photos -------- */}
+            {!cspLoading && bookingStagePhotos.length > 0 && (
+              <div
+                className="
+      bg-white dark:bg-neutral-900
+      rounded-2xl 
+      border border-border 
+      overflow-hidden
+    "
+              >
+                <SectionHeader
+                  title="Booking Stage – Current Site Photos"
+                  icon={<Images size={20} />}
+                />
+
+                <motion.div className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {bookingStagePhotos.map((photo, index) => (
+                      <ImageComponent
+                        key={photo.id}
+                        doc={{
+                          id: photo.id,
+                          doc_og_name: photo.originalName,
+                          signedUrl: photo.signedUrl,
+                          created_at: photo.createdAt,
+                        }}
+                        index={index}
+                        canDelete={false}
+                      />
+                    ))}
+                  </div>
+                </motion.div>
+              </div>
+            )}
 
             {/* -------- Design Remarks -------- */}
             <div className="space-y-3 mb-6">
