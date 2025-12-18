@@ -176,6 +176,7 @@ export interface BookingLeadById {
   payments: PaymentDetails[];
   documents: DocumentBooking[];
   account: Account;
+  mrpValue: number;
   assignedTo: AssignedTo | null;
 }
 // ─────────── API Response ───────────

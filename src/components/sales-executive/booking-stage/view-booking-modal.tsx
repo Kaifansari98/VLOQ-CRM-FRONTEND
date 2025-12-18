@@ -132,7 +132,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         <ScrollArea className="max-h-[calc(90vh-100px)]">
           <div className="p-6 space-y-6">
             {/* -------- Top Summary Cards -------- */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="grid grid-cols-4 gap-5">
               {/* Site Supervisor */}
               <div
                 className="
@@ -162,6 +162,37 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
 
                   <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
                     {leadData?.supervisors?.[0]?.userName || "Not Assigned"}
+                  </p>
+                </div>
+              </div>
+
+              {/* MRP Value */}
+              <div
+                className="
+    bg-white dark:bg-neutral-900
+    border border-border rounded-2xl 
+    p-5 flex items-center gap-4
+    transition-all duration-200 
+    hover:ring-1 hover:ring-primary/30
+  "
+              >
+                <div
+                  className="
+      w-12 h-12 rounded-xl flex items-center justify-center
+      bg-[#fff] dark:bg-[#0a0a0a]
+      text-gray-600 dark:text-gray-400
+    "
+                >
+                  <IndianRupee className="w-6 h-6" />
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground font-medium">
+                    MRP Value
+                  </p>
+
+                  <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
+                    ₹{leadData?.mrpValue?.toLocaleString("en-IN") || "0"}
                   </p>
                 </div>
               </div>

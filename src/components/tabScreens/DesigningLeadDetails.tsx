@@ -31,7 +31,7 @@ export default function DesigningLeadsDetails({ leadId }: props) {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="rounded-lg w-full h-full py-4 overflow-y-scroll bg-[#fff] dark:bg-[#0a0a0a]"
+      className="rounded-lg w-full h-full py-1 overflow-y-scroll bg-[#fff] dark:bg-[#0a0a0a]"
     >
       <DetailsProvider value={{ leadId, accountId }}>
         <PillTabs
@@ -47,11 +47,6 @@ export default function DesigningLeadsDetails({ leadId }: props) {
               id: "designs",
               label: "Designs",
               content: <DesigningTab />,
-            },
-            {
-              id: "selections",
-              label: "Selections",
-              content: <SelectionsTab />,
             },
           ]}
         />

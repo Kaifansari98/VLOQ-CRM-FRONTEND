@@ -54,6 +54,8 @@ export default function ProjectFinanceSummary({
     booking_amount: 0,
   };
 
+  const mrpValue = projectFinance.mrp_value ?? 0;
+
   // 🔹 Build Zod schema dynamically using current pending amount
   const schema = useMemo(
     () =>
@@ -157,13 +159,19 @@ export default function ProjectFinanceSummary({
       {/* 🔹 Project Finance Summary */}
       <Card className="p-4 shadow-sm text-center">
         <h2 className="text-lg font-semibold mb-4">Project Finance Summary</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           {/* ✅ Total Project */}
           <div>
             <p className="text-muted-foreground text-sm">Total Project</p>
             <p className="font-bold text-lg">
               {formatCurrencyINR(projectFinance.total_project_amount)}
             </p>
+          </div>
+
+          {/* ✅ MRP Value */}
+          <div>
+            <p className="text-muted-foreground text-sm">MRP Value</p>
+            <p className="font-bold text-lg">{formatCurrencyINR(mrpValue)}</p>
           </div>
 
           {/* ✅ Booking Amount (only if greater than 0) */}

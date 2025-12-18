@@ -221,7 +221,7 @@ export default function ClientDocumentationDetails({
     "
       >
         <SectionHeader
-          title="Client Documentation — Design Files"
+          title="Client Documentation — Pytha Design Files"
           icon={<FileText size={20} />}
           onRefresh={() => console.log("Refresh Design Files")}
         />

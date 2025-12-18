@@ -45,6 +45,8 @@ const bookingSchema = z
       .max(20, "You can upload up to 20 documents")
       .default([]),
 
+    mrp_value: z.number().positive("MRP value must be greater than 0"),
+
     amount_received: z
       .number()
       .nonnegative("Amount cannot be negative")
@@ -109,6 +111,15 @@ const bookingSchema = z
         });
       }
     }
+
+    // ✅ Rule: MRP cannot be less than Total Booking Value
+    if (data.mrp_value < data.final_booking_amount) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["mrp_value"],
+        message: "MRP value cannot be less than Total Booking Value.",
+      });
+    }
   });
 
 // ✅ Proper type inference from schema
@@ -155,6 +166,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       payment_details_document: [],
       payment_text: "",
       assign_to: "",
+      mrp_value: 0,
     },
     mode: "onChange",
   });
@@ -186,6 +198,11 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       return;
     }
 
+    if (values.mrp_value < values.final_booking_amount) {
+      toast.error("MRP value cannot be less than Total Booking Value");
+      return;
+    }
+
     const payload: BookingPayload = {
       lead_id: leadId,
       account_id: accountId,
@@ -195,6 +212,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       bookingAmount: values.amount_received,
       bookingAmountPaymentDetailsText: values.payment_text,
       finalBookingAmount: values.final_booking_amount,
+      mrpValue: values.mrp_value, // ➕ ADD
       siteSupervisorId: Number(values.assign_to),
       booking_payment_file: values.payment_details_document,
       final_documents: values.final_documents,
@@ -300,6 +318,24 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
 
               <FormField
                 control={form.control}
+                name="mrp_value"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">MRP Value *</FormLabel>
+                    <FormControl>
+                      <CurrencyInput
+                        value={field.value}
+                        onChange={(val) => field.onChange(val ?? 0)}
+                        placeholder="Enter MRP Value"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="amount_received"
                 render={({ field }) => (
                   <FormItem>
@@ -319,6 +355,37 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="assign_to"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">
+                      Assign Lead To Site Supervisor *
+                    </FormLabel>
+                    <Select
+                      value={field.value || ""}
+                      onValueChange={field.onChange}
+                      disabled={isLoading}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="text-sm w-full">
+                          <SelectValue placeholder="Select assignee" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {vendorUser.map((user: any) => (
+                          <SelectItem key={user.id} value={String(user.id)}>
+                            {user.user_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             {ismPaymentInfo?.amount && (
@@ -331,36 +398,6 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
             )}
           </div>
 
-          <FormField
-            control={form.control}
-            name="assign_to"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">
-                  Assign Lead To Site Supervisor *
-                </FormLabel>
-                <Select
-                  value={field.value || ""}
-                  onValueChange={field.onChange}
-                  disabled={isLoading}
-                >
-                  <FormControl>
-                    <SelectTrigger className="text-sm w-full">
-                      <SelectValue placeholder="Select assignee" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {vendorUser.map((user: any) => (
-                      <SelectItem key={user.id} value={String(user.id)}>
-                        {user.user_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
           {/* Payment Details fields */}
           <FormField
             control={form.control}

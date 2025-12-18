@@ -13,6 +13,7 @@ export interface BookingPayload {
   siteSupervisorId: number;
   final_documents: File[];
   booking_payment_file: File[];
+  mrpValue: number;
 }
 
 export const moveToBookingStage = async (payload: BookingPayload) => {
@@ -23,6 +24,7 @@ export const moveToBookingStage = async (payload: BookingPayload) => {
   formData.append("created_by", payload.created_by.toString());
   formData.append("client_id", payload.client_id.toString());
   formData.append("bookingAmount", payload.bookingAmount.toString());
+  formData.append("mrpValue", payload.mrpValue.toString());
   formData.append(
     "bookingAmountPaymentDetailsText",
     payload.bookingAmountPaymentDetailsText.toString()
@@ -138,6 +140,7 @@ export interface PaymentOverview {
   total_project_amount: number;
   pending_amount: number;
   booking_amount: number;
+  mrp_value?: number;
 }
 
 export interface PaymentLogsResponse {
