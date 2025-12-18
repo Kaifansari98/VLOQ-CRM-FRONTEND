@@ -34,6 +34,8 @@ import {
   BoxIcon,
   UsersRoundIcon,
   Clock,
+  Handshake,
+  CalendarOff,
 } from "lucide-react";
 
 import {
@@ -200,7 +202,7 @@ export default function UnderInstallationLeadDetails() {
                     variant="default"
                     size="sm"
                     disabled
-                    className="pointer-events-none"
+                    className="pointer-events-none hidden sm:flex"
                   >
                     Move to Final Handover
                   </Button>
@@ -217,7 +219,7 @@ export default function UnderInstallationLeadDetails() {
                     variant="default"
                     size="sm"
                     disabled
-                    className="pointer-events-none"
+                    className="pointer-events-none hidden sm:flex"
                   >
                     Move to Final Handover
                   </Button>
@@ -233,6 +235,7 @@ export default function UnderInstallationLeadDetails() {
             <Button
               variant="default"
               size="sm"
+              className="hidden sm:flex"
               onClick={() => {
                 setShowMoveModal(true);
               }}
@@ -251,6 +254,43 @@ export default function UnderInstallationLeadDetails() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
+              {!underDetails?.actual_installation_start_date ? (
+                // 1️⃣ Installation NOT started → block
+                <CustomeTooltip
+                  truncateValue={
+                    <DropdownMenuItem className="sm:hidden" disabled>
+                      <Handshake size={20} />
+                      Move to Final Handover
+                    </DropdownMenuItem>
+                  }
+                  value="Start Installation first to move this lead to Final Handover."
+                />
+              ) : !finalReady?.isReady ? (
+                // 2️⃣ Installation started but NOT eligible → show WHY
+                <CustomeTooltip
+                  truncateValue={
+                    <DropdownMenuItem className="sm:hidden" disabled>
+                      <Handshake size={20} />
+                      Move to Final Handover
+                    </DropdownMenuItem>
+                  }
+                  value={
+                    finalReady?.message ||
+                    "Lead is not ready for Final Handover yet."
+                  }
+                />
+              ) : (
+                // 3️⃣ Eligible → allow moving
+                <DropdownMenuItem
+                  className="sm:hidden"
+                  onClick={() => {
+                    setShowMoveModal(true);
+                  }}
+                >
+                  <Handshake size={20} />
+                  Move to Final Handover
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onSelect={() => {
                   setActivityType("onHold");
@@ -292,60 +332,55 @@ export default function UnderInstallationLeadDetails() {
       <Tabs
         value={activeTab}
         onValueChange={(val) => setActiveTab(val)}
-        className="w-full px-6 pt-4"
+        className="w-full p-3 md:p-6"
       >
-        <div className="w-full flex justify-between">
-          <div>
-            <ScrollArea>
-              <div className="w-full h-full flex justify-between items-center mb-4">
-                <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-                  {/* Under Installation Details */}
-                  <TabsTrigger value="details">
-                    <Hammer size={16} className="mr-1 opacity-60" />
-                    Under Installation Details
-                  </TabsTrigger>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between mb-3">
+          <ScrollArea>
+            <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
+              {/* Under Installation Details */}
+              <TabsTrigger value="details">
+                <Hammer size={16} className="mr-1 opacity-60" />
+                Under Installation Details
+              </TabsTrigger>
 
-                  {/* To-Do Tab — Disabled */}
-                  {canAccessTodoTab ? (
-                    <TabsTrigger value="todo">
+              {/* To-Do Tab — Disabled */}
+              {canAccessTodoTab ? (
+                <TabsTrigger value="todo">
+                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                  To-Do Task
+                </TabsTrigger>
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <TabsTrigger disabled value="todo" >
                       <PanelsTopLeftIcon
                         size={16}
                         className="mr-1 opacity-60"
                       />
                       To-Do Task
                     </TabsTrigger>
-                  ) : (
-                    <CustomeTooltip
-                      truncateValue={
-                        <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                          <PanelsTopLeftIcon
-                            size={16}
-                            className="mr-1 opacity-60"
-                          />
-                          To-Do Task
-                        </div>
-                      }
-                      value="Only Site Supervisor can access this tab"
-                    />
-                  )}
+                  }
+                  value="Only Site Supervisor can access this tab"
+                />
+              )}
 
-                  {/* Site History */}
-                  <TabsTrigger value="history">
-                    <BoxIcon size={16} className="mr-1 opacity-60" />
-                    Site History
-                  </TabsTrigger>
+              {/* Site History */}
+              <TabsTrigger value="history">
+                <BoxIcon size={16} className="mr-1 opacity-60" />
+                Site History
+              </TabsTrigger>
 
-                  {/* Payment */}
-                  <TabsTrigger value="payment">
-                    <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                    Payment Information
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-          </div>
-          <div className="flex px-6">
+              {/* Payment */}
+              <TabsTrigger value="payment">
+                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                Payment Information
+              </TabsTrigger>
+            </TabsList>
+
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+
+          <div className="flex">
             {!underDetails?.actual_installation_start_date ? (
               canAccessTodoTab ? (
                 // ✅ User allowed — normal working button
@@ -370,13 +405,14 @@ export default function UnderInstallationLeadDetails() {
             ) : (
               // Existing installation date display block (unchanged)
               <div className="flex flex-col items-start">
-                <p className="text-xs font-semibold">Installation Started On</p>
-                <div className="mt-1">
+                <p className="text-md font-semibold">Installation Started On</p>
+                <div className="flex justify-between gap-2 items-center bg-muted py-2 px-3 rounded-md ">
                   <p className="text-sm">
                     {formatInstallationDate(
                       underDetails.actual_installation_start_date
                     )}
                   </p>
+                  <CalendarOff size={16} />
                 </div>
               </div>
             )}

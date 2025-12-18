@@ -34,6 +34,7 @@ import {
   UsersRoundIcon,
   FileText,
   Clock,
+  UserPlus,
 } from "lucide-react";
 
 import {
@@ -147,7 +148,7 @@ export default function ClientDocumentationLeadDetails() {
   return (
     <>
       {/* HEADER */}
-      <header className="flex h-16 shrink-0 items-center justify-between px-4 border-b">
+      <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between px-4 border-b backdrop-blur-xl">
         <div className="flex items-center gap-2">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-4" />
@@ -167,7 +168,7 @@ export default function ClientDocumentationLeadDetails() {
         </div>
 
         <div className="flex items-center space-x-2">
-          <Button size="sm" onClick={() => setAssignOpen(true)}>
+          <Button size="sm" className="hidden md:block" onClick={() => setAssignOpen(true)}>
             Assign Task
           </Button>
 
@@ -182,6 +183,10 @@ export default function ClientDocumentationLeadDetails() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
+              <DropdownMenuItem className="flex md:hidden" onClick={() => setAssignOpen(true)}>
+                <UserPlus size={20} />
+                Assign Task
+              </DropdownMenuItem>
               {/* ONLY MARK ON HOLD */}
               <DropdownMenuItem
                 onSelect={() => {
@@ -253,7 +258,7 @@ export default function ClientDocumentationLeadDetails() {
           }
           setActiveTab(val);
         }}
-        className="w-full px-6 pt-4"
+        className="w-full p-3 md:p-6"
       >
         <ScrollArea>
           <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
@@ -270,10 +275,10 @@ export default function ClientDocumentationLeadDetails() {
             ) : (
               <CustomeTooltip
                 truncateValue={
-                  <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                    <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                  <TabsTrigger value="" disabled>
+                    <PanelsTopLeftIcon size={16} />
                     To-Do Task
-                  </div>
+                  </TabsTrigger>
                 }
                 value="Only Sales Executive can access this tab"
               />

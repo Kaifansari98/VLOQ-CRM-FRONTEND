@@ -44,7 +44,7 @@ export default function PendingWorkTab({
       {/* Pending Work Grid */}
       <Card className="rounded-2xl border bg-background transition-all duration-300">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             {/* LEFT */}
             <div className="flex items-center gap-3">
               <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center">

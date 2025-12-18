@@ -37,7 +37,6 @@ function DetailsContent() {
     (data.SelectionData ?? 0) > 0 &&
     (data.DesignsDoc ?? 0) > 0;
 
-  console.log("Designing stage count: ", data);
   return (
     <>
       <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b bg-background">
@@ -95,8 +94,6 @@ function DetailsContent() {
 export default function Details() {
   return (
     <>
-      <AppSidebar />
-      {/* ✅ Wrap in Suspense */}
       <Suspense fallback={<div>Loading...</div>}>
         <DetailsContent />
       </Suspense>

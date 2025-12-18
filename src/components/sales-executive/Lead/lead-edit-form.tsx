@@ -26,7 +26,7 @@ import {
   useSiteTypes,
 } from "@/hooks/useTypesMaster";
 import { updateLead, getLeadById, EditLeadPayload } from "@/api/leads";
-import { CountryCode, parsePhoneNumber } from "libphonenumber-js";
+import { parsePhoneNumber } from "libphonenumber-js";
 import TextAreaInput from "@/components/origin-text-area";
 import MapPicker from "@/components/MapPicker";
 import { MapPin } from "lucide-react";
@@ -34,23 +34,34 @@ import CustomeDatePicker from "@/components/date-picker";
 import AssignToPicker from "@/components/assign-to-picker";
 import { toastError } from "@/lib/utils";
 
+// ✅ Utility: Normalize phone numbers to E.164 format
+const toE164 = (number?: string, countryCode?: string): string => {
+  if (!number) return "";
+  
+  // Already in E.164 format
+  if (number.startsWith("+")) return number;
+  
+  // Has country code from backend
+  if (countryCode) return `${countryCode}${number}`;
+  
+  // Fallback to India (adjust if needed for your use case)
+  return `+91${number}`;
+};
+
 // Form validation schema
 const formSchema = z.object({
   // Required fields
   firstname: z.string().min(1, "First name is required").max(300),
   lastname: z.string().min(1, "Last name is required").max(300),
 
-  // Fix phone validation - make it more lenient or add custom validation
   contact_no: z
     .string()
     .min(1, "Phone number is required")
     .refine((val) => {
       try {
-        // Try to parse the phone number
         const parsed = parsePhoneNumber(val);
         return parsed && parsed.isValid();
       } catch (error) {
-        // If parsing fails, check if it's at least 10 digits
         const digitsOnly = val.replace(/\D/g, "");
         return digitsOnly.length >= 10;
       }
@@ -60,19 +71,18 @@ const formSchema = z.object({
     .string()
     .trim()
     .email("Please enter a valid email")
-    .or(z.literal("")), // allow empty
+    .or(z.literal("")),
   site_type_id: z.string().min(1, "Please select a site type"),
   site_address: z.string().min(1, "Site Address is required").max(2000),
-
-  site_map_link: z.string().optional().or(z.literal("")), // allow empty
+  site_map_link: z.string().optional().or(z.literal("")),
   source_id: z.string().min(1, "Please select a source"),
 
-  // Optional fields - fix alt_contact_no validation
+  // Optional fields
   alt_contact_no: z
     .string()
     .optional()
     .refine((val) => {
-      if (!val || val.trim() === "") return true; // Allow empty
+      if (!val || val.trim() === "") return true;
       try {
         const parsed = parsePhoneNumber(val);
         return parsed && parsed.isValid();
@@ -107,7 +117,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface EditLeadFormProps {
-  leadData: any; // ✅ Type it properly if you have interface
+  leadData: any;
   onClose: () => void;
 }
 
@@ -122,8 +132,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     lng: number;
     address: string;
   } | null>(null);
-  const [primaryCountry, setPrimaryCountry] = useState<CountryCode>("IN");
-  const [altCountry, setAltCountry] = useState<CountryCode>("IN");
 
   const updateLeadMutation = useMutation({
     mutationFn: async (payload: EditLeadPayload) => {
@@ -134,7 +142,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       console.log("✅ Mutation onSuccess:", data);
       toast.success("Lead updated successfully!");
 
-      // ✅ Refresh specific lead details
       queryClient.invalidateQueries({
         queryKey: ["lead", leadData.id, vendorId, createdBy],
       });
@@ -183,6 +190,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     console.log("LeadID: ", leadData.id);
     console.log("VendorID: ", vendorId);
     console.log("CreatedBy: ", createdBy);
+    
     const fetchLeadData = async () => {
       if (!leadData?.id || !vendorId || !createdBy) return;
 
@@ -199,69 +207,16 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             String(m.product_structure_id)
           ) || [];
 
-        // Set country codes for phone inputs
-        if (lead.contact_no && lead.country_code) {
-          try {
-            const phoneWithCountryCode = `${lead.country_code}${lead.contact_no}`;
-            const parsedPhone = parsePhoneNumber(phoneWithCountryCode);
-            if (parsedPhone?.country) {
-              setPrimaryCountry(parsedPhone.country);
-            }
-          } catch (error) {
-            console.log("Error parsing primary phone:", error);
-          }
-        }
+        // ✅ Normalize phone numbers to E.164 format
+        const formattedContactNo = toE164(
+          lead.contact_no,
+          lead.country_code
+        );
 
-        // For alternate contact, try to detect country from the number itself
-        if (lead.alt_contact_no) {
-          try {
-            let parsedAltPhone;
-
-            // If alt number starts with +, parse directly
-            if (lead.alt_contact_no.startsWith("+")) {
-              parsedAltPhone = parsePhoneNumber(lead.alt_contact_no);
-            } else {
-              // Otherwise parse using primary country as fallback (e.g., "IN")
-              parsedAltPhone = parsePhoneNumber(
-                lead.alt_contact_no,
-                primaryCountry
-              );
-            }
-
-            if (parsedAltPhone?.country) {
-              setAltCountry(parsedAltPhone.country);
-            } else {
-              // fallback to primary country if parser can't detect
-              setAltCountry(primaryCountry);
-            }
-          } catch (error) {
-            console.warn("⚠️ Error parsing alternate phone:", error);
-            setAltCountry(primaryCountry);
-          }
-        }
-
-        // ✅ Format phone numbers to E.164 format
-        const formattedContactNo = lead.country_code
-          ? `${lead.country_code}${lead.contact_no || ""}`
-          : lead.contact_no || "";
-
-        const formattedAltContactNo = lead.alt_contact_no
-          ? lead.alt_contact_no.startsWith("+")
-            ? lead.alt_contact_no
-            : `${lead.country_code || "+91"}${lead.alt_contact_no}`
-          : "";
-
-        setPrimaryCountry((prev) => prev || "IN");
-        setAltCountry((prev) => prev || "IN");
-
-        // Format alternate contact number
-        // if (lead.alt_contact_no) {
-        //   let alt = lead.alt_contact_no.trim();
-        //   if (!alt.startsWith("+") && lead.country_code) {
-        //     alt = `${lead.country_code}${alt}`;
-        //   }
-        //   formattedAltContactNo = alt;
-        // }
+        const formattedAltContactNo = toE164(
+          lead.alt_contact_no,
+          lead.country_code
+        );
 
         // Format date for input (YYYY-MM-DD)
         const formattedDate = lead.initial_site_measurement_date
@@ -270,7 +225,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
               .split("T")[0]
           : "";
 
-        // Update the form.reset call in useEffect to exclude documents
+        // ✅ Reset form with normalized values
         form.reset({
           firstname: lead.firstname || "",
           lastname: lead.lastname || "",
@@ -283,12 +238,12 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           source_id: lead.source_id ? String(lead.source_id) : "",
           product_types: productTypeIds,
           product_structures: productStructureIds,
-          // REMOVE THIS LINE: documents: lead.documents || "",
           archetech_name: lead.archetech_name || "",
           designer_remark: lead.designer_remark || "",
           initial_site_measurement_date: formattedDate,
         });
 
+        // Handle map location
         if (lead.site_map_link && lead.site_map_link.includes("maps?q=")) {
           const coords = lead.site_map_link.match(
             /q=(-?\d+\.?\d*),(-?\d+\.?\d*)/
@@ -413,8 +368,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-5">
-        {/* File Upload */}
-
         {/* First Name & Last Name */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <FormField
@@ -431,9 +384,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                     {...field}
                   />
                 </FormControl>
-                {/* <FormDescription className="text-xs">
-                    Lead's first name.
-                  </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
@@ -453,16 +403,13 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                     {...field}
                   />
                 </FormControl>
-                {/* <FormDescription className="text-xs">
-                    Lead's last name.
-                  </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
 
-        {/* Contact Numbers */}
+        {/* Contact Numbers - ✅ SIMPLIFIED */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
           <FormField
             control={form.control}
@@ -472,7 +419,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                 <FormLabel className="text-sm">Phone Number *</FormLabel>
                 <FormControl>
                   <PhoneInput
-                    defaultCountry={primaryCountry}
                     placeholder="Enter phone number"
                     className="text-sm"
                     {...field}
@@ -491,7 +437,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                 <FormLabel className="text-sm">Alt. Phone Number</FormLabel>
                 <FormControl>
                   <PhoneInput
-                    defaultCountry={altCountry}
                     placeholder="Enter alt number"
                     className="text-sm"
                     {...field}
@@ -518,9 +463,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                   {...field}
                 />
               </FormControl>
-              {/* <FormDescription className="text-xs">
-                  Lead's email address.
-                </FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
@@ -528,14 +470,12 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
 
         {/* Site Type & Source */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-          {/* 🔹 Site Type Picker */}
           <FormField
             control={form.control}
             name="site_type_id"
             render={({ field }) => {
               const { data: siteTypes, isLoading } = useSiteTypes();
 
-              // Transform API response → Picker data format
               const pickerData =
                 siteTypes?.data?.map((site: any) => ({
                   id: site.id,
@@ -555,7 +495,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                       data={pickerData}
                       value={field.value ? Number(field.value) : undefined}
                       onChange={(selectedId: number | null) => {
-                        // ✅ Convert number → string for form
                         field.onChange(selectedId ? String(selectedId) : "");
                       }}
                       placeholder="Search site type..."
@@ -568,7 +507,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             }}
           />
 
-          {/* 🔹 Source Picker */}
           <FormField
             control={form.control}
             name="source_id"
@@ -594,7 +532,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                       data={pickerData}
                       value={field.value ? Number(field.value) : undefined}
                       onChange={(selectedId: number | null) => {
-                        // ✅ Convert number → string for form
                         field.onChange(selectedId ? String(selectedId) : "");
                       }}
                       placeholder="Search source..."
@@ -632,12 +569,10 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                   value={field.value}
                   onChange={(value) => {
                     field.onChange(value);
-                    // Don't reset map link when manually editing
                     if (
                       savedMapLocation &&
                       value !== savedMapLocation.address
                     ) {
-                      // just update address text, keep link
                       setSavedMapLocation((prev) =>
                         prev ? { ...prev, address: value } : null
                       );
@@ -653,9 +588,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                 onClose={() => setMapOpen(false)}
                 savedLocation={savedMapLocation}
                 onSelect={(address, link) => {
-                  // Autofill address
                   field.onChange(address);
-                  // Save coords
                   const coords = link.match(/q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
                   if (coords) {
                     setSavedMapLocation({
@@ -664,9 +597,8 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                       address,
                     });
                   }
-                  // Also push into form state for site_map_link
                   form.setValue("site_map_link", link);
-                  form.trigger("site_map_link"); // ensures validation + marks as touched
+                  form.trigger("site_map_link");
                 }}
               />
             </FormItem>
@@ -681,39 +613,32 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             render={({ field }) => {
               const { data: productTypes, isLoading } = useProductTypes();
 
-              // Transform API data to options
-              const options: Option[] =
+              const pickerData =
                 productTypes?.data?.map((p: any) => ({
-                  value: String(p.id),
+                  id: p.id,
                   label: p.type,
-                })) ?? [];
-
-              // Transform selected IDs back to Option[] format for display
-              const selectedOptions = (field.value || []).map((id) => {
-                const option = options.find((opt) => opt.value === id);
-                return option || { value: id, label: id }; // fallback if option not found
-              });
+                })) || [];
 
               return (
                 <FormItem>
                   <FormLabel className="text-sm">Furniture Type *</FormLabel>
-                  <FormControl>
-                    <MultipleSelector
-                      value={selectedOptions} // Pass Option[] with proper labels
-                      onChange={(selectedOptions) => {
-                        // Extract IDs from selected options and store as string[]
-                        const selectedIds = selectedOptions.map(
-                          (opt) => opt.value
-                        );
-                        field.onChange(selectedIds);
-                      }}
-                      options={options}
-                      maxSelected={1}
-                      placeholder="Select furniture types"
-                      disabled={isLoading}
-                      hidePlaceholderWhenSelected
-                    />
-                  </FormControl>
+
+                  <AssignToPicker
+                    data={pickerData}
+                    value={
+                      field.value?.length
+                        ? Number(field.value[0])
+                        : undefined
+                    }
+                    onChange={(selectedId) => {
+                      field.onChange(
+                        selectedId ? [String(selectedId)] : []
+                      );
+                    }}
+                    placeholder="Search furniture type..."
+                    disabled={isLoading}
+                  />
+
                   <FormMessage />
                 </FormItem>
               );
@@ -727,17 +652,15 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
               const { data: productStructures, isLoading } =
                 useProductStructureTypes();
 
-              // Transform API data to options
               const options: Option[] =
                 productStructures?.data?.map((p: any) => ({
                   value: String(p.id),
                   label: p.type,
                 })) ?? [];
 
-              // Transform selected IDs back to Option[] format for display
               const selectedOptions = (field.value || []).map((id) => {
                 const option = options.find((opt) => opt.value === id);
-                return option || { value: id, label: id }; // fallback if option not found
+                return option || { value: id, label: id };
               });
 
               return (
@@ -747,9 +670,8 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                   </FormLabel>
                   <FormControl>
                     <MultipleSelector
-                      value={selectedOptions} // Pass Option[] with proper labels
+                      value={selectedOptions}
                       onChange={(selectedOptions) => {
-                        // Extract IDs from selected options and store as string[]
                         const selectedIds = selectedOptions.map(
                           (opt) => opt.value
                         );
@@ -784,9 +706,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                     {...field}
                   />
                 </FormControl>
-                {/* <FormDescription className="text-xs">
-                  Project architect name.
-                </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
@@ -804,7 +723,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                   <CustomeDatePicker
                     value={field.value}
                     onChange={field.onChange}
-                    restriction="futureOnly" // 👈 only allow future dates
+                    restriction="futureOnly"
                   />
                 </FormControl>
                 <FormMessage />
@@ -827,9 +746,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                   placeholder="Enter Designer's Remark"
                 />
               </FormControl>
-              {/* <FormDescription className="text-xs">
-                  Additional remarks or notes.
-                </FormDescription> */}
               <FormMessage />
             </FormItem>
           )}

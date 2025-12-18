@@ -72,16 +72,16 @@ export default function SalesExecutiveDashboard() {
       <DashboardHeader />
 
       {/* Performance Chart + Assigned Tasks */}
-      <div className="w-full h-full flex gap-4 items-stretch  ">
-        <div className="w-[60%]">
+      <div className="w-full h-full flex flex-col lg:flex-row gap-4 items-stretch  ">
+        <div className="lg:w-[60%]">
           <EnhancedStageOverview
             data={stageCounts}
             isLoading={isLoadingStageCounts}
           />
         </div>
-        <div className="w-[40%] flex flex-col">
+        <div className="lg:w-[40%] flex flex-col">
           <AssignedTaskCard />
-          <div className="flex  flex-row gap-4">
+          <div className="flex flex-col w-full sm:flex-row sm:gap-4 ">
             <LeadsSummaryCard
               assigned={data?.totalLeadsAssigned || 0}
               completed={data?.totalCompletedLeads || 0}
@@ -100,8 +100,8 @@ export default function SalesExecutiveDashboard() {
       </div>
       
       {/* Booking value and  Total booking */}
-      <div className="w-full h-full flex gap-4 items-stretch">
-        <div className="w-[40%]">
+      <div className="w-full h-full flex flex-col lg:flex-row gap-4 items-stretch">
+        <div className="lg:w-[40%]">
           <PerformanceBarChart
             data={
               performanceData
@@ -120,7 +120,7 @@ export default function SalesExecutiveDashboard() {
           />
         </div>
 
-        <div className="w-[60%] h-full">
+        <div className="lg:w-[60%] h-full">
           <BookingValueCard
             data={
               performanceData

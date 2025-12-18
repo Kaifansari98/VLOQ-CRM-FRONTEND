@@ -250,7 +250,7 @@ export default function InstallationMiscellaneous({
 
   return (
     <div className="px-2 bg-[#fff] dark:bg-[#0a0a0a]">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold">Miscellaneous Issues</h3>
           <p className="text-sm text-muted-foreground">
@@ -259,12 +259,14 @@ export default function InstallationMiscellaneous({
           </p>
         </div>
 
-        {canWork && (
-          <Button onClick={() => setIsAddModalOpen(true)} size="sm">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Miscellaneous
-          </Button>
-        )}
+        <div className="w-full sm:w-auto flex justify-end">
+          {canWork && (
+            <Button onClick={() => setIsAddModalOpen(true)} size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Miscellaneous
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Table View */}

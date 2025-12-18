@@ -128,7 +128,7 @@ export default function ApprovedDocsSection({
                 docCount={approvedImages.length}
               />
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4 p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
                 {approvedImages.map((doc: any, index: number) => (
                   <ImageComponent
                     key={doc.id}

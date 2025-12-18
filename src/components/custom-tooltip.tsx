@@ -25,7 +25,7 @@ export default function CustomeTooltip({
       <Tooltip>
         <TooltipTrigger asChild>
           <span
-            className="border-0 shadow-none p-0 font-normal text-inherit bg-transparent 
+            className="border-0 w-full shadow-none p-0 font-normal text-inherit bg-transparent 
                        hover:bg-transparent focus:bg-transparent active:bg-transparent"
           >
             {truncateValue}

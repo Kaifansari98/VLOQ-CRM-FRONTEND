@@ -34,6 +34,7 @@ import {
   UsersRoundIcon,
   FileText,
   Clock,
+  UserPlus,
 } from "lucide-react";
 
 import {
@@ -189,7 +190,12 @@ export default function ClientApprovalLeadDetails() {
           {!is_client_approval_submitted ? (
             <CustomeTooltip
               truncateValue={
-                <Button size="sm" disabled variant="secondary">
+                <Button
+                  className="hidden lg:block"
+                  size="sm"
+                  disabled
+                  variant="secondary"
+                >
                   Request To Tech Check
                 </Button>
               }
@@ -198,6 +204,7 @@ export default function ClientApprovalLeadDetails() {
           ) : canRequestToTeckCheck(userType) ? (
             <Button
               size="sm"
+              className="hidden lg:block"
               onClick={() => setOpenRequestToTechCheckModal(true)}
             >
               Request To Tech Check
@@ -205,15 +212,24 @@ export default function ClientApprovalLeadDetails() {
           ) : (
             <CustomeTooltip
               truncateValue={
-                <Button size="sm" disabled variant="secondary">
+                <Button
+                  className="hidden lg:block"
+                  size="sm"
+                  disabled
+                  variant="secondary"
+                >
                   Request To Tech Check
                 </Button>
               }
-              value="No permission"
+              value="Only Sales Executive can request to Tech Check"
             />
           )}
 
-          <Button size="sm" onClick={() => setAssignOpen(true)}>
+          <Button
+            size="sm"
+            className="hidden md:block"
+            onClick={() => setAssignOpen(true)}
+          >
             Assign Task
           </Button>
 
@@ -228,6 +244,13 @@ export default function ClientApprovalLeadDetails() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="md:hidden"
+                onSelect={() => setAssignOpen(true)}
+              >
+                <UserPlus size={20} />
+                Assign Task
+              </DropdownMenuItem>
               {/* ⭐ ONLY MARK ON HOLD */}
               <DropdownMenuItem onSelect={() => setActivityModalOpen(true)}>
                 <Clock className="m h-4 w-4" />
@@ -244,15 +267,34 @@ export default function ClientApprovalLeadDetails() {
                     Client Approval
                   </DropdownMenuItem>
                 ) : (
-                  <CustomeTooltip truncateValue="..." value="No permission" />
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <FileText size={20} />
+                        Client Approval
+                      </DropdownMenuItem>
+                    }
+                    value="Only Sales-executive access this option"
+                  />
                 )
-              ) : (
+              ) : canRequestToTeckCheck(userType) ? (
                 <DropdownMenuItem
+                  className="lg:hidden"
                   onClick={() => setOpenRequestToTechCheckModal(true)}
                 >
                   <FileText size={20} />
                   Request To Tech Check
                 </DropdownMenuItem>
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <DropdownMenuItem className="lg:hidden" disabled>
+                      <FileText size={20} />
+                      Request To Tech Check
+                    </DropdownMenuItem>
+                  }
+                  value="Only Sales Executive can request to Tech Check"
+                />
               )}
 
               {/* EDIT */}
@@ -316,7 +358,7 @@ export default function ClientApprovalLeadDetails() {
           // Default case for normal tab switching
           setActiveTab(val);
         }}
-        className="w-full px-6 pt-4"
+        className="w-full p-3 md:p-6"
       >
         <ScrollArea>
           <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
@@ -333,10 +375,10 @@ export default function ClientApprovalLeadDetails() {
             ) : (
               <CustomeTooltip
                 truncateValue={
-                  <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                  <TabsTrigger value="" disabled>
                     <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
                     To-Do Task
-                  </div>
+                  </TabsTrigger>
                 }
                 value="Only Sales Executive can access this tab"
               />
@@ -357,21 +399,20 @@ export default function ClientApprovalLeadDetails() {
 
         <TabsContent value="details">
           <main className="flex-1 h-fit">
-            {is_client_approval_submitted ? (
-              <LeadDetailsUtil
-                status="clientApproval"
-                leadId={leadIdNum}
-                accountId={accountId}
-                defaultTab="clientApproval"
-              />
-            ) : (
-              <LeadDetailsUtil
-                status="clientdocumentation"
-                leadId={leadIdNum}
-                accountId={accountId}
-                defaultTab="clientdocumentation"
-              />
-            )}
+            <LeadDetailsUtil
+              status={
+                is_client_approval_submitted
+                  ? "clientApproval"
+                  : "clientdocumentation"
+              }
+              leadId={leadIdNum}
+              accountId={accountId}
+              defaultTab={
+                is_client_approval_submitted
+                  ? "clientApproval"
+                  : "clientdocumentation"
+              }
+            />
           </main>
         </TabsContent>
 

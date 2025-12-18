@@ -30,6 +30,7 @@ import {
   UsersRoundIcon,
   Truck,
   Clock,
+  UserPlus,
 } from "lucide-react";
 
 import {
@@ -192,14 +193,11 @@ export default function ReadyToDispatchLeadDetails() {
 
         <div className="flex items-center space-x-2">
           {/* ✅ Move to Dispatch Planning Button */}
-          {checkingStatus ? (
-            <Button size="sm" disabled>
-              Checking...
-            </Button>
-          ) : isCompleted ? (
+          {isCompleted ? (
             <Button
               size="sm"
               variant="default"
+              className="hidden sm:flex"
               onClick={() => setOpenMoveConfirm(true)}
               disabled={moveToDispatchMutation.isPending}
             >
@@ -209,7 +207,12 @@ export default function ReadyToDispatchLeadDetails() {
           ) : (
             <CustomeTooltip
               truncateValue={
-                <Button size="sm" disabled variant="outline">
+                <Button
+                  size="sm"
+                  disabled
+                  variant="outline"
+                  className="hidden sm:flex"
+                >
                   Move to Dispatch Planning
                 </Button>
               }
@@ -218,7 +221,11 @@ export default function ReadyToDispatchLeadDetails() {
           )}
 
           {/* Assign Task Button */}
-          <Button size="sm" onClick={() => setAssignOpen(true)}>
+          <Button
+            size="sm"
+            className="hidden lg:flex"
+            onClick={() => setAssignOpen(true)}
+          >
             Assign Task
           </Button>
 
@@ -231,6 +238,30 @@ export default function ReadyToDispatchLeadDetails() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem className="lg:hidden">
+                <UserPlus size={20} />
+                Assign Task
+              </DropdownMenuItem>
+
+              {isCompleted ? (
+                <DropdownMenuItem
+                  className="sm:hidden"
+                  onClick={() => setOpenMoveConfirm(true)}
+                >
+                  <Truck size={16} />
+                  Move to Dispatch Planning
+                </DropdownMenuItem>
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <DropdownMenuItem className="sm:hidden" disabled>
+                      <Truck size={16} />
+                      Move to Dispatch Planning
+                    </DropdownMenuItem>
+                  }
+                  value="Complete all 6 Site Readiness items and upload at least one current site photo to enable this action."
+                />
+              )}
               <DropdownMenuItem
                 onSelect={() => {
                   setActivityType("onHold");
@@ -273,58 +304,63 @@ export default function ReadyToDispatchLeadDetails() {
       <Tabs
         value={activeTab}
         onValueChange={(val) => setActiveTab(val)}
-        className="w-full px-6 pt-4"
+        className="w-full p-3 md:p-6 pt-4"
       >
         <ScrollArea>
-          <div className="w-full h-full flex justify-between items-center mb-4">
-            <div className="w-full flex items-center gap-2 justify-between">
-              <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-                {/* ✅ Site Readiness Details */}
-                <TabsTrigger value="details">
-                  <Truck size={16} className="mr-1 opacity-60" />
-                  Site Readiness Details
-                </TabsTrigger>
+          <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
+            {/* ✅ Site Readiness Details */}
+            <TabsTrigger value="details">
+              <Truck size={16} className="mr-1 opacity-60" />
+              Site Readiness Details
+            </TabsTrigger>
 
-                {/* ✅ To-Do Task (Conditional Access) */}
-                {canDoSR(userType) ? (
-                  <TabsTrigger value="todo">
+            {/* ✅ To-Do Task (Conditional Access) */}
+            {canDoSR(userType) ? (
+              <TabsTrigger value="todo">
+                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                To-Do Task
+              </TabsTrigger>
+            ) : (
+              <CustomeTooltip
+                truncateValue={
+                  <TabsTrigger value="todo" disabled>
                     <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
                     To-Do Task
                   </TabsTrigger>
-                ) : (
-                  <CustomeTooltip
-                    truncateValue={
-                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                        <PanelsTopLeftIcon
-                          size={16}
-                          className="mr-1 opacity-60"
-                        />
-                        To-Do Task
-                      </div>
-                    }
-                    value="Only Admin or Site Supervisor can access this tab"
-                  />
-                )}
+                }
+                value="Only Admin or Site Supervisor can access this tab"
+              />
+            )}
 
-                {/* ✅ Site History */}
-                <TabsTrigger value="history">
-                  <BoxIcon size={16} className="mr-1 opacity-60" />
-                  Site History
-                </TabsTrigger>
+            {/* ✅ Site History */}
+            <TabsTrigger value="history">
+              <BoxIcon size={16} className="mr-1 opacity-60" />
+              Site History
+            </TabsTrigger>
 
-                {/* ✅ Payment Info */}
-                <TabsTrigger value="payment">
-                  <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                  Payment Information
-                </TabsTrigger>
-              </TabsList>
-            </div>
-          </div>
+            {/* ✅ Payment Info */}
+            <TabsTrigger value="payment">
+              <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+              Payment Information
+            </TabsTrigger>
+          </TabsList>
+
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
         <TabsContent value="details">
-          <main className="flex-1 h-fit">
+          <LeadDetailsGrouped
+            status="siteReadiness"
+            defaultTab="siteReadiness"
+            leadId={leadIdNum}
+            accountId={accountId}
+            maxVisibleStage="siteReadiness"
+          />
+        </TabsContent>
+
+        {/* ✅ To-Do Task (Same as Site Readiness Details, but only for canAssignSR) */}
+        {canDoSR(userType) && (
+          <TabsContent value="todo">
             <LeadDetailsGrouped
               status="siteReadiness"
               defaultTab="siteReadiness"
@@ -332,21 +368,6 @@ export default function ReadyToDispatchLeadDetails() {
               accountId={accountId}
               maxVisibleStage="siteReadiness"
             />
-          </main>
-        </TabsContent>
-
-        {/* ✅ To-Do Task (Same as Site Readiness Details, but only for canAssignSR) */}
-        {canDoSR(userType) && (
-          <TabsContent value="todo">
-            <main className="flex-1 h-fit">
-              <LeadDetailsGrouped
-                status="siteReadiness"
-                defaultTab="siteReadiness"
-                leadId={leadIdNum}
-                accountId={accountId}
-                maxVisibleStage="siteReadiness"
-              />
-            </main>
           </TabsContent>
         )}
 

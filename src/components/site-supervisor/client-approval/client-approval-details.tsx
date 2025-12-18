@@ -120,7 +120,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="rounded-lg w-full h-full py-4 space-y-6 overflow-y-scroll bg-[#fff] dark:bg-[#0a0a0a]"
+      className="rounded-lg w-full h-full py-4 space-y-6 bg-[#fff] dark:bg-[#0a0a0a]"
     >
       {/* -------- Payment Details Section -------- */}
       {paymentInfo && (
@@ -243,7 +243,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
               </h1>
             </div>
 
-            <Button
+            {/* <Button
               variant="outline"
               size="sm"
               onClick={() => refetch()}
@@ -254,7 +254,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
         "
             >
               Refresh
-            </Button>
+            </Button> */}
           </div>
 
           {/* Body */}

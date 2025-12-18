@@ -127,120 +127,118 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="border rounded-lg w-full h-full overflow-y-scroll bg-[#fff] dark:bg-[#0a0a0a]"
+        className="w-full bg-[#fff] dark:bg-[#0a0a0a]"
       >
-        <ScrollArea className="max-h-[calc(90vh-100px)]">
-          <div className="p-6 space-y-6">
-            {/* -------- Top Summary Cards -------- */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {/* Site Supervisor */}
-              <div
-                className="
+        <div className="p-1 space-y-6">
+          {/* -------- Top Summary Cards -------- */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Site Supervisor */}
+            <div
+              className="
     bg-white dark:bg-neutral-900
     border border-border rounded-2xl 
     p-5 flex items-center gap-4
     transition-all duration-200 
     hover:ring-1 hover:ring-primary/30
   "
-              >
-                {/* Icon Container */}
-                <div
-                  className="
+            >
+              {/* Icon Container */}
+              <div
+                className="
       w-12 h-12 rounded-xl flex items-center justify-center
       bg-[#fff] dark:bg-[#0a0a0a]
       text-gray-600 dark:text-gray-400
     "
-                >
-                  <User className="w-6 h-6" />
-                </div>
-
-                {/* Text */}
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">
-                    Site Supervisor
-                  </p>
-
-                  <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
-                    {leadData?.supervisors?.[0]?.userName || "Not Assigned"}
-                  </p>
-                </div>
+              >
+                <User className="w-6 h-6" />
               </div>
 
-              {/* Total Booking Value */}
-              <div
-                className="
-    bg-white dark:bg-neutral-900
-    border border-border rounded-2xl 
-    p-5 flex items-center gap-4
-    transition-all duration-200 
-    hover:ring-1 hover:ring-primary/30
-  "
-              >
-                <div
-                  className="
-      w-12 h-12 rounded-xl flex items-center justify-center
-      bg-[#fff] dark:bg-[#0a0a0a]
-      text-gray-600 dark:text-gray-400
-    "
-                >
-                  <CreditCard className="w-6 h-6" />
-                </div>
+              {/* Text */}
+              <div>
+                <p className="text-sm text-muted-foreground font-medium">
+                  Site Supervisor
+                </p>
 
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">
-                    Total Booking Value
-                  </p>
-
-                  <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
-                    ₹
-                    {leadData?.finalBookingAmount?.toLocaleString("en-IN") ||
-                      "0"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Amount Received */}
-              <div
-                className="
-    bg-white dark:bg-neutral-900
-    border border-border rounded-2xl 
-    p-5 flex items-center gap-4
-    transition-all duration-200 
-    hover:ring-1 hover:ring-primary/30
-  "
-              >
-                <div
-                  className="
-      w-12 h-12 rounded-xl flex items-center justify-center
-      bg-[#fff] dark:bg-[#0a0a0a]
-      text-gray-600 dark:text-gray-400
-    "
-                >
-                  <IndianRupee className="w-6 h-6" />
-                </div>
-
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">
-                    Booking Amount Received
-                  </p>
-
-                  <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
-                    ₹
-                    {leadData?.payments?.[0]?.amount?.toLocaleString("en-IN") ||
-                      "0"}
-                  </p>
-                </div>
+                <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
+                  {leadData?.supervisors?.[0]?.userName || "Not Assigned"}
+                </p>
               </div>
             </div>
 
-            {/* -------- Design Remarks -------- */}
-            <div className="space-y-3 mb-6">
-              <h2 className="text-sm font-semibold tracking-tight">
-                Design Remarks
-              </h2>
-
+            {/* Total Booking Value */}
+            <div
+              className="
+    bg-white dark:bg-neutral-900
+    border border-border rounded-2xl 
+    p-5 flex items-center gap-4
+    transition-all duration-200 
+    hover:ring-1 hover:ring-primary/30
+  "
+            >
               <div
                 className="
+      w-12 h-12 rounded-xl flex items-center justify-center
+      bg-[#fff] dark:bg-[#0a0a0a]
+      text-gray-600 dark:text-gray-400
+    "
+              >
+                <CreditCard className="w-6 h-6" />
+              </div>
+
+              <div>
+                <p className="text-sm text-muted-foreground font-medium">
+                  Total Booking Value
+                </p>
+
+                <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
+                  ₹
+                  {leadData?.finalBookingAmount?.toLocaleString("en-IN") || "0"}
+                </p>
+              </div>
+            </div>
+
+            {/* Amount Received */}
+            <div
+              className="
+    bg-white dark:bg-neutral-900
+    border border-border rounded-2xl 
+    p-5 flex items-center gap-4
+    transition-all duration-200 
+    hover:ring-1 hover:ring-primary/30
+  "
+            >
+              <div
+                className="
+      w-12 h-12 rounded-xl flex items-center justify-center
+      bg-[#fff] dark:bg-[#0a0a0a]
+      text-gray-600 dark:text-gray-400
+    "
+              >
+                <IndianRupee className="w-6 h-6" />
+              </div>
+
+              <div>
+                <p className="text-sm text-muted-foreground font-medium">
+                  Booking Amount Received
+                </p>
+
+                <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
+                  ₹
+                  {leadData?.payments?.[0]?.amount?.toLocaleString("en-IN") ||
+                    "0"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* -------- Design Remarks -------- */}
+          <div className="space-y-3 mb-6">
+            <h2 className="text-sm font-semibold tracking-tight">
+              Design Remarks
+            </h2>
+
+            <div
+              className="
       bg-[#fff] dark:bg-[#0a0a0a] 
       border border-border 
       rounded-xl 
@@ -248,39 +246,39 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       text-sm leading-relaxed 
       max-h-[250px] overflow-y-auto
     "
-              >
-                {leadData?.payments?.[0].text || "N/A"}
-              </div>
+            >
+              {leadData?.payments?.[0].text || "N/A"}
             </div>
+          </div>
 
-            {/* -------- Booking Documents Section -------- */}
-            <div className="space-y-6 mb-6">
-              {/* ----- Booking Documents Card ----- */}
-              <div
-                className="
+          {/* -------- Booking Documents Section -------- */}
+          <div className="space-y-6 mb-6">
+            {/* ----- Booking Documents Card ----- */}
+            <div
+              className="
       bg-[#fff] dark:bg-[#0a0a0a]
       rounded-2xl 
       border border-border 
       overflow-hidden
     "
-              >
-                {/* Header */}
-                <div
-                  className="
+            >
+              {/* Header */}
+              <div
+                className="
         flex items-center justify-between 
         px-5 py-3 
         border-b border-border
         bg-[#fff] dark:bg-[#0a0a0a]
       "
-                >
-                  <div className="flex items-center gap-2">
-                    <Images size={20} className="text-muted-foreground" />
-                    <h1 className="text-base font-semibold tracking-tight">
-                      Booking Documents (Quotations + Design)
-                    </h1>
-                  </div>
+              >
+                <div className="flex items-center gap-2">
+                  <Images size={20} className="text-muted-foreground" />
+                  <h1 className="text-base font-semibold tracking-tight">
+                    Booking Documents (Quotations + Design)
+                  </h1>
+                </div>
 
-                  <Button
+                {/* <Button
                     variant="outline"
                     size="sm"
                     className="
@@ -292,26 +290,26 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                   >
                     <RefreshCcw size={15} />
                     Refresh
-                  </Button>
-                </div>
+                  </Button> */}
+              </div>
 
-                {/* Body */}
-                <div className="p-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {finalDocs.map((doc: DocumentBooking) => (
-                      <DocumentCard
-                        key={doc.id}
-                        doc={doc}
-                        canDelete={canDelete}
-                        onDelete={(id) => setConfirmDelete(Number(id))}
-                      />
-                    ))}
+              {/* Body */}
+              <div className="p-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {finalDocs.map((doc: DocumentBooking) => (
+                    <DocumentCard
+                      key={doc.id}
+                      doc={doc}
+                      canDelete={canDelete}
+                      onDelete={(id) => setConfirmDelete(Number(id))}
+                    />
+                  ))}
 
-                    {/* Add File Button */}
-                    {canDelete && (
-                      <div
-                        onClick={() => setOpenFinalDocModal(true)}
-                        className="
+                  {/* Add File Button */}
+                  {canDelete && (
+                    <div
+                      onClick={() => setOpenFinalDocModal(true)}
+                      className="
               flex flex-col items-center justify-center 
               min-h-[120px]
               border-2 border-dashed border-border/70 
@@ -320,46 +318,43 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
               hover:bg-mutedBg/40 dark:hover:bg-neutral-800/40 
               transition-all
             "
-                      >
-                        <Plus
-                          size={28}
-                          className="text-muted-foreground mb-1"
-                        />
-                        <span className="text-xs font-medium text-muted-foreground">
-                          Add File
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                    >
+                      <Plus size={28} className="text-muted-foreground mb-1" />
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Add File
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
+            </div>
 
-              {/* ----- Payment Proofs Card ----- */}
-              <div
-                className="
+            {/* ----- Payment Proofs Card ----- */}
+            <div
+              className="
       bg-[#fff] dark:bg-[#0a0a0a]
       rounded-2xl 
       border border-border 
       overflow-hidden
     "
-              >
-                {/* Header */}
-                <div
-                  className="
+            >
+              {/* Header */}
+              <div
+                className="
         flex items-center justify-between 
         px-5 py-3 
         border-b border-border 
         bg-[#fff] dark:bg-[#0a0a0a]
       "
-                >
-                  <div className="flex items-center gap-2">
-                    <Images size={20} className="text-muted-foreground" />
-                    <h1 className="text-base font-semibold tracking-tight">
-                      Booking Payment Proofs
-                    </h1>
-                  </div>
+              >
+                <div className="flex items-center gap-2">
+                  <Images size={20} className="text-muted-foreground" />
+                  <h1 className="text-base font-semibold tracking-tight">
+                    Booking Payment Proofs
+                  </h1>
+                </div>
 
-                  <Button
+                {/* <Button
                     variant="outline"
                     size="sm"
                     className="
@@ -371,49 +366,45 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                   >
                     <RefreshCcw size={15} />
                     Refresh
-                  </Button>
-                </div>
+                  </Button> */}
+              </div>
 
-                {/* Body */}
-                <div className="p-5">
-                  {bookingPaymentDocs.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {bookingPaymentDocs.map((doc, index) => (
-                        <ImageComponent
-                          key={doc.id}
-                          doc={{
-                            id: doc.id,
-                            doc_og_name: doc.originalName,
-                            signedUrl: doc.signedUrl,
-                          }}
-                          index={index}
-                          canDelete={canDelete}
-                          onDelete={(id) => setConfirmDelete(Number(id))}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div
-                      className="
+              {/* Body */}
+              <div className="p-5">
+                {bookingPaymentDocs.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {bookingPaymentDocs.map((doc, index) => (
+                      <ImageComponent
+                        key={doc.id}
+                        doc={{
+                          id: doc.id,
+                          doc_og_name: doc.originalName,
+                          signedUrl: doc.signedUrl,
+                        }}
+                        index={index}
+                        canDelete={canDelete}
+                        onDelete={(id) => setConfirmDelete(Number(id))}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div
+                    className="
             flex flex-col items-center justify-center 
             py-12 
             text-center
           "
-                    >
-                      <Images
-                        size={40}
-                        className="text-muted-foreground mb-3"
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        No payment proofs uploaded yet.
-                      </p>
-                    </div>
-                  )}
-                </div>
+                  >
+                    <Images size={40} className="text-muted-foreground mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      No payment proofs uploaded yet.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         {/* -------- Upload Modal -------- */}
         <UploadFinalDoc

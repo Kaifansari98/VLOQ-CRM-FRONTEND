@@ -112,7 +112,7 @@ export default function SiteHistoryTab({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="relative px-6 py-4 w-full mx-auto"
+      className="relative py-4 w-full mx-auto"
     >
       <motion.div
         initial={{ opacity: 0, y: -20 }}

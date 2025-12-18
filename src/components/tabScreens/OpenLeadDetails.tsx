@@ -30,7 +30,6 @@ import {
 import { useState } from "react";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { ImageComponent } from "../utils/ImageCard";
-import { Button } from "../ui/button";
 
 type OpenLeadDetailsProps = {
   leadId: number;
@@ -134,14 +133,13 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         animate="visible"
         className="
   rounded-lg 
-  w-full h-full 
-  overflow-y-scroll 
+  w-full h-full   
   bg-[#fff] dark:bg-[#0a0a0a]
 "
       >
         {/* Header */}
         <div>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between  ">
             <div>
               <h2 className="text-lg font-semibold ">Lead Details</h2>
               <p className="text-sm text-gray-500 dark:text-neutral-400">
@@ -309,7 +307,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   onboard.
                 </p>
               </div>
-
+{/* 
               <Button
                 variant="outline"
                 size="sm"
@@ -323,7 +321,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               >
                 <RefreshCcw size={15} />
                 Refresh
-              </Button>
+              </Button> */}
             </div>
 
             {/* Body */}

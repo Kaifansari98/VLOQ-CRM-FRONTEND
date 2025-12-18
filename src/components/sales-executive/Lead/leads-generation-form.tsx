@@ -768,34 +768,51 @@ export default function LeadsGenerationForm({
                   label: p.type,
                 })) ?? [];
 
-              // Transform selected IDs back to Option[] format for display
-              const selectedOptions = (field.value || []).map((id) => {
-                const option = options.find((opt) => opt.value === id);
-                return option || { value: id, label: id }; // fallback if option not found
-              });
-
               return (
-                <FormItem>
-                  <FormLabel className="text-sm">Furniture Type *</FormLabel>
-                  <FormControl>
-                    <MultipleSelector
-                      value={selectedOptions} // Pass Option[] with proper labels
-                      onChange={(selectedOptions) => {
-                        // Extract IDs from selected options and store as string[]
-                        const selectedIds = selectedOptions.map(
-                          (opt) => opt.value
-                        );
-                        field.onChange(selectedIds);
-                      }}
-                      options={options}
-                      maxSelected={1}
-                      placeholder="Select furniture types"
-                      disabled={isLoading}
-                      hidePlaceholderWhenSelected
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+                <FormField
+                  control={form.control}
+                  name="product_types"
+                  render={({ field }) => {
+                    const { data: productTypes, isLoading } = useProductTypes();
+
+                    const pickerData =
+                      productTypes?.data?.map((p: any) => ({
+                        id: p.id,
+                        label: p.type,
+                      })) || [];
+
+                    return (
+                      <FormItem>
+                        <FormLabel className="text-sm">
+                          Furniture Type *
+                        </FormLabel>
+
+                        {isLoading ? (
+                          <p className="text-xs text-muted-foreground">
+                            Loading...
+                          </p>
+                        ) : (
+                          <AssignToPicker
+                            data={pickerData}
+                            value={
+                              field.value?.length
+                                ? Number(field.value[0])
+                                : undefined
+                            } // ✅ array → single
+                            onChange={(selectedId) => {
+                              field.onChange(
+                                selectedId ? [String(selectedId)] : []
+                              ); // ✅ single → array
+                            }}
+                            placeholder="Search furniture type..."
+                          />
+                        )}
+
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
               );
             }}
           />
@@ -854,30 +871,31 @@ export default function LeadsGenerationForm({
             <FormField
               control={form.control}
               name="assign_to"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">Assign Lead To *</FormLabel>
-                  <Select
-                    value={field.value || ""}
-                    onValueChange={field.onChange}
-                    disabled={isLoading}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="text-sm w-full">
-                        <SelectValue placeholder="Select assignee" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {vendorUserss?.map((user: any) => (
-                        <SelectItem key={user.id} value={String(user.id)}>
-                          {user.user_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const pickerData =
+                  vendorUserss?.map((user: any) => ({
+                    id: user.id,
+                    label: user.user_name,
+                  })) || [];
+
+                return (
+                  <FormItem>
+                    <FormLabel className="text-sm">Assign Lead To *</FormLabel>
+
+                    <AssignToPicker
+                      data={pickerData}
+                      value={field.value ? Number(field.value) : undefined} // ✅ string → number
+                      onChange={(selectedId) => {
+                        field.onChange(selectedId ? String(selectedId) : ""); // ✅ number → string
+                      }}
+                      placeholder="Search assignee..."
+                      disabled={isLoading}
+                    />
+
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
           </div>
         )}
@@ -997,7 +1015,7 @@ export default function LeadsGenerationForm({
           </AlertDialogContent>
         </AlertDialog>
 
-        <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+        <div className="flex flex-row justify-end gap-2 pt-4">
           {/* Save as Draft */}
           <AlertDialog open={openDraftModal} onOpenChange={setOpenDraftModal}>
             <AlertDialogTrigger asChild>

@@ -151,11 +151,11 @@ export default function ProjectFinanceSummary({
   return (
     <motion.div
       variants={itemVariants}
-      className="h-fit rounded-lg p-4 bg-card flex flex-col gap-4 overflow-y-auto"
+      className="h-fit w-full rounded-lg bg-card flex flex-col gap-4 overflow-y-auto"
     >
       {/* 🔹 Project Finance Summary */}
       {/* 🔹 Project Finance Summary */}
-      <Card className="p-4 shadow-sm text-center">
+      <Card className="p-4 w-full  shadow-sm text-center">
         <h2 className="text-lg font-semibold mb-4">Project Finance Summary</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* ✅ Total Project */}

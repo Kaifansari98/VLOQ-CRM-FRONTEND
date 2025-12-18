@@ -406,35 +406,18 @@ export default function DispatchPlanningDetails({
       {/* Dispatch Planning Information */}
       <div className="border h-full rounded-lg overflow-y-auto bg-background">
         {/* ---------- HEADER ---------- */}
-        <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row  items-start space-y-2.5 sm:items-center sm:justify-between px-6 py-4 border-b bg-muted/30 ">
           <div className="space-y-0">
             <div className="flex items-center gap-2">
               <Truck className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold tracking-tight">
+              <h2 className="text-md sm:text-lg font-semibold tracking-tight">
                 Dispatch Planning Information
               </h2>
             </div>
-            <p className="text-xs text-muted-foreground ml-7">
+            <p className="text-xs text-muted-foreground ml-7 line-clamp-1">
               Provide onsite contact details & dispatch requirements.
             </p>
           </div>
-
-          {canViewAndWork && (
-            <Button
-              onClick={handleSaveInfo}
-              disabled={saveInfoMutation.isPending}
-              className="w-full md:w-auto"
-            >
-              {saveInfoMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>Save Dispatch Info</>
-              )}
-            </Button>
-          )}
         </div>
 
         {/* ---------- BODY ---------- */}
@@ -618,6 +601,25 @@ export default function DispatchPlanningDetails({
               maxLength={1000}
               disabled={!canViewAndWork}
             />
+          </div>
+
+          <div className="flex justify-end">
+            {canViewAndWork && (
+              <Button
+                onClick={handleSaveInfo}
+                disabled={saveInfoMutation.isPending}
+                size={"sm"}
+              >
+                {saveInfoMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>Save Dispatch Info</>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -810,26 +812,28 @@ export default function DispatchPlanningDetails({
             )}
 
           {/* Save Button */}
-          {canViewAndWork && !existingPaymentDoc && (
-            <Button
-              onClick={handlePaymentSaveClick}
-              disabled={
-                savePaymentMutation.isPending ||
-                !infoSaved ||
-                existingPaymentDoc !== null
-              }
-              className="w-full md:w-auto"
-            >
-              {savePaymentMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>Save Payment Info</>
-              )}
-            </Button>
-          )}
+
+          <div className="flex justify-end">
+            {canViewAndWork && !existingPaymentDoc && (
+              <Button
+                onClick={handlePaymentSaveClick}
+                disabled={
+                  savePaymentMutation.isPending ||
+                  !infoSaved ||
+                  existingPaymentDoc !== null
+                }
+              >
+                {savePaymentMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>Save Payment Info</>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 

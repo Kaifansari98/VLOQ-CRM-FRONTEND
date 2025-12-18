@@ -160,178 +160,160 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
   }
 
   return (
-    <div className="max-w-4xl mx-2 py-1">
-      {/* <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-4"
+    <div className="overflow-y-auto pr-4 w-full">
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="relative w-full pl-16"
       >
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-          Payment Timeline
-        </h2>
-        <p className="text-muted-foreground">Track all payment transactions</p>
-      </motion.div> */}
-
-      {/* Scrollable container for cards */}
-      <div className="overflow-y-auto pr-4">
+        {/* Animated vertical line */}
         <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="relative pl-16"
-        >
-          {/* Animated vertical line */}
-          <motion.div
-            variants={lineVariants as any}
-            className="absolute left-6 top-0 w-0.5 bg-gradient-to-b from-primary via-primary/50 to-primary origin-top"
-            style={{ height: `calc(100% - 2rem)` }}
-          />
+          variants={lineVariants as any}
+          className="absolute left-6 top-0 w-0.5 bg-gradient-to-b from-primary via-primary/50 to-primary origin-top"
+          style={{ height: `calc(100% - 2rem)` }}
+        />
 
-          {logs
-            .filter((log) => log.amount > 0) // ✅ Only show logs with amount > 0
-            .map((log, index) => (
+        {logs
+          .filter((log) => log.amount > 0) // ✅ Only show logs with amount > 0
+          .map((log, index) => (
+            <motion.div
+              key={log.id}
+              variants={itemVariants as any}
+              className="relative mb-6 last:mb-0"
+            >
+              {/* Animated timeline dot with glow, above the line */}
               <motion.div
-                key={log.id}
-                variants={itemVariants as any}
-                className="relative mb-6 last:mb-0"
+                variants={dotVariants as any}
+                className="absolute -left-[35px] top-6 z-20" // Increased z-index
               >
-                {/* Animated timeline dot with glow, above the line */}
                 <motion.div
-                  variants={dotVariants as any}
-                  className="absolute -left-[35px] top-6 z-20" // Increased z-index
-                >
-                  <motion.div
-                    animate={{
-                      boxShadow: [
-                        "0 0 0 0 rgba(59, 130, 246, 0.4)",
-                        "0 0 0 8px rgba(59, 130, 246, 0)",
-                      ],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      repeatType: "loop",
-                    }}
-                    className="w-6 h-6 -mx-4 rounded-full bg-primary border-4 border-background shadow-lg"
-                  />
-                </motion.div>
+                  animate={{
+                    boxShadow: [
+                      "0 0 0 0 rgba(59, 130, 246, 0.4)",
+                      "0 0 0 8px rgba(59, 130, 246, 0)",
+                    ],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    repeatType: "loop",
+                  }}
+                  className="w-6 h-6 -mx-4 rounded-full bg-primary border-4 border-background shadow-lg"
+                />
+              </motion.div>
 
-                {/* Content card with gradient border effect */}
-                <motion.div
-                  // whileHover={{ scale: 1.02 }}
-                  transition={{ type: "spring", stiffness: 300 }}
-                >
-                  <Card className="overflow-hidden border-[1px] duration-300">
-                    {/* Enhanced Header with amount */}
-                    <div className="px-6 border-b flex items-start justify-between flex-wrap gap-4">
-                      <div className="flex items-center gap-4 mb-2">
-                        <div>
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                            Amount Received
-                          </p>
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-2xl font-bold text-primary">
-                              ₹{log.amount.toLocaleString("en-IN")}
-                            </span>
-                            {/* <Badge variant="outline" className="text-sm bg-primary/10 text-primary border-primary/30">
+              {/* Content card with gradient border effect */}
+              <motion.div
+                // whileHover={{ scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <Card className="overflow-hidden border-[1px] duration-300">
+                  {/* Enhanced Header with amount */}
+                  <div className="px-6 border-b flex items-start justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-4 mb-2">
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                          Amount Received
+                        </p>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-bold text-primary">
+                            ₹{log.amount.toLocaleString("en-IN")}
+                          </span>
+                          {/* <Badge variant="outline" className="text-sm bg-primary/10 text-primary border-primary/30">
                             Confirmed
                           </Badge> */}
-                          </div>
                         </div>
                       </div>
-                      {log.payment_file && (
-                        <Button
-                          variant="default"
-                          size="lg"
-                          onClick={() =>
-                            window.open(log.payment_file!, "_blank")
-                          }
-                          className="gap-2 bg-primary/90 hover:bg-primary transition-all shadow-md hover:shadow-lg"
-                        >
-                          <ExternalLink size={18} />
-                          View Proof
-                        </Button>
-                      )}
                     </div>
+                    {log.payment_file && (
+                      <Button
+                        variant="default"
+                        size="lg"
+                        onClick={() => window.open(log.payment_file!, "_blank")}
+                        className="gap-2  bg-primary/90 hover:bg-primary transition-all shadow-md hover:shadow-lg"
+                      >
+                        <ExternalLink size={18} />
+                        <h1 className="hidden md:block">View Proof</h1>
+                      </Button>
+                    )}
+                  </div>
 
-                    {/* Details section with icons */}
-                    <div className="px-4 space-y-2">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        <motion.div
-                          whileHover={{ x: 5 }}
-                          className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                        >
-                          <Calendar className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-                              Paid On
-                            </p>
-                            <p className="text-sm font-medium">
-                              {formatDate(log.payment_date).full}
-                            </p>
-                            {/* <p className="text-xs text-muted-foreground">
+                  {/* Details section with icons */}
+                  <div className="px-4 space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <motion.div
+                        whileHover={{ x: 5 }}
+                        className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      >
+                        <Calendar className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                            Paid On
+                          </p>
+                          <p className="text-sm font-medium">
+                            {formatDate(log.payment_date).full}
+                          </p>
+                          {/* <p className="text-xs text-muted-foreground">
                               {formatDate(log.payment_date).time}
                             </p> */}
-                          </div>
-                        </motion.div>
-
-                        <motion.div
-                          whileHover={{ x: 5 }}
-                          className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                        >
-                          <Clock className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-                              Entry Date
-                            </p>
-                            <p className="text-sm font-medium">
-                              {formatDate(log.entry_date).full}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {formatDate(log.entry_date).time}
-                            </p>
-                          </div>
-                        </motion.div>
-                      </div>
+                        </div>
+                      </motion.div>
 
                       <motion.div
                         whileHover={{ x: 5 }}
                         className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                       >
-                        <User className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                        <Clock className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
                         <div>
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-                            Entered By
+                            Entry Date
                           </p>
                           <p className="text-sm font-medium">
-                            {log.entered_by}
+                            {formatDate(log.entry_date).full}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDate(log.entry_date).time}
                           </p>
                         </div>
                       </motion.div>
-
-                      {log.payment_text && (
-                        <motion.div
-                          whileHover={{ x: 5 }}
-                          className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                        >
-                          <FileText className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-                              Description
-                            </p>
-                            <p className="text-sm font-medium leading-relaxed">
-                              {log.payment_text}
-                            </p>
-                          </div>
-                        </motion.div>
-                      )}
                     </div>
-                  </Card>
-                </motion.div>
+
+                    <motion.div
+                      whileHover={{ x: 5 }}
+                      className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                    >
+                      <User className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                          Entered By
+                        </p>
+                        <p className="text-sm font-medium">{log.entered_by}</p>
+                      </div>
+                    </motion.div>
+
+                    {log.payment_text && (
+                      <motion.div
+                        whileHover={{ x: 5 }}
+                        className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      >
+                        <FileText className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                            Description
+                          </p>
+                          <p className="text-sm font-medium leading-relaxed">
+                            {log.payment_text}
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                </Card>
               </motion.div>
-            ))}
-        </motion.div>
-      </div>
+            </motion.div>
+          ))}
+      </motion.div>
     </div>
   );
 }

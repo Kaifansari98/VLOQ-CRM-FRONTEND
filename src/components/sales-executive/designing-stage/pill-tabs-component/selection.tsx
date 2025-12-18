@@ -244,14 +244,16 @@ const SelectionsTab: React.FC = () => {
         px-5 py-3 
         border-b border-border 
         bg-[#fff] dark:bg-[#0A0A0A]
-        flex items-center justify-between
+        flex flex-col gap-2 md:flex-row 
+        items-start md:items-start  
+        justify-between
       "
         >
           <div>
             <h1 className="text-lg font-semibold tracking-tight">
               Design Selections
             </h1>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground line-clamp-1">
               Choose / Update Carcas, Shutter & Handle selections.
             </p>
           </div>
@@ -263,7 +265,7 @@ const SelectionsTab: React.FC = () => {
                   <Button
                     type="submit"
                     disabled={!canUpdateInput || isPending}
-                    className="px-6 h-10"
+                    size="sm"
                     onClick={form.handleSubmit(onSubmit)}
                   >
                     {isPending ? "Processing..." : "Save Selections"}

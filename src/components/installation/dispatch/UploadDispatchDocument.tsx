@@ -148,7 +148,7 @@ export default function UploadDispatchDocument({
   ------------------------------------------------------------ */
   return (
     <>
-      <Card className="h-full flex flex-col rounded-2xl border bg-white dark:bg-neutral-900">
+      <Card className="lg:h-full flex flex-col rounded-2xl border bg-white dark:bg-neutral-900">
         <CardContent className="h-full flex flex-col px-6 justify-between ">
           {/* Header */}
           <div>

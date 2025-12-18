@@ -13,7 +13,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { useAppSelector } from "@/redux/store";
 import DashboardWrapper from "@/components/dashboard/DashboardWrapper";
-import { Bell } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import GlobalLeadSearchModal from "@/components/dashboard/GlobalLeadSearchModal";
 import { Kbd } from "@/components/ui/kbd";
@@ -67,15 +67,24 @@ export default function Page() {
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-
         <div className="flex items-center gap-2 pr-4">
+          {/* 🔍 Mobile Search Icon */}
+          <button
+            onClick={() => setOpenSearchModal(true)}
+            className="sm:hidden flex"
+            aria-label="Search"
+          >
+            <Search  />
+          </button>
+
+          {/* 🔍 Desktop Search Input */}
           <div
             onClick={() => setOpenSearchModal(true)}
-            className="flex items-center justify-between w-full sm:w-[260px] rounded-md border border-input bg-background px-3 py-1.5 text-sm text-muted-foreground cursor-pointer"
+            className="hidden sm:flex items-center justify-between w-[260px] rounded-md border border-input bg-background px-3 py-1.5 text-sm text-muted-foreground cursor-pointer"
           >
             <span className="truncate">Search leads...</span>
 
-            <div className="hidden sm:flex items-center gap-1">
+            <div className="flex items-center gap-1">
               <Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd>
               <Kbd>K</Kbd>
             </div>
@@ -83,7 +92,6 @@ export default function Page() {
 
           <Bell />
           <AnimatedThemeToggler />
-          {/* <Settings/> */}
         </div>
       </header>
 

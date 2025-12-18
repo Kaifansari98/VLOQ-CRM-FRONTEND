@@ -7,11 +7,7 @@ import {
   useUploadProductionFiles,
 } from "@/api/production/order-login";
 import { useAppSelector } from "@/redux/store";
-import {
-  FolderOpen,
-  Upload,
-  Loader2,
-} from "lucide-react";
+import { FolderOpen, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { toast } from "react-toastify";
@@ -30,6 +26,7 @@ import {
 import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canUploadOrDeleteOrderLogin } from "@/components/utils/privileges";
+import { Badge } from "@/components/ui/badge";
 
 interface ProductionFilesSectionProps {
   leadId: number;
@@ -108,9 +105,9 @@ export default function ProductionFilesSection({
   const canDelete = canUploadOrDeleteOrderLogin(userType, leadStatus);
 
   return (
-    <div className="border h-full rounded-lg overflow-y-auto bg-background shadow-sm">
+    <div className="border rounded-lg bg-background shadow-sm">
       {/* -------------------------------- HEADER -------------------------------- */}
-      <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
+      <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b bg-muted/30 ">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
             <FolderOpen className="w-5 h-5 text-primary" />
@@ -124,10 +121,10 @@ export default function ProductionFilesSection({
         </div>
 
         {hasFiles && (
-          <span className="text-xs text-muted-foreground">
+          <Badge variant="secondary" >
             {productionFiles.length} File
             {productionFiles.length > 1 && "s"}
-          </span>
+          </Badge>
         )}
       </div>
 
@@ -188,22 +185,20 @@ export default function ProductionFilesSection({
             </p>
           </div>
         ) : (
-          <ScrollArea className="max-h-[420px] pr-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
-              {productionFiles.map((doc: any) => (
-                <DocumentCard
-                  key={doc.id}
-                  doc={{
-                    id: doc.id,
-                    originalName: doc.doc_og_name,
-                    signedUrl: doc.signedUrl,
-                  }}
-                  canDelete={canDelete}
-                  onDelete={(id) => setConfirmDelete(id)}
-                />
-              ))}
-            </div>
-          </ScrollArea>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
+            {productionFiles.map((doc: any) => (
+              <DocumentCard
+                key={doc.id}
+                doc={{
+                  id: doc.id,
+                  originalName: doc.doc_og_name,
+                  signedUrl: doc.signedUrl,
+                }}
+                canDelete={canDelete}
+                onDelete={(id) => setConfirmDelete(id)}
+              />
+            ))}
+          </div>
         )}
       </div>
 

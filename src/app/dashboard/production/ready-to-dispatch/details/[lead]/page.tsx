@@ -31,6 +31,9 @@ import {
   Truck,
   CalendarCheck2,
   Clock,
+  CalendarOff,
+  CalendarOffIcon,
+  UserPlus,
 } from "lucide-react";
 
 import {
@@ -58,9 +61,7 @@ import {
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
-import {
-  useUpdateExpectedOrderLoginReadyDate,
-} from "@/api/production/production-api";
+import { useUpdateExpectedOrderLoginReadyDate } from "@/api/production/production-api";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
@@ -185,7 +186,11 @@ export default function ReadyToDispatchLeadDetails() {
         </div>
 
         <div className="flex items-center space-x-2">
-          <Button size="sm" onClick={() => setAssignOpen(true)}>
+          <Button
+            size="sm"
+            className="hidden md:block"
+            onClick={() => setAssignOpen(true)}
+          >
             Assign Task
           </Button>
 
@@ -199,6 +204,10 @@ export default function ReadyToDispatchLeadDetails() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
+              <DropdownMenuItem>
+                <UserPlus size={20} />
+                Assign Task
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => {
                   setActivityType("onHold");
@@ -251,66 +260,65 @@ export default function ReadyToDispatchLeadDetails() {
         }}
         className="w-full px-6 pt-4"
       >
-        <ScrollArea>
-          <div className="w-full h-full flex justify-between items-center mb-4">
-            <div className="w-full flex items-center gap-2 justify-between">
-              <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-                {/* ✅ Ready To Dispatch Details */}
-                <TabsTrigger value="details">
-                  <Truck size={16} className="mr-1 opacity-60" />
-                  Ready To Dispatch Details
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-3">
+          <ScrollArea>
+            <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
+              {/* ✅ Ready To Dispatch Details */}
+              <TabsTrigger value="details">
+                <Truck size={16} className="mr-1 opacity-60" />
+                Ready To Dispatch Details
+              </TabsTrigger>
+
+              {/* ✅ To-Do Task (Conditional Access) */}
+              {canAssignSR(userType) ? (
+                <TabsTrigger value="todo" onClick={() => setAssignOpen(true)}>
+                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                  To-Do Task
                 </TabsTrigger>
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <TabsTrigger value="todo" disabled>
+                      <PanelsTopLeftIcon
+                        size={16}
+                        className="mr-1 opacity-60"
+                      />
+                      To-Do Task
+                    </TabsTrigger>
+                  }
+                  value="Only Admin or Sales Executive can access this tab"
+                />
+              )}
 
-                {/* ✅ To-Do Task (Conditional Access) */}
-                {canAssignSR(userType) ? (
-                  <TabsTrigger value="todo" onClick={() => setAssignOpen(true)}>
-                    <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                    To-Do Task
-                  </TabsTrigger>
-                ) : (
-                  <CustomeTooltip
-                    truncateValue={
-                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                        <PanelsTopLeftIcon
-                          size={16}
-                          className="mr-1 opacity-60"
-                        />
-                        To-Do Task
-                      </div>
-                    }
-                    value="Only Admin or Sales Executive can access this tab"
-                  />
-                )}
+              {/* ✅ Site History */}
+              <TabsTrigger value="history">
+                <BoxIcon size={16} className="mr-1 opacity-60" />
+                Site History
+              </TabsTrigger>
 
-                {/* ✅ Site History */}
-                <TabsTrigger value="history">
-                  <BoxIcon size={16} className="mr-1 opacity-60" />
-                  Site History
-                </TabsTrigger>
+              {/* ✅ Payment Info */}
+              <TabsTrigger value="payment">
+                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                Payment Information
+              </TabsTrigger>
+            </TabsList>
 
-                {/* ✅ Payment Info */}
-                <TabsTrigger value="payment">
-                  <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                  Payment Information
-                </TabsTrigger>
-              </TabsList>
-              <div className="flex flex-col items-start">
-                <p className="text-xs font-semibold">Expected Dispatch Date</p>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+          <div className="flex flex-col items-start">
+            <p className="text-xs font-semibold">Expected Dispatch Date</p>
 
-                {/* Stylish formatted date & time */}
-                <div className="mt-1">
-                  <p className="text-sm">
-                    {formatDate(lead?.expected_order_login_ready_date)}
-                  </p>
-                </div>
-              </div>
+            {/* Stylish formatted date & time */}
+            <div className="flex items-center w-44 justify-between border bg-muted rounded-md py-1.5 px-3 mt-1">
+              <p className="text-sm font-semibold">
+                {formatDate(lead?.expected_order_login_ready_date)}
+              </p>
+              <CalendarOffIcon size={16} />
             </div>
           </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </div>
 
         <TabsContent value="details">
-          <main className="flex-1 h-fit">
             <LeadDetailsGrouped
               status="readyToDispatch"
               defaultTab="readyToDispatch"
@@ -318,7 +326,6 @@ export default function ReadyToDispatchLeadDetails() {
               accountId={accountId}
               defaultParentTab="production"
             />
-          </main>
         </TabsContent>
 
         <TabsContent value="history">

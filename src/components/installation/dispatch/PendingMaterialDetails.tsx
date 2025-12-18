@@ -98,7 +98,7 @@ export default function PendingMaterialDetails({
                     checked={allowForm}
                     onCheckedChange={(checked) =>
                       setAllowForm(checked === true)
-                    } 
+                    }
                     disabled={false}
                   />
                 ) : (
@@ -119,8 +119,6 @@ export default function PendingMaterialDetails({
                   Add Pending Material
                 </h2>
               </div>
-
-             
             </div>
             <div>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -134,7 +132,7 @@ export default function PendingMaterialDetails({
             type="submit"
             form="pending-material-form"
             disabled={!allowForm || isPending || !title.trim() || !dueDate}
-            className="w-full md:w-auto"
+            className="hidden sm:flex"
           >
             {isPending ? (
               <>
@@ -215,6 +213,27 @@ export default function PendingMaterialDetails({
                 onChange={(e) => setRemark(e.target.value)}
                 rows={3}
               />
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                form="pending-material-form"
+                disabled={!allowForm || isPending || !title.trim() || !dueDate}
+                className="sm:hidden"
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Material
+                  </>
+                )}
+              </Button>
             </div>
           </form>
         </div>

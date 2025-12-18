@@ -30,6 +30,8 @@ import {
   UsersRoundIcon,
   Truck,
   Clock,
+  UserPlus,
+  Move,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -165,6 +167,7 @@ export default function DispatchPlanningLeadDetails() {
                     size="sm"
                     variant="default"
                     onClick={() => setOpenMoveConfirm(true)}
+                    className="hidden sm:block"
                   >
                     Move to Under Installation
                   </Button>
@@ -173,9 +176,9 @@ export default function DispatchPlanningLeadDetails() {
                 canAccessButton && (
                   <CustomeTooltip
                     truncateValue={
-                      <div className="opacity-50 cursor-not-allowed px-3 py-1.5 text-sm border rounded-md">
+                      <Button size="sm" disabled className="hidden sm:block">
                         Move to Under Installation
-                      </div>
+                      </Button>
                     }
                     value={
                       readiness?.message ||
@@ -185,7 +188,11 @@ export default function DispatchPlanningLeadDetails() {
                 )}
 
             {/* Assign Task Button */}
-            <Button size="sm" onClick={() => setAssignOpen(true)}>
+            <Button
+              size="sm"
+              className="hidden lg:flex"
+              onClick={() => setAssignOpen(true)}
+            >
               Assign Task
             </Button>
           </div>
@@ -200,6 +207,37 @@ export default function DispatchPlanningLeadDetails() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
+              <DropdownMenuItem className="lg:hidden">
+                <UserPlus size={20} />
+                Assign Task
+              </DropdownMenuItem>
+
+              {readiness?.readyForPostDispatch
+                ? // 🔹 ENABLED BUTTON (Lead is ready)
+                  canAccessButton && (
+                    <DropdownMenuItem
+                      onClick={() => setOpenMoveConfirm(true)}
+                      className="sm:hidden"
+                    >
+                      <Move size={20} />
+                      Move to Under Installation
+                    </DropdownMenuItem>
+                  )
+                : // 🔸 DISABLED with Tooltip (Lead NOT ready)
+                  canAccessButton && (
+                    <CustomeTooltip
+                      truncateValue={
+                        <DropdownMenuItem disabled className="sm:hidden">
+                          <Move size={20} />
+                          Move to Under Installation
+                        </DropdownMenuItem>
+                      }
+                      value={
+                        readiness?.message ||
+                        "Lead is missing required information to proceed."
+                      }
+                    />
+                  )}
               <DropdownMenuItem
                 onSelect={() => {
                   setActivityType("onHold");
@@ -269,13 +307,10 @@ export default function DispatchPlanningLeadDetails() {
                 ) : (
                   <CustomeTooltip
                     truncateValue={
-                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                        <PanelsTopLeftIcon
-                          size={16}
-                          className="mr-1 opacity-60"
-                        />
+                      <TabsTrigger disabled value="todo">
+                        <PanelsTopLeftIcon size={16} />
                         To-Do Task
-                      </div>
+                      </TabsTrigger>
                     }
                     value="Only factory can access this tab"
                   />
@@ -299,31 +334,27 @@ export default function DispatchPlanningLeadDetails() {
         </ScrollArea>
 
         <TabsContent value="details">
-          <main className="flex-1 h-fit">
-            {!isLoading && accountId && (
-              <LeadDetailsGrouped
-                status="dispatch"
-                defaultTab="dispatch"
-                leadId={leadIdNum}
-                accountId={accountId}
-                defaultParentTab="installation"
-              />
-            )}
-          </main>
+          {!isLoading && accountId && (
+            <LeadDetailsGrouped
+              status="dispatch"
+              defaultTab="dispatch"
+              leadId={leadIdNum}
+              accountId={accountId}
+              defaultParentTab="installation"
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="todo">
-          <main className="flex-1 h-fit">
-            {!isLoading && accountId && (
-              <LeadDetailsGrouped
-                status="dispatch"
-                defaultTab="dispatch"
-                leadId={leadIdNum}
-                accountId={accountId}
-                defaultParentTab="installation"
-              />
-            )}
-          </main>
+          {!isLoading && accountId && (
+            <LeadDetailsGrouped
+              status="dispatch"
+              defaultTab="dispatch"
+              leadId={leadIdNum}
+              accountId={accountId}
+              defaultParentTab="installation"
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="history">

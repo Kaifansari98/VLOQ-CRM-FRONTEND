@@ -174,7 +174,7 @@ export default function PostProductionDetails({
   };
 
   return (
-    <div className="h-full w-full relative overflow-scroll bg-[#fff] dark:bg-[#0a0a0a]">
+    <div className="w-full relative  bg-[#fff] dark:bg-[#0a0a0a]">
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -186,70 +186,62 @@ export default function PostProductionDetails({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="
-      flex items-center gap-3 justify-between
-      bg-muted/50 
-      dark:bg-neutral-900/50
-      border border-border 
-      rounded-xl 
-      px-4 py-3 
-      backdrop-blur-sm
-    "
+          className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between bg-muted/50 dark:bg-neutral-900/50 border border-border rounded-xl px-4 py-3 backdrop-blur-sm"
         >
           <div className="flex items-center gap-4">
-          {/* Animated green indicator */}
-          <motion.div
-            className="
+            {/* Animated green indicator */}
+            <motion.div
+              className="
         w-3 h-3 rounded-full
         bg-green-500 
         shadow-[0_0_8px_rgba(34,197,94,0.6)]
       "
-            animate={{
-              scale: [1, 1.25, 1],
-              opacity: [0.75, 1, 0.75],
-            }}
-            transition={{
-              repeat: Infinity,
-              duration: 1.6,
-              ease: "easeInOut",
-            }}
-          />
+              animate={{
+                scale: [1, 1.25, 1],
+                opacity: [0.75, 1, 0.75],
+              }}
+              transition={{
+                repeat: Infinity,
+                duration: 1.6,
+                ease: "easeInOut",
+              }}
+            />
 
-          {/* Text + Date */}
-          <div className="flex flex-col">
-            <p className="text-xs font-medium text-muted-foreground tracking-wide">
-              Client Required Delivery Date
-            </p>
+            {/* Text + Date */}
+            <div className="flex flex-col">
+              <p className="text-xs font-medium text-muted-foreground tracking-wide">
+                Client Required Delivery Date
+              </p>
 
-            <span className="text-sm font-semibold text-foreground">
-              {clientRequiredCompletionDateData?.client_required_order_login_complition_date
-                ? new Date(
-                  clientRequiredCompletionDateData?.client_required_order_login_complition_date
-                  ).toLocaleDateString("en-GB", {
-                    weekday: "long",
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric",
-                  })
-                : "Not specified"}
-            </span>
-          </div>
+              <span className="text-sm font-semibold text-foreground">
+                {clientRequiredCompletionDateData?.client_required_order_login_complition_date
+                  ? new Date(
+                      clientRequiredCompletionDateData?.client_required_order_login_complition_date
+                    ).toLocaleDateString("en-GB", {
+                      weekday: "long",
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    })
+                  : "Not specified"}
+              </span>
+            </div>
           </div>
 
           {/* ---------- RIGHT: No Of Boxes section restored ---------- */}
           <div className="flex items-center justify-center">
-              {isLoading ? (
-                <Badge
-                  variant="secondary"
-                  className="text-sm py-2 px-5 rounded-md bg-muted/60"
-                >
-                  Loading...
-                </Badge>
-              ) : noOfBoxesValue ? (
-                <CustomeTooltip
-                  truncateValue={
-                    <Card
-                      className={`
+            {isLoading ? (
+              <Badge
+                variant="secondary"
+                className="text-sm py-2 px-5 rounded-md bg-muted/60"
+              >
+                Loading...
+              </Badge>
+            ) : noOfBoxesValue ? (
+              <CustomeTooltip
+                truncateValue={
+                  <Card
+                    className={`
                   flex items-center gap-4 px-4 py-1 
                   border border-border/60 
                   rounded-lg 
@@ -257,63 +249,63 @@ export default function PostProductionDetails({
                   transition-all duration-300 hover:border-primary/40
                   ${!canViewAndWork ? "opacity-70" : ""}
                 `}
-                    >
-                      <CardContent className="flex items-center gap-4 p-0">
-                        <div className="flex flex-col items-start">
-                          <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                            No. of Boxes
-                          </span>
-                          <span className="text-sm font-semibold text-foreground">
-                            {noOfBoxesValue} Box{noOfBoxesValue > 1 ? "es" : ""}
-                          </span>
-                        </div>
+                  >
+                    <CardContent className="flex items-center gap-4 p-0">
+                      <div className="flex flex-col items-start">
+                        <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                          No. of Boxes
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {noOfBoxesValue} Box{noOfBoxesValue > 1 ? "es" : ""}
+                        </span>
+                      </div>
 
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            form.setValue("noOfBoxes", String(noOfBoxesValue));
-                            setOpen(true);
-                          }}
-                          disabled={!canViewAndWork}
-                          className="
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          form.setValue("noOfBoxes", String(noOfBoxesValue));
+                          setOpen(true);
+                        }}
+                        disabled={!canViewAndWork}
+                        className="
                       rounded-full 
                       hover:bg-primary/10 
                       transition-colors duration-200
                     "
-                        >
-                          <Pencil
-                            size={18}
-                            className={`${
-                              !canViewAndWork
-                                ? "text-muted-foreground"
-                                : "text-primary"
-                            }`}
-                          />
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  }
-                  value={
-                    !canViewAndWork && userType === "factory"
-                      ? "This lead stage has progressed. Factory users cannot modify this section."
-                      : !canViewAndWork
-                      ? "You do not have access to edit the number of boxes."
-                      : "Click to edit the number of boxes for this order."
-                  }
-                />
-              ) : (
-                <CustomeTooltip
-                  truncateValue={
-                    <div
-                      className={`
+                      >
+                        <Pencil
+                          size={18}
+                          className={`${
+                            !canViewAndWork
+                              ? "text-muted-foreground"
+                              : "text-primary"
+                          }`}
+                        />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                }
+                value={
+                  !canViewAndWork && userType === "factory"
+                    ? "This lead stage has progressed. Factory users cannot modify this section."
+                    : !canViewAndWork
+                    ? "You do not have access to edit the number of boxes."
+                    : "Click to edit the number of boxes for this order."
+                }
+              />
+            ) : (
+              <CustomeTooltip
+                truncateValue={
+                  <div
+                    className={`
                   ${!canViewAndWork ? "opacity-70 pointer-events-none" : ""}
                 `}
-                    >
-                      <Button
-                        onClick={() => setOpen(true)}
-                        disabled={!canViewAndWork}
-                        className="
+                  >
+                    <Button
+                      onClick={() => setOpen(true)}
+                      disabled={!canViewAndWork}
+                      className="
                     flex items-center gap-2 
                     px-4 py-2.5 
                     rounded-lg 
@@ -323,20 +315,20 @@ export default function PostProductionDetails({
                     hover:shadow-md hover:brightness-105
                     transition-all duration-300
                   "
-                      >
-                        <PackagePlus className="h-4 w-4" />
-                        <span>Set No. Of Boxes</span>
-                      </Button>
-                    </div>
-                  }
-                  value={
-                    !canViewAndWork
-                      ? "You do not have access to set the number of boxes."
-                      : "Click to set the number of boxes for this order."
-                  }
-                />
-              )}
-            </div>
+                    >
+                      <PackagePlus className="h-4 w-4" />
+                      <span>Set No. Of Boxes</span>
+                    </Button>
+                  </div>
+                }
+                value={
+                  !canViewAndWork
+                    ? "You do not have access to set the number of boxes."
+                    : "Click to set the number of boxes for this order."
+                }
+              />
+            )}
+          </div>
         </motion.div>
       </motion.div>
 

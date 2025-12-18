@@ -9,9 +9,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
-import {
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-generation-form-modal";
 import { useEffect, useMemo, useState } from "react";
 import { useAppSelector } from "@/redux/store";
@@ -153,7 +151,7 @@ export default function LeadsGenerationPage() {
             orientation="vertical"
             className="mr-2 data-[orientation=vertical]:h-4"
           />
-          <Breadcrumb>
+          <Breadcrumb className="hidden md:block">
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
@@ -173,21 +171,29 @@ export default function LeadsGenerationPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex items-center gap-2"
+                  className="
+        flex items-center gap-2
+        max-w-[180px] sm:max-w-none
+        truncate
+      "
                 >
                   <span
-                    className="w-2 h-2 rounded-full"
+                    className="w-2 h-2 rounded-full shrink-0"
                     style={{ backgroundColor: activeItem?.dotColor }}
-                  ></span>
+                  />
 
-                  <span>{tabInfo[tab].title}</span>
+                  {/* Title truncates on mobile */}
+                  <span className="truncate">{tabInfo[tab].title}</span>
 
-                  {/* Icon */}
-                  <ChevronDown size={16} className="opacity-70 ml-1" />
+                  <ChevronDown size={16} className="opacity-70 shrink-0" />
                 </Button>
               </PopoverTrigger>
 
-              <PopoverContent align="end" sideOffset={6} className="w-40 p-1">
+              <PopoverContent
+                align="end"
+                sideOffset={6}
+                className="w-44 sm:w-40 p-1"
+              >
                 <div className="flex flex-col gap-1">
                   {tabItems.map((item) => (
                     <button
@@ -201,24 +207,25 @@ export default function LeadsGenerationPage() {
                         item.value === tab && "bg-muted font-semibold"
                       )}
                     >
-                      <span className="flex items-center gap-2">
+                      <span className="flex items-center gap-2 truncate">
                         <span
-                          className="w-2 h-2 rounded-full"
+                          className="w-2 h-2 rounded-full shrink-0"
                           style={{ backgroundColor: item.dotColor }}
-                        ></span>
-                        {item.label}
+                        />
+                        <span className="truncate">{item.label}</span>
                       </span>
 
-                      <span className="opacity-70">{item.count}</span>
+                      <span className="opacity-70 shrink-0">{item.count}</span>
                     </button>
                   ))}
                 </div>
               </PopoverContent>
             </Popover>
+
             {/* ✅ Show only for admin, super-admin, sales-executive */}
             {canCreateLead(userType) && (
               <>
-                <Button onClick={() => setOpenCreateLead(true)}>
+                <Button size="sm" onClick={() => setOpenCreateLead(true)}>
                   Add New Lead
                 </Button>
 

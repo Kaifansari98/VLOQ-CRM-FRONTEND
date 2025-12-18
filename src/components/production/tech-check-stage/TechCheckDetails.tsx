@@ -162,7 +162,7 @@ export default function TechCheckDetails({ leadId }: Props) {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="w-full h-full space-y-4 overflow-y-scroll pb-6 bg-[#fff] dark:bg-[#0a0a0a]"
+      className="w-full h-full space-y-4 pb-6 bg-[#fff] dark:bg-[#0a0a0a]"
     >
       <motion.div
         variants={containerVariants}

@@ -111,7 +111,7 @@ export default function ClientDocumentationDetails({
       className="w-full h-full py-4 space-y-4 overflow-y-auto bg-[#fff] dark:bg-[#0a0a0a]"
     >
       {/* -------- Section Header: Client Documentation -------- */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+      <div className="flex flex-col items-start sm:flex-row sm:items-center justify-between gap-2">
         {/* Left */}
         <div>
           <h1 className="text-xl font-semibold tracking-tight">

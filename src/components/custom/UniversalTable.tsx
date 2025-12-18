@@ -256,16 +256,19 @@ export function UniversalTable({
   //
   return (
     <div className="py-2">
-      {/* HEADER */}
-      <div className="flex justify-between items-end px-4">
+      {/* ================= HEADER ================= */}
+      <div className="px-4 space-y-3 md:space-y-2 md:flex md:flex-col lg:flex-row lg:justify-between lg:items-start lg:space-y-0">
+        {/* Title + Description (Desktop only) */}
         <div className="hidden md:block">
           <h1 className="text-lg font-semibold">{title}</h1>
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <p className="text-sm text-muted-foreground line-clamp-1">
+            {description}
+          </p>
         </div>
 
-        {/* MY / OVERALL TABS */}
+        {/* My / Overall Tabs */}
         {enableAdminTabs && !isAdmin && (
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex gap-2 justify-start lg:justify-end">
             <Button
               size="sm"
               className="flex gap-2"
@@ -276,7 +279,7 @@ export function UniversalTable({
               }}
             >
               My Leads
-              <p>{myCount}</p>
+              <span>{myCount}</span>
             </Button>
 
             <Button
@@ -289,20 +292,49 @@ export function UniversalTable({
               }}
             >
               Overall Leads
-              <p>{overallCount}</p>
+              <span>{overallCount}</span>
             </Button>
           </div>
         )}
       </div>
 
-      {/* TABLE */}
+      {/* ================= TABLE ================= */}
       <DataTable
         table={table}
         onRowDoubleClick={handleRowClick}
-        className=" pt-3 px-4"
+        className="pt-3 px-4"
       >
-        <div className="flex flex-col md:flex-row justify-between items-end gap-4">
-          <div className="flex flex-col sm:flex-row items-end gap-3">
+        {/* ================= MOBILE LAYOUT ================= */}
+        <div className="flex flex-col gap-4 md:hidden">
+          {/* Filters grid */}
+          <div className="flex flex-wrap gap-2">
+            <DataTableSortList table={table} />
+            {/* <DataTableFilterList table={table} /> */}
+            <DataTableViewOptions table={table} />
+
+            <DataTableDateFilter
+              column={table.getColumn("createdAt")!}
+              title="Created At"
+              multiple
+            />
+          </div>
+
+          {/* Search at bottom */}
+          <ClearInput
+            value={globalFilter ?? ""}
+            onChange={(e) => {
+              setGlobalFilter(e.target.value);
+              setPagination({ ...pagination, pageIndex: 0 });
+            }}
+            placeholder="Search…"
+            className=" w-full sm:w-64   h-8"
+          />
+        </div>
+
+        {/* ================= DESKTOP LAYOUT ================= */}
+        <div className="hidden md:flex justify-between items-end">
+          {/* Left: Search + Created At */}
+          <div className="flex items-end gap-3">
             <ClearInput
               value={globalFilter ?? ""}
               onChange={(e) => {
@@ -310,7 +342,7 @@ export function UniversalTable({
                 setPagination({ ...pagination, pageIndex: 0 });
               }}
               placeholder="Search…"
-              className="w-full h-8 sm:w-64"
+              className="h-8 w-64"
             />
 
             <DataTableDateFilter
@@ -320,7 +352,8 @@ export function UniversalTable({
             />
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          {/* Right: Other filters */}
+          <div className="flex items-center gap-2">
             <DataTableSortList table={table} />
             <DataTableFilterList table={table} />
             <DataTableViewOptions table={table} />

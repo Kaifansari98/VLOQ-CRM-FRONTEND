@@ -209,25 +209,27 @@ export default function PendingWorkDetails({
               </div>
 
               {/* Submit Button */}
-              {canWork && (
-                <Button
-                  type="submit"
-                  disabled={isPending || !title.trim() || !dueDate}
-                  className="w-full md:w-auto"
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Adding...
-                    </>
-                  ) : (
-                    <>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Add Work
-                    </>
-                  )}
-                </Button>
-              )}
+              <div className="flex justify-end">
+                {canWork && (
+                  <Button
+                    type="submit"
+                    disabled={isPending || !title.trim() || !dueDate}
+                    className="w-full md:w-auto"
+                  >
+                    {isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <PlusCircle size={20} />
+                        Add Work
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
             </form>
           </div>
         </div>
@@ -236,7 +238,7 @@ export default function PendingWorkDetails({
       {/* Pending Work Grid */}
       <Card className="rounded-2xl border bg-background transition-all duration-300">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             {/* LEFT */}
             <div className="flex items-center gap-3">
               <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center">

@@ -34,6 +34,7 @@ import {
   UsersRoundIcon,
   FileText,
   Clock,
+  UserPlus,
 } from "lucide-react";
 
 import {
@@ -153,8 +154,7 @@ export default function FinalMeasurementLeadDetails() {
 
   return (
     <>
-      {/* HEADER */}
-      <header className="flex h-16 shrink-0 items-center justify-between px-4 border-b">
+      <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between px-4 border-b backdrop-blur-xl">
         <div className="flex items-center gap-2">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-4" />
@@ -175,7 +175,11 @@ export default function FinalMeasurementLeadDetails() {
 
         {/* ACTIONS */}
         <div className="flex items-center space-x-2">
-          <Button size="sm" onClick={() => setAssignOpen(true)}>
+          <Button
+            size="sm"
+            className="hidden md:flex"
+            onClick={() => setAssignOpen(true)}
+          >
             Assign Task
           </Button>
 
@@ -190,6 +194,13 @@ export default function FinalMeasurementLeadDetails() {
 
             <DropdownMenuContent align="end">
               {/* ✔ ONLY MARK ON HOLD */}
+              <DropdownMenuItem
+                className="flex md:hidden"
+                onSelect={() => setAssignOpen(true)}
+              >
+                <UserPlus size={20} />
+                Assign Task
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setActivityModalOpen(true)}>
                 <Clock className="mh-4 w-4" />
                 Mark On Hold
@@ -217,12 +228,12 @@ export default function FinalMeasurementLeadDetails() {
               ) : (
                 <CustomeTooltip
                   truncateValue={
-                    <div className="opacity-50 cursor-not-allowed flex px-2 py-1.5">
-                      <FileText size={18} className="mr-2" />
+                    <DropdownMenuItem disabled>
+                      <FileText size={18} />
                       Final Documentation
-                    </div>
+                    </DropdownMenuItem>
                   }
-                  value="No permission"
+                  value="Only Site Supervisor can access this option"
                 />
               )}
 
@@ -252,7 +263,7 @@ export default function FinalMeasurementLeadDetails() {
           }
           setActiveTab(val);
         }}
-        className="w-full px-6 pt-4"
+        className="w-full p-3 md:p-6 pt-4"
       >
         <ScrollArea>
           <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
@@ -269,10 +280,10 @@ export default function FinalMeasurementLeadDetails() {
             ) : (
               <CustomeTooltip
                 truncateValue={
-                  <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                  <TabsTrigger value="todo" disabled>
                     <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
                     To-Do Task
-                  </div>
+                  </TabsTrigger>
                 }
                 value="Only Site Supervisor can access this tab"
               />

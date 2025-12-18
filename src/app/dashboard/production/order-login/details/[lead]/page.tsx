@@ -32,6 +32,7 @@ import {
   UsersRoundIcon,
   ArrowUpRight,
   Clock,
+  UserPlus,
 } from "lucide-react";
 
 import {
@@ -179,7 +180,7 @@ export default function OrderLoginLeadDetails() {
                 <Button
                   size="sm"
                   variant="default"
-                  className="flex items-center gap-1 "
+                  className="hidden md:flex items-center gap-1  "
                   onClick={() => setOpenMoveToProduction(true)}
                 >
                   <ArrowUpRight size={16} />
@@ -188,7 +189,11 @@ export default function OrderLoginLeadDetails() {
               ) : (
                 <CustomeTooltip
                   truncateValue={
-                    <Button variant="outline" disabled={true}>
+                    <Button
+                      variant="outline"
+                      className="hidden md:flex"
+                      disabled={true}
+                    >
                       <ArrowUpRight size={16} />
                       Move To Production
                     </Button>
@@ -199,7 +204,11 @@ export default function OrderLoginLeadDetails() {
                 />
               ))}
           </div>
-          <Button size="sm" onClick={() => setAssignOpen(true)}>
+          <Button
+            size="sm"
+            className="hidden lg:block"
+            onClick={() => setAssignOpen(true)}
+          >
             Assign Task
           </Button>
 
@@ -213,6 +222,36 @@ export default function OrderLoginLeadDetails() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="lg:hidden"
+                onClick={() => setAssignOpen(true)}
+              >
+                <UserPlus size={20} />
+                Assign Task
+              </DropdownMenuItem>
+
+              {canMoveToProductionStage &&
+                (canMove ? (
+                  <DropdownMenuItem
+                    className="md:hidden"
+                    onClick={() => setOpenMoveToProduction(true)}
+                  >
+                    <ArrowUpRight size={16} />
+                    Move To Production
+                  </DropdownMenuItem>
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem className="md:hidden" disabled={true}>
+                        <ArrowUpRight size={16} />
+                        Move To Production
+                      </DropdownMenuItem>
+                    }
+                    value={
+                      disabledReason || "Not eligible to move to Production yet"
+                    }
+                  />
+                ))}
               {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
               <DropdownMenuItem
                 onSelect={() => {
@@ -256,7 +295,7 @@ export default function OrderLoginLeadDetails() {
       <Tabs
         value={activeTab}
         onValueChange={(val) => setActiveTab(val)}
-        className="w-full px-6 pt-4"
+        className="w-full p-3 md:p-6"
       >
         <ScrollArea>
           <div className="w-full h-full flex justify-between items-center">
@@ -278,13 +317,13 @@ export default function OrderLoginLeadDetails() {
                   <CustomeTooltip
                     value="Only Backend access to this tab."
                     truncateValue={
-                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                      <TabsTrigger value="todo" disabled>
                         <PanelsTopLeftIcon
                           size={16}
                           className="mr-1 opacity-60"
                         />
                         To-Do Task
-                      </div>
+                      </TabsTrigger>
                     }
                   />
                 )}
@@ -305,27 +344,23 @@ export default function OrderLoginLeadDetails() {
         </ScrollArea>
 
         <TabsContent value="details">
-          <main className="flex-1 h-fit">
-            <LeadDetailsGrouped
-              status="orderLogin"
-              defaultTab={canOrderLogin(userType) ? "orderLogin" : "techcheck"}
-              leadId={leadIdNum}
-              accountId={accountId}
-              defaultParentTab="production"
-            />
-          </main>
+          <LeadDetailsGrouped
+            status="orderLogin"
+            defaultTab={canOrderLogin(userType) ? "orderLogin" : "techcheck"}
+            leadId={leadIdNum}
+            accountId={accountId}
+            defaultParentTab="production"
+          />
         </TabsContent>
 
         <TabsContent value="todo">
-          <main className="flex-1 h-fit">
-            <LeadDetailsGrouped
-              status="orderLogin"
-              defaultTab={canOrderLogin(userType) ? "orderLogin" : "techcheck"}
-              leadId={leadIdNum}
-              accountId={accountId}
-              defaultParentTab="production"
-            />
-          </main>
+          <LeadDetailsGrouped
+            status="orderLogin"
+            defaultTab={canOrderLogin(userType) ? "orderLogin" : "techcheck"}
+            leadId={leadIdNum}
+            accountId={accountId}
+            defaultParentTab="production"
+          />
         </TabsContent>
 
         <TabsContent value="history">

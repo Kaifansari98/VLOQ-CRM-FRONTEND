@@ -79,6 +79,27 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
 
   if (isLoading) return <DocumentCardSkeleton />;
 
+  const getStatusColor = () => {
+    switch (status?.toUpperCase()) {
+      case "APPROVED":
+        return "bg-green-500";
+      case "REJECTED":
+        return "bg-red-500";
+      case "PENDING":
+        return "bg-blue-500";
+
+      default:
+        return "bg-neutral-400 darK:bg-neutral-600";
+    }
+  };
+
+
+  const formatStatus = (status?: string) => {
+  if (!status) return "";
+  return status.toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+};
+
+
   return (
     <>
       <div
@@ -148,8 +169,8 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
 
             {status && (
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full bg-neutral-400`} />
-                <span className="text-xs">{status}</span>
+                <div className={`w-2 h-2 rounded-full ${getStatusColor()}`} />
+                <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400 capitalize">{formatStatus(status)}</span>
               </div>
             )}
           </div>
