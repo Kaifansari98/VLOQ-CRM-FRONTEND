@@ -257,7 +257,7 @@ export default function DispatchPlanningLeadDetails() {
                 {/* ✅ Dispatch Planning Details */}
                 <TabsTrigger value="details">
                   <Truck size={16} className="mr-1 opacity-60" />
-                  Dispatch Planning Details
+                  Dispatch Details
                 </TabsTrigger>
 
                 {/* ✅ To-Do Task (Conditional Access) */}
@@ -408,10 +408,11 @@ export default function DispatchPlanningLeadDetails() {
                       );
                       setOpenMoveConfirm(false);
                       queryClient.invalidateQueries({
-                        queryKey: ["dispatchStageLeads"],
+                        queryKey: ["universal-stage-leads"],
+                        exact: false,
                       });
                       queryClient.invalidateQueries({
-                        queryKey: ["underInstallationStageLeads"],
+                        queryKey: ["vendorOverallLeads"],
                       });
                       // Optionally redirect to the new stage’s page
                       router.push("/dashboard/installation/under-installation");

@@ -546,6 +546,11 @@ export default function ProductionLeadDetails() {
                     queryKey: ["leadStats", vendorId, userId],
                   });
 
+                  queryClient.invalidateQueries({
+                    queryKey: ["universal-stage-leads"],
+                    exact: false,
+                  });
+
                   // ✅ Redirect after a short delay for smooth UX
                   setTimeout(() => {
                     router.push("/dashboard/production/ready-to-dispatch");

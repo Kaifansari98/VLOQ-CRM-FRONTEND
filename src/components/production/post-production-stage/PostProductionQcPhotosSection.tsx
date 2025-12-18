@@ -109,7 +109,11 @@ export default function PostProductionQcPhotosSection({
     }
   };
 
-  const canDelete = userType === "admin" || userType === "super-admin";
+  const canDelete =
+    userType === "admin" ||
+    userType === "super-admin" ||
+    (userType === "factory" && leadStatus === "production-stage");
+
   const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatus);
 
   const handleConfirmDelete = () => {

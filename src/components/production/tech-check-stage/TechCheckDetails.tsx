@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import DocumentCard from "@/components/utils/documentCard";
 import { ImageComponent } from "@/components/utils/ImageCard";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 type Props = {
   leadId: number;
 };
@@ -60,6 +61,9 @@ export default function TechCheckDetails({ leadId }: Props) {
 
   console.log("Client Documentation: ", clientDocs);
   const { data } = useClientRequiredCompletionDate(vendorId, leadId);
+
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
 
   // filter: "ALL" | "APPROVED" | "PENDING" | "REJECTED"
   const [activeFilter, setActiveFilter] = useState<
@@ -137,7 +141,10 @@ export default function TechCheckDetails({ leadId }: Props) {
   ).length;
 
   // ✅ Permissions
-  const canDelete = userType === "admin" || userType === "super-admin";
+  const canDelete =
+    userType === "admin" ||
+    userType === "super-admin" ||
+    (userType === "tech-check" && leadStatus === "tech-check-stage");
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {

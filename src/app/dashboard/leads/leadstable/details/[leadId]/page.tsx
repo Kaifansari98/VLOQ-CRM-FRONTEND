@@ -128,7 +128,7 @@ export default function LeadDetails() {
 
           // ✅ Invalidate both queries so they refetch
           queryClient.invalidateQueries({
-            queryKey: ["vendorUserLeadsOpen", vendorId, userId],
+            queryKey: ["vendorUserLeadsOpenuniversal-stage-leads"],
           });
           queryClient.invalidateQueries({
             queryKey: ["leadStats", vendorId, userId],

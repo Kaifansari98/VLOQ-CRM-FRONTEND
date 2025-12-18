@@ -103,7 +103,8 @@ const ClientDocumentationModal: React.FC<Props> = ({
         queryKey: ["leadStats", vendorId, createdBy],
       });
       queryClient.invalidateQueries({
-        queryKey: ["clientDocumentationLeads", vendorId, createdBy],
+        queryKey: ["universal-stage-leads"],
+        exact: false,
       });
 
       onOpenChange(false);

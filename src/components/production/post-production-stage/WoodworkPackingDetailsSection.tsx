@@ -71,9 +71,11 @@ export default function WoodworkPackingDetailsSection({
   const [remark, setRemark] = useState(packingDetails?.remark || "");
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
-
   const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatus);
-  const canDelete = userType === "admin" || userType === "super-admin";
+  const canDelete =
+    userType === "admin" ||
+    userType === "super-admin" ||
+    (userType === "factory" && leadStatus === "production-stage");
 
   useEffect(() => {
     if (packingDetails?.remark) setRemark(packingDetails.remark);
@@ -277,7 +279,6 @@ export default function WoodworkPackingDetailsSection({
                   }}
                   index={index}
                   canDelete={canDelete}
-                  
                   onDelete={(id) => setConfirmDelete(Number(id))}
                 />
               ))}
@@ -324,8 +325,6 @@ export default function WoodworkPackingDetailsSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-     
     </div>
   );
 }

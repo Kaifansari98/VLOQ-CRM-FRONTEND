@@ -126,7 +126,6 @@ export default function PerformanceLineChart({
               )}
             </div>
           </div>
-
         </div>
 
         <DropdownMenu>
@@ -162,94 +161,99 @@ export default function PerformanceLineChart({
             <div className="h-10 w-10 border-4 border-muted border-t-primary rounded-full animate-spin"></div>
           </div>
         ) : (
-    
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={chartData}
-                margin={{ left: 15, right: 5, top: 5, bottom: 0 }}
-              >
-                <defs>
-                  {/* Light Mode – Neutral */}
-                  <linearGradient
-                    id="lightGrayGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop
-                      offset="5%"
-                      stopColor="hsl(240, 5%, 75%)"
-                      stopOpacity={0.55}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor="hsl(240, 5%, 92%)"
-                      stopOpacity={0.15}
-                    />
-                  </linearGradient>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={chartData}
+              margin={{ left: 15, right: 5, top: 5, bottom: 0 }}
+            >
+              <defs>
+                {/* Light Mode – Neutral */}
+                <linearGradient
+                  id="lightGrayGradient"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop
+                    offset="5%"
+                    stopColor="hsl(240, 5%, 75%)"
+                    stopOpacity={0.55}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor="hsl(240, 5%, 92%)"
+                    stopOpacity={0.15}
+                  />
+                </linearGradient>
 
-                  {/* Dark Mode – Neutral */}
-                  <linearGradient
-                    id="darkGrayGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop
-                      offset="5%"
-                      stopColor="hsl(0, 0%, 90%)"
-                      stopOpacity={0.4}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor="hsl(240, 6%, 10%)"
-                      stopOpacity={0.1}
-                    />
-                  </linearGradient>
-                </defs>
+                {/* Dark Mode – Neutral */}
+                <linearGradient
+                  id="darkGrayGradient"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop
+                    offset="5%"
+                    stopColor="hsl(0, 0%, 90%)"
+                    stopOpacity={0.4}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor="hsl(240, 6%, 10%)"
+                    stopOpacity={0.1}
+                  />
+                </linearGradient>
+              </defs>
 
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="var(--border)"
-                  // fill="var(--border)"
-                  opacity={0.3}
-                  vertical={false}
-                />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="var(--border)"
+                // fill="var(--border)"
+                opacity={0.3}
+                vertical={false}
+              />
 
-                <XAxis
-                  dataKey="name"
-                  tick={{ fill: "var(--foreground)", fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
+              <XAxis
+                dataKey="name"
+                tick={{ fill: "var(--foreground)", fontSize: 12 }}
+                tickLine={false}
+                axisLine={false}
+              />
 
-                <Tooltip
-                  contentStyle={{
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "10px",
-                    color: "hsl(var(--tooltip-text)",
-                    boxShadow: "0px 4px 12px rgba(0,0,0,0.1)",
-                    fontSize: "12px",
-                  }}
-                  cursor={{ stroke: "hsl(240, 6%, 10%)", strokeWidth: 1 }}
-                />
+              <Tooltip
+                formatter={(value: number) => value.toLocaleString("en-IN")}
+                contentStyle={{
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "10px",
+                  boxShadow: "0px 4px 12px rgba(0,0,0,0.15)",
+                }}
+                labelStyle={{
+                  color: "var(--tooltip-text)",
+                  fontSize: "12px",
+                  fontWeight: 500,
+                }}
+                itemStyle={{
+                  color: "var(--tooltip-text)",
+                  fontSize: "12px",
+                }}
+              />
 
-                <Area
-                  type="monotone"
-                  dataKey="bookings"
-                  stroke="var(--primary)"
-                  strokeWidth={2}
-                  fill={`url(#${
-                    isDark ? "darkGrayGradient" : "lightGrayGradient"
-                  })`}
-                  dot={{ r: 3, fill: "hsl(240, 6%, 10%)" }}
-                  activeDot={{ r: 5, fill: "" }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-         
+              <Area
+                type="monotone"
+                dataKey="bookings"
+                stroke="var(--primary)"
+                strokeWidth={2}
+                fill={`url(#${
+                  isDark ? "darkGrayGradient" : "lightGrayGradient"
+                })`}
+                dot={{ r: 3, fill: "hsl(240, 6%, 10%)" }}
+                activeDot={{ r: 5, fill: "" }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         )}
       </CardContent>
     </Card>

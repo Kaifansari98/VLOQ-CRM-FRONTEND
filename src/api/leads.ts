@@ -395,6 +395,28 @@ export const useDeleteDocument = (leadId?: number) => {
         queryClient.invalidateQueries({
           queryKey: ["currentSitePhotosAtSiteReadiness"],
         });
+        queryClient.invalidateQueries({
+          queryKey: ["client-approval-stage"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["productionFiles"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["dispatchDocuments"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["postDispatchDocuments"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["miscellaneousEntries"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["finalHandoverDocuments"],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["underInstallationDetails"],
+        });
       }
     },
     onError: (error: AxiosError<ApiErrorResponse>) => {

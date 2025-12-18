@@ -150,6 +150,14 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
         queryClient.invalidateQueries({
           queryKey: ["leadStats"],
         });
+
+        queryClient.invalidateQueries({
+          queryKey: ["universal-stage-leads"],
+          exact: false,
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["vendorOverallLeads"],
+        });
         onOpenChange(false);
 
         if (values.task_type === "Site Readiness") {

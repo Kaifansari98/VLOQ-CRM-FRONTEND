@@ -12,11 +12,7 @@ import {
   File,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +27,20 @@ import {
 import { useAppSelector } from "@/redux/store";
 import { motion } from "framer-motion";
 import BaseModal from "@/components/utils/baseModal";
+import { ImageComponent } from "@/components/utils/ImageCard";
+import DocumentCard from "@/components/utils/documentCard";
+import { useDeleteDocument } from "@/api/leads";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 
 interface InstallationDayWiseReportsProps {
   vendorId: number;
@@ -61,12 +71,14 @@ export default function InstallationDayWiseReports({
   accessBtn,
 }: InstallationDayWiseReportsProps) {
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
 
   // State for Add Report Modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | undefined>();
   const [remark, setRemark] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
   // State for View Documents Modal
   const [viewModal, setViewModal] = useState<{
@@ -80,6 +92,11 @@ export default function InstallationDayWiseReports({
 
   const { data: underDetails } = useUnderInstallationDetails(vendorId, leadId);
 
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
+
+  const { mutate: deleteDocument, isPending: deleting } =
+    useDeleteDocument(leadId);
   const usedDates = React.useMemo(() => {
     if (!reports) return new Set<string>();
     return new Set(
@@ -88,6 +105,7 @@ export default function InstallationDayWiseReports({
       )
     );
   }, [reports]);
+
   const handleAddReport = () => {
     if (!selectedDate) {
       toast.error("Please select a date");
@@ -151,14 +169,6 @@ export default function InstallationDayWiseReports({
     return ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
   };
 
-  const getFileIcon = (filename: string) => {
-    return isImageFile(filename) ? (
-      <Image className="w-5 h-5 text-blue-500" />
-    ) : (
-      <File className="w-5 h-5 text-orange-500" />
-    );
-  };
-
   function formatInstallationDate(dateString: string) {
     const date = new Date(dateString);
 
@@ -172,6 +182,51 @@ export default function InstallationDayWiseReports({
 
     return `${dayName}, ${fullDate}`;
   }
+
+  const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
+
+  const DOCUMENT_EXTENSIONS = [
+    "pdf",
+    "doc",
+    "docx",
+    "xls",
+    "xlsx",
+    "ppt",
+    "pptx",
+    "txt",
+    "csv",
+    "zip",
+    "rar",
+  ];
+
+  const getExtension = (fileName: string) =>
+    fileName.split(".").pop()?.toLowerCase() ?? "";
+  const imageDocuments =
+    viewModal.data?.documents.filter((doc) =>
+      IMAGE_EXTENSIONS.includes(getExtension(doc.original_name))
+    ) ?? [];
+
+  const otherDocuments =
+    viewModal.data?.documents.filter((doc) =>
+      DOCUMENT_EXTENSIONS.includes(getExtension(doc.original_name))
+    ) ?? [];
+
+  const handleConfirmDelete = () => {
+    if (confirmDelete && userId) {
+      deleteDocument({
+        vendorId: vendorId,
+        documentId: confirmDelete,
+        deleted_by: userId,
+      });
+      setConfirmDelete(null);
+    }
+  };
+
+  const canDelete =
+    userType === "admin" ||
+    userType === "super-admin" ||
+    (userType === "site-supervisor" &&
+      leadStatus === "under-installation-stage");
 
   return (
     <div className="mt-10 border-t pt-6">
@@ -320,7 +375,6 @@ export default function InstallationDayWiseReports({
             <CustomeDatePicker
               value={selectedDate}
               onChange={setSelectedDate}
-              restriction="installationInterval"
               intervalStartDate={underDetails?.actual_installation_start_date}
               intervalEndDate={underDetails?.expected_installation_end_date}
             />
@@ -368,159 +422,109 @@ export default function InstallationDayWiseReports({
         </div>
       </BaseModal>
 
-      {/* View Documents Modal (Redesigned) */}
-      <Dialog
+      <BaseModal
         open={viewModal.open}
         onOpenChange={(open) => setViewModal({ open, data: null })}
+        title="Installation Report"
+        description="Track installation progress with daily updates and documentation"
+        size="lg"
       >
-        <DialogContent className="min-w-4xl w-full max-h-[90vh] overflow-scroll rounded-xl p-0">
-          {/* Header */}
-          <div className="px-6 pt-4 pb-4 border-b bg-card">
-            <div className="flex items-start justify-between">
-              <div>
-                <DialogTitle className="text-xl font-semibold tracking-tight">
-                  Installation Report
-                </DialogTitle>
-
-                {viewModal.data && (
-                  <p className="text-sm text-muted-foreground">
-                    {formatFullDate(viewModal.data.update_date)}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Body */}
-          <div className="flex-1 overflow-y-auto px-6 space-y-8">
-            {/* Notes */}
-            {viewModal.data?.remark && (
-              <div className="bg-muted/40 border border-border rounded-lg p-4 shadow-sm">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <div className="p-1.5 bg-primary/10 rounded-md">
-                    <FileText className="w-4 h-4 text-primary" />
-                  </div>
-                  <span className="text-sm font-semibold">Notes</span>
-                </div>
-
-                <p className="text-sm text-muted-foreground leading-relaxed pl-7">
-                  {viewModal.data.remark}
-                </p>
-              </div>
-            )}
-
-            {/* Documents */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {viewModal.data && (
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-medium">Attached Documents</h4>
-                <Badge variant="secondary" className="text-xs">
-                  {viewModal.data?.documents.length || 0} files
-                </Badge>
-              </div>
+              <h4 className="text-sm font-medium mb-2">Updated Date</h4>
+              <p className="text-sm bg-muted p-2 rounded-md">
+                {formatFullDate(viewModal.data.update_date)}
+              </p>
+            </div>
+          )}
 
-              {/* Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {viewModal.data?.documents.map((doc) => (
-                  <div
-                    key={doc.document_id}
-                    className="group relative rounded-lg border border-border bg-card p-4 shadow-sm 
-                         hover:shadow-md hover:border-primary/40 transition-all duration-200"
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Icon */}
-                      <div className="p-2 bg-muted rounded-lg">
-                        {getFileIcon(doc.original_name)}
-                      </div>
+          {/* Notes */}
+          {viewModal.data?.remark && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium mb-2">Remarks</h4>
+              <p className="text-sm bg-muted p-2 rounded-md">
+                {viewModal.data.remark}
+              </p>
+            </div>
+          )}
 
-                      {/* Info */}
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <p className="text-sm font-medium truncate">
-                          {doc.original_name}
-                        </p>
+          {/* Documents */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-sm font-medium">Attached Documents</h4>
+              <Badge variant="secondary" className="text-xs">
+                {viewModal.data?.documents.length || 0} files
+              </Badge>
+            </div>
 
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] px-1.5"
-                          >
-                            {getFileExtension(doc.original_name).toUpperCase()}
-                          </Badge>
-                          <span>
-                            {new Date(doc.uploaded_at).toLocaleDateString(
-                              "en-US",
-                              {
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              }
-                            )}
-                          </span>
-                        </div>
-                      </div>
+            {/* Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* 🖼 IMAGE FILES */}
+              {imageDocuments.map((doc, index) => (
+                <ImageComponent
+                  key={doc.document_id}
+                  doc={{
+                    id: doc.document_id,
+                    doc_og_name: doc.original_name,
+                    signedUrl: doc.signed_url,
+                    created_at: doc.uploaded_at,
+                  }}
+                  index={index}
+                  canDelete={canDelete}
+                  onDelete={(id) => setConfirmDelete(Number(id))}
+                />
+              ))}
 
-                      {/* Actions */}
-                      <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {/* View */}
-                        <a
-                          href={doc.signed_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-full hover:bg-primary/10"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        </a>
-
-                        {/* Download */}
-                        <a
-                          href={doc.signed_url}
-                          download={doc.original_name}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-full hover:bg-primary/10"
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
-                        </a>
-                      </div>
-                    </div>
-
-                    {/* Image Preview */}
-                    {isImageFile(doc.original_name) && (
-                      <div className="mt-4 overflow-hidden rounded-md border bg-muted">
-                        <img
-                          src={doc.signed_url}
-                          alt={doc.original_name}
-                          className="object-cover w-full h-40 group-hover:scale-105 transition-transform duration-300"
-                        />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              {/* 📄 DOCUMENT FILES */}
+              {otherDocuments.map((doc) => (
+                <DocumentCard
+                  key={doc.document_id}
+                  doc={{
+                    id: doc.document_id,
+                    originalName: doc.original_name,
+                    signedUrl: doc.signed_url,
+                    created_at: doc.uploaded_at,
+                  }}
+                  canDelete={canDelete}
+                  onDelete={(id) => setConfirmDelete(Number(id))}
+                />
+              ))}
             </div>
           </div>
-
-          {/* Footer */}
-          <div className="flex items-center justify-end gap-3 border-t bg-card p-4">
-            <Button
-              variant="outline"
-              onClick={() => setViewModal({ open: false, data: null })}
-            >
+          <div className="flex items-center justify-end gap-3">
+            <Button onClick={() => setViewModal({ open: false, data: null })}>
               Close
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+
+        {/* Footer */}
+      </BaseModal>
+
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={() => setConfirmDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The selected document will be
+              permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

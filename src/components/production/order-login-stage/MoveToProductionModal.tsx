@@ -125,6 +125,7 @@ export default function MoveToProductionModal({
           toast.success("Lead moved to Production stage successfully!");
           router.push("/dashboard/production/pre-post-prod");
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
           setConfirmOpen(false);
           onOpenChange(false);
         },

@@ -133,6 +133,14 @@ export default function ReadyToDispatchLeadDetails() {
       queryClient.invalidateQueries({
         queryKey: ["leadStats"],
       });
+
+      queryClient.invalidateQueries({
+        queryKey: ["universal-stage-leads"],
+        exact: false,
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["vendorOverallLeads"],
+      });
     } catch (error: any) {
       toast.error(error?.message || "Failed to move lead");
     } finally {

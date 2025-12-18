@@ -392,6 +392,13 @@ export default function DispatchPlanningLeadDetails() {
                   });
                   toast.success("Lead successfully moved to Dispatch stage 🚚");
                   queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+                  queryClient.invalidateQueries({
+                    queryKey: ["universal-stage-leads"],
+                    exact: false,
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ["vendorOverallLeads"],
+                  });
                   router.push("/dashboard/installation/dispatch-stage/");
                   setOpenMoveConfirm(false);
                 } catch (err: unknown) {

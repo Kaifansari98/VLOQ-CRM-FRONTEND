@@ -83,6 +83,7 @@ import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import MoveToOrderLoginModal from "@/components/production/tech-check-stage/MoveToOrderLoginModal";
+import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -474,11 +475,12 @@ export default function ClientApprovalLeadDetails() {
 
         <TabsContent value="details">
           <main className="flex-1 h-fit">
-            <LeadDetailsUtil
+            <LeadDetailsGrouped
               status="techcheck"
+              defaultTab="techcheck"
               leadId={leadIdNum}
               accountId={accountId}
-              defaultTab="techcheck"
+              defaultParentTab="production"
             />
           </main>
         </TabsContent>
