@@ -41,7 +41,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   onOpenChange,
 }) => {
   const queryClient = useQueryClient();
-  const { leadId, accountId } = useDetails();
+  const { leadId } = useDetails();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id)!;
   const userId = useAppSelector((s) => s.auth.user?.id)!;
 
@@ -59,7 +59,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
     }
 
     uploadQuotation(
-      { files: data.upload_pdf, vendorId, leadId, userId, accountId },
+      { files: data.upload_pdf, vendorId, leadId, userId },
       {
         onSuccess: () => {
           toast.success(
