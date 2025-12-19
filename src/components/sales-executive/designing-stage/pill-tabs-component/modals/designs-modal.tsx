@@ -75,7 +75,6 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
         vendorId,
         leadId,
         userId,
-        accountId,
       });
 
       toast.success("Design files uploaded successfully!");

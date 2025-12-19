@@ -112,7 +112,6 @@ export interface SubmitDesignPayload {
   vendorId: number;
   leadId: number;
   userId: number;
-  accountId: number;
 }
 
 export const submitMeeting = async (payload: SubmitMeetingPayload) => {
@@ -154,21 +153,15 @@ export const submitDesigns = async (payload: SubmitDesignPayload) => {
   formData.append("vendorId", payload.vendorId.toString());
   formData.append("leadId", payload.leadId.toString());
   formData.append("userId", payload.userId.toString());
-  formData.append("accountId", payload.accountId.toString());
 
-  // Append multiple files
   payload.files.forEach((file) => {
-    formData.append("files", file); // MUST match multer field name
+    formData.append("files", file);
   });
 
   const { data } = await apiClient.post(
     "/leads/designing-stage/upload-designs",
     formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
+    { headers: { "Content-Type": "multipart/form-data" } }
   );
 
   return data;
