@@ -261,7 +261,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
 
                 <div>
                   <p className="text-sm text-muted-foreground font-medium">
-                    Booking Amount Received
+                    Booking Amount
                   </p>
 
                   <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
