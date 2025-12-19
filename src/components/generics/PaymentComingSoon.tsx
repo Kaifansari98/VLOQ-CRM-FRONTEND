@@ -20,7 +20,7 @@ const PaymentComingSoon = () => {
       {/* Description */}
       <p className="mt-1 text-sm text-muted-foreground max-w-sm leading-relaxed">
         This section is currently unavailable. It will automatically unlock once
-        the client makes their first payment.
+        bookine done is confirmed.
       </p>
     </div>
   );

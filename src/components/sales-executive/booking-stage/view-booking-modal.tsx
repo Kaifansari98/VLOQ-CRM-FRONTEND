@@ -42,6 +42,7 @@ import {
 } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import { useDesignsDoc } from "@/hooks/designing-stage/designing-leads-hooks";
 import { FileText, Folder } from "lucide-react";
+import SmoothTab from "@/components/kokonutui/smooth-tab";
 
 interface Props {
   leadId: number;
