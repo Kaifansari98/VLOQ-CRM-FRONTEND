@@ -264,7 +264,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({ leadId, accountId }) => {
                 <span>
                   <Button
                     type="submit"
-                    disabled={!canUpdateInput || isPending}
+                    disabled={isPending}
                     className="px-6 h-10"
                     onClick={form.handleSubmit(onSubmit)}
                   >
@@ -310,7 +310,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({ leadId, accountId }) => {
                               ? "Enter Carcas selection..."
                               : "This Field is Empty"
                           }
-                          disabled={!canUpdateInput || isPending}
+                          disabled={isPending}
                           className="h-28"
                         />
                       </FormControl>
@@ -343,7 +343,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({ leadId, accountId }) => {
                               ? "Enter Shutter details..."
                               : "This Field is Empty"
                           }
-                          disabled={!canUpdateInput || isPending}
+                          disabled={isPending}
                           className="h-28"
                         />
                       </FormControl>
@@ -376,7 +376,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({ leadId, accountId }) => {
                               ? "Enter Handles details..."
                               : "This Field is Empty"
                           }
-                          disabled={!canUpdateInput || isPending}
+                          disabled={isPending}
                           className="h-28"
                         />
                       </FormControl>
