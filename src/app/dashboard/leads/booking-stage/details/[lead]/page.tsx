@@ -31,6 +31,8 @@ import {
   BoxIcon,
   UsersRoundIcon,
   Clock,
+  UserIcon,
+  UserPlus,
 } from "lucide-react";
 
 import {
@@ -155,13 +157,17 @@ export default function BookingStageLeadsDetails() {
         </div>
         <div className="flex items-center space-x-2">
           {canAssignFM(userType) ? (
-            <Button size="sm" onClick={() => setAssignOpen(true)}>
+            <Button
+              className="hidden md:block"
+              size="sm"
+              onClick={() => setAssignOpen(true)}
+            >
               Assign Task
             </Button>
           ) : (
             <CustomeTooltip
               truncateValue={
-                <Button size="sm" disabled>
+                <Button className="hidden md:block" size="sm" disabled>
                   Assign Task
                 </Button>
               }
@@ -178,6 +184,25 @@ export default function BookingStageLeadsDetails() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
+              {canAssignFM(userType) ? (
+                <DropdownMenuItem
+                  className="flex md:hidden"
+                  onClick={() => setAssignOpen(true)}
+                >
+                  <UserPlus size={20} />
+                  Assign Task
+                </DropdownMenuItem>
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <DropdownMenuItem className="flex md:hidden" disabled>
+                      <UserPlus size={20} />
+                      Assign Task
+                    </DropdownMenuItem>
+                  }
+                  value="You don't have permission to assign Final Measurement tasks."
+                />
+              )}
               {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
               <DropdownMenuItem
                 onSelect={() => {
@@ -228,7 +253,7 @@ export default function BookingStageLeadsDetails() {
           }
           setActiveTab(val);
         }}
-        className="w-full px-6 pt-4"
+        className="w-full p-3 md:p-6"
       >
         <ScrollArea>
           <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
@@ -254,7 +279,7 @@ export default function BookingStageLeadsDetails() {
 
         {/* Tab Contents */}
         <TabsContent value="details">
-          <main className="flex-1 h-fit">
+          <main className="h-auto overflow-visible">
             <LeadDetailsUtil
               status="booking"
               leadId={leadIdNum}

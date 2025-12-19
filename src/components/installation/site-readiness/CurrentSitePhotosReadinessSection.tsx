@@ -136,7 +136,7 @@ export default function CurrentSitePhotosReadinessSection({
   };
 
   return (
-    <div className="border h-full rounded-lg overflow-y-auto bg-background shadow-sm">
+    <div className="border h-full rounded-lg bg-background shadow-sm">
       {/* -------------------------------- HEADER -------------------------------- */}
       <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
         <div className="space-y-0">
@@ -215,38 +215,36 @@ export default function CurrentSitePhotosReadinessSection({
             </p>
           </div>
         ) : (
-          <ScrollArea className="max-h-[420px] pr-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
-              {images.map((doc: any, index: number) => (
-                <ImageComponent
-                  key={doc.id}
-                  doc={{
-                    id: doc.id,
-                    doc_og_name: doc.doc_og_name,
-                    signedUrl: doc.signed_url,
-                    created_at: doc.created_at,
-                  }}
-                  index={index}
-                  canDelete={canDelete}
-                  onDelete={(id) => setConfirmDelete(Number(id))}
-                />
-              ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
+            {images.map((doc: any, index: number) => (
+              <ImageComponent
+                key={doc.id}
+                doc={{
+                  id: doc.id,
+                  doc_og_name: doc.doc_og_name,
+                  signedUrl: doc.signed_url,
+                  created_at: doc.created_at,
+                }}
+                index={index}
+                canDelete={canDelete}
+                onDelete={(id) => setConfirmDelete(Number(id))}
+              />
+            ))}
 
-              {Documents.map((doc: any) => (
-                <DocumentCard
-                  key={doc.id}
-                  doc={{
-                    id: doc.id,
-                    originalName: doc.doc_og_name,
-                    signedUrl: doc.signed_url,
-                    created_at: doc.created_at,
-                  }}
-                  canDelete={canDelete}
-                  onDelete={(id) => setConfirmDelete(id)}
-                />
-              ))}
-            </div>
-          </ScrollArea>
+            {Documents.map((doc: any) => (
+              <DocumentCard
+                key={doc.id}
+                doc={{
+                  id: doc.id,
+                  originalName: doc.doc_og_name,
+                  signedUrl: doc.signed_url,
+                  created_at: doc.created_at,
+                }}
+                canDelete={canDelete}
+                onDelete={(id) => setConfirmDelete(id)}
+              />
+            ))}
+          </div>
         )}
       </div>
 

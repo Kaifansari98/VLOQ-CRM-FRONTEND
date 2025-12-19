@@ -26,6 +26,7 @@ import {
   PanelsTopLeftIcon,
   BoxIcon,
   UsersRoundIcon,
+  UserPlus,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -172,20 +173,6 @@ export default function SiteMeasurementLead() {
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
             <BreadcrumbList>
-              {/* <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbLink href="/dashboard/leads/initial-site-measurement">
-                    Site Measurement
-                  </BreadcrumbLink>
-                </BreadcrumbItem> */}
-              {/* <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Details</BreadcrumbPage>
-                </BreadcrumbItem> */}
-              {/* <BreadcrumbSeparator /> */}
               <BreadcrumbItem>
                 <BreadcrumbPage>
                   <p className="font-bold">
@@ -198,7 +185,11 @@ export default function SiteMeasurementLead() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
-          <Button size="sm" onClick={() => setAssignOpen(true)}>
+          <Button
+            size="sm"
+            className="hidden md:block"
+            onClick={() => setAssignOpen(true)}
+          >
             Assign Task
           </Button>
           <AnimatedThemeToggler />
@@ -210,6 +201,13 @@ export default function SiteMeasurementLead() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="bloack md:hidden"
+                onClick={() => setAssignOpen(true)}
+              >
+                <UserPlus size={20} />
+                Assign Task
+              </DropdownMenuItem>
               {canUploadISM(userType) && !lead?.is_draft ? (
                 <DropdownMenuItem onSelect={() => setOpenMeasurement(true)}>
                   <ClipboardCheck size={20} />

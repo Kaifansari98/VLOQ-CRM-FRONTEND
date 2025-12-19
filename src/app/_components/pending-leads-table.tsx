@@ -286,18 +286,40 @@ export default function PendingLeadsTable({
 
   return (
     <>
-      <DataTable
-        table={table}
-        className="py-2 px-4"
-        onRowDoubleClick={handleRowClick}
-      >
-        <div className="hidden md:block">
-          <h1 className="text-lg font-semibold">{stageTitle}</h1>
-          <p className="text-sm text-muted-foreground">{stageDescription}</p>
+      <div className="py-2">
+        {/* ================= HEADER ================= */}
+        <div className="px-4 space-y-3 md:space-y-2 md:flex md:flex-col lg:flex-row lg:justify-between lg:items-start lg:space-y-0">
+          {/* Title + Description (Desktop only) */}
+          <div className="hidden md:block">
+            <h1 className="text-lg font-semibold">{stageTitle}</h1>
+            <p className="text-sm text-muted-foreground line-clamp-1">
+              {stageDescription}
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-col md:flex-row justify-between items-end gap-4">
-          <div className="flex flex-col sm:flex-row items-end gap-3">
+        {/* ================= TABLE ================= */}
+        <DataTable
+          table={table}
+          className="pt-3 px-4"
+          onRowDoubleClick={handleRowClick}
+        >
+          {/* ================= MOBILE LAYOUT ================= */}
+          <div className="flex flex-col gap-4 md:hidden">
+            {/* Filters grid */}
+            <div className="flex flex-wrap gap-2">
+              <DataTableSortList table={table} />
+              {/* <DataTableFilterList table={table} /> */}
+              <DataTableViewOptions table={table} />
+
+              <DataTableDateFilter
+                column={table.getColumn("createdAt")!}
+                title="Created At"
+                multiple
+              />
+            </div>
+
+            {/* Search at bottom */}
             <ClearInput
               value={globalFilter ?? ""}
               // onChange={(e) => {
@@ -305,25 +327,42 @@ export default function PendingLeadsTable({
               //   setPagination({ ...pagination, pageIndex: 0 });
               // }}
               placeholder="Search…"
-              className="w-full h-8 sm:w-64"
-            />
-
-            <DataTableDateFilter
-              column={table.getColumn("createdAt")!}
-              title="Created At"
-              multiple
+              className="w-full sm:w-64 h-8"
             />
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <DataTableSortList table={table} />
-            <DataTableFilterList table={table} />
-            <DataTableViewOptions table={table} />
-          </div>
-        </div>
-      </DataTable>
+          {/* ================= DESKTOP LAYOUT ================= */}
+          <div className="hidden md:flex justify-between items-end">
+            {/* Left: Search + Created At */}
+            <div className="flex items-end gap-3">
+              <ClearInput
+                value={globalFilter ?? ""}
+                // onChange={(e) => {
+                //   setGlobalFilter(e.target.value);
+                //   setPagination({ ...pagination, pageIndex: 0 });
+                // }}
+                placeholder="Search…"
+                className="h-8 w-64"
+              />
 
-      {/* Confirmation Dialog */}
+              <DataTableDateFilter
+                column={table.getColumn("createdAt")!}
+                title="Created At"
+                multiple
+              />
+            </div>
+
+            {/* Right: Other filters */}
+            <div className="flex items-center gap-2">
+              <DataTableSortList table={table} />
+              {/* <DataTableFilterList table={table} /> */}
+              <DataTableViewOptions table={table} />
+            </div>
+          </div>
+        </DataTable>
+      </div>
+
+      {/* ================= CONFIRMATION DIALOG ================= */}
       <AlertDialog open={openConfirm} onOpenChange={setOpenConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -341,7 +380,7 @@ export default function PendingLeadsTable({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Remark Modal */}
+      {/* ================= REMARK MODAL ================= */}
       <RevertRemarkModal
         open={openRemark}
         onOpenChange={setOpenRemark}
@@ -349,7 +388,7 @@ export default function PendingLeadsTable({
         loading={revertMutation.isPending}
       />
 
-      {/* Activity Status Modal */}
+      {/* ================= ACTIVITY STATUS MODAL ================= */}
       <ActivityStatusModal
         open={openActivityStatus}
         onOpenChange={setOpenActivityStatus}

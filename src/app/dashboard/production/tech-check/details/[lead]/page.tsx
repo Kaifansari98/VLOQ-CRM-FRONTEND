@@ -37,6 +37,7 @@ import {
   Settings2,
   UploadIcon,
   Clock,
+  UserPlus,
 } from "lucide-react";
 import CustomeTooltip from "@/components/custom-tooltip";
 
@@ -196,16 +197,6 @@ export default function ClientApprovalLeadDetails() {
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
             <BreadcrumbList>
-              {/* <BreadcrumbItem>
-                    <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
-                  </BreadcrumbItem>
-                  <BreadcrumbSeparator />
-                  <BreadcrumbItem>
-                    <BreadcrumbLink href="/dashboard/project/client-approval">
-                      Client Approval
-                    </BreadcrumbLink>
-                  </BreadcrumbItem>
-                  <BreadcrumbSeparator /> */}
               <BreadcrumbItem>
                 <BreadcrumbPage>
                   <p className="font-bold">
@@ -218,12 +209,16 @@ export default function ClientApprovalLeadDetails() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
-          <Button size="sm" onClick={() => setAssignOpen(true)}>
+          <Button
+            size="sm"
+            className="hidden md:block"
+            onClick={() => setAssignOpen(true)}
+          >
             Assign Task
           </Button>
 
           {/* ✅ Move To Order Login Button (Role & Status Based) */}
-          {canMoveToOrderLogin(userType) &&
+          {/* {canMoveToOrderLogin(userType) &&
             (() => {
               const approvedPPT = pptDocs.filter(
                 (d) => d.tech_check_status === "APPROVED"
@@ -296,27 +291,107 @@ export default function ClientApprovalLeadDetails() {
                   Move To Order Login
                 </Button>
               );
-            })()}
+            })()} */}
 
           <AnimatedThemeToggler />
 
-          {canViewThreeVerticalDocsOptionInTechCheck(userType) && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <EllipsisVertical size={25} />
-                </Button>
-              </DropdownMenuTrigger>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <EllipsisVertical size={25} />
+              </Button>
+            </DropdownMenuTrigger>
 
-              <DropdownMenuContent align="end">
-                {canEdit && (
-                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                    <SquarePen size={20} />
-                    Edit
-                  </DropdownMenuItem>
-                )}
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="md:hidden"
+                onClick={() => setAssignOpen(true)}
+              >
+                <UserPlus size={20} />
+                Assign Task
+              </DropdownMenuItem>
 
-                {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
+              {canEdit && (
+                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                  <SquarePen size={20} />
+                  Edit
+                </DropdownMenuItem>
+              )}
+
+              {canMoveToOrderLogin(userType) &&
+                (() => {
+                  const approvedPPT = pptDocs.filter(
+                    (d) => d.tech_check_status === "APPROVED"
+                  ).length;
+
+                  const approvedPytha = pythaDocs.filter(
+                    (d) => d.tech_check_status === "APPROVED"
+                  ).length;
+
+                  const approvedCount = approvedPPT + approvedPytha;
+
+                  const pendingCount = docs.filter(
+                    (d) =>
+                      !d.tech_check_status || d.tech_check_status === "PENDING"
+                  ).length;
+
+                  // Disabled if:
+                  // 1. No approved docs
+                  // 2. Still some pending docs
+                  // 3. No PPT approved
+                  // 4. No Pytha approved
+                  const isDisabled =
+                    approvedCount <
+                      (no_of_client_documents_initially_submitted || 0) ||
+                    pendingCount > 0 ||
+                    approvedPPT === 0 ||
+                    approvedPytha === 0;
+
+                  if (isDisabled) {
+                    let tooltipMsg = "";
+
+                    if (
+                      no_of_client_documents_initially_submitted &&
+                      approvedCount < no_of_client_documents_initially_submitted
+                    ) {
+                      tooltipMsg = `You must approve all initially submitted client documents (${no_of_client_documents_initially_submitted}) before moving to Order Login.`;
+                    } else if (approvedPPT === 0) {
+                      tooltipMsg =
+                        "At least one PPT file must be approved before moving to Order Login.";
+                    } else if (approvedPytha === 0) {
+                      tooltipMsg =
+                        "At least one Pytha file must be approved before moving to Order Login.";
+                    } else if (pendingCount > 0) {
+                      tooltipMsg = `You still have ${pendingCount} pending document${
+                        pendingCount > 1 ? "s" : ""
+                      }. Please review all before proceeding.`;
+                    }
+
+                    return (
+                      <CustomeTooltip
+                        truncateValue={
+                          <DropdownMenuItem disabled>
+                            <CircleCheckBig size={16} />
+                            Move To Order Login
+                          </DropdownMenuItem>
+                        }
+                        value={tooltipMsg}
+                      />
+                    );
+                  }
+
+                  return (
+                    <DropdownMenuItem
+                      onClick={() => setOpenOrderLoginModal(true)}
+                    >
+                      <CircleCheckBig size={16} />
+                      Move To Order Login
+                    </DropdownMenuItem>
+                  );
+                })()}
+
+              {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
+              {canViewThreeVerticalDocsOptionInTechCheck(userType) && (
                 <DropdownMenuItem
                   onSelect={() => {
                     setActivityType("onHold");
@@ -326,26 +401,26 @@ export default function ClientApprovalLeadDetails() {
                   <Clock className=" h-4 w-4" />
                   Mark On Hold
                 </DropdownMenuItem>
+              )}
 
-                {canReassign && (
-                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                    <Users size={20} />
-                    Reassign Lead
+              {canReassign && (
+                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                  <Users size={20} />
+                  Reassign Lead
+                </DropdownMenuItem>
+              )}
+
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                    <XCircle size={20} className="text-red-500" />
+                    Delete
                   </DropdownMenuItem>
-                )}
-
-                {canDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                      <XCircle size={20} className="text-red-500" />
-                      Delete
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
       {/* Tabs */}
@@ -363,16 +438,17 @@ export default function ClientApprovalLeadDetails() {
           }
           setActiveTab(val);
         }}
-        className="w-full px-6 pt-4"
+        className="w-full p-3 md:p-6"
       >
-        <ScrollArea>
-          <div className="flex w-full items-center justify-between mb-3">
-            {/* Tabs */}
-            <TabsList className="h-auto gap-2 px-1.5 py-1.5 flex-shrink">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between mb-3">
+          {/* ---------------- Tabs (Scrollable on mobile only) ---------------- */}
+          <ScrollArea>
+            <TabsList className="flex h-auto gap-2 mb-3 px-1.5 py-1.5">
               <TabsTrigger value="details">
                 <HouseIcon size={16} className="mr-1 opacity-60" />
                 Lead Details
               </TabsTrigger>
+
               {canTechCheck(userType) ? (
                 <TabsTrigger value="todo">
                   <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
@@ -381,13 +457,10 @@ export default function ClientApprovalLeadDetails() {
               ) : (
                 <CustomeTooltip
                   truncateValue={
-                    <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                      <PanelsTopLeftIcon
-                        size={16}
-                        className="mr-1 opacity-60"
-                      />
+                    <TabsTrigger value="" disabled>
+                      <PanelsTopLeftIcon size={16} />
                       To-Do Task
-                    </div>
+                    </TabsTrigger>
                   }
                   value="You don’t have permission to access To-Do Tasks."
                 />
@@ -397,84 +470,67 @@ export default function ClientApprovalLeadDetails() {
                 <BoxIcon size={16} className="mr-1 opacity-60" />
                 Site History
               </TabsTrigger>
+
               <TabsTrigger value="payment">
                 <UsersRoundIcon size={16} className="mr-1 opacity-60" />
                 Payment Information
               </TabsTrigger>
             </TabsList>
 
-            <div className="flex items-center justify-between gap-2">
-              {/* ✅ Tech Check Button */}
-              {canTechCheck(userType) && (
-                <Button
-                  variant="outline"
-                  onClick={() => setOpenRejectDocsModal(true)}
-                >
-                  <Settings2 />
-                  Tech-Check Workflow
-                </Button>
-              )}
+            {/* Scrollbar ONLY for tabs */}
+            <ScrollBar orientation="horizontal" className="lg:hidden" />
+          </ScrollArea>
 
-              {/* ✅ Upload Revised Docs Button (Role & Rejection Status Based) */}
-              {(() => {
-                const canUpload =
-                  canUploadRevisedClientDocumentationFiles(userType);
+          {/* ---------------- Actions ---------------- */}
+          <div className="flex sm:flex-row gap-2">
+            {canTechCheck(userType) && (
+              <Button
+                variant="outline"
+                onClick={() => setOpenRejectDocsModal(true)}
+                className="w-max"
+              >
+                <Settings2 className="mr-1" size={16} />
+                Tech-Check Workflow
+              </Button>
+            )}
 
-                // Case 1: User doesn’t have permission
-                if (!canUpload) {
-                  return (
-                    <CustomeTooltip
-                      truncateValue={
-                        <Button
-                          disabled
-                          className="bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-300 dark:border-gray-700 cursor-not-allowed flex items-center gap-2"
-                        >
-                          <UploadIcon size={16} />
-                          Upload Revised Docs
-                        </Button>
-                      }
-                      value="You don’t have permission to upload revised client documentation."
-                    />
-                  );
-                }
+            {(() => {
+              const canUpload =
+                canUploadRevisedClientDocumentationFiles(userType);
 
-                // Case 2: User has permission but no rejected files
-                if (!hasRejectedDocs) {
-                  return (
-                    <CustomeTooltip
-                      truncateValue={
-                        <Button
-                          disabled
-                          className="bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-300 dark:border-gray-700 cursor-not-allowed flex items-center gap-2"
-                        >
-                          <UploadIcon size={16} />
-                          Upload Revised Docs
-                        </Button>
-                      }
-                      value="No rejected client documentation found — only rejected files can be re-uploaded."
-                    />
-                  );
-                }
-
-                // Case 3: User has permission and rejected files exist
+              if (!canUpload || !hasRejectedDocs) {
                 return (
-                  <Button
-                    onClick={() => setOpenUploadDocsModal(true)}
-                    variant="outline"
-                  >
-                    <UploadIcon size={16} />
-                    Upload Revised Docs
-                  </Button>
+                  <CustomeTooltip
+                    truncateValue={
+                      <Button disabled className="w-max">
+                        <UploadIcon size={16} />
+                        Upload Revised Docs
+                      </Button>
+                    }
+                    value={
+                      !canUpload
+                        ? "You don’t have permission to upload revised client documentation."
+                        : "No rejected client documentation found."
+                    }
+                  />
                 );
-              })()}
-            </div>
-          </div>
+              }
 
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+              return (
+                <Button
+                  onClick={() => setOpenUploadDocsModal(true)}
+                  variant="outline"
+                  className="w-max"
+                >
+                  <UploadIcon size={16} />
+                  Upload Revised Docs
+                </Button>
+              );
+            })()}
+          </div>
+        </div>
 
         <TabsContent value="details">
-          <main className="flex-1 h-fit">
             <LeadDetailsGrouped
               status="techcheck"
               defaultTab="techcheck"
@@ -482,7 +538,6 @@ export default function ClientApprovalLeadDetails() {
               accountId={accountId}
               defaultParentTab="production"
             />
-          </main>
         </TabsContent>
 
         <TabsContent value="history">
@@ -565,7 +620,7 @@ export default function ClientApprovalLeadDetails() {
       >
         <div className="space-y-6">
           {/* -------- Premium CRM Stats Summary -------- */}
-          <div className="px-6 pt-4">
+          <div className="px-3 md:px-6 pt-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {/* Total Docs */}
               <div
@@ -738,6 +793,7 @@ export default function ClientApprovalLeadDetails() {
 
               {/* List View - FIXED VERSION with Dark Mode */}
               <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                
                 {(() => {
                   // Separate and sort documents - PENDING first, then APPROVED, then REJECTED
                   const pending = docs
@@ -827,7 +883,7 @@ export default function ClientApprovalLeadDetails() {
 
                         <div
                           className={cn(
-                            "relative rounded-lg border-2 p-4 transition-all duration-200 group flex items-center gap-4",
+                            "flex flex-col sm:flex-row sm:items-center  sm:justify-between relative rounded-lg border-2 p-4 transition-all duration-200 group  gap-4",
                             isDisabled
                               ? "cursor-not-allowed opacity-75"
                               : "cursor-pointer",
@@ -849,6 +905,8 @@ export default function ClientApprovalLeadDetails() {
                           }}
                         >
                           {/* File Icon */}
+                          <div className="flex gap-2   items-center">
+
                           <div
                             className={cn(
                               "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
@@ -879,7 +937,7 @@ export default function ClientApprovalLeadDetails() {
                           <div className="flex-1 min-w-0">
                             <p
                               className={cn(
-                                "font-semibold text-sm truncate",
+                                "font-semibold text-sm line-clamp-2",
                                 isDisabled
                                   ? "text-gray-500 dark:text-gray-400"
                                   : "text-gray-900 dark:text-white"
@@ -891,6 +949,9 @@ export default function ClientApprovalLeadDetails() {
                               Uploaded: {formatDate(doc.created_at)}
                             </p>
                           </div>
+                          </div>
+
+                          
 
                           {/* Status Badge */}
                           <div className="flex items-center gap-2">
@@ -931,8 +992,8 @@ export default function ClientApprovalLeadDetails() {
           )}
 
           {/* Action Footer */}
-          <div className="flex items-center justify-between py-4 px-6 border-t border-gray-200 dark:border-gray-700">
-            <div className="text-sm">
+          <div className="flex flex-col md:flex-row items-center justify-between space-y-4 py-5 px-3 md:py-4 md:px-6">
+            <div className="text-sm border py-1 px-3 rounded-md bg-muted ">
               {selectedDocs.length > 0 ? (
                 <p className="text-gray-700 dark:text-gray-300">
                   <span className="font-semibold text-amber-600 dark:text-amber-400">
@@ -960,7 +1021,7 @@ export default function ClientApprovalLeadDetails() {
                   setOpenRemarkModal(true);
                 }}
               >
-                <XCircle size={16} className="mr-1" />
+                <XCircle size={16}/>
                 Reject Selected ({selectedDocs.length})
               </Button>
               <Button
@@ -975,7 +1036,7 @@ export default function ClientApprovalLeadDetails() {
                   setOpenApproveConfirmModal(true);
                 }}
               >
-                <CheckCircle2 size={16} className="mr-1" />
+                <CheckCircle2 size={16} />
                 Approve Selected ({selectedDocs.length})
               </Button>
             </div>

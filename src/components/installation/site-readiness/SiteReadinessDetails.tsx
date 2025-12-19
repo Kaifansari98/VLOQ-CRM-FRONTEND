@@ -265,7 +265,7 @@ export default function SiteReadinessDetails({
       {/* Main Checklist Card */}
       <Card className="border bg-[#fff] dark:bg-[#0a0a0a]">
         <CardHeader className="border-b">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col  sm:flex-row sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
                 <ClipboardCheck className="h-4 w-4 text-primary" />
@@ -280,23 +280,23 @@ export default function SiteReadinessDetails({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="text-xs px-2 py-0.5">
-                <span className="text-primary">{completedCount}</span>
-                <span className="text-muted-foreground mx-1">/</span>
-                <span>{totalCount}</span>
-              </Badge>
-              <Badge
-                variant={completionPercentage === 100 ? "default" : "outline"}
-                className={cn(
-                  "text-xs px-2 py-0.5",
-                  completionPercentage === 100 && "bg-primary"
-                )}
-              >
-                {completionPercentage}%
-              </Badge>
-
-              <Separator orientation="vertical" className="h-6 mx-1" />
+            <div className="flex md:flex-col lg:flex-row items-center gap-2">
+              <div className="flex justify-between gap-3 w-full ">
+                <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                  <span className="text-primary">{completedCount}</span>
+                  <span className="text-muted-foreground mx-1">/</span>
+                  <span>{totalCount}</span>
+                </Badge>
+                <Badge
+                  variant={completionPercentage === 100 ? "default" : "outline"}
+                  className={cn(
+                    "text-xs px-2 py-0.5",
+                    completionPercentage === 100 && "bg-primary"
+                  )}
+                >
+                  {completionPercentage}%
+                </Badge>
+              </div>
 
               <CustomeTooltip
                 truncateValue={
@@ -309,7 +309,6 @@ export default function SiteReadinessDetails({
                       onClick={handleSubmit}
                       disabled={loading || !canViewAndWork}
                       size="sm"
-                      className="gap-1.5 h-8 px-3"
                     >
                       {loading ? (
                         <>
@@ -348,7 +347,7 @@ export default function SiteReadinessDetails({
               )}
             >
               {/* Checklist Header */}
-              <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-3 mb-3">
                 <div className="flex items-start gap-2.5 flex-1">
                   <div
                     className={cn(
@@ -418,7 +417,7 @@ export default function SiteReadinessDetails({
               </div>
 
               {/* Remark Field */}
-              <div className="space-y-1.5 ml-8">
+              <div className="space-y-1.5 sm:ml-8">
                 <Label
                   htmlFor={`remark-${item.type}`}
                   className="text-xs text-muted-foreground"

@@ -156,7 +156,7 @@ export default function HardwarePackingDetailsSection({
   };
 
   return (
-    <div className="border rounded-xl bg-background shadow-sm overflow-hidden">
+    <div className="border rounded-xl bg-background shadow-sm">
       {/* ---------- HEADER ---------- */}
       <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
         <div className="space-y-0">
@@ -256,7 +256,7 @@ export default function HardwarePackingDetailsSection({
             </p>
           </div>
         ) : (
-          <ScrollArea className="max-h-[420px] pr-1">
+          <ScrollArea className="pr-1">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
               {images.map((doc: any, index: number) => (
                 <ImageComponent

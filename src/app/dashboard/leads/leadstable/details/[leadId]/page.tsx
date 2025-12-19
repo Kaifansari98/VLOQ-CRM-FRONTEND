@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { useParams, useSearchParams } from "next/navigation";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { useAppSelector } from "@/redux/store";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
@@ -26,6 +26,7 @@ import {
   BoxIcon,
   UsersRoundIcon,
   CircleArrowOutUpRight,
+  UserPlus,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -144,23 +145,23 @@ export default function LeadDetails() {
     );
   };
 
-  useEffect(() => {
-    if (isLoading || !lead) return;
+  const hasAutoOpenedAssign = useRef(false);
 
-    // ✅ Open modal only if:
-    // - Lead is not draft
-    // - User can assign ISM
-    // - User is NOT admin or super-admin
+  useEffect(() => {
+    if (!lead) return;
+    if (hasAutoOpenedAssign.current) return;
+
     if (
       !lead.is_draft &&
       canAssignISM(userType) &&
       userType?.toLowerCase() !== "admin" &&
       userType?.toLowerCase() !== "super-admin"
     ) {
+      hasAutoOpenedAssign.current = true; // ✅ lock it
       setAssignOpen(true);
       setActiveTab("projects");
     }
-  }, [isLoading, lead, userType]);
+  }, [lead?.id, userType]);
 
   // 🔹 Tabs state
   const [activeTab, setActiveTab] = useState("details");
@@ -198,6 +199,7 @@ export default function LeadDetails() {
           ) : (
             <Button
               size="sm"
+              className="hidden sm:flex"
               onClick={() => setAssignOpen(true)}
               disabled={uiDisabled}
             >
@@ -215,6 +217,12 @@ export default function LeadDetails() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+
+              <DropdownMenuItem className="sm:hidden">
+                <UserPlus size={20} />
+                Assign Task
+              </DropdownMenuItem>
+
               {canEdit && (
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen className=" h-4 w-4" />

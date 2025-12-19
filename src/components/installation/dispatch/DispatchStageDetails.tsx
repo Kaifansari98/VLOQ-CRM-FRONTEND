@@ -239,27 +239,27 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   const canViewAndWork = canViewAndWorkDispatchStage(userType, leadStatus);
 
   return (
-    <div className="space-y-6 h-full overflow-y-scroll bg-[#fff] dark:bg-[#0a0a0a]">
+    <div className="space-y-4 sm:space-y-6 bg-[#fff] dark:bg-[#0a0a0a] p-2 sm:p-4 md:p-0">
       {/* Required Date & Boxes Info */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {/* ---- Required Delivery Date Card ---- */}
         <div className="border rounded-xl bg-background transition-all">
-          <div className="p-5 flex items-center gap-4">
+          <div className="p-3 sm:p-4 md:p-5 flex items-center gap-3 sm:gap-4">
             {/* Icon */}
-            <div className="p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10">
-              <Calendar className="h-5 w-5 text-primary" />
+            <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 shrink-0">
+              <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             </div>
 
             {/* Content */}
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0">
               <p className="text-xs font-medium text-muted-foreground tracking-wide">
                 Required OnSite Delivery Date
               </p>
 
               {loadingRequiredDate ? (
-                <div className="h-6 w-40 bg-muted animate-pulse rounded-md mt-2" />
+                <div className="h-5 sm:h-6 w-32 sm:w-40 bg-muted animate-pulse rounded-md mt-1 sm:mt-2" />
               ) : (
-                <p className="text-lg md:text-xl font-semibold text-foreground mt-1">
+                <p className="text-base sm:text-lg md:text-xl font-semibold text-foreground mt-1 break-words">
                   {requiredDateData?.required_date_for_dispatch
                     ? format(
                         new Date(requiredDateData.required_date_for_dispatch),
@@ -274,23 +274,23 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
         {/* ---- Number of Boxes Card ---- */}
         <div className="border rounded-xl bg-background transition-all">
-          <div className="p-5 flex items-center gap-4">
+          <div className="p-3 sm:p-4 md:p-5 flex items-center gap-3 sm:gap-4">
             {/* Icon */}
-            <div className="p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10">
-              <Package className="h-5 w-5 text-primary" />
+            <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 shrink-0">
+              <Package className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             </div>
 
             {/* Content */}
-            <div className="flex flex-col w-full">
+            <div className="flex flex-col w-full min-w-0">
               <p className="text-xs font-medium text-muted-foreground tracking-wide">
                 Number of Boxes
               </p>
 
               {loadingRequiredDate ? (
-                <div className="h-6 w-24 bg-muted animate-pulse rounded-md mt-2" />
+                <div className="h-5 sm:h-6 w-20 sm:w-24 bg-muted animate-pulse rounded-md mt-1 sm:mt-2" />
               ) : (
                 <div className="flex items-center gap-2 mt-1">
-                  <p className="text-lg md:text-xl font-semibold text-foreground">
+                  <p className="text-base sm:text-lg md:text-xl font-semibold text-foreground">
                     {requiredDateData?.no_of_boxes || 0}
                   </p>
 
@@ -298,7 +298,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-7 w-7 p-0 rounded-full hover:bg-accent"
+                      className="h-6 w-6 sm:h-7 sm:w-7 p-0 rounded-full hover:bg-accent"
                       onClick={() => {
                         setNoOfBoxesInput(
                           requiredDateData?.no_of_boxes?.toString() || ""
@@ -306,7 +306,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                         setOpenBoxesModal(true);
                       }}
                     >
-                      <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                      <Pencil className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground hover:text-foreground" />
                     </Button>
                   )}
                 </div>
@@ -319,17 +319,17 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
       <Separator />
 
       {/* Dispatch Details Form */}
-      <div className="border rounded-lg bg-background overflow-y-auto">
+      <div className="border rounded-lg bg-background overflow-hidden">
         {/* ---------- HEADER ---------- */}
-        <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
+        <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b bg-muted/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="space-y-0">
             <div className="flex items-center gap-2">
-              <Truck className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold tracking-tight">
+              <Truck className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              <h2 className="text-base sm:text-lg font-semibold tracking-tight">
                 Dispatch Details
               </h2>
             </div>
-            <p className="text-xs text-muted-foreground ml-7">
+            <p className="text-xs text-muted-foreground ml-6 sm:ml-7">
               Enter vehicle, driver & dispatch related information.
             </p>
           </div>
@@ -340,7 +340,8 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               type="submit"
               form="dispatch-form"
               disabled={addDispatchMutation.isPending}
-              className="w-full md:w-auto"
+              className="hidden sm:flex"
+              size="sm"
             >
               {addDispatchMutation.isPending ? (
                 <>
@@ -355,7 +356,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
         </div>
 
         {/* ---------- CONTENT ---------- */}
-        <div className="p-6">
+        <div className="p-3 sm:p-4 md:p-6">
           {loadingDispatchDetails ? (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
@@ -367,17 +368,17 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               <form
                 id="dispatch-form"
                 onSubmit={onSubmit}
-                className="space-y-6"
+                className="space-y-4 sm:space-y-6"
               >
                 {/* Form Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {/* Dispatch Date */}
                   <FormField
                     control={form.control}
                     name="dispatch_date"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Dispatch Date</FormLabel>
+                        <FormLabel className="text-sm">Dispatch Date</FormLabel>
 
                         <div
                           className={
@@ -431,7 +432,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     name="driver_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Driver Name</FormLabel>
+                        <FormLabel className="text-sm">Driver Name</FormLabel>
                         <div
                           className={
                             !canViewAndWork
@@ -440,7 +441,11 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                           }
                         >
                           <FormControl>
-                            <Input placeholder="Enter driver name" {...field} />
+                            <Input
+                              placeholder="Enter driver name"
+                              {...field}
+                              className="text-sm"
+                            />
                           </FormControl>
                         </div>
                         <FormMessage />
@@ -454,7 +459,9 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     name="driver_number"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Driver Contact Number</FormLabel>
+                        <FormLabel className="text-sm">
+                          Driver Contact Number
+                        </FormLabel>
 
                         <div
                           className={
@@ -485,19 +492,42 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     name="dispatch_remark"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Dispatch Remark</FormLabel>
+                        <FormLabel className="text-sm">
+                          Dispatch Remark
+                        </FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Add any remarks..."
                             rows={3}
                             {...field}
                             disabled={!canViewAndWork}
+                            className="text-sm"
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                </div>
+                <div className="flex justify-end">
+                  {canViewAndWork && (
+                    <Button
+                      type="submit"
+                      form="dispatch-form"
+                      disabled={addDispatchMutation.isPending}
+                      className="sm:hidden"
+                      size="sm"
+                    >
+                      {addDispatchMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>Save Dispatch Details</>
+                      )}
+                    </Button>
+                  )}
                 </div>
               </form>
             </Form>
@@ -507,9 +537,13 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
       <Separator />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-fr ">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         <div className="h-full">
-          <UploadDispatchDocument leadId={leadId} accountId={accountId} disabled={canViewAndWork} />
+          <UploadDispatchDocument
+            leadId={leadId}
+            accountId={accountId}
+            disabled={canViewAndWork}
+          />
         </div>
 
         <div className="h-full">
@@ -522,16 +556,16 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
       </div>
 
       {/* Pending Materials List */}
-      <div className="border rounded-lg bg-background overflow-hidden">
+      <div className="border rounded-lg bg-background">
         {/* ---------- HEADER ---------- */}
-        <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Clock className="h-5 w-5 text-primary" />
+        <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b bg-muted/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg">
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">
+              <h2 className="text-base sm:text-lg font-semibold tracking-tight">
                 Pending Materials
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -540,32 +574,32 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
             </div>
           </div>
 
-          <Badge variant="secondary" className="gap-1">
+          <Badge variant="secondary" className="gap-1 text-xs">
             <Package className="h-3 w-3" />
             {tasks.length} {tasks.length === 1 ? "Item" : "Items"}
           </Badge>
         </div>
 
         {/* ---------- CONTENT ---------- */}
-        <div className="p-6">
+        <div className="p-3 sm:p-4 md:p-6">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="flex items-center justify-center py-8 sm:py-12">
+              <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-muted-foreground" />
             </div>
           ) : tasks.length === 0 ? (
-            <div className="p-10 border border-dashed rounded-xl flex flex-col items-center justify-center bg-muted/40">
-              <div className="p-4 bg-muted rounded-full">
-                <Package className="h-8 w-8 text-muted-foreground" />
+            <div className="p-6 sm:p-10 border border-dashed rounded-xl flex flex-col items-center justify-center bg-muted/40">
+              <div className="p-3 sm:p-4 bg-muted rounded-full">
+                <Package className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
               </div>
-              <p className="text-sm font-medium text-muted-foreground mt-3">
+              <p className="text-sm font-medium text-muted-foreground mt-3 text-center">
                 No pending materials yet
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground text-center">
                 Add materials using the form above
               </p>
             </div>
           ) : (
-            <div className="space-y-4 max-h-[460px] overflow-y-auto pr-2">
+            <div className="space-y-3 sm:space-y-4 max-h-[400px] sm:max-h-[460px] overflow-y-auto pr-1 sm:pr-2">
               <AnimatePresence mode="popLayout">
                 {tasks.map((task: any, idx: number) => {
                   const [taskTitle, ...descParts] = (task.remark || "").split(
@@ -583,37 +617,36 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                       layout
                     >
                       {/* ---------- ITEM CARD ---------- */}
-                      <div
-                        className="
-                    border rounded-xl px-4 py-4
-                    bg-background/60 backdrop-blur-sm
-                    transition-all duration-300
-                  "
-                      >
-                        <div className="flex items-start gap-3">
+                      <div className="border rounded-xl px-3 sm:px-4 py-3 sm:py-4 bg-background/60 backdrop-blur-sm transition-all duration-300">
+                        <div className="flex items-start gap-2 sm:gap-3">
                           {/* Left Icon */}
-                          <div className="p-2 bg-primary/10 rounded-lg">
-                            <Package className="h-4 w-4 text-primary" />
+                          <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
+                            <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
                           </div>
 
                           {/* Text Block */}
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-semibold text-foreground">
+                            <h4 className="text-sm font-semibold text-foreground break-words">
                               {taskTitle || "Untitled Material"}
                             </h4>
 
                             {description && (
-                              <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                              <p className="text-xs text-muted-foreground leading-relaxed mt-1 break-words">
                                 {description}
                               </p>
                             )}
 
                             {/* Meta Row */}
-                            <div className="flex flex-wrap items-center gap-3 mt-3">
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2 sm:mt-3">
                               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <Calendar className="h-3.5 w-3.5" />
-                                Due:{" "}
-                                {format(new Date(task.due_date), "dd MMM yyyy")}
+                                <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
+                                <span className="whitespace-nowrap">
+                                  Due:{" "}
+                                  {format(
+                                    new Date(task.due_date),
+                                    "dd MMM yyyy"
+                                  )}
+                                </span>
                               </div>
 
                               <Badge
@@ -642,10 +675,10 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
       {/* ✨ Edit No. of Boxes Modal */}
       <Dialog open={openBoxesModal} onOpenChange={setOpenBoxesModal}>
-        <DialogContent className="sm:max-w-[420px] p-6 rounded-2xl border shadow-lg bg-card">
+        <DialogContent className="sm:max-w-[420px] max-w-[calc(100%-2rem)] p-4 sm:p-6 rounded-2xl border shadow-lg bg-card">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              <Package className="h-5 w-5 text-primary" />
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Package className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               Update Number of Boxes
             </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground mt-1">
@@ -653,7 +686,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-4 space-y-3">
+          <div className="py-3 sm:py-4 space-y-3">
             <Label className="text-sm font-medium text-foreground">
               Number of Boxes
             </Label>
@@ -663,15 +696,17 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               value={noOfBoxesInput}
               onChange={(e) => setNoOfBoxesInput(e.target.value)}
               placeholder="e.g. 12"
-              className="border rounded-md"
+              className="border rounded-md text-sm"
             />
           </div>
 
-          <DialogFooter className="flex items-center justify-end gap-3 mt-2">
+          <DialogFooter className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 mt-2">
             <Button
               variant="outline"
               onClick={() => setOpenBoxesModal(false)}
               disabled={updatingBoxes}
+              className="w-full sm:w-auto"
+              size="sm"
             >
               Cancel
             </Button>
@@ -701,6 +736,8 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                 }
               }}
               disabled={updatingBoxes}
+              className="w-full sm:w-auto"
+              size="sm"
             >
               {updatingBoxes ? (
                 <>
@@ -722,19 +759,24 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
         open={!!confirmDelete}
         onOpenChange={() => setConfirmDelete(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-[calc(100%-2rem)] sm:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-base sm:text-lg">
+              Delete Document?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
               This action cannot be undone. The selected document will be
               permanently removed from the system.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <AlertDialogCancel disabled={deleting} className="w-full sm:w-auto">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
               disabled={deleting}
+              className="w-full sm:w-auto"
             >
               {deleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>

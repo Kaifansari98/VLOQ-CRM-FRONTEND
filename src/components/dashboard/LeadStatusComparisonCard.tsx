@@ -5,7 +5,6 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import PipeLineActionModal from "./PipeLineActionModal";
 import { useAppSelector } from "@/redux/store";
-import { useRouter } from "next/navigation";
 import { GenerateLeadFormModal } from "../sales-executive/Lead/leads-generation-form-modal";
 import { useAddPaymentLeads } from "@/api/dashboard/useDashboard";
 import PaymentStageLeadModal from "./PaymentLeadsModal";
@@ -47,14 +46,14 @@ export default function PipelinePieChart({
   data,
   isLoading,
 }: PipelinePieChartProps) {
-  const router = useRouter();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
+
   const [openCreateLead, setOpenCreateLead] = useState(false);
   const [openPaymentModal, setOpenPaymentModal] = useState(false);
-  const { data: LeadPaymentData } = useAddPaymentLeads(vendorId, userId);
-  console.log("Add Payment Lead data: ", LeadPaymentData);
-  // Prepare Pie Data
+
+  useAddPaymentLeads(vendorId, userId);
+
   const pieData = STAGE_MAPPING.map((s) => ({
     name: s.label,
     type: s.type,
@@ -82,26 +81,26 @@ export default function PipelinePieChart({
 
   return (
     <>
-      <Card className="w-full h-full border flex flex-col justify-between bg-background">
-        {/* Header */}
-        <CardHeader className="flex flex-row items-center justify-between">
+      <Card className="w-full h-full border flex flex-col bg-background">
+        {/* HEADER */}
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <CardTitle className="text-sm font-medium">
               Pipeline Breakdown
             </CardTitle>
-            <p className="text-xs text-muted-foreground ">
+            <p className="text-xs text-muted-foreground">
               Breakdown of leads across stages
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setOpenCreateLead(true)}
-              className="px-3 py-1.5 text-xs border  bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-md"
+              className="px-3 py-1.5 text-xs border bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-md"
             >
               Add New Lead
             </button>
-    
+
             <button
               onClick={() => setOpenPaymentModal(true)}
               className="px-3 py-1.5 text-xs border bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-md"
@@ -111,16 +110,16 @@ export default function PipelinePieChart({
           </div>
         </CardHeader>
 
-        {/* Chart */}
-        <CardContent className="flex-1 flex items-center">
+        {/* CONTENT */}
+        <CardContent className="flex-1">
           {isLoading ? (
-            <div className="h-[220px] w-1/2 flex items-center justify-center">
-              <div className="h-10 w-10 border-4 border-muted border-t-primary rounded-full animate-spin"></div>
+            <div className="h-[220px] flex items-center justify-center">
+              <div className="h-10 w-10 border-4 border-muted border-t-primary rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="h-[220px] w-full flex items-center gap-6">
+            <div className="flex flex-col md:flex-row gap-6 h-full">
               {/* PIE */}
-              <div className="h-full w-1/2">
+              <div className="w-full md:w-1/2 h-[220px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Tooltip
@@ -148,7 +147,7 @@ export default function PipelinePieChart({
                         <Cell
                           key={idx}
                           fill={entry.fill}
-                          className="cursor-pointer transition-all"
+                          className="cursor-pointer"
                         />
                       ))}
                     </Pie>
@@ -157,13 +156,13 @@ export default function PipelinePieChart({
               </div>
 
               {/* LEGENDS */}
-              <div className="flex-1 h-full flex flex-col justify-center">
+              <div className="w-full md:w-1/2 flex items-center">
                 {pieData.length === 0 ? (
                   <p className="text-muted-foreground text-xs">
                     No data to display
                   </p>
                 ) : (
-                  <div className="grid grid-cols-3 text-sm h-full gap-y-4">
+                  <div className="grid grid-cols-3 gap-y-4 w-full">
                     {pieData.map((entry) => (
                       <div
                         key={entry.name}
@@ -171,20 +170,24 @@ export default function PipelinePieChart({
                       >
                         <div className="flex items-center gap-2">
                           <span
-                            className="inline-block h-3 w-3 rounded-full"
+                            className="h-3 w-3 rounded-full"
                             style={{ backgroundColor: entry.fill }}
-                          ></span>
+                          />
                           <span
                             className="text-muted-foreground text-xs cursor-pointer"
-                            onDoubleClick={() => handleSliceDoubleClick(entry)}
+                            onDoubleClick={() =>
+                              handleSliceDoubleClick(entry)
+                            }
                           >
                             {entry.name}
                           </span>
                         </div>
 
                         <span
-                          className="text-md font-semibold pl-5 cursor-pointer"
-                          onDoubleClick={() => handleSliceDoubleClick(entry)}
+                          className="text-sm font-semibold pl-5 cursor-pointer"
+                          onDoubleClick={() =>
+                            handleSliceDoubleClick(entry)
+                          }
                         >
                           {entry.value.toLocaleString()}
                         </span>

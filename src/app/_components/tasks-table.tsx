@@ -341,34 +341,75 @@ const MyTaskTable = () => {
   return (
     <>
       <div className="py-2">
-        <div className="flex justify-between items-end px-4">
+        {/* ================= HEADER ================= */}
+        <div className="px-4 space-y-3 md:space-y-2 md:flex md:flex-col lg:flex-row lg:justify-between lg:items-end lg:space-y-0">
+          {/* Title + Description (Desktop only) */}
           <div className="hidden md:block">
-            <h1 className="text-lg font-semibold">My Task </h1>
+            <h1 className="text-lg font-semibold">My Task</h1>
             <p className="text-sm text-muted-foreground">
               Your active tasks for the day.
             </p>
           </div>
 
-          <DueDateTabs table={table} taskCounts={taskCounts} />
+          {/* Due Date Tabs (Always visible – top aligned) */}
+          <div className="w-full lg:w-auto">
+            <DueDateTabs table={table} taskCounts={taskCounts} />
+          </div>
         </div>
+
+        {/* ================= TABLE ================= */}
         <DataTable
           table={table}
           onRowDoubleClick={handleRowDoubleClick}
-          className=" pt-3 px-4"
+          className="pt-3 px-4"
         >
-          <div className="flex flex-col md:flex-row justify-between items-end gap-4">
-            <div className="flex flex-col sm:flex-row items-end gap-3">
-              <ClearInput
-                value={globalFilter ?? ""}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder="Search…"
-                className="w-full h-8 sm:w-64"
-              />
+          {/* ================= MOBILE LAYOUT ================= */}
+          <div className="flex flex-col gap-4 md:hidden">
+            {/* Filters block */}
+            <div className="flex flex-wrap gap-2">
               <TaskTypeFilter
                 selected={taskTypeFilter}
                 onChange={setTaskTypeFilter}
                 userType={userType || ""}
               />
+
+              <DataTableDateFilter
+                column={table.getColumn("assignedAt")!}
+                title="Assigned At"
+                multiple
+              />
+
+              <DataTableSortList table={table} />
+              <DataTableFilterList table={table} />
+              <DataTableViewOptions table={table} />
+            </div>
+
+            {/* Search at bottom */}
+            <ClearInput
+              value={globalFilter ?? ""}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              placeholder="Search…"
+              className="w-full sm:w-64 h-8"
+            />
+          </div>
+
+          {/* ================= DESKTOP LAYOUT ================= */}
+          <div className="hidden md:flex justify-between items-end">
+            {/* Left: Search + Filters */}
+            <div className="flex items-end gap-3">
+              <ClearInput
+                value={globalFilter ?? ""}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Search…"
+                className="h-8 w-64"
+              />
+
+              <TaskTypeFilter
+                selected={taskTypeFilter}
+                onChange={setTaskTypeFilter}
+                userType={userType || ""}
+              />
+
               <DataTableDateFilter
                 column={table.getColumn("assignedAt")!}
                 title="Assigned At"
@@ -376,7 +417,8 @@ const MyTaskTable = () => {
               />
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            {/* Right: Table controls */}
+            <div className="flex items-center gap-2">
               <DataTableSortList table={table} />
               <DataTableFilterList table={table} />
               <DataTableViewOptions table={table} />
@@ -385,12 +427,13 @@ const MyTaskTable = () => {
         </DataTable>
       </div>
 
+      {/* ================= MODALS ================= */}
       <InitialSiteMeasuresMent
         open={openMeasurement}
         onOpenChange={setOpenMeasurement}
         data={{
-          id: rowAction?.row.original.leadId || 0, // ✅ leadId
-          accountId: rowAction?.row.original.accountId || 0, // ✅ accountId
+          id: rowAction?.row.original.leadId || 0,
+          accountId: rowAction?.row.original.accountId || 0,
           name: rowAction?.row.original.name || "",
         }}
       />

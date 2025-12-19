@@ -30,6 +30,8 @@ import {
   UsersRoundIcon,
   Truck,
   Clock,
+  UserPlus,
+  Move,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -169,14 +171,19 @@ export default function DispatchPlanningLeadDetails() {
                 variant="default"
                 onClick={() => setOpenMoveConfirm(true)}
                 disabled={moveMutation.isPending}
-                className="cursor-pointer"
+                className="hidden sm:block cursor-pointer"
               >
                 {moveMutation.isPending ? "Moving..." : "Move to Dispatch"}
               </Button>
             ) : (
               <CustomeTooltip
                 truncateValue={
-                  <Button size="sm" variant="outline" disabled>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="hidden sm:block"
+                    disabled
+                  >
                     Move to Dispatch
                   </Button>
                 }
@@ -191,7 +198,11 @@ export default function DispatchPlanningLeadDetails() {
             )}
 
             {/* Assign Task Button */}
-            <Button size="sm" onClick={() => setAssignOpen(true)}>
+            <Button
+              size="sm"
+              className="hidden sm:flex"
+              onClick={() => setAssignOpen(true)}
+            >
               Assign Task
             </Button>
           </div>
@@ -206,6 +217,36 @@ export default function DispatchPlanningLeadDetails() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="sm:hidden"
+                onClick={() => setAssignOpen(true)}
+              >
+                <UserPlus size={20} />
+                Assing Task
+              </DropdownMenuItem>
+
+              {isReadyForDispatch ? (
+                <DropdownMenuItem onClick={() => setOpenMoveConfirm(true)}>
+                  <Move size={20} />
+                  Move to Dispatch
+                </DropdownMenuItem>
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <DropdownMenuItem disabled>
+                      <Move size={20} />
+                      Move to Dispatch
+                    </DropdownMenuItem>
+                  }
+                  value={
+                    readinessLoading
+                      ? "Checking dispatch readiness..."
+                      : `Cannot move yet. Missing: ${
+                          missingFields.join(", ") || "data"
+                        }`
+                  }
+                />
+              )}
               <DropdownMenuItem
                 onSelect={() => {
                   setActivityType("onHold");
@@ -247,78 +288,68 @@ export default function DispatchPlanningLeadDetails() {
       <Tabs
         value={activeTab}
         onValueChange={(val) => setActiveTab(val)}
-        className="w-full px-6 pt-4"
+        className="w-full p-3 md:p-6 space-y-2"
       >
         <ScrollArea>
-          <div className="w-full h-full flex justify-between items-center mb-4">
-            <div className="w-full flex items-center gap-2 justify-between">
-              <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-                {/* ✅ Dispatch Planning Details */}
-                <TabsTrigger value="details">
-                  <Truck size={16} className="mr-1 opacity-60" />
-                  Dispatch Planning Details
-                </TabsTrigger>
+          <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
+            {/* ✅ Dispatch Planning Details */}
+            <TabsTrigger value="details">
+              <Truck size={16} className="mr-1 opacity-60" />
+              Dispatch Planning Details
+            </TabsTrigger>
 
-                {/* ✅ To-Do Task (Conditional Access) */}
-                {canDoDispatchPlanning(userType) ? (
-                  <TabsTrigger value="todo">
+            {/* ✅ To-Do Task (Conditional Access) */}
+            {canDoDispatchPlanning(userType) ? (
+              <TabsTrigger value="todo">
+                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                To-Do Task
+              </TabsTrigger>
+            ) : (
+              <CustomeTooltip
+                truncateValue={
+                  <TabsTrigger value="todo" disabled>
                     <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
                     To-Do Task
                   </TabsTrigger>
-                ) : (
-                  <CustomeTooltip
-                    truncateValue={
-                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                        <PanelsTopLeftIcon
-                          size={16}
-                          className="mr-1 opacity-60"
-                        />
-                        To-Do Task
-                      </div>
-                    }
-                    value="Only Admin or Sales Executive can access this tab"
-                  />
-                )}
+                }
+                value="Only Admin or Sales Executive can access this tab"
+              />
+            )}
 
-                {/* ✅ Site History */}
-                <TabsTrigger value="history">
-                  <BoxIcon size={16} className="mr-1 opacity-60" />
-                  Site History
-                </TabsTrigger>
+            {/* ✅ Site History */}
+            <TabsTrigger value="history">
+              <BoxIcon size={16} className="mr-1 opacity-60" />
+              Site History
+            </TabsTrigger>
 
-                {/* ✅ Payment Info */}
-                <TabsTrigger value="payment">
-                  <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                  Payment Information
-                </TabsTrigger>
-              </TabsList>
-            </div>
-          </div>
+            {/* ✅ Payment Info */}
+            <TabsTrigger value="payment">
+              <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+              Payment Information
+            </TabsTrigger>
+          </TabsList>
+
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
         <TabsContent value="details">
-          <main className="flex-1 h-fit">
-            <LeadDetailsGrouped
-              status="dispatchPlanning"
-              defaultTab="dispatchPlanning"
-              leadId={leadIdNum}
-              accountId={accountId}
-              defaultParentTab="installation"
-            />
-          </main>
+          <LeadDetailsGrouped
+            status="dispatchPlanning"
+            defaultTab="dispatchPlanning"
+            leadId={leadIdNum}
+            accountId={accountId}
+            defaultParentTab="installation"
+          />
         </TabsContent>
 
         <TabsContent value="todo">
-          <main className="flex-1 h-fit">
-            <LeadDetailsGrouped
-              status="dispatchPlanning"
-              defaultTab="dispatchPlanning"
-              leadId={leadIdNum}
-              accountId={accountId}
-              defaultParentTab="installation"
-            />
-          </main>
+          <LeadDetailsGrouped
+            status="dispatchPlanning"
+            defaultTab="dispatchPlanning"
+            leadId={leadIdNum}
+            accountId={accountId}
+            defaultParentTab="installation"
+          />
         </TabsContent>
 
         <TabsContent value="history">

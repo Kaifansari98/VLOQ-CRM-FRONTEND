@@ -34,8 +34,8 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
     <div className="px-6 py-4 border-b flex items-center justify-between bg-[#fff] dark:bg-[#0a0a0a]">
       {/* Left Section: Icon + Title + Count (if refresh is present) */}
       <div className="flex items-center gap-2">
-        {icon || <FileText  className="w-5 h-5 text-primary"  />}
-       <h2 className="text-lg font-semibold">{title}</h2>
+        {icon || <FileText className="w-5 h-5 text-primary" />}
+        <h2 className="text-sm font-semibold">{title}</h2>
 
         {/* Show count next to title only if refresh button exists */}
         {hasRefresh && docCount !== undefined && (
@@ -45,24 +45,10 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
 
       {/* Right Section */}
       <div className="flex items-center gap-2">
-        {/* If refresh exists → show button */}
-        {hasRefresh ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRefresh}
-            className="flex items-center gap-1"
-          >
-            <RefreshCcw size={15} />
-            Refresh
-          </Button>
-        ) : (
-          // If no refresh → show doc count on right
-          docCount !== undefined && (
-            <span className="text-sm text-muted-foreground font-medium">
-              {docCount} Documents
-            </span>
-          )
+        {docCount !== undefined && (
+          <span className="text-sm text-muted-foreground font-medium">
+            {docCount} Documents
+          </span>
         )}
       </div>
     </div>

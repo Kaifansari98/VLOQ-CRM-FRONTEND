@@ -231,7 +231,7 @@ export default function InstallationDayWiseReports({
   return (
     <div className="mt-10 border-t pt-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col items-start space-y-2 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h3 className="text-lg font-semibold">
             Installation Day-Wise Updates
@@ -241,16 +241,18 @@ export default function InstallationDayWiseReports({
           </p>
         </div>
 
-        {accessBtn && (
-          <Button onClick={() => setIsAddModalOpen(true)} size="sm">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Day Wise Update
-          </Button>
-        )}
+        <div className="w-full sm:w-auto flex justify-end">
+          {accessBtn && (
+            <Button onClick={() => setIsAddModalOpen(true)} size="sm">
+              <Plus className="w-4 h-4" />
+              Add Day Wise Update
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Report Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 ">
         {reports?.length === 0 && (
           <div className="col-span-full text-center py-16 text-muted-foreground">
             <div className="flex flex-col items-center gap-3">

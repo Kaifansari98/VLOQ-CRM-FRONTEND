@@ -31,6 +31,8 @@ import {
   Factory,
   CalendarCheck2,
   Clock,
+  UserPlus,
+  Truck,
 } from "lucide-react";
 
 import {
@@ -276,6 +278,7 @@ export default function ProductionLeadDetails() {
             (completeness?.all_exists && lead?.no_of_boxes > 0 ? (
               <Button
                 size="sm"
+                className="hidden md:flex"
                 variant="default"
                 onClick={() => setOpenReadyToDispatch(true)}
               >
@@ -284,13 +287,13 @@ export default function ProductionLeadDetails() {
             ) : (
               <CustomeTooltip
                 truncateValue={
-                  <Button size="sm" variant="outline" disabled>
+                  <Button size="sm" className="hidden md:flex" disabled>
                     Ready To Dispatch
                   </Button>
                 }
                 value={
                   !completeness?.all_exists
-                    ? "Cannot move yet — please complete all production tasks (QC photos, hardware packing, and woodwork packing)."
+                    ? "Cannot move yet please complete all production tasks (QC photos, hardware packing, and woodwork packing)."
                     : !lead?.no_of_boxes || lead?.no_of_boxes <= 0
                     ? "Add number of boxes before dispatch."
                     : "Action unavailable."
@@ -298,7 +301,11 @@ export default function ProductionLeadDetails() {
               />
             ))}
 
-          <Button size="sm" onClick={() => setAssignOpen(true)}>
+          <Button
+            size="sm"
+            className="hidden lg:flex"
+            onClick={() => setAssignOpen(true)}
+          >
             Assign Task
           </Button>
 
@@ -312,6 +319,38 @@ export default function ProductionLeadDetails() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
+              <DropdownMenuItem className="lg:hidden">
+                <UserPlus size={20} />
+                Assign Task
+              </DropdownMenuItem>
+
+              {canMoveReadyToDispatchStage &&
+                (completeness?.all_exists && lead?.no_of_boxes > 0 ? (
+                  <DropdownMenuItem
+                    className="md:hidden"
+                    onClick={() => setOpenReadyToDispatch(true)}
+                  >
+                    <Truck size={20} />
+                    Ready To Dispatch
+                  </DropdownMenuItem>
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem className=" md:hidden" disabled>
+                        <Truck size={20} />
+                        Ready To Dispatch
+                      </DropdownMenuItem>
+                    }
+                    value={
+                      !completeness?.all_exists
+                        ? "Cannot move yet — please complete all production tasks (QC photos, hardware packing, and woodwork packing)."
+                        : !lead?.no_of_boxes || lead?.no_of_boxes <= 0
+                        ? "Add number of boxes before dispatch."
+                        : "Action unavailable."
+                    }
+                  />
+                ))}
+
               {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
               <DropdownMenuItem
                 onSelect={() => {
@@ -355,103 +394,98 @@ export default function ProductionLeadDetails() {
       <Tabs
         value={activeTab}
         onValueChange={(val) => setActiveTab(val)}
-        className="w-full px-6 pt-4"
+        className="w-full p-3 md:p-6"
       >
-        <ScrollArea>
-          <div className="w-full h-full flex justify-between items-center mb-4">
-            <div className="w-full flex items-center gap-2 justify-between">
-              <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-                <TabsTrigger value="details">
-                  <Factory size={16} className="mr-1 opacity-60" />
-                  Production Details
-                </TabsTrigger>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-3">
+          <ScrollArea>
+            <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
+              <TabsTrigger value="details">
+                <Factory size={16} className="mr-1 opacity-60" />
+                Production Details
+              </TabsTrigger>
 
-                {canShowTodoTab ? (
-                  <TabsTrigger value="todo">
-                    <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                    To-Do Task
-                  </TabsTrigger>
-                ) : (
-                  <CustomeTooltip
-                    truncateValue={
-                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                        <PanelsTopLeftIcon
-                          size={16}
-                          className="mr-1 opacity-60"
-                        />
-                        To-Do Task
-                      </div>
-                    }
-                    value="Only factory user can access this tab"
-                  />
-                )}
-
-                <TabsTrigger value="history">
-                  <BoxIcon size={16} className="mr-1 opacity-60" />
-                  Site History
+              {canShowTodoTab ? (
+                <TabsTrigger value="todo">
+                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                  To-Do Task
                 </TabsTrigger>
-
-                <TabsTrigger value="payment">
-                  <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                  Payment Information
-                </TabsTrigger>
-              </TabsList>
-              <div className="w-60 flex flex-col">
-                <label className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1 ml-1">
-                  <CalendarCheck2 size={12} />
-                  Expected Ready Date of Order
-                </label>
-                <CustomeDatePicker
-                  value={
-                    lead?.expected_order_login_ready_date ||
-                    (postProductionStatus?.all_order_login_dates_added &&
-                    latestOrderLoginDate
-                      ? (() => {
-                          const baseDate = new Date(latestOrderLoginDate);
-                          baseDate.setDate(baseDate.getDate() + 3); // ⏱ Add 3-day buffer
-                          return baseDate.toISOString().split("T")[0];
-                        })()
-                      : undefined)
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <TabsTrigger value="too" disabled>
+                      <PanelsTopLeftIcon
+                        size={16}
+                        className="mr-1 opacity-60"
+                      />
+                      To-Do Task
+                    </TabsTrigger>
                   }
-                  onChange={handleExpectedDateChange}
-                  restriction="futureOnly"
-                  minDate={
-                    latestOrderLoginDate
-                      ? latestOrderLoginDate.split("T")[0] // ✅ user can only pick dates >= latest order login date
-                      : undefined
-                  }
-                  disabledReason={disabledReason}
+                  value="Only factory user can access this tab"
                 />
-              </div>
-            </div>
+              )}
+
+              <TabsTrigger value="history">
+                <BoxIcon size={16} className="mr-1 opacity-60" />
+                Site History
+              </TabsTrigger>
+
+              <TabsTrigger value="payment">
+                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                Payment Information
+              </TabsTrigger>
+            </TabsList>
+
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+          <div className="w-60 flex flex-col">
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1 ml-1">
+              <CalendarCheck2 size={12} />
+              Expected Ready Date of Order
+            </label>
+            <CustomeDatePicker
+              value={
+                lead?.expected_order_login_ready_date ||
+                (postProductionStatus?.all_order_login_dates_added &&
+                latestOrderLoginDate
+                  ? (() => {
+                      const baseDate = new Date(latestOrderLoginDate);
+                      baseDate.setDate(baseDate.getDate() + 3); // ⏱ Add 3-day buffer
+                      return baseDate.toISOString().split("T")[0];
+                    })()
+                  : undefined)
+              }
+              onChange={handleExpectedDateChange}
+              restriction="futureOnly"
+              minDate={
+                latestOrderLoginDate
+                  ? latestOrderLoginDate.split("T")[0] // ✅ user can only pick dates >= latest order login date
+                  : undefined
+              }
+              disabledReason={disabledReason}
+            />
           </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </div>
 
         {/* 🔹 Details Tab */}
         <TabsContent value="details">
-          <main className="flex-1 h-fit">
-            <LeadDetailsGrouped
-              status="production"
-              defaultTab={productionDefaultTab ? "production" : "techcheck"}
-              leadId={leadIdNum}
-              accountId={accountId}
-              defaultParentTab="production"
-            />
-          </main>
+          <LeadDetailsGrouped
+            status="production"
+            defaultTab={productionDefaultTab ? "production" : "techcheck"}
+            leadId={leadIdNum}
+            accountId={accountId}
+            defaultParentTab="production"
+          />
         </TabsContent>
 
         {/* 🔹 To-Do Tab — use SAME component as Details */}
         <TabsContent value="todo">
-          <main className="flex-1 h-fit">
-            <LeadDetailsGrouped
-              status="production"
-              defaultTab={productionDefaultTab ? "production" : "techcheck"}
-              leadId={leadIdNum}
-              accountId={accountId}
-              defaultParentTab="production"
-            />
-          </main>
+          <LeadDetailsGrouped
+            status="production"
+            defaultTab={productionDefaultTab ? "production" : "techcheck"}
+            leadId={leadIdNum}
+            accountId={accountId}
+            defaultParentTab="production"
+          />
         </TabsContent>
 
         {/* 🔹 Site History */}

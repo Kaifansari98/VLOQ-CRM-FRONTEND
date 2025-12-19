@@ -37,6 +37,7 @@ import {
   BoxIcon,
   UsersRoundIcon,
   CircleArrowOutUpRight,
+  UserIcon,
 } from "lucide-react";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import {
@@ -172,7 +173,7 @@ export default function DesigningStageLead() {
   return (
     <>
       {/* Header */}
-      <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
+      <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b backdrop-blur-xl">
         <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
@@ -213,13 +214,20 @@ export default function DesigningStageLead() {
                 value="Requires at least 1 Quotation and 1 Design"
               />
             ) : (
-              <Button size="sm" onClick={() => setBookingOpenLead(true)}>
-                <ClipboardCheck className="h-3 w-3" />
+              <Button
+                size="sm"
+                className="hidden md:block"
+                onClick={() => setBookingOpenLead(true)}
+              >
                 Move To Booking
               </Button>
             )}
           </div>
-          <Button size="sm" onClick={() => setAssignOpen(true)}>
+          <Button
+            size="sm"
+            className="hidden lg:block"
+            onClick={() => setAssignOpen(true)}
+          >
             Assign Task
           </Button>
           <AnimatedThemeToggler />
@@ -232,12 +240,16 @@ export default function DesigningStageLead() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem className="flex md:hidden" onClick={() => setAssignOpen(true)}>
+                <UserIcon className="h-4 w-4" />
+                Assign Task
+              </DropdownMenuItem>
               {/* Move to Booking */}
               {canMoveToBookingStage(userType) && canMoveToBooking ? (
-                <Button onClick={() => setBookingOpenLead(true)}>
+                <DropdownMenuItem onClick={() => setBookingOpenLead(true)}>
                   <ClipboardCheck className="h-4 w-4" />
                   Move To Booking
-                </Button>
+                </DropdownMenuItem>
               ) : (
                 <CustomeTooltip
                   truncateValue={
@@ -329,7 +341,7 @@ export default function DesigningStageLead() {
             setActiveTab(val);
           }
         }}
-        className="w-full px-6 pt-4 "
+        className="w-full p-3 md:p-6"
       >
         <ScrollArea>
           <div className="w-full h-full flex justify-between items-center">
@@ -348,13 +360,13 @@ export default function DesigningStageLead() {
                 ) : (
                   <CustomeTooltip
                     truncateValue={
-                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                      <TabsTrigger value="todo" disabled>
                         <PanelsTopLeftIcon
                           size={16}
                           className="mr-1 opacity-60"
                         />
                         To-Do Task
-                      </div>
+                      </TabsTrigger>
                     }
                     value="Only Sales Executive can access this tab"
                   />

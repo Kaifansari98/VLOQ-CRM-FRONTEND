@@ -38,7 +38,7 @@ export default function AvgDaysToBookingCard({
   }m`;
 
   return (
-    <div className="border py-4 w-1/2 rounded-2xl mt-4 flex flex-col justify-between">
+    <div className="border py-4 sm:w-1/2 rounded-2xl mt-4 flex flex-col justify-between">
       <div className="flex flex-row justify-between items-start px-5">
         <div>
           <CardTitle className="text-sm font-medium">

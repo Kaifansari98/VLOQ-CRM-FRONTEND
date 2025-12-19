@@ -38,14 +38,19 @@ export function AssignedTaskCard() {
           </p>
         </div>
 
-        <div className="p-2 rounded-full border cursor-pointer hover:bg-muted" onClick={() => {router.push("/dashboard/my-tasks")}}>
+        <div
+          className="p-2 rounded-full border cursor-pointer hover:bg-muted"
+          onClick={() => {
+            router.push("/dashboard/my-tasks");
+          }}
+        >
           <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
         </div>
       </CardHeader>
 
       {/* Stats Row */}
       <CardContent className="pt-8">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex flex-col">
             <span className="text-sm text-muted-foreground flex items-center">
               <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>
@@ -54,7 +59,7 @@ export function AssignedTaskCard() {
             <span className="text-4xl font-semibold">{data?.today ?? 0}</span>
           </div>
 
-          <div className="flex justify-end items-end gap-5">
+          <div className="flex  items-end gap-5">
             <div className="flex flex-col">
               <span className="flex items-center text-xs text-muted-foreground">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500 mr-2"></span>

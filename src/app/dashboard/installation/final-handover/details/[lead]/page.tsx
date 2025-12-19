@@ -211,7 +211,7 @@ export default function FinalHandoverLeadDetails() {
 
           {canMarkCompleted ? (
             <Button
-              className="flex items-center gap-2"
+              className="hidden md:flex items-center gap-2"
               onClick={() => setOpenProjectCompleteConfirm(true)}
             >
               <CheckCircle2 size={18} />
@@ -224,7 +224,7 @@ export default function FinalHandoverLeadDetails() {
                 <div>
                   <Button
                     disabled
-                    className="bg-gray-200 text-gray-500 border border-gray-300 cursor-not-allowed flex items-center gap-2"
+                    className="bg-gray-200 text-gray-500 border border-gray-300 cursor-not-allowed hidden md:flex items-center gap-2"
                   >
                     <CheckCircle2 size={18} />
                     Mark Project as Completed
@@ -244,6 +244,25 @@ export default function FinalHandoverLeadDetails() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
+              {canMarkCompleted ? (
+                <DropdownMenuItem
+                  className="md:hidden"
+                  onClick={() => setOpenProjectCompleteConfirm(true)}
+                >
+                  <CheckCircle2 size={18} />
+                  Mark Project as Completed
+                </DropdownMenuItem>
+              ) : (
+                <CustomeTooltip
+                  value={completionBlockMessage}
+                  truncateValue={
+                    <DropdownMenuItem disabled className="md:hidden">
+                      <CheckCircle2 size={18} />
+                      Mark Project as Completed
+                    </DropdownMenuItem>
+                  }
+                />
+              )}
               <DropdownMenuItem
                 onSelect={() => {
                   setActivityType("onHold");

@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import ProductionFilesSection from "./ProductionFilesModal";
 import ApprovedDocsSection from "./ApprovedDocsModal";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
-import { Check, Plus } from "lucide-react";
+import { Check, Plus, Save } from "lucide-react";
 import { motion } from "framer-motion";
 import { useClientRequiredCompletionDate } from "@/api/tech-check";
 import {
@@ -212,7 +212,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   };
 
   return (
-    <div className="space-y-6 overflow-y-scroll h-full bg-[#fff] dark:bg-[#0a0a0a]">
+    <div className="space-y-6  bg-[#fff] dark:bg-[#0a0a0a]">
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -288,15 +288,15 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             title: "Order Login",
             color: "bg-zinc-800 hover:bg-zinc-900",
             cardContent: (
-              <div className="overflow-y-auto h-full space-y-4 p-1 bg-[#fff] dark:bg-[#0a0a0a]">
+              <div className=" space-y-4 p-1 bg-[#fff] dark:bg-[#0a0a0a]">
           
                 {/* ---------------- HEADER ---------------- */}
-                <div className="flex items-start justify-between">
+                <div className="flex flex-col md:flex-row space-y-2 items-start justify-between">
                   <div className="space-y-0">
                     <h2 className="text-xl font-semibold tracking-tight">Order Login</h2>
           
                     {/* ⭐ Description under title */}
-                    <p className="text-sm text-muted-foreground leading-relaxed">
+                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
                       Fill out item-level breakups and assign responsibilities before order login is finalized.
                     </p>
                   </div>
@@ -304,13 +304,13 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                   {/* Right Button */}
                   {canAccessSaveButton && (
                     <Button
-                      size="lg"
+                      size="sm"
                       onClick={handleSubmitAll}
                       disabled={isPending}
-                      variant="outline"
+                      variant="default"
                       className="cursor-pointer"
                     >
-                      <Check/>
+                      <Save/>
                       {isPending ? "Processing..." : "Save Order Login"}
                     </Button>
                   )}

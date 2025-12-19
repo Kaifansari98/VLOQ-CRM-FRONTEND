@@ -128,9 +128,9 @@ export default function PostDispatchStage({
 
   const canViewAndWork = canViewAndWorkDispatchStage(userType, leadStatus);
   return (
-    <div className="border rounded-lg overflow-hidden bg-background">
+    <div className="border rounded-lg  bg-background">
       {/* Header */}
-      <div className="px-6 py-4 border-b bg-muted/20 flex items-center justify-between">
+      <div className="px-6 py-4 border-b bg-muted/20 flex flex-col ">
         <div className="flex items-center gap-2">
           <FolderOpen className="w-5 h-5" />
           <h2 className="text-lg font-semibold">Post Dispatch Documents</h2>
@@ -201,38 +201,36 @@ export default function PostDispatchStage({
             </p>
           </div>
         ) : (
-          <ScrollArea className="max-h-[400px] mt-2 pr-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {images.map((doc: any, index: number) => (
-                <ImageComponent
-                  doc={{
-                    id: doc?.id,
-                    doc_og_name: doc.doc_og_name,
-                    signedUrl: doc.signed_url,
-                    created_at: doc.created_at,
-                  }}
-                  key={index}
-                  index={index}
-                  canDelete={canDelete}
-                  onDelete={(id) => setConfirmDelete(Number(id))}
-                />
-              ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {images.map((doc: any, index: number) => (
+              <ImageComponent
+                doc={{
+                  id: doc?.id,
+                  doc_og_name: doc.doc_og_name,
+                  signedUrl: doc.signed_url,
+                  created_at: doc.created_at,
+                }}
+                key={index}
+                index={index}
+                canDelete={canDelete}
+                onDelete={(id) => setConfirmDelete(Number(id))}
+              />
+            ))}
 
-              {Documents.map((doc: any) => (
-                <DocumentCard
-                  key={doc.id}
-                  doc={{
-                    id: doc.id,
-                    originalName: doc.doc_og_name,
-                    signedUrl: doc.signed_url,
-                    created_at: doc.created_at,
-                  }}
-                  canDelete={canDelete}
-                  onDelete={(id) => setConfirmDelete(id)}
-                />
-              ))}
-            </div>
-          </ScrollArea>
+            {Documents.map((doc: any) => (
+              <DocumentCard
+                key={doc.id}
+                doc={{
+                  id: doc.id,
+                  originalName: doc.doc_og_name,
+                  signedUrl: doc.signed_url,
+                  created_at: doc.created_at,
+                }}
+                canDelete={canDelete}
+                onDelete={(id) => setConfirmDelete(id)}
+              />
+            ))}
+          </div>
         )}
       </div>
 
