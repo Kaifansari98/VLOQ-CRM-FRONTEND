@@ -102,7 +102,6 @@ export interface SubmitMeetingPayload {
   vendorId: number;
   leadId: number;
   userId: number;
-  accountId: number;
 }
 
 export interface SubmitDesignPayload {
@@ -118,7 +117,6 @@ export const submitMeeting = async (payload: SubmitMeetingPayload) => {
   formData.append("leadId", payload.leadId.toString());
   formData.append("vendorId", payload.vendorId.toString());
   formData.append("userId", payload.userId.toString());
-  formData.append("accountId", payload.accountId.toString());
   formData.append("date", new Date(payload.date).toISOString()); // safer
   formData.append("desc", payload.desc);
 

@@ -41,7 +41,7 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
   open,
   onOpenChange,
 }) => {
-  const { leadId, accountId } = useDetails();
+  const { leadId } = useDetails();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id)!;
   const userId = useAppSelector((s) => s.auth.user?.id)!;
 
@@ -65,7 +65,6 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
         vendorId,
         leadId,
         userId,
-        accountId,
       }),
     onSuccess: () => {
       toast.success("Meeting added successfully!");
