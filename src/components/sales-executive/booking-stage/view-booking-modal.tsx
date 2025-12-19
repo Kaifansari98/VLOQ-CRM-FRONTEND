@@ -36,6 +36,12 @@ import Loader from "@/components/utils/loader";
 import { canUploadOrDeleteBookingDone } from "@/components/utils/privileges";
 import { useCSPBookingPhotos } from "@/hooks/useCSPBookingPhotos";
 import SectionHeader from "@/utils/sectionHeader";
+import {
+  useBookingDoneIsmDetails,
+  useSiteMeasurementLeadById,
+} from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
+import { useDesignsDoc } from "@/hooks/designing-stage/designing-leads-hooks";
+import { FileText, Folder } from "lucide-react";
 
 interface Props {
   leadId: number;
@@ -79,8 +85,24 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     vendorId!,
     leadId
   );
+  const { data: siteMeasurementDetails } = useSiteMeasurementLeadById(leadId);
+  const { data: bookingDoneIsmDetails } = useBookingDoneIsmDetails(
+    leadId,
+    vendorId
+  );
+  const { data: designDocsData } = useDesignsDoc(vendorId!, leadId);
 
   const bookingStagePhotos = cspBookingData?.documents ?? [];
+  const initialMeasurementDocs =
+    siteMeasurementDetails?.initial_site_measurement_documents || [];
+  const initialCurrentSitePhotos =
+    siteMeasurementDetails?.current_site_photos || [];
+  const bookingDoneIsmDocs = bookingDoneIsmDetails?.pdf_documents || [];
+  const bookingDoneIsmCurrentSite =
+    bookingDoneIsmDetails?.current_site_photos || [];
+  const bookingDoneIsmPaymentImages =
+    bookingDoneIsmDetails?.payment_images || [];
+  const designDocs = designDocsData?.data?.documents || [];
 
   if (isLoading || loading)
     return <Loader size={250} message="Loading Booking Lead Details..." />;
@@ -138,25 +160,24 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         animate="visible"
         className="w-full bg-[#fff] dark:bg-[#0a0a0a]"
       >
-        <ScrollArea className="max-h-[calc(90vh-100px)]">
-          <div className="p-6 space-y-6">
+        <ScrollArea className="h-[calc(90vh-100px)]">
+          <div className="space-y-6">
             {/* -------- Top Summary Cards -------- */}
-            <div className="grid grid-cols-4 gap-5">
+            <div className="grid grid-cols-4 gap-5 pt-2">
               {/* Site Supervisor */}
               <div
                 className="
     bg-white dark:bg-neutral-900
     border border-border rounded-2xl 
     p-5 flex items-center gap-4
-    transition-all duration-200 
-    hover:ring-1 hover:ring-primary/30
+
   "
             >
               {/* Icon Container */}
               <div
                 className="
       w-12 h-12 rounded-xl flex items-center justify-center
-      bg-[#fff] dark:bg-[#0a0a0a]
+      bg-[#fff] dark:bg-[#0a0a0a] 
       text-gray-600 dark:text-gray-400
     "
               >
@@ -353,20 +374,6 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                     Booking Documents (Quotations + Design)
                   </h1>
                 </div>
-
-                {/* <Button
-                    variant="outline"
-                    size="sm"
-                    className="
-          rounded-lg 
-          border-border 
-          hover:bg-mutedBg dark:hover:bg-neutral-800 
-          transition
-        "
-                  >
-                    <RefreshCcw size={15} />
-                    Refresh
-                  </Button> */}
               </div>
 
               {/* Body */}
@@ -481,6 +488,218 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
             </div>
           </div>
         </div>
+        {/* -------- Consolidated Documents -------- */}
+        {(initialMeasurementDocs.length > 0 ||
+          initialCurrentSitePhotos.length > 0 ||
+          bookingDoneIsmDocs.length > 0 ||
+          bookingDoneIsmCurrentSite.length > 0 ||
+          bookingDoneIsmPaymentImages.length > 0 ||
+          designDocs.length > 0 ||
+          bookingStagePhotos.length > 0) && (
+          <div className="">
+            <div
+              className="
+          bg-white dark:bg-neutral-900
+          rounded-2xl
+          border border-border
+          overflow-hidden
+        "
+            >
+              <SectionHeader
+                title="Consolidated Documents"
+                icon={<Folder size={20} />}
+              />
+
+              <div className="p-6 space-y-8">
+                {(initialMeasurementDocs.length > 0 ||
+                  initialCurrentSitePhotos.length > 0) && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <FileText size={18} />
+                      <h2 className="text-base font-semibold">
+                        Initial Site Measurement
+                      </h2>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {initialCurrentSitePhotos.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Current Site Photos ({initialCurrentSitePhotos.length})
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {initialCurrentSitePhotos.map((photo: any, index: any) => (
+                              <ImageComponent
+                                key={photo.id}
+                                doc={{
+                                  id: photo.id,
+                                  doc_og_name: photo.originalName,
+                                  signedUrl: photo.signedUrl,
+                                  created_at: photo.uploadedAt,
+                                }}
+                                index={index}
+                                canDelete={false}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {initialMeasurementDocs.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Measurement Documents ({initialMeasurementDocs.length})
+                          </p>
+                          <div className="space-y-3 w-fit">
+                            {initialMeasurementDocs.map((doc: any) => (
+                              <DocumentCard
+                                key={doc.id}
+                                doc={{
+                                  id: doc.id,
+                                  originalName: doc.originalName,
+                                  signedUrl: doc.signedUrl,
+                                  created_at: doc.uploadedAt,
+                                }}
+                                canDelete={false}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {(bookingDoneIsmDocs.length > 0 ||
+                  bookingDoneIsmCurrentSite.length > 0 ||
+                  bookingDoneIsmPaymentImages.length > 0) && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <FileText size={18} />
+                      <h2 className="text-base font-semibold">
+                        Booking Done – ISM
+                      </h2>
+                    </div>
+                    <div className="space-y-4">
+                      {bookingDoneIsmDocs.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Documents ({bookingDoneIsmDocs.length})
+                          </p>
+                          <div className="space-y-3 w-fit">
+                            {bookingDoneIsmDocs.map((doc: any) => (
+                              <DocumentCard
+                                key={doc.id}
+                                doc={{
+                                  id: doc.id,
+                                  originalName: doc.originalName,
+                                  signedUrl: doc.signedUrl,
+                                  created_at: doc.createdAt,
+                                }}
+                                canDelete={false}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {bookingDoneIsmCurrentSite.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Current Site Photos ({bookingDoneIsmCurrentSite.length})
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {bookingDoneIsmCurrentSite.map((photo: any, index: any) => (
+                              <ImageComponent
+                                key={photo.id}
+                                doc={{
+                                  id: photo.id,
+                                  doc_og_name: photo.originalName,
+                                  signedUrl: photo.signedUrl,
+                                  created_at: photo.createdAt,
+                                }}
+                                index={index}
+                                canDelete={false}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {bookingDoneIsmPaymentImages.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Payment Images ({bookingDoneIsmPaymentImages.length})
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {bookingDoneIsmPaymentImages.map((photo: any, index: any) => (
+                              <ImageComponent
+                                key={photo.id}
+                                doc={{
+                                  id: photo.id,
+                                  doc_og_name: photo.originalName,
+                                  signedUrl: photo.signedUrl,
+                                  created_at: photo.createdAt,
+                                }}
+                                index={index}
+                                canDelete={false}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {designDocs.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <FileText size={18} />
+                      <h2 className="text-base font-semibold">
+                        Design Documents ({designDocs.length})
+                      </h2>
+                    </div>
+                    <div className="space-y-3">
+                      {designDocs.map((doc: any) => (
+                        <DocumentCard
+                          key={doc.id}
+                          doc={doc}
+                          canDelete={false}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {bookingStagePhotos.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Images size={18} />
+                      <h2 className="text-base font-semibold">
+                        Final Measurement Assignment Docs ({bookingStagePhotos.length})
+                      </h2>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {bookingStagePhotos.map((photo, index) => (
+                        <ImageComponent
+                          key={photo.id}
+                          doc={{
+                            id: photo.id,
+                            doc_og_name: photo.originalName,
+                            signedUrl: photo.signedUrl,
+                            created_at: photo.createdAt,
+                          }}
+                          index={index}
+                          canDelete={false}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         </ScrollArea>
 
         {/* -------- Upload Modal -------- */}
