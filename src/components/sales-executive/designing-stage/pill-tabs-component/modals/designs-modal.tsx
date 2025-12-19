@@ -62,12 +62,13 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
   });
 
   const submitDesignsMutation = useSubmitDesigns();
+  
+  console.log("Uploading designs :- testing for dev", {
+    leadId,
+    accountId,
+  });
 
   const onSubmit = async (data: DesignsFormValues) => {
-    console.log("Uploading designs", {
-      leadId,
-      accountId,
-    });
     try {
       await submitDesignsMutation.mutateAsync({
         files: Array.from(data.upload_pdf),
