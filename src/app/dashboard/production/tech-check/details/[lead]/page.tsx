@@ -218,7 +218,8 @@ export default function ClientApprovalLeadDetails() {
           </Button>
 
           {/* ✅ Move To Order Login Button (Role & Status Based) */}
-          {/* {canMoveToOrderLogin(userType) &&
+          <div className="hidden lg:flex">
+          {canMoveToOrderLogin(userType) &&
             (() => {
               const approvedPPT = pptDocs.filter(
                 (d) => d.tech_check_status === "APPROVED"
@@ -284,6 +285,7 @@ export default function ClientApprovalLeadDetails() {
 
               return (
                 <Button
+                  size="sm"
                   onClick={() => setOpenOrderLoginModal(true)}
                   variant="default"
                 >
@@ -291,8 +293,8 @@ export default function ClientApprovalLeadDetails() {
                   Move To Order Login
                 </Button>
               );
-            })()} */}
-
+            })()}
+          </div>
           <AnimatedThemeToggler />
 
           <DropdownMenu>
