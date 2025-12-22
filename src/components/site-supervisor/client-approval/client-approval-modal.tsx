@@ -105,7 +105,7 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
           ctx.addIssue({
             code: "custom",
             path: ["advance_payment_date"],
-            message: "Advance payment date is required when amount is entered.",
+            message: "Payment date is required when amount is entered.",
           });
         }
 
@@ -244,7 +244,7 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel className="text-sm">
-                    Advance Payment Date
+                    Payment Date
                   </FormLabel>
                   <FormControl>
                     <CustomeDatePicker

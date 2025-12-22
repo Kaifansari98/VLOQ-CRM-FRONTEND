@@ -52,7 +52,7 @@ export default function PaymentInformation({
       </div>
 
       {/* RIGHT : Finance Summary */}
-      <div className="w-full md:w-[400px] shrink-0">
+      <div className="w-full shrink-0 md:flex-1">
         <ProjectFinanceSummary leadId={finalLeadId} accountId={accountId} />
       </div>
     </motion.div>

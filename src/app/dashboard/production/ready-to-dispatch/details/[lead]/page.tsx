@@ -68,6 +68,7 @@ import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import AssignTaskSiteReadinessForm from "@/components/production/ready-to-dispatch/assign-task-site-readiness-form";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
+import { useCurrentSitePhotosCount } from "@/api/production/useReadyToDispatchLeads";
 
 export default function ReadyToDispatchLeadDetails() {
   const { lead: leadId } = useParams();
@@ -94,6 +95,11 @@ export default function ReadyToDispatchLeadDetails() {
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
+  const { data: sitePhotoCountData } = useCurrentSitePhotosCount(
+    vendorId,
+    leadIdNum
+  );
+  const hasSitePhotos = sitePhotoCountData?.hasPhotos;
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
@@ -142,12 +148,12 @@ export default function ReadyToDispatchLeadDetails() {
 
   // 🔥 Auto-open To-Do modal for Sales Executive
   useEffect(() => {
-    if (userType === "sales-executive") {
+    if (userType === "sales-executive" && hasSitePhotos) {
       setPreviousTab("details"); // so closing modal returns to details
       setAssignOpen(true); // open modal on load
       setActiveTab("todo"); // switch tab to To-Do
     }
-  }, [userType]);
+  }, [userType, hasSitePhotos]);
 
   if (isLoading) {
     return <p className="p-6">Loading Ready-To-Dispatch lead details...</p>;
