@@ -112,12 +112,12 @@ const bookingSchema = z
       }
     }
 
-    // ✅ Rule: MRP cannot be less than Total Booking Value
-    if (data.mrp_value < data.final_booking_amount) {
+    // ✅ Rule: Total Booking Value cannot be greater than MRP Value
+    if (data.final_booking_amount > data.mrp_value) {
       ctx.addIssue({
         code: "custom",
-        path: ["mrp_value"],
-        message: "MRP value cannot be less than Total Booking Value.",
+        path: ["final_booking_amount"],
+        message: "Total Booking Value cannot be greater than MRP Value.",
       });
     }
   });
@@ -198,8 +198,8 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       return;
     }
 
-    if (values.mrp_value < values.final_booking_amount) {
-      toast.error("MRP value cannot be less than Total Booking Value");
+    if (values.final_booking_amount > values.mrp_value) {
+      toast.error("Total Booking Value cannot be greater than MRP Value");
       return;
     }
 
@@ -296,6 +296,24 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
               <FormField
                 control={form.control}
+                name="mrp_value"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">MRP Value *</FormLabel>
+                    <FormControl>
+                      <CurrencyInput
+                        value={field.value}
+                        onChange={(val) => field.onChange(val ?? 0)}
+                        placeholder="Enter MRP Value"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="final_booking_amount"
                 render={({ field }) => (
                   <FormItem>
@@ -309,24 +327,6 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                           (val) => field.onChange(val ?? 0) // fallback to 0 if undefined
                         }
                         placeholder="Enter Total Booking Value"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="mrp_value"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm">MRP Value *</FormLabel>
-                    <FormControl>
-                      <CurrencyInput
-                        value={field.value}
-                        onChange={(val) => field.onChange(val ?? 0)}
-                        placeholder="Enter MRP Value"
                       />
                     </FormControl>
                     <FormMessage />

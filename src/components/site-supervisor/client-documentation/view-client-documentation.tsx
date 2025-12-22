@@ -164,7 +164,7 @@ export default function ClientDocumentationDetails({
           {/* -------- Images -------- */}
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {imageDocs.length > 0 ? (
+              {imageDocs.length > 0 && (
                 imageDocs.map((img, index) => (
                   <ImageComponent
                     key={img.id}
@@ -179,16 +179,6 @@ export default function ClientDocumentationDetails({
                     onDelete={(id) => setConfirmDelete(Number(id))}
                   />
                 ))
-              ) : (
-                <div className="px-4 py-10 border border-dashed border-border/60 rounded-xl bg-mutedBg/40 dark:bg-neutral-800/40 text-center">
-                  <Images
-                    size={40}
-                    className="text-muted-foreground mx-auto mb-3"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    No project images uploaded yet.
-                  </p>
-                </div>
               )}
             </div>
           </div>
