@@ -167,7 +167,9 @@ export default function BookingValueCard({
                 axisLine={false}
               />
               <Tooltip
-                formatter={(value: number) => value.toLocaleString("en-IN")}
+                formatter={(value) =>
+                  typeof value === "number" ? value.toLocaleString("en-IN") : ""
+                }
                 contentStyle={{
                   border: "1px solid hsl(var(--border))",
                   borderRadius: "10px",
