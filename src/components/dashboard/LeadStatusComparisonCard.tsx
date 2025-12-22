@@ -123,7 +123,7 @@ export default function PipelinePieChart({
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Tooltip
-                      formatter={(value: number) => value.toLocaleString()}
+                      formatter={(value) => (typeof value === "number" ? value.toLocaleString() : "")}
                       contentStyle={{
                         border: "1px solid hsl(var(--border))",
                         borderRadius: "10px",
