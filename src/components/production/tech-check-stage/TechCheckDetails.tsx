@@ -561,201 +561,205 @@ export default function TechCheckDetails({ leadId }: Props) {
         </div>
       </motion.div>
 
-      {/* ---------------------------------------------------------- */}
-      {/* -------- Design Selections -------- */}
-      {/* ---------------------------------------------------------- */}
-      <motion.section
-        variants={itemVariants}
-        className="
+      {activeFilter === "ALL" && (
+        <>
+          {/* ---------------------------------------------------------- */}
+          {/* -------- Design Selections -------- */}
+          {/* ---------------------------------------------------------- */}
+          <motion.section
+            variants={itemVariants}
+            className="
     bg-white dark:bg-neutral-900
     rounded-2xl 
     border border-border 
     overflow-hidden
   "
-      >
-        <SectionHeader
-          title="Design Selections"
-          icon={<FileText size={20} />}
-        />
+          >
+            <SectionHeader
+              title="Design Selections"
+              icon={<FileText size={20} />}
+            />
 
-        <div className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Carcas */}
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Carcas</p>
-              <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
-                {selections.carcas && selections.carcas !== "NULL"
-                  ? selections.carcas
-                  : "—"}
+            <div className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Carcas */}
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Carcas</p>
+                  <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
+                    {selections.carcas && selections.carcas !== "NULL"
+                      ? selections.carcas
+                      : "—"}
+                  </div>
+                </div>
+
+                {/* Shutter */}
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Shutter</p>
+                  <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
+                    {selections.shutter && selections.shutter !== "NULL"
+                      ? selections.shutter
+                      : "—"}
+                  </div>
+                </div>
+
+                {/* Handles */}
+                <div className="md:col-span-2">
+                  <p className="text-sm text-muted-foreground mb-1">Handles</p>
+                  <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
+                    {selections.handles && selections.handles !== "NULL"
+                      ? selections.handles
+                      : "—"}
+                  </div>
+                </div>
               </div>
             </div>
+          </motion.section>
 
-            {/* Shutter */}
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Shutter</p>
-              <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
-                {selections.shutter && selections.shutter !== "NULL"
-                  ? selections.shutter
-                  : "—"}
-              </div>
-            </div>
-
-            {/* Handles */}
-            <div className="md:col-span-2">
-              <p className="text-sm text-muted-foreground mb-1">Handles</p>
-              <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
-                {selections.handles && selections.handles !== "NULL"
-                  ? selections.handles
-                  : "—"}
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* ========== INITIAL SITE MEASUREMENT (PREMIUM CRM) ========== */}
-      <div
-        className="
+          {/* ========== INITIAL SITE MEASUREMENT (PREMIUM CRM) ========== */}
+          <div
+            className="
     bg-[#fff] dark:bg-[#0a0a0a]
     rounded-2xl 
     border border-border 
     overflow-hidden
   "
-      >
-        {/* Header */}
-        <div
-          className="
+          >
+            {/* Header */}
+            <div
+              className="
       flex items-center justify-between 
       px-5 py-3 
       border-b border-border 
       bg-[#fff] dark:bg-[#0a0a0a]
     "
-        >
-          <div className="flex items-center gap-2">
-            <Camera size={20} className="opacity-80" />
-            <h1 className="text-lg font-semibold tracking-tight flex items-center gap-1">
-              Initial Site Measurement
-              <span className="text-xs font-medium text-muted-foreground">
-                ({ismDocs.length}{" "}
-                {ismDocs.length === 1 ? "Document" : "Documents"})
-              </span>
-            </h1>
-          </div>
-        </div>
+            >
+              <div className="flex items-center gap-2">
+                <Camera size={20} className="opacity-80" />
+                <h1 className="text-lg font-semibold tracking-tight flex items-center gap-1">
+                  Initial Site Measurement
+                  <span className="text-xs font-medium text-muted-foreground">
+                    ({ismDocs.length}{" "}
+                    {ismDocs.length === 1 ? "Document" : "Documents"})
+                  </span>
+                </h1>
+              </div>
+            </div>
 
-        {/* Body */}
-        <div className="p-6">
-          {ismDocs.length === 0 ? (
-            <div
-              className="
+            {/* Body */}
+            <div className="p-6">
+              {ismDocs.length === 0 ? (
+                <div
+                  className="
           flex flex-col items-center justify-center 
           py-14 px-6 
           border border-dashed border-border/60 
           rounded-xl 
           bg-mutedBg/40 dark:bg-neutral-800/40
         "
-            >
-              <Ban size={38} className="text-muted-foreground mb-3" />
-              <h3 className="font-semibold text-sm mb-1">
-                No Site Measurement Documents
-              </h3>
-              <p className="text-xs text-muted-foreground text-center max-w-xs">
-                Uploaded documents related to initial site measurements will
-                appear here.
-              </p>
+                >
+                  <Ban size={38} className="text-muted-foreground mb-3" />
+                  <h3 className="font-semibold text-sm mb-1">
+                    No Site Measurement Documents
+                  </h3>
+                  <p className="text-xs text-muted-foreground text-center max-w-xs">
+                    Uploaded documents related to initial site measurements will
+                    appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {ismDocs.map((doc: any) => (
+                    <DocumentCard
+                      key={doc.id}
+                      doc={{
+                        id: doc.id,
+                        originalName: doc.originalName,
+                        signedUrl: doc.signedUrl,
+                        created_at: doc.created_at,
+                      }}
+                      canDelete={canDelete}
+                      status={doc.tech_check_status}
+                      onDelete={(id) => setConfirmDelete(id)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {ismDocs.map((doc: any) => (
-                <DocumentCard
-                  key={doc.id}
-                  doc={{
-                    id: doc.id,
-                    originalName: doc.originalName,
-                    signedUrl: doc.signedUrl,
-                    created_at: doc.created_at,
-                  }}
-                  canDelete={canDelete}
-                  status={doc.tech_check_status}
-                  onDelete={(id) => setConfirmDelete(id)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+          </div>
 
-      {/* ========== FINAL MEASUREMENT (PREMIUM CRM) ========== */}
-      <div
-        className="
+          {/* ========== FINAL MEASUREMENT (PREMIUM CRM) ========== */}
+          <div
+            className="
     bg-white dark:bg-neutral-900 
     rounded-2xl 
     border border-border 
     overflow-hidden
   "
-      >
-        {/* Header */}
-        <div
-          className="
+          >
+            {/* Header */}
+            <div
+              className="
       flex items-center justify-between 
       px-5 py-3 
       border-b border-border 
       bg-[#fff] dark:bg-[#0a0a0a]
     "
-        >
-          <div className="flex items-center gap-2">
-            <Layers3 size={20} className="opacity-80" />
-            <h1 className="text-lg font-semibold tracking-tight flex items-center gap-1">
-              Final Measurement Documents
-              <span className="text-xs font-medium text-muted-foreground">
-                ({finalDocs.length}{" "}
-                {finalDocs.length === 1 ? "Document" : "Documents"})
-              </span>
-            </h1>
-          </div>
-        </div>
+            >
+              <div className="flex items-center gap-2">
+                <Layers3 size={20} className="opacity-80" />
+                <h1 className="text-lg font-semibold tracking-tight flex items-center gap-1">
+                  Final Measurement Documents
+                  <span className="text-xs font-medium text-muted-foreground">
+                    ({finalDocs.length}{" "}
+                    {finalDocs.length === 1 ? "Document" : "Documents"})
+                  </span>
+                </h1>
+              </div>
+            </div>
 
-        {/* Body */}
-        <div className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
-          {finalDocs.length === 0 ? (
-            <div
-              className="
+            {/* Body */}
+            <div className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
+              {finalDocs.length === 0 ? (
+                <div
+                  className="
           flex flex-col items-center justify-center 
           py-14 px-6 
           border border-dashed border-border/60 
           rounded-xl 
           bg-[#fff] dark:bg-[#0a0a0a]
         "
-            >
-              <Ban size={38} className="text-muted-foreground mb-3" />
-              <h3 className="font-semibold text-sm mb-1">
-                No Final Measurement Documents
-              </h3>
-              <p className="text-xs text-muted-foreground text-center max-w-xs">
-                Once final measurement documents are uploaded, they will appear
-                here.
-              </p>
+                >
+                  <Ban size={38} className="text-muted-foreground mb-3" />
+                  <h3 className="font-semibold text-sm mb-1">
+                    No Final Measurement Documents
+                  </h3>
+                  <p className="text-xs text-muted-foreground text-center max-w-xs">
+                    Once final measurement documents are uploaded, they will appear
+                    here.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {finalDocs.map((doc: any) => (
+                    <DocumentCard
+                      key={doc.id}
+                      doc={{
+                        id: doc.id,
+                        originalName: doc.doc_og_name,
+                        signedUrl: doc.signed_url,
+                        created_at: doc.created_at,
+                      }}
+                      canDelete={canDelete}
+                      status={doc.tech_check_status}
+                      onDelete={(id) => setConfirmDelete(id)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {finalDocs.map((doc: any) => (
-                <DocumentCard
-                  key={doc.id}
-                  doc={{
-                    id: doc.id,
-                    originalName: doc.doc_og_name,
-                    signedUrl: doc.signed_url,
-                    created_at: doc.created_at,
-                  }}
-                  canDelete={canDelete}
-                  status={doc.tech_check_status}
-                  onDelete={(id) => setConfirmDelete(id)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
 
       <AlertDialog
         open={!!confirmDelete}
