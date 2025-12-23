@@ -24,6 +24,8 @@ import RemarkTooltip from "@/components/origin-tooltip";
 import FollowUpModal from "@/components/follow-up-modal";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkUnderInstallationStage } from "@/components/utils/privileges";
+import { Checkbox } from "@/components/ui/checkbox";
+import CustomeTooltip from "@/components/custom-tooltip";
 
 interface PendingWorkDetailsProps {
   leadId: number;
@@ -64,6 +66,7 @@ export default function PendingWorkDetails({
   const [title, setTitle] = useState("");
   const [remark, setRemark] = useState("");
   const [dueDate, setDueDate] = useState<string | null>(null);
+  const [allowForm, setAllowForm] = useState(false);
   const [openTaskModal, setOpenTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
 
@@ -122,27 +125,48 @@ export default function PendingWorkDetails({
     <div className="space-y-6">
       {/* Add Work Card */}
 
-      {canWork && (
-        <div className="border rounded-xl bg-background transition-all duration-300">
-          {/* ---------------- HEADER ---------------- */}
-          <div className="px-6 py-4 border-b bg-muted/30 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10">
-              <PlusCircle className="h-5 w-5 text-primary" />
-            </div>
+      <div className="border rounded-xl bg-background transition-all duration-300">
+        {/* ---------------- HEADER ---------------- */}
+        <div className="px-6 py-4 border-b bg-muted/30 flex items-center gap-3">
 
-            <div>
-              <h2 className="text-lg font-semibold tracking-tight">
-                Add Pending Work
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Tasks pending during installation
-              </p>
+          <div>
+            <div className="flex gap-2 items-center">
+          {canWork ? (
+            <Checkbox
+              checked={allowForm}
+              onCheckedChange={(checked) => setAllowForm(checked === true)}
+              disabled={false}
+            />
+          ) : (
+            <CustomeTooltip
+              truncateValue={
+                <Checkbox
+                  checked={allowForm}
+                  disabled={true}
+                  className="cursor-not-allowed"
+                />
+              }
+              value="Only Factory Users Can Access This Action"
+            />
+          )}
+            <h2 className="text-lg font-semibold tracking-tight">
+              Add Pending Work
+            </h2>
+
             </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Tasks pending during installation
+            </p>
           </div>
+        </div>
 
-          {/* ---------------- FORM BODY ---------------- */}
-          <div className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-5">
+        {/* ---------------- FORM BODY ---------------- */}
+        <div
+          className={`p-6 transition-all ${
+            allowForm ? "" : "opacity-50 pointer-events-none"
+          }`}
+        >
+          <form onSubmit={handleSubmit} className="space-y-5">
               {/* Grid Inputs */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* Title Picker */}
@@ -167,7 +191,7 @@ export default function PendingWorkDetails({
                         : "Select work..."
                     }
                     emptyLabel="Select Work"
-                    disabled={loadingTitles || !canWork}
+                    disabled={loadingTitles || !allowForm}
                   />
                 </div>
 
@@ -199,41 +223,39 @@ export default function PendingWorkDetails({
                   Additional Notes
                 </Label>
 
-                <Textarea
-                  placeholder="Describe the work, issue, or requirements..."
-                  value={remark}
-                  onChange={(e) => setRemark(e.target.value)}
-                  rows={3}
-                  disabled={!canWork}
-                />
-              </div>
+                  <Textarea
+                    placeholder="Describe the work, issue, or requirements..."
+                    value={remark}
+                    onChange={(e) => setRemark(e.target.value)}
+                    rows={3}
+                    disabled={!allowForm}
+                  />
+                </div>
 
               {/* Submit Button */}
               <div className="flex justify-end">
-                {canWork && (
-                  <Button
-                    type="submit"
-                    disabled={isPending || !title.trim() || !dueDate}
-                    className="w-full md:w-auto"
-                  >
-                    {isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Adding...
-                      </>
-                    ) : (
-                      <>
-                        <PlusCircle size={20} />
-                        Add Work
-                      </>
-                    )}
-                  </Button>
-                )}
+                <Button
+                  type="submit"
+                  disabled={!allowForm || isPending || !title.trim() || !dueDate}
+                  className="w-full md:w-auto"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <PlusCircle size={20} />
+                      Add Work
+                    </>
+                  )}
+                </Button>
               </div>
             </form>
           </div>
         </div>
-      )}
+      {/* </div> */}
 
       {/* Pending Work Grid */}
       <Card className="rounded-2xl border bg-background transition-all duration-300">

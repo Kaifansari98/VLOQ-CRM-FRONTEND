@@ -23,7 +23,6 @@ export const useUpdateActivityStatus = () => {
       payload: UpdateActivityStatusPayload;
     }) => updateLeadActivityStatus(leadId, payload),
     onSuccess: () => {
-      toast.success("Lead status updated!");
       // invalidate any related queries so UI refreshes
       queryClient.invalidateQueries({ queryKey: ["lostApprovalLeads"] });
       queryClient.invalidateQueries({ queryKey: ["leads"] });

@@ -306,13 +306,13 @@ export default function SmoothTab({
   const [dimensions, setDimensions] = React.useState({ width: 0, left: 0 });
 
   // Reference for the selected button
-  const buttonRefs = React.useRef<Map<string, HTMLButtonElement>>(new Map());
+  const tabRefs = React.useRef<Map<string, HTMLSpanElement>>(new Map());
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   // Update dimensions whenever selected tab changes or on mount
   React.useLayoutEffect(() => {
     const updateDimensions = () => {
-      const selectedButton = buttonRefs.current.get(selected);
+      const selectedButton = tabRefs.current.get(selected);
       const container = containerRef.current;
 
       if (selectedButton && container) {
@@ -326,15 +326,28 @@ export default function SmoothTab({
       }
     };
 
-    // Initial update
-    requestAnimationFrame(() => {
-      updateDimensions();
-    });
+    const frame = requestAnimationFrame(updateDimensions);
 
-    // Update on resize
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(updateDimensions)
+        : null;
+
+    if (resizeObserver) {
+      const container = containerRef.current;
+      const selectedButton = tabRefs.current.get(selected);
+      if (container) resizeObserver.observe(container);
+      if (selectedButton) resizeObserver.observe(selectedButton);
+    }
+
     window.addEventListener("resize", updateDimensions);
-    return () => window.removeEventListener("resize", updateDimensions);
-  }, [selected]);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", updateDimensions);
+      resizeObserver?.disconnect();
+    };
+  }, [selected, items]);
 
   const handleTabClick = (tabId: string) => {
     const currentIndex = items.findIndex((item) => item.id === selected);
@@ -402,11 +415,6 @@ export default function SmoothTab({
 
             const button = (
               <motion.button
-                key={item.id}
-                ref={(el) => {
-                  if (el) buttonRefs.current.set(item.id, el);
-                  else buttonRefs.current.delete(item.id);
-                }}
                 type="button"
                 role="tab"
                 aria-selected={isSelected}
@@ -433,18 +441,37 @@ export default function SmoothTab({
             // Wrap Order Login with tooltip if disabled
             if (isDisabled) {
               return (
-                <CustomeTooltip
+                <span
                   key={item.id}
-                  truncateValue={button}
-                  value={
-                    item.disabledReason ||
-                    "🚫 You don’t have permission or this section is locked."
-                  }
-                />
+                  ref={(el) => {
+                    if (el) tabRefs.current.set(item.id, el);
+                    else tabRefs.current.delete(item.id);
+                  }}
+                  className="relative inline-flex"
+                >
+                  <CustomeTooltip
+                    truncateValue={button}
+                    value={
+                      item.disabledReason ||
+                      "🚫 You don’t have permission or this section is locked."
+                    }
+                  />
+                </span>
               );
             }
 
-            return button;
+            return (
+              <span
+                key={item.id}
+                ref={(el) => {
+                  if (el) tabRefs.current.set(item.id, el);
+                  else tabRefs.current.delete(item.id);
+                }}
+                className="relative inline-flex"
+              >
+                {button}
+              </span>
+            );
           })}
         </div>
       </div>

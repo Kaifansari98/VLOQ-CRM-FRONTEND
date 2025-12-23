@@ -359,19 +359,34 @@ export default function SiteMeasurementLead() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType={activityType}
-        onSubmitRemark={(remark) => {
+        onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId || !accountId) return;
-          updateStatusMutation.mutate({
-            leadId: leadIdNum,
-            payload: {
-              vendorId,
-              accountId,
-              userId,
-              status: activityType,
-              remark,
-              createdBy: userId,
+          updateStatusMutation.mutate(
+            {
+              leadId: leadIdNum,
+              payload: {
+                vendorId,
+                accountId,
+                userId,
+                status: activityType,
+                remark,
+                createdBy: userId,
+                ...(activityType === "onHold" ? { dueDate } : {}),
+              },
             },
-          });
+            {
+              onSuccess: () => {
+                toast.success("Lead status updated successfully!");
+                queryClient.invalidateQueries({
+                  queryKey: ["universal-stage-leads"],
+                });
+                queryClient.invalidateQueries({
+                  queryKey: ["leadStats"],
+                });
+                router.back();
+              },
+            }
+          );
         }}
         loading={updateStatusMutation.isPending}
       />

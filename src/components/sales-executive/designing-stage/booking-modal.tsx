@@ -78,7 +78,7 @@ const bookingSchema = z
         code: "custom",
         path: ["amount_received"],
         message:
-          "Booking Amount Received should not be greater than Total Booking Value.",
+          "Booking Advance Received should not be greater than Total Booking Value.",
       });
     }
 
@@ -88,7 +88,7 @@ const bookingSchema = z
         code: "custom",
         path: ["amount_received"],
         message:
-          "Booking Amount Received is required when entering payment details or uploading payment document.",
+          "Booking Advance Received is required when entering payment details or uploading payment document.",
       });
     }
 
@@ -99,7 +99,7 @@ const bookingSchema = z
           code: "custom",
           path: ["payment_text"],
           message:
-            "Payment details text is required when Booking Amount Received is entered.",
+            "Payment details text is required when Booking Advance Received is entered.",
         });
       }
       if (!hasPaymentDoc) {
@@ -107,7 +107,7 @@ const bookingSchema = z
           code: "custom",
           path: ["payment_details_document"],
           message:
-            "At least one payment document is required when Booking Amount Received is entered.",
+            "At least one payment document is required when Booking Advance Received is entered.",
         });
       }
     }
@@ -178,7 +178,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   const onSubmit: SubmitHandler<BookingFormValues> = (values) => {
     if (values.amount_received > values.final_booking_amount) {
       toast.error(
-        "Booking Amount Received should not be greater than Total Booking Value"
+        "Booking Advance Received should not be greater than Total Booking Value"
       );
       return;
     }
@@ -340,7 +340,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm">
-                      Booking Amount Received
+                      Booking Advance Received
                     </FormLabel>
                     <FormControl>
                       <CurrencyInput
