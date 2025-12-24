@@ -177,8 +177,6 @@ const MyTaskTable = () => {
     }));
   }, [vendorUserTasksQuery.data]);
 
-  console.log("My Task data: ", vendorUserTasksQuery.data);
-
   // Calculate task counts - Memoized to prevent re-renders
   const taskCounts = useMemo(() => {
     const today = new Date();

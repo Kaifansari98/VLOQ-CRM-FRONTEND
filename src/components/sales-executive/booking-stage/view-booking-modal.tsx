@@ -545,7 +545,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                     Site Supervisor
                   </p>
 
-                  <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
+                  <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
                     {leadData?.supervisors?.[0]?.userName || "Not Assigned"}
                   </p>
                 </div>

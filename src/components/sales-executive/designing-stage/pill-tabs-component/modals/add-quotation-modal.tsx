@@ -52,6 +52,12 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
     defaultValues: { upload_pdf: [] },
   });
 
+  React.useEffect(() => {
+    if (!open) {
+      form.reset({ upload_pdf: [] });
+    }
+  }, [open, form]);
+
   const onSubmit = (data: QuotationFormValues) => {
     if (!data.upload_pdf?.length) {
       toast.error("Please upload at least one quotation file.");
@@ -81,7 +87,12 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   return (
     <BaseModal
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          form.reset({ upload_pdf: [] });
+        }
+        onOpenChange(nextOpen);
+      }}
       title="Add Quotation"
       description="Upload the official quotation document for this lead."
       size="lg"

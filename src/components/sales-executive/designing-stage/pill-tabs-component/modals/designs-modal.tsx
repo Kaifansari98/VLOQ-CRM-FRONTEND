@@ -61,6 +61,12 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
     defaultValues: { upload_pdf: [] },
   });
 
+  React.useEffect(() => {
+    if (!open) {
+      form.reset({ upload_pdf: [] });
+    }
+  }, [open, form]);
+
   const submitDesignsMutation = useSubmitDesigns();
   
   console.log("Uploading designs :- testing for dev", {
