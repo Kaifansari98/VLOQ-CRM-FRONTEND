@@ -180,7 +180,6 @@ export default function FinalHandover({
     });
 
     await uploadMutation.mutateAsync(formData);
-    toast.success("Files uploaded successfully!");
     setSelectedFiles([]);
 
     queryClient.invalidateQueries({

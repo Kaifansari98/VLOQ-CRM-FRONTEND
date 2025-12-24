@@ -178,6 +178,7 @@ export interface BookingLeadById {
   account: Account;
   mrpValue: number;
   assignedTo: AssignedTo | null;
+  bookingAmount?: number;
 }
 // ─────────── API Response ───────────
 export interface BookingLeadResponse {

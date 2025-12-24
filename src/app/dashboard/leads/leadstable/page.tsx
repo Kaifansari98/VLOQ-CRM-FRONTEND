@@ -166,6 +166,29 @@ export default function LeadsGenerationPage() {
 
         <div className="flex items-center gap-2">
           <div className="flex gap-2 items-center">
+            <div className="hidden md:flex items-center gap-2">
+              {tabItems.map((item) => (
+                <button
+                  key={item.value}
+                  onClick={() => handleTabChange(item.value)}
+                  className={clsx(
+                    "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition",
+                    "hover:bg-muted",
+                    item.value === tab
+                      ? "bg-muted font-semibold"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: item.dotColor }}
+                  />
+                  <span>{item.label}</span>
+                  <span className="text-xs opacity-70">{item.count}</span>
+                </button>
+              ))}
+            </div>
+
             <Popover open={openPopover} onOpenChange={setOpenPopover}>
               <PopoverTrigger asChild>
                 <Button
@@ -174,7 +197,7 @@ export default function LeadsGenerationPage() {
                   className="
         flex items-center gap-2
         max-w-[180px] sm:max-w-none
-        truncate
+        truncate md:hidden
       "
                 >
                   <span

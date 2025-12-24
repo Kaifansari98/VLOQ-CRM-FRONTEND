@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Edit2, FileText, Plus, RefreshCcw, Receipt, Ban } from "lucide-react";
 import {
   useBookingDoneIsmDetails,
+  useReplaceInitialSiteMeasurementPdf,
   useSiteMeasurementLeadById,
 } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import { SiteMeasurementFile } from "@/types/site-measrument-types";
@@ -28,6 +29,10 @@ import {
 import { useDeleteDocument } from "@/api/leads";
 import DocumentCard from "@/components/utils/documentCard";
 import Loader from "@/components/utils/loader";
+import BaseModal from "@/components/utils/baseModal";
+import { FileUploadField } from "@/components/custom/file-upload";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
 
 type Props = {
   leadId: number;
@@ -54,15 +59,17 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   // 🧩 --- Hooks ---
   const { data } = useSiteMeasurementLeadById(leadId);
   const { data: leadData, isLoading, error } = useLeadStatus(leadId, vendorId);
-  const { data: bookingDoneIsm } = useBookingDoneIsmDetails(
-    leadId,
-    vendorId
-  );
+  const { data: bookingDoneIsm } = useBookingDoneIsmDetails(leadId, vendorId);
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
+  const { mutateAsync: replacePdf, isPending: replacingPdf } =
+    useReplaceInitialSiteMeasurementPdf();
+  const queryClient = useQueryClient();
 
   // 🧩 --- Local State ---
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
+  const [replaceDocId, setReplaceDocId] = useState<number | null>(null);
+  const [replaceFiles, setReplaceFiles] = useState<File[]>([]);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openImageModal, setOpenImageModal] = useState(false);
   const [openImageModal2, setOpenImageModal2] = useState(false);
@@ -105,17 +112,52 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
     (userType === "sales-executive" &&
       leadStatus === "initial-site-measurement");
 
-
-
   // 🧩 --- Handlers ---
   const handleConfirmDelete = () => {
-    if (confirmDelete) {
-      deleteDocument({
-        vendorId: vendorId!,
-        documentId: confirmDelete,
-        deleted_by: userId!,
+    if (!confirmDelete) return;
+    setReplaceDocId(confirmDelete);
+    setConfirmDelete(null);
+  };
+
+  const handleReplaceFilesChange = (files: File[]) => {
+    if (files.length > 1) {
+      setReplaceFiles([files[0]]);
+      toast.error("Only one PDF can be uploaded.");
+      return;
+    }
+    setReplaceFiles(files);
+  };
+
+  const handleReplacePdf = async () => {
+    if (!replaceDocId || !vendorId || !userId) return;
+    if (replaceFiles.length === 0) {
+      toast.error("Please select a PDF to upload.");
+      return;
+    }
+
+    const pdfFile = replaceFiles[0];
+    if (pdfFile.type !== "application/pdf") {
+      toast.error("Only PDF files are allowed.");
+      return;
+    }
+
+    try {
+      await replacePdf({
+        documentId: replaceDocId,
+        vendorId,
+        userId,
+        pdfFile,
       });
-      setConfirmDelete(null);
+      toast.success("PDF document updated successfully.");
+      setReplaceFiles([]);
+      setReplaceDocId(null);
+      queryClient.invalidateQueries({
+        queryKey: ["siteMeasurementLeadDetails", leadId],
+      });
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "Failed to replace PDF document."
+      );
     }
   };
 
@@ -278,7 +320,13 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                   Payment Date
                 </p>
                 <div className="bg-muted border border-border rounded-lg px-3 py-2 text-sm">
-                  {payment.payment_date ?? "N/A"}
+                  {payment.payment_date
+                    ? new Date(payment.payment_date).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "long",
+                        year: "numeric",
+                      })
+                    : "N/A"}
                 </div>
               </div>
 
@@ -492,7 +540,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           </div>
 
           <div className="p-6 space-y-8">
-            {(bookingDoneIsmPaymentInfo) && (
+            {bookingDoneIsmPaymentInfo && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {bookingDoneIsmPaymentInfo && (
                   <div className="border border-border rounded-xl p-4 bg-muted/40 dark:bg-neutral-900 space-y-3">
@@ -557,23 +605,26 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                 <div className="flex items-center gap-2">
                   <FileText size={18} />
                   <h2 className="text-base font-semibold">
-                    Current Site Photos ({bookingDoneIsmCurrentSitePhotos.length})
+                    Current Site Photos (
+                    {bookingDoneIsmCurrentSitePhotos.length})
                   </h2>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {bookingDoneIsmCurrentSitePhotos.map((doc: any, index: any) => (
-                    <ImageComponent
-                      key={doc.id}
-                      doc={{
-                        id: doc.id,
-                        doc_og_name: doc.originalName,
-                        signedUrl: doc.signedUrl,
-                        created_at: doc.createdAt,
-                      }}
-                      index={index}
-                      canDelete={false}
-                    />
-                  ))}
+                  {bookingDoneIsmCurrentSitePhotos.map(
+                    (doc: any, index: any) => (
+                      <ImageComponent
+                        key={doc.id}
+                        doc={{
+                          id: doc.id,
+                          doc_og_name: doc.originalName,
+                          signedUrl: doc.signedUrl,
+                          created_at: doc.createdAt,
+                        }}
+                        index={index}
+                        canDelete={false}
+                      />
+                    )
+                  )}
                 </div>
               </div>
             )}
@@ -660,6 +711,46 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <BaseModal
+        open={!!replaceDocId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReplaceDocId(null);
+            setReplaceFiles([]);
+          }
+        }}
+        title="Replace PDF Document"
+        description="Upload a new PDF to replace the existing document."
+        size="md"
+      >
+        <div className="p-5 space-y-4">
+          <FileUploadField
+            value={replaceFiles}
+            onChange={handleReplaceFilesChange}
+            accept=".pdf"
+            multiple={false}
+            maxFiles={1}
+          />
+
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setReplaceDocId(null);
+                setReplaceFiles([]);
+              }}
+              disabled={replacingPdf}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleReplacePdf} disabled={replacingPdf}>
+              {replacingPdf ? "Updating..." : "Update"}
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
     </motion.div>
   );
 }

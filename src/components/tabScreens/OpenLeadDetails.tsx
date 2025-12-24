@@ -10,10 +10,10 @@ import {
   Package,
   MapPin,
   MessageSquare,
-  RefreshCcw,
+  ImagePlus,
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
-import { useLeadById } from "@/hooks/useLeadsQueries";
+import { useLeadById, useUploadMoreSitePhotos } from "@/hooks/useLeadsQueries";
 import { useAppSelector } from "@/redux/store";
 import { useDeleteDocument } from "@/api/leads";
 
@@ -30,6 +30,11 @@ import {
 import { useState } from "react";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { ImageComponent } from "../utils/ImageCard";
+import { Button } from "@/components/ui/button";
+import BaseModal from "@/components/utils/baseModal";
+import { FileUploadField } from "@/components/custom/file-upload";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
 
 type OpenLeadDetailsProps = {
   leadId: number;
@@ -71,6 +76,11 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const { mutate: deleteDocument, isPending: deleting } = useDeleteDocument();
+  const { mutateAsync: uploadMoreSitePhotos, isPending: uploading } =
+    useUploadMoreSitePhotos();
+  const queryClient = useQueryClient();
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
 
   const { data: leadStatusData } = useLeadStatus(leadId, vendorId);
 
@@ -93,7 +103,52 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     );
   }
 
- 
+  const canUploadSitePhotos =
+    userType === "admin" ||
+    userType === "super-admin" ||
+    (userType === "sales-executive" && leadStage === "open");
+
+  const handleUploadFilesChange = (files: File[]) => {
+    if (files.length > 10) {
+      toast.error("You can upload up to 10 site photos.");
+      setUploadFiles(files.slice(0, 10));
+      return;
+    }
+    setUploadFiles(files);
+  };
+
+  const handleUploadMoreSitePhotos = async () => {
+    if (!vendorId || !userId) {
+      toast.error("Vendor or user information is missing.");
+      return;
+    }
+
+    if (uploadFiles.length === 0) {
+      toast.error("Please select at least one photo to upload.");
+      return;
+    }
+
+    try {
+      await uploadMoreSitePhotos({
+        vendorId,
+        leadId,
+        createdBy: userId,
+        files: uploadFiles,
+      });
+
+      toast.success("Site photos uploaded successfully!");
+      setUploadFiles([]);
+      setUploadOpen(false);
+      queryClient.invalidateQueries({
+        queryKey: ["lead", leadId, vendorId, userId],
+      });
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "Failed to upload site photos."
+      );
+    }
+  };
+
   const SectionCard = ({ title, children }: any) => (
     <motion.section
       variants={itemVariants}
@@ -346,6 +401,29 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                       </motion.div>
                     ) : null
                   )}
+                  {canUploadSitePhotos && (
+                    <button
+                      type="button"
+                      onClick={() => setUploadOpen(true)}
+                      className="
+                        flex flex-col items-center justify-center
+                        border border-dashed border-border/70
+                        rounded-xl p-6 text-center
+                        bg-mutedBg/40 dark:bg-neutral-800/40
+                        hover:bg-muted/40 dark:hover:bg-neutral-800/60
+                        transition
+                        w-full h-full
+                      "
+                    >
+                      <ImagePlus className="w-6 h-6 text-muted-foreground mb-1" />
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Add more images
+                      </p>
+                      <p className="text-xs text-subtle">
+                        Upload up to 10 photos
+                      </p>
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div
@@ -379,6 +457,22 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   <p className="text-xs text-subtle dark:text-neutral-500 mt-1 tracking-tight">
                     Photos will appear here once uploaded
                   </p>
+                  {canUploadSitePhotos && (
+                    <button
+                      type="button"
+                      onClick={() => setUploadOpen(true)}
+                      className="
+                        mt-4 inline-flex items-center gap-2
+                        rounded-lg border border-border px-3 py-2
+                        text-xs font-medium text-muted-foreground
+                        hover:bg-mutedBg/60 dark:hover:bg-neutral-800/60
+                        transition
+                      "
+                    >
+                      <ImagePlus className="w-4 h-4" />
+                      Add more images
+                    </button>
+                  )}
                 </div>
               )}
             </motion.div>
@@ -409,6 +503,40 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          <BaseModal
+            open={uploadOpen}
+            onOpenChange={setUploadOpen}
+            title="Add More Site Photos"
+            description="Upload up to 10 current site photos."
+            size="lg"
+          >
+            <div className="p-5 space-y-4">
+              <FileUploadField
+                value={uploadFiles}
+                onChange={handleUploadFilesChange}
+                accept=".jpg,.jpeg,.png"
+                multiple
+                maxFiles={10}
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setUploadOpen(false)}
+                  disabled={uploading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleUploadMoreSitePhotos}
+                  disabled={uploading}
+                >
+                  {uploading ? "Uploading..." : "Upload"}
+                </Button>
+              </div>
+            </div>
+          </BaseModal>
         </div>
       </motion.div>
     </>

@@ -3,6 +3,10 @@
 import {
   addFinalMeasurmentDoc,
   addFinalMeasurmentDocPayload,
+  addMoreFinalMeasurementFiles,
+  AddMoreFinalMeasurementFilesPayload,
+  addMoreFinalMeasurementSitePhotos,
+  AddMoreFinalMeasurementSitePhotosPayload,
   FinalMeasurementPayload,
   getAllFinalMeasurementLeads,
   getFinalMeasurmentLeadById,
@@ -72,3 +76,16 @@ export const useAddFinalMeasurementDoc = () => {
   });
 };
 
+export const useAddMoreFinalMeasurementFiles = () => {
+  return useMutation({
+    mutationFn: (payload: AddMoreFinalMeasurementFilesPayload) =>
+      addMoreFinalMeasurementFiles(payload),
+  });
+};
+
+export const useAddMoreFinalMeasurementSitePhotos = () => {
+  return useMutation({
+    mutationFn: (payload: AddMoreFinalMeasurementSitePhotosPayload) =>
+      addMoreFinalMeasurementSitePhotos(payload),
+  });
+};

@@ -287,7 +287,6 @@ export default function PendingLeadDetails() {
             },
             {
               onSuccess: () => {
-                toast.success("Lead marked as Active!");
                 setOpenRemark(false);
                 setRemarkLeadId(null);
 

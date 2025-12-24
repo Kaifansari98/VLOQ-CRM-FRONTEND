@@ -11,6 +11,7 @@ import {
 } from "@/api/measurment-leads";
 import { getBookingDoneIsmDetails, uploadBookingDoneIsm } from "@/api/leads";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/apiClient";
 
 export const useInitialSiteMeasurement = (
   vendorId: number,
@@ -111,3 +112,28 @@ export function useInitialSiteMeasurementTask(
     retry: 1,
   });
 }
+
+export const replaceInitialSiteMeasurementPdf = async (payload: {
+  documentId: number;
+  vendorId: number;
+  userId: number;
+  pdfFile: File;
+}) => {
+  const formData = new FormData();
+  formData.append("vendor_id", payload.vendorId.toString());
+  formData.append("user_id", payload.userId.toString());
+  formData.append("upload_pdf", payload.pdfFile);
+
+  const { data } = await apiClient.put(
+    `/leads/initial-site-measurement/documents/${payload.documentId}/replace-pdf`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data;
+};
+
+export const useReplaceInitialSiteMeasurementPdf = () => {
+  return useMutation({
+    mutationFn: replaceInitialSiteMeasurementPdf,
+  });
+};

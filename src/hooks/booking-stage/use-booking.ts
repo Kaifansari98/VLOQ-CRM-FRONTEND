@@ -6,6 +6,10 @@ import {
   getBookingLeadById,
   getBookingLeads,
   getPaymentLogs,
+  reassignSiteSupervisor,
+  updateMrpValue,
+  updateTotalProjectAmount,
+  updateBookingAmount,
   moveToBookingStage,
   PaymentLogsResponse,
   UploadBookingDoc,
@@ -115,3 +119,118 @@ export const useAddPayment = () => {
   });
 };
 
+export const useReassignSiteSupervisor = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      siteSupervisorId,
+      createdBy,
+    }: {
+      vendorId: number;
+      leadId: number;
+      siteSupervisorId: number;
+      createdBy: number;
+    }) =>
+      reassignSiteSupervisor(vendorId, leadId, {
+        siteSupervisorId,
+        created_by: createdBy,
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["bookingLead", variables.leadId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["bookingLeads", variables.vendorId],
+      });
+    },
+  });
+};
+
+export const useUpdateMrpValue = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      mrpValue,
+      updatedBy,
+    }: {
+      vendorId: number;
+      leadId: number;
+      mrpValue: number;
+      updatedBy: number;
+    }) => updateMrpValue(vendorId, leadId, { mrp_value: mrpValue, updated_by: updatedBy }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["bookingLead", variables.leadId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["bookingLeads", variables.vendorId],
+      });
+    },
+  });
+};
+
+export const useUpdateTotalProjectAmount = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      totalProjectAmount,
+      updatedBy,
+    }: {
+      vendorId: number;
+      leadId: number;
+      totalProjectAmount: number;
+      updatedBy: number;
+    }) =>
+      updateTotalProjectAmount(vendorId, leadId, {
+        total_project_amount: totalProjectAmount,
+        updated_by: updatedBy,
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["bookingLead", variables.leadId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["bookingLeads", variables.vendorId],
+      });
+    },
+  });
+};
+
+export const useUpdateBookingAmount = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      bookingAmount,
+      updatedBy,
+    }: {
+      vendorId: number;
+      leadId: number;
+      bookingAmount: number;
+      updatedBy: number;
+    }) =>
+      updateBookingAmount(vendorId, leadId, {
+        booking_amount: bookingAmount,
+        updated_by: updatedBy,
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["bookingLead", variables.leadId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["bookingLeads", variables.vendorId],
+      });
+    },
+  });
+};

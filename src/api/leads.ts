@@ -114,6 +114,32 @@ export interface EditLeadPayload {
   initial_site_measurement_date?: string;
 }
 
+export const uploadMoreSitePhotos = async ({
+  vendorId,
+  leadId,
+  createdBy,
+  files,
+}: {
+  vendorId: number;
+  leadId: number;
+  createdBy: number;
+  files: File[];
+}) => {
+  const formData = new FormData();
+  formData.append("vendor_id", vendorId.toString());
+  formData.append("lead_id", leadId.toString());
+  formData.append("created_by", createdBy.toString());
+  files.forEach((file) => formData.append("documents", file));
+
+  const response = await apiClient.post(
+    "/leads/upload-more-site-photos",
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+
+  return response.data;
+};
+
 export const createLead = async (
   payload: CreateLeadPayload,
   files: File[] = []

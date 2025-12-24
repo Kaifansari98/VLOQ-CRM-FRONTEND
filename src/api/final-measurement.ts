@@ -170,6 +170,70 @@ export const addFinalMeasurmentDoc = async (
   return data;
 };
 
+export interface AddMoreFinalMeasurementFilesPayload {
+  leadId: number;
+  vendorId: number;
+  createdBy: number;
+  sitePhotos: File[];
+}
+
+export const addMoreFinalMeasurementFiles = async (
+  payload: AddMoreFinalMeasurementFilesPayload
+) => {
+  const formData = new FormData();
+  formData.append("lead_id", payload.leadId.toString());
+  formData.append("vendor_id", payload.vendorId.toString());
+  formData.append("created_by", payload.createdBy.toString());
+
+  payload.sitePhotos.forEach((file) => {
+    formData.append("site_photos", file);
+  });
+
+  const { data } = await apiClient.post(
+    `/leads/final-measurement/add-files`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return data;
+};
+
+export interface AddMoreFinalMeasurementSitePhotosPayload {
+  leadId: number;
+  vendorId: number;
+  createdBy: number;
+  sitePhotos: File[];
+}
+
+export const addMoreFinalMeasurementSitePhotos = async (
+  payload: AddMoreFinalMeasurementSitePhotosPayload
+) => {
+  const formData = new FormData();
+  formData.append("lead_id", payload.leadId.toString());
+  formData.append("vendor_id", payload.vendorId.toString());
+  formData.append("created_by", payload.createdBy.toString());
+
+  payload.sitePhotos.forEach((file) => {
+    formData.append("site_photos", file);
+  });
+
+  const { data } = await apiClient.post(
+    `/leads/final-measurement/add-site-photos`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return data;
+};
+
 export interface UploadCSPBookingPayload {
   lead_id: number;
   account_id: number;

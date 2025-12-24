@@ -174,7 +174,6 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
 
     mutate(formData, {
       onSuccess: () => {
-        toast.success("Client Approval submitted successfully!");
         onOpenChange(false);
         form.reset();
 

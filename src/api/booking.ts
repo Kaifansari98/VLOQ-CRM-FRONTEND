@@ -58,6 +58,18 @@ export const getAllSiteSuperVisors = async (vendorId: number) => {
   return data;
 };
 
+export const reassignSiteSupervisor = async (
+  vendorId: number,
+  leadId: number,
+  payload: { siteSupervisorId: number; created_by: number }
+) => {
+  const { data } = await apiClient.put(
+    `/leads/bookingStage/reassign-site-supervisor/vendor/${vendorId}/lead/${leadId}`,
+    payload
+  );
+  return data;
+};
+
 export const getBookingLeads = async (
   vendorId: number,
   userId: number
@@ -93,6 +105,42 @@ export const getBookingLeadById = async (
     `/leads/bookingStage/vendor/${vendorId}/lead/${leadId}`
   );
   return data?.data;
+};
+
+export const updateMrpValue = async (
+  vendorId: number,
+  leadId: number,
+  payload: { mrp_value: number; updated_by: number }
+) => {
+  const { data } = await apiClient.put(
+    `/leads/bookingStage/update-mrp/vendor/${vendorId}/lead/${leadId}`,
+    payload
+  );
+  return data;
+};
+
+export const updateTotalProjectAmount = async (
+  vendorId: number,
+  leadId: number,
+  payload: { total_project_amount: number; updated_by: number }
+) => {
+  const { data } = await apiClient.put(
+    `/leads/bookingStage/update-total-project-amount/vendor/${vendorId}/lead/${leadId}`,
+    payload
+  );
+  return data;
+};
+
+export const updateBookingAmount = async (
+  vendorId: number,
+  leadId: number,
+  payload: { booking_amount: number; updated_by: number }
+) => {
+  const { data } = await apiClient.put(
+    `/leads/bookingStage/update-booking-amount/vendor/${vendorId}/lead/${leadId}`,
+    payload
+  );
+  return data;
 };
 
 export interface UploadBookintPayload {

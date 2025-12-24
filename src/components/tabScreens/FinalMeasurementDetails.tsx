@@ -3,7 +3,11 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useAppSelector } from "@/redux/store";
-import { useFinalMeasurementLeadById } from "@/hooks/final-measurement/use-final-measurement";
+import {
+  useAddMoreFinalMeasurementFiles,
+  useAddMoreFinalMeasurementSitePhotos,
+  useFinalMeasurementLeadById,
+} from "@/hooks/final-measurement/use-final-measurement";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,12 +18,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Ban, Images, FileText } from "lucide-react";
+import { Ban, Images, FileText, Plus } from "lucide-react";
 import { useDeleteDocument } from "@/api/leads";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import Loader from "@/components/utils/loader";
 import SectionHeader from "@/utils/sectionHeader";
+import BaseModal from "@/components/utils/baseModal";
+import { FileUploadField } from "@/components/custom/file-upload";
+import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { toast } from "react-toastify";
 
 type Props = {
   leadId: number;
@@ -50,12 +59,22 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   );
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
+  const { mutateAsync: addMoreFiles, isPending: addingFiles } =
+    useAddMoreFinalMeasurementFiles();
+  const { mutateAsync: addMoreSitePhotos, isPending: addingSitePhotos } =
+    useAddMoreFinalMeasurementSitePhotos();
+  const queryClient = useQueryClient();
 
   // 🧩 --- Local States ---
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
+  const [addFilesOpen, setAddFilesOpen] = useState(false);
+  const [addSitePhotosOpen, setAddSitePhotosOpen] = useState(false);
+  const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+  const [sitePhotosToUpload, setSitePhotosToUpload] = useState<File[]>([]);
 
   // 🧩 --- Permissions ---
   const canDelete = userType === "admin" || userType === "super_admin";
+  const canUpload = userType === "admin" || userType === "super_admin" || userType === "sales-executive";
 
   // 🧩 --- Delete Handler ---
   const handleConfirmDelete = () => {
@@ -66,6 +85,86 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
         deleted_by: userId!,
       });
       setConfirmDelete(null);
+    }
+  };
+
+  const accountId = (data as any)?.account_id;
+
+  const handleFilesChange = (files: File[]) => {
+    if (files.length > 10) {
+      toast.error("You can upload up to 10 files.");
+      setFilesToUpload(files.slice(0, 10));
+      return;
+    }
+    setFilesToUpload(files);
+  };
+
+  const handleSitePhotosChange = (files: File[]) => {
+    if (files.length > 10) {
+      toast.error("You can upload up to 10 files.");
+      setSitePhotosToUpload(files.slice(0, 10));
+      return;
+    }
+    setSitePhotosToUpload(files);
+  };
+
+  const handleAddMoreFiles = async () => {
+    if (!vendorId || !userId) {
+      toast.error("Missing vendor, user information.");
+      return;
+    }
+    if (filesToUpload.length === 0) {
+      toast.error("Please select at least one file to upload.");
+      return;
+    }
+
+    try {
+      await addMoreFiles({
+        leadId,
+        vendorId,
+        createdBy: userId,
+        sitePhotos: filesToUpload,
+      });
+      toast.success("Additional files uploaded successfully.");
+      setFilesToUpload([]);
+      setAddFilesOpen(false);
+      queryClient.invalidateQueries({
+        queryKey: ["finalMeasurementLead", vendorId, leadId],
+      });
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "Failed to upload files."
+      );
+    }
+  };
+
+  const handleAddMoreSitePhotos = async () => {
+    if (!vendorId || !userId) {
+      toast.error("Missing vendor, user information.");
+      return;
+    }
+    if (sitePhotosToUpload.length === 0) {
+      toast.error("Please select at least one site photo to upload.");
+      return;
+    }
+
+    try {
+      await addMoreSitePhotos({
+        leadId,
+        vendorId,
+        createdBy: userId,
+        sitePhotos: sitePhotosToUpload,
+      });
+      toast.success("Additional site photos uploaded successfully.");
+      setSitePhotosToUpload([]);
+      setAddSitePhotosOpen(false);
+      queryClient.invalidateQueries({
+        queryKey: ["finalMeasurementLead", vendorId, leadId],
+      });
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "Failed to upload site photos."
+      );
     }
   };
 
@@ -135,26 +234,61 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {sitePhotos.length > 0 ? (
-              sitePhotos.map((photo, index) => (
-                <ImageComponent
-                  key={photo.id}
-                  doc={{
-                    id: photo.id,
-                    doc_og_name: photo.doc_og_name,
-                    signedUrl: photo.signedUrl,
-                    created_at: photo.created_at,
-                  }}
-                  index={index}
-                  canDelete={canDelete}
-                  onDelete={(id) => setConfirmDelete(Number(id))}
-                />
-              ))
+              <>
+                {sitePhotos.map((photo, index) => (
+                  <ImageComponent
+                    key={photo.id}
+                    doc={{
+                      id: photo.id,
+                      doc_og_name: photo.doc_og_name,
+                      signedUrl: photo.signedUrl,
+                      created_at: photo.created_at,
+                    }}
+                    index={index}
+                    canDelete={canDelete}
+                    onDelete={(id) => setConfirmDelete(Number(id))}
+                  />
+                ))}
+                {canUpload && (
+                  <button
+                    type="button"
+                    onClick={() => setAddSitePhotosOpen(true)}
+                    className="
+                      flex flex-col items-center justify-center
+                      border border-dashed border-border/70
+                      rounded-xl p-6 text-center
+                      bg-mutedBg/40 dark:bg-neutral-800/40
+                      hover:bg-muted/40 dark:hover:bg-neutral-800/60
+                      transition
+                    "
+                  >
+                    <Plus className="w-8 h-8 text-muted-foreground mb-2" />
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Add more site photos
+                    </p>
+                    <p className="text-xs text-subtle mt-1">
+                      Upload up to 10 files
+                    </p>
+                  </button>
+                )}
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center py-14">
                 <FileText size={42} className="text-muted-foreground mb-3" />
                 <p className="text-sm text-muted-foreground">
                   No site photos uploaded yet.
                 </p>
+                {canUpload && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-4"
+                    onClick={() => setAddSitePhotosOpen(true)}
+                  >
+                    Add more site photos
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -194,6 +328,28 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
                   onDelete={(id) => setConfirmDelete(id)}
                 />
               ))}
+              {canUpload && (
+                <button
+                  type="button"
+                  onClick={() => setAddFilesOpen(true)}
+                  className="
+                    flex flex-col items-center justify-center
+                    border border-dashed border-border/70
+                    rounded-xl p-6 text-center
+                    bg-mutedBg/40 dark:bg-neutral-800/40
+                    hover:bg-muted/40 dark:hover:bg-neutral-800/60
+                    transition
+                  "
+                >
+                  <Plus className="w-8 h-8 text-muted-foreground mb-2" />
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Add more files
+                  </p>
+                  <p className="text-xs text-subtle mt-1">
+                    Upload up to 10 files
+                  </p>
+                </button>
+              )}
             </div>
           </motion.div>
         </div>
@@ -260,6 +416,88 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <BaseModal
+        open={addFilesOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAddFilesOpen(false);
+            setFilesToUpload([]);
+          }
+        }}
+        title="Add More Final Measurement Files"
+        description="Upload additional final measurement files (max 10)."
+        size="md"
+      >
+        <div className="p-5 space-y-4">
+          <FileUploadField
+            value={filesToUpload}
+            onChange={handleFilesChange}
+            accept=".pdf"
+            multiple
+            maxFiles={10}
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setAddFilesOpen(false);
+                setFilesToUpload([]);
+              }}
+              disabled={addingFiles}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleAddMoreFiles} disabled={addingFiles}>
+              {addingFiles ? "Uploading..." : "Upload"}
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
+
+      <BaseModal
+        open={addSitePhotosOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAddSitePhotosOpen(false);
+            setSitePhotosToUpload([]);
+          }
+        }}
+        title="Add More Site Photos"
+        description="Upload additional site photos (max 10)."
+        size="md"
+      >
+        <div className="p-5 space-y-4">
+          <FileUploadField
+            value={sitePhotosToUpload}
+            onChange={handleSitePhotosChange}
+            accept=".jpg,.jpeg,.png"
+            multiple
+            maxFiles={10}
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setAddSitePhotosOpen(false);
+                setSitePhotosToUpload([]);
+              }}
+              disabled={addingSitePhotos}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleAddMoreSitePhotos}
+              disabled={addingSitePhotos}
+            >
+              {addingSitePhotos ? "Uploading..." : "Upload"}
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
     </motion.div>
   );
 }

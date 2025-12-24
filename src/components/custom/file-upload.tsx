@@ -23,6 +23,7 @@ interface FileUploadFieldProps {
   accept?: string;
   multiple?: boolean;
   disabled?: boolean;
+  maxFiles?: number;
 }
 
 export function FileUploadField({
@@ -30,9 +31,11 @@ export function FileUploadField({
   onChange,
   accept,
   multiple = true,
-  disabled
+  disabled,
+  maxFiles,
 }: FileUploadFieldProps) {
   const finalAccept = accept ?? ".png,.jpg,.jpeg";
+  const finalMaxFiles = maxFiles ?? (multiple ? 20 : 1);
 
   // Upload simulation
   const onUpload: NonNullable<FileUploadProps["onUpload"]> = React.useCallback(
@@ -121,7 +124,7 @@ export function FileUploadField({
       onValueChange={handleValueChange}
       onUpload={onUpload}
       onFileReject={onFileReject} // ✅ correct type
-      maxFiles={multiple ? 20 : 1}
+      maxFiles={finalMaxFiles}
       className={`w-full ${disabled && "opacity-50" } `}
       multiple={multiple}
       accept={finalAccept}
@@ -138,7 +141,7 @@ export function FileUploadField({
           </p>
           <p className="text-muted-foreground text-xs">
             {multiple
-              ? `On click to browse (max 20 files, allowed: ${readableAccept})`
+              ? `On click to browse (max ${finalMaxFiles} files, allowed: ${readableAccept})`
               : `On click to browse (only 1 file allowed, allowed: ${readableAccept})`}
           </p>
         </div>

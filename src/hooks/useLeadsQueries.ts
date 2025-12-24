@@ -19,6 +19,7 @@ import {
   checkContactOrEmailExists,
   ContactOrEmailCheckPayload,
   ContactOrEmailCheckResult,
+  uploadMoreSitePhotos,
 } from "@/api/leads";
 import {
   assignToFinalMeasurement,
@@ -186,5 +187,21 @@ export const useCheckContactOrEmailExists = () => {
   >({
     mutationFn: ({ vendorId, payload }) =>
       checkContactOrEmailExists(vendorId, payload),
+  });
+};
+
+export const useUploadMoreSitePhotos = () => {
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      createdBy,
+      files,
+    }: {
+      vendorId: number;
+      leadId: number;
+      createdBy: number;
+      files: File[];
+    }) => uploadMoreSitePhotos({ vendorId, leadId, createdBy, files }),
   });
 };
