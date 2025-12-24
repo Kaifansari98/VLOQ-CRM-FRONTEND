@@ -74,7 +74,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import CurrencyInput from "@/components/custom/CurrencyInput";
 import AddCurrentSitePhotos from "@/components/sales-executive/siteMeasurement/current-site-image-add-modal";
 import BaseModal from "@/components/utils/baseModal";
 import { FileUploadField } from "@/components/custom/file-upload";
@@ -1397,12 +1397,16 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                   <FormItem>
                     <FormLabel>MRP Value</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.01"
+                      <CurrencyInput
+                        value={
+                          field.value === ""
+                            ? undefined
+                            : Number(field.value)
+                        }
+                        onChange={(value) =>
+                          field.onChange(value !== undefined ? String(value) : "")
+                        }
                         placeholder="Enter MRP value"
-                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
@@ -1454,12 +1458,16 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                   <FormItem>
                     <FormLabel>Total Booking Value</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.01"
+                      <CurrencyInput
+                        value={
+                          field.value === ""
+                            ? undefined
+                            : Number(field.value)
+                        }
+                        onChange={(value) =>
+                          field.onChange(value !== undefined ? String(value) : "")
+                        }
                         placeholder="Enter total booking value"
-                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
@@ -1511,12 +1519,16 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                   <FormItem>
                     <FormLabel>Booking Amount</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.01"
+                      <CurrencyInput
+                        value={
+                          field.value === ""
+                            ? undefined
+                            : Number(field.value)
+                        }
+                        onChange={(value) =>
+                          field.onChange(value !== undefined ? String(value) : "")
+                        }
                         placeholder="Enter booking amount"
-                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
