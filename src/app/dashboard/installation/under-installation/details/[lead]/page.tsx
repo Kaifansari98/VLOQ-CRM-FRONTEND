@@ -405,7 +405,7 @@ export default function UnderInstallationLeadDetails() {
             ) : (
               // Existing installation date display block (unchanged)
               <div className="flex flex-col items-start">
-                <p className="text-md font-semibold">Installation Started On</p>
+                <p className="text-xs font-semibold">Installation Started On</p>
                 <div className="flex justify-between gap-2 items-center bg-muted py-2 px-3 rounded-md ">
                   <p className="text-sm">
                     {formatInstallationDate(

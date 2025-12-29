@@ -27,6 +27,7 @@ import {
   UsersRoundIcon,
   CircleArrowOutUpRight,
   UserPlus,
+  MessageSquare,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -68,6 +69,7 @@ import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
+import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
 export default function LeadDetails() {
   const router = useRouter();
@@ -335,6 +337,10 @@ export default function LeadDetails() {
               <UsersRoundIcon size={16} className="mr-1 opacity-60" />
               Payment Information
             </TabsTrigger>
+            <TabsTrigger value="chats" disabled={uiDisabled}>
+              <MessageSquare size={16} className="mr-1 opacity-60" />
+              Chats
+            </TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
@@ -352,6 +358,10 @@ export default function LeadDetails() {
 
         <TabsContent value="team">
           <PaymentComingSoon />
+        </TabsContent>
+
+        <TabsContent value="chats">
+          <LeadWiseChatScreen leadId={leadIdNum} />
         </TabsContent>
       </Tabs>
 

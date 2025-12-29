@@ -102,8 +102,7 @@ export default function UploadDispatchDocument({
           created_by: userId,
         },
       });
-
-      toast.success("Dispatch documents uploaded!");
+      
       setSelectedFiles([]);
 
       queryClient.invalidateQueries({

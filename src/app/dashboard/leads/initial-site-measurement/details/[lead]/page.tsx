@@ -27,6 +27,7 @@ import {
   BoxIcon,
   UsersRoundIcon,
   UserPlus,
+  MessageSquare,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -69,6 +70,7 @@ import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
+import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
 export default function SiteMeasurementLead() {
   const router = useRouter();
@@ -107,6 +109,7 @@ export default function SiteMeasurementLead() {
 
   useEffect(() => {
     if (isLoading || !lead) return;
+    if (activeTab !== "details") return;
 
     // ✅ Only open automatically if:
     // - Lead is not draft
@@ -120,7 +123,7 @@ export default function SiteMeasurementLead() {
     ) {
       setOpenMeasurement(true);
     }
-  }, [isLoading, lead, userType]);
+  }, [isLoading, lead, userType, activeTab]);
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -318,6 +321,10 @@ export default function SiteMeasurementLead() {
               <UsersRoundIcon size={16} className="mr-1 opacity-60" />
               Payment Information
             </TabsTrigger>
+            <TabsTrigger value="chats">
+              <MessageSquare size={16} className="mr-1 opacity-60" />
+              Chats
+            </TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
@@ -335,6 +342,10 @@ export default function SiteMeasurementLead() {
 
         <TabsContent value="payments">
           <PaymentComingSoon />
+        </TabsContent>
+
+        <TabsContent value="chats">
+          <LeadWiseChatScreen leadId={leadIdNum} />
         </TabsContent>
       </Tabs>
 

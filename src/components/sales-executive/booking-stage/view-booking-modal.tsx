@@ -51,7 +51,6 @@ import {
 } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import { useDesignsDoc } from "@/hooks/designing-stage/designing-leads-hooks";
 import { FileText, Folder } from "lucide-react";
-import SmoothTab from "@/components/kokonutui/smooth-tab";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Command,
