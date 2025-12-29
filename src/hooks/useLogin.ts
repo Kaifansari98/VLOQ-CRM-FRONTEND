@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { apiClient } from "@/lib/apiClient"
 import { useDispatch } from "react-redux"
 import { setCredentials } from "@/redux/slices/authSlice"
@@ -28,4 +28,22 @@ export function useLogin() {
       dispatch(setCredentials({ user: data.user, token: data.token }));
     },
   });
+}
+
+interface UserStatusResponse {
+  message: string
+  status: "active" | "inactive"
+}
+
+export function useCheckUserStatus(userId?: number) {
+  return useQuery({
+    queryKey: ["userStatus", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const res = await apiClient.get<UserStatusResponse>(
+        `/auth/user-status/${userId}`
+      )
+      return res.data
+    },
+  })
 }
