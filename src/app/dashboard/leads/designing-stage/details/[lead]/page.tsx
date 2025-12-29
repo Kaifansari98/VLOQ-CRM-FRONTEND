@@ -38,6 +38,7 @@ import {
   UsersRoundIcon,
   CircleArrowOutUpRight,
   UserIcon,
+  MessageSquare,
 } from "lucide-react";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import {
@@ -71,6 +72,7 @@ import {
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
+import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
 export default function DesigningStageLead() {
   const router = useRouter();
@@ -379,6 +381,10 @@ export default function DesigningStageLead() {
                   <UsersRoundIcon size={16} className="mr-1 opacity-60" />
                   Payment Information
                 </TabsTrigger>
+                <TabsTrigger value="chats">
+                  <MessageSquare size={16} className="mr-1 opacity-60" />
+                  Chats
+                </TabsTrigger>
               </TabsList>
               <ScrollBar orientation="horizontal" />
             </div>
@@ -412,6 +418,10 @@ export default function DesigningStageLead() {
 
         <TabsContent value="team">
           <PaymentComingSoon />
+        </TabsContent>
+
+        <TabsContent value="chats">
+          <LeadWiseChatScreen leadId={leadIdNum} />
         </TabsContent>
       </Tabs>
 

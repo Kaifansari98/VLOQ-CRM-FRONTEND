@@ -33,6 +33,7 @@ import {
   Clock,
   UserIcon,
   UserPlus,
+  MessageSquare,
 } from "lucide-react";
 
 import {
@@ -62,6 +63,7 @@ import {
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
 // --- NEW imports for Activity Status flow
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
@@ -273,6 +275,10 @@ export default function BookingStageLeadsDetails() {
               <UsersRoundIcon size={16} className="mr-1 opacity-60" />
               Payment Information
             </TabsTrigger>
+            <TabsTrigger value="chats">
+              <MessageSquare size={16} className="mr-1 opacity-60" />
+              Chats
+            </TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
@@ -294,6 +300,10 @@ export default function BookingStageLeadsDetails() {
 
         <TabsContent value="team">
           <PaymentInformation accountId={accountId} />
+        </TabsContent>
+
+        <TabsContent value="chats">
+          <LeadWiseChatScreen leadId={leadIdNum} />
         </TabsContent>
       </Tabs>
 

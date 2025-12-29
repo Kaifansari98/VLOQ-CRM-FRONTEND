@@ -36,6 +36,7 @@ import {
   Clock,
   Handshake,
   CalendarOff,
+  MessageSquare,
 } from "lucide-react";
 
 import {
@@ -79,6 +80,7 @@ import {
   canEditLeadButton,
   canReassignLeadButton,
 } from "@/components/utils/privileges";
+import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
 export default function UnderInstallationLeadDetails() {
   const { lead: leadId } = useParams();
@@ -375,6 +377,10 @@ export default function UnderInstallationLeadDetails() {
                 <UsersRoundIcon size={16} className="mr-1 opacity-60" />
                 Payment Information
               </TabsTrigger>
+              <TabsTrigger value="chats">
+                <MessageSquare size={16} className="mr-1 opacity-60" />
+                Chats
+              </TabsTrigger>
             </TabsList>
 
             <ScrollBar orientation="horizontal" />
@@ -456,6 +462,10 @@ export default function UnderInstallationLeadDetails() {
 
         <TabsContent value="payment">
           <PaymentInformation accountId={accountId} />
+        </TabsContent>
+
+        <TabsContent value="chats">
+          <LeadWiseChatScreen leadId={leadIdNum} />
         </TabsContent>
       </Tabs>
 

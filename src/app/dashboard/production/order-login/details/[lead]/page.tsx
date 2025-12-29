@@ -33,6 +33,7 @@ import {
   ArrowUpRight,
   Clock,
   UserPlus,
+  MessageSquare,
 } from "lucide-react";
 
 import {
@@ -70,6 +71,7 @@ import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import { useQueryClient } from "@tanstack/react-query";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
+import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
 export default function OrderLoginLeadDetails() {
   const { lead: leadId } = useParams();
@@ -337,6 +339,10 @@ export default function OrderLoginLeadDetails() {
                   <UsersRoundIcon size={16} className="mr-1 opacity-60" />
                   Payment Information
                 </TabsTrigger>
+                <TabsTrigger value="chats">
+                  <MessageSquare size={16} className="mr-1 opacity-60" />
+                  Chats
+                </TabsTrigger>
               </TabsList>
             </div>
           </div>
@@ -369,6 +375,10 @@ export default function OrderLoginLeadDetails() {
 
         <TabsContent value="payment">
           <PaymentInformation accountId={accountId} />
+        </TabsContent>
+
+        <TabsContent value="chats">
+          <LeadWiseChatScreen leadId={leadIdNum} />
         </TabsContent>
       </Tabs>
 

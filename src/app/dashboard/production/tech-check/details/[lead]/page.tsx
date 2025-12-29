@@ -38,6 +38,7 @@ import {
   UploadIcon,
   Clock,
   UserPlus,
+  MessageSquare,
 } from "lucide-react";
 import CustomeTooltip from "@/components/custom-tooltip";
 
@@ -85,6 +86,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import MoveToOrderLoginModal from "@/components/production/tech-check-stage/MoveToOrderLoginModal";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
+import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -477,6 +479,10 @@ export default function ClientApprovalLeadDetails() {
                 <UsersRoundIcon size={16} className="mr-1 opacity-60" />
                 Payment Information
               </TabsTrigger>
+              <TabsTrigger value="chats">
+                <MessageSquare size={16} className="mr-1 opacity-60" />
+                Chats
+              </TabsTrigger>
             </TabsList>
 
             {/* Scrollbar ONLY for tabs */}
@@ -548,6 +554,10 @@ export default function ClientApprovalLeadDetails() {
 
         <TabsContent value="payment">
           <PaymentInformation accountId={accountId} />
+        </TabsContent>
+
+        <TabsContent value="chats">
+          <LeadWiseChatScreen leadId={leadIdNum} />
         </TabsContent>
       </Tabs>
       {/* Modals */}

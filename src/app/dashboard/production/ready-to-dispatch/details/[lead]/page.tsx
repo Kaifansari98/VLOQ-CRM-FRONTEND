@@ -34,6 +34,7 @@ import {
   CalendarOff,
   CalendarOffIcon,
   UserPlus,
+  MessageSquare,
 } from "lucide-react";
 
 import {
@@ -69,6 +70,7 @@ import AssignTaskSiteReadinessForm from "@/components/production/ready-to-dispat
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import { useCurrentSitePhotosCount } from "@/api/production/useReadyToDispatchLeads";
+import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
 export default function ReadyToDispatchLeadDetails() {
   const { lead: leadId } = useParams();
@@ -307,6 +309,10 @@ export default function ReadyToDispatchLeadDetails() {
                 <UsersRoundIcon size={16} className="mr-1 opacity-60" />
                 Payment Information
               </TabsTrigger>
+              <TabsTrigger value="chats">
+                <MessageSquare size={16} className="mr-1 opacity-60" />
+                Chats
+              </TabsTrigger>
             </TabsList>
 
             <ScrollBar orientation="horizontal" />
@@ -340,6 +346,10 @@ export default function ReadyToDispatchLeadDetails() {
 
         <TabsContent value="payment">
           <PaymentInformation accountId={accountId} />
+        </TabsContent>
+
+        <TabsContent value="chats">
+          <LeadWiseChatScreen leadId={leadIdNum} />
         </TabsContent>
       </Tabs>
 

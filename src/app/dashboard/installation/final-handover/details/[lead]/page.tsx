@@ -32,6 +32,7 @@ import {
   BoxIcon,
   UsersRoundIcon,
   Clock,
+  MessageSquare,
 } from "lucide-react";
 
 import {
@@ -75,6 +76,7 @@ import {
   useIsTotalProjectAmountPaid,
 } from "@/api/installation/useFinalHandoverStageLeads";
 import { toastError } from "@/lib/utils";
+import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
 export default function FinalHandoverLeadDetails() {
   const router = useRouter();
@@ -353,6 +355,10 @@ export default function FinalHandoverLeadDetails() {
                     <UsersRoundIcon size={16} className="mr-1 opacity-60" />
                     Payment Information
                   </TabsTrigger>
+                  <TabsTrigger value="chats">
+                    <MessageSquare size={16} className="mr-1 opacity-60" />
+                    Chats
+                  </TabsTrigger>
                 </TabsList>
               </div>
               <ScrollBar orientation="horizontal" />
@@ -396,6 +402,10 @@ export default function FinalHandoverLeadDetails() {
 
         <TabsContent value="payment">
           <PaymentInformation accountId={accountId} />
+        </TabsContent>
+
+        <TabsContent value="chats">
+          <LeadWiseChatScreen leadId={leadIdNum} />
         </TabsContent>
       </Tabs>
 

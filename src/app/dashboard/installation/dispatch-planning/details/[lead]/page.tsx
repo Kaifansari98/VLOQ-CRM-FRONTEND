@@ -32,6 +32,7 @@ import {
   Clock,
   UserPlus,
   Move,
+  MessageSquare,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -69,6 +70,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import { toastError } from "@/lib/utils";
+import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
 export default function DispatchPlanningLeadDetails() {
   const router = useRouter();
@@ -327,6 +329,10 @@ export default function DispatchPlanningLeadDetails() {
               <UsersRoundIcon size={16} className="mr-1 opacity-60" />
               Payment Information
             </TabsTrigger>
+            <TabsTrigger value="chats">
+              <MessageSquare size={16} className="mr-1 opacity-60" />
+              Chats
+            </TabsTrigger>
           </TabsList>
 
           <ScrollBar orientation="horizontal" />
@@ -358,6 +364,10 @@ export default function DispatchPlanningLeadDetails() {
 
         <TabsContent value="payment">
           <PaymentInformation accountId={accountId} />
+        </TabsContent>
+
+        <TabsContent value="chats">
+          <LeadWiseChatScreen leadId={leadIdNum} />
         </TabsContent>
       </Tabs>
 

@@ -35,6 +35,7 @@ import {
   FileText,
   Clock,
   UserPlus,
+  MessageSquare,
 } from "lucide-react";
 
 import {
@@ -70,6 +71,7 @@ import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
@@ -293,6 +295,10 @@ export default function ClientDocumentationLeadDetails() {
               <UsersRoundIcon size={16} className="mr-1 opacity-60" />
               Payment Information
             </TabsTrigger>
+            <TabsTrigger value="chats">
+              <MessageSquare size={16} className="mr-1 opacity-60" />
+              Chats
+            </TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
@@ -312,6 +318,10 @@ export default function ClientDocumentationLeadDetails() {
 
         <TabsContent value="payment">
           <PaymentInformation accountId={accountId} />
+        </TabsContent>
+
+        <TabsContent value="chats">
+          <LeadWiseChatScreen leadId={leadIdNum} />
         </TabsContent>
       </Tabs>
 
