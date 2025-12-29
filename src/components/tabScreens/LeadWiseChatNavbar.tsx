@@ -44,7 +44,6 @@ export default function LeadWiseChatNavbar({
       </div>
 
       <div className="flex flex-row gap-5 items-center">
-      <Search size={22} />
         <div className="flex -space-x-2">
           {(membersData?.data ?? []).map((member) => (
             <Avatar key={member.id} className="h-9 w-9 ring-2 ring-background">
