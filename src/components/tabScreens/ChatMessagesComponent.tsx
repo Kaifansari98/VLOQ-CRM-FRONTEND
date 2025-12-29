@@ -252,7 +252,7 @@ export default function ChatMessagesComponent({
   return (
     <div 
       ref={scrollContainerRef} 
-      className="flex h-full flex-col overflow-y-auto px-4 py-4"
+      className="flex h-full flex-col overflow-y-auto py-4"
       style={{ scrollBehavior: "auto" }}
     >
       {/* Top sentinel for infinite scroll */}
