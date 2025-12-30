@@ -73,6 +73,7 @@ import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
 // ⭐ NEW IMPORTS — ONLY Mark On Hold
@@ -235,6 +236,7 @@ export default function ClientApprovalLeadDetails() {
             Assign Task
           </Button>
 
+          <NotificationBell />
           <AnimatedThemeToggler />
 
           {/* DROPDOWN */}

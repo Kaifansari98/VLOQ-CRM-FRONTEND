@@ -16,6 +16,7 @@ import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export default function MyTaskLeadDetails() {
   const { leadId } = useParams();
@@ -71,6 +72,7 @@ export default function MyTaskLeadDetails() {
         </div>
         <div className="flex items-center gap-2">
           {leadStatus === "open" && <Button>Assign Task</Button>}
+          <NotificationBell />
           <AnimatedThemeToggler />
         </div>
       </header>

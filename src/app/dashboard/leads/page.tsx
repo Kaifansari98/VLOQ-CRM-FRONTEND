@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Card } from "@/components/ui/card";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export default function LeadsGenerationPage() {
   return (
@@ -40,7 +41,8 @@ export default function LeadsGenerationPage() {
           </div>
 
           <div className="flex items-center gap-2 pr-4">
-            <AnimatedThemeToggler />
+            <NotificationBell />
+          <AnimatedThemeToggler />
           </div>
         </header>
 

@@ -11,6 +11,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Suspense } from "react";
 import MyTaskTable from "../../_components/tasks-table";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { FadeInProvider } from "@/components/framer-motion/FadeInProvider";
 
@@ -33,7 +34,8 @@ export default function MyTaskLeadPage() {
           </Breadcrumb>
         </div>
 
-        <AnimatedThemeToggler />
+        <NotificationBell />
+          <AnimatedThemeToggler />
       </header>
 
       <main className="flex-1 overflow-x-hidden">

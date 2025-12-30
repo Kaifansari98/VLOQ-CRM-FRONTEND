@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAppSelector } from "@/redux/store";
 import { canCreateLead } from "@/components/utils/privileges";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useActivityStatusCounts } from "@/hooks/useActivityStatus";
 import ViewOpenLeadTable from "@/app/_components/view-leads-table";
 import PendingLeadsTable from "../../../_components/pending-leads-table";
@@ -259,7 +260,8 @@ export default function LeadsGenerationPage() {
               </>
             )}
 
-            <AnimatedThemeToggler />
+            <NotificationBell />
+          <AnimatedThemeToggler />
           </div>
         </div>
       </header>

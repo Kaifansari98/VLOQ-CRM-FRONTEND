@@ -81,6 +81,7 @@ import TextAreaInput from "@/components/origin-text-area";
 import UploadMoreClientDocumentationModal from "@/components/site-supervisor/client-documentation/uploadmore-client-documentaition-modal";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
@@ -297,6 +298,7 @@ export default function ClientApprovalLeadDetails() {
               );
             })()}
           </div>
+          <NotificationBell />
           <AnimatedThemeToggler />
 
           <DropdownMenu>

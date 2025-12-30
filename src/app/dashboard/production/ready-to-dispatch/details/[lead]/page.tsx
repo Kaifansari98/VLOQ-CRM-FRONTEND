@@ -65,6 +65,7 @@ import CustomeTooltip from "@/components/custom-tooltip";
 import { useUpdateExpectedOrderLoginReadyDate } from "@/api/production/production-api";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import AssignTaskSiteReadinessForm from "@/components/production/ready-to-dispatch/assign-task-site-readiness-form";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
@@ -202,6 +203,7 @@ export default function ReadyToDispatchLeadDetails() {
             Assign Task
           </Button>
 
+          <NotificationBell />
           <AnimatedThemeToggler />
 
           <DropdownMenu>

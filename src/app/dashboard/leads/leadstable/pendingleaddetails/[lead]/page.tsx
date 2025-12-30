@@ -32,6 +32,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export default function PendingLeadDetails() {
   const router = useRouter();
@@ -85,6 +86,7 @@ export default function PendingLeadDetails() {
         </div>
 
         <div className="flex items-center space-x-2">
+          <NotificationBell />
           <AnimatedThemeToggler />
 
           {/* 🔹 Dynamic Actions Menu */}

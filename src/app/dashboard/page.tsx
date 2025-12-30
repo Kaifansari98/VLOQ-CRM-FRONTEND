@@ -11,9 +11,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useAppSelector } from "@/redux/store";
 import DashboardWrapper from "@/components/dashboard/DashboardWrapper";
-import { Bell, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import GlobalLeadSearchModal from "@/components/dashboard/GlobalLeadSearchModal";
 import { Kbd } from "@/components/ui/kbd";
@@ -90,7 +91,7 @@ export default function Page() {
             </div>
           </div>
 
-          <Bell />
+          <NotificationBell />
           <AnimatedThemeToggler />
         </div>
       </header>

@@ -60,6 +60,7 @@ import {
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import {
@@ -209,6 +210,7 @@ export default function DispatchPlanningLeadDetails() {
             </Button>
           </div>
 
+          <NotificationBell />
           <AnimatedThemeToggler />
 
           <DropdownMenu>

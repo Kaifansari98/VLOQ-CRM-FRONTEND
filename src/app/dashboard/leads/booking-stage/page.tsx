@@ -13,6 +13,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 
 import { Suspense } from "react";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 
 import { UniversalTable } from "@/components/custom/UniversalTable";
@@ -55,6 +56,7 @@ export default function LeadsBookingPage() {
         </div>
 
         <div className="flex items-center gap-2 pr-2">
+          <NotificationBell />
           <AnimatedThemeToggler />
         </div>
       </header>

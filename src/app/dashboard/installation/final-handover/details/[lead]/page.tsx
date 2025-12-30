@@ -60,6 +60,7 @@ import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
 
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
@@ -236,6 +237,7 @@ export default function FinalHandoverLeadDetails() {
             />
           )}
 
+          <NotificationBell />
           <AnimatedThemeToggler />
 
           <DropdownMenu>

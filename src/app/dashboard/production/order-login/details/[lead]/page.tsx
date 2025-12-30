@@ -67,6 +67,7 @@ import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/ass
 import MoveToProductionModal from "@/components/production/order-login-stage/MoveToProductionModal";
 import { useLeadProductionReadiness } from "@/api/production/order-login";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import { useQueryClient } from "@tanstack/react-query";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
@@ -214,6 +215,7 @@ export default function OrderLoginLeadDetails() {
             Assign Task
           </Button>
 
+          <NotificationBell />
           <AnimatedThemeToggler />
 
           <DropdownMenu>

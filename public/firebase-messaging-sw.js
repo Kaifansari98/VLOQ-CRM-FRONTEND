@@ -1,6 +1,8 @@
-importScripts("https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js");
 importScripts(
-  "https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js"
+  "https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"
+);
+importScripts(
+  "https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"
 );
 
 const firebaseConfig = {
@@ -21,11 +23,37 @@ messaging.onBackgroundMessage((payload) => {
     "[firebase-messaging-sw.js] Received background message ",
     payload
   );
-  const notificationTitle = payload.notification.title;
+  const notificationTitle =
+    payload.data?.title || payload.notification?.title || "Notification";
   const notificationOptions = {
-    body: payload.notification.body,
-    icon: payload.notification.image,
+    body: payload.data?.body || payload.notification?.body || "",
+    icon: payload.notification?.image,
+    data: {
+      redirect_url: payload.data?.redirect_url || "",
+    },
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const redirectUrl = event.notification?.data?.redirect_url;
+  if (!redirectUrl) return;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(
+      (clientList) => {
+        for (const client of clientList) {
+          if ("focus" in client) {
+            client.navigate(redirectUrl);
+            return client.focus();
+          }
+        }
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(redirectUrl);
+        }
+      }
+    )
+  );
 });

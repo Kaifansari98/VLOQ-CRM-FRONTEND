@@ -73,6 +73,7 @@ import {
 } from "@/api/production/production-api";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useCheckPostProductionReady } from "@/api/production/production-api";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import { useMoveLeadToReadyToDispatch } from "@/api/production/useReadyToDispatchLeads";
@@ -311,6 +312,7 @@ export default function ProductionLeadDetails() {
             Assign Task
           </Button>
 
+          <NotificationBell />
           <AnimatedThemeToggler />
 
           <DropdownMenu>

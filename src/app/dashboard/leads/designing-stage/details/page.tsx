@@ -22,6 +22,7 @@ import { DetailsProvider } from "@/components/sales-executive/designing-stage/pi
 import { useAppSelector } from "@/redux/store";
 import { useDesigningStageCounts } from "@/hooks/designing-stage/designing-leads-hooks";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 function DetailsContent() {
   const searchParams = useSearchParams();
@@ -62,6 +63,7 @@ function DetailsContent() {
           </Breadcrumb>
         </div>
         <div className="flex items-center gap-2">
+          <NotificationBell />
           <AnimatedThemeToggler />
         </div>
       </header>

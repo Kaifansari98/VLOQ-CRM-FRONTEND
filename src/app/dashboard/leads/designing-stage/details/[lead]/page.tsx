@@ -71,6 +71,7 @@ import {
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
@@ -232,6 +233,7 @@ export default function DesigningStageLead() {
           >
             Assign Task
           </Button>
+          <NotificationBell />
           <AnimatedThemeToggler />
 
           {/* 🔹 Dropdown for actions */}

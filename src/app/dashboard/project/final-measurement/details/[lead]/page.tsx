@@ -71,6 +71,7 @@ import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
@@ -185,6 +186,7 @@ export default function FinalMeasurementLeadDetails() {
             Assign Task
           </Button>
 
+          <NotificationBell />
           <AnimatedThemeToggler />
 
           <DropdownMenu>

@@ -68,6 +68,7 @@ import {
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
@@ -209,6 +210,7 @@ export default function LeadDetails() {
             </Button>
           )}
 
+          <NotificationBell />
           <AnimatedThemeToggler />
 
           {/* Dropdown */}

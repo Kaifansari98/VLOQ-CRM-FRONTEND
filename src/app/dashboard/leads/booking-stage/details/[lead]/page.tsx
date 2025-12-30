@@ -63,6 +63,7 @@ import {
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
 // --- NEW imports for Activity Status flow
@@ -177,6 +178,7 @@ export default function BookingStageLeadsDetails() {
             />
           )}
 
+          <NotificationBell />
           <AnimatedThemeToggler />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
