@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { Bell } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -73,8 +73,31 @@ export const NotificationBell = ({ linkTo }: NotificationBellProps) => {
     }
   }
 
+  const markVisibleAsRead = useCallback(async () => {
+    if (!user?.id) return
+    const unreadItems = latestNotifications.filter((item) => !item.is_read)
+    if (unreadItems.length === 0) return
+
+    unreadItems.forEach((item) => dispatch(markNotificationRead(item.id)))
+    try {
+      await Promise.all(
+        unreadItems.map((item) => markReadApi(item.id, user.id))
+      )
+    } catch {
+      refresh({ silent: true })
+    }
+  }, [dispatch, latestNotifications, refresh, user?.id])
+
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (nextOpen) {
+          markVisibleAsRead()
+        }
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell />

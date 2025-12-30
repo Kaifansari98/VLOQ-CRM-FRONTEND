@@ -21,12 +21,14 @@ import { markNotificationRead } from "@/redux/slices/notificationsSlice";
 import { markNotificationRead as markReadApi } from "@/api/notifications";
 import { NotificationItem } from "@/types/notifications";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 export default function NotificationsPage() {
   const router = useRouter();
   const dispatch = useDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const { notifications, isLoading, refresh } = useNotifications();
+  const hasMarkedRef = useRef(false);
 
   const handleNavigate = (redirectUrl: string) => {
     if (/^https?:\/\//i.test(redirectUrl)) {
@@ -50,6 +52,24 @@ export default function NotificationsPage() {
       handleNavigate(notification.redirect_url);
     }
   };
+
+  useEffect(() => {
+    if (hasMarkedRef.current) return;
+    if (!user?.id) return;
+    if (notifications.length === 0) return;
+
+    const unreadItems = notifications.filter((item) => !item.is_read);
+    if (unreadItems.length === 0) {
+      hasMarkedRef.current = true;
+      return;
+    }
+
+    hasMarkedRef.current = true;
+    unreadItems.forEach((item) => dispatch(markNotificationRead(item.id)));
+    Promise.all(unreadItems.map((item) => markReadApi(item.id, user.id))).catch(
+      () => refresh({ silent: true })
+    );
+  }, [dispatch, notifications, refresh, user?.id]);
 
   return (
     <>

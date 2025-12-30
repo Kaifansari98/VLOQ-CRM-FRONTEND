@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useAppSelector } from "@/redux/store";
 
 import {
@@ -24,7 +24,7 @@ import {
   getVendorLeadsTableColumns,
   ProcessedTask,
 } from "./tasks-table-columns";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useVendorUserTasks } from "@/hooks/useTasksQueries";
 import FinalMeasurementModal from "@/components/sales-executive/booking-stage/final-measurement-modal";
 import FollowUpModal from "@/components/follow-up-modal";
@@ -82,6 +82,9 @@ const MyTaskTable = () => {
   const [taskTypeFilter, setTaskTypeFilter] = useState<string[]>([]);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const taskIdParam = Number(searchParams.get("taskId"));
+  const hasAutoOpenedRef = useRef(false);
 
   const handleRowDoubleClick = useCallback(
     (row: ProcessedTask) => {
@@ -242,6 +245,24 @@ const MyTaskTable = () => {
 
     return rowData.filter((task) => taskTypeFilter.includes(task.taskType));
   }, [rowData, taskTypeFilter]);
+
+  useEffect(() => {
+    if (hasAutoOpenedRef.current) return;
+    if (!Number.isFinite(taskIdParam)) return;
+    if (!rowData.length) return;
+    if (
+      userType?.toLowerCase() === "admin" ||
+      userType?.toLowerCase() === "super-admin"
+    ) {
+      return;
+    }
+
+    const match = rowData.find((row) => row.id === taskIdParam);
+    if (!match) return;
+
+    hasAutoOpenedRef.current = true;
+    handleRowDoubleClick(match);
+  }, [handleRowDoubleClick, rowData, taskIdParam, userType]);
 
   // Create table with custom filter - Memoized to prevent re-creation
   const table = useReactTable({

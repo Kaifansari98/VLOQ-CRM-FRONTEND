@@ -58,8 +58,17 @@ export default function DashboardLayout({
 
         if (!token) return;
 
-        const storedToken = localStorage.getItem(`pushToken:${user.id}`);
+        const storedToken = localStorage.getItem(`pushToken:${token}`);
         if (storedToken === token) return;
+
+        let deviceId = localStorage.getItem("pushDeviceId");
+        if (!deviceId) {
+          deviceId =
+            typeof crypto !== "undefined" && "randomUUID" in crypto
+              ? crypto.randomUUID()
+              : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          localStorage.setItem("pushDeviceId", deviceId);
+        }
 
         await registerPushToken({
           vendor_id: user.vendor_id,
@@ -67,9 +76,10 @@ export default function DashboardLayout({
           token,
           platform: "web",
           browser: navigator.userAgent,
+          device_id: deviceId,
         });
 
-        localStorage.setItem(`pushToken:${user.id}`, token);
+        localStorage.setItem(`pushToken:${token}`, token);
       } catch (error) {
         console.error("Failed to register push token", error);
       }

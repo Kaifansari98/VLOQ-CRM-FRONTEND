@@ -51,6 +51,7 @@ interface PushTokenPayload {
   token: string
   platform: string
   browser?: string
+  device_id?: string
 }
 
 export const registerPushToken = async (payload: PushTokenPayload) => {
