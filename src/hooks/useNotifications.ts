@@ -127,6 +127,7 @@ export const useNotifications = () => {
               payload.data?.body ??
               payload.notification?.body ??
               "",
+            type: payload.data?.type as NotificationItem["type"],
             created_at: new Date().toISOString(),
             is_read: false,
             redirect_url: payload.data?.redirect_url ?? null,

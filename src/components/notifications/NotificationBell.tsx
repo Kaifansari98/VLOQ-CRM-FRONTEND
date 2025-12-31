@@ -110,7 +110,7 @@ export const NotificationBell = ({ linkTo }: NotificationBellProps) => {
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-80 rounded-lg p-0"
+        className="w-90 rounded-lg p-0"
         sideOffset={8}
       >
         <div className="flex items-center justify-between px-3 py-2">
