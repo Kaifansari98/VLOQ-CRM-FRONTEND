@@ -78,6 +78,7 @@ import {
 } from "@/api/installation/useFinalHandoverStageLeads";
 import { toastError } from "@/lib/utils";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 
 export default function FinalHandoverLeadDetails() {
   const router = useRouter();
@@ -98,6 +99,7 @@ export default function FinalHandoverLeadDetails() {
   const [activeTab, setActiveTab] = useState(
     userType === "site-supervisor" ? "todo" : "details"
   );
+  useChatTabFromUrl(setActiveTab);
 
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");

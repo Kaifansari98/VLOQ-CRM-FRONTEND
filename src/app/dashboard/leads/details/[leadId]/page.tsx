@@ -24,11 +24,9 @@ const STAGE_ROUTE_BY_TYPE: Record<string, string> = {
   "Type 16": "/dashboard/installation/final-handover/details",
 };
 
-const buildQueryString = (accountId: string | null) => {
-  if (!accountId) return "";
-  const asNumber = Number(accountId);
-  if (!Number.isFinite(asNumber) || asNumber <= 0) return "";
-  return `?accountId=${asNumber}`;
+const buildQueryString = (searchParams: URLSearchParams) => {
+  const query = searchParams.toString();
+  return query.length > 0 ? `?${query}` : "";
 };
 
 export default function LeadDetailsRedirectPage() {
@@ -50,8 +48,8 @@ export default function LeadDetailsRedirectPage() {
     const routeBase =
       (leadStatus?.status_tag && STAGE_ROUTE_BY_TYPE[leadStatus.status_tag]) ||
       STAGE_ROUTE_BY_TYPE["Type 1"];
-    return `${routeBase}/${leadIdNum}${buildQueryString(accountId)}`;
-  }, [accountId, leadIdNum, leadStatus?.status_tag]);
+    return `${routeBase}/${leadIdNum}${buildQueryString(searchParams)}`;
+  }, [accountId, leadIdNum, leadStatus?.status_tag, searchParams]);
 
   useEffect(() => {
     if (!vendorId || isLoading) return;

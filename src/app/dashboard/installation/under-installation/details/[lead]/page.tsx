@@ -82,6 +82,7 @@ import {
   canReassignLeadButton,
 } from "@/components/utils/privileges";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 
 export default function UnderInstallationLeadDetails() {
   const { lead: leadId } = useParams();
@@ -117,6 +118,7 @@ export default function UnderInstallationLeadDetails() {
   const [activeTab, setActiveTab] = useState(
     userType === "site-supervisor" ? "todo" : "details"
   );
+  useChatTabFromUrl(setActiveTab);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;

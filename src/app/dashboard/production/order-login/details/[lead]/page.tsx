@@ -73,6 +73,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 
 export default function OrderLoginLeadDetails() {
   const { lead: leadId } = useParams();
@@ -110,6 +111,7 @@ export default function OrderLoginLeadDetails() {
   const [activeTab, setActiveTab] = useState(
     userType === "backend" ? "todo" : "details"
   );
+  useChatTabFromUrl(setActiveTab);
   const [openMoveToProduction, setOpenMoveToProduction] = useState(false);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);

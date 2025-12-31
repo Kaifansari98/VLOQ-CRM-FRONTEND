@@ -72,6 +72,7 @@ import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import { useCurrentSitePhotosCount } from "@/api/production/useReadyToDispatchLeads";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
 
 export default function ReadyToDispatchLeadDetails() {
   const { lead: leadId } = useParams();
@@ -88,6 +89,8 @@ export default function ReadyToDispatchLeadDetails() {
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
+  useChatTabFromUrl(setActiveTab);
+  const isChatNotification = useIsChatNotification();
   const [previousTab, setPreviousTab] = useState("details");
 
   const [activityModalOpen, setActivityModalOpen] = useState(false);
@@ -151,12 +154,13 @@ export default function ReadyToDispatchLeadDetails() {
 
   // 🔥 Auto-open To-Do modal for Sales Executive
   useEffect(() => {
+    if (isChatNotification) return;
     if (userType === "sales-executive" && hasSitePhotos) {
       setPreviousTab("details"); // so closing modal returns to details
       setAssignOpen(true); // open modal on load
       setActiveTab("todo"); // switch tab to To-Do
     }
-  }, [userType, hasSitePhotos]);
+  }, [isChatNotification, userType, hasSitePhotos]);
 
   if (isLoading) {
     return <p className="p-6">Loading Ready-To-Dispatch lead details...</p>;

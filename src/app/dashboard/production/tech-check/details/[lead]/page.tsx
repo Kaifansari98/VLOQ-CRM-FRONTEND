@@ -88,6 +88,7 @@ import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import MoveToOrderLoginModal from "@/components/production/tech-check-stage/MoveToOrderLoginModal";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -109,6 +110,7 @@ export default function ClientApprovalLeadDetails() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
+  useChatTabFromUrl(setActiveTab);
   const [assignOpen, setAssignOpen] = useState(false);
 
   const [openFinalApproveConfirm, setOpenFinalApproveConfirm] = useState(false);
@@ -118,12 +120,14 @@ export default function ClientApprovalLeadDetails() {
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
   const [openOrderLoginModal, setOpenOrderLoginModal] = useState(false);
+  const isChatNotification = useIsChatNotification();
 
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
 
   // ✅ Auto-open To-Do modal when screen loads (only for allowed roles)
   useEffect(() => {
+    if (isChatNotification) return;
     if (
       canTechCheck(userType) &&
       userType?.toLowerCase() !== "admin" &&
@@ -131,7 +135,7 @@ export default function ClientApprovalLeadDetails() {
     ) {
       setOpenRejectDocsModal(true);
     }
-  }, [userType]);
+  }, [isChatNotification, userType]);
 
   const [selectedDocs, setSelectedDocs] = useState<number[]>([]);
   const [openRemarkModal, setOpenRemarkModal] = useState(false);

@@ -73,6 +73,7 @@ import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/ass
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
 
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
@@ -99,6 +100,8 @@ export default function ClientDocumentationLeadDetails() {
   const [activeTab, setActiveTab] = useState(
     userType === "sales-executive" ? "todo" : "details"
   );
+  useChatTabFromUrl(setActiveTab);
+  const isChatNotification = useIsChatNotification();
   const [previousTab, setPreviousTab] = useState("details");
 
   // ACTIVITY STATUS — Only On Hold
@@ -117,12 +120,12 @@ export default function ClientDocumentationLeadDetails() {
 
   // Auto-open documentation modal
   useEffect(() => {
-    if (userType === "sales-executive") {
+    if (userType === "sales-executive" && !isChatNotification) {
       setPreviousTab("details");
       setOpenClientDocModal(true);
       setActiveTab("todo");
     }
-  }, [userType]);
+  }, [isChatNotification, userType]);
 
   // DELETE LEAD
   const deleteLeadMutation = useDeleteLead();

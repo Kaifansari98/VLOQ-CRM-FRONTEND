@@ -71,6 +71,7 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
 
 export default function LeadDetails() {
   const router = useRouter();
@@ -149,9 +150,11 @@ export default function LeadDetails() {
   };
 
   const hasAutoOpenedAssign = useRef(false);
+  const isChatNotification = useIsChatNotification();
 
   useEffect(() => {
     if (!lead) return;
+    if (isChatNotification) return;
     if (hasAutoOpenedAssign.current) return;
 
     if (
@@ -164,10 +167,11 @@ export default function LeadDetails() {
       setAssignOpen(true);
       setActiveTab("projects");
     }
-  }, [lead?.id, userType]);
+  }, [isChatNotification, lead?.id, userType]);
 
   // 🔹 Tabs state
   const [activeTab, setActiveTab] = useState("details");
+  useChatTabFromUrl(setActiveTab);
 
   return (
     <>

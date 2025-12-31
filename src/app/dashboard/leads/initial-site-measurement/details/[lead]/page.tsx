@@ -72,6 +72,7 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
 
 export default function SiteMeasurementLead() {
   const router = useRouter();
@@ -107,9 +108,11 @@ export default function SiteMeasurementLead() {
   const lead = data?.data?.lead;
 
   const [activeTab, setActiveTab] = useState("details");
+  useChatTabFromUrl(setActiveTab);
+  const isChatNotification = useIsChatNotification();
 
   useEffect(() => {
-    if (isLoading || !lead) return;
+    if (isLoading || !lead || isChatNotification) return;
     if (activeTab !== "details") return;
 
     // ✅ Only open automatically if:
@@ -124,7 +127,7 @@ export default function SiteMeasurementLead() {
     ) {
       setOpenMeasurement(true);
     }
-  }, [isLoading, lead, userType, activeTab]);
+  }, [isLoading, isChatNotification, lead, userType, activeTab]);
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {

@@ -65,6 +65,7 @@ import CustomeTooltip from "@/components/custom-tooltip";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
 
 // --- NEW imports for Activity Status flow
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
@@ -81,21 +82,26 @@ export default function BookingStageLeadsDetails() {
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [assignOpen, setAssignOpen] = useState(true);
+  const [assignOpen, setAssignOpen] = useState(false);
 
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type
   );
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+  const isChatNotification = useIsChatNotification();
 
   useEffect(() => {
+    if (isChatNotification) {
+      setAssignOpen(false);
+      return;
+    }
     if (userType?.toLowerCase() === "sales-executive") {
       setAssignOpen(true);
     } else {
       setAssignOpen(false);
     }
-  }, [userType]);
+  }, [isChatNotification, userType]);
 
   const lead = data?.data?.lead;
   const accountId = lead?.account_id;
@@ -123,6 +129,7 @@ export default function BookingStageLeadsDetails() {
 
   // 🔹 Tabs state
   const [activeTab, setActiveTab] = useState("details");
+  useChatTabFromUrl(setActiveTab);
 
   // --- Activity status state & hooks (new)
   const [activityModalOpen, setActivityModalOpen] = useState(false);

@@ -73,6 +73,7 @@ import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/ass
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
 
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
@@ -96,6 +97,8 @@ export default function FinalMeasurementLeadDetails() {
   const [activeTab, setActiveTab] = useState(
     userType === "site-supervisor" ? "todo" : "details"
   );
+  useChatTabFromUrl(setActiveTab);
+  const isChatNotification = useIsChatNotification();
   const [previousTab, setPreviousTab] = useState("details");
   const [openFinalDocModal, setOpenFinalDocModal] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -107,12 +110,12 @@ export default function FinalMeasurementLeadDetails() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (userType === "site-supervisor") {
+    if (userType === "site-supervisor" && !isChatNotification) {
       setPreviousTab("details");
       setOpenFinalDocModal(true);
       setActiveTab("todo");
     }
-  }, [userType]);
+  }, [isChatNotification, userType]);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;

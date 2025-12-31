@@ -72,6 +72,7 @@ import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import { toastError } from "@/lib/utils";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
 
 export default function DispatchPlanningLeadDetails() {
   const router = useRouter();
@@ -92,6 +93,8 @@ export default function DispatchPlanningLeadDetails() {
   const [activeTab, setActiveTab] = useState(
     userType?.toLowerCase() === "sales-executive" ? "todo" : "details"
   );
+  useChatTabFromUrl(setActiveTab);
+  const isChatNotification = useIsChatNotification();
   const [openMoveConfirm, setOpenMoveConfirm] = useState(false);
 
   const { data: readinessStatus, isLoading: readinessLoading } =
@@ -111,10 +114,11 @@ export default function DispatchPlanningLeadDetails() {
   const deleteLeadMutation = useDeleteLead();
 
   useEffect(() => {
+    if (isChatNotification) return;
     if (userType?.toLowerCase() === "sales-executive") {
       setActiveTab("todo");
     }
-  }, [userType]);
+  }, [isChatNotification, userType]);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
 

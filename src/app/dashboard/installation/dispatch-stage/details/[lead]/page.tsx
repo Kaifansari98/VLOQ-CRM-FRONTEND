@@ -71,6 +71,7 @@ import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { getErrorMessage } from "@/lib/utils";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
 
 export default function DispatchPlanningLeadDetails() {
   const router = useRouter();
@@ -89,6 +90,8 @@ export default function DispatchPlanningLeadDetails() {
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
+  useChatTabFromUrl(setActiveTab);
+  const isChatNotification = useIsChatNotification();
   const [previousTab, setPreviousTab] = useState("details");
 
   const [openMoveConfirm, setOpenMoveConfirm] = useState(false);
@@ -117,11 +120,12 @@ export default function DispatchPlanningLeadDetails() {
 
   // 🔥 Auto-open To-Do modal for Sales Executive
   useEffect(() => {
+    if (isChatNotification) return;
     if (userType === "factory") {
       setPreviousTab("details"); // so closing modal returns to details
       setActiveTab("todo"); // switch tab to To-Do
     }
-  }, [userType]);
+  }, [isChatNotification, userType]);
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
       toast.error("Missing vendor or user info!");

@@ -81,6 +81,7 @@ import { useRouter } from "next/navigation";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 
 export default function ProductionLeadDetails() {
   const router = useRouter();
@@ -99,6 +100,7 @@ export default function ProductionLeadDetails() {
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
+  useChatTabFromUrl(setActiveTab);
   const [openReadyToDispatch, setOpenReadyToDispatch] = useState(false);
 
   const [activityModalOpen, setActivityModalOpen] = useState(false);

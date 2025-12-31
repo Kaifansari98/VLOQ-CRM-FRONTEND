@@ -11,6 +11,7 @@ import {
   useLeadChatMembers,
   useLeadChatMessages,
 } from "@/hooks/useLeadChatRoom";
+import { useSearchParams } from "next/navigation";
 
 interface ChatMessagesComponentProps {
   leadId: number;
@@ -37,6 +38,9 @@ export default function ChatMessagesComponent({
   const previousScrollHeight = useRef(0);
   const previousScrollTop = useRef(0);
   const isInitialMount = useRef(true);
+  const hasScrolledToMessage = useRef(false);
+  const searchParams = useSearchParams();
+  const messageIdParam = Number(searchParams.get("messageId"));
 
   // Intersection observer with better configuration for reverse scroll
   const { ref: topSentinelRef, inView } = useInView({
@@ -135,6 +139,28 @@ export default function ChatMessagesComponent({
       }
     }
   }, [isFetchingNextPage]);
+
+  useEffect(() => {
+    if (!messageIdParam || hasScrolledToMessage.current || isLoading) return;
+
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const selector = `[data-message-id="${messageIdParam}"]`;
+    const target = container.querySelector(selector) as HTMLElement | null;
+
+    if (target) {
+      requestAnimationFrame(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        hasScrolledToMessage.current = true;
+      });
+      return;
+    }
+
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, messageIdParam]);
 
   const getDateLabel = (dateString: string) => {
     const date = new Date(dateString);
@@ -288,7 +314,11 @@ export default function ChatMessagesComponent({
               const documents = message.attachments?.filter((a) => !isImageFile(a.doc_og_name)) || [];
 
               return (
-                <div key={message.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+                <div
+                  key={message.id}
+                  data-message-id={message.id}
+                  className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                >
                   <div className={`flex max-w-[75%] gap-2 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
                     <div className="flex-shrink-0">
                       {showAvatar ? (

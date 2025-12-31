@@ -74,6 +74,7 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
 
 export default function DesigningStageLead() {
   const router = useRouter();
@@ -101,9 +102,10 @@ export default function DesigningStageLead() {
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
+  const isChatNotification = useIsChatNotification();
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || isChatNotification) return;
 
     // ✅ Only auto-open if user can move to booking, but not admin/super-admin
     if (
@@ -114,7 +116,7 @@ export default function DesigningStageLead() {
     ) {
       setBookingOpenLead(true);
     }
-  }, [isLoading, userType, canMoveToBooking]);
+  }, [isLoading, isChatNotification, userType, canMoveToBooking]);
 
   const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
@@ -137,6 +139,7 @@ export default function DesigningStageLead() {
   const [activeTab, setActiveTab] = useState(
     userType === "sales-executive" ? "todo" : "details"
   );
+  useChatTabFromUrl(setActiveTab);
 
   if (isLoading) {
     return <p className="p-6">Loading lead details...</p>;

@@ -75,6 +75,7 @@ import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/ass
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
 
 // ⭐ NEW IMPORTS — ONLY Mark On Hold
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
@@ -118,6 +119,8 @@ export default function ClientApprovalLeadDetails() {
   const [activeTab, setActiveTab] = useState(
     userType === "sales-executive" ? "todo" : "details"
   );
+  useChatTabFromUrl(setActiveTab);
+  const isChatNotification = useIsChatNotification();
   const [previousTab, setPreviousTab] = useState("details");
 
   const is_client_approval_submitted = lead?.is_client_approval_submitted;
@@ -125,7 +128,7 @@ export default function ClientApprovalLeadDetails() {
   // Auto-open documentation modal
   /* ---------- DEFAULT MODAL ON MOUNT ---------- */
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || isChatNotification) return;
 
     // Auto-open only for Sales Executive
     if (userType === "sales-executive") {
@@ -137,7 +140,7 @@ export default function ClientApprovalLeadDetails() {
 
       setActiveTab("todo");
     }
-  }, [isLoading, userType, is_client_approval_submitted]);
+  }, [isLoading, isChatNotification, userType, is_client_approval_submitted]);
 
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {

@@ -71,6 +71,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
 
 export default function ReadyToDispatchLeadDetails() {
   const router = useRouter();
@@ -91,6 +92,8 @@ export default function ReadyToDispatchLeadDetails() {
   const [activeTab, setActiveTab] = useState(
     userType?.toLowerCase() === "site-supervisor" ? "todo" : "details"
   );
+  useChatTabFromUrl(setActiveTab);
+  const isChatNotification = useIsChatNotification();
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -107,10 +110,11 @@ export default function ReadyToDispatchLeadDetails() {
   const deleteLeadMutation = useDeleteLead();
 
   useEffect(() => {
+    if (isChatNotification) return;
     if (userType?.toLowerCase() === "site-supervisor") {
       setActiveTab("todo");
     }
-  }, [userType]);
+  }, [isChatNotification, userType]);
 
   const { data: readinessStatus, isLoading: checkingStatus } =
     useCheckSiteReadinessCompletion(vendorId, leadIdNum);
