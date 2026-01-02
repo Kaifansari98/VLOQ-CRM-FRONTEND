@@ -3,6 +3,7 @@
 import { useAppSelector } from "@/redux/store";
 import SalesExecutiveDashboard from "./SalesExecutiveDashboard";
 import { FadeInProvider } from "../framer-motion/FadeInProvider";
+import AdminDashboard from "./AdminDashboard";
 
 export default function DashboardWrapper({
   children,
@@ -12,12 +13,21 @@ export default function DashboardWrapper({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type
   );
+  const normalizedUserType = userType?.toLowerCase().replace("_", "-");
 
   // Conditionally render special dashboard
-  if (userType?.toLowerCase() === "sales-executive") {
+  if (normalizedUserType === "sales-executive") {
     return (
       <FadeInProvider>
         <SalesExecutiveDashboard />
+      </FadeInProvider>
+    );
+  }
+
+  if (normalizedUserType === "admin") {
+    return (
+      <FadeInProvider>
+        <AdminDashboard />
       </FadeInProvider>
     );
   }

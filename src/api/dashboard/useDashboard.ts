@@ -21,6 +21,14 @@ import {
   getDashboardAllLeads,
   getSalesExecutiveActivityStatusCounts,
   SalesExecutiveActivityStatusCounts,
+  getAdminProjectsOverview,
+  AdminProjectsOverview,
+  getAdminOrdersInPipeline,
+  AdminOrdersInPipeline,
+  getAdminTotalRevenue,
+  AdminTotalRevenue,
+  getAdminStageCounts,
+  AdminStageCounts,
 } from "./dashboard.api";
 import { useCallback, useEffect, useState } from "react";
 import { logError } from "@/lib/utils";
@@ -182,6 +190,38 @@ export function useLeadStatusCounts(
   }, [fetchData]); // <<– Only this dependency
 
   return { overall, mine, isLoading, error, refetch: fetchData };
+}
+
+export function useAdminProjectsOverview(vendorId?: number) {
+  return useQuery<AdminProjectsOverview>({
+    queryKey: ["admin-projects-overview", vendorId],
+    queryFn: () => getAdminProjectsOverview(vendorId!),
+    enabled: !!vendorId,
+  });
+}
+
+export function useAdminOrdersInPipeline(vendorId?: number) {
+  return useQuery<AdminOrdersInPipeline>({
+    queryKey: ["admin-orders-in-pipeline", vendorId],
+    queryFn: () => getAdminOrdersInPipeline(vendorId!),
+    enabled: !!vendorId,
+  });
+}
+
+export function useAdminTotalRevenue(vendorId?: number) {
+  return useQuery<AdminTotalRevenue>({
+    queryKey: ["admin-total-revenue", vendorId],
+    queryFn: () => getAdminTotalRevenue(vendorId!),
+    enabled: !!vendorId,
+  });
+}
+
+export function useAdminStageCounts(vendorId?: number) {
+  return useQuery<AdminStageCounts>({
+    queryKey: ["admin-stage-counts", vendorId],
+    queryFn: () => getAdminStageCounts(vendorId!),
+    enabled: !!vendorId,
+  });
 }
 
 // Stage counts hook

@@ -165,6 +165,91 @@ export const getLeadStatusCounts = async (
   return res.data as LeadStatusCountsResponse;
 };
 
+// Admin projects overview
+export interface AdminProjectsOverview {
+  thisWeekArray: number[];
+  thisMonthArray: number[];
+  thisYearArray: number[];
+  thisWeekTotal: number;
+  thisMonthTotal: number;
+  thisYearTotal: number;
+  overall: number;
+}
+
+export const getAdminProjectsOverview = async (
+  vendorId: number
+): Promise<AdminProjectsOverview> => {
+  const res = await apiClient.get("/dashboard/admin/projects-overview", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as AdminProjectsOverview;
+};
+
+// Admin orders in pipeline
+export interface OrdersInPipelineBucket {
+  thisWeek: number;
+  thisMonth: number;
+  thisYear: number;
+  overall: number;
+}
+
+export interface AdminOrdersInPipeline {
+  onGoing: OrdersInPipelineBucket;
+  onHold: OrdersInPipelineBucket;
+  lostApproval: OrdersInPipelineBucket;
+  lost: OrdersInPipelineBucket;
+}
+
+export const getAdminOrdersInPipeline = async (
+  vendorId: number
+): Promise<AdminOrdersInPipeline> => {
+  const res = await apiClient.get("/dashboard/admin/orders-in-pipeline", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as AdminOrdersInPipeline;
+};
+
+// Admin total revenue
+export interface AdminTotalRevenue {
+  thisWeekArray: number[];
+  thisMonthArray: number[];
+  thisYearArray: number[];
+  thisWeekTotal: number;
+  thisMonthTotal: number;
+  thisYearTotal: number;
+  overall: number;
+}
+
+export const getAdminTotalRevenue = async (
+  vendorId: number
+): Promise<AdminTotalRevenue> => {
+  const res = await apiClient.get("/dashboard/admin/total-revenue", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as AdminTotalRevenue;
+};
+
+// Admin stage counts
+export interface AdminStageCounts {
+  leads: number;
+  leadsAmount: number;
+  project: number;
+  projectAmount: number;
+  production: number;
+  productionAmount: number;
+  installation: number;
+  installationAmount: number;
+}
+
+export const getAdminStageCounts = async (
+  vendorId: number
+): Promise<AdminStageCounts> => {
+  const res = await apiClient.get("/dashboard/admin/stage-counts", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as AdminStageCounts;
+};
+
 // -------------------------------
 // 📌 EXPORT AS SINGLE OBJECT (Optional)
 // -------------------------------

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { RootState } from "@/redux/store";
 import { useSelector } from "react-redux";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { LoginForm } from "@/components/login-form";
 import Image from "next/image";
@@ -11,6 +11,8 @@ import Image from "next/image";
 export default function LoginPage() {
   const router = useRouter();
   const { user, token } = useSelector((state: RootState) => state.auth);
+  const [logoSrc, setLogoSrc] = useState("/logos/vloq.png");
+  const [heroSrc, setHeroSrc] = useState("/image.png");
 
   useEffect(() => {
     const user = localStorage.getItem("user");
@@ -22,6 +24,26 @@ export default function LoginPage() {
     console.log("Token fetch Successfully: ", token);
   }, [user, token, router]);
 
+  useEffect(() => {
+    const hostname =
+      typeof window !== "undefined" ? window.location.hostname : "";
+
+    if (hostname.includes("shambhala")) {
+      setLogoSrc("/logos/shambhala.png");
+      setHeroSrc("/Shambhala-Login-Page-Image.png");
+      return;
+    }
+
+    if (hostname.includes("vloq")) {
+      setLogoSrc("/logos/vloq.png");
+      setHeroSrc("/image.png");
+      return;
+    }
+
+    setLogoSrc("/logos/vloq.png");
+    setHeroSrc("/image.png");
+  }, []);
+
   return (
     <div className="grid min-h-svh lg:grid-cols-2 w-full">
       {/* Left Section */}
@@ -30,8 +52,8 @@ export default function LoginPage() {
         <div className="flex justify-center md:justify-center mb-6">
           <a href="#" className="flex items-center gap-2">
             <Image
-              src="/logos/shambhala.png"
-              alt="Shambhala Logo"
+              src={logoSrc}
+              alt="Brand Logo"
               width={250}
               height={48}
               className="object-contain"
@@ -51,7 +73,7 @@ export default function LoginPage() {
       {/* Right Section */}
       <div className="bg-muted relative hidden lg:block">
         <Image
-          src="/Shambhala-Login-Page-Image.png"
+          src={heroSrc}
           alt="Background Image"
           className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
           fill
