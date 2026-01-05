@@ -74,7 +74,10 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
-import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
+import {
+  useChatTabFromUrl,
+  useIsChatNotification,
+} from "@/hooks/useChatTabFromUrl";
 
 export default function DesigningStageLead() {
   const router = useRouter();
@@ -242,12 +245,19 @@ export default function DesigningStageLead() {
           {/* 🔹 Dropdown for actions */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="relative bg-accent p-1.5 rounded-sm"
+              >
                 <EllipsisVertical size={20} />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem className="flex md:hidden" onClick={() => setAssignOpen(true)}>
+              <DropdownMenuItem
+                className="flex md:hidden"
+                onClick={() => setAssignOpen(true)}
+              >
                 <UserIcon className="h-4 w-4" />
                 Assign Task
               </DropdownMenuItem>

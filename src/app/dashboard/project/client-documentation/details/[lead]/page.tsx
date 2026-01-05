@@ -73,7 +73,10 @@ import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/ass
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
-import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
+import {
+  useChatTabFromUrl,
+  useIsChatNotification,
+} from "@/hooks/useChatTabFromUrl";
 
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
@@ -174,7 +177,11 @@ export default function ClientDocumentationLeadDetails() {
         </div>
 
         <div className="flex items-center space-x-2">
-          <Button size="sm" className="hidden md:block" onClick={() => setAssignOpen(true)}>
+          <Button
+            size="sm"
+            className="hidden md:block"
+            onClick={() => setAssignOpen(true)}
+          >
             Assign Task
           </Button>
 
@@ -184,13 +191,20 @@ export default function ClientDocumentationLeadDetails() {
           {/* DROPDOWN */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="relative bg-accent p-1.5 rounded-sm"
+              >
                 <EllipsisVertical size={25} />
               </Button>
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
-              <DropdownMenuItem className="flex md:hidden" onClick={() => setAssignOpen(true)}>
+              <DropdownMenuItem
+                className="flex md:hidden"
+                onClick={() => setAssignOpen(true)}
+              >
                 <UserPlus size={20} />
                 Assign Task
               </DropdownMenuItem>

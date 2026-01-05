@@ -92,7 +92,11 @@ export default function PendingLeadDetails() {
           {/* 🔹 Dynamic Actions Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="relative bg-accent p-1.5 rounded-sm"
+              >
                 <EllipsisVertical size={20} />
               </Button>
             </DropdownMenuTrigger>

@@ -57,7 +57,7 @@ export default function TechCheckStagePage() {
             </Breadcrumb>
           </div>
 
-          <div className="flex items-center gap-2 pr-2">
+          <div className="flex items-center gap-2">
             <AnimatedThemeToggler />
           </div>
         </header>
