@@ -160,7 +160,7 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
   }
 
   return (
-    <div className="overflow-y-auto pr-4 w-full">
+
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -314,6 +314,6 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
             </motion.div>
           ))}
       </motion.div>
-    </div>
+
   );
 }
