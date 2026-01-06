@@ -220,7 +220,11 @@ export default function LeadDetails() {
           {/* Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
+              <Button 
+              size="icon"
+                variant="ghost"
+                className="relative bg-accent p-1.5 rounded-sm"
+              >
                 <EllipsisVertical size={22} />
               </Button>
             </DropdownMenuTrigger>

@@ -189,7 +189,7 @@ export default function NotificationsPage() {
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-        <div className="flex items-center gap-2 pr-2">
+        <div className="flex items-center gap-2">
           <NotificationBell />
           <AnimatedThemeToggler />
         </div>

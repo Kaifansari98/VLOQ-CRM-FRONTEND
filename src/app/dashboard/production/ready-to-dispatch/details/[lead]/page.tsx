@@ -72,7 +72,10 @@ import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import { useCurrentSitePhotosCount } from "@/api/production/useReadyToDispatchLeads";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
-import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
+import {
+  useChatTabFromUrl,
+  useIsChatNotification,
+} from "@/hooks/useChatTabFromUrl";
 
 export default function ReadyToDispatchLeadDetails() {
   const { lead: leadId } = useParams();
@@ -212,7 +215,11 @@ export default function ReadyToDispatchLeadDetails() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="relative bg-accent p-1.5 rounded-sm"
+              >
                 <EllipsisVertical size={25} />
               </Button>
             </DropdownMenuTrigger>
@@ -337,13 +344,13 @@ export default function ReadyToDispatchLeadDetails() {
         </div>
 
         <TabsContent value="details">
-            <LeadDetailsGrouped
-              status="readyToDispatch"
-              defaultTab="readyToDispatch"
-              leadId={leadIdNum}
-              accountId={accountId}
-              defaultParentTab="production"
-            />
+          <LeadDetailsGrouped
+            status="readyToDispatch"
+            defaultTab="readyToDispatch"
+            leadId={leadIdNum}
+            accountId={accountId}
+            defaultParentTab="production"
+          />
         </TabsContent>
 
         <TabsContent value="history">

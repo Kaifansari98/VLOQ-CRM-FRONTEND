@@ -71,7 +71,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
-import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
+import {
+  useChatTabFromUrl,
+  useIsChatNotification,
+} from "@/hooks/useChatTabFromUrl";
 
 export default function ReadyToDispatchLeadDetails() {
   const router = useRouter();
@@ -241,7 +244,11 @@ export default function ReadyToDispatchLeadDetails() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="relative bg-accent p-1.5 rounded-sm"
+              >
                 <EllipsisVertical size={25} />
               </Button>
             </DropdownMenuTrigger>

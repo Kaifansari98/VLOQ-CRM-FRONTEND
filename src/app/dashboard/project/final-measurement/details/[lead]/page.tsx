@@ -73,7 +73,10 @@ import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/ass
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
-import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
+import {
+  useChatTabFromUrl,
+  useIsChatNotification,
+} from "@/hooks/useChatTabFromUrl";
 
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
@@ -194,7 +197,11 @@ export default function FinalMeasurementLeadDetails() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="relative bg-accent p-1.5 rounded-sm"
+              >
                 <EllipsisVertical size={25} />
               </Button>
             </DropdownMenuTrigger>

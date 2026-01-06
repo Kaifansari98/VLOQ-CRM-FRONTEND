@@ -88,7 +88,10 @@ import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import MoveToOrderLoginModal from "@/components/production/tech-check-stage/MoveToOrderLoginModal";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
-import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
+import {
+  useChatTabFromUrl,
+  useIsChatNotification,
+} from "@/hooks/useChatTabFromUrl";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -226,88 +229,93 @@ export default function ClientApprovalLeadDetails() {
 
           {/* ✅ Move To Order Login Button (Role & Status Based) */}
           <div className="hidden lg:flex">
-          {canMoveToOrderLogin(userType) &&
-            (() => {
-              const approvedPPT = pptDocs.filter(
-                (d) => d.tech_check_status === "APPROVED"
-              ).length;
+            {canMoveToOrderLogin(userType) &&
+              (() => {
+                const approvedPPT = pptDocs.filter(
+                  (d) => d.tech_check_status === "APPROVED"
+                ).length;
 
-              const approvedPytha = pythaDocs.filter(
-                (d) => d.tech_check_status === "APPROVED"
-              ).length;
+                const approvedPytha = pythaDocs.filter(
+                  (d) => d.tech_check_status === "APPROVED"
+                ).length;
 
-              const approvedCount = approvedPPT + approvedPytha;
+                const approvedCount = approvedPPT + approvedPytha;
 
-              const pendingCount = docs.filter(
-                (d) => !d.tech_check_status || d.tech_check_status === "PENDING"
-              ).length;
+                const pendingCount = docs.filter(
+                  (d) =>
+                    !d.tech_check_status || d.tech_check_status === "PENDING"
+                ).length;
 
-              // Disabled if:
-              // 1. No approved docs
-              // 2. Still some pending docs
-              // 3. No PPT approved
-              // 4. No Pytha approved
-              const isDisabled =
-                approvedCount <
-                  (no_of_client_documents_initially_submitted || 0) ||
-                pendingCount > 0 ||
-                approvedPPT === 0 ||
-                approvedPytha === 0;
+                // Disabled if:
+                // 1. No approved docs
+                // 2. Still some pending docs
+                // 3. No PPT approved
+                // 4. No Pytha approved
+                const isDisabled =
+                  approvedCount <
+                    (no_of_client_documents_initially_submitted || 0) ||
+                  pendingCount > 0 ||
+                  approvedPPT === 0 ||
+                  approvedPytha === 0;
 
-              if (isDisabled) {
-                let tooltipMsg = "";
+                if (isDisabled) {
+                  let tooltipMsg = "";
 
-                if (
-                  no_of_client_documents_initially_submitted &&
-                  approvedCount < no_of_client_documents_initially_submitted
-                ) {
-                  tooltipMsg = `You must approve all initially submitted client documents (${no_of_client_documents_initially_submitted}) before moving to Order Login.`;
-                } else if (approvedPPT === 0) {
-                  tooltipMsg =
-                    "At least one PPT file must be approved before moving to Order Login.";
-                } else if (approvedPytha === 0) {
-                  tooltipMsg =
-                    "At least one Pytha file must be approved before moving to Order Login.";
-                } else if (pendingCount > 0) {
-                  tooltipMsg = `You still have ${pendingCount} pending document${
-                    pendingCount > 1 ? "s" : ""
-                  }. Please review all before proceeding.`;
+                  if (
+                    no_of_client_documents_initially_submitted &&
+                    approvedCount < no_of_client_documents_initially_submitted
+                  ) {
+                    tooltipMsg = `You must approve all initially submitted client documents (${no_of_client_documents_initially_submitted}) before moving to Order Login.`;
+                  } else if (approvedPPT === 0) {
+                    tooltipMsg =
+                      "At least one PPT file must be approved before moving to Order Login.";
+                  } else if (approvedPytha === 0) {
+                    tooltipMsg =
+                      "At least one Pytha file must be approved before moving to Order Login.";
+                  } else if (pendingCount > 0) {
+                    tooltipMsg = `You still have ${pendingCount} pending document${
+                      pendingCount > 1 ? "s" : ""
+                    }. Please review all before proceeding.`;
+                  }
+
+                  return (
+                    <CustomeTooltip
+                      truncateValue={
+                        <Button
+                          disabled
+                          className="bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-300 dark:border-gray-700 cursor-not-allowed flex items-center gap-2"
+                        >
+                          <CircleCheckBig size={16} />
+                          Move To Order Login
+                        </Button>
+                      }
+                      value={tooltipMsg}
+                    />
+                  );
                 }
 
                 return (
-                  <CustomeTooltip
-                    truncateValue={
-                      <Button
-                        disabled
-                        className="bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-300 dark:border-gray-700 cursor-not-allowed flex items-center gap-2"
-                      >
-                        <CircleCheckBig size={16} />
-                        Move To Order Login
-                      </Button>
-                    }
-                    value={tooltipMsg}
-                  />
+                  <Button
+                    size="sm"
+                    onClick={() => setOpenOrderLoginModal(true)}
+                    variant="default"
+                  >
+                    <CircleCheckBig size={16} />
+                    Move To Order Login
+                  </Button>
                 );
-              }
-
-              return (
-                <Button
-                  size="sm"
-                  onClick={() => setOpenOrderLoginModal(true)}
-                  variant="default"
-                >
-                  <CircleCheckBig size={16} />
-                  Move To Order Login
-                </Button>
-              );
-            })()}
+              })()}
           </div>
           <NotificationBell />
           <AnimatedThemeToggler />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="relative bg-accent p-1.5 rounded-sm"
+              >
                 <EllipsisVertical size={25} />
               </Button>
             </DropdownMenuTrigger>
@@ -545,13 +553,13 @@ export default function ClientApprovalLeadDetails() {
         </div>
 
         <TabsContent value="details">
-            <LeadDetailsGrouped
-              status="techcheck"
-              defaultTab="techcheck"
-              leadId={leadIdNum}
-              accountId={accountId}
-              defaultParentTab="production"
-            />
+          <LeadDetailsGrouped
+            status="techcheck"
+            defaultTab="techcheck"
+            leadId={leadIdNum}
+            accountId={accountId}
+            defaultParentTab="production"
+          />
         </TabsContent>
 
         <TabsContent value="history">
@@ -811,7 +819,6 @@ export default function ClientApprovalLeadDetails() {
 
               {/* List View - FIXED VERSION with Dark Mode */}
               <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                
                 {(() => {
                   // Separate and sort documents - PENDING first, then APPROVED, then REJECTED
                   const pending = docs
@@ -924,52 +931,49 @@ export default function ClientApprovalLeadDetails() {
                         >
                           {/* File Icon */}
                           <div className="flex gap-2   items-center">
-
-                          <div
-                            className={cn(
-                              "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
-                              isRejected
-                                ? "bg-red-100 dark:bg-red-900/50"
-                                : isApproved
-                                ? "bg-green-100 dark:bg-green-900/50"
-                                : isSelected
-                                ? "bg-amber-100 dark:bg-amber-900/50"
-                                : "bg-blue-50 dark:bg-blue-900/30 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50"
-                            )}
-                          >
-                            <FileText
-                              className={
-                                isRejected
-                                  ? "text-red-500 dark:text-red-400"
-                                  : isApproved
-                                  ? "text-green-500 dark:text-green-400"
-                                  : isSelected
-                                  ? "text-amber-600 dark:text-amber-400"
-                                  : "text-blue-500 dark:text-blue-400"
-                              }
-                              size={24}
-                            />
-                          </div>
-
-                          {/* Document Info */}
-                          <div className="flex-1 min-w-0">
-                            <p
+                            <div
                               className={cn(
-                                "font-semibold text-sm line-clamp-2",
-                                isDisabled
-                                  ? "text-gray-500 dark:text-gray-400"
-                                  : "text-gray-900 dark:text-white"
+                                "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
+                                isRejected
+                                  ? "bg-red-100 dark:bg-red-900/50"
+                                  : isApproved
+                                  ? "bg-green-100 dark:bg-green-900/50"
+                                  : isSelected
+                                  ? "bg-amber-100 dark:bg-amber-900/50"
+                                  : "bg-blue-50 dark:bg-blue-900/30 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50"
                               )}
                             >
-                              {doc.doc_og_name}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              Uploaded: {formatDate(doc.created_at)}
-                            </p>
-                          </div>
-                          </div>
+                              <FileText
+                                className={
+                                  isRejected
+                                    ? "text-red-500 dark:text-red-400"
+                                    : isApproved
+                                    ? "text-green-500 dark:text-green-400"
+                                    : isSelected
+                                    ? "text-amber-600 dark:text-amber-400"
+                                    : "text-blue-500 dark:text-blue-400"
+                                }
+                                size={24}
+                              />
+                            </div>
 
-                          
+                            {/* Document Info */}
+                            <div className="flex-1 min-w-0">
+                              <p
+                                className={cn(
+                                  "font-semibold text-sm line-clamp-2",
+                                  isDisabled
+                                    ? "text-gray-500 dark:text-gray-400"
+                                    : "text-gray-900 dark:text-white"
+                                )}
+                              >
+                                {doc.doc_og_name}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Uploaded: {formatDate(doc.created_at)}
+                              </p>
+                            </div>
+                          </div>
 
                           {/* Status Badge */}
                           <div className="flex items-center gap-2">
@@ -1039,7 +1043,7 @@ export default function ClientApprovalLeadDetails() {
                   setOpenRemarkModal(true);
                 }}
               >
-                <XCircle size={16}/>
+                <XCircle size={16} />
                 Reject Selected ({selectedDocs.length})
               </Button>
               <Button

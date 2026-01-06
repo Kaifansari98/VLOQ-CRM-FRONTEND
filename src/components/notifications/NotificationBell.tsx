@@ -1,105 +1,109 @@
-"use client"
+"use client";
 
-import { useCallback, useState } from "react"
-import { Bell } from "lucide-react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { useDispatch } from "react-redux"
-import { Button } from "@/components/ui/button"
+import { useCallback, useState } from "react";
+import { Bell } from "lucide-react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useDispatch } from "react-redux";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { CountBadge } from "@/components/count-badge"
-import { useNotifications } from "@/hooks/useNotifications"
-import { useAppSelector } from "@/redux/store"
-import { markNotificationRead } from "@/redux/slices/notificationsSlice"
-import { markNotificationRead as markReadApi } from "@/api/notifications"
-import { NotificationItem } from "@/types/notifications"
-import { NotificationDropdownList } from "@/components/notifications/NotificationDropdownList"
+} from "@/components/ui/dropdown-menu";
+import { CountBadge } from "@/components/count-badge";
+import { useNotifications } from "@/hooks/useNotifications";
+import { useAppSelector } from "@/redux/store";
+import { markNotificationRead } from "@/redux/slices/notificationsSlice";
+import { markNotificationRead as markReadApi } from "@/api/notifications";
+import { NotificationItem } from "@/types/notifications";
+import { NotificationDropdownList } from "@/components/notifications/NotificationDropdownList";
 
 interface NotificationBellProps {
-  linkTo?: string
+  linkTo?: string;
 }
 
 export const NotificationBell = ({ linkTo }: NotificationBellProps) => {
-  const router = useRouter()
-  const dispatch = useDispatch()
-  const user = useAppSelector((state) => state.auth.user)
-  const { notifications, unreadCount, isLoading, refresh } = useNotifications()
-  const [open, setOpen] = useState(false)
-  const latestNotifications = notifications.slice(0, 5)
+  const router = useRouter();
+  const dispatch = useDispatch();
+  const user = useAppSelector((state) => state.auth.user);
+  const { notifications, unreadCount, isLoading, refresh } = useNotifications();
+  const [open, setOpen] = useState(false);
+  const latestNotifications = notifications.slice(0, 5);
 
   if (linkTo) {
     return (
       <Button
+        size={"icon"}
         variant="ghost"
-        size="icon"
-        className="relative"
+        className="relative bg-accent p-1.5 rounded-sm"
         onClick={() => router.push(linkTo)}
       >
         <Bell />
         <CountBadge count={unreadCount} className="absolute -right-1 -top-1" />
         <span className="sr-only">Notifications</span>
       </Button>
-    )
+    );
   }
 
   const handleNavigate = (redirectUrl: string) => {
     if (/^https?:\/\//i.test(redirectUrl)) {
-      window.location.assign(redirectUrl)
-      return
+      window.location.assign(redirectUrl);
+      return;
     }
-    router.push(redirectUrl)
-  }
+    router.push(redirectUrl);
+  };
 
   const handleNotificationClick = async (notification: NotificationItem) => {
-    setOpen(false)
+    setOpen(false);
 
     if (user?.id && !notification.is_read) {
-      dispatch(markNotificationRead(notification.id))
+      dispatch(markNotificationRead(notification.id));
       try {
-        await markReadApi(notification.id, user.id)
+        await markReadApi(notification.id, user.id);
       } catch {
-        refresh({ silent: true })
+        refresh({ silent: true });
       }
     }
 
     if (notification.redirect_url) {
-      handleNavigate(notification.redirect_url)
+      handleNavigate(notification.redirect_url);
     }
-  }
+  };
 
   const markVisibleAsRead = useCallback(async () => {
-    if (!user?.id) return
-    const unreadItems = latestNotifications.filter((item) => !item.is_read)
-    if (unreadItems.length === 0) return
+    if (!user?.id) return;
+    const unreadItems = latestNotifications.filter((item) => !item.is_read);
+    if (unreadItems.length === 0) return;
 
-    unreadItems.forEach((item) => dispatch(markNotificationRead(item.id)))
+    unreadItems.forEach((item) => dispatch(markNotificationRead(item.id)));
     try {
       await Promise.all(
         unreadItems.map((item) => markReadApi(item.id, user.id))
-      )
+      );
     } catch {
-      refresh({ silent: true })
+      refresh({ silent: true });
     }
-  }, [dispatch, latestNotifications, refresh, user?.id])
+  }, [dispatch, latestNotifications, refresh, user?.id]);
 
   return (
     <DropdownMenu
       open={open}
       onOpenChange={(nextOpen) => {
-        setOpen(nextOpen)
+        setOpen(nextOpen);
         if (nextOpen) {
-          markVisibleAsRead()
+          markVisibleAsRead();
         }
       }}
     >
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button
+          size={"icon"}
+          variant="ghost"
+          className="relative bg-accent rounded-sm"
+        >
           <Bell />
           <CountBadge
             count={unreadCount}
@@ -132,5 +136,5 @@ export const NotificationBell = ({ linkTo }: NotificationBellProps) => {
         />
       </DropdownMenuContent>
     </DropdownMenu>
-  )
-}
+  );
+};

@@ -523,10 +523,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         animate="visible"
         className="w-full bg-[#fff] dark:bg-[#0a0a0a]"
       >
-        <ScrollArea className="h-[calc(90vh-100px)]">
           <div className="space-y-6">
             {/* -------- Top Summary Cards -------- */}
-            <div className="grid grid-cols-4 gap-5 pt-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 pt-2">
               {/* Site Supervisor */}
               <div
                 className="
@@ -1174,7 +1173,6 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
               </div>
             </div>
           )}
-        </ScrollArea>
 
         {/* -------- Upload Modal -------- */}
         <UploadFinalDoc

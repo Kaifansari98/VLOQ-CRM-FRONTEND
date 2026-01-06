@@ -185,6 +185,7 @@ export const canViewToOrderLoginDetails = (userType: string | undefined) => {
     "backend",
     "tech-check",
     "factory",
+    "sales-executive"
   ];
   return allowedRoles.includes(userType.toLowerCase());
 };

@@ -33,9 +33,10 @@ export default function MyTaskLeadPage() {
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-
-        <NotificationBell />
+       <div className="flex items-center gap-2">
+          <NotificationBell />
           <AnimatedThemeToggler />
+        </div>
       </header>
 
       <main className="flex-1 overflow-x-hidden">
