@@ -332,7 +332,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                       <FileUploadField
                         value={field.value || []}
                         onChange={field.onChange}
-                        accept=".png,.jpg,.jpeg"
+                        accept=".png,.jpg,.jpeg,.gif"
                         multiple
                       />
                     </FormControl>

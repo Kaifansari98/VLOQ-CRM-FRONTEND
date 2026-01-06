@@ -20,19 +20,29 @@ import { toast } from "react-toastify";
 interface SinglePdfUploadFieldProps {
   value: File | null;
   onChange: (file: File | null) => void;
+  allowedMimeTypes?: string[];
+  accept?: string;
+  title?: string;
+  description?: string;
+  buttonLabel?: string;
 }
 
 export function SinglePdfUploadField({
   value,
   onChange,
+  allowedMimeTypes = ["application/pdf"],
+  accept = ".pdf",
+  title = "Upload PDF Document",
+  description = "Only 1 PDF allowed. Drag & drop or click below.",
+  buttonLabel = "Select PDF",
 }: SinglePdfUploadFieldProps) {
   // Upload simulation
   const onUpload: NonNullable<FileUploadProps["onUpload"]> = React.useCallback(
     async (files, { onProgress, onSuccess, onError }) => {
       try {
         for (const file of files) {
-          if (file.type !== "application/pdf") {
-            toast.error("Only PDF file is allowed");
+          if (!allowedMimeTypes.includes(file.type)) {
+            toast.error("Only supported document types are allowed");
             onError(file, new Error("Invalid file type"));
             continue;
           }
@@ -52,7 +62,7 @@ export function SinglePdfUploadField({
         console.error("Unexpected error during upload:", err);
       }
     },
-    []
+    [allowedMimeTypes]
   );
 
   const onFileReject = React.useCallback((file: File, message: string) => {
@@ -77,7 +87,7 @@ export function SinglePdfUploadField({
       onFileReject={onFileReject}
       multiple={false}
       maxFiles={1}
-      accept=".pdf"
+      accept={accept}
       className="w-full"
     >
       <FileUploadDropzone>
@@ -85,14 +95,12 @@ export function SinglePdfUploadField({
           <div className="flex items-center justify-center rounded-full border p-2.5">
             <Upload className="size-6 text-muted-foreground" />
           </div>
-          <p className="font-medium text-sm">Upload PDF Document</p>
-          <p className="text-muted-foreground text-xs">
-            Only 1 PDF allowed. Drag & drop or click below.
-          </p>
+          <p className="font-medium text-sm">{title}</p>
+          <p className="text-muted-foreground text-xs">{description}</p>
         </div>
         <FileUploadTrigger asChild>
           <Button variant="outline" size="sm" className="mt-2 w-fit">
-            Select PDF
+            {buttonLabel}
           </Button>
         </FileUploadTrigger>
       </FileUploadDropzone>

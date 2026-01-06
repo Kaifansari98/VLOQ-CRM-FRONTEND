@@ -48,6 +48,15 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
 };
 
+const documentMimeTypes = [
+  "application/pdf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/gif",
+];
+const documentAccept = ".pdf,.png,.jpg,.jpeg,.gif";
+
 export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   // 🧩 --- Redux & Auth Context ---
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -122,7 +131,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const handleReplaceFilesChange = (files: File[]) => {
     if (files.length > 1) {
       setReplaceFiles([files[0]]);
-      toast.error("Only one PDF can be uploaded.");
+      toast.error("Only one file can be uploaded.");
       return;
     }
     setReplaceFiles(files);
@@ -131,13 +140,13 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const handleReplacePdf = async () => {
     if (!replaceDocId || !vendorId || !userId) return;
     if (replaceFiles.length === 0) {
-      toast.error("Please select a PDF to upload.");
+      toast.error("Please select a file to upload.");
       return;
     }
 
     const pdfFile = replaceFiles[0];
-    if (pdfFile.type !== "application/pdf") {
-      toast.error("Only PDF files are allowed.");
+    if (!documentMimeTypes.includes(pdfFile.type)) {
+      toast.error("Only PDF or image files are allowed.");
       return;
     }
 
@@ -148,7 +157,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
         userId,
         pdfFile,
       });
-      toast.success("PDF document updated successfully.");
+      toast.success("Document updated successfully.");
       setReplaceFiles([]);
       setReplaceDocId(null);
       queryClient.invalidateQueries({
@@ -156,7 +165,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
       });
     } catch (error: any) {
       toast.error(
-        error?.response?.data?.message || "Failed to replace PDF document."
+        error?.response?.data?.message || "Failed to replace document."
       );
     }
   };
@@ -720,15 +729,15 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
             setReplaceFiles([]);
           }
         }}
-        title="Replace PDF Document"
-        description="Upload a new PDF to replace the existing document."
+        title="Replace Measurement Document"
+        description="Upload a new PDF or image to replace the existing document."
         size="md"
       >
         <div className="p-5 space-y-4">
           <FileUploadField
             value={replaceFiles}
             onChange={handleReplaceFilesChange}
-            accept=".pdf"
+            accept={documentAccept}
             multiple={false}
             maxFiles={1}
           />

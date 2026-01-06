@@ -24,7 +24,7 @@ export default function LeadWiseChatEmptyState({
         <div className="pointer-events-none absolute -bottom-24 -right-16 h-72 w-72 rounded-full bg-primary/5 blur-3xl" />
 
         {/* Main Card */}
-        <div className="relative overflow-hidden rounded-xl border border-border bg-card">
+        <div className="relative overflow-hidden rounded-xl bg-card">
           {/* Subtle top accent line */}
           <div className="absolute left-0 right-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
 

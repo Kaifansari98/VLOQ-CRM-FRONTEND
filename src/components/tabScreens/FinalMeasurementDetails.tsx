@@ -44,6 +44,17 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
 };
 
+const documentMimeTypes = [
+  "application/pdf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/gif",
+];
+const documentAccept = ".pdf,.png,.jpg,.jpeg,.gif";
+const imageMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
+const imageAccept = ".jpg,.jpeg,.png,.gif";
+
 export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   // 🧩 --- Redux User Context ---
   const vendorId = useAppSelector((state) => state.auth?.user?.vendor_id) || 0;
@@ -74,7 +85,10 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
 
   // 🧩 --- Permissions ---
   const canDelete = userType === "admin" || userType === "super_admin";
-  const canUpload = userType === "admin" || userType === "super_admin" || userType === "sales-executive";
+  const canUpload =
+    userType === "admin" ||
+    userType === "super_admin" ||
+    userType === "sales-executive";
 
   // 🧩 --- Delete Handler ---
   const handleConfirmDelete = () => {
@@ -91,21 +105,35 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   const accountId = (data as any)?.account_id;
 
   const handleFilesChange = (files: File[]) => {
+    const validFiles = files.filter((file) =>
+      documentMimeTypes.includes(file.type)
+    );
+    const rejectedCount = files.length - validFiles.length;
+    if (rejectedCount > 0) {
+      toast.error("Only PDF or image files are allowed.");
+    }
     if (files.length > 10) {
       toast.error("You can upload up to 10 files.");
-      setFilesToUpload(files.slice(0, 10));
+      setFilesToUpload(validFiles.slice(0, 10));
       return;
     }
-    setFilesToUpload(files);
+    setFilesToUpload(validFiles);
   };
 
   const handleSitePhotosChange = (files: File[]) => {
+    const validFiles = files.filter((file) =>
+      imageMimeTypes.includes(file.type)
+    );
+    const rejectedCount = files.length - validFiles.length;
+    if (rejectedCount > 0) {
+      toast.error("Only image files are allowed.");
+    }
     if (files.length > 10) {
       toast.error("You can upload up to 10 files.");
-      setSitePhotosToUpload(files.slice(0, 10));
+      setSitePhotosToUpload(validFiles.slice(0, 10));
       return;
     }
-    setSitePhotosToUpload(files);
+    setSitePhotosToUpload(validFiles);
   };
 
   const handleAddMoreFiles = async () => {
@@ -426,14 +454,14 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
           }
         }}
         title="Add More Final Measurement Files"
-        description="Upload additional final measurement files (max 10)."
+        description="Upload additional final measurement files (PDF or images, max 10)."
         size="md"
       >
         <div className="p-5 space-y-4">
           <FileUploadField
             value={filesToUpload}
             onChange={handleFilesChange}
-            accept=".pdf"
+            accept={documentAccept}
             multiple
             maxFiles={10}
           />
@@ -472,7 +500,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
           <FileUploadField
             value={sitePhotosToUpload}
             onChange={handleSitePhotosChange}
-            accept=".jpg,.jpeg,.png"
+            accept={imageAccept}
             multiple
             maxFiles={10}
           />

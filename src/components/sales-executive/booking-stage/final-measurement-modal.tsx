@@ -32,26 +32,34 @@ interface LeadViewModalProps {
   };
 }
 
+const documentMimeTypes = [
+  "application/pdf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/gif",
+];
+const documentAccept = ".pdf,.png,.jpg,.jpeg,.gif";
+const imageMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
+const imageAccept = ".png,.jpg,.jpeg,.gif";
+
 const formSchema = z.object({
   finalMeasurementDocs: z
     .array(z.custom<File>((file) => file instanceof File))
     .nonempty({
       message: "At least one Final Measurement Document is required",
     })
-    .refine((files) => files.every((file) => file.type === "application/pdf"), {
-      message: "Only PDF files are allowed",
+    .refine((files) => files.every((file) => documentMimeTypes.includes(file.type)), {
+      message: "Only PDF or image files are allowed",
     })
-    .max(20, { message: "You can upload up to 20 PDFs only" }),
+    .max(20, { message: "You can upload up to 20 files only" }),
 
   currentSitePhotos: z
     .array(z.instanceof(File))
     .nonempty({ message: "At least one site photo is required" })
     .refine(
-      (files) =>
-        files.every((file) =>
-          ["image/jpeg", "image/jpg", "image/png"].includes(file.type)
-        ),
-      { message: "Only JPG, JPEG, or PNG images are allowed" }
+      (files) => files.every((file) => imageMimeTypes.includes(file.type)),
+      { message: "Only JPG, JPEG, PNG, or GIF images are allowed" }
     ),
 
   criticalDiscussion: z.string().optional(),
@@ -136,7 +144,7 @@ const FinalMeasurementModal = ({
                   <FileUploadField
                     value={field.value}
                     onChange={field.onChange}
-                    accept="application/pdf"
+                    accept={documentAccept}
                     multiple // ✅ allow multiple PDFs
                   />
                 </FormControl>
@@ -156,6 +164,7 @@ const FinalMeasurementModal = ({
                   <FileUploadField
                     value={field.value}
                     onChange={field.onChange}
+                    accept={imageAccept}
                   />
                 </FormControl>
                 <FormMessage />

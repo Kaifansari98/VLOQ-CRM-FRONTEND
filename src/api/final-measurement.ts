@@ -6,7 +6,7 @@ export interface FinalMeasurementPayload {
   vendor_id: number;
   created_by: number;
   critical_discussion_notes?: string; // optional
-  final_measurement_docs: File[]; // accept multiple PDF file
+  final_measurement_docs: File[]; // accept multiple PDF or image files
   site_photos: File[]; // multiple images
 }
 

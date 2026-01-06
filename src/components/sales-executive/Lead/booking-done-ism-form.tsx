@@ -37,14 +37,23 @@ interface LeadViewModalProps {
   };
 }
 
+const documentMimeTypes = [
+  "application/pdf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/gif",
+];
+const documentAccept = ".pdf,.png,.jpg,.jpeg,.gif";
+
 const formSchema = z
   .object({
     current_site_photos: z.any().optional(),
 
     upload_pdf: z
-      .instanceof(File, { message: "Please upload a PDF" })
-      .refine((file) => file.type === "application/pdf", {
-        message: "Only PDF file is allowed",
+      .instanceof(File, { message: "Please upload a document" })
+      .refine((file) => documentMimeTypes.includes(file.type), {
+        message: "Only PDF or image files are allowed",
       }),
 
     amount: z.number().optional(),
@@ -214,7 +223,7 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
                     <FileUploadField
                       value={field.value}
                       onChange={field.onChange}
-                      accept=".png, .jpg, .jpeg"
+                      accept=".png, .jpg, .jpeg, .gif"
                     />
                   </FormControl>
                   <FormDescription className="text-xs">
@@ -237,6 +246,11 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
                     <SinglePdfUploadField
                       value={field.value}
                       onChange={field.onChange}
+                      allowedMimeTypes={documentMimeTypes}
+                      accept={documentAccept}
+                      title="Upload Booking Document"
+                      description="PDF or image allowed. Upload one file."
+                      buttonLabel="Select File"
                     />
                   </FormControl>
                   <FormMessage />
@@ -299,6 +313,7 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
                       value={field.value}
                       onChange={field.onChange}
                       multiple={false}
+                      accept=".png, .jpg, .jpeg, .gif"
                     />
                   </FormControl>
                   <FormDescription className="text-xs">
