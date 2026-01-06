@@ -265,7 +265,10 @@ export default function ClientApprovalLeadDetails() {
                     no_of_client_documents_initially_submitted &&
                     approvedCount < no_of_client_documents_initially_submitted
                   ) {
-                    tooltipMsg = `You must approve all initially submitted client documents (${no_of_client_documents_initially_submitted}) before moving to Order Login.`;
+                    tooltipMsg =
+                      userType === "sales-executive"
+                        ? `Once Tech Check is completed, then only lead can be move to Order Login.`
+                        : `You must approve all initially submitted client documents (${no_of_client_documents_initially_submitted}) before moving to Order Login.`;
                   } else if (approvedPPT === 0) {
                     tooltipMsg =
                       "At least one PPT file must be approved before moving to Order Login.";
@@ -1225,7 +1228,7 @@ export default function ClientApprovalLeadDetails() {
                 setSelectedDocs([]);
               }}
               disabled={approvingDocs}
-              className="bg-zinc-900 hover:bg-zinc-800"
+              className=""
             >
               {approvingDocs ? "Approving..." : "Confirm Approval"}
             </AlertDialogAction>
