@@ -66,8 +66,8 @@ const dispatchSchema = z.object({
     .min(10, "Enter a valid contact number"),
   material_lift_availability: z
     .boolean()
-    .nullable()
-    .refine((val) => val !== null, {
+    .optional()
+    .refine((val) => val !== undefined, {
       message: "Please select material lift availability",
     }),
   alt_onsite_contact_person_name: z.string().optional(),
@@ -166,7 +166,7 @@ export default function DispatchPlanningDetails({
       onsite_contact_person_number: "",
       alt_onsite_contact_person_name: "",
       alt_onsite_contact_person_number: "",
-      material_lift_availability: null,
+      material_lift_availability: undefined,
       dispatch_planning_remark: "",
     },
   });
@@ -208,7 +208,7 @@ export default function DispatchPlanningDetails({
       const apiValue = dispatchInfoData.material_lift_availability;
 
       const normalizedLiftAvailability =
-        apiValue === true ? true : apiValue === false ? null : null;
+        apiValue === true ? true : apiValue === false ? false : undefined;
 
       const formValues = {
         required_date_for_dispatch: dispatchInfoData.required_date_for_dispatch
@@ -267,7 +267,7 @@ export default function DispatchPlanningDetails({
       const payload = {
         ...values,
         material_lift_availability:
-          values.material_lift_availability!.toString(),
+          values.material_lift_availability ? "true" : "false",
         created_by: userId,
       };
 
