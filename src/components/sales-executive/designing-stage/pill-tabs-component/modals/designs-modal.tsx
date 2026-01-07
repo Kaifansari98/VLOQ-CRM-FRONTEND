@@ -109,7 +109,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
       }}
       title="Add Designs"
       description="Upload design files in supported CAD or document formats."
-      size="lg"
+      size="smd"
     >
        
           <Form {...form}>

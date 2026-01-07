@@ -317,7 +317,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   }, [designsModalOpen, designsForm]);
 
   if (isLoading || loading)
-    return <Loader size={250} message="Loading Booking Lead Details..." />;
+    return <p>booking details loading...</p>;
 
   // 🧩 Delete handler
   const handleConfirmDelete = () => {
@@ -1265,7 +1265,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
           onOpenChange={setDesignsModalOpen}
           title="Add Designs"
           description="Upload design files in supported CAD or document formats."
-          size="lg"
+          size="smd"
         >
           <Form {...designsForm}>
             <form

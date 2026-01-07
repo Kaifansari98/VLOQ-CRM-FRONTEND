@@ -6,6 +6,7 @@ import { useLeadStats } from "@/hooks/useLeadStats";
 import { useAppSelector } from "@/redux/store";
 import { Badge } from "./ui/badge";
 import { usePathname } from "next/navigation";
+import { useSidebar } from "@/components/ui/sidebar";
 
 import {
   Collapsible,
@@ -106,6 +107,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data: leadStats, isLoading } = useLeadStats(vendorId, userId);
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const pathname = usePathname();
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
@@ -143,6 +145,12 @@ export function NavMain({ items }: { items: NavItem[] }) {
     if (!leadStats?.data || !showCount) return undefined;
     const data = leadStats.data;
     return data[showCount as keyof typeof data];
+  };
+
+  const handleMobileNavigate = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
   };
 
   return (
@@ -223,6 +231,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                               <SidebarMenuSubButton asChild>
                                 <Link
                                   href={subItem.url}
+                                  onClick={handleMobileNavigate}
                                   className={cn(
                                     "flex items-center justify-between w-full transition-all duration-200",
                                     isSubActive &&

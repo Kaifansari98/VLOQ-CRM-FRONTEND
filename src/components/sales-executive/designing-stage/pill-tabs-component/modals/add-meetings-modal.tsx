@@ -94,7 +94,7 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
       onOpenChange={onOpenChange}
       title="Add Meeting"
       description="Capture meeting details and attach supporting files."
-      size="lg"
+      size="smd"
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 p-5">
