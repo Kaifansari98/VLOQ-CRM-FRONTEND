@@ -78,7 +78,7 @@ export function UniversalTable({
   //
   const [pagination, setPagination] = useState({
     pageIndex: 0,
-    pageSize: 10,
+    pageSize: 20,
   });
 
   //
