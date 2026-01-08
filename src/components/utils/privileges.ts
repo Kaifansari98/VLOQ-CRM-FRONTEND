@@ -66,8 +66,9 @@ export const canTechCheck = (userType: string | undefined) => {
 
 export const canMoveToOrderLogin = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "tech-check", "sales-executive"];
-  return allowedRoles.includes(userType.toLowerCase());
+  const normalizedRole = userType.toLowerCase().replace("_", "-");
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
+  return allowedRoles.includes(normalizedRole);
 };
 
 export const canUploadFinalMeasurements = (userType: string | undefined) => {
