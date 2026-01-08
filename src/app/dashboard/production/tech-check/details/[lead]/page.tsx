@@ -243,7 +243,9 @@ export default function ClientApprovalLeadDetails() {
 
                 const pendingCount = docs.filter(
                   (d) =>
-                    !d.tech_check_status || d.tech_check_status === "PENDING"
+                    !d.tech_check_status ||
+                    d.tech_check_status === "PENDING" ||
+                    d.tech_check_status === "REVISED"
                 ).length;
 
                 // Disabled if:
@@ -353,7 +355,9 @@ export default function ClientApprovalLeadDetails() {
 
                   const pendingCount = docs.filter(
                     (d) =>
-                      !d.tech_check_status || d.tech_check_status === "PENDING"
+                      !d.tech_check_status ||
+                      d.tech_check_status === "PENDING" ||
+                      d.tech_check_status === "REVISED"
                   ).length;
 
                   // Disabled if:
@@ -828,7 +832,8 @@ export default function ClientApprovalLeadDetails() {
                     .filter(
                       (d) =>
                         !d.tech_check_status ||
-                        d.tech_check_status === "PENDING"
+                        d.tech_check_status === "PENDING" ||
+                        d.tech_check_status === "REVISED"
                     )
                     .sort((a, b) => {
                       const dateA = new Date(a.created_at).getTime();
@@ -859,7 +864,8 @@ export default function ClientApprovalLeadDetails() {
                     const isApproved = doc.tech_check_status === "APPROVED";
                     const isPending =
                       !doc.tech_check_status ||
-                      doc.tech_check_status === "PENDING";
+                      doc.tech_check_status === "PENDING" ||
+                      doc.tech_check_status === "REVISED";
                     const isSelected = selectedDocs.includes(doc.id);
                     const isDisabled = isRejected || isApproved;
 

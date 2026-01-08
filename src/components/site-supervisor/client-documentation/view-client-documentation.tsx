@@ -162,7 +162,7 @@ export default function ClientDocumentationDetails({
 
         <div className="p-6 space-y-0 bg-[#fff] dark:bg-[#0a0a0a]">
           {/* -------- Images -------- */}
-          <div className="space-y-3">
+          <div className="space-y-3 pb-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {imageDocs.length > 0 && (
                 imageDocs.map((img, index) => (

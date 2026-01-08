@@ -85,6 +85,8 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
         return "bg-green-500";
       case "REJECTED":
         return "bg-red-500";
+      case "REVISED":
+        return "bg-amber-500";
       case "PENDING":
         return "bg-blue-500";
 

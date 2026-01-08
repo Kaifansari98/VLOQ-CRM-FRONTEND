@@ -85,7 +85,10 @@ export default function TechCheckDetails({ leadId }: Props) {
 
     if (activeFilter === "PENDING") {
       return docs.filter(
-        (d) => !d.tech_check_status || d.tech_check_status === "PENDING"
+        (d) =>
+          !d.tech_check_status ||
+          d.tech_check_status === "PENDING" ||
+          d.tech_check_status === "REVISED"
       );
     }
 
@@ -148,7 +151,10 @@ export default function TechCheckDetails({ leadId }: Props) {
     (d) => d.tech_check_status === "REJECTED"
   ).length;
   const pendingDocs = allDocs.filter(
-    (d) => !d.tech_check_status || d.tech_check_status === "PENDING"
+    (d) =>
+      !d.tech_check_status ||
+      d.tech_check_status === "PENDING" ||
+      d.tech_check_status === "REVISED"
   ).length;
 
   // ✅ Permissions
