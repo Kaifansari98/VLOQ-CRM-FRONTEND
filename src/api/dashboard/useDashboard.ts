@@ -19,6 +19,7 @@ import {
   StageData,
   addPaymentLeads,
   getDashboardAllLeads,
+  getAdminDashboardAllLeads,
   getSalesExecutiveActivityStatusCounts,
   SalesExecutiveActivityStatusCounts,
   getAdminProjectsOverview,
@@ -321,6 +322,16 @@ export const useGetDashboardAllLeads = (vendorId: number, userId: number) => {
     enabled: !!vendorId && !!userId, // Prevents undefined requests
     staleTime: 1000 * 60 * 5, // 5 minutes caching
     refetchOnWindowFocus: false, // avoid unnecessary refetch
+  });
+};
+
+export const useGetAdminDashboardAllLeads = (vendorId: number) => {
+  return useQuery<StageData>({
+    queryKey: ["admin-dashboard-leads", vendorId],
+    queryFn: () => getAdminDashboardAllLeads(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
   });
 };
 

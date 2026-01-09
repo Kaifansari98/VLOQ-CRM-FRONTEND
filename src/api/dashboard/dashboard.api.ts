@@ -339,6 +339,9 @@ export interface LeadStageItem {
 }
 
 export interface StageData {
+  openStage: LeadStageItem[];
+  initialSiteMeasurementStage: LeadStageItem[];
+  designingStage: LeadStageItem[];
   bookingStage: LeadStageItem[];
   finalSiteMeasurementStage: LeadStageItem[];
   clientDocumentationStage: LeadStageItem[];
@@ -352,6 +355,7 @@ export interface StageData {
   dispatchStage: LeadStageItem[];
   underInstallationStage: LeadStageItem[];
   finalHandoverStage: LeadStageItem[];
+  projectCompletedStage: LeadStageItem[];
 }
 
 export interface StageResponse {
@@ -402,6 +406,19 @@ export const getDashboardAllLeads = async (
     "/dashboard/sales-executive/all-stage-leads",
     {
       params: { vendor_id: vendorId, user_id: userId },
+    }
+  );
+
+  return res.data.data;
+};
+
+export const getAdminDashboardAllLeads = async (
+  vendorId: number
+): Promise<StageData> => {
+  const res = await apiClient.get<StageResponse>(
+    "/dashboard/admin/all-stage-leads",
+    {
+      params: { vendor_id: vendorId },
     }
   );
 
