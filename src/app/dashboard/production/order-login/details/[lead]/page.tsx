@@ -74,6 +74,7 @@ import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
+import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 
 export default function OrderLoginLeadDetails() {
   const { lead: leadId } = useParams();
@@ -217,6 +218,7 @@ export default function OrderLoginLeadDetails() {
             Assign Task
           </Button>
 
+          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           <NotificationBell />
           <AnimatedThemeToggler />
 

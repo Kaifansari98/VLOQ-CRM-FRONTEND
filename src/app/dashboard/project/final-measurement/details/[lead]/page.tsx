@@ -81,6 +81,7 @@ import {
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import { useQueryClient } from "@tanstack/react-query";
+import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 
 export default function FinalMeasurementLeadDetails() {
   const { lead: leadId } = useParams();
@@ -192,6 +193,7 @@ export default function FinalMeasurementLeadDetails() {
             Assign Task
           </Button>
 
+          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           <NotificationBell />
           <AnimatedThemeToggler />
 

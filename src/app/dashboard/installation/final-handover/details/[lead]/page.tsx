@@ -79,6 +79,7 @@ import {
 import { toastError } from "@/lib/utils";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
+import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 
 export default function FinalHandoverLeadDetails() {
   const router = useRouter();
@@ -239,6 +240,7 @@ export default function FinalHandoverLeadDetails() {
             />
           )}
 
+          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           <NotificationBell />
           <AnimatedThemeToggler />
 

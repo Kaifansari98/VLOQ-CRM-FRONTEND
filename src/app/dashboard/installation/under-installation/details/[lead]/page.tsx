@@ -83,6 +83,7 @@ import {
 } from "@/components/utils/privileges";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
+import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 
 export default function UnderInstallationLeadDetails() {
   const { lead: leadId } = useParams();
@@ -249,6 +250,7 @@ export default function UnderInstallationLeadDetails() {
             </Button>
           )}
 
+          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           <NotificationBell />
           <AnimatedThemeToggler />
 

@@ -69,6 +69,7 @@ import {
   useChatTabFromUrl,
   useIsChatNotification,
 } from "@/hooks/useChatTabFromUrl";
+import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 
 // --- NEW imports for Activity Status flow
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
@@ -188,6 +189,7 @@ export default function BookingStageLeadsDetails() {
             />
           )}
 
+          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           <NotificationBell />
           <AnimatedThemeToggler />
           <DropdownMenu>

@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import {
   CircleArrowOutUpRight,
-  ClipboardCheck,
   Clock,
   EllipsisVertical,
   SquarePen,
@@ -28,6 +27,7 @@ import {
   UsersRoundIcon,
   UserPlus,
   MessageSquare,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -76,6 +76,7 @@ import {
   useChatTabFromUrl,
   useIsChatNotification,
 } from "@/hooks/useChatTabFromUrl";
+import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 
 export default function SiteMeasurementLead() {
   const router = useRouter();
@@ -96,7 +97,6 @@ export default function SiteMeasurementLead() {
   );
 
   const [openDelete, setOpenDelete] = useState(false);
-
   // Modals
   const [openMeasurement, setOpenMeasurement] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -202,6 +202,7 @@ export default function SiteMeasurementLead() {
           >
             Assign Task
           </Button>
+          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           <NotificationBell />
           <AnimatedThemeToggler />
           <DropdownMenu>

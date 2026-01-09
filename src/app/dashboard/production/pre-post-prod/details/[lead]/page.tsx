@@ -82,6 +82,7 @@ import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
+import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 
 export default function ProductionLeadDetails() {
   const router = useRouter();
@@ -314,6 +315,7 @@ export default function ProductionLeadDetails() {
             Assign Task
           </Button>
 
+          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           <NotificationBell />
           <AnimatedThemeToggler />
 

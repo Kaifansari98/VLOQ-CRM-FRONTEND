@@ -31,7 +31,7 @@ export default function CustomeTooltip({
             {truncateValue}
           </span>
         </TooltipTrigger>
-        <TooltipContent className="dark px-2 py-1 text-xs  leading-snug break-words">
+        <TooltipContent className="dark max-w-lg px-2 py-1 text-xs leading-snug break-words">
           {value}
         </TooltipContent>
       </Tooltip>

@@ -72,6 +72,7 @@ import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { getErrorMessage } from "@/lib/utils";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
+import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 
 export default function DispatchPlanningLeadDetails() {
   const router = useRouter();
@@ -204,6 +205,7 @@ export default function DispatchPlanningLeadDetails() {
             </Button>
           </div>
 
+          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           <NotificationBell />
           <AnimatedThemeToggler />
 

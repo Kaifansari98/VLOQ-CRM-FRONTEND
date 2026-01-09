@@ -72,6 +72,7 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
+import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 
 export default function LeadDetails() {
   const router = useRouter();
@@ -214,6 +215,7 @@ export default function LeadDetails() {
             </Button>
           )}
 
+          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           <NotificationBell />
           <AnimatedThemeToggler />
 

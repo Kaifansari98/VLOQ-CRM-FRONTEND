@@ -78,6 +78,7 @@ import {
   useChatTabFromUrl,
   useIsChatNotification,
 } from "@/hooks/useChatTabFromUrl";
+import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 
 export default function DesigningStageLead() {
   const router = useRouter();
@@ -239,6 +240,7 @@ export default function DesigningStageLead() {
           >
             Assign Task
           </Button>
+          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           <NotificationBell />
           <AnimatedThemeToggler />
 

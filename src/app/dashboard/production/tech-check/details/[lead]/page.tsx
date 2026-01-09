@@ -92,6 +92,7 @@ import {
   useChatTabFromUrl,
   useIsChatNotification,
 } from "@/hooks/useChatTabFromUrl";
+import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -311,6 +312,7 @@ export default function ClientApprovalLeadDetails() {
                 );
               })()}
           </div>
+          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           <NotificationBell />
           <AnimatedThemeToggler />
 
