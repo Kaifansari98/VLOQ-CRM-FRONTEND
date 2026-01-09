@@ -3,6 +3,7 @@ import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 
 export type VendorUserTasksResponse = VendorUserTask[];
+export type VendorAllTasksResponse = VendorUserTask[];
 export type ActiveLeadTasksResponse = ActiveLeadTask[];
 
 export interface VendorUserTask {
@@ -16,6 +17,7 @@ export interface VendorUserTask {
     closed_at: string | null;
     created_by: number;
     created_by_name?: string;
+    assigned_to_name?: string | null;
     created_at: string;
     updated_by: number | null;
     updated_at: string;
@@ -59,6 +61,15 @@ export const getVendorUserTasks = async (
   return response.data.data; // backend already returns array
 };
 
+export const getVendorAllTasks = async (
+  vendorId: number
+): Promise<VendorAllTasksResponse> => {
+  const response = await apiClient.get(
+    `/leads/tasks/vendorId/${vendorId}/tasks/all`
+  );
+  return response.data.data;
+};
+
 export const getActiveLeadTasks = async (
   vendorId: number,
   leadId: number
@@ -78,6 +89,19 @@ export const useVendorUserTasks = (
     queryKey: ["vendorUserTasks", vendorId, userId],
     queryFn: () => getVendorUserTasks(vendorId, userId),
     enabled: enabled && !!vendorId && !!userId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useVendorAllTasks = (
+  vendorId: number,
+  enabled: boolean = true
+): UseQueryResult<VendorAllTasksResponse, Error> => {
+  return useQuery({
+    queryKey: ["vendorAllTasks", vendorId],
+    queryFn: () => getVendorAllTasks(vendorId),
+    enabled: enabled && !!vendorId,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });

@@ -28,16 +28,20 @@ export type ProcessedTask = {
   assignedBy: number; // userLeadTask.created_by
   assignedAt: string; // userLeadTask.created_at
   assignedByName: string;
+  assignedToName?: string | null;
   remark?: string;
   site_map_link: string;
 };
 
-export function getVendorLeadsTableColumns({}: {
+export function getVendorLeadsTableColumns({
+  showAssignedTo = false,
+}: {
   setRowAction: React.Dispatch<
     React.SetStateAction<DataTableRowAction<ProcessedTask> | null>
   >;
   userType?: string;
   router: ReturnType<typeof useRouter>;
+  showAssignedTo?: boolean;
 }): ColumnDef<ProcessedTask>[] {
   return [
     // Action Button
@@ -263,13 +267,18 @@ export function getVendorLeadsTableColumns({}: {
       ) => {
         if (!filterValue) return true;
         const dueDate = new Date(row.getValue("dueDate") as string);
+        if (isNaN(dueDate.getTime())) return false;
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        if (filterValue === "overdue") return dueDate < today;
+        const taskDay = new Date(dueDate);
+        taskDay.setHours(0, 0, 0, 0);
+
+        if (filterValue === "overdue") return taskDay < today;
         if (filterValue === "today")
-          return dueDate.getTime() === today.getTime();
-        if (filterValue === "upcoming") return dueDate > today;
+          return taskDay.getTime() === today.getTime();
+        if (filterValue === "upcoming") return taskDay > today;
 
         return true;
       },
@@ -345,6 +354,20 @@ export function getVendorLeadsTableColumns({}: {
         return name || "—";
       },
     },
+    ...(showAssignedTo
+      ? ([
+          {
+            accessorKey: "assignedToName",
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Assigned To" />
+            ),
+            cell: ({ row }) => {
+              const name = row.getValue("assignedToName") as string;
+              return name || "—";
+            },
+          },
+        ] satisfies ColumnDef<ProcessedTask>[])
+      : []),
 
     // Assigned At
     {

@@ -15,7 +15,7 @@ import {
 } from "@tanstack/react-table";
 
 import { DataTable } from "@/components/data-table/data-table";
-import { DataTableSortList } from "@/components/data-table/data-table-sort-list";
+import { Button } from "@/components/ui/button";
 
 import InitialSiteMeasuresMent from "@/components/sales-executive/Lead/initial-site-measurement-form";
 
@@ -25,7 +25,7 @@ import {
   ProcessedTask,
 } from "./tasks-table-columns";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useVendorUserTasks } from "@/hooks/useTasksQueries";
+import { useVendorAllTasks, useVendorUserTasks } from "@/hooks/useTasksQueries";
 import FinalMeasurementModal from "@/components/sales-executive/booking-stage/final-measurement-modal";
 import FollowUpModal from "@/components/follow-up-modal";
 import BookingDoneIsmForm from "@/components/sales-executive/Lead/booking-done-ism-form";
@@ -43,7 +43,11 @@ const MyTaskTable = () => {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
+  const isAdminUser =
+    userType?.toLowerCase() === "admin" ||
+    userType?.toLowerCase() === "super-admin";
   const shouldFetch = !!vendorId && !!userId;
+  const shouldFetchOverall = !!vendorId;
 
   const [openMeasurement, setOpenMeasurement] = useState(false);
   const [openFinalMeasurement, setOpenFinalMeasurement] = useState(false);
@@ -55,9 +59,14 @@ const MyTaskTable = () => {
     userId || 0,
     shouldFetch
   );
+  const vendorAllTasksQuery = useVendorAllTasks(
+    vendorId || 0,
+    shouldFetchOverall && isAdminUser
+  );
 
   const [openFollowUp, setOpenFollowUp] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [viewScope, setViewScope] = useState<"my" | "overall">("my");
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     architechName: false,
     source: false,
@@ -76,10 +85,29 @@ const MyTaskTable = () => {
     { id: "dueDate", value: "today" }, // Set default filter
   ]);
   const [rowSelection, setRowSelection] = useState({});
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 20,
+  });
 
   const [rowAction, setRowAction] =
     useState<DataTableRowAction<ProcessedTask> | null>(null);
   const [taskTypeFilter, setTaskTypeFilter] = useState<string[]>([]);
+  const showScopeToggle = isAdminUser;
+
+  useEffect(() => {
+    if (isAdminUser) {
+      setViewScope("overall");
+    } else {
+      setViewScope("my");
+    }
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, [isAdminUser]);
+
+  useEffect(() => {
+    setColumnFilters([{ id: "dueDate", value: "today" }]);
+    setTaskTypeFilter([]);
+  }, [viewScope]);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -156,9 +184,14 @@ const MyTaskTable = () => {
 
   // Process leads into table data - Memoized to prevent re-renders
   const rowData = useMemo<ProcessedTask[]>(() => {
-    if (!vendorUserTasksQuery.data) return [];
+    const sourceData =
+      viewScope === "overall"
+        ? vendorAllTasksQuery.data ?? []
+        : vendorUserTasksQuery.data ?? [];
 
-    return vendorUserTasksQuery.data.map((task, index) => ({
+    if (!sourceData) return [];
+
+    return sourceData.map((task, index) => ({
       id: task.userLeadTask.id,
       lead_code: task.leadMaster.lead_code,
       leadId: task.leadMaster.id,
@@ -175,10 +208,14 @@ const MyTaskTable = () => {
       site_map_link: task.leadMaster.site_map_link,
       assignedBy: task.userLeadTask.created_by,
       assignedByName: task.userLeadTask.created_by_name || "-",
+      assignedToName: task.userLeadTask.assigned_to_name || null,
       assignedAt: task.userLeadTask.created_at,
       remark: task.userLeadTask?.remark || "",
     }));
-  }, [vendorUserTasksQuery.data]);
+  }, [vendorAllTasksQuery.data, vendorUserTasksQuery.data, viewScope]);
+
+  const myTaskTotal = vendorUserTasksQuery.data?.length ?? 0;
+  const overallTaskTotal = vendorAllTasksQuery.data?.length ?? 0;
 
   // Calculate task counts - Memoized to prevent re-renders
   const taskCounts = useMemo(() => {
@@ -203,10 +240,31 @@ const MyTaskTable = () => {
     return counts;
   }, [rowData]);
 
+  useEffect(() => {
+    console.log("[MyTasks] scope:", viewScope);
+    console.log("[MyTasks] myTasks count:", vendorUserTasksQuery.data?.length ?? 0);
+    console.log(
+      "[MyTasks] overallTasks count:",
+      vendorAllTasksQuery.data?.length ?? 0
+    );
+    console.log("[MyTasks] due date counts:", taskCounts);
+  }, [
+    viewScope,
+    vendorUserTasksQuery.data,
+    vendorAllTasksQuery.data,
+    taskCounts,
+  ]);
+
   // Setup columns - Memoized to prevent re-renders
   const columns = useMemo(
-    () => getVendorLeadsTableColumns({ setRowAction, userType, router }),
-    [setRowAction, userType, router]
+    () =>
+      getVendorLeadsTableColumns({
+        setRowAction,
+        userType,
+        router,
+        showAssignedTo: viewScope === "overall",
+      }),
+    [setRowAction, userType, router, viewScope]
   );
 
   // Custom filter function for due dates - Memoized to prevent re-creation
@@ -270,6 +328,7 @@ const MyTaskTable = () => {
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onPaginationChange: setPagination,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
@@ -283,6 +342,7 @@ const MyTaskTable = () => {
       dueDateFilter: dueDateFilterFn,
     },
     state: {
+      pagination,
       sorting,
       columnFilters,
       rowSelection,
@@ -386,6 +446,30 @@ const MyTaskTable = () => {
           <div className="flex flex-col gap-4 md:hidden">
             {/* Filters block */}
             <div className="flex flex-wrap gap-2">
+              {showScopeToggle && (
+                <>
+                  <Button
+                    size="sm"
+                    variant={viewScope === "my" ? "default" : "secondary"}
+                    onClick={() => {
+                      setViewScope("my");
+                      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                    }}
+                  >
+                    My Tasks {myTaskTotal}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={viewScope === "overall" ? "default" : "secondary"}
+                    onClick={() => {
+                      setViewScope("overall");
+                      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                    }}
+                  >
+                    Overall Tasks {overallTaskTotal}
+                  </Button>
+                </>
+              )}
               <TaskTypeFilter
                 selected={taskTypeFilter}
                 onChange={setTaskTypeFilter}
@@ -398,7 +482,6 @@ const MyTaskTable = () => {
                 multiple
               />
 
-              <DataTableSortList table={table} />
               <DataTableFilterList table={table} />
               <DataTableViewOptions table={table} />
             </div>
@@ -438,7 +521,30 @@ const MyTaskTable = () => {
 
             {/* Right: Table controls */}
             <div className="flex items-center gap-2">
-              <DataTableSortList table={table} />
+              {showScopeToggle && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant={viewScope === "my" ? "default" : "secondary"}
+                    onClick={() => {
+                      setViewScope("my");
+                      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                    }}
+                  >
+                    My Tasks {myTaskTotal}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={viewScope === "overall" ? "default" : "secondary"}
+                    onClick={() => {
+                      setViewScope("overall");
+                      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                    }}
+                  >
+                    Overall Tasks {overallTaskTotal}
+                  </Button>
+                </div>
+              )}
               <DataTableFilterList table={table} />
               <DataTableViewOptions table={table} />
             </div>
