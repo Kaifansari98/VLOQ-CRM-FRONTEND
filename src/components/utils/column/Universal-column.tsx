@@ -12,8 +12,15 @@ import CustomeTooltip from "@/components/custom-tooltip";
 
 import { LeadColumn } from "./column-type";
 
-export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
-  return [
+interface UniversalColumnOptions {
+  showStageColumn?: boolean;
+}
+
+export function getUniversalTableColumns(
+  options: UniversalColumnOptions = {}
+): ColumnDef<LeadColumn>[] {
+  const { showStageColumn = false } = options;
+  const columns: ColumnDef<LeadColumn>[] = [
     // 1) Lead Code
     {
       accessorKey: "lead_code",
@@ -58,6 +65,21 @@ export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
         label: "Name",
       },
     },
+
+    // Stage
+    ...(showStageColumn
+      ? ([
+          {
+            accessorKey: "status",
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Stage" />
+            ),
+            enableSorting: true,
+            enableHiding: true,
+            enableColumnFilter: true,
+          },
+        ] satisfies ColumnDef<LeadColumn>[])
+      : []),
 
     // 3) Contact
     {
@@ -303,4 +325,5 @@ export function getUniversalTableColumns(): ColumnDef<LeadColumn>[] {
       },
     },
   ];
+  return columns;
 }

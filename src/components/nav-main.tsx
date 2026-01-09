@@ -35,6 +35,7 @@ interface NavSubItem {
   url: string;
   showCount?:
     | "total_leads"
+    | "total_overall_leads"
     | "total_open_leads"
     | "total_initial_site_measurement_leads"
     | "total_designing_stage_leads"
@@ -64,6 +65,7 @@ interface NavItem {
   icon?: LucideIcon;
   showCount?:
     | "total_leads"
+    | "total_overall_leads"
     | "total_open_leads"
     | "total_initial_site_measurement_leads"
     | "total_designing_stage_leads"

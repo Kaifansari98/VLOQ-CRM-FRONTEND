@@ -20,5 +20,5 @@ export type LeadColumn = {
   accountId: number; // n
   updatedAt: string; //n
   site_map_link?: string;
+  statusTag?: string;
 };
-

@@ -120,12 +120,13 @@ export const useVendorOverallLeads = (
   userId: number,
   tag: string,
   page: number,
-  limit: number
+  limit: number,
+  enabled: boolean = true
 ) => {
   return useQuery({
     queryKey: ["vendorOverallLeads", vendorId, userId, tag, page, limit], 
     queryFn: () => getVendorOverallLeads(vendorId, userId, tag, page, limit),
-    enabled: !!vendorId && !!tag,
+    enabled: enabled && !!vendorId && !!tag,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,
   });

@@ -11,6 +11,7 @@ import {
   Settings2,
   CalendarCheck2,
   BookOpenCheck,
+  Users,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -59,6 +60,12 @@ const data = {
       url: "/dashboard/my-tasks",
       icon: CalendarCheck2,
       showCount: "total_my_tasks" as const,
+    },
+    {
+      title: "Overall Leads",
+      url: "/dashboard/overall-leads",
+      icon: Users,
+      showCount: "total_overall_leads" as const,
     },
     {
       title: "Leads",
@@ -181,6 +188,9 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const user = useAppSelector((state) => state.auth.user);
+  const userType = user?.user_type?.user_type?.toLowerCase();
+  const canSeeOverallLeads =
+    userType === "admin" || userType === "super-admin";
 
   const userData = user
     ? {
@@ -207,7 +217,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain
+          items={
+            canSeeOverallLeads
+              ? data.navMain
+              : data.navMain.filter((item) => item.title !== "Overall Leads")
+          }
+        />
       </SidebarContent>
 
       <SidebarFooter>

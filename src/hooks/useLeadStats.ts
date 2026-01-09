@@ -5,6 +5,7 @@ interface LeadStatsResponse {
   success: boolean;
   data: {
     total_leads: number;
+    total_overall_leads: number;
     total_open_leads: number;
     total_initial_site_measurement_leads: number;
     total_designing_stage_leads: number;

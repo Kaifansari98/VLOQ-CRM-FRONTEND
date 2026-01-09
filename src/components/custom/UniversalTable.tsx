@@ -46,6 +46,9 @@ export interface UniversalTableProps {
   title?: string;
   description?: string;
   enableAdminTabs?: boolean;
+  enableOverallData?: boolean;
+  showStageColumn?: boolean;
+  defaultViewType?: "my" | "overall";
 }
 
 //
@@ -59,6 +62,9 @@ export function UniversalTable({
   title,
   description,
   enableAdminTabs = true,
+  enableOverallData = true,
+  showStageColumn = false,
+  defaultViewType = "my",
   type,
 }: UniversalTableProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
@@ -71,7 +77,9 @@ export function UniversalTable({
   //
   // 🔵 Tabs (My / Overall)
   //
-  const [viewType, setViewType] = useState<"my" | "overall">("my");
+  const [viewType, setViewType] = useState<"my" | "overall">(
+    defaultViewType
+  );
 
   //
   // 🔵 Pagination State
@@ -120,7 +128,8 @@ export function UniversalTable({
       userId!,
       type,
       pagination.pageIndex + 1,
-      pagination.pageSize
+      pagination.pageSize,
+      enableOverallData
     );
 
   //
@@ -178,6 +187,7 @@ export function UniversalTable({
 
     altContact: lead.alt_contact_no ?? "",
     status: lead.statusType?.type ?? "",
+    statusTag: lead.statusType?.tag ?? "",
 
     assign_to: lead.assignedTo?.user_name ?? "",
     accountId: lead.account?.id ?? lead.account_id ?? 0,
@@ -196,7 +206,10 @@ export function UniversalTable({
   //
   // 🔵 COLUMN BUILDER
   //
-  const columns = useMemo(() => getUniversalTableColumns(), []);
+  const columns = useMemo(
+    () => getUniversalTableColumns({ showStageColumn }),
+    [showStageColumn]
+  );
 
   //
   // -------------------------------------------------------
