@@ -37,8 +37,8 @@ export default function LoginPage() {
     }
 
     if (hostname.includes("vloq")) {
-      setUseFallbackLogo(false);
-      setLogoSrc("/logos/vloq.png");
+      setUseFallbackLogo(true);
+      setLogoSrc("/logos/furnix-logo-light.png");
       setHeroSrc("/image.png");
       return;
     }
