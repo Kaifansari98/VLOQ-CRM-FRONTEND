@@ -170,6 +170,7 @@ export default function LeadsGenerationForm({
   });
 
   type FormValues = z.infer<ReturnType<typeof createFormSchema>>;
+  const selectedProductTypes = form.watch("product_types");
 
   const queryClient = useQueryClient();
   const checkContactMutation = useCheckContactOrEmailExists();
@@ -816,19 +817,46 @@ export default function LeadsGenerationForm({
             render={({ field }) => {
               const { data: productStructures, isLoading } =
                 useProductStructureTypes();
+              const { data: productTypes } = useProductTypes();
+
+              const selectedTypeId = selectedProductTypes?.[0];
+              const selectedTypeLabel =
+                productTypes?.data?.find(
+                  (type: any) => String(type.id) === selectedTypeId
+                )?.type || "";
+              const normalizedType = selectedTypeLabel.toLowerCase();
+
+              let parentFilter: "Kitchen" | "Wardrobe" | "Others" | null = null;
+              if (normalizedType.includes("kitchen")) {
+                parentFilter = "Kitchen";
+              } else if (normalizedType.includes("wardrobe")) {
+                parentFilter = "Wardrobe";
+              } else if (selectedTypeId) {
+                parentFilter = "Others";
+              }
 
               // Transform API data to options
               const options: Option[] =
-                productStructures?.data?.map((p: any) => ({
-                  value: String(p.id),
-                  label: p.type,
-                })) ?? [];
+                productStructures?.data
+                  ?.filter((p: any) => {
+                    if (!parentFilter) return true;
+                    const parent = String(p.parent || "").toLowerCase();
+                    if (parentFilter === "Kitchen") return parent === "kitchen";
+                    if (parentFilter === "Wardrobe") return parent === "wardrobe";
+                    return parent !== "kitchen" && parent !== "wardrobe";
+                  })
+                  ?.map((p: any) => ({
+                    value: String(p.id),
+                    label: p.type,
+                  })) ?? [];
 
               // Transform selected IDs back to Option[] format for display
-              const selectedOptions = (field.value || []).map((id) => {
-                const option = options.find((opt) => opt.value === id);
-                return option || { value: id, label: id }; // fallback if option not found
-              });
+              const selectedOptions = (field.value || [])
+                .filter((id) => options.some((opt) => opt.value === id))
+                .map((id) => {
+                  const option = options.find((opt) => opt.value === id);
+                  return option || { value: id, label: id };
+                });
 
               return (
                 <FormItem>
