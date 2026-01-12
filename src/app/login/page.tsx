@@ -12,6 +12,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { user, token } = useSelector((state: RootState) => state.auth);
   const [logoSrc, setLogoSrc] = useState("/logos/vloq.png");
+  const [useFallbackLogo, setUseFallbackLogo] = useState(false);
   const [heroSrc, setHeroSrc] = useState("/image.png");
 
   useEffect(() => {
@@ -29,18 +30,21 @@ export default function LoginPage() {
       typeof window !== "undefined" ? window.location.hostname : "";
 
     if (hostname.includes("shambhala")) {
+      setUseFallbackLogo(false);
       setLogoSrc("/logos/shambhala.png");
       setHeroSrc("/Shambhala-Login-Page-Image.png");
       return;
     }
 
     if (hostname.includes("vloq")) {
+      setUseFallbackLogo(false);
       setLogoSrc("/logos/vloq.png");
       setHeroSrc("/image.png");
       return;
     }
 
-    setLogoSrc("/logos/vloq.png");
+    setUseFallbackLogo(true);
+    setLogoSrc("/logos/furnix-logo-light.png");
     setHeroSrc("/image.png");
   }, []);
 
@@ -51,14 +55,35 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex justify-center md:justify-center mb-6">
           <a href="#" className="flex items-center gap-2">
-            <Image
-              src={logoSrc}
-              alt="Brand Logo"
-              width={250}
-              height={48}
-              className="object-contain"
-              priority
-            />
+            {useFallbackLogo ? (
+              <>
+                <Image
+                  src="/logos/furnix-logo-dark.png"
+                  alt="Brand Logo"
+                  width={250}
+                  height={48}
+                  className="object-contain dark:hidden"
+                  priority
+                />
+                <Image
+                  src="/logos/furnix-logo-light.png"
+                  alt="Brand Logo"
+                  width={250}
+                  height={48}
+                  className="object-contain hidden dark:block"
+                  priority
+                />
+              </>
+            ) : (
+              <Image
+                src={logoSrc}
+                alt="Brand Logo"
+                width={250}
+                height={48}
+                className="object-contain"
+                priority
+              />
+            )}
           </a>
         </div>
 
