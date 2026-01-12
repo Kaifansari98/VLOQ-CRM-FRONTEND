@@ -11,7 +11,7 @@ import Image from "next/image";
 export default function LoginPage() {
   const router = useRouter();
   const { user, token } = useSelector((state: RootState) => state.auth);
-  const [logoSrc, setLogoSrc] = useState("/logos/vloq.png");
+  const [logoSrc, setLogoSrc] = useState("/logos/furnix-logo-light.png");
   const [useFallbackLogo, setUseFallbackLogo] = useState(false);
   const [heroSrc, setHeroSrc] = useState("/image.png");
 
