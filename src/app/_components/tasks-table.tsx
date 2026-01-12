@@ -417,6 +417,18 @@ const MyTaskTable = () => {
       ? "Pending Work"
       : "Follow Up";
 
+  const dueDateFilterLabel =
+    (table.getColumn("dueDate")?.getFilterValue() as string) || "today";
+  const isOverallView = viewScope === "overall";
+  const headerDescription = (() => {
+    const scopeText = isOverallView ? "Your Teams" : "Your";
+    if (dueDateFilterLabel === "upcoming")
+      return `${scopeText} active upcoming tasks.`;
+    if (dueDateFilterLabel === "overdue")
+      return `${scopeText} active overdue tasks.`;
+    return `${scopeText} active tasks for the day.`;
+  })();
+
   return (
     <>
       <div className="py-2">
@@ -424,9 +436,11 @@ const MyTaskTable = () => {
         <div className="px-4 space-y-3 md:space-y-2 md:flex md:flex-col lg:flex-row lg:justify-between lg:items-end lg:space-y-0">
           {/* Title + Description (Desktop only) */}
           <div className="hidden md:block">
-            <h1 className="text-lg font-semibold">My Task</h1>
+            <h1 className="text-lg font-semibold">
+              {viewScope === "overall" ? "Overall Tasks" : "My Task"}
+            </h1>
             <p className="text-sm text-muted-foreground">
-              Your active tasks for the day.
+              {headerDescription}
             </p>
           </div>
 
