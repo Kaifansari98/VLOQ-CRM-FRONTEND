@@ -421,11 +421,11 @@ const MyTaskTable = () => {
     (table.getColumn("dueDate")?.getFilterValue() as string) || "today";
   const isOverallView = viewScope === "overall";
   const headerDescription = (() => {
-    const scopeText = isOverallView ? "Your Teams" : "Your";
+    const scopeText = isOverallView ? "Your teams" : "Your";
     if (dueDateFilterLabel === "upcoming")
-      return `${scopeText} active upcoming tasks.`;
+      return `${scopeText} upcoming tasks.`;
     if (dueDateFilterLabel === "overdue")
-      return `${scopeText} active overdue tasks.`;
+      return `${scopeText} overdue tasks.`;
     return `${scopeText} active tasks for the day.`;
   })();
 
