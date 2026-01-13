@@ -840,7 +840,8 @@ export default function LeadsGenerationForm({
               } else if (selectedTypeId) {
                 parentFilter = "Others";
               }
-              const allowDuplicatesForWardrobe = parentFilter === "Wardrobe";
+              const allowDuplicatesForWardrobe =
+                parentFilter === "Wardrobe" || parentFilter === "Others";
 
               // Transform API data to options
               const options: Option[] =
