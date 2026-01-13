@@ -54,6 +54,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import StructureQuantityCards from "@/components/sales-executive/Lead/structure-quantity-cards";
 
 // Schema for Create Lead - all fields required as per business logic
 const createFormSchema = (userType: string | undefined) => {
@@ -178,6 +179,7 @@ export default function LeadsGenerationForm({
 
   type FormValues = z.infer<ReturnType<typeof createFormSchema>>;
   const selectedProductTypes = form.watch("product_types");
+  const selectedProductStructures = form.watch("product_structures");
   const { data: productStructures, isLoading: isStructuresLoading } =
     useProductStructureTypes();
   const { data: productTypes, isLoading: isProductTypesLoading } =
@@ -226,6 +228,20 @@ export default function LeadsGenerationForm({
         })) ?? [],
     [parentFilter, productStructures?.data]
   );
+  const structureQuantityItems = useMemo(() => {
+    const counts = new Map<string, number>();
+    (selectedProductStructures || []).forEach((id) => {
+      counts.set(id, (counts.get(id) || 0) + 1);
+    });
+    return Array.from(counts.entries()).map(([id, count]) => {
+      const option = structureOptions.find((opt) => opt.value === id);
+      return {
+        id,
+        label: option?.label || id,
+        count,
+      };
+    });
+  }, [selectedProductStructures, structureOptions]);
 
   useEffect(() => {
     if (!hasSelectedFurnitureType) return;
@@ -833,6 +849,11 @@ export default function LeadsGenerationForm({
               />
             </FormItem>
           )}
+        />
+
+<StructureQuantityCards
+          items={structureQuantityItems}
+          className="mt-2"
         />
 
         {/* Product Types & Structures */}

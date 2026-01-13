@@ -42,6 +42,8 @@ const BaseModal: React.FC<BaseModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={`${sizeClasses[size]} max-h-[90vh] p-0 gap-0 overflow-hidden`}
+        onPointerDownOutside={(event) => event.preventDefault()}
+        onInteractOutside={(event) => event.preventDefault()}
       >
         {(title || description) && (
           <DialogHeader className="flex flex-row items-center gap-4 px-6 py-4 border-b bg-muted/30">
