@@ -19,6 +19,7 @@ import {
   checkContactOrEmailExists,
   ContactOrEmailCheckPayload,
   ContactOrEmailCheckResult,
+  getLeadProductStructureInstances,
   uploadMoreSitePhotos,
 } from "@/api/leads";
 import {
@@ -141,6 +142,17 @@ export function useLeadById(
     queryKey: ["lead", leadId, vendorId, userId],
     queryFn: () => getLeadById(leadId!, vendorId!, userId!), // non-null assertion because we check enabled below
     enabled: !!leadId && !!vendorId && !!userId, // run only if ids exist
+  });
+}
+
+export function useLeadProductStructureInstances(
+  leadId?: number,
+  vendorId?: number
+) {
+  return useQuery({
+    queryKey: ["lead-product-structure-instances", leadId, vendorId],
+    queryFn: () => getLeadProductStructureInstances(vendorId!, leadId!),
+    enabled: !!leadId && !!vendorId,
   });
 }
 

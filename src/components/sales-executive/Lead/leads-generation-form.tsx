@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -134,6 +134,10 @@ export default function LeadsGenerationForm({
   const [openDraftModal, setOpenDraftModal] = useState(false);
   const [showMaxStructureTooltip, setShowMaxStructureTooltip] = useState(false);
   const maxStructureTooltipTimerRef = useRef<number | null>(null);
+  const [structureInstanceDetails, setStructureInstanceDetails] = useState<
+    { title: string; desc: string }[]
+  >([]);
+  const previousStructuresRef = useRef<string[]>([]);
   const [duplicatePrompt, setDuplicatePrompt] = useState<{
     open: boolean;
     field?: "contact_no" | "alt_contact_no" | "email";
@@ -228,20 +232,78 @@ export default function LeadsGenerationForm({
         })) ?? [],
     [parentFilter, productStructures?.data]
   );
-  const structureQuantityItems = useMemo(() => {
-    const counts = new Map<string, number>();
-    (selectedProductStructures || []).forEach((id) => {
-      counts.set(id, (counts.get(id) || 0) + 1);
+  const buildStructureDetails = useCallback(
+    (
+      nextIds: string[],
+      prevIds: string[],
+      prevDetails: { title: string; desc: string }[]
+    ) => {
+      const buckets = new Map<string, { title: string; desc: string }[]>();
+      prevIds.forEach((id, index) => {
+        const detail = prevDetails[index];
+        if (!detail) return;
+        const list = buckets.get(id) || [];
+        list.push(detail);
+        buckets.set(id, list);
+      });
+
+      return nextIds.map((id) => {
+        const list = buckets.get(id);
+        if (list && list.length > 0) {
+          return list.shift() as { title: string; desc: string };
+        }
+        const option = structureOptions.find((opt) => opt.value === id);
+        return { title: option?.label || id, desc: "" };
+      });
+    },
+    [structureOptions]
+  );
+
+  useEffect(() => {
+    const nextIds = selectedProductStructures || [];
+    const prevIds = previousStructuresRef.current;
+
+    setStructureInstanceDetails((prevDetails) => {
+      const nextDetails = buildStructureDetails(
+        nextIds,
+        prevIds,
+        prevDetails
+      );
+      previousStructuresRef.current = nextIds;
+      return nextDetails;
     });
-    return Array.from(counts.entries()).map(([id, count]) => {
+  }, [buildStructureDetails, selectedProductStructures]);
+
+  const buildStructureInstancesPayload = useCallback(() => {
+    return (selectedProductStructures || []).map((id, index) => {
       const option = structureOptions.find((opt) => opt.value === id);
+      const detail = structureInstanceDetails[index];
+      const title = (detail?.title || option?.label || id).trim();
+      const description = detail?.desc?.trim() || "";
       return {
-        id,
-        label: option?.label || id,
-        count,
+        product_structure_id: Number(id),
+        title,
+        description: description || undefined,
       };
     });
-  }, [selectedProductStructures, structureOptions]);
+  }, [selectedProductStructures, structureInstanceDetails, structureOptions]);
+  const structureQuantityItems = useMemo(
+    () =>
+      (selectedProductStructures || []).map((id, index) => {
+        const option = structureOptions.find((opt) => opt.value === id);
+        const detail = structureInstanceDetails[index];
+        const defaultTitle = option?.label || id;
+        return {
+          id,
+          label: option?.label || id,
+          title: detail?.title || defaultTitle,
+          desc: detail?.desc || "",
+          key: `${id}-${index}`,
+          index,
+        };
+      }),
+    [selectedProductStructures, structureInstanceDetails, structureOptions]
+  );
 
   useEffect(() => {
     if (!hasSelectedFurnitureType) return;
@@ -457,6 +519,7 @@ export default function LeadsGenerationForm({
 
       product_types: values.product_types || [],
       product_structures: values.product_structures || [],
+      product_structure_instances: buildStructureInstancesPayload(),
       initial_site_measurement_date: values.initial_site_measurement_date
         ? new Date(values.initial_site_measurement_date).toISOString()
         : undefined,
@@ -547,6 +610,7 @@ export default function LeadsGenerationForm({
         : undefined,
       product_types: values.product_types || [],
       product_structures: values.product_structures || [],
+      product_structure_instances: buildStructureInstancesPayload(),
       initial_site_measurement_date: values.initial_site_measurement_date
         ? new Date(values.initial_site_measurement_date).toISOString()
         : undefined,
@@ -851,9 +915,23 @@ export default function LeadsGenerationForm({
           )}
         />
 
-<StructureQuantityCards
+        <StructureQuantityCards
           items={structureQuantityItems}
           className="mt-2"
+          onRemove={(removeIndex) => {
+            const current = form.getValues("product_structures") || [];
+            const next = current.filter((_, index) => index !== removeIndex);
+            form.setValue("product_structures", next, {
+              shouldValidate: true,
+            });
+          }}
+          onSave={(index, details) => {
+            setStructureInstanceDetails((prev) => {
+              const next = [...prev];
+              next[index] = details;
+              return next;
+            });
+          }}
         />
 
         {/* Product Types & Structures */}

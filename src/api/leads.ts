@@ -34,6 +34,11 @@ export interface CreateLeadPayload {
   created_by: number;
   product_types: string[];
   product_structures: string[];
+  product_structure_instances?: {
+    product_structure_id: number;
+    title: string;
+    description?: string;
+  }[];
 }
 
 export interface Lead {
@@ -71,6 +76,32 @@ export interface Lead {
   activity_status?: string;
   count?: number;
   site_map_link: string;
+}
+
+export interface LeadProductStructureInstance {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  account_id: number;
+  product_type_id: number;
+  product_structure_id: number;
+  quantity_index: number;
+  title: string;
+  status: string;
+  description?: string | null;
+  created_by: number;
+  created_at: string;
+  updated_by?: number | null;
+  updated_at: string;
+  productStructure?: {
+    id: number;
+    type: string;
+    parent?: string | null;
+  };
+  productType?: {
+    id: number;
+    type: string;
+  };
 }
 
 export interface ContactOrEmailCheckPayload {
@@ -150,9 +181,13 @@ export const createLead = async (
   Object.entries(payload).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
       if (Array.isArray(value)) {
-        value.forEach((item) => {
-          formData.append(key, item.toString());
-        });
+        if (value.length > 0 && typeof value[0] === "object") {
+          formData.append(key, JSON.stringify(value));
+        } else {
+          value.forEach((item) => {
+            formData.append(key, item.toString());
+          });
+        }
       } else {
         formData.append(key, value.toString());
       }
@@ -191,6 +226,16 @@ export const updateLead = async (
   const response = await apiClient.put(
     `/leads/update/${leadId}/userId/${userId}`,
     payload
+  );
+  return response.data;
+};
+
+export const getLeadProductStructureInstances = async (
+  vendorId: number,
+  leadId: number
+) => {
+  const response = await apiClient.get(
+    `/leads/lead/${leadId}/vendor/${vendorId}/product-structure-instances`
   );
   return response.data;
 };

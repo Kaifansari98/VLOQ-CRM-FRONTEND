@@ -7,13 +7,17 @@ import {
   Phone,
   User,
   Building,
-  Package,
   MapPin,
   MessageSquare,
   ImagePlus,
+  Package,
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
-import { useLeadById, useUploadMoreSitePhotos } from "@/hooks/useLeadsQueries";
+import {
+  useLeadById,
+  useLeadProductStructureInstances,
+  useUploadMoreSitePhotos,
+} from "@/hooks/useLeadsQueries";
 import { useAppSelector } from "@/redux/store";
 import { useDeleteDocument } from "@/api/leads";
 
@@ -27,7 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { ImageComponent } from "../utils/ImageCard";
 import { Button } from "@/components/ui/button";
@@ -68,11 +72,21 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   );
 
   const { data, isLoading } = useLeadById(leadId, vendorId, userId);
+  const { data: structureInstancesData, isLoading: isStructuresLoading } =
+    useLeadProductStructureInstances(leadId, vendorId);
   const lead = data?.data?.lead;
   console.log("Data", lead);
 
   const leadStage = lead?.statusType?.type;
   console.log("Lead Stage In Lead Details: ", leadStage);
+  const structureInstances = structureInstancesData?.data || [];
+  const structureSummary = useMemo(() => {
+    const total = structureInstances.length;
+    const uniqueStructures = new Set(
+      structureInstances.map((item: any) => item.product_structure_id)
+    ).size;
+    return { total, uniqueStructures };
+  }, [structureInstances]);
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const { mutate: deleteDocument, isPending: deleting } = useDeleteDocument();
@@ -287,16 +301,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
           {/* PRODUCT INFORMATION */}
           <SectionCard title="Product Information">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <InfoRow
-                icon={Package}
-                label="Product Structures"
-                value={lead.leadProductStructureMapping
-                  ?.map((ps: any) => ps.productStructure?.type)
-                  ?.filter(Boolean)
-                  ?.join(", ")}
-              />
-
+            <div className="space-y-4">
+              <div className="flex items-center w-full justify-between">
               <InfoRow
                 icon={Package}
                 label="Product Types"
@@ -305,6 +311,61 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   ?.filter(Boolean)
                   ?.join(", ")}
               />
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
+                  <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
+                  {structureSummary.total} instance
+                  {structureSummary.total === 1 ? "" : "s"}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
+                  <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
+                  {structureSummary.uniqueStructures} structure
+                  {structureSummary.uniqueStructures === 1 ? "" : "s"}
+                </span>
+              </div>
+              </div>
+
+              {isStructuresLoading ? (
+                <div className="flex items-center gap-2 rounded-lg border border-dashed bg-muted/20 p-4 text-sm text-muted-foreground">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                  Loading product information...
+                </div>
+              ) : structureInstances.length === 0 ? (
+                <div className="rounded-lg border border-dashed bg-muted/20 p-6 text-center">
+                  <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-muted/40">
+                    <Package className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    No product structure instances available
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {structureInstances.map((item: any) => (
+                    <div
+                      key={`${item.product_structure_id}-${item.quantity_index}`}
+                      className="group rounded-xl border bg-white/60 p-5 transition-all hover:border-border/80 dark:bg-[#0a0a0a]"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <p className="truncate text-base font-semibold leading-tight text-heading transition-colors group-hover:text-foreground dark:text-neutral-200">
+                            {item.title || item.productStructure?.type || "—"}
+                          </p>
+                          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
+                          {item.productStructure?.type || "—"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {item.description && (
+                        <div className="mt-4 rounded-lg border border-dashed border-border/60 bg-muted/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground transition-colors group-hover:bg-muted/40">
+                          {item.description}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </SectionCard>
 
@@ -362,7 +423,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   onboard.
                 </p>
               </div>
-{/* 
+              {/* 
               <Button
                 variant="outline"
                 size="sm"
