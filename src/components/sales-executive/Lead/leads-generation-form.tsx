@@ -1023,7 +1023,6 @@ export default function LeadsGenerationForm({
                             hidePlaceholderWhenSelected
                             showSelectedOptionsInDropdown
                             allowDuplicateSelections={allowDuplicatesForWardrobe}
-                            maxSelected={isKitchenSingleSelect ? 1 : undefined}
                             maxSelectedPerOption={10}
                             onMaxSelectedPerOption={() => {
                               setShowMaxStructureTooltip(true);
