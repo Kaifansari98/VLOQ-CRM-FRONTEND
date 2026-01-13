@@ -207,6 +207,7 @@ export default function LeadsGenerationForm({
   }
   const allowDuplicatesForWardrobe =
     parentFilter === "Wardrobe" || parentFilter === "Others";
+  const isKitchenSingleSelect = parentFilter === "Kitchen";
 
   useEffect(() => {
     return () => {
@@ -1006,7 +1007,10 @@ export default function LeadsGenerationForm({
                           <MultipleSelector
                             value={selectedOptions} // Pass Option[] with proper labels
                             onChange={(selectedOptions) => {
-                              const selectedIds = selectedOptions.map(
+                              const nextOptions = isKitchenSingleSelect
+                                ? selectedOptions.slice(-1)
+                                : selectedOptions;
+                              const selectedIds = nextOptions.map(
                                 (opt) => opt.value
                               );
                               field.onChange(selectedIds);
@@ -1019,6 +1023,7 @@ export default function LeadsGenerationForm({
                             hidePlaceholderWhenSelected
                             showSelectedOptionsInDropdown
                             allowDuplicateSelections={allowDuplicatesForWardrobe}
+                            maxSelected={isKitchenSingleSelect ? 1 : undefined}
                             maxSelectedPerOption={10}
                             onMaxSelectedPerOption={() => {
                               setShowMaxStructureTooltip(true);

@@ -303,26 +303,32 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           <SectionCard title="Product Information">
             <div className="space-y-4">
               <div className="flex items-center w-full justify-between">
-              <InfoRow
-                icon={Package}
-                label="Product Types"
-                value={lead.productMappings
-                  ?.map((pm: any) => pm.productType?.type)
-                  ?.filter(Boolean)
-                  ?.join(", ")}
-              />
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
-                  <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
-                  {structureSummary.total} instance
-                  {structureSummary.total === 1 ? "" : "s"}
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
-                  <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
-                  {structureSummary.uniqueStructures} structure
-                  {structureSummary.uniqueStructures === 1 ? "" : "s"}
-                </span>
-              </div>
+                <InfoRow
+                  icon={Package}
+                  label="Product Types"
+                  value={lead.productMappings
+                    ?.map((pm: any) => pm.productType?.type)
+                    ?.filter(Boolean)
+                    ?.join(", ")}
+                />
+                {(structureSummary.total > 0 || structureSummary.uniqueStructures > 0) && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {structureSummary.total > 0 && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
+                        <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
+                        {structureSummary.total} instance
+                        {structureSummary.total === 1 ? "" : "s"}
+                      </span>
+                    )}
+                    {structureSummary.uniqueStructures > 0 && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
+                        <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
+                        {structureSummary.uniqueStructures} structure
+                        {structureSummary.uniqueStructures === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               {isStructuresLoading ? (
@@ -331,14 +337,14 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   Loading product information...
                 </div>
               ) : structureInstances.length === 0 ? (
-                <div className="rounded-lg border border-dashed bg-muted/20 p-6 text-center">
-                  <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-muted/40">
-                    <Package className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    No product structure instances available
-                  </p>
-                </div>
+                <InfoRow
+                  icon={Package}
+                  label="Product Structures"
+                  value={lead.leadProductStructureMapping
+                    ?.map((ps: any) => ps.productStructure?.type)
+                    ?.filter(Boolean)
+                    ?.join(", ")}
+                />
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {structureInstances.map((item: any) => (
@@ -352,7 +358,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                             {item.title || item.productStructure?.type || "—"}
                           </p>
                           <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
-                          {item.productStructure?.type || "—"}
+                            {item.productStructure?.type || "—"}
                           </p>
                         </div>
                       </div>
