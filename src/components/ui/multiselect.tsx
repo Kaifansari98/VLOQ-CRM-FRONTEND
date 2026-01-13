@@ -82,6 +82,10 @@ interface MultipleSelectorProps {
   >;
   /** hide the clear all button. */
   hideClearAllButton?: boolean;
+  /** Keep selected options visible in dropdown list. */
+  showSelectedOptionsInDropdown?: boolean;
+  /** Allow selecting the same option multiple times. */
+  allowDuplicateSelections?: boolean;
 }
 
 export interface MultipleSelectorRef {
@@ -192,6 +196,8 @@ const MultipleSelector = ({
   commandProps,
   inputProps,
   hideClearAllButton = false,
+  showSelectedOptionsInDropdown = false,
+  allowDuplicateSelections = false,
 }: MultipleSelectorProps) => {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [open, setOpen] = React.useState(false);
@@ -218,9 +224,9 @@ const MultipleSelector = ({
     }
   };
 
-  const handleUnselect = React.useCallback(
-    (option: Option) => {
-      const newOptions = selected.filter((s) => s.value !== option.value);
+  const handleUnselectAtIndex = React.useCallback(
+    (index: number) => {
+      const newOptions = selected.filter((_, i) => i !== index);
       setSelected(newOptions);
       onChange?.(newOptions);
     },
@@ -236,7 +242,7 @@ const MultipleSelector = ({
             const lastSelectOption = selected[selected.length - 1];
             // If last item is fixed, we should not remove it.
             if (!lastSelectOption.fixed) {
-              handleUnselect(selected[selected.length - 1]);
+              handleUnselectAtIndex(selected.length - 1);
             }
           }
         }
@@ -246,7 +252,7 @@ const MultipleSelector = ({
         }
       }
     },
-    [handleUnselect, selected]
+    [handleUnselectAtIndex, selected]
   );
 
   useEffect(() => {
@@ -391,10 +397,12 @@ const MultipleSelector = ({
     return <CommandEmpty>{emptyIndicator}</CommandEmpty>;
   }, [creatable, emptyIndicator, onSearch, options]);
 
-  const selectables = React.useMemo<GroupOption>(
-    () => removePickedOption(options, selected),
-    [options, selected]
-  );
+  const selectables = React.useMemo<GroupOption>(() => {
+    if (showSelectedOptionsInDropdown || allowDuplicateSelections) {
+      return options;
+    }
+    return removePickedOption(options, selected);
+  }, [allowDuplicateSelections, options, selected, showSelectedOptionsInDropdown]);
 
   /** Avoid Creatable Selector freezing or lagging when paste a long string. */
   const commandFilter = React.useCallback(() => {
@@ -446,10 +454,10 @@ const MultipleSelector = ({
         }}
       >
         <div className="flex flex-wrap gap-1">
-          {selected.map((option) => {
+          {selected.map((option, index) => {
             return (
               <div
-                key={option.value}
+                key={`${option.value}-${index}`}
                 className={cn(
                   "animate-fadeIn bg-background text-secondary-foreground hover:bg-background relative inline-flex h-7 cursor-default items-center rounded-md border ps-2 pe-7 pl-2 text-xs font-medium transition-all disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 data-fixed:pe-2",
                   badgeClassName
@@ -462,14 +470,14 @@ const MultipleSelector = ({
                   className="text-muted-foreground/80 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 absolute -inset-y-px -end-px flex size-7 items-center justify-center rounded-e-md border border-transparent p-0 outline-hidden transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
-                      handleUnselect(option);
+                      handleUnselectAtIndex(index);
                     }
                   }}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                   }}
-                  onClick={() => handleUnselect(option)}
+                  onClick={() => handleUnselectAtIndex(index)}
                   aria-label="Remove"
                 >
                   <XIcon size={14} aria-hidden="true" />
@@ -574,17 +582,35 @@ const MultipleSelector = ({
                     >
                       <>
                         {dropdowns.map((option) => {
+                          const isSelected = selected.some(
+                            (item) => item.value === option.value
+                          );
                           return (
                             <CommandItem
                               key={option.value}
                               // yaha id + label dono rakhenge
                               value={`${option.value} ${option.label}`}
-                              disabled={option.disable}
+                              disabled={
+                                option.disable
+                              }
                               onMouseDown={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                               }}
                               onSelect={() => {
+                                if (
+                                  showSelectedOptionsInDropdown &&
+                                  isSelected &&
+                                  !allowDuplicateSelections
+                                ) {
+                                  const selectedIndex = selected.findIndex(
+                                    (item) => item.value === option.value
+                                  );
+                                  if (selectedIndex > -1) {
+                                    handleUnselectAtIndex(selectedIndex);
+                                  }
+                                  return;
+                                }
                                 if (selected.length >= maxSelected) {
                                   onMaxSelected?.(selected.length);
                                   return;
@@ -596,6 +622,10 @@ const MultipleSelector = ({
                               }}
                               className={cn(
                                 "cursor-pointer",
+                                showSelectedOptionsInDropdown &&
+                                  isSelected &&
+                                  !allowDuplicateSelections &&
+                                  "bg-accent text-accent-foreground",
                                 option.disable &&
                                   "pointer-events-none cursor-not-allowed opacity-50"
                               )}

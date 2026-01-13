@@ -867,7 +867,6 @@ export default function LeadsGenerationForm({
                     <MultipleSelector
                       value={selectedOptions} // Pass Option[] with proper labels
                       onChange={(selectedOptions) => {
-                        // Extract IDs from selected options and store as string[]
                         const selectedIds = selectedOptions.map(
                           (opt) => opt.value
                         );
@@ -877,6 +876,8 @@ export default function LeadsGenerationForm({
                       placeholder="Select furniture structures"
                       disabled={isLoading}
                       hidePlaceholderWhenSelected
+                      showSelectedOptionsInDropdown
+                      allowDuplicateSelections
                     />
                   </FormControl>
                   <FormMessage />
