@@ -49,6 +49,11 @@ import {
 import AssignToPicker from "@/components/assign-to-picker";
 import { useRouter } from "next/navigation";
 import { useCheckContactOrEmailExists } from "@/hooks/useLeadsQueries";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Schema for Create Lead - all fields required as per business logic
 const createFormSchema = (userType: string | undefined) => {
@@ -825,6 +830,7 @@ export default function LeadsGenerationForm({
                   (type: any) => String(type.id) === selectedTypeId
                 )?.type || "";
               const normalizedType = selectedTypeLabel.toLowerCase();
+              const hasSelectedFurnitureType = Boolean(selectedTypeId);
 
               let parentFilter: "Kitchen" | "Wardrobe" | "Others" | null = null;
               if (normalizedType.includes("kitchen")) {
@@ -834,6 +840,7 @@ export default function LeadsGenerationForm({
               } else if (selectedTypeId) {
                 parentFilter = "Others";
               }
+              const allowDuplicatesForWardrobe = parentFilter === "Wardrobe";
 
               // Transform API data to options
               const options: Option[] =
@@ -864,21 +871,32 @@ export default function LeadsGenerationForm({
                     Furniture Structure *
                   </FormLabel>
                   <FormControl>
-                    <MultipleSelector
-                      value={selectedOptions} // Pass Option[] with proper labels
-                      onChange={(selectedOptions) => {
-                        const selectedIds = selectedOptions.map(
-                          (opt) => opt.value
-                        );
-                        field.onChange(selectedIds);
-                      }}
-                      options={options}
-                      placeholder="Select furniture structures"
-                      disabled={isLoading}
-                      hidePlaceholderWhenSelected
-                      showSelectedOptionsInDropdown
-                      allowDuplicateSelections
-                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="w-full">
+                          <MultipleSelector
+                            value={selectedOptions} // Pass Option[] with proper labels
+                            onChange={(selectedOptions) => {
+                              const selectedIds = selectedOptions.map(
+                                (opt) => opt.value
+                              );
+                              field.onChange(selectedIds);
+                            }}
+                            options={options}
+                            placeholder="Select furniture structures"
+                            disabled={isLoading || !hasSelectedFurnitureType}
+                            hidePlaceholderWhenSelected
+                            showSelectedOptionsInDropdown
+                            allowDuplicateSelections={allowDuplicatesForWardrobe}
+                          />
+                        </div>
+                      </TooltipTrigger>
+                      {!hasSelectedFurnitureType && (
+                        <TooltipContent side="top" sideOffset={6}>
+                          Select a furniture type first.
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -454,10 +454,36 @@ const MultipleSelector = ({
         }}
       >
         <div className="flex flex-wrap gap-1">
-          {selected.map((option, index) => {
+          {(allowDuplicateSelections
+            ? (() => {
+                const grouped = new Map<
+                  string,
+                  { option: Option; count: number; lastIndex: number }
+                >();
+                selected.forEach((option, index) => {
+                  const existing = grouped.get(option.value);
+                  if (existing) {
+                    existing.count += 1;
+                    existing.lastIndex = index;
+                  } else {
+                    grouped.set(option.value, {
+                      option,
+                      count: 1,
+                      lastIndex: index,
+                    });
+                  }
+                });
+                return Array.from(grouped.values());
+              })()
+            : selected.map((option, index) => ({
+                option,
+                count: 1,
+                lastIndex: index,
+              }))
+          ).map(({ option, count, lastIndex }) => {
             return (
               <div
-                key={`${option.value}-${index}`}
+                key={`${option.value}-${lastIndex}`}
                 className={cn(
                   "animate-fadeIn bg-background text-secondary-foreground hover:bg-background relative inline-flex h-7 cursor-default items-center rounded-md border ps-2 pe-7 pl-2 text-xs font-medium transition-all disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 data-fixed:pe-2",
                   badgeClassName
@@ -466,18 +492,21 @@ const MultipleSelector = ({
                 data-disabled={disabled || undefined}
               >
                 {option.label}
+                {count > 1 && (
+                  <span className="ml-1 text-muted-foreground">+{count}</span>
+                )}
                 <button
                   className="text-muted-foreground/80 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 absolute -inset-y-px -end-px flex size-7 items-center justify-center rounded-e-md border border-transparent p-0 outline-hidden transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
-                      handleUnselectAtIndex(index);
+                      handleUnselectAtIndex(lastIndex);
                     }
                   }}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                   }}
-                  onClick={() => handleUnselectAtIndex(index)}
+                  onClick={() => handleUnselectAtIndex(lastIndex)}
                   aria-label="Remove"
                 >
                   <XIcon size={14} aria-hidden="true" />
