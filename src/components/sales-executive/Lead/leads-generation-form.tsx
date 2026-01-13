@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -176,12 +176,85 @@ export default function LeadsGenerationForm({
 
   type FormValues = z.infer<ReturnType<typeof createFormSchema>>;
   const selectedProductTypes = form.watch("product_types");
+  const { data: productStructures, isLoading: isStructuresLoading } =
+    useProductStructureTypes();
+  const { data: productTypes, isLoading: isProductTypesLoading } =
+    useProductTypes();
+
+  const selectedTypeId = selectedProductTypes?.[0];
+  const selectedTypeLabel =
+    productTypes?.data?.find(
+      (type: any) => String(type.id) === selectedTypeId
+    )?.type || "";
+  const normalizedType = selectedTypeLabel.toLowerCase();
+  const hasSelectedFurnitureType = Boolean(selectedTypeId);
+
+  let parentFilter: "Kitchen" | "Wardrobe" | "Others" | null = null;
+  if (normalizedType.includes("kitchen")) {
+    parentFilter = "Kitchen";
+  } else if (normalizedType.includes("wardrobe")) {
+    parentFilter = "Wardrobe";
+  } else if (selectedTypeId) {
+    parentFilter = "Others";
+  }
+  const allowDuplicatesForWardrobe =
+    parentFilter === "Wardrobe" || parentFilter === "Others";
+
+  const structureOptions: Option[] = useMemo(
+    () =>
+      productStructures?.data
+        ?.filter((p: any) => {
+          if (!parentFilter) return true;
+          const parent = String(p.parent || "").toLowerCase();
+          if (parentFilter === "Kitchen") return parent === "kitchen";
+          if (parentFilter === "Wardrobe") return parent === "wardrobe";
+          return parent !== "kitchen" && parent !== "wardrobe";
+        })
+        ?.map((p: any) => ({
+          value: String(p.id),
+          label: p.type,
+        })) ?? [],
+    [parentFilter, productStructures?.data]
+  );
+
+  useEffect(() => {
+    if (!hasSelectedFurnitureType) return;
+    if (structureOptions.length !== 1) return;
+
+    const onlyId = structureOptions[0].value;
+    const current = form.getValues("product_structures") || [];
+    const onlySelections = current.filter((id) => id === onlyId);
+
+    if (allowDuplicatesForWardrobe) {
+      if (onlySelections.length === 0) {
+        form.setValue("product_structures", [onlyId], {
+          shouldValidate: true,
+        });
+      } else if (current.length !== onlySelections.length) {
+        form.setValue("product_structures", onlySelections, {
+          shouldValidate: true,
+        });
+      }
+      return;
+    }
+
+    if (onlySelections.length !== 1 || current.length !== 1) {
+      form.setValue("product_structures", [onlyId], {
+        shouldValidate: true,
+      });
+    }
+  }, [
+    allowDuplicatesForWardrobe,
+    form,
+    hasSelectedFurnitureType,
+    structureOptions,
+  ]);
 
   const queryClient = useQueryClient();
   const checkContactMutation = useCheckContactOrEmailExists();
 
   // fetch data once at top of component (after form etc.)
-  const { data: vendorUsers, isLoading } =
+  const { data: vendorUsers, isLoading: isVendorUsersLoading } =
     useVendorSalesExecutiveUsers(vendorId);
   const router = useRouter();
 
@@ -758,60 +831,33 @@ export default function LeadsGenerationForm({
             control={form.control}
             name="product_types"
             render={({ field }) => {
-              const { data: productTypes, isLoading } = useProductTypes();
-
-              // Transform API data to options
-              const options: Option[] =
+              const pickerData =
                 productTypes?.data?.map((p: any) => ({
-                  value: String(p.id),
+                  id: p.id,
                   label: p.type,
-                })) ?? [];
+                })) || [];
 
               return (
-                <FormField
-                  control={form.control}
-                  name="product_types"
-                  render={({ field }) => {
-                    const { data: productTypes, isLoading } = useProductTypes();
+                <FormItem>
+                  <FormLabel className="text-sm">Furniture Type *</FormLabel>
 
-                    const pickerData =
-                      productTypes?.data?.map((p: any) => ({
-                        id: p.id,
-                        label: p.type,
-                      })) || [];
+                  {isProductTypesLoading ? (
+                    <p className="text-xs text-muted-foreground">Loading...</p>
+                  ) : (
+                    <AssignToPicker
+                      data={pickerData}
+                      value={
+                        field.value?.length ? Number(field.value[0]) : undefined
+                      } // ✅ array → single
+                      onChange={(selectedId) => {
+                        field.onChange(selectedId ? [String(selectedId)] : []); // ✅ single → array
+                      }}
+                      placeholder="Search furniture type..."
+                    />
+                  )}
 
-                    return (
-                      <FormItem>
-                        <FormLabel className="text-sm">
-                          Furniture Type *
-                        </FormLabel>
-
-                        {isLoading ? (
-                          <p className="text-xs text-muted-foreground">
-                            Loading...
-                          </p>
-                        ) : (
-                          <AssignToPicker
-                            data={pickerData}
-                            value={
-                              field.value?.length
-                                ? Number(field.value[0])
-                                : undefined
-                            } // ✅ array → single
-                            onChange={(selectedId) => {
-                              field.onChange(
-                                selectedId ? [String(selectedId)] : []
-                              ); // ✅ single → array
-                            }}
-                            placeholder="Search furniture type..."
-                          />
-                        )}
-
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
-                />
+                  <FormMessage />
+                </FormItem>
               );
             }}
           />
@@ -820,49 +866,15 @@ export default function LeadsGenerationForm({
             control={form.control}
             name="product_structures"
             render={({ field }) => {
-              const { data: productStructures, isLoading } =
-                useProductStructureTypes();
-              const { data: productTypes } = useProductTypes();
-
-              const selectedTypeId = selectedProductTypes?.[0];
-              const selectedTypeLabel =
-                productTypes?.data?.find(
-                  (type: any) => String(type.id) === selectedTypeId
-                )?.type || "";
-              const normalizedType = selectedTypeLabel.toLowerCase();
-              const hasSelectedFurnitureType = Boolean(selectedTypeId);
-
-              let parentFilter: "Kitchen" | "Wardrobe" | "Others" | null = null;
-              if (normalizedType.includes("kitchen")) {
-                parentFilter = "Kitchen";
-              } else if (normalizedType.includes("wardrobe")) {
-                parentFilter = "Wardrobe";
-              } else if (selectedTypeId) {
-                parentFilter = "Others";
-              }
-              const allowDuplicatesForWardrobe =
-                parentFilter === "Wardrobe" || parentFilter === "Others";
-
-              // Transform API data to options
-              const options: Option[] =
-                productStructures?.data
-                  ?.filter((p: any) => {
-                    if (!parentFilter) return true;
-                    const parent = String(p.parent || "").toLowerCase();
-                    if (parentFilter === "Kitchen") return parent === "kitchen";
-                    if (parentFilter === "Wardrobe") return parent === "wardrobe";
-                    return parent !== "kitchen" && parent !== "wardrobe";
-                  })
-                  ?.map((p: any) => ({
-                    value: String(p.id),
-                    label: p.type,
-                  })) ?? [];
-
               // Transform selected IDs back to Option[] format for display
               const selectedOptions = (field.value || [])
-                .filter((id) => options.some((opt) => opt.value === id))
+                .filter((id) =>
+                  structureOptions.some((opt) => opt.value === id)
+                )
                 .map((id) => {
-                  const option = options.find((opt) => opt.value === id);
+                  const option = structureOptions.find(
+                    (opt) => opt.value === id
+                  );
                   return option || { value: id, label: id };
                 });
 
@@ -883,9 +895,11 @@ export default function LeadsGenerationForm({
                               );
                               field.onChange(selectedIds);
                             }}
-                            options={options}
+                            options={structureOptions}
                             placeholder="Select furniture structures"
-                            disabled={isLoading || !hasSelectedFurnitureType}
+                            disabled={
+                              isStructuresLoading || !hasSelectedFurnitureType
+                            }
                             hidePlaceholderWhenSelected
                             showSelectedOptionsInDropdown
                             allowDuplicateSelections={allowDuplicatesForWardrobe}
@@ -930,7 +944,7 @@ export default function LeadsGenerationForm({
                         field.onChange(selectedId ? String(selectedId) : ""); // ✅ number → string
                       }}
                       placeholder="Search assignee..."
-                      disabled={isLoading}
+                      disabled={isVendorUsersLoading}
                     />
 
                     <FormMessage />
