@@ -57,6 +57,10 @@ interface MultipleSelectorProps {
   maxSelected?: number;
   /** When the number of selected options exceeds the limit, the onMaxSelected will be called. */
   onMaxSelected?: (maxLimit: number) => void;
+  /** Limit the maximum number of times a single option can be selected. */
+  maxSelectedPerOption?: number;
+  /** Called when a single option exceeds its selection limit. */
+  onMaxSelectedPerOption?: (option: Option, maxLimit: number) => void;
   /** Hide the placeholder when there are options selected. */
   hidePlaceholderWhenSelected?: boolean;
   disabled?: boolean;
@@ -185,6 +189,8 @@ const MultipleSelector = ({
   emptyIndicator,
   maxSelected = Number.MAX_SAFE_INTEGER,
   onMaxSelected,
+  maxSelectedPerOption,
+  onMaxSelectedPerOption,
   hidePlaceholderWhenSelected,
   disabled,
   groupBy,
@@ -231,6 +237,11 @@ const MultipleSelector = ({
       onChange?.(newOptions);
     },
     [onChange, selected]
+  );
+
+  const getOptionCount = React.useCallback(
+    (value: string) => selected.filter((s) => s.value === value).length,
+    [selected]
   );
 
   const handleKeyDown = React.useCallback(
@@ -357,6 +368,17 @@ const MultipleSelector = ({
         onSelect={(value: string) => {
           if (selected.length >= maxSelected) {
             onMaxSelected?.(selected.length);
+            return;
+          }
+          if (
+            allowDuplicateSelections &&
+            maxSelectedPerOption !== undefined &&
+            getOptionCount(value) >= maxSelectedPerOption
+          ) {
+            onMaxSelectedPerOption?.(
+              { value, label: value },
+              maxSelectedPerOption
+            );
             return;
           }
           setInputValue("");
@@ -642,6 +664,18 @@ const MultipleSelector = ({
                                 }
                                 if (selected.length >= maxSelected) {
                                   onMaxSelected?.(selected.length);
+                                  return;
+                                }
+                                if (
+                                  allowDuplicateSelections &&
+                                  maxSelectedPerOption !== undefined &&
+                                  getOptionCount(option.value) >=
+                                    maxSelectedPerOption
+                                ) {
+                                  onMaxSelectedPerOption?.(
+                                    option,
+                                    maxSelectedPerOption
+                                  );
                                   return;
                                 }
                                 setInputValue("");

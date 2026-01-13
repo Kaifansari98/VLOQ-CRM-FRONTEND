@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -131,6 +131,8 @@ export default function LeadsGenerationForm({
   const createdBy = useAppSelector((state: any) => state.auth.user?.id);
   const [mapOpen, setMapOpen] = useState(false);
   const [openDraftModal, setOpenDraftModal] = useState(false);
+  const [showMaxStructureTooltip, setShowMaxStructureTooltip] = useState(false);
+  const maxStructureTooltipTimerRef = useRef<number | null>(null);
   const [duplicatePrompt, setDuplicatePrompt] = useState<{
     open: boolean;
     field?: "contact_no" | "alt_contact_no" | "email";
@@ -199,6 +201,14 @@ export default function LeadsGenerationForm({
   }
   const allowDuplicatesForWardrobe =
     parentFilter === "Wardrobe" || parentFilter === "Others";
+
+  useEffect(() => {
+    return () => {
+      if (maxStructureTooltipTimerRef.current) {
+        window.clearTimeout(maxStructureTooltipTimerRef.current);
+      }
+    };
+  }, []);
 
   const structureOptions: Option[] = useMemo(
     () =>
@@ -877,6 +887,13 @@ export default function LeadsGenerationForm({
                   );
                   return option || { value: id, label: id };
                 });
+              const shouldShowMaxTooltip =
+                showMaxStructureTooltip && hasSelectedFurnitureType;
+              const tooltipMessage = !hasSelectedFurnitureType
+                ? "Select a furniture type first."
+                : shouldShowMaxTooltip
+                ? "Maximum limit is 10 per item."
+                : "";
 
               return (
                 <FormItem>
@@ -884,7 +901,7 @@ export default function LeadsGenerationForm({
                     Furniture Structure *
                   </FormLabel>
                   <FormControl>
-                    <Tooltip>
+                    <Tooltip {...(shouldShowMaxTooltip ? { open: true } : {})}>
                       <TooltipTrigger asChild>
                         <div className="w-full">
                           <MultipleSelector
@@ -903,12 +920,25 @@ export default function LeadsGenerationForm({
                             hidePlaceholderWhenSelected
                             showSelectedOptionsInDropdown
                             allowDuplicateSelections={allowDuplicatesForWardrobe}
+                            maxSelectedPerOption={10}
+                            onMaxSelectedPerOption={() => {
+                              setShowMaxStructureTooltip(true);
+                              if (maxStructureTooltipTimerRef.current) {
+                                window.clearTimeout(
+                                  maxStructureTooltipTimerRef.current
+                                );
+                              }
+                              maxStructureTooltipTimerRef.current =
+                                window.setTimeout(() => {
+                                  setShowMaxStructureTooltip(false);
+                                }, 1500);
+                            }}
                           />
                         </div>
                       </TooltipTrigger>
-                      {!hasSelectedFurnitureType && (
+                      {tooltipMessage && (
                         <TooltipContent side="top" sideOffset={6}>
-                          Select a furniture type first.
+                          {tooltipMessage}
                         </TooltipContent>
                       )}
                     </Tooltip>
