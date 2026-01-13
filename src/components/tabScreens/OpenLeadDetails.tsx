@@ -508,7 +508,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             onOpenChange={setUploadOpen}
             title="Add More Site Photos"
             description="Upload up to 10 current site photos."
-            size="lg"
+            size="md"
           >
             <div className="p-5 space-y-4">
               <FileUploadField
