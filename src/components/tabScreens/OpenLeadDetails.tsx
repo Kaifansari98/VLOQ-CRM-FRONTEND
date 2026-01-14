@@ -91,6 +91,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
   const leadStage = lead?.statusType?.type;
   console.log("Lead Stage In Lead Details: ", leadStage);
+  const isOpenStage = leadStage?.toLowerCase() === "open";
   const structureInstances = structureInstancesData?.data || [];
   const structureSummary = useMemo(() => {
     const total = structureInstances.length;
@@ -488,7 +489,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           <SectionCard
             title="Product Information"
             action={
-              !isKitchenType && (
+              !isKitchenType && isOpenStage && (
                 <Button
                   type="button"
                   size="sm"
@@ -559,30 +560,34 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                               {item.title || item.productStructure?.type || "—"}
                             </p>
                             <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                className="text-muted-foreground/70 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
-                                onClick={() => handleEditOpen(item)}
-                                aria-label="Edit"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                className="text-muted-foreground/70 hover:text-destructive focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
-                                onClick={() =>
-                                  setConfirmStructureDelete({
-                                    id: item.id,
-                                    title:
-                                      item.title ||
-                                      item.productStructure?.type ||
-                                      "this item",
-                                  })
-                                }
-                                aria-label="Delete"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                              {isOpenStage && (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="text-muted-foreground/70 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
+                                    onClick={() => handleEditOpen(item)}
+                                    aria-label="Edit"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="text-muted-foreground/70 hover:text-destructive focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
+                                    onClick={() =>
+                                      setConfirmStructureDelete({
+                                        id: item.id,
+                                        title:
+                                          item.title ||
+                                          item.productStructure?.type ||
+                                          "this item",
+                                      })
+                                    }
+                                    aria-label="Delete"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </div>
                           <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
