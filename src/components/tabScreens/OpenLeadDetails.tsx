@@ -11,6 +11,9 @@ import {
   MessageSquare,
   ImagePlus,
   Package,
+  Pencil,
+  Trash2,
+  Plus,
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
 import {
@@ -19,7 +22,12 @@ import {
   useUploadMoreSitePhotos,
 } from "@/hooks/useLeadsQueries";
 import { useAppSelector } from "@/redux/store";
-import { useDeleteDocument } from "@/api/leads";
+import {
+  createLeadProductStructureInstance,
+  deleteLeadProductStructureInstance,
+  updateLeadProductStructureInstance,
+  useDeleteDocument,
+} from "@/api/leads";
 
 import {
   AlertDialog,
@@ -37,8 +45,12 @@ import { ImageComponent } from "../utils/ImageCard";
 import { Button } from "@/components/ui/button";
 import BaseModal from "@/components/utils/baseModal";
 import { FileUploadField } from "@/components/custom/file-upload";
-import { useQueryClient } from "@tanstack/react-query";
+import { Input } from "@/components/ui/input";
+import TextAreaInput from "@/components/origin-text-area";
+import AssignToPicker from "@/components/assign-to-picker";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
+import { useProductStructureTypes, useProductTypes } from "@/hooks/useTypesMaster";
 
 type OpenLeadDetailsProps = {
   leadId: number;
@@ -71,7 +83,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     (state) => state.auth.user?.user_type.user_type
   );
 
-  const { data, isLoading } = useLeadById(leadId, vendorId, userId);
+  const { data } = useLeadById(leadId, vendorId, userId);
   const { data: structureInstancesData, isLoading: isStructuresLoading } =
     useLeadProductStructureInstances(leadId, vendorId);
   const lead = data?.data?.lead;
@@ -89,14 +101,125 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   }, [structureInstances]);
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
+  const [confirmStructureDelete, setConfirmStructureDelete] = useState<{
+    id: number;
+    title: string;
+  } | null>(null);
+  const [editStructure, setEditStructure] = useState<{
+    id: number;
+    title: string;
+    description: string;
+    product_structure_id: number;
+    product_type_id: number;
+  } | null>(null);
+  const [addStructure, setAddStructure] = useState<{
+    title: string;
+    description: string;
+    product_structure_id: number;
+    product_type_id: number;
+  } | null>(null);
+  const [editTitleError, setEditTitleError] = useState("");
+  const [editStructureError, setEditStructureError] = useState("");
+  const queryClient = useQueryClient();
   const { mutate: deleteDocument, isPending: deleting } = useDeleteDocument();
+  const { mutate: deleteStructureInstance, isPending: deletingStructure } =
+    useMutation({
+      mutationFn: ({
+        vendorId,
+        leadId,
+        instanceId,
+      }: {
+        vendorId: number;
+        leadId: number;
+        instanceId: number;
+      }) =>
+        deleteLeadProductStructureInstance(vendorId, leadId, instanceId),
+      onSuccess: () => {
+        toast.success("Product structure instance deleted.");
+        queryClient.invalidateQueries({
+          queryKey: ["lead-product-structure-instances", leadId, vendorId],
+        });
+        setConfirmStructureDelete(null);
+      },
+      onError: (error: any) => {
+        toast.error(
+          error?.response?.data?.message || "Failed to delete instance."
+        );
+      },
+    });
+  const { data: productStructureTypes } = useProductStructureTypes();
+  const { data: productTypes } = useProductTypes();
+  const { mutate: createStructureInstance, isPending: creatingStructure } =
+    useMutation({
+      mutationFn: ({
+        vendorId,
+        leadId,
+        payload,
+      }: {
+        vendorId: number;
+        leadId: number;
+        payload: {
+          product_structure_id: number;
+          title: string;
+          description?: string;
+          created_by: number;
+        };
+      }) =>
+        createLeadProductStructureInstance(vendorId, leadId, payload),
+      onSuccess: () => {
+        toast.success("Product structure instance added.");
+        queryClient.invalidateQueries({
+          queryKey: ["lead-product-structure-instances", leadId, vendorId],
+        });
+        setAddStructure(null);
+      },
+      onError: (error: any) => {
+        toast.error(
+          error?.response?.data?.message || "Failed to add instance."
+        );
+      },
+    });
+  const { mutate: updateStructureInstance, isPending: updatingStructure } =
+    useMutation({
+      mutationFn: ({
+        vendorId,
+        leadId,
+        instanceId,
+        payload,
+      }: {
+        vendorId: number;
+        leadId: number;
+        instanceId: number;
+        payload: {
+          product_structure_id: number;
+          title: string;
+          description?: string;
+          updated_by?: number;
+        };
+      }) =>
+        updateLeadProductStructureInstance(
+          vendorId,
+          leadId,
+          instanceId,
+          payload
+        ),
+      onSuccess: () => {
+        toast.success("Product instance updated.");
+        queryClient.invalidateQueries({
+          queryKey: ["lead-product-structure-instances", leadId, vendorId],
+        });
+        setEditStructure(null);
+      },
+      onError: (error: any) => {
+        toast.error(
+          error?.response?.data?.message || "Failed to update instance."
+        );
+      },
+    });
   const { mutateAsync: uploadMoreSitePhotos, isPending: uploading } =
     useUploadMoreSitePhotos();
-  const queryClient = useQueryClient();
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
-
-  const { data: leadStatusData } = useLeadStatus(leadId, vendorId);
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {
@@ -108,6 +231,131 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       setConfirmDelete(null);
     }
   };
+
+  const handleConfirmStructureDelete = () => {
+    if (!confirmStructureDelete || !vendorId) return;
+    deleteStructureInstance({
+      vendorId,
+      leadId,
+      instanceId: confirmStructureDelete.id,
+    });
+  };
+
+  const handleEditOpen = (item: any) => {
+    setEditTitleError("");
+    setEditStructureError("");
+    setEditStructure({
+      id: item.id,
+      title: item.title || item.productStructure?.type || "",
+      description: item.description || "",
+      product_structure_id: item.product_structure_id,
+      product_type_id: item.product_type_id,
+    });
+  };
+
+  const handleEditSave = () => {
+    if (!editStructure || !vendorId) return;
+    if (!editStructure.title.trim()) {
+      setEditTitleError("Title is required.");
+      return;
+    }
+    if (!editStructure.product_structure_id) {
+      setEditStructureError("Please select a structure.");
+      return;
+    }
+
+    updateStructureInstance({
+      vendorId,
+      leadId,
+      instanceId: editStructure.id,
+      payload: {
+        product_structure_id: editStructure.product_structure_id,
+        title: editStructure.title.trim(),
+        description: editStructure.description.trim() || undefined,
+        updated_by: userId,
+      },
+    });
+  };
+
+  const handleAddOpen = () => {
+    const productTypeId = lead?.productMappings?.[0]?.product_type_id || 0;
+    setEditTitleError("");
+    setEditStructureError("");
+    setAddStructure({
+      title: "",
+      description: "",
+      product_structure_id: 0,
+      product_type_id: productTypeId,
+    });
+  };
+
+  const handleAddSave = () => {
+    if (!addStructure || !vendorId || !userId) return;
+    if (!addStructure.title.trim()) {
+      setEditTitleError("Title is required.");
+      return;
+    }
+    if (!addStructure.product_structure_id) {
+      setEditStructureError("Please select a structure.");
+      return;
+    }
+
+    createStructureInstance({
+      vendorId,
+      leadId,
+      payload: {
+        product_structure_id: addStructure.product_structure_id,
+        title: addStructure.title.trim(),
+        description: addStructure.description.trim() || undefined,
+        created_by: userId,
+      },
+    });
+  };
+
+  const getParentFilter = (productTypeId?: number) => {
+    if (!productTypeId) return null;
+    const typeLabel =
+      productTypes?.data?.find((type: any) => type.id === productTypeId)?.type ||
+      "";
+    const normalized = String(typeLabel).toLowerCase();
+    if (normalized.includes("kitchen")) return "Kitchen";
+    if (normalized.includes("wardrobe")) return "Wardrobe";
+    return "Others";
+  };
+
+  const editParentFilter = useMemo(
+    () => getParentFilter(editStructure?.product_type_id),
+    [editStructure?.product_type_id, productTypes?.data]
+  );
+  const addParentFilter = useMemo(
+    () => getParentFilter(addStructure?.product_type_id),
+    [addStructure?.product_type_id, productTypes?.data]
+  );
+
+  const getStructureOptions = (parentFilter: string | null) => {
+    const options =
+      productStructureTypes?.data?.map((structure: any) => ({
+        id: structure.id,
+        label: structure.type,
+        parent: structure.parent,
+      })) || [];
+    if (!parentFilter) return options;
+    return options.filter((structure: any) => {
+      const parent = String(structure.parent || "").toLowerCase();
+      if (parentFilter === "Kitchen") return parent === "kitchen";
+      if (parentFilter === "Wardrobe") return parent === "wardrobe";
+      return parent !== "kitchen" && parent !== "wardrobe";
+    });
+  };
+
+  const editStructureOptions = useMemo(
+    () => getStructureOptions(editParentFilter),
+    [editParentFilter, productStructureTypes?.data]
+  );
+  const addStructureOptions = useMemo(
+    () => getStructureOptions(addParentFilter),
+    [addParentFilter, productStructureTypes?.data]
+  );
 
   if (!lead) {
     return (
@@ -163,7 +411,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     }
   };
 
-  const SectionCard = ({ title, children }: any) => (
+  const SectionCard = ({ title, children, action }: any) => (
     <motion.section
       variants={itemVariants}
       className="
@@ -174,8 +422,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   p-6 space-y-6
 "
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
+        {action}
       </div>
 
       {children}
@@ -227,6 +476,124 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         </div>
 
         <div className="py-4 space-y-4">
+
+          {/* PRODUCT INFORMATION */}
+          <SectionCard
+            title="Product Information"
+            action={
+              <Button
+                type="button"
+                size="sm"
+                variant="default"
+                onClick={handleAddOpen}
+              >
+                <Plus/>
+                Add Furniture Structure
+              </Button>
+            }
+          >
+            <div className="space-y-4">
+              <div className="flex items-center w-full justify-between">
+                <InfoRow
+                  icon={Package}
+                  label="Product Types"
+                  value={lead.productMappings
+                    ?.map((pm: any) => pm.productType?.type)
+                    ?.filter(Boolean)
+                    ?.join(", ")}
+                />
+                {(structureSummary.total > 0 || structureSummary.uniqueStructures > 0) && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {structureSummary.total > 0 && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
+                        <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
+                        {structureSummary.total} instance
+                        {structureSummary.total === 1 ? "" : "s"}
+                      </span>
+                    )}
+                    {structureSummary.uniqueStructures > 0 && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
+                        <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
+                        {structureSummary.uniqueStructures} structure
+                        {structureSummary.uniqueStructures === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {isStructuresLoading ? (
+                <div className="flex items-center gap-2 rounded-lg border border-dashed bg-muted/20 p-4 text-sm text-muted-foreground">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                  Loading product information...
+                </div>
+              ) : structureInstances.length === 0 ? (
+                <InfoRow
+                  icon={Package}
+                  label="Product Structures"
+                  value={lead.leadProductStructureMapping
+                    ?.map((ps: any) => ps.productStructure?.type)
+                    ?.filter(Boolean)
+                    ?.join(", ")}
+                />
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {structureInstances.map((item: any) => (
+                    <div
+                      key={`${item.product_structure_id}-${item.quantity_index}`}
+                      className="group rounded-xl border bg-white/60 p-5 transition-all hover:border-border/80 dark:bg-[#0a0a0a]"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="truncate text-base font-semibold leading-tight text-heading transition-colors group-hover:text-foreground dark:text-neutral-200">
+                              {item.title || item.productStructure?.type || "—"}
+                            </p>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                className="text-muted-foreground/70 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
+                                onClick={() => handleEditOpen(item)}
+                                aria-label="Edit"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                className="text-muted-foreground/70 hover:text-destructive focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
+                                onClick={() =>
+                                  setConfirmStructureDelete({
+                                    id: item.id,
+                                    title:
+                                      item.title ||
+                                      item.productStructure?.type ||
+                                      "this item",
+                                  })
+                                }
+                                aria-label="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
+                            {item.productStructure?.type || "—"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {item.description && (
+                        <div className="mt-4 rounded-lg border border-dashed border-border/60 bg-muted/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground transition-colors group-hover:bg-muted/40">
+                          {item.description}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </SectionCard>
+
           {/* CONTACT INFORMATION */}
           <SectionCard title="Contact Information">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -299,82 +666,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             </div>
           </SectionCard>
 
-          {/* PRODUCT INFORMATION */}
-          <SectionCard title="Product Information">
-            <div className="space-y-4">
-              <div className="flex items-center w-full justify-between">
-                <InfoRow
-                  icon={Package}
-                  label="Product Types"
-                  value={lead.productMappings
-                    ?.map((pm: any) => pm.productType?.type)
-                    ?.filter(Boolean)
-                    ?.join(", ")}
-                />
-                {(structureSummary.total > 0 || structureSummary.uniqueStructures > 0) && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    {structureSummary.total > 0 && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
-                        <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
-                        {structureSummary.total} instance
-                        {structureSummary.total === 1 ? "" : "s"}
-                      </span>
-                    )}
-                    {structureSummary.uniqueStructures > 0 && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
-                        <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
-                        {structureSummary.uniqueStructures} structure
-                        {structureSummary.uniqueStructures === 1 ? "" : "s"}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {isStructuresLoading ? (
-                <div className="flex items-center gap-2 rounded-lg border border-dashed bg-muted/20 p-4 text-sm text-muted-foreground">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                  Loading product information...
-                </div>
-              ) : structureInstances.length === 0 ? (
-                <InfoRow
-                  icon={Package}
-                  label="Product Structures"
-                  value={lead.leadProductStructureMapping
-                    ?.map((ps: any) => ps.productStructure?.type)
-                    ?.filter(Boolean)
-                    ?.join(", ")}
-                />
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {structureInstances.map((item: any) => (
-                    <div
-                      key={`${item.product_structure_id}-${item.quantity_index}`}
-                      className="group rounded-xl border bg-white/60 p-5 transition-all hover:border-border/80 dark:bg-[#0a0a0a]"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <p className="truncate text-base font-semibold leading-tight text-heading transition-colors group-hover:text-foreground dark:text-neutral-200">
-                            {item.title || item.productStructure?.type || "—"}
-                          </p>
-                          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
-                            {item.productStructure?.type || "—"}
-                          </p>
-                        </div>
-                      </div>
-
-                      {item.description && (
-                        <div className="mt-4 rounded-lg border border-dashed border-border/60 bg-muted/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground transition-colors group-hover:bg-muted/40">
-                          {item.description}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </SectionCard>
-
           {/* ADDITIONAL INFORMATION */}
           <SectionCard title="Additional Information">
             <div className="space-y-4">
@@ -400,7 +691,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           </SectionCard>
 
           {/* Site Photos */}
-
           <motion.section
             variants={itemVariants}
             className="
@@ -570,6 +860,250 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          <AlertDialog
+            open={!!confirmStructureDelete}
+            onOpenChange={() => setConfirmStructureDelete(null)}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Product Instance?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove{" "}
+                  <span className="font-medium text-foreground">
+                    {confirmStructureDelete?.title}
+                  </span>{" "}
+                  from this lead. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deletingStructure}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleConfirmStructureDelete}
+                  disabled={deletingStructure}
+                >
+                  {deletingStructure ? "Deleting..." : "Delete"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <BaseModal
+            open={!!editStructure}
+            onOpenChange={(open) => {
+              if (!open) {
+                setEditStructure(null);
+                setEditTitleError("");
+                setEditStructureError("");
+              }
+            }}
+            title="Edit Product Instance"
+            description="Update title, structure, and description."
+            size="md"
+          >
+            <div className="space-y-4 p-5">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Title <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  value={editStructure?.title || ""}
+                  onChange={(event) => {
+                    setEditStructure((prev) =>
+                      prev
+                        ? { ...prev, title: event.target.value }
+                        : prev
+                    );
+                    if (editTitleError) setEditTitleError("");
+                  }}
+                  placeholder="Enter title"
+                  className="mt-1"
+                />
+                {editTitleError && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {editTitleError}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Product Structure <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-1">
+                  <AssignToPicker
+                    data={editStructureOptions}
+                    value={editStructure?.product_structure_id}
+                    onChange={(selectedId) => {
+                      if (!selectedId) {
+                        setEditStructureError("Please select a structure.");
+                        return;
+                      }
+                      setEditStructure((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              product_structure_id: selectedId,
+                            }
+                          : prev
+                      );
+                      if (editStructureError) setEditStructureError("");
+                    }}
+                    placeholder="Select structure..."
+                  />
+                </div>
+                {editStructureError && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {editStructureError}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Description (optional)
+                </label>
+                <TextAreaInput
+                  value={editStructure?.description || ""}
+                  onChange={(value) =>
+                    setEditStructure((prev) =>
+                      prev ? { ...prev, description: value } : prev
+                    )
+                  }
+                  placeholder="Add description..."
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditStructure(null);
+                    setEditTitleError("");
+                    setEditStructureError("");
+                  }}
+                  disabled={updatingStructure}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleEditSave}
+                  disabled={updatingStructure}
+                >
+                  {updatingStructure ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </div>
+          </BaseModal>
+
+          <BaseModal
+            open={!!addStructure}
+            onOpenChange={(open) => {
+              if (!open) {
+                setAddStructure(null);
+                setEditTitleError("");
+                setEditStructureError("");
+              }
+            }}
+            title="Add Furniture Structure"
+            description="Create a new product structure instance."
+            size="md"
+          >
+            <div className="space-y-4 p-5">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Title <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  value={addStructure?.title || ""}
+                  onChange={(event) => {
+                    setAddStructure((prev) =>
+                      prev
+                        ? { ...prev, title: event.target.value }
+                        : prev
+                    );
+                    if (editTitleError) setEditTitleError("");
+                  }}
+                  placeholder="Enter title"
+                  className="mt-1"
+                />
+                {editTitleError && (
+                  <p className="mt-1 text-xs text-red-500">{editTitleError}</p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Product Structure <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-1">
+                  <AssignToPicker
+                    data={addStructureOptions}
+                    value={addStructure?.product_structure_id}
+                    onChange={(selectedId) => {
+                      if (!selectedId) {
+                        setEditStructureError("Please select a structure.");
+                        return;
+                      }
+                      setAddStructure((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              product_structure_id: selectedId,
+                            }
+                          : prev
+                      );
+                      if (editStructureError) setEditStructureError("");
+                    }}
+                    placeholder="Select structure..."
+                  />
+                </div>
+                {editStructureError && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {editStructureError}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Description (optional)
+                </label>
+                <TextAreaInput
+                  value={addStructure?.description || ""}
+                  onChange={(value) =>
+                    setAddStructure((prev) =>
+                      prev ? { ...prev, description: value } : prev
+                    )
+                  }
+                  placeholder="Add description..."
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setAddStructure(null);
+                    setEditTitleError("");
+                    setEditStructureError("");
+                  }}
+                  disabled={creatingStructure}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleAddSave}
+                  disabled={creatingStructure}
+                >
+                  {creatingStructure ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </div>
+          </BaseModal>
+
           <BaseModal
             open={uploadOpen}
             onOpenChange={setUploadOpen}

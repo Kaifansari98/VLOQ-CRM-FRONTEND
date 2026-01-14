@@ -240,6 +240,52 @@ export const getLeadProductStructureInstances = async (
   return response.data;
 };
 
+export const deleteLeadProductStructureInstance = async (
+  vendorId: number,
+  leadId: number,
+  instanceId: number
+) => {
+  const response = await apiClient.delete(
+    `/leads/lead/${leadId}/vendor/${vendorId}/product-structure-instances/${instanceId}`
+  );
+  return response.data;
+};
+
+export const updateLeadProductStructureInstance = async (
+  vendorId: number,
+  leadId: number,
+  instanceId: number,
+  payload: {
+    product_structure_id: number;
+    title: string;
+    description?: string;
+    updated_by?: number;
+  }
+) => {
+  const response = await apiClient.put(
+    `/leads/lead/${leadId}/vendor/${vendorId}/product-structure-instances/${instanceId}`,
+    payload
+  );
+  return response.data;
+};
+
+export const createLeadProductStructureInstance = async (
+  vendorId: number,
+  leadId: number,
+  payload: {
+    product_structure_id: number;
+    title: string;
+    description?: string;
+    created_by: number;
+  }
+) => {
+  const response = await apiClient.post(
+    `/leads/lead/${leadId}/vendor/${vendorId}/product-structure-instances`,
+    payload
+  );
+  return response.data;
+};
+
 export type VendorLeadsResponse = Lead[];
 export type VendorUserLeadsResponse = Lead[];
 

@@ -14,14 +14,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import MultipleSelector, { Option } from "@/components/ui/multiselect";
 import { useAppSelector } from "@/redux/store";
 import { toast } from "react-toastify";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PhoneInput } from "@/components/ui/phone-input";
 import {
   useSourceTypes,
-  useProductStructureTypes,
   useProductTypes,
   useSiteTypes,
 } from "@/hooks/useTypesMaster";
@@ -33,6 +31,11 @@ import { MapPin } from "lucide-react";
 import CustomeDatePicker from "@/components/date-picker";
 import AssignToPicker from "@/components/assign-to-picker";
 import { toastError } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // ✅ Utility: Normalize phone numbers to E.164 format
 const toE164 = (number?: string, countryCode?: string): string => {
@@ -96,9 +99,6 @@ const formSchema = z.object({
     .array(z.string())
     .min(1, "Please select at least one product type"),
 
-  product_structures: z
-    .array(z.string())
-    .min(1, "Please select at least one product structure"),
   archetech_name: z.string().max(300).optional(),
   designer_remark: z.string().max(2000).optional(),
   initial_site_measurement_date: z
@@ -174,7 +174,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       site_map_link: "",
       source_id: "",
       product_types: [],
-      product_structures: [],
       archetech_name: "",
       designer_remark: "",
       initial_site_measurement_date: "",
@@ -202,10 +201,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         const productTypeIds =
           lead.productMappings?.map((m: any) => String(m.product_type_id)) ||
           [];
-        const productStructureIds =
-          lead.leadProductStructureMapping?.map((m: any) =>
-            String(m.product_structure_id)
-          ) || [];
 
         // ✅ Normalize phone numbers to E.164 format
         const formattedContactNo = toE164(
@@ -237,7 +232,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           site_map_link: lead.site_map_link || "",
           source_id: lead.source_id ? String(lead.source_id) : "",
           product_types: productTypeIds,
-          product_structures: productStructureIds,
           archetech_name: lead.archetech_name || "",
           designer_remark: lead.designer_remark || "",
           initial_site_measurement_date: formattedDate,
@@ -328,7 +322,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       payload.site_map_link = values.site_map_link.trim();
     }
     payload.product_types = values.product_types.map(Number);
-    payload.product_structures = values.product_structures.map(Number);
     if (isDirty("archetech_name"))
       payload.archetech_name = values.archetech_name || "";
     if (isDirty("designer_remark"))
@@ -448,25 +441,74 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           />
         </div>
 
-        {/* Email */}
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-sm">Email</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="Enter email address"
-                  type="email"
-                  className="text-sm"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* Email & Furniture Type */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Email</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter email address"
+                    type="email"
+                    className="text-sm"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="product_types"
+            render={({ field }) => {
+              const { data: productTypes, isLoading } = useProductTypes();
+
+              const pickerData =
+                productTypes?.data?.map((p: any) => ({
+                  id: p.id,
+                  label: p.type,
+                })) || [];
+
+              return (
+                <FormItem>
+                  <FormLabel className="text-sm">Furniture Type *</FormLabel>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="w-full cursor-not-allowed">
+                        <AssignToPicker
+                          data={pickerData}
+                          value={
+                            field.value?.length
+                              ? Number(field.value[0])
+                              : undefined
+                          }
+                          onChange={(selectedId) => {
+                            field.onChange(
+                              selectedId ? [String(selectedId)] : []
+                            );
+                          }}
+                          placeholder="Search furniture type..."
+                          disabled
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={6}>
+                      This field can&#39;t be edited.
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+        </div>
 
         {/* Site Type & Source */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
@@ -605,90 +647,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           )}
         />
 
-        {/* Product Types & Structures */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-          <FormField
-            control={form.control}
-            name="product_types"
-            render={({ field }) => {
-              const { data: productTypes, isLoading } = useProductTypes();
-
-              const pickerData =
-                productTypes?.data?.map((p: any) => ({
-                  id: p.id,
-                  label: p.type,
-                })) || [];
-
-              return (
-                <FormItem>
-                  <FormLabel className="text-sm">Furniture Type *</FormLabel>
-
-                  <AssignToPicker
-                    data={pickerData}
-                    value={
-                      field.value?.length
-                        ? Number(field.value[0])
-                        : undefined
-                    }
-                    onChange={(selectedId) => {
-                      field.onChange(
-                        selectedId ? [String(selectedId)] : []
-                      );
-                    }}
-                    placeholder="Search furniture type..."
-                    disabled={isLoading}
-                  />
-
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
-          />
-
-          <FormField
-            control={form.control}
-            name="product_structures"
-            render={({ field }) => {
-              const { data: productStructures, isLoading } =
-                useProductStructureTypes();
-
-              const options: Option[] =
-                productStructures?.data?.map((p: any) => ({
-                  value: String(p.id),
-                  label: p.type,
-                })) ?? [];
-
-              const selectedOptions = (field.value || []).map((id) => {
-                const option = options.find((opt) => opt.value === id);
-                return option || { value: id, label: id };
-              });
-
-              return (
-                <FormItem>
-                  <FormLabel className="text-sm">
-                    Furniture Structure *
-                  </FormLabel>
-                  <FormControl>
-                    <MultipleSelector
-                      value={selectedOptions}
-                      onChange={(selectedOptions) => {
-                        const selectedIds = selectedOptions.map(
-                          (opt) => opt.value
-                        );
-                        field.onChange(selectedIds);
-                      }}
-                      options={options}
-                      placeholder="Select furniture structures"
-                      disabled={isLoading}
-                      hidePlaceholderWhenSelected
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
-          />
-        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
           {/* Architect Name */}
