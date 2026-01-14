@@ -92,6 +92,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const leadStage = lead?.statusType?.type;
   console.log("Lead Stage In Lead Details: ", leadStage);
   const isOpenStage = leadStage?.toLowerCase() === "open";
+  const canEditStructures =
+    isOpenStage || ["admin", "super-admin"].includes(userType || "");
   const structureInstances = structureInstancesData?.data || [];
   const structureSummary = useMemo(() => {
     const total = structureInstances.length;
@@ -489,7 +491,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           <SectionCard
             title="Product Information"
             action={
-              !isKitchenType && isOpenStage && (
+              !isKitchenType && canEditStructures && (
                 <Button
                   type="button"
                   size="sm"
@@ -560,7 +562,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                               {item.title || item.productStructure?.type || "—"}
                             </p>
                             <div className="flex items-center gap-1">
-                              {isOpenStage && (
+                              {canEditStructures && (
                                 <>
                                   <button
                                     type="button"
