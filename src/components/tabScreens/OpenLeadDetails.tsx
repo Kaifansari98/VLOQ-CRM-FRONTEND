@@ -99,6 +99,13 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     ).size;
     return { total, uniqueStructures };
   }, [structureInstances]);
+  const isKitchenType = useMemo(() => {
+    const typeLabel =
+      lead?.productMappings?.[0]?.productType?.type ||
+      lead?.productMappings?.[0]?.product_type?.type ||
+      "";
+    return String(typeLabel).toLowerCase().includes("kitchen");
+  }, [lead?.productMappings]);
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [confirmStructureDelete, setConfirmStructureDelete] = useState<{
@@ -481,15 +488,17 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           <SectionCard
             title="Product Information"
             action={
-              <Button
-                type="button"
-                size="sm"
-                variant="default"
-                onClick={handleAddOpen}
-              >
-                <Plus/>
-                Add Furniture Structure
-              </Button>
+              !isKitchenType && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  onClick={handleAddOpen}
+                >
+                  <Plus />
+                  Add Furniture Structure
+                </Button>
+              )
             }
           >
             <div className="space-y-4">
