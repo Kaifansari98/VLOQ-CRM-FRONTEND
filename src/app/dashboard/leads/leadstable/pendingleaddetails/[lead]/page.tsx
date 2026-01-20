@@ -78,6 +78,16 @@ export default function PendingLeadDetails() {
         minute: "2-digit",
       })
     : "—";
+  const formatStatusLabel = (value?: string) => {
+    if (!value) return "—";
+    const spaced = value.replace(/([a-z])([A-Z])/g, "$1 $2");
+    return spaced
+      .split(/\s+/)
+      .map((part) =>
+        part.length > 0 ? part[0].toUpperCase() + part.slice(1) : part
+      )
+      .join(" ");
+  };
 
   return (
     <>
@@ -126,26 +136,38 @@ export default function PendingLeadDetails() {
                   </div>
                   <div className="space-y-2 px-3 py-2 text-xs text-muted-foreground">
                     <div className="flex items-center justify-between">
-                      <span>lead status</span>
+                      <span>Lead status</span>
                       <span className="font-medium text-foreground">
-                        {latestActivityStatus.activity_status}
+                        {formatStatusLabel(
+                          latestActivityStatus.activity_status
+                        )}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>{latestActivityStatus.activity_status} by</span>
+                      <span>
+                        {formatStatusLabel(
+                          latestActivityStatus.activity_status
+                        )}{" "}
+                        by
+                      </span>
                       <span className="font-medium text-foreground">
                         {latestActivityStatus.created_by_name ||
                           latestActivityStatus.created_by}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>{latestActivityStatus.activity_status} at </span>
+                      <span>
+                        {formatStatusLabel(
+                          latestActivityStatus.activity_status
+                        )}{" "}
+                        at
+                      </span>
                       <span className="font-medium text-foreground">
                         {activityCreatedAt}
                       </span>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <span>remark</span>
+                      <span>Remark</span>
                       <span className="rounded-md bg-muted px-2 py-1 text-foreground">
                         {latestActivityStatus.activity_status_remark || "—"}
                       </span>

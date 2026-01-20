@@ -34,6 +34,12 @@ const TYPE_STYLES: Record<
     text: "text-purple-500 dark:text-purple-500",
     Icon: Bell,
   },
+  LEAD_ACTION: {
+    label: "Lead Action",
+    bg: "bg-sky-50 dark:bg-sky-950",
+    text: "text-sky-500 dark:text-sky-500",
+    Icon: Bell,
+  },
 };
 
 const getInitial = (name?: string | null) =>
