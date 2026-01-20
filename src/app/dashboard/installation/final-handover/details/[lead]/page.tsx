@@ -112,6 +112,7 @@ export default function FinalHandoverLeadDetails() {
   const canEdit = canEditLeadButton(userType);
   const canAccessTodoTab =
     canAccessTodoTaskTabUnderFinalHandoverStage(userType);
+  const isSiteSupervisor = userType?.toLowerCase() === "site-supervisor";
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -155,8 +156,11 @@ export default function FinalHandoverLeadDetails() {
       return "Checking readiness and payment status...";
     if (!isReady) return tooltipMessage;
     if (!paymentStatus) return "Unable to verify payment status.";
-    if (!paymentStatus.is_paid)
-      return `Pending amount remaining: ${paymentStatus.pending_amount.toLocaleString()}`;
+    if (!paymentStatus.is_paid) {
+      return isSiteSupervisor
+        ? "Payment pending. Please contact admin."
+        : `Pending amount remaining: ${paymentStatus.pending_amount.toLocaleString()}`;
+    }
     return "";
   })();
 
@@ -524,7 +528,9 @@ export default function FinalHandoverLeadDetails() {
                         : 0;
                     toast.error(
                       payment
-                        ? `Pending amount remaining: ${pending.toLocaleString()}`
+                        ? isSiteSupervisor
+                          ? "Payment pending. Please contact admin."
+                          : `Pending amount remaining: ${pending.toLocaleString()}`
                         : "Unable to verify payment status."
                     );
                     setValidatingPayment(false);
