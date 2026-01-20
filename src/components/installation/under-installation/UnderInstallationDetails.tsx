@@ -74,6 +74,10 @@ export default function UnderInstallationDetails({
 
   const isDateLocked = canWork && hasAssignedData && isSupervisor;
   const isInstallersLocked = canWork && hasAssignedData && isSupervisor;
+  const isInstallationDetailsComplete =
+    !!details?.expected_installation_end_date && hasAssignedData;
+  const installationDetailsDisabledReason =
+    "Complete Expected Installation Completion Date and assign installers to enable this section.";
 
   // 🔹 Convert installers to options
   const installerOptions: Option[] =
@@ -314,6 +318,19 @@ export default function UnderInstallationDetails({
     return checkboxElement;
   };
 
+  const renderInstallationLockedSection = (content: React.ReactNode) => {
+    if (isInstallationDetailsComplete) return <>{content}</>;
+
+    return (
+      <CustomeTooltip
+        truncateValue={
+          <div className="opacity-60 pointer-events-none">{content}</div>
+        }
+        value={installationDetailsDisabledReason}
+      />
+    );
+  };
+
   return (
     <div className="px-2 bg-[#fff] dark:bg-[#0a0a0a]">
       {/* 🚫 Not started UI */}
@@ -371,42 +388,46 @@ export default function UnderInstallationDetails({
 
       {/* Day-wise Reports */}
       {installationStarted && (
-        <InstallationDayWiseReports
-          vendorId={vendorId}
-          leadId={leadId}
-          accountId={accountId}
-          accessBtn={canWork}
-        />
+        renderInstallationLockedSection(
+          <InstallationDayWiseReports
+            vendorId={vendorId}
+            leadId={leadId}
+            accountId={accountId}
+            accessBtn={canWork}
+          />
+        )
       )}
 
       {/* Installation Completion */}
       {installationStarted && (
-        <div className="mt-10 border-t pt-6 pb-20">
-          <h3 className="text-lg font-semibold">Installation Completion</h3>
-          <p className="text-sm text-muted-foreground mb-6">
-            Update the completion status for carcass and shutter installation.
-          </p>
+        renderInstallationLockedSection(
+          <div className="mt-10 border-t pt-6 pb-20">
+            <h3 className="text-lg font-semibold">Installation Completion</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              Update the completion status for carcass and shutter installation.
+            </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Carcass Checkbox */}
-            {renderCheckbox(
-              "carcass",
-              "Carcass Installation Completed",
-              details?.is_carcass_installation_completed || false,
-              details?.carcass_installation_completion_date || null,
-              "carcass"
-            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Carcass Checkbox */}
+              {renderCheckbox(
+                "carcass",
+                "Carcass Installation Completed",
+                details?.is_carcass_installation_completed || false,
+                details?.carcass_installation_completion_date || null,
+                "carcass"
+              )}
 
-            {/* Shutter Checkbox */}
-            {renderCheckbox(
-              "shutter",
-              "Shutter Installation Completed",
-              details?.is_shutter_installation_completed || false,
-              details?.shutter_installation_completion_date || null,
-              "shutter"
-            )}
+              {/* Shutter Checkbox */}
+              {renderCheckbox(
+                "shutter",
+                "Shutter Installation Completed",
+                details?.is_shutter_installation_completed || false,
+                details?.shutter_installation_completion_date || null,
+                "shutter"
+              )}
+            </div>
           </div>
-        </div>
+        )
       )}
 
       {/* Confirmation Dialog */}
