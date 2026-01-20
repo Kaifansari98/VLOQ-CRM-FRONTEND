@@ -99,7 +99,7 @@ export default function InstallationDayWiseReports({
     useDeleteDocument(leadId);
   const usedDates = React.useMemo(() => {
     if (!reports) return new Set<string>();
-    return new Set(
+    return new Set<string>(
       reports.map((r: any) =>
         new Date(r.update_date).toISOString().slice(0, 10)
       )
