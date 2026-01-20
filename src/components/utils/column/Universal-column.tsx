@@ -11,13 +11,19 @@ import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/custom-tooltip";
 
 import { LeadColumn } from "./column-type";
+import {
+  siteMapLinkSort,
+  tableMultiValueFilter,
+  tableSingleValueMultiSelectFilter,
+  tableTextSearchFilter,
+} from "@/lib/utils";
 
 interface UniversalColumnOptions {
   showStageColumn?: boolean;
 }
 
 export function getUniversalTableColumns(
-  options: UniversalColumnOptions = {}
+  options: UniversalColumnOptions = {},
 ): ColumnDef<LeadColumn>[] {
   const { showStageColumn = false } = options;
   const columns: ColumnDef<LeadColumn>[] = [
@@ -61,7 +67,7 @@ export function getUniversalTableColumns(
         );
       },
 
-        meta: {
+      meta: {
         label: "Name",
       },
     },
@@ -87,18 +93,26 @@ export function getUniversalTableColumns(
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Contact" />
       ),
+      meta: {
+        label: "Contact",
+      },
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
     },
 
     // 4) Product Types
+
     {
-      accessorKey: "productTypes",
+      accessorKey: "furnitureType",
+      filterFn: tableMultiValueFilter,
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Product Types" />
+        <DataTableColumnHeader column={column} title="Furniture Type" />
       ),
-      enableSorting: true,
+      meta: {
+        label: "Furniture Type",
+      },
+      enableSorting: false,
       enableHiding: true,
       enableColumnFilter: true,
     },
@@ -109,7 +123,11 @@ export function getUniversalTableColumns(
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Address" />
       ),
-      enableSorting: true,
+      sortingFn: siteMapLinkSort<LeadColumn>(),
+      meta: {
+        label: "Site Map Link",
+      },
+      enableSorting: false,
       enableHiding: true,
       enableColumnFilter: true,
 
@@ -143,10 +161,15 @@ export function getUniversalTableColumns(
     // 6) Site Type
     {
       accessorKey: "siteType",
+      filterFn: tableMultiValueFilter,
+
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Site Type" />
       ),
-      enableSorting: true,
+      meta: {
+        label: "Site Type",
+      },
+      enableSorting: false,
       enableHiding: true,
       enableColumnFilter: true,
     },
@@ -157,8 +180,11 @@ export function getUniversalTableColumns(
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Sales Executive" />
       ),
-
-      enableSorting: true,
+      meta: {
+        label: "Assign To",
+      },
+      filterFn: tableSingleValueMultiSelectFilter,
+      enableSorting: false,
       enableHiding: true,
       enableColumnFilter: true,
     },
@@ -166,10 +192,11 @@ export function getUniversalTableColumns(
     // 8) Site Address
     {
       accessorKey: "siteAddress",
+      filterFn: tableTextSearchFilter<LeadColumn>(),
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Site Address" />
       ),
-      enableSorting: true,
+      enableSorting: false,
       enableHiding: true,
       enableColumnFilter: true,
       cell: ({ row }) => {
@@ -187,6 +214,9 @@ export function getUniversalTableColumns(
           />
         );
       },
+      meta: {
+        label: "Site Address",
+      },
     },
 
     // 9) Architect Name
@@ -199,18 +229,25 @@ export function getUniversalTableColumns(
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
+      meta: {
+        label: "Architect Name",
+      },
     },
 
     // 10) Source
     {
       accessorKey: "source",
+      filterFn: tableMultiValueFilter,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Source" />
       ),
 
-      enableSorting: true,
+      enableSorting: false,
       enableHiding: true,
       enableColumnFilter: true,
+      meta: {
+        label: "Source",
+      },
     },
 
     // 11) Created At (DATE)
@@ -268,6 +305,9 @@ export function getUniversalTableColumns(
           return <div className="w-full text-center">{raw}</div>;
         }
       },
+      meta: {
+        label: "Alt Contact",
+      },
     },
 
     // 13) Email
@@ -293,20 +333,25 @@ export function getUniversalTableColumns(
           />
         );
       },
+      meta: {
+        label: "Email",
+      },
     },
 
     // 14) Product Structures
     {
-      accessorKey: "productStructures",
+      accessorKey: "furnitueStructures",
+      filterFn: tableMultiValueFilter,
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Product Structures" />
+        <DataTableColumnHeader column={column} title="Furniture Structures" />
       ),
-
-      enableSorting: true,
+      meta: {
+        label: "Furniture Structures",
+      },
+      enableSorting: false,
       enableHiding: true,
       enableColumnFilter: true,
     },
-
     // 15) Designer Remark
     {
       accessorKey: "designerRemark",
@@ -322,6 +367,9 @@ export function getUniversalTableColumns(
         const trunc = full.length > 15 ? full.slice(0, 15) + "..." : full;
 
         return <RemarkTooltip remark={trunc} remarkFull={full} />;
+      },
+      meta: {
+        label: "Designer Remark",
       },
     },
   ];

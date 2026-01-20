@@ -112,13 +112,13 @@ export const getUniversalStageLeads = async (
   userId: number,
   tag: string,
   page: number,
-  limit: number
+  limit: number,
 ) => {
   const { data } = await apiClient.get(
     `/leads/bookingStage/universal-table-data/vendorId/${vendorId}`,
     {
       params: { userId, tag, page, limit },
-    }
+    },
   );
 
   return data;
@@ -129,7 +129,7 @@ export const useUniversalStageLeads = (
   userId: number,
   tag: string,
   page: number,
-  pageSize: number
+  pageSize: number,
 ) => {
   return useQuery<UniversalStageLeadResponse>({
     queryKey: ["universal-stage-leads", vendorId, userId, tag, page, pageSize],
@@ -138,5 +138,63 @@ export const useUniversalStageLeads = (
     enabled: !!vendorId && !!userId,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,
+  });
+};
+
+// types/universalStage.ts
+
+export type SortOrder = "asc" | "desc";
+
+export interface UniversalStagePostPayload {
+  userId: number;
+  tag: string;
+  page: number;
+  limit: number;
+
+  filter_name: string;
+  filter_lead_code: string;
+  contact: string;
+  alt_contact_no: string;
+  email: string;
+  site_address: string;
+  archetech_name: string;
+  designer_remark: string;
+
+  furniture_type: number[];
+  furniture_structure: number[];
+  site_type: number[];
+  source: number[];
+
+  assign_to: number | null;
+  site_map_link: boolean | null;
+
+  created_at: SortOrder;
+}
+
+export const postUniversalStageLeads = async (
+  vendorId: number,
+  payload: UniversalStagePostPayload,
+): Promise<UniversalStageLeadResponse> => {
+  const { data } = await apiClient.post(
+    `/leads/bookingStage/universal-table-data-2/vendorId/${vendorId}`,
+    payload,
+  );
+
+  return data;
+};
+
+// hooks/useUniversalStageLeadsPost.ts
+export const useUniversalStageLeadsPost = (
+  vendorId: number,
+  payload: UniversalStagePostPayload,
+) => {
+  return useQuery<UniversalStageLeadResponse>({
+    queryKey: ["universal-stage-leads-post", vendorId, payload],
+    queryFn: () => postUniversalStageLeads(vendorId, payload),
+
+    enabled: !!vendorId && !!payload?.userId,
+
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 };

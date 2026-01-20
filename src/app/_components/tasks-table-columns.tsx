@@ -10,6 +10,11 @@ import CustomeTooltip from "@/components/custom-tooltip";
 import { useRouter } from "next/navigation";
 import RemarkTooltip from "@/components/origin-tooltip";
 import { MapPin } from "lucide-react";
+import {
+  siteMapLinkSort,
+  tableMultiValueFilter,
+  tableSingleValueMultiSelectFilter,
+} from "@/lib/utils";
 
 export type ProcessedTask = {
   id: number; // userLeadTask.id
@@ -21,8 +26,8 @@ export type ProcessedTask = {
   phoneNumber: string; // leadMaster.phone_number
   leadStatus: string; // userLeadTask.status
   siteType: string; // leadMaster.site_type
-  productTypes: string; // joined string from array
-  productStructures: string; // joined string from array
+  furnitureType: string; // joined string from array
+  furnitueStructures: string; // joined string from array
   taskType: string; // userLeadTask.task_type
   dueDate: string; // userLeadTask.due_date
   assignedBy: number; // userLeadTask.created_by
@@ -135,6 +140,9 @@ export function getVendorLeadsTableColumns({
           <span>{name}</span>
         );
       },
+      meta: {
+        label: "Lead Name",
+      },
     },
 
     // Phone number
@@ -148,6 +156,9 @@ export function getVendorLeadsTableColumns({
         const phone = parsePhoneNumberFromString(rawValue);
         return phone ? phone.formatInternational() : rawValue;
       },
+      meta: {
+        label: "Phone Number",
+      },
     },
 
     // Task type
@@ -157,6 +168,9 @@ export function getVendorLeadsTableColumns({
         <DataTableColumnHeader column={column} title="Task Type" />
       ),
       enableSorting: true,
+      meta: {
+        label: "Task Type",
+      },
     },
 
     {
@@ -165,7 +179,7 @@ export function getVendorLeadsTableColumns({
         <DataTableColumnHeader column={column} title="Remark" />
       ),
       meta: {
-        label: "remark",
+        label: "Remark",
       },
       enableSorting: true,
       enableHiding: true,
@@ -181,68 +195,6 @@ export function getVendorLeadsTableColumns({
         const truncateValue = remark.slice(0, maxLength) + "...";
 
         return <RemarkTooltip remark={truncateValue} remarkFull={remark} />;
-      },
-    },
-    // Task status
-    {
-      accessorKey: "leadStatus",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
-      ),
-      cell: ({ getValue }) => {
-        const status = (getValue() as string)?.toLowerCase();
-
-        const statusColors: Record<string, string> = {
-          open: "bg-blue-500",
-          closed: "bg-black",
-          cancelled: "bg-red-500",
-          in_progress: "bg-orange-500",
-          completed: "bg-green-500",
-        };
-
-        return (
-          <CustomeBadge
-            title={
-              status
-                ? status.charAt(0).toUpperCase() +
-                  status.slice(1).replace("_", " ")
-                : "—"
-            }
-            bgColor={statusColors[status] || "bg-gray-400"}
-          />
-        );
-      },
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
-      meta: {
-        label: "Status",
-        variant: "multiSelect",
-        options: [
-          { value: "open", label: "Open" },
-          { value: "closed", label: "Closed" },
-          { value: "cancelled", label: "Cancelled" },
-          { value: "in_progress", label: "In Progress" },
-          { value: "completed", label: "Completed" },
-        ].map((s) => {
-          const colors: Record<string, string> = {
-            open: "bg-blue-500",
-            closed: "bg-black",
-            cancelled: "bg-red-500",
-            in_progress: "bg-orange-500",
-            completed: "bg-green-500",
-          };
-
-          return {
-            value: s.value,
-            label: (
-              <div className="flex items-center gap-2">
-                <span className={`size-2 rounded-full ${colors[s.value]}`} />
-                {s.label}
-              </div>
-            ),
-          };
-        }) as unknown as { value: string; label: string }[],
       },
     },
 
@@ -263,7 +215,7 @@ export function getVendorLeadsTableColumns({
       filterFn: (
         row,
         _columnId,
-        filterValue: "overdue" | "today" | "upcoming" | "all"
+        filterValue: "overdue" | "today" | "upcoming" | "all",
       ) => {
         if (!filterValue) return true;
         const dueDate = new Date(row.getValue("dueDate") as string);
@@ -282,6 +234,9 @@ export function getVendorLeadsTableColumns({
 
         return true;
       },
+      meta: {
+        label: "Due Date",
+      },
     },
 
     {
@@ -289,6 +244,8 @@ export function getVendorLeadsTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Address" />
       ),
+      sortingFn: siteMapLinkSort<ProcessedTask>(),
+
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
@@ -318,6 +275,9 @@ export function getVendorLeadsTableColumns({
           </div>
         );
       },
+      meta: {
+        label: "Site Map Link",
+      },
     },
 
     // Site type
@@ -326,22 +286,43 @@ export function getVendorLeadsTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Site Type" />
       ),
+      enableSorting: false,
+      enableColumnFilter: true,
+      enableHiding: true,
+      filterFn: tableMultiValueFilter,
+      meta: {
+        label: "Site Type",
+      },
     },
 
     // Product Types
     {
-      accessorKey: "productTypes",
+      accessorKey: "furnitureType",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Product Types" />
+        <DataTableColumnHeader column={column} title="Furniture Types" />
       ),
+      enableSorting: false,
+      enableColumnFilter: true,
+      enableHiding: true,
+      filterFn: tableMultiValueFilter,
+      meta: {
+        label: "Furniture Types",
+      },
     },
 
     // Product Structures
     {
-      accessorKey: "productStructures",
+      accessorKey: "furnitueStructures",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Product Structures" />
+        <DataTableColumnHeader column={column} title="Furniture Structures" />
       ),
+      enableSorting: false,
+      enableColumnFilter: true,
+      enableHiding: true,
+      filterFn: tableMultiValueFilter,
+      meta: {
+        label: "Furniture Structures",
+      },
     },
 
     {
@@ -353,11 +334,15 @@ export function getVendorLeadsTableColumns({
         const name = row.getValue("assignedByName") as string;
         return name || "—";
       },
+      meta: {
+        label: "Assigned By",
+      },
     },
     ...(showAssignedTo
       ? ([
           {
             accessorKey: "assignedToName",
+
             header: ({ column }) => (
               <DataTableColumnHeader column={column} title="Assigned To" />
             ),
@@ -365,6 +350,13 @@ export function getVendorLeadsTableColumns({
               const name = row.getValue("assignedToName") as string;
               return name || "—";
             },
+            meta: {
+              label: "Assigned To",
+            },
+            filterFn: tableSingleValueMultiSelectFilter,
+            enableSorting: false,
+            enableHiding: true,
+            enableColumnFilter: true,
           },
         ] satisfies ColumnDef<ProcessedTask>[])
       : []),
@@ -378,6 +370,9 @@ export function getVendorLeadsTableColumns({
       cell: ({ getValue }) => {
         const date = new Date(getValue() as string);
         return date.toLocaleString("en-IN");
+      },
+      meta: {
+        label: "Assigned At",
       },
     },
   ];

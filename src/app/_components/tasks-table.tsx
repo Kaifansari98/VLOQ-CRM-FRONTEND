@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import { useAppSelector } from "@/redux/store";
 
 import {
@@ -41,7 +47,7 @@ const MyTaskTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type as string | undefined
+    (state) => state.auth.user?.user_type.user_type as string | undefined,
   );
   const isAdminUser =
     userType?.toLowerCase() === "admin" ||
@@ -57,24 +63,18 @@ const MyTaskTable = () => {
   const vendorUserTasksQuery = useVendorUserTasks(
     vendorId || 0,
     userId || 0,
-    shouldFetch
+    shouldFetch,
   );
   const vendorAllTasksQuery = useVendorAllTasks(
     vendorId || 0,
-    shouldFetchOverall && isAdminUser
+    shouldFetchOverall && isAdminUser,
   );
 
   const [openFollowUp, setOpenFollowUp] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
   const [viewScope, setViewScope] = useState<"my" | "overall">("my");
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
-    architechName: false,
-    source: false,
     createdAt: false,
-    altContact: false,
-    productTypes: false,
-    productStructures: false,
-    designerRemark: false,
   });
 
   // Table state - Fixed: Use 'assignedAt' instead of 'createdAt'
@@ -158,11 +158,11 @@ const MyTaskTable = () => {
           variant: "sitereadinessstage",
         });
         router.push(
-          `/dashboard/installation/site-readiness/details/${row.leadId}?accountId=${row.accountId}`
+          `/dashboard/installation/site-readiness/details/${row.leadId}?accountId=${row.accountId}`,
         );
       } else if (row.taskType === "Miscellaneous") {
         router.push(
-          `/dashboard/installation/under-installation/details/${row.leadId}?accountId=${row.accountId}&tab=misc&taskId=${row.id}`
+          `/dashboard/installation/under-installation/details/${row.leadId}?accountId=${row.accountId}&tab=misc&taskId=${row.id}`,
         );
       } else if (row.taskType === "Production Ready") {
         const clearnRemark = extractTitleText(row.remark);
@@ -173,21 +173,21 @@ const MyTaskTable = () => {
           variant: "productionready",
         });
         router.push(
-          `/dashboard/production/pre-post-prod/details/${row.leadId}?accountId=${row.accountId}&remark=${clearnRemark}`
+          `/dashboard/production/pre-post-prod/details/${row.leadId}?accountId=${row.accountId}&remark=${clearnRemark}`,
         );
       } else {
         console.log("follow up is under development");
       }
     },
-    [router]
+    [router],
   );
 
   // Process leads into table data - Memoized to prevent re-renders
   const rowData = useMemo<ProcessedTask[]>(() => {
     const sourceData =
       viewScope === "overall"
-        ? vendorAllTasksQuery.data ?? []
-        : vendorUserTasksQuery.data ?? [];
+        ? (vendorAllTasksQuery.data ?? [])
+        : (vendorUserTasksQuery.data ?? []);
 
     if (!sourceData) return [];
 
@@ -201,8 +201,8 @@ const MyTaskTable = () => {
       phoneNumber: task.leadMaster.phone_number,
       leadStatus: task.userLeadTask.status,
       siteType: task.leadMaster.site_type || "",
-      productTypes: task.leadMaster.product_type.join(", "),
-      productStructures: task.leadMaster.product_structure.join(", "),
+      furnitureType: task.leadMaster.product_type.join(", "),
+      furnitueStructures: task.leadMaster.product_structure.join(", "),
       taskType: task.userLeadTask.task_type,
       dueDate: task.userLeadTask.due_date,
       site_map_link: task.leadMaster.site_map_link,
@@ -216,6 +216,7 @@ const MyTaskTable = () => {
 
   const myTaskTotal = vendorUserTasksQuery.data?.length ?? 0;
   const overallTaskTotal = vendorAllTasksQuery.data?.length ?? 0;
+
 
   // Calculate task counts - Memoized to prevent re-renders
   const taskCounts = useMemo(() => {
@@ -237,15 +238,21 @@ const MyTaskTable = () => {
       else counts.upcoming++;
     });
 
+  console.log("My Task Total: ", rowData);
+
+
     return counts;
   }, [rowData]);
 
   useEffect(() => {
     console.log("[MyTasks] scope:", viewScope);
-    console.log("[MyTasks] myTasks count:", vendorUserTasksQuery.data?.length ?? 0);
+    console.log(
+      "[MyTasks] myTasks count:",
+      vendorUserTasksQuery.data?.length ?? 0,
+    );
     console.log(
       "[MyTasks] overallTasks count:",
-      vendorAllTasksQuery.data?.length ?? 0
+      vendorAllTasksQuery.data?.length ?? 0,
     );
     console.log("[MyTasks] due date counts:", taskCounts);
   }, [
@@ -264,7 +271,7 @@ const MyTaskTable = () => {
         router,
         showAssignedTo: viewScope === "overall",
       }),
-    [setRowAction, userType, router, viewScope]
+    [setRowAction, userType, router, viewScope],
   );
 
   // Custom filter function for due dates - Memoized to prevent re-creation
@@ -295,7 +302,7 @@ const MyTaskTable = () => {
           return true;
       }
     },
-    []
+    [],
   );
 
   const filteredRowData = useMemo(() => {
@@ -407,15 +414,15 @@ const MyTaskTable = () => {
       debounceMs: 300,
       throttleMs: 50,
     }),
-    []
+    [],
   );
 
   const followUpVariant: "Follow Up" | "Pending Materials" | "Pending Work" =
     rowAction?.variant === "Pending Materials"
       ? "Pending Materials"
       : rowAction?.variant === "Pending Work"
-      ? "Pending Work"
-      : "Follow Up";
+        ? "Pending Work"
+        : "Follow Up";
 
   const dueDateFilterLabel =
     (table.getColumn("dueDate")?.getFilterValue() as string) || "today";
@@ -424,8 +431,7 @@ const MyTaskTable = () => {
     const scopeText = isOverallView ? "Your teams" : "Your";
     if (dueDateFilterLabel === "upcoming")
       return `${scopeText} upcoming tasks.`;
-    if (dueDateFilterLabel === "overdue")
-      return `${scopeText} overdue tasks.`;
+    if (dueDateFilterLabel === "overdue") return `${scopeText} overdue tasks.`;
     return `${scopeText} active tasks for the day.`;
   })();
 
@@ -439,9 +445,7 @@ const MyTaskTable = () => {
             <h1 className="text-lg font-semibold">
               {viewScope === "overall" ? "Overall Tasks" : "My Task"}
             </h1>
-            <p className="text-sm text-muted-foreground">
-              {headerDescription}
-            </p>
+            <p className="text-sm text-muted-foreground">{headerDescription}</p>
           </div>
 
           {/* Due Date Tabs (Always visible – top aligned) */}

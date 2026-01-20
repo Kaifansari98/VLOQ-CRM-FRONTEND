@@ -9,7 +9,6 @@ import {
   SortingState,
   VisibilityState,
   getCoreRowModel,
-  getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
@@ -23,26 +22,24 @@ import { DataTableFilterList } from "@/components/data-table/data-table-filter-l
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 
-import { useUniversalStageLeads } from "@/api/universalstage";
+import {
+  UniversalStagePostPayload,
+  useUniversalStageLeadsPost,
+} from "@/api/universalstage";
 import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
+
 import { getUniversalTableColumns } from "../utils/column/Universal-column";
 import { LeadColumn } from "../utils/column/column-type";
+import { mapTableFiltersToPayload } from "@/lib/utils";
 
-//
 // -------------------------------------------------------
-// 🔵 UNIVERSAL ROW TYPE
+// 🟣 COMPONENT PROPS
 // -------------------------------------------------------
-//
 
-//
-// -------------------------------------------------------
-// 🟣 UNIVERSAL TABLE PROPS
-// -------------------------------------------------------
-//
 export interface UniversalTableProps {
   getRowId?: (row: LeadColumn) => string;
   onRowNavigate: (row: LeadColumn) => string;
-  type: string; // "Type 2" or any stage type
+  type: string;
   title?: string;
   description?: string;
   enableAdminTabs?: boolean;
@@ -51,11 +48,10 @@ export interface UniversalTableProps {
   defaultViewType?: "my" | "overall";
 }
 
-//
 // -------------------------------------------------------
-// 🟩 UNIVERSAL TABLE COMPONENT
+// 🟩 COMPONENT
 // -------------------------------------------------------
-//
+
 export function UniversalTable({
   getRowId,
   onRowNavigate,
@@ -67,36 +63,33 @@ export function UniversalTable({
   defaultViewType = "my",
   type,
 }: UniversalTableProps) {
+  // -------------------- GLOBAL STATE --------------------
+
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
-  const router = useRouter();
 
+  const router = useRouter();
   const isAdmin = userType === "admin" || userType === "super_admin";
 
-  //
-  // 🔵 Tabs (My / Overall)
-  //
-  const [viewType, setViewType] = useState<"my" | "overall">(
-    defaultViewType
-  );
+  // -------------------- LOCAL UI STATE --------------------
 
-  //
-  // 🔵 Pagination State
-  //
+  const [viewType, setViewType] = useState<"my" | "overall">(defaultViewType);
+
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 20,
   });
 
-  //
-  // 🔵 Table Controls
-  //
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: true },
   ]);
+
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+
+  console.log("Column Filter data: ", columnFilters);
+
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     architechName: false,
@@ -104,22 +97,50 @@ export function UniversalTable({
     createdAt: false,
     altContact: false,
     email: false,
-    productTypes: true,
-    productStructures: false,
+    furnitueStructures: false,
     designerRemark: false,
   });
 
-  //
-  // -------------------------------------------------------
-  // 🔵 API CALLS — Stage data dynamically depends on `type`
-  // -------------------------------------------------------
-  //
-  const { data: myData, isLoading: isMyLoading } = useUniversalStageLeads(
+  // -------------------- POST PAYLOAD --------------------
+
+  const postPayload: UniversalStagePostPayload = useMemo(() => {
+    const sortOrder: "asc" | "desc" = sorting[0]?.desc ? "desc" : "asc";
+
+    const mappedFilters = mapTableFiltersToPayload(columnFilters);
+
+    return {
+      userId: userId!,
+      tag: type,
+      page: pagination.pageIndex + 1,
+      limit: pagination.pageSize,
+      filter_name: globalFilter || "",
+      filter_lead_code: mappedFilters.filter_lead_code,
+      contact: mappedFilters.contact,
+      alt_contact_no: mappedFilters.alt_contact_no,
+      email: mappedFilters.email,
+      name: mappedFilters.name,
+      source: mappedFilters.source,
+      status: mappedFilters.status,
+      assign_to: mappedFilters.assign_to,
+      siteType: mappedFilters.siteType,
+      architectName: mappedFilters.architectName,
+      created_at: sortOrder,
+      site_address: mappedFilters.site_address,
+      archetech_name: mappedFilters.archetech_name,
+      designer_remark: mappedFilters.designer_remark,
+      furniture_type: mappedFilters.furniture_type,
+      furniture_structure: mappedFilters.furniture_structure,
+      furnitue_structures: mappedFilters.furnitue_structures,
+      site_type: mappedFilters.site_type,
+      site_map_link: mappedFilters.site_map_link,
+    };
+  }, [userId, type, pagination, sorting, columnFilters, globalFilter]);
+
+  // -------------------- API CALLS --------------------
+
+  const { data: myData, isLoading: isMyLoading } = useUniversalStageLeadsPost(
     vendorId!,
-    userId!,
-    type,
-    pagination.pageIndex + 1,
-    pagination.pageSize
+    postPayload,
   );
 
   const { data: overallData, isLoading: isOverallLoading } =
@@ -129,33 +150,24 @@ export function UniversalTable({
       type,
       pagination.pageIndex + 1,
       pagination.pageSize,
-      enableOverallData
+      enableOverallData,
     );
 
-  //
-  // 🔵 Active Dataset
-  //
-  const activeData =
-    viewType === "overall" ? overallData?.data ?? [] : myData?.data ?? [];
+  // -------------------- DATA SELECTION --------------------
 
-  //
-  // 🔵 Pagination Meta
-  //
+  const activeData =
+    viewType === "overall" ? (overallData?.data ?? []) : (myData?.data ?? []);
+
   const totalPages =
     viewType === "overall"
-      ? overallData?.pagination?.totalPages ?? 1
-      : myData?.pagination?.totalPages ?? 1;
-
-  // const isLoading = viewType === "overall" ? isOverallLoading : isMyLoading;
+      ? (overallData?.pagination?.totalPages ?? 1)
+      : (myData?.pagination?.totalPages ?? 1);
 
   const myCount = myData?.count ?? 0;
   const overallCount = overallData?.count ?? 0;
 
-  //
-  // -------------------------------------------------------
-  // 🔵 ROW MAPPER — converts Lead → UniversalRow
-  // -------------------------------------------------------
-  //
+  // -------------------- ROW MAPPER --------------------
+
   const mapUniversalRow = (lead: any, index: number): LeadColumn => ({
     id: lead.id,
     srNo: index + 1,
@@ -163,7 +175,7 @@ export function UniversalTable({
     lead_code: lead.lead_code ?? "",
     name: `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim(),
     email: lead.email ?? "",
-    contact: `${lead.country_code ?? ""} ${lead.contact_no ?? ""}`.trim(),
+    contact: `${lead.country_code ?? ""}${lead.contact_no ?? ""}`,
 
     siteAddress: lead.site_address ?? "",
     site_map_link: lead.site_map_link ?? "",
@@ -171,10 +183,11 @@ export function UniversalTable({
     architechName: lead.archetech_name ?? "",
     designerRemark: lead.designer_remark ?? "",
 
-    productTypes:
+    furnitureType:
       lead.productMappings?.map((p: any) => p.productType?.type).join(", ") ??
       "",
-    productStructures:
+
+    furnitueStructures:
       lead.leadProductStructureMapping
         ?.map((p: any) => p.productStructure?.type)
         .join(", ") ?? "",
@@ -183,6 +196,7 @@ export function UniversalTable({
     siteType: lead.siteType?.type ?? "",
 
     createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",
+
     updatedAt: lead.updated_at ?? "",
 
     altContact: lead.alt_contact_no ?? "",
@@ -193,29 +207,21 @@ export function UniversalTable({
     accountId: lead.account?.id ?? lead.account_id ?? 0,
   });
 
-  //
-  // -------------------------------------------------------
-  // 🔵 TABLE DATA
-  // -------------------------------------------------------
-  //
+  // -------------------- TABLE DATA --------------------
+
   const tableData = useMemo<LeadColumn[]>(() => {
-    if (!Array.isArray(activeData)) return [];
     return activeData.map((item, idx) => mapUniversalRow(item, idx));
   }, [activeData]);
 
-  //
-  // 🔵 COLUMN BUILDER
-  //
+  // -------------------- COLUMNS --------------------
+
   const columns = useMemo(
     () => getUniversalTableColumns({ showStageColumn }),
-    [showStageColumn]
+    [showStageColumn],
   );
 
-  //
-  // -------------------------------------------------------
-  // 🔵 TANSTACK TABLE SETUP
-  // -------------------------------------------------------
-  //
+  // -------------------- TABLE INSTANCE --------------------
+
   const table = useReactTable<LeadColumn>({
     data: tableData,
     columns,
@@ -241,120 +247,68 @@ export function UniversalTable({
 
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
 
     getRowId: getRowId ?? ((row) => row.id.toString()),
-    globalFilterFn: "includesString",
   });
 
-  //
-  // 🔵 Loading State
-  //
-  // if (isLoading) {
-  //  return  <DataTableSkeleton rowCount={8} columnCount={10} />;
-  // }
+  // -------------------- ROW NAVIGATION --------------------
 
-  //
-  // 🔵 Row Navigation
-  //
   const handleRowClick = (row: LeadColumn) => {
     router.push(onRowNavigate(row));
   };
 
-  //
-  // -------------------------------------------------------
-  // 🔵 UI
-  // -------------------------------------------------------
-  //
+  // -------------------- UI --------------------
+
   return (
     <div className="py-2">
-      {/* ================= HEADER ================= */}
-      <div className="px-4 space-y-3 md:space-y-2 md:flex md:flex-col lg:flex-row lg:justify-between lg:items-start lg:space-y-0">
-        {/* Title + Description (Desktop only) */}
-        <div className="hidden md:block">
+      <div className="px-4 flex justify-between items-start">
+        <div>
           <h1 className="text-lg font-semibold">{title}</h1>
-          <p className="text-sm text-muted-foreground line-clamp-1">
-            {description}
-          </p>
+          <p className="text-sm text-muted-foreground">{description}</p>
         </div>
 
-        {/* My / Overall Tabs */}
         {enableAdminTabs && !isAdmin && (
-          <div className="flex gap-2 justify-start lg:justify-end">
+          <div className="flex gap-2">
             <Button
               size="sm"
-              className="flex gap-2"
               variant={viewType === "my" ? "default" : "secondary"}
               onClick={() => {
                 setViewType("my");
                 setPagination({ ...pagination, pageIndex: 0 });
               }}
             >
-              My Leads
-              <span>{myCount}</span>
+              My Leads ({myCount})
             </Button>
 
             <Button
               size="sm"
-              className="flex gap-2"
               variant={viewType === "overall" ? "default" : "secondary"}
               onClick={() => {
                 setViewType("overall");
                 setPagination({ ...pagination, pageIndex: 0 });
               }}
             >
-              Overall Leads
-              <span>{overallCount}</span>
+              Overall Leads ({overallCount})
             </Button>
           </div>
         )}
       </div>
 
-      {/* ================= TABLE ================= */}
       <DataTable
         table={table}
         onRowDoubleClick={handleRowClick}
         className="pt-3 px-4"
       >
-        {/* ================= MOBILE LAYOUT ================= */}
-        <div className="flex flex-col gap-4 md:hidden">
-          {/* Filters grid */}
-          <div className="flex flex-wrap gap-2">
-            <DataTableSortList table={table} />
-            {/* <DataTableFilterList table={table} /> */}
-            <DataTableViewOptions table={table} />
-
-            <DataTableDateFilter
-              column={table.getColumn("createdAt")!}
-              title="Created At"
-              multiple
-            />
-          </div>
-
-          {/* Search at bottom */}
-          <ClearInput
-            value={globalFilter ?? ""}
-            onChange={(e) => {
-              setGlobalFilter(e.target.value);
-              setPagination({ ...pagination, pageIndex: 0 });
-            }}
-            placeholder="Search…"
-            className=" w-full sm:w-64   h-8"
-          />
-        </div>
-
-        {/* ================= DESKTOP LAYOUT ================= */}
         <div className="hidden md:flex justify-between items-end">
-          {/* Left: Search + Created At */}
-          <div className="flex items-end gap-3">
+          <div className="flex gap-3">
             <ClearInput
-              value={globalFilter ?? ""}
+              value={globalFilter}
               onChange={(e) => {
                 setGlobalFilter(e.target.value);
                 setPagination({ ...pagination, pageIndex: 0 });
               }}
-              placeholder="Search…"
+              placeholder="Search..."
               className="h-8 w-64"
             />
 
@@ -365,8 +319,7 @@ export function UniversalTable({
             />
           </div>
 
-          {/* Right: Other filters */}
-          <div className="flex items-center gap-2">
+          <div className="flex gap-2">
             <DataTableSortList table={table} />
             <DataTableFilterList table={table} />
             <DataTableViewOptions table={table} />

@@ -63,10 +63,10 @@ export default function PendingLeadsTable({
   const router = useRouter();
 
   const { data: onHoldData = [], isLoading: onHoldLoading } = useOnHoldLeads(
-    vendorId!
+    vendorId!,
   );
   const { data: lostData = [], isLoading: lostLoading } = useLostLeads(
-    vendorId!
+    vendorId!,
   );
   const { data: lostApprovalData = [], isLoading: lostApprovalLoading } =
     useLostApprovalLeads(vendorId!);
@@ -76,7 +76,7 @@ export default function PendingLeadsTable({
   console.log("Lost Approval data: ", lostApprovalData);
 
   const [activeLead, setActiveLead] = React.useState<PendingLeadRow | null>(
-    null
+    null,
   );
   const [openConfirm, setOpenConfirm] = React.useState(false);
   const [openRemark, setOpenRemark] = React.useState(false);
@@ -88,7 +88,7 @@ export default function PendingLeadsTable({
     { id: "createdAt", desc: true },
   ]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
+    [],
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -133,9 +133,9 @@ export default function PendingLeadsTable({
       architechName: lead.archetech_name || "",
       designerRemark: lead.designer_remark || "",
       activity_status: lead.activity_status || "",
-      productTypes:
+      furnitureType:
         lead.productMappings?.map((pm) => pm.productType.type).join(", ") || "",
-      productStructures:
+      furnitueStructures:
         lead.leadProductStructureMapping
           ?.map((psm) => psm.productStructure.type)
           .join(", ") || "",
@@ -154,15 +154,15 @@ export default function PendingLeadsTable({
 
   const onHoldProcessed = React.useMemo(
     () => processLeads(onHoldData),
-    [onHoldData, processLeads]
+    [onHoldData, processLeads],
   );
   const lostProcessed = React.useMemo(
     () => processLeads(lostData),
-    [lostData, processLeads]
+    [lostData, processLeads],
   );
   const lostApprovalProcessed = React.useMemo(
     () => processLeads(lostApprovalData),
-    [lostApprovalData, processLeads]
+    [lostApprovalData, processLeads],
   );
 
   // Get data based on tab
@@ -190,7 +190,7 @@ export default function PendingLeadsTable({
           setRowAction({ row: lead, variant: "lost" });
         },
       }),
-    [tab]
+    [tab],
   );
 
   const onConfirmRevert = () => {
@@ -228,7 +228,7 @@ export default function PendingLeadsTable({
             queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
           }
         },
-      }
+      },
     );
   };
 
@@ -280,7 +280,7 @@ export default function PendingLeadsTable({
 
   const handleRowClick = (row: PendingLeadRow) => {
     router.push(
-      `/dashboard/leads/leadstable/pendingleaddetails/${row.id}?accountId=${row.accountId}&tab=${tab}`
+      `/dashboard/leads/leadstable/pendingleaddetails/${row.id}?accountId=${row.accountId}&tab=${tab}`,
     );
   };
 
@@ -418,7 +418,7 @@ export default function PendingLeadsTable({
                 });
                 queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
               },
-            }
+            },
           );
         }}
         loading={markAsLostMutation.isPending}

@@ -1,6 +1,8 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { toast } from "react-toastify";
+import { ColumnFiltersState, FilterFn, SortingFn } from "@tanstack/react-table";
+import { LeadColumn } from "@/components/utils/column/column-type";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -81,4 +83,151 @@ export function extractTitleText(input: string = ""): string {
 
 export function normalize(val: string) {
   return val.trim().replace(/\s+/g, "-").toLowerCase();
+}
+
+export const tableMultiValueFilter: FilterFn<any> = (
+  row,
+  columnId,
+  filterValue,
+) => {
+  if (!Array.isArray(filterValue) || filterValue.length === 0) {
+    return true;
+  }
+
+  const cellValue = row.getValue(columnId);
+
+  if (!cellValue) return false;
+
+  const values = String(cellValue)
+    .split(",")
+    .map((v) => v.trim());
+
+  return filterValue.some((val) => values.includes(val));
+};
+
+export const tableTextSearchFilter = <T>(): FilterFn<T> => {
+  return (row, columnId, filterValue) => {
+    if (!filterValue) return true;
+
+    const cellValue = row.getValue(columnId);
+
+    if (!cellValue) return false;
+
+    return String(cellValue)
+      .toLowerCase()
+      .includes(String(filterValue).toLowerCase());
+  };
+};
+
+export const siteMapLinkSort = <T>(): SortingFn<T> => {
+  return (rowA, rowB, columnId) => {
+    const a = rowA.getValue(columnId) as string;
+    const b = rowB.getValue(columnId) as string;
+
+    const aHasLink =
+      typeof a === "string" &&
+      (a.startsWith("http://") || a.startsWith("https://"));
+
+    const bHasLink =
+      typeof b === "string" &&
+      (b.startsWith("http://") || b.startsWith("https://"));
+
+    // ✅ Move rows WITH link on top
+    if (aHasLink && !bHasLink) return -1;
+    if (!aHasLink && bHasLink) return 1;
+
+    // Both same → keep original order
+    return 0;
+  };
+};
+
+export const tableSingleValueMultiSelectFilter: FilterFn<any> = (
+  row,
+  columnId,
+  filterValue,
+) => {
+  if (!Array.isArray(filterValue) || filterValue.length === 0) {
+    return true;
+  }
+
+  const cellValue = row.getValue(columnId);
+
+  if (!cellValue) return false;
+
+  const rowValue = String(cellValue).trim().toLowerCase();
+
+  return filterValue.some(
+    (val) => String(val).trim().toLowerCase() === rowValue,
+  );
+};
+
+// Column filter mapping utility
+export function mapTableFiltersToPayload(filters: ColumnFiltersState) {
+  const payload: Record<string, any> = {};
+
+  filters.forEach((filter) => {
+    const { id, value } = filter;
+
+    if (!value || (Array.isArray(value) && value.length === 0)) return;
+
+    switch (id) {
+      case "lead_code":
+        payload.filter_lead_code = value;
+        break;
+
+      case "name":
+        payload.filter_name = value;
+        break;
+
+      case "contact":
+        payload.contact = value;
+        break;
+
+      case "altContact":
+        payload.alt_contact_no = value;
+        break;
+
+      case "email":
+        payload.email = value;
+        break;
+
+      case "siteAddress":
+        payload.site_address = value;
+        break;
+
+      case "architechName":
+        payload.archetech_name = value;
+        break;
+
+      case "designerRemark":
+        payload.designer_remark = value;
+        break;
+
+      case "furnitureType":
+        payload.furniture_type = value;
+        break;
+
+      case "furnitueStructures":
+        payload.furniture_structure = value;
+        break;
+
+      case "siteType":
+        payload.site_type = value;
+        break;
+
+      case "source":
+        payload.source = value;
+        break;
+
+      case "assign_to":
+        payload.assign_to = value;
+        break;
+
+      case "site_map_link":
+        payload.site_map_link = value;
+        break;
+    }
+  });
+
+  return payload;
 }

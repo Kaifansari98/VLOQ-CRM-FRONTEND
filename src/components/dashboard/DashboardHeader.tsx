@@ -67,7 +67,7 @@ export default function DashboardHeader() {
             <span>👋</span> {greeting}
           </span>
 
-          <span className="text-lg font-semibold leading-tight">
+          <span className="text-lg font-semibold leading-tight capitalize">
             {username}
           </span>
         </div>
