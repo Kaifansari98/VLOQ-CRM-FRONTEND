@@ -50,6 +50,7 @@ export interface MiscellaneousEntry {
     id: number;
     task_type: string;
     remark?: string | null;
+    status?: string;
   } | null;
   teams: MiscellaneousTeam[];
   documents: MiscellaneousDocument[];
@@ -1230,6 +1231,58 @@ export const useResolveMiscellaneousEntry = () => {
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(
         error?.response?.data?.error || "Failed to resolve miscellaneous entry"
+      );
+    },
+  });
+};
+
+/* ==========================================================
+   ✔️ PUT - Mark Miscellaneous Task Ready
+   @route PUT /leads/installation/under-installation/vendorId/:vendorId/leadId/:leadId/misc/:miscId/mark-ready
+   ========================================================== */
+
+export const markMiscellaneousTaskReady = async (payload: {
+  vendorId: number;
+  leadId: number;
+  miscId: number;
+  ready_by: number;
+}) => {
+  const bodyData = {
+    ready_by: payload.ready_by,
+  };
+
+  const { data } = await apiClient.put(
+    `/leads/installation/under-installation/vendorId/${payload.vendorId}/leadId/${payload.leadId}/misc/${payload.miscId}/mark-ready`,
+    bodyData
+  );
+
+  return data?.data;
+};
+
+/**
+ * ✅ React Query Mutation Hook - Mark Miscellaneous Task Ready
+ */
+export const useMarkMiscellaneousTaskReady = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: markMiscellaneousTaskReady,
+
+    onSuccess: (data, variables) => {
+      toast.success("Marked as ready");
+
+      queryClient.invalidateQueries({
+        queryKey: [
+          "miscellaneousEntries",
+          variables.vendorId,
+          variables.leadId,
+        ],
+      });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toast.error(
+        error?.response?.data?.error || "Failed to mark task as ready"
       );
     },
   });
