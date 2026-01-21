@@ -67,6 +67,7 @@ import {
   canEditLeadButton,
   canDeleteLeadButton,
   canReassignLeadButton,
+  canViewPaymentTab,
 } from "@/components/utils/privileges";
 
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
@@ -171,6 +172,7 @@ export default function ClientApprovalLeadDetails() {
   const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadButton(userType);
+  const canViewPayment = canViewPaymentTab(userType);
 
   return (
     <>
@@ -405,10 +407,12 @@ export default function ClientApprovalLeadDetails() {
               Site History
             </TabsTrigger>
 
-            <TabsTrigger value="payment">
-              <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-              Payment Information
-            </TabsTrigger>
+            {canViewPayment && (
+              <TabsTrigger value="payment">
+                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                Payment Information
+              </TabsTrigger>
+            )}
             <TabsTrigger value="chats">
               <MessageSquare size={16} className="mr-1 opacity-60" />
               Chats
@@ -440,9 +444,11 @@ export default function ClientApprovalLeadDetails() {
           <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
         </TabsContent>
 
-        <TabsContent value="payment">
-          <PaymentInformation accountId={accountId} />
-        </TabsContent>
+        {canViewPayment && (
+          <TabsContent value="payment">
+            <PaymentInformation accountId={accountId} />
+          </TabsContent>
+        )}
 
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />

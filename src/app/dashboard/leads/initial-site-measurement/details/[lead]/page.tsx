@@ -65,6 +65,7 @@ import {
   canReassignLeadButton,
   canEditLeadForSalesExecutiveButton,
   canDeleteLeadButton,
+  canViewPaymentTab,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
@@ -167,6 +168,7 @@ export default function SiteMeasurementLead() {
   const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadForSalesExecutiveButton(userType);
+  const canViewPayment = canViewPaymentTab(userType);
 
   console.log("assigned to", lead?.assignedTo?.id);
 
@@ -330,10 +332,12 @@ export default function SiteMeasurementLead() {
               <BoxIcon size={16} className="mr-1 opacity-60" />
               Site History
             </TabsTrigger>
-            <TabsTrigger value="payments">
-              <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-              Payment Information
-            </TabsTrigger>
+            {canViewPayment && (
+              <TabsTrigger value="payments">
+                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                Payment Information
+              </TabsTrigger>
+            )}
             <TabsTrigger value="chats">
               <MessageSquare size={16} className="mr-1 opacity-60" />
               Chats
@@ -353,9 +357,11 @@ export default function SiteMeasurementLead() {
           <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
         </TabsContent>
 
-        <TabsContent value="payments">
-          <PaymentComingSoon />
-        </TabsContent>
+        {canViewPayment && (
+          <TabsContent value="payments">
+            <PaymentComingSoon />
+          </TabsContent>
+        )}
 
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />

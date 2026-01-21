@@ -61,6 +61,7 @@ import {
   canDeleteLeadButton,
   canReassignLeadButton,
   canAccessTodoTaskTabProductionStage,
+  canViewPaymentTab,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
@@ -194,6 +195,7 @@ export default function ProductionLeadDetails() {
   const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadButton(userType);
+  const canViewPayment = canViewPaymentTab(userType);
 
   const productionDefaultTab = handledproductionDefaultTab(userType);
 
@@ -441,10 +443,12 @@ export default function ProductionLeadDetails() {
                 Site History
               </TabsTrigger>
 
-              <TabsTrigger value="payment">
-                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                Payment Information
-              </TabsTrigger>
+              {canViewPayment && (
+                <TabsTrigger value="payment">
+                  <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                  Payment Information
+                </TabsTrigger>
+              )}
               <TabsTrigger value="chats">
                 <MessageSquare size={16} className="mr-1 opacity-60" />
                 Chats
@@ -510,9 +514,11 @@ export default function ProductionLeadDetails() {
         </TabsContent>
 
         {/* 🔹 Payment */}
-        <TabsContent value="payment">
-          <PaymentInformation accountId={accountId} />
-        </TabsContent>
+        {canViewPayment && (
+          <TabsContent value="payment">
+            <PaymentInformation accountId={accountId} />
+          </TabsContent>
+        )}
 
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />

@@ -56,6 +56,7 @@ import {
   canEditLeadButton,
   canDeleteLeadButton,
   canReassignLeadButton,
+  canViewPaymentTab,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
@@ -152,6 +153,7 @@ export default function DispatchPlanningLeadDetails() {
   const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadButton(userType);
+  const canViewPayment = canViewPaymentTab(userType);
   return (
     <>
       {/* Header */}
@@ -340,10 +342,12 @@ export default function DispatchPlanningLeadDetails() {
             </TabsTrigger>
 
             {/* ✅ Payment Info */}
-            <TabsTrigger value="payment">
-              <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-              Payment Information
-            </TabsTrigger>
+            {canViewPayment && (
+              <TabsTrigger value="payment">
+                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                Payment Information
+              </TabsTrigger>
+            )}
             <TabsTrigger value="chats">
               <MessageSquare size={16} className="mr-1 opacity-60" />
               Chats
@@ -377,9 +381,11 @@ export default function DispatchPlanningLeadDetails() {
           <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
         </TabsContent>
 
-        <TabsContent value="payment">
-          <PaymentInformation accountId={accountId} />
-        </TabsContent>
+        {canViewPayment && (
+          <TabsContent value="payment">
+            <PaymentInformation accountId={accountId} />
+          </TabsContent>
+        )}
 
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />
