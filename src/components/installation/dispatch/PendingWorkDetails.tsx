@@ -66,11 +66,14 @@ export default function PendingWorkDetails({
   const [title, setTitle] = useState("");
   const [remark, setRemark] = useState("");
   const [dueDate, setDueDate] = useState<string | null>(null);
-  const [allowForm, setAllowForm] = useState(false);
+  const [pendingWorkAnswer, setPendingWorkAnswer] = useState<
+    "yes" | "no" | null
+  >("no");
   const [openTaskModal, setOpenTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
 
   const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
+  const allowForm = canWork && pendingWorkAnswer === "yes";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,33 +133,55 @@ export default function PendingWorkDetails({
         <div className="px-6 py-4 border-b bg-muted/30 flex items-center gap-3">
 
           <div>
-            <div className="flex gap-2 items-center">
-          {canWork ? (
-            <Checkbox
-              checked={allowForm}
-              onCheckedChange={(checked) => setAllowForm(checked === true)}
-              disabled={false}
-            />
-          ) : (
-            <CustomeTooltip
-              truncateValue={
-                <Checkbox
-                  checked={allowForm}
-                  disabled={true}
-                  className="cursor-not-allowed"
-                />
-              }
-              value="Only Factory Users Can Access This Action"
-            />
-          )}
+            <div className="flex gap-6 items-center">
             <h2 className="text-lg font-semibold tracking-tight">
-              Add Pending Work
+              Any Pending Work Left ?
             </h2>
 
             </div>
+            <div className="flex gap-6 items-center mt-2">
+            {canWork ? (
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={pendingWorkAnswer === "yes"}
+                      onCheckedChange={(checked) =>
+                        setPendingWorkAnswer(checked ? "yes" : null)
+                      }
+                    />
+                    Yes
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={pendingWorkAnswer === "no"}
+                      onCheckedChange={(checked) =>
+                        setPendingWorkAnswer(checked ? "no" : null)
+                      }
+                    />
+                    No
+                  </label>
+                </div>
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox disabled className="cursor-not-allowed" />
+                        Yes
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox disabled className="cursor-not-allowed" />
+                        No
+                      </label>
+                    </div>
+                  }
+                  value="Only Factory Users Can Access This Action"
+                />
+              )}
             <p className="text-xs text-muted-foreground mt-0.5">
-              Tasks pending during installation
+              Select Yes to add pending work tasks
             </p>
+            </div>
           </div>
         </div>
 
