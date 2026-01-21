@@ -934,64 +934,52 @@ export default function InstallationMiscellaneous({
                     }}
                   />
                 </div>
-
-                {/* Resolve Button */}
-                {viewModal.data?.expected_ready_date && canDoMarkAsResolved && (
-                  <Button
-                    variant="default"
-                    size="default"
-                    disabled={resolveMisc.isPending}
-                    onClick={() =>
-                      resolveMisc.mutate(
-                        {
-                          vendorId,
-                          leadId,
-                          miscId: viewModal?.data?.id || 0,
-                          resolved_by: userId!,
-                        },
-                        {
-                          onSuccess: () => {
-                            queryClient.invalidateQueries({
-                              queryKey: [
-                                "miscellaneousEntries",
-                                vendorId,
-                                leadId,
-                              ],
-                            });
-
-                            setViewModal((prev) => ({
-                              ...prev,
-                              data: prev.data
-                                ? {
-                                    ...prev.data,
-                                    is_resolved: true, // immediate UI change
-                                    resolved_by: userId, // optional
-                                    resolved_at: new Date().toString(), // optional
-                                  }
-                                : null,
-                            }));
-                          },
-                        }
-                      )
-                    }
-                    className="gap-2"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    {resolveMisc.isPending ? "Resolving..." : "Mark Resolved"}
-                  </Button>
-                )}
               </div>
             ) : (
               <div className="flex-1" />
             )}
 
-            <Button
-              variant="outline"
-              onClick={() => setViewModal({ open: false, data: null })}
-              className="min-w-[100px]"
-            >
-              Close
-            </Button>
+            {/* Resolve Button */}
+            {viewModal.data?.expected_ready_date && canDoMarkAsResolved && (
+              <Button
+                variant="default"
+                size="default"
+                disabled={resolveMisc.isPending}
+                onClick={() =>
+                  resolveMisc.mutate(
+                    {
+                      vendorId,
+                      leadId,
+                      miscId: viewModal?.data?.id || 0,
+                      resolved_by: userId!,
+                    },
+                    {
+                      onSuccess: () => {
+                        queryClient.invalidateQueries({
+                          queryKey: ["miscellaneousEntries", vendorId, leadId],
+                        });
+
+                        setViewModal((prev) => ({
+                          ...prev,
+                          data: prev.data
+                            ? {
+                                ...prev.data,
+                                is_resolved: true, // immediate UI change
+                                resolved_by: userId, // optional
+                                resolved_at: new Date().toString(), // optional
+                              }
+                            : null,
+                        }));
+                      },
+                    }
+                  )
+                }
+                className="gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {resolveMisc.isPending ? "Resolving..." : "Mark Resolved"}
+              </Button>
+            )}
           </DialogFooter>
         </div>
       </BaseModal>
