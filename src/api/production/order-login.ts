@@ -121,6 +121,25 @@ export const useUpdateOrderLogin = (vendorId: number | undefined) =>
       updateOrderLogin(vendorId!, vars.orderLoginId, vars.payload),
   });
 
+// ✅ --- Delete order login detail ---
+export const deleteOrderLogin = async (
+  vendorId: number,
+  orderLoginId: number,
+  deleted_by: number
+) => {
+  const { data } = await apiClient.delete(
+    `/leads/production/order-login/vendorId/${vendorId}/order-login-id/${orderLoginId}/delete`,
+    { data: { deleted_by } }
+  );
+  return data;
+};
+
+export const useDeleteOrderLogin = (vendorId: number | undefined) =>
+  useMutation({
+    mutationFn: (vars: { orderLoginId: number; deleted_by: number }) =>
+      deleteOrderLogin(vendorId!, vars.orderLoginId, vars.deleted_by),
+  });
+
 // ✅ --- Fetch Approved Tech Check Documents ---
 export const getApprovedTechCheckDocuments = async (
   vendorId: number,

@@ -5,6 +5,8 @@ import {
   useCompanyVendors,
   useOrderLoginByLead,
   useUpdateMultipleOrderLogins,
+  useUpdateOrderLogin,
+  useDeleteOrderLogin,
   useUploadMultipleFileBreakupsByLead,
 } from "@/api/production/order-login";
 import { useAppSelector } from "@/redux/store";
@@ -19,6 +21,16 @@ import SmoothTab from "@/components/kokonutui/smooth-tab";
 import { Check, Plus, Save } from "lucide-react";
 import { motion } from "framer-motion";
 import { useClientRequiredCompletionDate } from "@/api/tech-check";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   canAccessAddNewSectionButton,
   canAccessInputField,
@@ -53,6 +65,10 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const [breakups, setBreakups] = useState<
     Record<string, { item_desc: string; company_vendor_id: number | null }>
   >({});
+  const [confirmDelete, setConfirmDelete] = useState<null | {
+    id: number;
+    title: string;
+  }>(null);
 
   // 🧩 Handlers
   const handleFieldChange = (title: string, field: string, value: any) => {
@@ -70,6 +86,9 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     vendorId,
     leadId
   );
+  const { mutateAsync: updateSingle } = useUpdateOrderLogin(vendorId);
+  const { mutateAsync: deleteOrderLogin, isPending: isDeleting } =
+    useDeleteOrderLogin(vendorId);
   const { mutateAsync: uploadMultiple, isPending } =
     useUploadMultipleFileBreakupsByLead(vendorId, leadId, accountId);
 
@@ -86,6 +105,12 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     userType,
     leadStatus
   );
+  const normalizedStage = (leadStatus || "").toLowerCase().replace(/_/g, "-");
+  const isOrderLoginStage = normalizedStage.includes("order-login");
+  const isBackendUser = (userType?.toLowerCase() === "backend" || userType?.toLowerCase() === "admin" ||
+    userType?.toLowerCase() === "super-admin"
+  );
+  const canManageCustomSections = isBackendUser && isOrderLoginStage;
 
  
   const users =
@@ -135,6 +160,94 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       setBreakups(prefilled);
     }
   }, [orderLoginData]);
+
+  const handleTitleUpdate = async (item: any, nextTitle: string) => {
+    const trimmedTitle = nextTitle.trim();
+
+    if (!trimmedTitle) {
+      toast.error("Section name cannot be empty");
+      return false;
+    }
+
+    if (defaultTitles.includes(trimmedTitle)) {
+      toast.error("Section name cannot match a default section");
+      return false;
+    }
+
+    if (trimmedTitle === item.item_type) return true;
+
+    if (breakups[trimmedTitle]) {
+      toast.error("Section name already exists");
+      return false;
+    }
+
+    if (!item?.id) {
+      toast.error("Unable to update section name");
+      return false;
+    }
+
+    try {
+      await updateSingle({
+        orderLoginId: item.id,
+        payload: {
+          lead_id: item.lead_id ?? leadId,
+          item_type: trimmedTitle,
+          item_desc: (item.item_desc || "N/A").trim() || "N/A",
+          company_vendor_id: item.company_vendor_id ?? null,
+          updated_by: userId,
+        },
+      });
+
+      setBreakups((prev) => {
+        const next = { ...prev };
+        const current = next[item.item_type] || {
+          item_desc: "",
+          company_vendor_id: null,
+        };
+        delete next[item.item_type];
+        next[trimmedTitle] = current;
+        return next;
+      });
+
+      toast.success("Section name updated successfully");
+
+      queryClient.invalidateQueries({
+        queryKey: ["orderLoginByLead", vendorId, leadId],
+      });
+      return true;
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to update section");
+      return false;
+    }
+  };
+
+  const handleDeleteSection = async () => {
+    if (!confirmDelete || !userId) return;
+    try {
+      await deleteOrderLogin({
+        orderLoginId: confirmDelete.id,
+        deleted_by: userId,
+      });
+
+      setBreakups((prev) => {
+        const next = { ...prev };
+        delete next[confirmDelete.title];
+        return next;
+      });
+
+      toast.success("Section deleted successfully");
+      setConfirmDelete(null);
+
+      queryClient.invalidateQueries({
+        queryKey: ["orderLoginByLead", vendorId, leadId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["leadProductionReadiness", vendorId, leadId],
+      });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to delete section");
+    }
+  };
 
   const handleSubmitAll = async () => {
     try {
@@ -362,6 +475,17 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                       disable={!canAccessInput}
                       onChange={handleFieldChange}
                       isMandatory={false}
+                      isTitleEditable={canManageCustomSections && !!item.id}
+                      canDelete={canManageCustomSections && !!item.id}
+                      onTitleSave={(nextTitle) =>
+                        handleTitleUpdate(item, nextTitle)
+                      }
+                      onDelete={() =>
+                        setConfirmDelete({
+                          id: item.id,
+                          title: item.item_type,
+                        })
+                      }
                     />
                   ))}
           
@@ -412,6 +536,28 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           },
         ]}
       />
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete section?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the section and its data. This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteSection} disabled={isDeleting}>
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
