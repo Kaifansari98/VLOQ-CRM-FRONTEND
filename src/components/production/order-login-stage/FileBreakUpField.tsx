@@ -65,7 +65,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
         <TextAreaInput
           value={value.item_desc}
           onChange={(val) => handleFieldChange("item_desc", val)}
-          placeholder={`Enter description for ${title}`}
+          placeholder={`Enter description for ${title} (optional)`}
           disabled={disable}
         />
       </div>

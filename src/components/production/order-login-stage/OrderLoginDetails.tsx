@@ -138,39 +138,49 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
 
   const handleSubmitAll = async () => {
     try {
-      const clearedItems = Object.entries(breakups).filter(([title, val]) => {
+      const entries = Object.entries(breakups).map(([title, val]) => {
         const existing = orderLoginData?.find(
           (item: any) => item.item_type === title
         );
+        const trimmedDesc = (val.item_desc || "").trim();
+        const hasVendor = val.company_vendor_id !== null;
+        const hasDesc = trimmedDesc.length > 0;
+        const isActive = hasVendor || hasDesc || Boolean(existing);
 
-        return existing && (!val.item_desc || val.item_desc.trim() === "");
+        return {
+          title,
+          val,
+          existing,
+          trimmedDesc,
+          hasVendor,
+          isActive,
+        };
       });
 
-      if (clearedItems.length > 0) {
-        const names = clearedItems.map(([title]) => title).join(", ");
-        toast.error(`Description cannot be empty for: ${names}`);
+      const missingVendor = entries.filter(
+        (entry) => entry.isActive && !entry.hasVendor
+      );
+
+      if (missingVendor.length > 0) {
+        const names = missingVendor.map((entry) => entry.title).join(", ");
+        toast.error(`Vendor is required for: ${names}`);
         return;
       }
 
-      const formatted = Object.entries(breakups)
-        .filter(([_, val]) => val.item_desc?.trim())
-        .map(([title, val]) => {
-          const existing = orderLoginData?.find(
-            (item: any) => item.item_type === title
-          );
-          return {
-            id: existing?.id || null,
-            item_type: title,
-            item_desc: val.item_desc.trim(),
-            company_vendor_id: val.company_vendor_id,
-            created_by: userId,
-            updated_by: userId,
-          };
-        });
+      const formatted = entries
+        .filter((entry) => entry.isActive && entry.hasVendor)
+        .map((entry) => ({
+          id: entry.existing?.id || null,
+          item_type: entry.title,
+          item_desc: entry.trimmedDesc || "N/A",
+          company_vendor_id: entry.val.company_vendor_id,
+          created_by: userId,
+          updated_by: userId,
+        }));
 
       if (formatted.length === 0) {
         toast.info(
-          "Please fill at least one order login field before submitting."
+          "Please select a vendor for at least one order login item before submitting."
         );
         return;
       }
