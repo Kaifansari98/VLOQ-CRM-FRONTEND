@@ -238,6 +238,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       icon: AlertTriangle,
       customCount: miscLeadsCount,
       customCountLoading: isMiscLeadLoading,
+      className: "",
+      iconClassName: "",
+      badgeClassName: "bg-red-500 text-white",
     };
 
     const insertIndex = baseItems.findIndex(

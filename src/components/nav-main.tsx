@@ -65,6 +65,9 @@ interface NavItem {
   icon?: LucideIcon;
   customCount?: number;
   customCountLoading?: boolean;
+  className?: string;
+  iconClassName?: string;
+  badgeClassName?: string;
   showCount?:
     | "total_leads"
     | "total_overall_leads"
@@ -282,16 +285,17 @@ export function NavMain({ items }: { items: NavItem[] }) {
                   className={cn(
                     "flex items-center justify-between w-full gap-2 transition-all duration-200",
                     isSingleActive &&
-                      "font-bold text-primary bg-muted/50 rounded-md"
+                      "font-bold text-primary bg-muted/50 rounded-md",
+                    item.className
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    {item.icon && <item.icon />}
+                    {item.icon && <item.icon className={item.iconClassName} />}
                     <span>{item.title}</span>
                   </div>
 
                   {(item.showCount || item.customCount !== undefined) && (
-                    <Badge className="ml-2 rounded-full">
+                    <Badge className={cn("ml-2 rounded-full", item.badgeClassName)}>
                       {isLoading || item.customCountLoading
                         ? "…"
                         : item.customCount ?? getCountForItem(item.showCount!)}
