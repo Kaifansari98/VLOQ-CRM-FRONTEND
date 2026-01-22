@@ -63,6 +63,8 @@ interface NavItem {
   title: string;
   url: string;
   icon?: LucideIcon;
+  customCount?: number;
+  customCountLoading?: boolean;
   showCount?:
     | "total_leads"
     | "total_overall_leads"
@@ -288,9 +290,11 @@ export function NavMain({ items }: { items: NavItem[] }) {
                     <span>{item.title}</span>
                   </div>
 
-                  {item.showCount && (
+                  {(item.showCount || item.customCount !== undefined) && (
                     <Badge className="ml-2 rounded-full">
-                      {isLoading ? "…" : getCountForItem(item.showCount) ?? 0}
+                      {isLoading || item.customCountLoading
+                        ? "…"
+                        : item.customCount ?? getCountForItem(item.showCount!)}
                     </Badge>
                   )}
                 </Link>

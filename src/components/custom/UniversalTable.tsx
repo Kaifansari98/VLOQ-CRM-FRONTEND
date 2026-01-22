@@ -25,6 +25,7 @@ import { DataTableViewOptions } from "@/components/data-table/data-table-view-op
 
 import { useUniversalStageLeads } from "@/api/universalstage";
 import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
+import { useUnderInstallationLeadsWithMiscellaneous } from "@/hooks/booking-stage/use-booking";
 import { getUniversalTableColumns } from "../utils/column/Universal-column";
 import { LeadColumn } from "../utils/column/column-type";
 
@@ -49,6 +50,7 @@ export interface UniversalTableProps {
   enableOverallData?: boolean;
   showStageColumn?: boolean;
   defaultViewType?: "my" | "overall";
+  dataMode?: "universal" | "misc";
 }
 
 //
@@ -66,6 +68,7 @@ export function UniversalTable({
   showStageColumn = false,
   defaultViewType = "my",
   type,
+  dataMode = "universal",
 }: UniversalTableProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
@@ -132,24 +135,43 @@ export function UniversalTable({
       enableOverallData
     );
 
+  const miscPayload = useMemo(
+    () => ({
+      userId: dataMode === "misc" ? userId ?? 0 : 0,
+      page: pagination.pageIndex + 1,
+      limit: pagination.pageSize,
+    }),
+    [dataMode, pagination.pageIndex, pagination.pageSize, userId]
+  );
+
+  const { data: miscData, isLoading: isMiscLoading } =
+    useUnderInstallationLeadsWithMiscellaneous(vendorId!, miscPayload);
+
   //
   // 🔵 Active Dataset
   //
   const activeData =
-    viewType === "overall" ? overallData?.data ?? [] : myData?.data ?? [];
+    dataMode === "misc"
+      ? miscData?.data ?? []
+      : viewType === "overall"
+        ? overallData?.data ?? []
+        : myData?.data ?? [];
 
   //
   // 🔵 Pagination Meta
   //
   const totalPages =
-    viewType === "overall"
-      ? overallData?.pagination?.totalPages ?? 1
-      : myData?.pagination?.totalPages ?? 1;
+    dataMode === "misc"
+      ? miscData?.pagination?.totalPages ?? 1
+      : viewType === "overall"
+        ? overallData?.pagination?.totalPages ?? 1
+        : myData?.pagination?.totalPages ?? 1;
 
   // const isLoading = viewType === "overall" ? isOverallLoading : isMyLoading;
 
-  const myCount = myData?.count ?? 0;
-  const overallCount = overallData?.count ?? 0;
+  const myCount = dataMode === "misc" ? miscData?.count ?? 0 : myData?.count ?? 0;
+  const overallCount =
+    dataMode === "misc" ? 0 : overallData?.count ?? 0;
 
   //
   // -------------------------------------------------------
