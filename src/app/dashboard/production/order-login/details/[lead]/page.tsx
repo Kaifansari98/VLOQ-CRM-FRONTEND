@@ -61,6 +61,7 @@ import {
   canReassignLeadButton,
   canWorkTodoTaskOrderLoginStage,
   canViewPaymentTab,
+  canViewSiteHistoryTab,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
@@ -96,6 +97,7 @@ export default function OrderLoginLeadDetails() {
   const canMove = readiness?.readyForProduction === true;
   const canMoveToProductionStage = canMoveToProduction(userType);
   const canViewTodoTask = canWorkTodoTaskOrderLoginStage(userType);
+  const canViewSiteHistory = canViewSiteHistoryTab(userType);
 
   const disabledReason = readinessLoading
     ? "Checking prerequisites…"
@@ -342,10 +344,12 @@ export default function OrderLoginLeadDetails() {
                   />
                 )}
 
-                <TabsTrigger value="history">
-                  <BoxIcon size={16} className="mr-1 opacity-60" />
-                  Site History
-                </TabsTrigger>
+                {canViewSiteHistory && (
+                  <TabsTrigger value="history">
+                    <BoxIcon size={16} className="mr-1 opacity-60" />
+                    Site History
+                  </TabsTrigger>
+                )}
 
                 {canViewPayment && (
                   <TabsTrigger value="payment">
@@ -383,9 +387,11 @@ export default function OrderLoginLeadDetails() {
           />
         </TabsContent>
 
-        <TabsContent value="history">
-          <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
-        </TabsContent>
+        {canViewSiteHistory && (
+          <TabsContent value="history">
+            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
+          </TabsContent>
+        )}
 
         {canViewPayment && (
           <TabsContent value="payment">

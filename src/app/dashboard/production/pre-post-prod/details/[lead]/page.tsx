@@ -62,6 +62,7 @@ import {
   canReassignLeadButton,
   canAccessTodoTaskTabProductionStage,
   canViewPaymentTab,
+  canViewSiteHistoryTab,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
@@ -196,6 +197,7 @@ export default function ProductionLeadDetails() {
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadButton(userType);
   const canViewPayment = canViewPaymentTab(userType);
+  const canViewSiteHistory = canViewSiteHistoryTab(userType);
 
   const productionDefaultTab = handledproductionDefaultTab(userType);
 
@@ -438,10 +440,12 @@ export default function ProductionLeadDetails() {
                 />
               )}
 
-              <TabsTrigger value="history">
-                <BoxIcon size={16} className="mr-1 opacity-60" />
-                Site History
-              </TabsTrigger>
+              {canViewSiteHistory && (
+                <TabsTrigger value="history">
+                  <BoxIcon size={16} className="mr-1 opacity-60" />
+                  Site History
+                </TabsTrigger>
+              )}
 
               {canViewPayment && (
                 <TabsTrigger value="payment">
@@ -509,9 +513,11 @@ export default function ProductionLeadDetails() {
         </TabsContent>
 
         {/* 🔹 Site History */}
-        <TabsContent value="history">
-          <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
-        </TabsContent>
+        {canViewSiteHistory && (
+          <TabsContent value="history">
+            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
+          </TabsContent>
+        )}
 
         {/* 🔹 Payment */}
         {canViewPayment && (

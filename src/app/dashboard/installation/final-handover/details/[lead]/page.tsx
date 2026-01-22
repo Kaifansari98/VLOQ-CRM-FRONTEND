@@ -71,6 +71,7 @@ import {
   canEditLeadButton,
   canReassignLeadButton,
   canViewPaymentTab,
+  canViewSiteHistoryTab,
 } from "@/components/utils/privileges";
 import {
   useFinalHandoverReadiness,
@@ -112,6 +113,7 @@ export default function FinalHandoverLeadDetails() {
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadButton(userType);
   const canViewPayment = canViewPaymentTab(userType);
+  const canViewSiteHistory = canViewSiteHistoryTab(userType);
   const canAccessTodoTab =
     canAccessTodoTaskTabUnderFinalHandoverStage(userType);
   const isSiteSupervisor = userType?.toLowerCase() === "site-supervisor";
@@ -361,10 +363,12 @@ export default function FinalHandoverLeadDetails() {
                   )}
 
                   {/* Site History */}
-                  <TabsTrigger value="history">
-                    <BoxIcon size={16} className="mr-1 opacity-60" />
-                    Site History
-                  </TabsTrigger>
+                  {canViewSiteHistory && (
+                    <TabsTrigger value="history">
+                      <BoxIcon size={16} className="mr-1 opacity-60" />
+                      Site History
+                    </TabsTrigger>
+                  )}
 
                   {/* Payment */}
                   {canViewPayment && (
@@ -414,9 +418,11 @@ export default function FinalHandoverLeadDetails() {
           </main>
         </TabsContent>
 
-        <TabsContent value="history">
-          <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
-        </TabsContent>
+        {canViewSiteHistory && (
+          <TabsContent value="history">
+            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
+          </TabsContent>
+        )}
 
         {canViewPayment && (
           <TabsContent value="payment">

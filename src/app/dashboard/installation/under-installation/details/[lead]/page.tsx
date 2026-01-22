@@ -81,6 +81,7 @@ import {
   canEditLeadButton,
   canReassignLeadButton,
   canViewPaymentTab,
+  canViewSiteHistoryTab,
 } from "@/components/utils/privileges";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
@@ -135,6 +136,7 @@ export default function UnderInstallationLeadDetails() {
   const deleteLeadMutation = useDeleteLead();
   const canAccessTodoTab = canAccessTodoTaskTabUnderInstallationStage(userType);
   const canViewPayment = canViewPaymentTab(userType);
+  const canViewSiteHistory = canViewSiteHistoryTab(userType);
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -379,10 +381,12 @@ export default function UnderInstallationLeadDetails() {
               )}
 
               {/* Site History */}
-              <TabsTrigger value="history">
-                <BoxIcon size={16} className="mr-1 opacity-60" />
-                Site History
-              </TabsTrigger>
+              {canViewSiteHistory && (
+                <TabsTrigger value="history">
+                  <BoxIcon size={16} className="mr-1 opacity-60" />
+                  Site History
+                </TabsTrigger>
+              )}
 
               {/* Payment */}
               {canViewPayment && (
@@ -470,9 +474,11 @@ export default function UnderInstallationLeadDetails() {
             )}
           </main>
         </TabsContent>
-        <TabsContent value="history">
-          <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
-        </TabsContent>
+        {canViewSiteHistory && (
+          <TabsContent value="history">
+            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
+          </TabsContent>
+        )}
 
         {canViewPayment && (
           <TabsContent value="payment">

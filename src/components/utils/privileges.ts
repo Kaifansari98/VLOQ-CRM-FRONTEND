@@ -474,6 +474,10 @@ export function canViewPaymentTab(role: string): boolean {
   );
 }
 
+export function canViewSiteHistoryTab(role: string): boolean {
+  return role === "admin" || role === "super-admin";
+}
+
 export function canUpdateDessingStageSelectionInputs(
   role: string,
   stage: string
