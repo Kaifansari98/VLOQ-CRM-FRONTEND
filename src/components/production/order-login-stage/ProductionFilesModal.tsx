@@ -134,7 +134,6 @@ export default function ProductionFilesSection({
           <FileUploadField
             value={selectedFiles}
             onChange={setSelectedFiles}
-            accept=".pdf,.pyo,.pytha,.dwg,.dxf,.zip,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff"
             multiple
           />
 
