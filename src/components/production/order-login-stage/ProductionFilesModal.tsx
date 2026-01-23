@@ -31,11 +31,13 @@ import { Badge } from "@/components/ui/badge";
 interface ProductionFilesSectionProps {
   leadId: number;
   accountId: number | null;
+  readOnly?: boolean;
 }
 
 export default function ProductionFilesSection({
   leadId,
   accountId,
+  readOnly = false,
 }: ProductionFilesSectionProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
@@ -102,7 +104,7 @@ export default function ProductionFilesSection({
   // ✅ Permission logic for delete
   console.log("UserType: ", userType);
   console.log("Lead Status", leadStatus);
-  const canDelete = canUploadOrDeleteOrderLogin(userType, leadStatus);
+  const canDelete = !readOnly && canUploadOrDeleteOrderLogin(userType, leadStatus);
 
   return (
     <div className="border rounded-lg bg-background shadow-sm">

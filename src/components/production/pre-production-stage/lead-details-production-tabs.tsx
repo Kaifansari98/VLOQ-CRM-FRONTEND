@@ -7,6 +7,7 @@ import { useCheckPostProductionReady } from "@/api/production/production-api";
 import { useAppSelector } from "@/redux/store";
 import React from "react";
 import { canViewDefaultSubTabProductionStage } from "@/components/utils/privileges";
+import ProductionFilesSection from "../order-login-stage/ProductionFilesModal";
 
 interface LeadDetailsProductionUtilProps {
   leadId: number;
@@ -27,6 +28,18 @@ export default function LeadDetailsProductionUtil({
   const defaultTab = canViewDefaultSubTabProductionStage(userType);
 
   const allTabs = [
+    {
+      id: "productionFiles",
+      title: "Production Files",
+      color: "bg-zinc-900 hover:bg-zinc-900",
+      cardContent: (
+        <ProductionFilesSection
+          leadId={leadId}
+          accountId={accountId ?? null}
+          readOnly
+        />
+      ),
+    },
     {
       id: "preProduction",
       title: "Under Production",
