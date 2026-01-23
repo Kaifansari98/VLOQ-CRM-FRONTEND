@@ -104,6 +104,17 @@ export default function AssignToPicker({
               <CommandInput placeholder={placeholder} />
               <CommandList>
                 <CommandEmpty>No options found.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem
+                    value="clear-selection"
+                    onSelect={() => {
+                      setOpen(false);
+                      onChange?.(null);
+                    }}
+                  >
+                    Clear selection
+                  </CommandItem>
+                </CommandGroup>
                 {groups && groups.length > 0 ? (
                   groups
                     .filter((group) => group.items.length > 0)
@@ -115,7 +126,7 @@ export default function AssignToPicker({
                             value={item.label.toLowerCase()}
                             onSelect={() => {
                               setOpen(false);
-                              onChange?.(item.id);
+                              onChange?.(value === item.id ? null : item.id);
                             }}
                           >
                             {item.label}
@@ -134,7 +145,7 @@ export default function AssignToPicker({
                         value={item.label.toLowerCase()}
                         onSelect={() => {
                           setOpen(false);
-                          onChange?.(item.id);
+                          onChange?.(value === item.id ? null : item.id);
                         }}
                       >
                         {item.label}

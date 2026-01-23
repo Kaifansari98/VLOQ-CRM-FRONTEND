@@ -82,10 +82,10 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   };
 
   return (
-    <div className="rounded-xl border p-4 bg-card shadow-sm flex flex-col gap-3">
-      {/* 🔹 Title & Vendor Picker */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div className="flex items-center gap-2">
+    <div className="rounded-xl border bg-card flex flex-col gap-4">
+      {/* 🔹 Header */}
+      <div className="flex items-start justify-between gap-3 border-b px-4 py-3 bg-muted/30 rounded-t-xl">
+        <div className="flex items-center gap-2 min-w-0">
           {isEditingTitle ? (
             <input
               type="text"
@@ -95,63 +95,73 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
               disabled={disable}
             />
           ) : (
-            <p className="font-medium text-sm flex items-center gap-1">
-              {title}
-              {isMandatory && <span className="text-red-500">*</span>}
+            <p className="font-semibold text-sm flex items-center gap-2 truncate">
+              <span className="truncate">{title}</span>
+              {isMandatory && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200">
+                  Mandatory
+                </span>
+              )}
             </p>
-          )}
-
-          {(isTitleEditable || canDelete) && (
-            <div className="flex items-center gap-1">
-              {isTitleEditable && !isEditingTitle && (
-                <button
-                  type="button"
-                  onClick={() => setIsEditingTitle(true)}
-                  disabled={disable}
-                  className="p-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
-                  aria-label="Edit section title"
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
-              )}
-              {isTitleEditable && isEditingTitle && (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleTitleSave}
-                    disabled={disable}
-                    className="p-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
-                    aria-label="Save section title"
-                  >
-                    <Check className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleTitleCancel}
-                    disabled={disable}
-                    className="p-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
-                    aria-label="Cancel title edit"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </>
-              )}
-              {canDelete && !isEditingTitle && (
-                <button
-                  type="button"
-                  onClick={onDelete}
-                  disabled={disable}
-                  className="p-1 text-destructive/80 hover:text-destructive disabled:cursor-not-allowed"
-                  aria-label="Delete section"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              )}
-            </div>
           )}
         </div>
 
-        <div className="w-full sm:w-1/2">
+        {(isTitleEditable || canDelete) && (
+          <div className="flex items-center gap-1 shrink-0">
+            {isTitleEditable && !isEditingTitle && (
+              <button
+                type="button"
+                onClick={() => setIsEditingTitle(true)}
+                disabled={disable}
+                className="p-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
+                aria-label="Edit section title"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
+            {isTitleEditable && isEditingTitle && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleTitleSave}
+                  disabled={disable}
+                  className="p-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
+                  aria-label="Save section title"
+                >
+                  <Check className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTitleCancel}
+                  disabled={disable}
+                  className="p-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
+                  aria-label="Cancel title edit"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </>
+            )}
+            {canDelete && !isEditingTitle && (
+              <button
+                type="button"
+                onClick={onDelete}
+                disabled={disable}
+                className="p-1 text-destructive/80 hover:text-destructive disabled:cursor-not-allowed"
+                aria-label="Delete section"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 🔹 Body */}
+      <div className="px-4 pb-4 space-y-3">
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">
+            Vendor
+          </label>
           <AssignToPicker
             data={users}
             groups={shouldGroupVendors ? vendorGroups : undefined}
@@ -162,16 +172,18 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
             disabled={disable}
           />
         </div>
-      </div>
 
-      {/* 🔹 Description Field */}
-      <div>
-        <TextAreaInput
-          value={value.item_desc}
-          onChange={(val) => handleFieldChange("item_desc", val)}
-          placeholder={`Enter description for ${title} (optional)`}
-          disabled={disable}
-        />
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">
+            Description
+          </label>
+          <TextAreaInput
+            value={value.item_desc}
+            onChange={(val) => handleFieldChange("item_desc", val)}
+            placeholder={`Add notes or specs for ${title} (optional)`}
+            disabled={disable}
+          />
+        </div>
       </div>
     </div>
   );

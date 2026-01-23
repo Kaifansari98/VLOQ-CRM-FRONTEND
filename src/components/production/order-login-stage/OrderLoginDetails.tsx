@@ -69,6 +69,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     id: number;
     title: string;
   }>(null);
+  const [confirmSave, setConfirmSave] = useState(false);
 
   // 🧩 Handlers
   const handleFieldChange = (title: string, field: string, value: any) => {
@@ -258,8 +259,6 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         );
         const trimmedDesc = (val.item_desc || "").trim();
         const hasVendor = val.company_vendor_id !== null;
-        const hasDesc = trimmedDesc.length > 0;
-        const isActive = hasVendor || hasDesc || Boolean(existing);
 
         return {
           title,
@@ -267,22 +266,11 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           existing,
           trimmedDesc,
           hasVendor,
-          isActive,
         };
       });
 
-      const missingVendor = entries.filter(
-        (entry) => entry.isActive && !entry.hasVendor
-      );
-
-      if (missingVendor.length > 0) {
-        const names = missingVendor.map((entry) => entry.title).join(", ");
-        toast.error(`Vendor is required for: ${names}`);
-        return;
-      }
-
       const formatted = entries
-        .filter((entry) => entry.isActive && entry.hasVendor)
+        .filter((entry) => entry.hasVendor)
         .map((entry) => ({
           id: entry.existing?.id || null,
           item_type: entry.title,
@@ -292,12 +280,9 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           updated_by: userId,
         }));
 
-      if (formatted.length === 0) {
-        toast.info(
-          "Please select a vendor for at least one order login item before submitting."
-        );
-        return;
-      }
+      const deletions = entries
+        .filter((entry) => entry.existing?.id && !entry.hasVendor)
+        .map((entry) => entry.existing.id);
 
       const newRecords = formatted.filter((r) => !r.id);
       const updates = formatted.filter((r) => {
@@ -310,6 +295,16 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         );
       });
 
+      if (deletions.length > 0) {
+        await Promise.all(
+          deletions.map((orderLoginId) =>
+            deleteOrderLogin({
+              orderLoginId,
+              deleted_by: userId,
+            })
+          )
+        );
+      }
       if (updates.length > 0) await updateMultiple(updates);
       if (newRecords.length > 0) await uploadMultiple(newRecords);
 
@@ -437,7 +432,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                   {canAccessSaveButton && (
                     <Button
                       size="sm"
-                      onClick={handleSubmitAll}
+                      onClick={() => setConfirmSave(true)}
                       disabled={isPending}
                       variant="default"
                       className="cursor-pointer"
@@ -555,6 +550,30 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteSection} disabled={isDeleting}>
               {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmSave} onOpenChange={setConfirmSave}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save Order Login?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will apply all changes, including removing any items where
+              the vendor was cleared.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmSave(false);
+                handleSubmitAll();
+              }}
+              disabled={isPending}
+            >
+              {isPending ? "Saving..." : "Confirm Save"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
