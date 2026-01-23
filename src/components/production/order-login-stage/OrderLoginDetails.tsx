@@ -117,6 +117,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     companyVendors?.map((vendor: any) => ({
       id: vendor.id,
       label: vendor.company_name,
+      in_house: Boolean(vendor.in_house),
     })) || [];
 
   // 🧩 Mandatory + Default Titles
@@ -407,6 +408,14 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             cardContent: <ApprovedDocsSection leadId={leadId} />,
           },
           {
+            id: "production-files",
+            title: "Production Files",
+            color: "bg-zinc-800 hover:bg-zinc-900",
+            cardContent: (
+              <ProductionFilesSection leadId={leadId} accountId={accountId} />
+            ),
+          },
+          {
             id: "order-login",
             title: "Order Login",
             color: "bg-zinc-800 hover:bg-zinc-900",
@@ -524,14 +533,6 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                   )}
                 </div>
               </div>
-            ),
-          },
-          {
-            id: "production-files",
-            title: "Production Files",
-            color: "bg-zinc-800 hover:bg-zinc-900",
-            cardContent: (
-              <ProductionFilesSection leadId={leadId} accountId={accountId} />
             ),
           },
         ]}

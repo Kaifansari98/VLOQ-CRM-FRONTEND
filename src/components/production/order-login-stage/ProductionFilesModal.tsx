@@ -134,7 +134,7 @@ export default function ProductionFilesSection({
           <FileUploadField
             value={selectedFiles}
             onChange={setSelectedFiles}
-            accept=".pdf,.pyo,.pytha,.dwg,.dxf,.zip"
+            accept=".pdf,.pyo,.pytha,.dwg,.dxf,.zip,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff"
             multiple
           />
 
@@ -181,7 +181,7 @@ export default function ProductionFilesSection({
               No production files uploaded yet.
             </p>
             <p className="text-xs text-muted-foreground">
-              Start by uploading your CAD, Pytha, or related files.
+              Start by uploading your CAD, Pytha, or image files.
             </p>
           </div>
         ) : (

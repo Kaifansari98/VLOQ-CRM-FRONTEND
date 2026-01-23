@@ -7,7 +7,7 @@ import { Check, Pencil, Trash2, X } from "lucide-react";
 
 interface FileBreakUpFieldProps {
   title: string;
-  users: { id: number; label: string }[];
+  users: { id: number; label: string; in_house?: boolean }[];
   isMandatory?: boolean;
   isTitleEditable?: boolean;
   canDelete?: boolean;
@@ -39,6 +39,18 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
+
+  const inHouseVendors = users.filter((user) => user.in_house);
+  const companyVendors = users.filter((user) => !user.in_house);
+  const vendorGroups = [
+    ...(inHouseVendors.length > 0
+      ? [{ label: "In House", items: inHouseVendors }]
+      : []),
+    ...(companyVendors.length > 0
+      ? [{ label: "Company Vendors", items: companyVendors }]
+      : []),
+  ];
+  const shouldGroupVendors = inHouseVendors.length > 0;
 
   useEffect(() => {
     setTitleDraft(title);
@@ -142,6 +154,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
         <div className="w-full sm:w-1/2">
           <AssignToPicker
             data={users}
+            groups={shouldGroupVendors ? vendorGroups : undefined}
             value={value.company_vendor_id ?? undefined}
             onChange={(id) => handleFieldChange("company_vendor_id", id)}
             placeholder="Search vendor..."
