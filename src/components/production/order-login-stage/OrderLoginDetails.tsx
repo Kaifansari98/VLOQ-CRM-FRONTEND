@@ -295,6 +295,11 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         );
       });
 
+      if (!userId) {
+        toast.error("User not found. Please re-login.");
+        return;
+      }
+
       if (deletions.length > 0) {
         await Promise.all(
           deletions.map((orderLoginId) =>
