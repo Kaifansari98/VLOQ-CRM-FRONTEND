@@ -192,7 +192,7 @@ export default function ProductionFilesSection({
                 doc={{
                   id: doc.id,
                   originalName: doc.doc_og_name,
-                  signedUrl: doc.signedUrl,
+                  signedUrl: doc.signedUrl ?? doc.signed_url,
                 }}
                 canDelete={canDelete}
                 onDelete={(id) => setConfirmDelete(id)}
