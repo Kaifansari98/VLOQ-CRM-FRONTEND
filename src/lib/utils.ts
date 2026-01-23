@@ -2,7 +2,6 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { toast } from "react-toastify";
 import { ColumnFiltersState, FilterFn, SortingFn } from "@tanstack/react-table";
-import { LeadColumn } from "@/components/utils/column/column-type";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -168,8 +167,60 @@ export function mapTableFiltersToPayload(filters: ColumnFiltersState) {
   filters.forEach((filter) => {
     const { id, value } = filter;
 
-    if (!value || (Array.isArray(value) && value.length === 0)) return;
+    // Skip empty values
+    if (
+      value === undefined ||
+      value === null ||
+      (Array.isArray(value) && value.length === 0)
+    ) {
+      return;
+    }
 
+    // ==========================================
+    // 🔥 FIXED: DATE RANGE HANDLING (OBJECT FORMAT)
+    // ==========================================
+    if (id === "createdAt") {
+      if (typeof value === "object" && !Array.isArray(value)) {
+        const dateValue = value as { from?: Date; to?: Date };
+
+        const formatLocalDate = (date: Date) => {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const day = String(date.getDate()).padStart(2, "0");
+          return `${year}-${month}-${day}`;
+        };
+
+        if (dateValue.from || dateValue.to) {
+          payload.date_range = {
+            from: dateValue.from ? formatLocalDate(dateValue.from) : undefined,
+            to: dateValue.to ? formatLocalDate(dateValue.to) : undefined,
+          };
+        }
+      }
+
+      // legacy array support
+      else if (Array.isArray(value)) {
+        const [from, to] = value;
+
+        const formatLocalDate = (date: Date) => {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const day = String(date.getDate()).padStart(2, "0");
+          return `${year}-${month}-${day}`;
+        };
+
+        payload.date_range = {
+          from: from ? formatLocalDate(new Date(from)) : undefined,
+          to: to ? formatLocalDate(new Date(to)) : undefined,
+        };
+      }
+
+      return;
+    }
+
+    // ==========================================
+    // EXISTING FIELD MAPPINGS
+    // ==========================================
     switch (id) {
       case "lead_code":
         payload.filter_lead_code = value;
@@ -219,15 +270,177 @@ export function mapTableFiltersToPayload(filters: ColumnFiltersState) {
         payload.source = value;
         break;
 
-      case "assign_to":
+      case "sales_executive":
         payload.assign_to = value;
+        break;
+
+      case "status":
+        payload.stagetag = value;
+        break;
+    }
+  });
+
+  return payload;
+}
+
+export function mapTaskTableFiltersToPayload(filters: ColumnFiltersState) {
+  const payload: Record<string, any> = {};
+
+  console.log("🔍 ALL FILTERS RECEIVED:", JSON.stringify(filters, null, 2));
+
+  const formatLocalDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  filters.forEach(({ id, value }) => {
+    console.log(
+      `🔍 Processing Filter ID: ${id}, Value:`,
+      value,
+      `Type: ${typeof value}`,
+    );
+
+    if (
+      value === undefined ||
+      value === null ||
+      (Array.isArray(value) && value.length === 0) ||
+      value === ""
+    ) {
+      console.log(`⚠️ SKIPPED ${id} - empty value`);
+      return;
+    }
+
+    switch (id) {
+      case "dueDate":
+        if (value === "today" || value === "upcoming" || value === "overdue") {
+          payload.due_filter = value;
+          console.log("✅ SET due_filter:", value);
+        }
+        // ✅ HANDLE OBJECT FORMAT (from custom date picker)
+        else if (typeof value === "object" && !Array.isArray(value)) {
+          const dateValue = value as { from?: Date; to?: Date };
+          console.log("🔍 dueDate dateValue (object):", dateValue);
+
+          if (dateValue.from || dateValue.to) {
+            payload.date_range = {
+              from: dateValue.from
+                ? formatLocalDate(dateValue.from)
+                : undefined,
+              to: dateValue.to ? formatLocalDate(dateValue.to) : undefined,
+            };
+            console.log("✅ SET date_range:", payload.date_range);
+          }
+        }
+        // ✅ HANDLE ARRAY FORMAT (from DataTableDateFilter)
+        else if (Array.isArray(value) && value.length === 2) {
+          const [fromTimestamp, toTimestamp] = value;
+          console.log(
+            "🔍 dueDate timestamps (array):",
+            fromTimestamp,
+            toTimestamp,
+          );
+
+          if (fromTimestamp || toTimestamp) {
+            payload.date_range = {
+              from: fromTimestamp
+                ? formatLocalDate(new Date(fromTimestamp))
+                : undefined,
+              to: toTimestamp
+                ? formatLocalDate(new Date(toTimestamp))
+                : undefined,
+            };
+            console.log("✅ SET date_range:", payload.date_range);
+          }
+        }
+        break;
+
+      case "assignedAt":
+        console.log("🔍 assignedAt raw value:", value);
+
+        // ✅ HANDLE OBJECT FORMAT (from custom date picker)
+        if (typeof value === "object" && !Array.isArray(value)) {
+          const dateValue = value as { from?: Date; to?: Date };
+          console.log("🔍 assignedAt dateValue (object):", dateValue);
+
+          if (dateValue.from || dateValue.to) {
+            payload.assignat_range = {
+              from: dateValue.from
+                ? formatLocalDate(dateValue.from)
+                : undefined,
+              to: dateValue.to ? formatLocalDate(dateValue.to) : undefined,
+            };
+            console.log("✅ SET assignat_range:", payload.assignat_range);
+          }
+        }
+        // ✅ HANDLE ARRAY FORMAT (from DataTableDateFilter) - THIS WAS MISSING!
+        else if (Array.isArray(value) && value.length === 2) {
+          const [fromTimestamp, toTimestamp] = value;
+          console.log(
+            "🔍 assignedAt timestamps (array):",
+            fromTimestamp,
+            toTimestamp,
+          );
+
+          if (fromTimestamp || toTimestamp) {
+            payload.assignat_range = {
+              from: fromTimestamp
+                ? formatLocalDate(new Date(fromTimestamp))
+                : undefined,
+              to: toTimestamp
+                ? formatLocalDate(new Date(toTimestamp))
+                : undefined,
+            };
+            console.log("✅ SET assignat_range:", payload.assignat_range);
+          }
+        }
         break;
 
       case "site_map_link":
         payload.site_map_link = value;
         break;
+
+      case "siteType":
+        payload.site_type = Array.isArray(value) ? value : [value];
+        break;
+
+      case "furnitureType":
+        payload.product_type = Array.isArray(value) ? value : [value];
+        break;
+
+      case "furnitueStructures":
+        payload.product_structure = Array.isArray(value) ? value : [value];
+        break;
+
+      case "taskType":
+        payload.task_type = Array.isArray(value) ? value : [value];
+        break;
+
+      case "assignedToName":
+        const assignToValue = Array.isArray(value)
+          ? value.map((v) => (typeof v === "string" ? parseInt(v, 10) : v))
+          : typeof value === "string"
+            ? parseInt(value, 10)
+            : value;
+        payload.assign_to = assignToValue;
+        break;
+
+      case "assignedByName":
+        const assignByValue = Array.isArray(value)
+          ? value.map((v) => (typeof v === "string" ? parseInt(v, 10) : v))
+          : typeof value === "string"
+            ? parseInt(value, 10)
+            : value;
+        payload.assign_by = assignByValue;
+        break;
+
+      default:
+        console.log(`⚠️ Unknown filter ID: ${id}`);
+        break;
     }
   });
 
+  console.log("🎯 FINAL PAYLOAD:", payload);
   return payload;
 }

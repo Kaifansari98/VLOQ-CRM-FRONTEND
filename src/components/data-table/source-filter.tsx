@@ -35,8 +35,12 @@ export default function SourceFilter({ column }: Props) {
     (column.getFilterValue() as number[]) ?? [];
 
   // ✅ Picker → Table sync (ID only)
-  const handleChange = (ids: number[]) => {
-    column.setFilterValue(ids.length ? ids : []);
+  const handleChange = (ids: (number | string)[]) => {
+    // Convert all IDs to numbers, filter out NaN
+    const numberIds = ids
+      .map((id) => typeof id === "number" ? id : Number(id))
+      .filter((id) => !isNaN(id));
+    column.setFilterValue(numberIds.length ? numberIds : []);
   };
 
   return (

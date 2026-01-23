@@ -77,10 +77,12 @@ export function getUniversalTableColumns(
       ? ([
           {
             accessorKey: "status",
+            filterFn: tableMultiValueFilter,
+
             header: ({ column }) => (
               <DataTableColumnHeader column={column} title="Stage" />
             ),
-            enableSorting: true,
+            enableSorting: false,
             enableHiding: true,
             enableColumnFilter: true,
           },
@@ -176,12 +178,12 @@ export function getUniversalTableColumns(
 
     // 7) Sales Executive
     {
-      accessorKey: "assign_to",
+      accessorKey: "sales_executive",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Sales Executive" />
       ),
       meta: {
-        label: "Assign To",
+        label: "Sales Executive",
       },
       filterFn: tableSingleValueMultiSelectFilter,
       enableSorting: false,

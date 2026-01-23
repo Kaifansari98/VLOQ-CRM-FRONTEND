@@ -18,8 +18,7 @@ interface Props {
 
 export default function ProductStructureFilter({ column }: Props) {
   // API Call
-  const { data: productStructures, isLoading } =
-    useProductStructureTypes();
+  const { data: productStructures, isLoading } = useProductStructureTypes();
 
   // Normalize API → Picker Options
   const structureOptions: FilterOption[] = useMemo(() => {
@@ -32,12 +31,11 @@ export default function ProductStructureFilter({ column }: Props) {
   }, [productStructures]);
 
   // ✅ Directly read IDs from table filter
-  const selectedIds: number[] =
-    (column.getFilterValue() as number[]) ?? [];
+  const selectedIds: number[] = (column.getFilterValue() as number[]) ?? [];
 
   // ✅ Picker → Table (ID sync)
-  const handleChange = (ids: number[]) => {
-    column.setFilterValue(ids.length ? ids : []);
+  const handleChange = (values: (string | number)[]) => {
+    column.setFilterValue(values as number[]);
   };
 
   return (

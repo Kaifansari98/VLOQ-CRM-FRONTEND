@@ -167,10 +167,14 @@ export function getVendorLeadsTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Task Type" />
       ),
-      enableSorting: true,
       meta: {
         label: "Task Type",
       },
+
+      enableSorting: false,
+      enableColumnFilter: true,
+      enableHiding: true,
+      filterFn: tableMultiValueFilter,
     },
 
     {
@@ -198,7 +202,6 @@ export function getVendorLeadsTableColumns({
       },
     },
 
-    // Due date
     {
       accessorKey: "dueDate",
       header: ({ column }) => (
@@ -212,31 +215,12 @@ export function getVendorLeadsTableColumns({
           year: "numeric",
         });
       },
-      filterFn: (
-        row,
-        _columnId,
-        filterValue: "overdue" | "today" | "upcoming" | "all",
-      ) => {
-        if (!filterValue) return true;
-        const dueDate = new Date(row.getValue("dueDate") as string);
-        if (isNaN(dueDate.getTime())) return false;
-
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const taskDay = new Date(dueDate);
-        taskDay.setHours(0, 0, 0, 0);
-
-        if (filterValue === "overdue") return taskDay < today;
-        if (filterValue === "today")
-          return taskDay.getTime() === today.getTime();
-        if (filterValue === "upcoming") return taskDay > today;
-
-        return true;
-      },
       meta: {
         label: "Due Date",
       },
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true, // ✅ ADD THIS
     },
 
     {
@@ -246,7 +230,7 @@ export function getVendorLeadsTableColumns({
       ),
       sortingFn: siteMapLinkSort<ProcessedTask>(),
 
-      enableSorting: true,
+      enableSorting: false,
       enableHiding: true,
       enableColumnFilter: true,
 
@@ -313,31 +297,18 @@ export function getVendorLeadsTableColumns({
     // Product Structures
     {
       accessorKey: "furnitueStructures",
+      filterFn: tableMultiValueFilter,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Furniture Structures" />
       ),
       enableSorting: false,
       enableColumnFilter: true,
       enableHiding: true,
-      filterFn: tableMultiValueFilter,
       meta: {
         label: "Furniture Structures",
       },
     },
 
-    {
-      accessorKey: "assignedByName",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Assigned By" />
-      ),
-      cell: ({ row }) => {
-        const name = row.getValue("assignedByName") as string;
-        return name || "—";
-      },
-      meta: {
-        label: "Assigned By",
-      },
-    },
     ...(showAssignedTo
       ? ([
           {
@@ -374,6 +345,9 @@ export function getVendorLeadsTableColumns({
       meta: {
         label: "Assigned At",
       },
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true, // ✅ ADD THIS
     },
   ];
 }

@@ -35,13 +35,14 @@ export function DataTable<TData>({
       {children}
       <div className="overflow-hidden rounded-md border">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
                     colSpan={header.colSpan}
+                    className="font-extrabold text-foreground cursor-pointer select-none"
                     style={{
                       ...getCommonPinningStyles({ column: header.column }),
                     }}
@@ -50,7 +51,7 @@ export function DataTable<TData>({
                       ? null
                       : flexRender(
                           header.column.columnDef.header,
-                          header.getContext()
+                          header.getContext(),
                         )}
                   </TableHead>
                 ))}
@@ -61,22 +62,22 @@ export function DataTable<TData>({
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                    onDoubleClick={(event) => {
-                      if (
-                        event.target instanceof HTMLElement &&
-                        (event.target.closest('[data-slot="action-button"]') ||
-                          event.target.closest("button") ||
-                          event.target.closest('[role="button"]') ||
-                          event.target.closest("[data-radix-menu-content]"))
-                      ) {
-                        return;
-                      }
-                      onRowDoubleClick?.(row.original); // ✅ only double click works
-                    }}
-                    className={onRowDoubleClick ? "cursor-pointer" : undefined}
-                  >
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  onDoubleClick={(event) => {
+                    if (
+                      event.target instanceof HTMLElement &&
+                      (event.target.closest('[data-slot="action-button"]') ||
+                        event.target.closest("button") ||
+                        event.target.closest('[role="button"]') ||
+                        event.target.closest("[data-radix-menu-content]"))
+                    ) {
+                      return;
+                    }
+                    onRowDoubleClick?.(row.original); // ✅ only double click works
+                  }}
+                  className={onRowDoubleClick ? "cursor-pointer" : undefined}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
@@ -86,7 +87,7 @@ export function DataTable<TData>({
                     >
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}

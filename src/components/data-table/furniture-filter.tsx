@@ -33,8 +33,8 @@ export default function FurnitureFilter({ column }: Props) {
   const selectedIds: number[] = (column.getFilterValue() as number[]) ?? [];
 
   // Picker → Table (ID sync)
-  const handleChange = (ids: number[]) => {
-    column.setFilterValue(ids.length ? ids : []);
+  const handleChange = (values: (string | number)[]) => {
+    column.setFilterValue(values as number[]);
   };
 
   return (

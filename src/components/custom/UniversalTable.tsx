@@ -25,6 +25,8 @@ import { DataTableViewOptions } from "@/components/data-table/data-table-view-op
 import {
   UniversalStagePostPayload,
   useUniversalStageLeadsPost,
+  useVendorLeadsByTagPost,
+  VendorLeadsByTagPostPayload,
 } from "@/api/universalstage";
 import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
 
@@ -76,19 +78,39 @@ export function UniversalTable({
 
   const [viewType, setViewType] = useState<"my" | "overall">(defaultViewType);
 
-  const [pagination, setPagination] = useState({
+  // ✅ SEPARATE PAGINATION FOR BOTH VIEWS
+  const [myPagination, setMyPagination] = useState({
     pageIndex: 0,
     pageSize: 20,
   });
 
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [sorting, setSorting] = useState<SortingState>([
+  const [overallPagination, setOverallPagination] = useState({
+    pageIndex: 0,
+    pageSize: 20,
+  });
+
+  // ✅ SEPARATE GLOBAL FILTER FOR BOTH VIEWS
+  const [myGlobalFilter, setMyGlobalFilter] = useState("");
+  const [overallGlobalFilter, setOverallGlobalFilter] = useState("");
+
+  // ✅ SEPARATE SORTING FOR BOTH VIEWS
+  const [mySorting, setMySorting] = useState<SortingState>([
     { id: "createdAt", desc: true },
   ]);
 
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [overallSorting, setOverallSorting] = useState<SortingState>([
+    { id: "createdAt", desc: true },
+  ]);
 
-  console.log("Column Filter data: ", columnFilters);
+  // ✅ SEPARATE COLUMN FILTERS FOR BOTH VIEWS
+  const [myColumnFilters, setMyColumnFilters] = useState<ColumnFiltersState>(
+    [],
+  );
+  const [overallColumnFilters, setOverallColumnFilters] =
+    useState<ColumnFiltersState>([]);
+
+  console.log("My Column Filters: ", myColumnFilters);
+  console.log("Overall Column Filters: ", overallColumnFilters);
 
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
@@ -101,30 +123,40 @@ export function UniversalTable({
     designerRemark: false,
   });
 
-  // -------------------- POST PAYLOAD --------------------
+  // ✅ DETERMINE ACTIVE STATE BASED ON VIEW TYPE
+  const activePagination = viewType === "my" ? myPagination : overallPagination;
+  const activeGlobalFilter =
+    viewType === "my" ? myGlobalFilter : overallGlobalFilter;
+  const activeSorting = viewType === "my" ? mySorting : overallSorting;
+  const activeColumnFilters =
+    viewType === "my" ? myColumnFilters : overallColumnFilters;
 
-  const postPayload: UniversalStagePostPayload = useMemo(() => {
-    const sortOrder: "asc" | "desc" = sorting[0]?.desc ? "desc" : "asc";
+  // -------------------- MY LEADS POST PAYLOAD --------------------
 
-    const mappedFilters = mapTableFiltersToPayload(columnFilters);
+  const myPostPayload: UniversalStagePostPayload = useMemo(() => {
+    const sortOrder: "asc" | "desc" = mySorting[0]?.desc ? "desc" : "asc";
+    const mappedFilters = mapTableFiltersToPayload(myColumnFilters);
 
     return {
       userId: userId!,
       tag: type,
-      page: pagination.pageIndex + 1,
-      limit: pagination.pageSize,
-      filter_name: globalFilter || "",
+      page: myPagination.pageIndex + 1,
+      limit: myPagination.pageSize,
+      global_search: myGlobalFilter || "",
+
       filter_lead_code: mappedFilters.filter_lead_code,
+      filter_name: mappedFilters.filter_name,
       contact: mappedFilters.contact,
+
       alt_contact_no: mappedFilters.alt_contact_no,
       email: mappedFilters.email,
-      name: mappedFilters.name,
       source: mappedFilters.source,
       status: mappedFilters.status,
       assign_to: mappedFilters.assign_to,
       siteType: mappedFilters.siteType,
       architectName: mappedFilters.architectName,
       created_at: sortOrder,
+      stagetag: mappedFilters.stagetag,
       site_address: mappedFilters.site_address,
       archetech_name: mappedFilters.archetech_name,
       designer_remark: mappedFilters.designer_remark,
@@ -133,25 +165,66 @@ export function UniversalTable({
       furnitue_structures: mappedFilters.furnitue_structures,
       site_type: mappedFilters.site_type,
       site_map_link: mappedFilters.site_map_link,
+      date_range: mappedFilters.date_range,
     };
-  }, [userId, type, pagination, sorting, columnFilters, globalFilter]);
+  }, [userId, type, myPagination, mySorting, myColumnFilters, myGlobalFilter]);
+
+  // -------------------- OVERALL LEADS POST PAYLOAD --------------------
+
+  const overallPostPayload: VendorLeadsByTagPostPayload = useMemo(() => {
+    const sortOrder: "asc" | "desc" = overallSorting[0]?.desc ? "desc" : "asc";
+    const mappedFilters = mapTableFiltersToPayload(overallColumnFilters);
+
+    return {
+      userId: userId!,
+      tag: type,
+
+      page: overallPagination.pageIndex + 1,
+      limit: overallPagination.pageSize,
+
+      global_search: overallGlobalFilter || "",
+
+      filter_lead_code: mappedFilters.filter_lead_code,
+      filter_name: mappedFilters.filter_name,
+      contact: mappedFilters.contact,
+
+      alt_contact_no: mappedFilters.alt_contact_no,
+      email: mappedFilters.email,
+      source: mappedFilters.source,
+
+      assign_to: mappedFilters.assign_to,
+      site_address: mappedFilters.site_address,
+      archetech_name: mappedFilters.archetech_name,
+      designer_remark: mappedFilters.designer_remark,
+      stagetag: mappedFilters.stagetag,
+
+      furniture_type: mappedFilters.furniture_type,
+      furniture_structure: mappedFilters.furniture_structure,
+      site_type: mappedFilters.site_type,
+
+      site_map_link: mappedFilters.site_map_link,
+      date_range: mappedFilters.date_range,
+      created_at: sortOrder,
+    };
+  }, [
+    userId,
+    type,
+    overallPagination,
+    overallSorting,
+    overallColumnFilters,
+    overallGlobalFilter,
+  ]);
+
 
   // -------------------- API CALLS --------------------
 
   const { data: myData, isLoading: isMyLoading } = useUniversalStageLeadsPost(
     vendorId!,
-    postPayload,
+    myPostPayload,
   );
 
   const { data: overallData, isLoading: isOverallLoading } =
-    useVendorOverallLeads(
-      vendorId!,
-      userId!,
-      type,
-      pagination.pageIndex + 1,
-      pagination.pageSize,
-      enableOverallData,
-    );
+    useVendorLeadsByTagPost(vendorId!, overallPostPayload);
 
   // -------------------- DATA SELECTION --------------------
 
@@ -171,39 +244,30 @@ export function UniversalTable({
   const mapUniversalRow = (lead: any, index: number): LeadColumn => ({
     id: lead.id,
     srNo: index + 1,
-
     lead_code: lead.lead_code ?? "",
     name: `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim(),
     email: lead.email ?? "",
     contact: `${lead.country_code ?? ""}${lead.contact_no ?? ""}`,
-
     siteAddress: lead.site_address ?? "",
     site_map_link: lead.site_map_link ?? "",
-
     architechName: lead.archetech_name ?? "",
     designerRemark: lead.designer_remark ?? "",
-
     furnitureType:
       lead.productMappings?.map((p: any) => p.productType?.type).join(", ") ??
       "",
-
     furnitueStructures:
       lead.leadProductStructureMapping
         ?.map((p: any) => p.productStructure?.type)
         .join(", ") ?? "",
-
     source: lead.source?.type ?? "",
     siteType: lead.siteType?.type ?? "",
-
     createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",
-
     updatedAt: lead.updated_at ?? "",
-
     altContact: lead.alt_contact_no ?? "",
     status: lead.statusType?.type ?? "",
     statusTag: lead.statusType?.tag ?? "",
-
-    assign_to: lead.assignedTo?.user_name ?? "",
+    sales_executive: lead.assignedTo?.user_name ?? "",
+    assignedToId: lead.assignedTo?.id ?? "",
     accountId: lead.account?.id ?? lead.account_id ?? 0,
   });
 
@@ -212,6 +276,8 @@ export function UniversalTable({
   const tableData = useMemo<LeadColumn[]>(() => {
     return activeData.map((item, idx) => mapUniversalRow(item, idx));
   }, [activeData]);
+
+  console.log("Overall Post Payload: ", tableData);
 
   // -------------------- COLUMNS --------------------
 
@@ -227,23 +293,27 @@ export function UniversalTable({
     columns,
 
     manualPagination: true,
+    manualFiltering: false,
     pageCount: totalPages,
 
     state: {
-      pagination,
-      sorting,
-      columnFilters,
-      globalFilter,
+      pagination: activePagination,
+      sorting: activeSorting,
+      columnFilters: activeColumnFilters,
+      globalFilter: activeGlobalFilter,
       columnVisibility,
       rowSelection,
     },
 
-    onPaginationChange: setPagination,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onPaginationChange:
+      viewType === "my" ? setMyPagination : setOverallPagination,
+    onSortingChange: viewType === "my" ? setMySorting : setOverallSorting,
+    onColumnFiltersChange:
+      viewType === "my" ? setMyColumnFilters : setOverallColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
-    onGlobalFilterChange: setGlobalFilter,
+    onGlobalFilterChange:
+      viewType === "my" ? setMyGlobalFilter : setOverallGlobalFilter,
 
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -256,6 +326,17 @@ export function UniversalTable({
 
   const handleRowClick = (row: LeadColumn) => {
     router.push(onRowNavigate(row));
+  };
+
+  // ✅ HANDLE VIEW SWITCH
+  const handleViewSwitch = (newView: "my" | "overall") => {
+    setViewType(newView);
+    // Reset pagination when switching views
+    if (newView === "my") {
+      setMyPagination({ ...myPagination, pageIndex: 0 });
+    } else {
+      setOverallPagination({ ...overallPagination, pageIndex: 0 });
+    }
   };
 
   // -------------------- UI --------------------
@@ -273,10 +354,7 @@ export function UniversalTable({
             <Button
               size="sm"
               variant={viewType === "my" ? "default" : "secondary"}
-              onClick={() => {
-                setViewType("my");
-                setPagination({ ...pagination, pageIndex: 0 });
-              }}
+              onClick={() => handleViewSwitch("my")}
             >
               My Leads ({myCount})
             </Button>
@@ -284,10 +362,7 @@ export function UniversalTable({
             <Button
               size="sm"
               variant={viewType === "overall" ? "default" : "secondary"}
-              onClick={() => {
-                setViewType("overall");
-                setPagination({ ...pagination, pageIndex: 0 });
-              }}
+              onClick={() => handleViewSwitch("overall")}
             >
               Overall Leads ({overallCount})
             </Button>
@@ -303,10 +378,15 @@ export function UniversalTable({
         <div className="hidden md:flex justify-between items-end">
           <div className="flex gap-3">
             <ClearInput
-              value={globalFilter}
+              value={activeGlobalFilter}
               onChange={(e) => {
-                setGlobalFilter(e.target.value);
-                setPagination({ ...pagination, pageIndex: 0 });
+                if (viewType === "my") {
+                  setMyGlobalFilter(e.target.value);
+                  setMyPagination({ ...myPagination, pageIndex: 0 });
+                } else {
+                  setOverallGlobalFilter(e.target.value);
+                  setOverallPagination({ ...overallPagination, pageIndex: 0 });
+                }
               }}
               placeholder="Search..."
               className="h-8 w-64"

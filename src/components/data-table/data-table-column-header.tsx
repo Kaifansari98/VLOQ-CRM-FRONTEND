@@ -26,6 +26,9 @@ import ProductStructureFilter from "./product-structure-filter";
 import SiteAddressFilter from "./site-address-filter";
 import SourceFilter from "./source-filter";
 import SiteMapLinkFilter from "./site-map-link-filter";
+import AssignToFilter from "./assign-to-filter";
+import StageTypeFilter from "./stage-type-filter";
+import TaskTypeFilterPicker from "./data-table-task-filter";
 
 interface DataTableColumnHeaderProps<
   TData,
@@ -48,17 +51,14 @@ export function DataTableColumnHeader<TData, TValue>({
   const isAddressColumn = column.id === "siteAddress";
   const isSourceColumn = column.id === "source";
   const isSiteMapColumn = column.id === "site_map_link";
+  const isSalesExecutiveColumn = column.id === "sales_executive";
+  const isStageColumn = column.id === "status";
+  const isTastTypeColumn = column.id === "taskType";
 
-  const filterValue = (column.getFilterValue() as string[]) ?? [];
-  const hasActiveFilter =
-    (isFurnitureColumn ||
-      isSalesColumn ||
-      isSiteTypeColumn ||
-      isStructureColumn ||
-      isAddressColumn ||
-      isSourceColumn ||
-      isSiteMapColumn) &&
-    filterValue !== undefined;
+  const filterValue = column.getFilterValue();
+  const hasActiveFilter = Array.isArray(filterValue)
+    ? filterValue.length > 0
+    : Boolean(filterValue);
 
   const showHeaderIcon =
     column.getCanSort() ||
@@ -67,7 +67,10 @@ export function DataTableColumnHeader<TData, TValue>({
     isSiteTypeColumn ||
     isStructureColumn ||
     isAddressColumn ||
-    isSourceColumn || isSiteMapColumn;
+    isSourceColumn ||
+    isSiteMapColumn ||
+    isSalesExecutiveColumn ||
+    isStageColumn || isTastTypeColumn;
 
   if (!column.getCanSort() && !column.getCanHide()) {
     return <div className={cn(className)}>{title}</div>;
@@ -117,8 +120,14 @@ export function DataTableColumnHeader<TData, TValue>({
             </div>
           )}
 
-          {/* SALES EXECUTIVE FILTER */}
+          {/* SALES ASSIGNT TO FILTER FOR TASK TABLE */}
           {isSalesColumn && (
+            <div onClick={(e) => e.preventDefault()}>
+              <AssignToFilter column={column as any} />
+            </div>
+          )}
+
+          {isSalesExecutiveColumn && (
             <div onClick={(e) => e.preventDefault()}>
               <SalesExecutiveFilter column={column as any} />
             </div>
@@ -131,6 +140,11 @@ export function DataTableColumnHeader<TData, TValue>({
             </div>
           )}
 
+          {isStageColumn && (
+            <div onSelect={(e) => e.preventDefault()}>
+              <StageTypeFilter column={column as any} />
+            </div>
+          )}
           {isStructureColumn && (
             <div onSelect={(e) => e.preventDefault()}>
               <ProductStructureFilter column={column as any} />
@@ -148,6 +162,12 @@ export function DataTableColumnHeader<TData, TValue>({
             <div onSelect={(e) => e.preventDefault()}>
               <SourceFilter column={column as any} />
             </div>
+          )}
+
+          {isTastTypeColumn && (  
+           <div onSelect={(e) => e.preventDefault()}>
+            <TaskTypeFilterPicker column={column as any} />
+           </div> 
           )}
 
           {/* SITE MAP lINK FILTER */}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { CheckIcon, XIcon } from "lucide-react";
+import { CheckIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import {
@@ -15,20 +15,30 @@ import {
 
 import { ScrollArea } from "../ui/scroll-area";
 
+/* ================================
+   FLEXIBLE TYPES (NUMBER + STRING)
+================================ */
+
+type IDType = number | string;
+
 interface SelectData {
-  id: number;
+  id: IDType;
   label: string;
 }
 
 interface Props {
   data: SelectData[];
-  value?: number[];
-  onChange?: (selectedIds: number[]) => void;
+  value?: IDType[];
+  onChange?: (selectedIds: IDType[]) => void;
   placeholder?: string;
   emptyLabel?: string;
   disabled?: boolean;
   multiple?: boolean;
 }
+
+/* ================================
+   COMPONENT
+================================ */
 
 export default function FilterPickerInline({
   data,
@@ -39,11 +49,9 @@ export default function FilterPickerInline({
   disabled = false,
   multiple = false,
 }: Props) {
-  const id = useId();
+  const uid = useId();
 
-  const selectedItems = data.filter((item) => value.includes(item.id));
-
-  const handleSelect = (itemId: number) => {
+  const handleSelect = (itemId: IDType) => {
     if (!multiple) {
       onChange?.([itemId]);
       return;
@@ -58,15 +66,14 @@ export default function FilterPickerInline({
 
   return (
     <div
-      id={id}
+      id={uid}
       className={cn("w-full", disabled && "opacity-60 pointer-events-none")}
     >
-      {/* Search + Options */}
       <Command className="border-none">
         <CommandInput placeholder={placeholder} className="h-9 text-sm" />
 
         <CommandList>
-          <ScrollArea className="h-[120px] ">
+          <ScrollArea className="h-[120px]">
             <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
               No options found.
             </CommandEmpty>
@@ -77,7 +84,7 @@ export default function FilterPickerInline({
 
                 return (
                   <CommandItem
-                    key={item.id}
+                    key={String(item.id)}
                     value={item.label.toLowerCase()}
                     onSelect={() => handleSelect(item.id)}
                     className={cn(

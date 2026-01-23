@@ -100,6 +100,11 @@ export function getPendingLeadsColumns({}: {
       meta: {
         label: "Status",
       },
+
+      filterFn: tableMultiValueFilter,
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
     },
     {
       accessorKey: "siteType",
@@ -123,7 +128,7 @@ export function getPendingLeadsColumns({}: {
       ),
       sortingFn: siteMapLinkSort<PendingLeadRow>(),
 
-      enableSorting: true,
+      enableSorting: false,
       enableHiding: true,
       enableColumnFilter: true,
 

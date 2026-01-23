@@ -7,8 +7,10 @@ import { LeadColumn } from "../utils/column/column-type";
 import FilterPicker from "./filter-picker";
 import { useSiteTypes } from "@/hooks/useTypesMaster";
 
+type IDType = number | string;
+
 type FilterOption = {
-  id: number;
+  id: IDType;
   label: string;
 };
 
@@ -31,11 +33,11 @@ export default function SiteTypeFilter({ column }: Props) {
   }, [siteTypes]);
 
   // ✅ Direct ID state from table
-  const selectedIds: number[] =
-    (column.getFilterValue() as number[]) ?? [];
+  const selectedIds: IDType[] =
+    (column.getFilterValue() as IDType[]) ?? [];
 
   // ✅ Picker → Table (ID Sync)
-  const handleChange = (ids: number[]) => {
+  const handleChange = (ids: IDType[]) => {
     column.setFilterValue(ids.length ? ids : []);
   };
 

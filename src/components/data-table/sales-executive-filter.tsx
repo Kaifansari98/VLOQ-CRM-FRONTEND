@@ -21,6 +21,8 @@ type SalesExecutivesPayload = {
   count: number;
   sales_executives: SalesUserItem[];
 };
+// IDType is used by FilterPicker for IDs (string | number)
+type IDType = string | number;
 
 type FilterOption = {
   id: number;
@@ -36,16 +38,13 @@ interface Props {
 =========================== */
 
 export default function SalesExecutiveFilter({ column }: Props) {
-  // 🔵 Vendor context
   const vendorId = useAppSelector(
     (state) => state.auth.user?.vendor_id,
   ) as number;
 
-  // 🔵 Typed API hook
   const { data: vendorUsers, isLoading } =
     useVendorSalesExecutiveUsers(vendorId);
 
-  // 🔵 Normalize API → Picker options
   const salesOptions: FilterOption[] = useMemo(() => {
     if (!vendorUsers?.data?.sales_executives?.length) return [];
 
@@ -55,28 +54,12 @@ export default function SalesExecutiveFilter({ column }: Props) {
     }));
   }, [vendorUsers]);
 
-  // 🔵 Current filter state from table
-  const filterValue: string[] = (column.getFilterValue() as string[]) ?? [];
+  // ✅ Table filter now stores IDs directly
+  type IDType = string | number;
+  const selectedIds: IDType[] = (column.getFilterValue() as IDType[]) ?? [];
 
-  // 🔵 Resolve selected IDs from labels
-  const selectedIds: number[] = useMemo(() => {
-    return salesOptions
-      .filter((item) => filterValue.includes(item.label))
-      .map((item) => item.id);
-  }, [filterValue, salesOptions]);
-
-  // 🔵 Sync picker → table filter
-  const handleChange = (ids: number[]): void => {
-    if (!ids.length) {
-      column.setFilterValue([]);
-      return;
-    }
-
-    const selectedLabels: string[] = salesOptions
-      .filter((item) => ids.includes(item.id))
-      .map((item) => item.label);
-
-    column.setFilterValue(selectedLabels);
+  const handleChange = (ids: IDType[]): void => {
+    column.setFilterValue(ids);
   };
 
   return (

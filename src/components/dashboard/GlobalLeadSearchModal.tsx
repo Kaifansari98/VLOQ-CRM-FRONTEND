@@ -27,19 +27,17 @@ interface Props {
 export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
-  const userType = useAppSelector(
-    (s) => s.auth.user?.user_type.user_type
-  );
+  const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
 
   const isAdminUser =
     userType?.toLowerCase() === "admin" ||
     userType?.toLowerCase() === "super-admin";
   const { data: adminStageData } = useGetAdminDashboardAllLeads(
-    isAdminUser ? vendorId : 0
+    isAdminUser ? vendorId : 0,
   );
   const { data: salesStageData } = useGetDashboardAllLeads(
     vendorId,
-    isAdminUser ? 0 : userId
+    isAdminUser ? 0 : userId,
   );
   const stageData = isAdminUser ? adminStageData : salesStageData;
   const router = useRouter();
@@ -108,8 +106,6 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
   // -----------------------------------------------
   // 4️⃣ Helper - Avatar Initials
   // -----------------------------------------------
-
-
 
   // -----------------------------------------------
   // 5️⃣ Handle Lead Click → Navigate to details
