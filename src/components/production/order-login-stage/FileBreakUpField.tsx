@@ -164,8 +164,8 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
             <p className="font-semibold text-sm flex items-center gap-2 truncate">
               <span className="truncate">{title}</span>
               {isMandatory && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200">
-                  Mandatory
+                <span className="text-md text-red-500">
+                  *
                 </span>
               )}
             </p>

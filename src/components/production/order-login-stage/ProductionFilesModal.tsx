@@ -27,6 +27,7 @@ import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canUploadOrDeleteOrderLogin } from "@/components/utils/privileges";
 import { Badge } from "@/components/ui/badge";
+import { ImageComponent } from "@/components/utils/ImageCard";
 
 interface ProductionFilesSectionProps {
   leadId: number;
@@ -136,6 +137,7 @@ export default function ProductionFilesSection({
           <FileUploadField
             value={selectedFiles}
             onChange={setSelectedFiles}
+            accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
             multiple
           />
 
@@ -187,18 +189,39 @@ export default function ProductionFilesSection({
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
-            {productionFiles.map((doc: any) => (
-              <DocumentCard
-                key={doc.id}
-                doc={{
-                  id: doc.id,
-                  originalName: doc.doc_og_name,
-                  signedUrl: doc.signedUrl ?? doc.signed_url,
-                }}
-                canDelete={canDelete}
-                onDelete={(id) => setConfirmDelete(id)}
-              />
-            ))}
+            {productionFiles.map((doc: any) => {
+              const isImage = doc.doc_og_name?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+              if (isImage) {
+                return (
+                  <ImageComponent
+                    key={doc.id}
+                    doc={{
+                      id: doc.id,
+                      doc_og_name: doc.doc_og_name,
+                      signedUrl: doc.signedUrl ?? doc.signed_url,
+                      created_at: doc.created_at,
+                    }}
+                    canDelete={canDelete}
+                onDelete={(id) =>
+                  setConfirmDelete(typeof id === "string" ? Number(id) : id)
+                }
+                  />
+                );
+              } else {
+                return (
+                  <DocumentCard
+                    key={doc.id}
+                    doc={{
+                      id: doc.id,
+                      originalName: doc.doc_og_name,
+                      signedUrl: doc.signedUrl ?? doc.signed_url,
+                    }}
+                    canDelete={canDelete}
+                    onDelete={(id) => setConfirmDelete(id)}
+                  />
+                );
+              }
+            })}
           </div>
         )}
       </div>
