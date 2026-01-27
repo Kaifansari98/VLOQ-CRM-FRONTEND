@@ -105,15 +105,6 @@ export default function AssignToPicker({
               <CommandList>
                 <CommandEmpty>No options found.</CommandEmpty>
                 <CommandGroup>
-                  <CommandItem
-                    value="clear-selection"
-                    onSelect={() => {
-                      setOpen(false);
-                      onChange?.(null);
-                    }}
-                  >
-                    Clear selection
-                  </CommandItem>
                 </CommandGroup>
                 {groups && groups.length > 0 ? (
                   groups

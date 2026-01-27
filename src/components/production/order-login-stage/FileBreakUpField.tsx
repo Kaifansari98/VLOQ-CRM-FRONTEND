@@ -224,42 +224,41 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
 
       {/* 🔹 Body */}
       <div className="px-4 pb-4 space-y-3">
-        <div className="space-y-1 mb-4">
-          <label className="text-xs font-medium text-muted-foreground">
-            Vendor
-          </label>
-          <AssignToPicker
-            data={users}
-            groups={shouldGroupVendors ? vendorGroups : undefined}
-            value={value.company_vendor_id ?? undefined}
-            onChange={(id) => handleFieldChange("company_vendor_id", id)}
-            placeholder="Search vendor..."
-            emptyLabel="Select a vendor"
-            disabled={disable}
-          />
-        </div>
 
-        {showPoUpload && (
-          <div className="flex items-center justify-between pt-1">
-            <div className="text-xs text-muted-foreground">
-              PO Files
-              {!canUsePoUpload && (
-                <span className="ml-2 text-[11px] text-muted-foreground">
-                  Save section to enable uploads
-                </span>
-              )}
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setPoModalOpen(true)}
-              disabled={!canUsePoUpload || disable}
-            >
-              Manage PO Files
-            </Button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground block min-h-[16px]">
+              Vendor
+            </label>
+            <AssignToPicker
+              data={users}
+              groups={shouldGroupVendors ? vendorGroups : undefined}
+              value={value.company_vendor_id ?? undefined}
+              onChange={(id) => handleFieldChange("company_vendor_id", id)}
+              placeholder="Search vendor..."
+              emptyLabel="Select a vendor"
+              disabled={disable}
+            />
           </div>
-        )}
+
+          {showPoUpload && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground block min-h-[16px]">
+                PO Files
+              </label>
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={() => setPoModalOpen(true)}
+                disabled={!canUsePoUpload || disable}
+                className="w-full h-9"
+              >
+                Manage PO Files
+              </Button>
+            </div>
+          )}
+        </div>
 
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">

@@ -92,7 +92,6 @@ export default function OrderLoginLeadDetails() {
     useLeadProductionReadiness(vendorId, leadIdNum);
 
   // derive convenience flags & message
-  const missing = readiness?.orderLogin?.missing ?? [];
   const lacksProdFiles = readiness ? !readiness.productionFiles?.hasAny : false;
   const canMove = readiness?.readyForProduction === true;
   const canMoveToProductionStage = canMoveToProduction(userType);
@@ -101,12 +100,9 @@ export default function OrderLoginLeadDetails() {
 
   const disabledReason = readinessLoading
     ? "Checking prerequisites…"
-    : [
-        ...(missing.length
-          ? [`Missing File BreakUps: ${missing.join(", ")}`]
-          : []),
-        ...(lacksProdFiles ? ["No Production Files uploaded"] : []),
-      ].join(" • ");
+    : [lacksProdFiles ? "No Production Files uploaded" : ""]
+        .filter(Boolean)
+        .join(" • ");
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
