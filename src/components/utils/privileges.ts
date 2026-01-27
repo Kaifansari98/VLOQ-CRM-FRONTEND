@@ -84,7 +84,7 @@ export const canUploadClientDocumentation = (userType: string | undefined) => {
 };
 
 export const canUploadMoreClientDocumentationFiles = (
-  userType: string | undefined
+  userType: string | undefined,
 ) => {
   if (!userType) return false;
   const allowedRoles = ["super_admin", "admin"];
@@ -92,7 +92,7 @@ export const canUploadMoreClientDocumentationFiles = (
 };
 
 export const canUploadRevisedClientDocumentationFiles = (
-  userType: string | undefined
+  userType: string | undefined,
 ) => {
   if (!userType) return false;
   const allowedRoles = ["super_admin", "admin", "sales-executive"];
@@ -112,7 +112,7 @@ export const canRequestToTeckCheck = (userType: string | undefined) => {
 };
 
 export const canViewThreeVerticalDocsOptionInTechCheck = (
-  userType: string | undefined
+  userType: string | undefined,
 ) => {
   if (!userType) return false;
   const allowedRoles = ["super_admin", "admin", "sales-executive"];
@@ -146,7 +146,7 @@ export const canDoSR = (userType: string | undefined) => {
 // utils/privilege.ts
 export function canUploadOrDeleteBookingDone(
   role: string,
-  stage: string
+  stage: string,
 ): boolean {
   return (
     role === "admin" ||
@@ -157,7 +157,7 @@ export function canUploadOrDeleteBookingDone(
 
 export function canUploadOrDeleteOrderLogin(
   role: string,
-  stage: string
+  stage: string,
 ): boolean {
   return (
     role === "admin" ||
@@ -203,7 +203,7 @@ export const canWorkTodoTaskOrderLoginStage = (role: string | undefined) => {
 };
 
 export const canViewAndWorkProductionDetails = (
-  userType: string | undefined
+  userType: string | undefined,
 ) => {
   if (!userType) return false;
   const allowedRoles = [
@@ -239,7 +239,7 @@ export const canMoveToReadyToDispatch = (userType: string | undefined) => {
 };
 
 export const canUploadReadyToDispatchDocuments = (
-  userType: string | undefined
+  userType: string | undefined,
 ) => {
   if (!userType) return false;
   const allowedRoles = ["super_admin", "admin", "sales-executive"];
@@ -248,20 +248,20 @@ export const canUploadReadyToDispatchDocuments = (
 
 export function canAccessAddNewSectionButton(
   role: string,
-  stage: string
+  stage: string,
 ): boolean {
   const allowedRoles = ["super_admin", "admin", "backend"];
-  return stage === "order-login-stage" && allowedRoles.includes(role);
+  return stage === "production-stage" && allowedRoles.includes(role);
 }
 
 export function canAccessSaveOrderLoginButton(
   role: string,
-  stage: string
+  stage: string,
 ): boolean {
   return (
     role === "admin" ||
     role === "super-admin" ||
-    (role === "backend" && stage === "order-login-stage")
+    (role === "backend" && stage === "production-stage")
   );
 }
 
@@ -277,13 +277,14 @@ export function canAccessInputField(role: string, stage: string): boolean {
   return (
     role === "admin" ||
     role === "super-admin" ||
+    (role === "backend" && stage === "production-stage") ||
     (role === "backend" && stage === "order-login-stage")
   );
 }
 
 export function canViewAndWorkProductionStage(
   role: string,
-  stage: string
+  stage: string,
 ): boolean {
   // 1. Admins always have access
   if (role === "admin" || role === "super-admin") return true;
@@ -338,7 +339,7 @@ export const canViewDefaultSubTabProductionStage = (role: string) => {
 
 export function canViewAndWorkSiteRedinessStage(
   role: string,
-  stage: string
+  stage: string,
 ): boolean {
   return (
     role === "admin" ||
@@ -349,7 +350,7 @@ export function canViewAndWorkSiteRedinessStage(
 
 export function canViewAndWorkDispatchPlanningStage(
   role: string,
-  stage: string
+  stage: string,
 ): boolean {
   return (
     role === "admin" ||
@@ -360,7 +361,7 @@ export function canViewAndWorkDispatchPlanningStage(
 
 export function canViewAndWorkDispatchStage(
   role: string,
-  stage: string
+  stage: string,
 ): boolean {
   return (
     role === "admin" ||
@@ -398,7 +399,7 @@ export function canReassignLeadButton(role: string): boolean {
 
 export function canViewAndWorkUnderInstallationStage(
   role: string,
-  stage: string
+  stage: string,
 ): boolean {
   // can work and view both and site suprvisor work only under-installation stage.
   return (
@@ -408,10 +409,8 @@ export function canViewAndWorkUnderInstallationStage(
   );
 }
 
-
-
 export function canAccessTodoTaskTabUnderInstallationStage(
-  role: string
+  role: string,
 ): boolean {
   // 1. Admins always have access
   if (role === "admin" || role === "super-admin" || role === "site-supervisor")
@@ -421,7 +420,7 @@ export function canAccessTodoTaskTabUnderInstallationStage(
 }
 
 export function canAccessTodoTaskTabUnderFinalHandoverStage(
-  role: string
+  role: string,
 ): boolean {
   // 1. Admins always have access
   if (role === "admin" || role === "super-admin" || role === "site-supervisor")
@@ -432,7 +431,7 @@ export function canAccessTodoTaskTabUnderFinalHandoverStage(
 
 export function canViewAndWorkFinalHandoverStage(
   role: string,
-  stage: string
+  stage: string,
 ): boolean {
   // can work and view both and site suprvisor work only final-handover-stage.
   return (
@@ -444,7 +443,7 @@ export function canViewAndWorkFinalHandoverStage(
 
 export function canDoERDMiscellaneousDate(
   role: string,
-  stage: string
+  stage: string,
 ): boolean {
   // can work and view both and factory work only final-handover-stage.
   return (
@@ -456,7 +455,7 @@ export function canDoERDMiscellaneousDate(
 
 export function canMiscellaneousMarkAsResolved(
   role: string,
-  stage: string
+  stage: string,
 ): boolean {
   // can work and view both and factory work only final-handover-stage.
   return (
@@ -468,9 +467,7 @@ export function canMiscellaneousMarkAsResolved(
 
 export function canViewPaymentTab(role: string): boolean {
   return (
-    role === "sales-executive" ||
-    role === "admin" ||
-    role === "super-admin"
+    role === "sales-executive" || role === "admin" || role === "super-admin"
   );
 }
 
@@ -480,7 +477,7 @@ export function canViewSiteHistoryTab(role: string): boolean {
 
 export function canUpdateDessingStageSelectionInputs(
   role: string,
-  stage: string
+  stage: string,
 ): boolean {
   // can work and view both and factory work only final-handover-stage.
   return (

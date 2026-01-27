@@ -40,6 +40,7 @@ export const getCompanyVendorsByVendorId = async (vendorId: number) => {
   const { data } = await apiClient.get(
     `/vendor/company-vendors/vendorId/${vendorId}`
   );
+  console.log("company vendor data: ", data)
   return data?.data;
 };
 

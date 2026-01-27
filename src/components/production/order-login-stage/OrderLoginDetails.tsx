@@ -37,6 +37,7 @@ import {
   canAccessSaveOrderLoginButton,
 } from "@/components/utils/privileges";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useSearchParams } from "next/navigation";
 
 interface OrderLoginDetailsProps {
   leadId: number;
@@ -50,10 +51,13 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   accountId,
   forceDefaultTab,
 }) => {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type
+    (state) => state.auth.user?.user_type?.user_type,
   );
   const { data: companyVendors } = useCompanyVendors(vendorId);
   const { data: orderLoginData } = useOrderLoginByLead(vendorId, leadId);
@@ -85,7 +89,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   // 🧩 Mutations
   const { mutateAsync: updateMultiple } = useUpdateMultipleOrderLogins(
     vendorId,
-    leadId
+    leadId,
   );
   const { mutateAsync: updateSingle } = useUpdateOrderLogin(vendorId);
   const { mutateAsync: deleteOrderLogin, isPending: isDeleting } =
@@ -104,16 +108,16 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
 
   const canAccessSaveButton = canAccessSaveOrderLoginButton(
     userType,
-    leadStatus
+    leadStatus,
   );
   const normalizedStage = (leadStatus || "").toLowerCase().replace(/_/g, "-");
   const isOrderLoginStage = normalizedStage.includes("order-login");
-  const isBackendUser = (userType?.toLowerCase() === "backend" || userType?.toLowerCase() === "admin" ||
-    userType?.toLowerCase() === "super-admin"
-  );
+  const isBackendUser =
+    userType?.toLowerCase() === "backend" ||
+    userType?.toLowerCase() === "admin" ||
+    userType?.toLowerCase() === "super-admin";
   const canManageCustomSections = isBackendUser && isOrderLoginStage;
 
- 
   const users =
     companyVendors?.map((vendor: any) => ({
       id: vendor.id,
@@ -138,15 +142,15 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         title,
         existingData: orderLoginData?.find((i: any) => i.item_type === title),
       })),
-    [orderLoginData]
+    [orderLoginData],
   );
 
   const extraFromApi = useMemo(
     () =>
       (orderLoginData || []).filter(
-        (i: any) => !defaultTitles.includes(i.item_type)
+        (i: any) => !defaultTitles.includes(i.item_type),
       ),
-    [orderLoginData]
+    [orderLoginData],
   );
 
   // 🧩 Pre-fill from API data
@@ -255,7 +259,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     try {
       const entries = Object.entries(breakups).map(([title, val]) => {
         const existing = orderLoginData?.find(
-          (item: any) => item.item_type === title
+          (item: any) => item.item_type === title,
         );
         const trimmedDesc = (val.item_desc || "").trim();
         const hasVendor = val.company_vendor_id !== null;
@@ -306,8 +310,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             deleteOrderLogin({
               orderLoginId,
               deleted_by: userId,
-            })
-          )
+            }),
+          ),
         );
       }
       if (updates.length > 0) await updateMultiple(updates);
@@ -335,6 +339,82 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     },
   };
 
+  const tabMapping: Record<string, string> = {
+    orderLogin: "order-login",
+    approvedDocs: "approved-docs",
+    productionFiles: "production-files",
+  };
+
+  const activeTab =
+    tabMapping[tabParam || ""] || forceDefaultTab
+      ? "order-login"
+      : "approved-docs";
+
+  // Helper function to check if user can edit a specific item
+  const canEditItem = (item: any) => {
+    const isAdmin =
+      userType?.toLowerCase() === "admin" ||
+      userType?.toLowerCase() === "super-admin";
+
+    // If item already has a vendor assigned, only admin can edit
+    if (
+      item?.company_vendor_id !== null &&
+      item?.company_vendor_id !== undefined
+    ) {
+      return isAdmin;
+    }
+
+    // Otherwise, check general access
+    return canAccessInput;
+  };
+
+  const getItemEditPermissions = (item: any) => {
+    const role = userType?.toLowerCase();
+    const stage = leadStatus?.toLowerCase();
+
+    const isAdmin = role === "admin" || role === "super-admin";
+    const isBackend = role === "backend";
+
+    const hasVendorAssigned =
+      item?.company_vendor_id !== null && item?.company_vendor_id !== undefined;
+
+    const isProductionStage = stage === "production-stage";
+
+    // Admin = full access
+    if (isAdmin) {
+      return {
+        canEditVendor: true,
+        canEditDescription: true,
+      };
+    }
+
+    // Backend rules
+    if (isBackend) {
+      // Existing uploaded item → readonly
+      if (hasVendorAssigned) {
+        return {
+          canEditVendor: false,
+          canEditDescription: false,
+        };
+      }
+
+      // New item in production stage → editable
+      if (!hasVendorAssigned && isProductionStage) {
+        return {
+          canEditVendor: true,
+          canEditDescription: true,
+        };
+      }
+    }
+
+    // Default deny
+    return {
+      canEditVendor: false,
+      canEditDescription: false,
+    };
+  };
+
+  
   return (
     <div className="space-y-6  bg-[#fff] dark:bg-[#0a0a0a]">
       <motion.div
@@ -385,7 +465,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             <span className="text-sm font-semibold text-foreground">
               {data?.client_required_order_login_complition_date
                 ? new Date(
-                    data.client_required_order_login_complition_date
+                    data.client_required_order_login_complition_date,
                   ).toLocaleDateString("en-GB", {
                     weekday: "long",
                     day: "2-digit",
@@ -397,8 +477,9 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           </div>
         </motion.div>
       </motion.div>
+
       <SmoothTab
-        defaultTabId={forceDefaultTab ? "order-login" : "approved-docs"}
+        defaultTabId={activeTab}
         className="-mt-3"
         items={[
           {
@@ -421,18 +502,20 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             color: "bg-zinc-800 hover:bg-zinc-900",
             cardContent: (
               <div className=" space-y-4 p-1 bg-[#fff] dark:bg-[#0a0a0a]">
-          
                 {/* ---------------- HEADER ---------------- */}
                 <div className="flex flex-col md:flex-row space-y-2 items-start justify-between">
                   <div className="space-y-0">
-                    <h2 className="text-xl font-semibold tracking-tight">Order Login</h2>
-          
+                    <h2 className="text-xl font-semibold tracking-tight">
+                      Order Login
+                    </h2>
+
                     {/* ⭐ Description under title */}
                     <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
-                      Fill out item-level breakups and assign responsibilities before order login is finalized.
+                      Fill out item-level breakups and assign responsibilities
+                      before order login is finalized.
                     </p>
                   </div>
-          
+
                   {/* Right Button */}
                   {canAccessSaveButton && (
                     <Button
@@ -442,15 +525,14 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                       variant="default"
                       className="cursor-pointer"
                     >
-                      <Save/>
+                      <Save />
                       {isPending ? "Processing..." : "Save Order Login"}
                     </Button>
                   )}
                 </div>
-          
+
                 {/* ---------------- GRID OF BREAKUPS ---------------- */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          
                   {/* Default Cards */}
                   {defaultCards.map(({ title, existingData }) => (
                     <FileBreakUpField
@@ -463,7 +545,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                           company_vendor_id: null,
                         }
                       }
-                      disable={!canAccessInput}
+                      disable={!canEditItem(existingData)}
                       onChange={handleFieldChange}
                       isMandatory={mandatoryTitles.includes(title)}
                       vendorId={vendorId}
@@ -473,7 +555,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                       showPoUpload
                     />
                   ))}
-          
+
                   {/* Extra Section From API */}
                   {extraFromApi.map((item: any) => (
                     <FileBreakUpField
@@ -486,7 +568,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                           company_vendor_id: item.company_vendor_id || null,
                         }
                       }
-                      disable={!canAccessInput}
+                      disable={!canEditItem(item)}
                       onChange={handleFieldChange}
                       isMandatory={false}
                       isTitleEditable={canManageCustomSections && !!item.id}
@@ -507,7 +589,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                       showPoUpload
                     />
                   ))}
-          
+
                   {/* ---------------- ADD NEW SECTION CARD ---------------- */}
                   {canAccessButtons && (
                     <div
@@ -515,11 +597,13 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                                  hover:bg-primary/10 transition-all cursor-pointer group 
                                  flex flex-col items-center justify-center gap-3 min-h-[190px]"
                     >
-                      <div className="rounded-full bg-primary/10 p-3 
-                                      group-hover:bg-primary/20 transition-colors">
+                      <div
+                        className="rounded-full bg-primary/10 p-3 
+                                      group-hover:bg-primary/20 transition-colors"
+                      >
                         <Plus className="w-6 h-6 text-primary" />
                       </div>
-          
+
                       <div className="text-center">
                         <p className="font-medium text-sm text-primary">
                           Add New Section
@@ -528,7 +612,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                           Create a new breakup category for this order
                         </p>
                       </div>
-          
+
                       <AddSectionModal
                         users={users}
                         leadId={leadId}
@@ -563,7 +647,10 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteSection} disabled={isDeleting}>
+            <AlertDialogAction
+              onClick={handleDeleteSection}
+              disabled={isDeleting}
+            >
               {isDeleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
