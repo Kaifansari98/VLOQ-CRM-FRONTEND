@@ -393,31 +393,68 @@ export function UniversalTable({
 
   return (
     <div className="py-2">
-      <div className="px-4 flex justify-between items-start">
-        <div>
-          <h1 className="text-lg font-semibold">{title}</h1>
-          <p className="text-sm text-muted-foreground">{description}</p>
+      {/* 📱 MOBILE & DESKTOP HEADER */}
+      <div className="px-4 space-y-3">
+        {/* Title & Description */}
+        <div className="flex flex-col gap-2 md:flex-row items-start justify-between">
+          <div>
+            <h1 className="text-lg font-semibold">{title}</h1>
+            <p className="text-sm text-muted-foreground hidden md:block">{description}</p>
+          </div>
+
+          {/* My Leads / Overall Leads Buttons */}
+          {enableAdminTabs && !isAdmin && (
+            <div className="flex gap-2 items-end">
+              <Button
+                size="sm"
+                variant={viewType === "my" ? "default" : "secondary"}
+                onClick={() => handleViewSwitch("my")}
+                className="flex-1 md:flex-none"
+              >
+                My Leads ({myCount})
+              </Button>
+
+              <Button
+                size="sm"
+                variant={viewType === "overall" ? "default" : "secondary"}
+                onClick={() => handleViewSwitch("overall")}
+                className="flex-1 md:flex-none"
+              >
+                Overall Leads ({overallCount})
+              </Button>
+            </div>
+          )}
         </div>
 
-        {enableAdminTabs && !isAdmin && (
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant={viewType === "my" ? "default" : "secondary"}
-              onClick={() => handleViewSwitch("my")}
-            >
-              My Leads ({myCount})
-            </Button>
+        {/* 📱 MOBILE FILTERS (4 components in a row) */}
+        <div className="flex md:hidden gap-2 flex-wrap">
+          <DataTableDateFilter
+            column={table.getColumn("createdAt")!}
+            title="Created At"
+            multiple
+          />
+          {/* <DataTableSortList table={table} />
+          <DataTableFilterList table={table} /> */}
+          <DataTableViewOptions table={table} />
+        </div>
 
-            <Button
-              size="sm"
-              variant={viewType === "overall" ? "default" : "secondary"}
-              onClick={() => handleViewSwitch("overall")}
-            >
-              Overall Leads ({overallCount})
-            </Button>
-          </div>
-        )}
+        {/* 📱 MOBILE SEARCH BAR (Full Width) */}
+        <div className="md:hidden w-full">
+          <ClearInput
+            value={activeGlobalFilter}
+            onChange={(e) => {
+              if (viewType === "my") {
+                setMyGlobalFilter(e.target.value);
+                setMyPagination({ ...myPagination, pageIndex: 0 });
+              } else {
+                setOverallGlobalFilter(e.target.value);
+                setOverallPagination({ ...overallPagination, pageIndex: 0 });
+              }
+            }}
+            placeholder="Search..."
+            className="h-8 w-full"
+          />
+        </div>
       </div>
 
       <DataTable
@@ -425,6 +462,7 @@ export function UniversalTable({
         onRowDoubleClick={handleRowClick}
         className="pt-3 px-4"
       >
+        {/* 🖥️ DESKTOP FILTERS (Horizontal Layout) */}
         <div className="hidden md:flex justify-between items-end">
           <div className="flex gap-3">
             <ClearInput
@@ -450,8 +488,8 @@ export function UniversalTable({
           </div>
 
           <div className="flex gap-2">
-            <DataTableSortList table={table} />
-            <DataTableFilterList table={table} />
+            {/* <DataTableSortList table={table} />
+            <DataTableFilterList table={table} /> */}
             <DataTableViewOptions table={table} />
           </div>
         </div>

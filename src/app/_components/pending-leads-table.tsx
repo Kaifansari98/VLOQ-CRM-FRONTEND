@@ -3,14 +3,9 @@
 import { useAppSelector } from "@/redux/store";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import { DataTable } from "@/components/data-table/data-table";
-import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
-import { DataTableSortList } from "@/components/data-table/data-table-sort-list";
 import {
   useReactTable,
   getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
   SortingState,
   ColumnFiltersState,
   VisibilityState,
@@ -523,8 +518,8 @@ export default function PendingLeadsTable({
           {/* ================= MOBILE LAYOUT ================= */}
           <div className="flex flex-col gap-4 md:hidden">
             <div className="flex flex-wrap gap-2">
-              <DataTableSortList table={table} />
-              <DataTableFilterList table={table} />
+              {/* <DataTableSortList table={table} />
+              <DataTableFilterList table={table} /> */}
               <DataTableViewOptions table={table} />
 
               <DataTableDateFilter
@@ -566,8 +561,8 @@ export default function PendingLeadsTable({
             </div>
 
             <div className="flex items-center gap-2">
-              <DataTableSortList table={table} />
-              <DataTableFilterList table={table} />
+              {/* <DataTableSortList table={table} />
+              <DataTableFilterList table={table} /> */}
               <DataTableViewOptions table={table} />
             </div>
           </div>

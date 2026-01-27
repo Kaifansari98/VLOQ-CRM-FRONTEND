@@ -537,7 +537,7 @@ const MyTaskTable = () => {
                 title="AssignedAt"
                 multiple
               />
-              <DataTableFilterList table={table} />
+              {/* <DataTableFilterList table={table} /> */}
               <DataTableViewOptions table={table} />
             </div>
 
@@ -608,7 +608,7 @@ const MyTaskTable = () => {
                   </Button>
                 </div>
               )}
-              <DataTableFilterList table={table} />
+              {/* <DataTableFilterList table={table} /> */}
               <DataTableViewOptions table={table} />
             </div>
           </div>
