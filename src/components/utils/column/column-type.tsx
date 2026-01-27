@@ -4,10 +4,11 @@ export type LeadColumn = {
   lead_code: string; // R
   name: string; // R
   contact: string; // R
-  productTypes: string; // R
+  furnitureType: string; // R
   status: string; // R
   siteType: string; // R
-  assign_to?: string; // R
+  sales_executive?: string; // R
+  assignedToId?: number;
   siteAddress: string; // R
   architechName: string;
   source: string;
@@ -15,7 +16,7 @@ export type LeadColumn = {
   altContact?: string;
   email: string; // R
   // site_supervisor?: string;
-  productStructures: string;
+  furnitueStructures: string;
   designerRemark: string;
   accountId: number; // n
   updatedAt: string; //n

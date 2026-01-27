@@ -7,6 +7,11 @@ import CustomeStatusBadge from "@/components/origin-status-badge";
 import RemarkTooltip from "@/components/origin-tooltip";
 import { MapPin, Text } from "lucide-react";
 import type { ProcessedLead } from "./view-tables-coloumns";
+import {
+  siteMapLinkSort,
+  tableMultiValueFilter,
+  tableTextSearchFilter,
+} from "@/lib/utils";
 
 export type PendingLeadRow = ProcessedLead & { accountId?: number };
 
@@ -50,13 +55,16 @@ export function getPendingLeadsColumns({}: {
           />
         );
       },
-      meta: { label: "Name", icon: Text },
+      meta: { label: "Lead Name", icon: Text },
     },
     {
       accessorKey: "contact",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Contact" />
       ),
+      meta: {
+        label: "Contact",
+      },
     },
     {
       accessorKey: "email",
@@ -76,22 +84,41 @@ export function getPendingLeadsColumns({}: {
           />
         );
       },
+      meta: {
+        label: "Email",
+      },
     },
     {
       accessorKey: "status",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Stage" />
+        <DataTableColumnHeader column={column} title="Status" />
       ),
       cell: ({ row }) => {
         const status = row.getValue("status") as string;
         return <CustomeStatusBadge title={status} />;
       },
+      meta: {
+        label: "Status",
+      },
+
+      filterFn: tableMultiValueFilter,
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
     },
     {
       accessorKey: "siteType",
+      filterFn: tableMultiValueFilter,
+
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Site Type" />
       ),
+      meta: {
+        label: "Site Type",
+      },
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
     },
 
     {
@@ -99,7 +126,9 @@ export function getPendingLeadsColumns({}: {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Address" />
       ),
-      enableSorting: true,
+      sortingFn: siteMapLinkSort<PendingLeadRow>(),
+
+      enableSorting: false,
       enableHiding: true,
       enableColumnFilter: true,
 
@@ -128,9 +157,14 @@ export function getPendingLeadsColumns({}: {
           </div>
         );
       },
+      meta: {
+        label: "Site Map Link",
+      },
     },
     {
       accessorKey: "siteAddress",
+      filterFn: tableTextSearchFilter<ProcessedLead>(),
+
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Site Address" />
       ),
@@ -146,18 +180,38 @@ export function getPendingLeadsColumns({}: {
           />
         );
       },
+      meta: {
+        label: "Site Address",
+      },
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
     },
     {
-      accessorKey: "productTypes",
+      accessorKey: "furnitureType",
+      filterFn: tableMultiValueFilter,
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Product Types" />
+        <DataTableColumnHeader column={column} title="Furniture Type" />
       ),
+      meta: {
+        label: "Furniture Type",
+      },
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
     },
     {
-      accessorKey: "productStructures",
+      accessorKey: "furnitueStructures",
+      filterFn: tableMultiValueFilter,
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Product Structures" />
+        <DataTableColumnHeader column={column} title="Furniture Structures" />
       ),
+      meta: {
+        label: "Furniture Structures",
+      },
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
     },
     {
       accessorKey: "createdAt",
@@ -173,6 +227,9 @@ export function getPendingLeadsColumns({}: {
           month: "short",
           year: "numeric",
         });
+      },
+      meta: {
+        label: "Created At",
       },
     },
   ];

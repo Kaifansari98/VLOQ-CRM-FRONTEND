@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { formatDate } from "@/lib/format";
+import { Badge } from "@/components/ui/badge";
 
 type DateSelection = Date[] | DateRange;
 
@@ -50,16 +51,29 @@ function parseColumnFilterValue(value: unknown) {
   return [];
 }
 
+// Compact date formatting
+function formatDateCompact(date: Date): string {
+  const day = date.getDate();
+  const month = date.toLocaleDateString("en-US", { month: "short" });
+  const year = date.getFullYear();
+  const currentYear = new Date().getFullYear();
+
+  // Show year only if different from current year
+  return currentYear === year ? `${day} ${month}` : `${day} ${month} ${year}`;
+}
+
 interface DataTableDateFilterProps<TData> {
   column: Column<TData, unknown>;
   title?: string;
   multiple?: boolean;
+  compact?: boolean; // New prop for compact mode
 }
 
 export function DataTableDateFilter<TData>({
   column,
   title,
   multiple,
+  compact = true, // Default to compact mode
 }: DataTableDateFilterProps<TData>) {
   const columnFilterValue = column.getFilterValue();
 
@@ -116,19 +130,46 @@ export function DataTableDateFilter<TData>({
     return selectedDates.length > 0;
   }, [multiple, selectedDates]);
 
-  const formatDateRange = React.useCallback((range: DateRange) => {
-    if (!range.from && !range.to) return "";
-    if (range.from && range.to) {
-      return `${formatDate(range.from)} - ${formatDate(range.to)}`;
-    }
-    return formatDate(range.from ?? range.to);
-  }, []);
+  const formatDateRange = React.useCallback(
+    (range: DateRange) => {
+      if (!range.from && !range.to) return "";
+
+      const safeDate = range.from || range.to;
+
+      if (!safeDate) return "";
+
+      if (range.from && range.to) {
+        return compact
+          ? `${formatDateCompact(range.from)} - ${formatDateCompact(range.to)}`
+          : `${formatDate(range.from)} - ${formatDate(range.to)}`;
+      }
+
+      return compact ? formatDateCompact(safeDate) : formatDate(safeDate);
+    },
+    [compact],
+  );
 
   const label = React.useMemo(() => {
     if (multiple) {
       if (!getIsDateRange(selectedDates)) return null;
 
       const hasSelectedDates = selectedDates.from || selectedDates.to;
+
+      if (compact && hasSelectedDates) {
+        // Compact mode: Show only title with badge
+        return (
+          <span className="flex items-center gap-1.5">
+            <span className="truncate max-w-[80px]">{title}</span>
+            <Badge
+              variant="secondary"
+              className="font-normal px-1.5 py-0 h-5 text-xs"
+            >
+              {selectedDates.from && selectedDates.to ? "Range" : "1"}
+            </Badge>
+          </span>
+        );
+      }
+
       const dateText = hasSelectedDates
         ? formatDateRange(selectedDates)
         : "Select date range";
@@ -142,7 +183,7 @@ export function DataTableDateFilter<TData>({
                 orientation="vertical"
                 className="mx-0.5 data-[orientation=vertical]:h-4"
               />
-              <span>{dateText}</span>
+              <span className="truncate max-w-[200px]">{dateText}</span>
             </>
           )}
         </span>
@@ -152,8 +193,26 @@ export function DataTableDateFilter<TData>({
     if (getIsDateRange(selectedDates)) return null;
 
     const hasSelectedDate = selectedDates.length > 0;
+
+    if (compact && hasSelectedDate) {
+      // Compact mode: Show only title with badge
+      return (
+        <span className="flex items-center gap-1.5">
+          <span className="truncate max-w-[80px]">{title}</span>
+          <Badge
+            variant="secondary"
+            className="font-normal px-1.5 py-0 h-5 text-xs"
+          >
+            1
+          </Badge>
+        </span>
+      );
+    }
+
     const dateText = hasSelectedDate
-      ? formatDate(selectedDates[0])
+      ? compact
+        ? formatDateCompact(selectedDates[0])
+        : formatDate(selectedDates[0])
       : "Select date";
 
     return (
@@ -165,34 +224,60 @@ export function DataTableDateFilter<TData>({
               orientation="vertical"
               className="mx-0.5 data-[orientation=vertical]:h-4"
             />
-            <span>{dateText}</span>
+            <span className="truncate max-w-[120px]">{dateText}</span>
           </>
         )}
       </span>
     );
-  }, [selectedDates, multiple, formatDateRange, title]);
+  }, [selectedDates, multiple, formatDateRange, title, compact]);
 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="border-dashed">
+        <Button
+          variant="outline"
+          size="sm"
+          className={`border-dashed ${compact ? "max-w-[180px]" : ""}`}
+        >
           {hasValue ? (
             <div
               role="button"
               aria-label={`Clear ${title} filter`}
               tabIndex={0}
               onClick={onReset}
-              className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring flex-shrink-0"
             >
-              <XCircle />
+              <XCircle className="h-4 w-4" />
             </div>
           ) : (
-            <CalendarIcon />
+            <CalendarIcon className="h-4 w-4 flex-shrink-0" />
           )}
-          {label}
+          <span className="truncate">{label}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
+        {/* Show selected dates in popover header */}
+        {hasValue && (
+          <div className="p-3 border-b bg-muted/50">
+            <div className="text-sm font-medium mb-1">{title}</div>
+            <div className="text-xs text-muted-foreground">
+              {multiple && getIsDateRange(selectedDates) ? (
+                <>
+                  {selectedDates.from && (
+                    <div>From: {formatDate(selectedDates.from)}</div>
+                  )}
+                  {selectedDates.to && (
+                    <div>To: {formatDate(selectedDates.to)}</div>
+                  )}
+                </>
+              ) : (
+                !getIsDateRange(selectedDates) &&
+                selectedDates[0] && <div>{formatDate(selectedDates[0])}</div>
+              )}
+            </div>
+          </div>
+        )}
+
         {multiple ? (
           <Calendar
             initialFocus

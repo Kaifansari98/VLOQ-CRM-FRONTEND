@@ -10,7 +10,7 @@ import {
   StatusType,
   User,
 } from "@/types/comman-types";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { toast } from "react-toastify";
 
@@ -165,7 +165,7 @@ export const uploadMoreSitePhotos = async ({
   const response = await apiClient.post(
     "/leads/upload-more-site-photos",
     formData,
-    { headers: { "Content-Type": "multipart/form-data" } }
+    { headers: { "Content-Type": "multipart/form-data" } },
   );
 
   return response.data;
@@ -173,7 +173,7 @@ export const uploadMoreSitePhotos = async ({
 
 export const createLead = async (
   payload: CreateLeadPayload,
-  files: File[] = []
+  files: File[] = [],
 ) => {
   const formData = new FormData();
 
@@ -221,21 +221,21 @@ export const createLead = async (
 export const updateLead = async (
   payload: EditLeadPayload,
   leadId: number,
-  userId: number
+  userId: number,
 ) => {
   const response = await apiClient.put(
     `/leads/update/${leadId}/userId/${userId}`,
-    payload
+    payload,
   );
   return response.data;
 };
 
 export const getLeadProductStructureInstances = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   const response = await apiClient.get(
-    `/leads/lead/${leadId}/vendor/${vendorId}/product-structure-instances`
+    `/leads/lead/${leadId}/vendor/${vendorId}/product-structure-instances`,
   );
   return response.data;
 };
@@ -243,10 +243,10 @@ export const getLeadProductStructureInstances = async (
 export const deleteLeadProductStructureInstance = async (
   vendorId: number,
   leadId: number,
-  instanceId: number
+  instanceId: number,
 ) => {
   const response = await apiClient.delete(
-    `/leads/lead/${leadId}/vendor/${vendorId}/product-structure-instances/${instanceId}`
+    `/leads/lead/${leadId}/vendor/${vendorId}/product-structure-instances/${instanceId}`,
   );
   return response.data;
 };
@@ -260,11 +260,11 @@ export const updateLeadProductStructureInstance = async (
     title: string;
     description?: string;
     updated_by?: number;
-  }
+  },
 ) => {
   const response = await apiClient.put(
     `/leads/lead/${leadId}/vendor/${vendorId}/product-structure-instances/${instanceId}`,
-    payload
+    payload,
   );
   return response.data;
 };
@@ -277,11 +277,11 @@ export const createLeadProductStructureInstance = async (
     title: string;
     description?: string;
     created_by: number;
-  }
+  },
 ) => {
   const response = await apiClient.post(
     `/leads/lead/${leadId}/vendor/${vendorId}/product-structure-instances`,
-    payload
+    payload,
   );
   return response.data;
 };
@@ -291,10 +291,10 @@ export type VendorUserLeadsResponse = Lead[];
 
 // Get all leads for a vendor
 export const getVendorLeads = async (
-  vendorId: number
+  vendorId: number,
 ): Promise<VendorLeadsResponse> => {
   const response = await apiClient.get(
-    `/leads/get-vendor-leads/vendor/${vendorId}`
+    `/leads/get-vendor-leads/vendor/${vendorId}`,
   );
   return response.data;
 };
@@ -302,10 +302,10 @@ export const getVendorLeads = async (
 // Get leads for a specific user of a vendor
 export const getVendorUserLeads = async (
   vendorId: number,
-  userId: number
+  userId: number,
 ): Promise<Lead[]> => {
   const response = await apiClient.get(
-    `/leads/get-vendor-user-leads/vendor/${vendorId}/user/${userId}`
+    `/leads/get-vendor-user-leads/vendor/${vendorId}/user/${userId}`,
   );
   return response.data.data.leads; // <-- notice the extra .data.leads
 };
@@ -313,32 +313,32 @@ export const getVendorUserLeads = async (
 // Get leads for a specific user of a vendor
 export const getVendorUserLeadsOpen = async (
   vendorId: number,
-  userId: number
+  userId: number,
 ): Promise<VendorUserLeadsOpenResponse> => {
   const response = await apiClient.get(
     `/leads/bookingStage/status1-leads/vendorId/${vendorId}`,
-    { params: { userId } }
+    { params: { userId } },
   );
   return response.data;
 };
 
 export const deleteLead = async (leadId: number, userId: number) => {
   const response = await apiClient.delete(
-    `/leads/delete-lead/${leadId}/user-id/${userId}`
+    `/leads/delete-lead/${leadId}/user-id/${userId}`,
   );
   return response.data;
 };
 
 export const getVendorSalesExecutiveUsers = async (vendorId: number) => {
   const response = await apiClient.get(
-    `/leads/sales-executives/vendor/${vendorId}`
+    `/leads/sales-executives/vendor/${vendorId}`,
   );
   return response.data;
 };
 
 export const getVendorSiteSuppervisorUsers = async (vendorId: number) => {
   const response = await apiClient.get(
-    `/leads/site-supervisor/vendor/${vendorId}`
+    `/leads/site-supervisor/vendor/${vendorId}`,
   );
   return response.data;
 };
@@ -346,21 +346,21 @@ export const getVendorSiteSuppervisorUsers = async (vendorId: number) => {
 export const getLeadById = async (
   leadId: number,
   vendorId: number,
-  userId: number
+  userId: number,
 ) => {
   const response = await apiClient.get(
-    `/leads/get-lead/${leadId}/vendor/${vendorId}/user/${userId}`
+    `/leads/get-lead/${leadId}/vendor/${vendorId}/user/${userId}`,
   );
   return response.data;
 };
 
 export const checkContactOrEmailExists = async (
   vendorId: number,
-  payload: ContactOrEmailCheckPayload
+  payload: ContactOrEmailCheckPayload,
 ): Promise<ContactOrEmailCheckResult> => {
   const { data } = await apiClient.post(
     `/leads/vendorId/${vendorId}/check-contact-number`,
-    payload
+    payload,
   );
   return data?.data as ContactOrEmailCheckResult;
 };
@@ -368,11 +368,11 @@ export const checkContactOrEmailExists = async (
 export const assignLeadToAnotherSalesExecutive = async (
   vendorId: number,
   leadId: number,
-  payload: AssignToPayload
+  payload: AssignToPayload,
 ) => {
   const response = await apiClient.put(
     `/leads/sales-executives/vendor/${vendorId}/lead/${leadId}`,
-    payload
+    payload,
   );
   return response.data;
 };
@@ -385,7 +385,7 @@ export const uploadInitialSiteMeasurement = async (payload: FormData) => {
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
   return response.data;
 };
@@ -398,18 +398,21 @@ export const uploadBookingDoneIsm = async (payload: FormData) => {
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
   return response.data;
 };
 
 export const getBookingDoneIsmDetails = async (
   leadId: number,
-  vendorId: number
+  vendorId: number,
 ) => {
-  const response = await apiClient.get(`/leads/initial-site-measurement/booking-done-ism/${leadId}`, {
-    params: { vendor_id: vendorId },
-  });
+  const response = await apiClient.get(
+    `/leads/initial-site-measurement/booking-done-ism/${leadId}`,
+    {
+      params: { vendor_id: vendorId },
+    },
+  );
 
   return response.data?.data;
 };
@@ -424,11 +427,11 @@ export interface AssignToSiteMeasurementPayload {
 
 export const assignToSiteMeasurement = async (
   leadId: number,
-  payload: AssignToSiteMeasurementPayload
+  payload: AssignToSiteMeasurementPayload,
 ) => {
   const { data } = await apiClient.post(
     `/leads/initial-site-measurement/leadId/${leadId}/tasks/assign-ism`,
-    payload
+    payload,
   );
 
   return data;
@@ -450,7 +453,7 @@ export const fetchLeadLogs = async ({
   if (cursor) query.append("cursor", String(cursor));
 
   const response = await apiClient.get(
-    `/leads/vendorId/${vendorId}/leadId/${leadId}/logs?${query.toString()}`
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/logs?${query.toString()}`,
   );
 
   // ✅ return both "data" (array) and "meta" (pagination info)
@@ -458,6 +461,77 @@ export const fetchLeadLogs = async ({
     data: response.data.data, // logs array
     meta: response.data.meta, // pagination info
   };
+};
+
+// vendor all user list
+export interface VendorUserItem {
+  id: number;
+  user_name: string;
+}
+
+export interface VendorUsersResponse {
+  success: boolean;
+  message: string;
+  data: VendorUserItem[];
+}
+
+export const fetchVendorUsers = async (
+  vendorId: number,
+): Promise<VendorUsersResponse> => {
+  const { data } = await apiClient.get(
+    `/vendors/vendor-users?vendor_id=${vendorId}`,
+  );
+
+  return data;
+};
+
+export const useVendorUsers = (vendorId: number) => {
+  return useQuery<VendorUsersResponse>({
+    queryKey: ["vendor-users", vendorId],
+
+    queryFn: () => fetchVendorUsers(vendorId),
+
+    enabled: !!vendorId,
+
+    staleTime: 5 * 60 * 1000, // 5 min cache
+
+    refetchOnWindowFocus: false,
+  });
+};
+
+// vendor all status type list
+export interface VendorStatusType {
+  id: number;
+  type: string;
+  tag: string;
+}
+
+export interface VendorStatusTypeResponse {
+  success: boolean;
+  message: string;
+  data: VendorStatusType[];
+}
+
+export const fetchVendorStatusTypes = async (
+  vendorId: number,
+): Promise<VendorStatusTypeResponse> => {
+  const { data } = await apiClient.get(
+    `/vendors/status-types?vendor_id=${vendorId}`,
+  );
+
+  return data;
+};
+
+export const useVendorStatusTypes = (vendorId: number) => {
+  return useQuery<VendorStatusTypeResponse>({
+    queryKey: ["vendorStatusTypes", vendorId],
+
+    queryFn: () => fetchVendorStatusTypes(vendorId),
+
+    enabled: !!vendorId,
+
+    staleTime: 10 * 60 * 1000, // cache for 10 minutes
+  });
 };
 
 /**
@@ -478,7 +552,7 @@ export const useDeleteDocument = (leadId?: number) => {
     }) => {
       const { data } = await apiClient.delete(
         `/leads/delete-doc/vendorId/${vendorId}/documentId/${documentId}`,
-        { data: { deleted_by } }
+        { data: { deleted_by } },
       );
       return data;
     },
@@ -562,7 +636,7 @@ export const useDeleteDocument = (leadId?: number) => {
     },
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(
-        error?.response?.data?.message || "Failed to delete document"
+        error?.response?.data?.message || "Failed to delete document",
       );
     },
   });

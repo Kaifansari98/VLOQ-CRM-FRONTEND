@@ -14,6 +14,8 @@ export interface ProductMapping {
   productType: ProductType;
 }
 
+export type SortOrder = "asc" | "desc";
+
 // -------------------------
 // Product Structure
 // -------------------------
@@ -112,13 +114,13 @@ export const getUniversalStageLeads = async (
   userId: number,
   tag: string,
   page: number,
-  limit: number
+  limit: number,
 ) => {
   const { data } = await apiClient.get(
     `/leads/bookingStage/universal-table-data/vendorId/${vendorId}`,
     {
       params: { userId, tag, page, limit },
-    }
+    },
   );
 
   return data;
@@ -129,7 +131,7 @@ export const useUniversalStageLeads = (
   userId: number,
   tag: string,
   page: number,
-  pageSize: number
+  pageSize: number,
 ) => {
   return useQuery<UniversalStageLeadResponse>({
     queryKey: ["universal-stage-leads", vendorId, userId, tag, page, pageSize],
@@ -138,5 +140,149 @@ export const useUniversalStageLeads = (
     enabled: !!vendorId && !!userId,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,
+  });
+};
+
+export interface UniversalStagePostPayload {
+  userId: number;
+  tag?: string;
+  page: number;
+  limit: number;
+
+  filter_name: string;
+  filter_lead_code: string;
+  contact: string;
+  alt_contact_no: string;
+  email: string;
+  site_address: string;
+  archetech_name: string;
+  designer_remark: string;
+
+  furniture_type: number[];
+  furniture_structure: number[];
+  site_type: number[];
+  source: number[];
+  stagetag?: string[];
+  assign_to: number[];
+  site_map_link: boolean | null;
+
+  created_at: SortOrder;
+}
+
+export const postUniversalStageLeads = async (
+  vendorId: number,
+  payload: UniversalStagePostPayload,
+): Promise<UniversalStageLeadResponse> => {
+  const { data } = await apiClient.post(
+    `/leads/bookingStage/universal-table-data-2/vendorId/${vendorId}`,
+    payload,
+  );
+
+  return data;
+};
+
+export const getUnderInstallationLeadsWithMiscellaneous = async (
+  vendorId: number,
+  payload: UniversalStagePostPayload,
+): Promise<UniversalStageLeadResponse> => {
+  const { data } = await apiClient.post<UniversalStageLeadResponse>(
+    `/leads/installation/under-installation/vendorId/${vendorId}/get-all-leads-which-includes-any-miscellaneous-item`,
+    payload,
+  );
+
+  return data;
+};
+
+// hooks/useUnderInstallationLeadsWithMiscellaneous
+export const useUnderInstallationLeadsWithMiscellaneous = (
+  vendorId: number,
+  payload: UniversalStagePostPayload,
+) => {
+  return useQuery<UniversalStageLeadResponse>({
+    queryKey: ["under-installation-misc-leads", vendorId, payload],
+    queryFn: () =>
+      getUnderInstallationLeadsWithMiscellaneous(vendorId, payload),
+    enabled: !!vendorId && !!payload?.userId,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+// hooks/useUniversalStageLeadsPost.ts
+export const useUniversalStageLeadsPost = (
+  vendorId: number,
+  payload: UniversalStagePostPayload,
+) => {
+  return useQuery<UniversalStageLeadResponse>({
+    queryKey: ["universal-stage-leads", vendorId, payload],
+    queryFn: () => postUniversalStageLeads(vendorId, payload),
+
+    enabled: !!vendorId && !!payload?.userId,
+
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+// hooks/postVendorLeadsByTag.ts
+export interface VendorLeadsByTagPostPayload {
+  userId?: number | null; // optional (for exclusion logic)
+  tag: string;
+
+  page: number;
+  limit: number;
+
+  global_search?: string;
+
+  filter_lead_code?: string;
+  filter_name?: string;
+  contact?: string;
+
+  alt_contact_no?: string;
+  email?: string;
+  site_address?: string;
+  archetech_name?: string;
+  designer_remark?: string;
+
+  furniture_type?: number[];
+  furniture_structure?: number[];
+  site_type?: number[];
+  source?: number[];
+  stagetag?: string[];
+  assign_to?: number[];
+  site_map_link?: boolean | null;
+
+  created_at?: SortOrder;
+  date_range?: {
+    from: string;
+    to: string;
+  };
+}
+
+export const postVendorLeadsByTag = async (
+  vendorId: number,
+  payload: VendorLeadsByTagPostPayload,
+): Promise<UniversalStageLeadResponse> => {
+  const { data } = await apiClient.post(
+    `/leads/bookingStage/vendorId/${vendorId}/vendor-leads-by-tag/all-leads`,
+    payload,
+  );
+
+  return data;
+};
+
+export const useVendorLeadsByTagPost = (
+  vendorId: number,
+  payload: VendorLeadsByTagPostPayload,
+) => {
+  return useQuery<UniversalStageLeadResponse>({
+    queryKey: ["vendorOverallLeads", vendorId, payload],
+
+    queryFn: () => postVendorLeadsByTag(vendorId, payload),
+
+    enabled: !!vendorId && !!payload?.tag,
+
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 };

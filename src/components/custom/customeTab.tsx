@@ -37,7 +37,7 @@ export default function CustomTabs({
       className={clsx(
         "relative flex items-center bg-muted rounded-lg p-1 w-fit min-h-[35px]",
         "transition-colors",
-        className
+        className,
       )}
     >
       {tabs.map((tab) => {
@@ -48,7 +48,7 @@ export default function CustomTabs({
             key={tab.value}
             onClick={() => handleChange(tab.value)}
             className={clsx(
-              "relative px-3 py-1.5 flex items-center gap-2 text-xs rounded-md font-medium transition-all"
+              "relative px-3 py-1.5 flex items-center gap-2 text-xs rounded-md font-medium transition-all",
             )}
           >
             {/* ACTIVE INDICATOR */}

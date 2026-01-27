@@ -1,12 +1,7 @@
 "use client";
 
 import { useAppSelector } from "@/redux/store";
-import {
-  useOnHoldLeads,
-  useLostLeads,
-  useLostApprovalLeads,
-  useUpdateActivityStatus,
-} from "@/hooks/useActivityStatus";
+import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
 import { DataTableSortList } from "@/components/data-table/data-table-sort-list";
@@ -47,6 +42,13 @@ import ClearInput from "@/components/origin-input";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
+import { mapTableFiltersToPayload } from "@/lib/utils";
+import {
+  ActivityStatusFilterPayload,
+  useLostApprovalLeadsFilter,
+  useLostLeadsFilter,
+  useOnHoldLeadsFilter,
+} from "@/api/activityStatus";
 
 export default function PendingLeadsTable({
   tab,
@@ -62,34 +64,52 @@ export default function PendingLeadsTable({
   const userId = useAppSelector((s) => s.auth.user?.id);
   const router = useRouter();
 
-  const { data: onHoldData = [], isLoading: onHoldLoading } = useOnHoldLeads(
-    vendorId!
-  );
-  const { data: lostData = [], isLoading: lostLoading } = useLostLeads(
-    vendorId!
-  );
-  const { data: lostApprovalData = [], isLoading: lostApprovalLoading } =
-    useLostApprovalLeads(vendorId!);
+  // ============================================
+  // 🔥 SEPARATE STATE FOR EACH TAB
+  // ============================================
 
-  console.log("On Hold data: ", onHoldData);
-  console.log("Lost data: ", lostData);
-  console.log("Lost Approval data: ", lostApprovalData);
+  // OnHold States
+  const [onHoldGlobalFilter, setOnHoldGlobalFilter] = React.useState("");
+  const [onHoldColumnFilters, setOnHoldColumnFilters] =
+    React.useState<ColumnFiltersState>([]);
+  const [onHoldPagination, setOnHoldPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: 20,
+  });
+
+  // Lost States
+  const [lostGlobalFilter, setLostGlobalFilter] = React.useState("");
+  const [lostColumnFilters, setLostColumnFilters] =
+    React.useState<ColumnFiltersState>([]);
+  const [lostPagination, setLostPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: 20,
+  });
+
+  // LostApproval States
+  const [lostApprovalGlobalFilter, setLostApprovalGlobalFilter] =
+    React.useState("");
+  const [lostApprovalColumnFilters, setLostApprovalColumnFilters] =
+    React.useState<ColumnFiltersState>([]);
+  const [lostApprovalPagination, setLostApprovalPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: 20,
+  });
+
+  // ============================================
+  // 🔥 COMMON STATES
+  // ============================================
 
   const [activeLead, setActiveLead] = React.useState<PendingLeadRow | null>(
-    null
+    null,
   );
   const [openConfirm, setOpenConfirm] = React.useState(false);
   const [openRemark, setOpenRemark] = React.useState(false);
   const [openActivityStatus, setOpenActivityStatus] = React.useState(false);
 
-  // ✅ Table state management
-  const [globalFilter, setGlobalFilter] = React.useState("");
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "createdAt", desc: true },
   ]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
@@ -99,7 +119,113 @@ export default function PendingLeadsTable({
     variant: "revert" | "lost";
   } | null>(null);
 
-  // ✅ Process rowAction and reset it
+  // ============================================
+  // 🔥 CREATE PAYLOADS FOR EACH API
+  // ============================================
+
+  const onHoldPayload: ActivityStatusFilterPayload = React.useMemo(() => {
+    const sortOrder: "asc" | "desc" = sorting[0]?.desc ? "desc" : "asc";
+    const mappedFilters = mapTableFiltersToPayload(onHoldColumnFilters);
+
+    return {
+      page: onHoldPagination.pageIndex + 1,
+      limit: onHoldPagination.pageSize,
+      global_search: onHoldGlobalFilter || "",
+      filter_lead_code: mappedFilters.filter_lead_code,
+      filter_name: mappedFilters.filter_name,
+      contact: mappedFilters.contact,
+      site_address: mappedFilters.site_address,
+      furniture_type: mappedFilters.furniture_type, //[1 ,3]
+      furniture_structure: mappedFilters.furniture_structure,
+      site_type: mappedFilters.site_type,
+      source: mappedFilters.source,
+      assign_to: mappedFilters.assign_to,
+      site_map_link: mappedFilters.site_map_link,
+      created_at: sortOrder,
+      date_range: mappedFilters.date_range,
+      status: mappedFilters.stagetag,
+    };
+  }, [onHoldPagination, onHoldGlobalFilter, onHoldColumnFilters, sorting]);
+
+  const lostPayload: ActivityStatusFilterPayload = React.useMemo(() => {
+    const sortOrder: "asc" | "desc" = sorting[0]?.desc ? "desc" : "asc";
+    const mappedFilters = mapTableFiltersToPayload(lostColumnFilters);
+
+    return {
+      page: lostPagination.pageIndex + 1,
+      limit: lostPagination.pageSize,
+      global_search: lostGlobalFilter || "",
+      filter_lead_code: mappedFilters.filter_lead_code,
+      filter_name: mappedFilters.filter_name,
+      contact: mappedFilters.contact,
+      alt_contact_no: mappedFilters.alt_contact_no,
+      email: mappedFilters.email,
+      site_address: mappedFilters.site_address,
+      archetech_name: mappedFilters.archetech_name,
+      designer_remark: mappedFilters.designer_remark,
+      furniture_type: mappedFilters.furniture_type,
+      furniture_structure: mappedFilters.furniture_structure,
+      site_type: mappedFilters.site_type,
+      source: mappedFilters.source,
+      assign_to: mappedFilters.assign_to,
+      site_map_link: mappedFilters.site_map_link,
+      created_at: sortOrder,
+    };
+  }, [lostPagination, lostGlobalFilter, lostColumnFilters, sorting]);
+
+  const lostApprovalPayload: ActivityStatusFilterPayload = React.useMemo(() => {
+    const sortOrder: "asc" | "desc" = sorting[0]?.desc ? "desc" : "asc";
+    const mappedFilters = mapTableFiltersToPayload(lostApprovalColumnFilters);
+
+    return {
+      page: lostApprovalPagination.pageIndex + 1,
+      limit: lostApprovalPagination.pageSize,
+      global_search: lostApprovalGlobalFilter || "",
+      filter_lead_code: mappedFilters.filter_lead_code,
+      filter_name: mappedFilters.filter_name,
+      contact: mappedFilters.contact,
+      alt_contact_no: mappedFilters.alt_contact_no,
+      email: mappedFilters.email,
+      site_address: mappedFilters.site_address,
+      archetech_name: mappedFilters.archetech_name,
+      designer_remark: mappedFilters.designer_remark,
+      furniture_type: mappedFilters.furniture_type,
+      furniture_structure: mappedFilters.furniture_structure,
+      site_type: mappedFilters.site_type,
+      source: mappedFilters.source,
+      assign_to: mappedFilters.assign_to,
+      site_map_link: mappedFilters.site_map_link,
+      created_at: sortOrder,
+    };
+  }, [
+    lostApprovalPagination,
+    lostApprovalGlobalFilter,
+    lostApprovalColumnFilters,
+    sorting,
+  ]);
+  // ============================================
+  // 🔥 NEW HOOKS WITH FILTERS
+  // ============================================
+
+  const { data: onHoldData, isLoading: onHoldLoading } = useOnHoldLeadsFilter(
+    vendorId!,
+    onHoldPayload,
+  );
+
+  console.log("On Hold Data: ", onHoldData);
+
+  const { data: lostData, isLoading: lostLoading } = useLostLeadsFilter(
+    vendorId!,
+    lostPayload,
+  );
+
+  const { data: lostApprovalData, isLoading: lostApprovalLoading } =
+    useLostApprovalLeadsFilter(vendorId!, lostApprovalPayload);
+
+  // ============================================
+  // 🔥 ROW ACTION HANDLER
+  // ============================================
+
   React.useEffect(() => {
     if (!rowAction) return;
 
@@ -113,15 +239,17 @@ export default function PendingLeadsTable({
       setOpenActivityStatus(true);
     }
 
-    // Reset after processing
     setRowAction(null);
   }, [rowAction]);
 
   const markAsLostMutation = useUpdateActivityStatus();
   const revertMutation = useRevertActivityStatus();
 
-  // Lead → PendingLeadRow
-  const processLeads = React.useCallback((leads: Lead[]): PendingLeadRow[] => {
+  // ============================================
+  // 🔥 PROCESS LEADS TO TABLE ROWS
+  // ============================================
+
+  const processLeads = React.useCallback((leads: any[]): PendingLeadRow[] => {
     return leads.map((lead, index) => ({
       id: lead.id,
       lead_code: lead.lead_code,
@@ -133,51 +261,123 @@ export default function PendingLeadsTable({
       architechName: lead.archetech_name || "",
       designerRemark: lead.designer_remark || "",
       activity_status: lead.activity_status || "",
-      productTypes:
-        lead.productMappings?.map((pm) => pm.productType.type).join(", ") || "",
-      productStructures:
+      furnitureType:
+        lead.productMappings
+          ?.map((pm: any) => pm.productType.type)
+          .join(", ") || "",
+      furnitueStructures:
         lead.leadProductStructureMapping
-          ?.map((psm) => psm.productStructure.type)
+          ?.map((psm: any) => psm.productStructure.type)
           .join(", ") || "",
       source: lead.source?.type || "",
       siteType: lead.siteType?.type || "",
       createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",
-
       updatedAt: lead.updated_at || "",
       altContact: lead.alt_contact_no || "",
       status: lead.statusType?.type || "",
       initial_site_measurement_date: lead.initial_site_measurement_date || "",
-      accountId: (lead as any).account?.id ?? (lead as any).account_id ?? 0,
+      accountId: lead.account?.id ?? lead.account_id ?? 0,
       site_map_link: lead.site_map_link || "",
     }));
   }, []);
 
   const onHoldProcessed = React.useMemo(
-    () => processLeads(onHoldData),
-    [onHoldData, processLeads]
-  );
-  const lostProcessed = React.useMemo(
-    () => processLeads(lostData),
-    [lostData, processLeads]
-  );
-  const lostApprovalProcessed = React.useMemo(
-    () => processLeads(lostApprovalData),
-    [lostApprovalData, processLeads]
+    () => processLeads(onHoldData?.data || []),
+    [onHoldData, processLeads],
   );
 
-  // Get data based on tab
-  const tableData = React.useMemo(() => {
+  const lostProcessed = React.useMemo(
+    () => processLeads(lostData?.data || []),
+    [lostData, processLeads],
+  );
+
+  const lostApprovalProcessed = React.useMemo(
+    () => processLeads(lostApprovalData?.data || []),
+    [lostApprovalData, processLeads],
+  );
+
+  // ============================================
+  // 🔥 GET ACTIVE DATA BASED ON TAB
+  // ============================================
+
+  const {
+    tableData,
+    totalPages,
+    currentGlobalFilter,
+    setCurrentGlobalFilter,
+    currentColumnFilters,
+    setCurrentColumnFilters,
+    currentPagination,
+    setCurrentPagination,
+  } = React.useMemo(() => {
     switch (tab) {
       case "onHold":
-        return onHoldProcessed;
+        return {
+          tableData: onHoldProcessed,
+          totalPages: onHoldData?.pagination?.totalPages ?? 1,
+          currentGlobalFilter: onHoldGlobalFilter,
+          setCurrentGlobalFilter: setOnHoldGlobalFilter,
+          currentColumnFilters: onHoldColumnFilters,
+          setCurrentColumnFilters: setOnHoldColumnFilters,
+          currentPagination: onHoldPagination,
+          setCurrentPagination: setOnHoldPagination,
+        };
       case "lostApproval":
-        return lostApprovalProcessed;
+        return {
+          tableData: lostApprovalProcessed,
+          totalPages: lostApprovalData?.pagination?.totalPages ?? 1,
+          currentGlobalFilter: lostApprovalGlobalFilter,
+          setCurrentGlobalFilter: setLostApprovalGlobalFilter,
+          currentColumnFilters: lostApprovalColumnFilters,
+          setCurrentColumnFilters: setLostApprovalColumnFilters,
+          currentPagination: lostApprovalPagination,
+          setCurrentPagination: setLostApprovalPagination,
+        };
       case "lost":
-        return lostProcessed;
+        return {
+          tableData: lostProcessed,
+          totalPages: lostData?.pagination?.totalPages ?? 1,
+          currentGlobalFilter: lostGlobalFilter,
+          setCurrentGlobalFilter: setLostGlobalFilter,
+          currentColumnFilters: lostColumnFilters,
+          setCurrentColumnFilters: setLostColumnFilters,
+          currentPagination: lostPagination,
+          setCurrentPagination: setLostPagination,
+        };
       default:
-        return [];
+        return {
+          tableData: [],
+          totalPages: 1,
+          currentGlobalFilter: "",
+          setCurrentGlobalFilter: () => {},
+          currentColumnFilters: [],
+          setCurrentColumnFilters: () => {},
+          currentPagination: { pageIndex: 0, pageSize: 20 },
+          setCurrentPagination: () => {},
+        };
     }
-  }, [tab, onHoldProcessed, lostApprovalProcessed, lostProcessed]);
+  }, [
+    tab,
+    onHoldProcessed,
+    lostProcessed,
+    lostApprovalProcessed,
+    onHoldData,
+    lostData,
+    lostApprovalData,
+    onHoldGlobalFilter,
+    lostGlobalFilter,
+    lostApprovalGlobalFilter,
+    onHoldColumnFilters,
+    lostColumnFilters,
+    lostApprovalColumnFilters,
+    onHoldPagination,
+    lostPagination,
+    lostApprovalPagination,
+  ]);
+
+  // ============================================
+  // 🔥 COLUMNS
+  // ============================================
 
   const columns = React.useMemo(
     () =>
@@ -190,8 +390,12 @@ export default function PendingLeadsTable({
           setRowAction({ row: lead, variant: "lost" });
         },
       }),
-    [tab]
+    [tab],
   );
+
+  // ============================================
+  // 🔥 REVERT HANDLERS
+  // ============================================
 
   const onConfirmRevert = () => {
     setOpenConfirm(false);
@@ -219,77 +423,89 @@ export default function PendingLeadsTable({
         onSuccess: () => {
           setOpenRemark(false);
           setActiveLead(null);
-          // Invalidate queries based on current tab
           if (tab === "onHold") {
-            queryClient.invalidateQueries({ queryKey: ["onHoldLeads"] });
+            queryClient.invalidateQueries({
+              queryKey: ["onHoldLeads"],
+            });
           } else if (tab === "lostApproval") {
-            queryClient.invalidateQueries({ queryKey: ["lostApprovalLeads"] });
+            queryClient.invalidateQueries({
+              queryKey: ["lostApprovalLeads"],
+            });
           } else if (tab === "lost") {
             queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
           }
         },
-      }
+      },
     );
   };
 
-  // ✅ Create table with proper state management
+  // ============================================
+  // 🔥 TABLE INSTANCE
+  // ============================================
+
+  // ============================================
+  // 🔥 TABLE INSTANCE (COMPLETE FIX)
+  // ============================================
+
   const table = useReactTable({
     data: tableData,
     columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    onGlobalFilterChange: setGlobalFilter,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getRowId: (row) => row.id.toString(),
-    globalFilterFn: "includesString",
+
+    // ✅ Manual modes - Backend handles everything
+    manualPagination: true,
+    manualFiltering: true,
+    manualSorting: true,
+
+    pageCount: totalPages,
+
     state: {
+      pagination: currentPagination,
       sorting,
-      columnFilters,
+      columnFilters: currentColumnFilters,
       rowSelection,
-      globalFilter,
+      globalFilter: currentGlobalFilter,
       columnVisibility,
     },
+
+    onPaginationChange: setCurrentPagination,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setCurrentColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    onGlobalFilterChange: setCurrentGlobalFilter,
+
+    getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => row.id.toString(),
   });
+
+  // ============================================
+  // 🔥 LOADING STATE
+  // ============================================
 
   const isLoading =
     (tab === "onHold" && onHoldLoading) ||
     (tab === "lostApproval" && lostApprovalLoading) ||
     (tab === "lost" && lostLoading);
 
-  // -----------------------------------------------
-  // 🔥 Replace this:
-  // if (isLoading) {
-  //   return <p>Loading...</p>;
-  // }
-  // -----------------------------------------------
-
-  // ✅ New loading state with Skeleton
-  if (isLoading) {
-    return (
-      <DataTableSkeleton
-        columnCount={columns.length} // dynamic column count
-        rowCount={10} // adjust as needed
-      />
-    );
-  }
+  // ============================================
+  // 🔥 ROW NAVIGATION
+  // ============================================
 
   const handleRowClick = (row: PendingLeadRow) => {
     router.push(
-      `/dashboard/leads/leadstable/pendingleaddetails/${row.id}?accountId=${row.accountId}&tab=${tab}`
+      `/dashboard/leads/leadstable/pendingleaddetails/${row.id}?accountId=${row.accountId}&tab=${tab}`,
     );
   };
+
+  // ============================================
+  // 🔥 RENDER
+  // ============================================
 
   return (
     <>
       <div className="py-2">
         {/* ================= HEADER ================= */}
         <div className="px-4 space-y-3 md:space-y-2 md:flex md:flex-col lg:flex-row lg:justify-between lg:items-start lg:space-y-0">
-          {/* Title + Description (Desktop only) */}
           <div className="hidden md:block">
             <h1 className="text-lg font-semibold">{stageTitle}</h1>
             <p className="text-sm text-muted-foreground line-clamp-1">
@@ -306,10 +522,9 @@ export default function PendingLeadsTable({
         >
           {/* ================= MOBILE LAYOUT ================= */}
           <div className="flex flex-col gap-4 md:hidden">
-            {/* Filters grid */}
             <div className="flex flex-wrap gap-2">
               <DataTableSortList table={table} />
-              {/* <DataTableFilterList table={table} /> */}
+              <DataTableFilterList table={table} />
               <DataTableViewOptions table={table} />
 
               <DataTableDateFilter
@@ -319,13 +534,12 @@ export default function PendingLeadsTable({
               />
             </div>
 
-            {/* Search at bottom */}
             <ClearInput
-              value={globalFilter ?? ""}
-              // onChange={(e) => {
-              //   setGlobalFilter(e.target.value);
-              //   setPagination({ ...pagination, pageIndex: 0 });
-              // }}
+              value={currentGlobalFilter ?? ""}
+              onChange={(e) => {
+                setCurrentGlobalFilter(e.target.value);
+                setCurrentPagination({ ...currentPagination, pageIndex: 0 });
+              }}
               placeholder="Search…"
               className="w-full sm:w-64 h-8"
             />
@@ -333,14 +547,13 @@ export default function PendingLeadsTable({
 
           {/* ================= DESKTOP LAYOUT ================= */}
           <div className="hidden md:flex justify-between items-end">
-            {/* Left: Search + Created At */}
             <div className="flex items-end gap-3">
               <ClearInput
-                value={globalFilter ?? ""}
-                // onChange={(e) => {
-                //   setGlobalFilter(e.target.value);
-                //   setPagination({ ...pagination, pageIndex: 0 });
-                // }}
+                value={currentGlobalFilter ?? ""}
+                onChange={(e) => {
+                  setCurrentGlobalFilter(e.target.value);
+                  setCurrentPagination({ ...currentPagination, pageIndex: 0 });
+                }}
                 placeholder="Search…"
                 className="h-8 w-64"
               />
@@ -352,10 +565,9 @@ export default function PendingLeadsTable({
               />
             </div>
 
-            {/* Right: Other filters */}
             <div className="flex items-center gap-2">
               <DataTableSortList table={table} />
-              {/* <DataTableFilterList table={table} /> */}
+              <DataTableFilterList table={table} />
               <DataTableViewOptions table={table} />
             </div>
           </div>
@@ -416,9 +628,11 @@ export default function PendingLeadsTable({
                 queryClient.invalidateQueries({
                   queryKey: ["lostApprovalLeads"],
                 });
-                queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
+                queryClient.invalidateQueries({
+                  queryKey: ["lostLeads"],
+                });
               },
-            }
+            },
           );
         }}
         loading={markAsLostMutation.isPending}
