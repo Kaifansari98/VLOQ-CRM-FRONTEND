@@ -452,7 +452,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           
                   {/* Default Cards */}
-                  {defaultCards.map(({ title }) => (
+                  {defaultCards.map(({ title, existingData }) => (
                     <FileBreakUpField
                       key={`default-${title}`}
                       title={title}
@@ -466,6 +466,11 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                       disable={!canAccessInput}
                       onChange={handleFieldChange}
                       isMandatory={mandatoryTitles.includes(title)}
+                      vendorId={vendorId}
+                      leadId={leadId}
+                      orderLoginId={existingData?.id}
+                      userId={userId}
+                      showPoUpload
                     />
                   ))}
           
@@ -495,6 +500,11 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                           title: item.item_type,
                         })
                       }
+                      vendorId={vendorId}
+                      leadId={leadId}
+                      orderLoginId={item.id}
+                      userId={userId}
+                      showPoUpload
                     />
                   ))}
           

@@ -3,7 +3,26 @@
 import React, { useEffect, useState } from "react";
 import AssignToPicker from "@/components/assign-to-picker";
 import TextAreaInput from "@/components/origin-text-area";
-import { Check, Pencil, Trash2, X } from "lucide-react";
+import {
+  Check,
+  Pencil,
+  Trash2,
+  X,
+  FolderOpen,
+  Upload,
+  Loader2,
+} from "lucide-react";
+import {
+  useOrderLoginPoFiles,
+  useUploadOrderLoginPoFiles,
+} from "@/api/production/order-login";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
+import BaseModal from "@/components/utils/baseModal";
+import { FileUploadField } from "@/components/custom/file-upload";
+import { Button } from "@/components/ui/button";
+import DocumentCard from "@/components/utils/documentCard";
+import { ImageComponent } from "@/components/utils/ImageCard";
 
 interface FileBreakUpFieldProps {
   title: string;
@@ -13,6 +32,11 @@ interface FileBreakUpFieldProps {
   canDelete?: boolean;
   onTitleSave?: (nextTitle: string) => Promise<boolean | void> | boolean | void;
   onDelete?: () => void;
+  vendorId?: number;
+  leadId?: number;
+  orderLoginId?: number;
+  userId?: number;
+  showPoUpload?: boolean;
   value: {
     company_vendor_id: number | null;
     item_desc: string;
@@ -33,12 +57,20 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   canDelete = false,
   onTitleSave,
   onDelete,
+  vendorId,
+  leadId,
+  orderLoginId,
+  userId,
+  showPoUpload = false,
   value,
   onChange,
   disable,
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
+  const [poFiles, setPoFiles] = useState<File[]>([]);
+  const [poModalOpen, setPoModalOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const inHouseVendors = users.filter((user) => user.in_house);
   const companyVendors = users.filter((user) => !user.in_house);
@@ -78,6 +110,40 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
       }
     } catch (err) {
       console.error("Failed to update title", err);
+    }
+  };
+
+  const canUsePoUpload =
+    showPoUpload && !!vendorId && !!leadId && !!orderLoginId && !!userId;
+
+  const { data: poFileList = [] } = useOrderLoginPoFiles(
+    vendorId,
+    leadId,
+    orderLoginId
+  );
+  const { mutateAsync: uploadPoFiles, isPending: isUploadingPo } =
+    useUploadOrderLoginPoFiles(vendorId, leadId, orderLoginId);
+
+  const handlePoUpload = async () => {
+    if (!canUsePoUpload) return;
+    if (!poFiles || poFiles.length === 0) {
+      toast.error("Please select at least one file.");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      poFiles.forEach((file) => formData.append("files", file));
+      formData.append("created_by", String(userId || 0));
+
+      await uploadPoFiles(formData);
+      toast.success("PO files uploaded successfully!");
+      setPoFiles([]);
+      queryClient.invalidateQueries({
+        queryKey: ["orderLoginPoFiles", vendorId, leadId, orderLoginId],
+      });
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to upload PO files.");
     }
   };
 
@@ -158,7 +224,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
 
       {/* 🔹 Body */}
       <div className="px-4 pb-4 space-y-3">
-        <div className="space-y-1">
+        <div className="space-y-1 mb-4">
           <label className="text-xs font-medium text-muted-foreground">
             Vendor
           </label>
@@ -173,6 +239,28 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
           />
         </div>
 
+        {showPoUpload && (
+          <div className="flex items-center justify-between pt-1">
+            <div className="text-xs text-muted-foreground">
+              PO Files
+              {!canUsePoUpload && (
+                <span className="ml-2 text-[11px] text-muted-foreground">
+                  Save section to enable uploads
+                </span>
+              )}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPoModalOpen(true)}
+              disabled={!canUsePoUpload || disable}
+            >
+              Manage PO Files
+            </Button>
+          </div>
+        )}
+
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">
             Description
@@ -184,8 +272,109 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
             disabled={disable}
           />
         </div>
+
       </div>
+      {showPoUpload && (
+        <BaseModal
+          open={poModalOpen}
+          onOpenChange={setPoModalOpen}
+          title={`${title} — PO Files`}
+          description="Upload and manage purchase order files for this section."
+          size="lg"
+          icon={<FolderOpen className="w-4 h-4 text-primary" />}
+        >
+          <div className="p-6 space-y-4">
+            <div className="space-y-3">
+              <FileUploadField
+                value={poFiles}
+                onChange={setPoFiles}
+                accept=".pdf,.pyo,.pytha,.dwg,.dxf,.zip,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff"
+                multiple
+                disabled={!canUsePoUpload || disable}
+                maxFiles={10}
+              />
+  
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={handlePoUpload}
+                  disabled={
+                    !canUsePoUpload ||
+                    disable ||
+                    isUploadingPo ||
+                    poFiles.length === 0
+                  }
+                  className="flex items-center gap-2"
+                >
+                  {isUploadingPo ? (
+                    <>
+                      <Loader2 className="animate-spin size-4" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={16} />
+                      Upload Files
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+  
+            {poFileList.length === 0 ? (
+              <div className="p-10 border border-dashed rounded-xl flex flex-col items-center justify-center text-center bg-muted/40">
+                <FolderOpen className="w-10 h-10 text-muted-foreground mb-3" />
+                <p className="text-sm font-medium text-muted-foreground">
+                  No PO files uploaded yet.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Upload purchase order files for this section.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2 p-1">
+                {poFileList.map((doc: any) => {
+                  const imageExtensions = [
+                    ".jpeg",
+                    ".jpg",
+                    ".png",
+                    ".webp",
+                  ];
+                  const lowerCaseName = doc.doc_og_name.toLowerCase();
+                  const isImage = imageExtensions.some(ext => lowerCaseName.endsWith(ext));
+                  if (isImage) {
+                    return (
+                      <ImageComponent
+                        key={doc.id}
+                        doc={{
+                          id: doc.id,
+                          doc_og_name: doc.doc_og_name,
+                          signedUrl: doc.signed_url,
+                          created_at: doc.created_at,
+                        }}
+                      />
+                    );
+                  } else {
+                    return (
+                      <DocumentCard
+                        key={doc.id}
+                        doc={{
+                          id: doc.id,
+                          originalName: doc.doc_og_name,
+                          signedUrl: doc.signed_url,
+                          created_at: doc.created_at,
+                        }}
+                      />
+                    );
+                  }
+                })}
+              </div>
+            )} 
+          </div>
+        </BaseModal>
+      )}
     </div>
+
   );
 };
 

@@ -207,6 +207,56 @@ export const useProductionFiles = (
     enabled: !!vendorId && !!leadId,
   });
 
+// ✅ --- Upload Order Login PO Files ---
+export const uploadOrderLoginPoFiles = async (
+  vendorId: number,
+  leadId: number,
+  orderLoginId: number,
+  formData: FormData
+) => {
+  const { data } = await apiClient.post(
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/order-login-id/${orderLoginId}/upload-po-files`,
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    }
+  );
+  return data;
+};
+
+export const useUploadOrderLoginPoFiles = (
+  vendorId: number | undefined,
+  leadId: number | undefined,
+  orderLoginId: number | undefined
+) =>
+  useMutation({
+    mutationFn: (formData: FormData) =>
+      uploadOrderLoginPoFiles(vendorId!, leadId!, orderLoginId!, formData),
+  });
+
+// ✅ --- Fetch Order Login PO Files ---
+export const getOrderLoginPoFiles = async (
+  vendorId: number,
+  leadId: number,
+  orderLoginId: number
+) => {
+  const { data } = await apiClient.get(
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/order-login-id/${orderLoginId}/po-files`
+  );
+  return data?.data || [];
+};
+
+export const useOrderLoginPoFiles = (
+  vendorId: number | undefined,
+  leadId: number | undefined,
+  orderLoginId: number | undefined
+) =>
+  useQuery({
+    queryKey: ["orderLoginPoFiles", vendorId, leadId, orderLoginId],
+    queryFn: () => getOrderLoginPoFiles(vendorId!, leadId!, orderLoginId!),
+    enabled: !!vendorId && !!leadId && !!orderLoginId,
+  });
+
 // ✅ --- Move Lead to Production Stage ---
 export const moveLeadToProductionStage = async (
   vendorId: number,
