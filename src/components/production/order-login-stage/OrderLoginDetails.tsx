@@ -5,6 +5,8 @@ import {
   useCompanyVendors,
   useOrderLoginByLead,
   useUpdateMultipleOrderLogins,
+  useUpdateOrderLogin,
+  useDeleteOrderLogin,
   useUploadMultipleFileBreakupsByLead,
 } from "@/api/production/order-login";
 import { useAppSelector } from "@/redux/store";
@@ -19,6 +21,16 @@ import SmoothTab from "@/components/kokonutui/smooth-tab";
 import { Check, Plus, Save } from "lucide-react";
 import { motion } from "framer-motion";
 import { useClientRequiredCompletionDate } from "@/api/tech-check";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   canAccessAddNewSectionButton,
   canAccessInputField,
@@ -53,6 +65,11 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const [breakups, setBreakups] = useState<
     Record<string, { item_desc: string; company_vendor_id: number | null }>
   >({});
+  const [confirmDelete, setConfirmDelete] = useState<null | {
+    id: number;
+    title: string;
+  }>(null);
+  const [confirmSave, setConfirmSave] = useState(false);
 
   // 🧩 Handlers
   const handleFieldChange = (title: string, field: string, value: any) => {
@@ -70,6 +87,9 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     vendorId,
     leadId
   );
+  const { mutateAsync: updateSingle } = useUpdateOrderLogin(vendorId);
+  const { mutateAsync: deleteOrderLogin, isPending: isDeleting } =
+    useDeleteOrderLogin(vendorId);
   const { mutateAsync: uploadMultiple, isPending } =
     useUploadMultipleFileBreakupsByLead(vendorId, leadId, accountId);
 
@@ -86,12 +106,19 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     userType,
     leadStatus
   );
+  const normalizedStage = (leadStatus || "").toLowerCase().replace(/_/g, "-");
+  const isOrderLoginStage = normalizedStage.includes("order-login");
+  const isBackendUser = (userType?.toLowerCase() === "backend" || userType?.toLowerCase() === "admin" ||
+    userType?.toLowerCase() === "super-admin"
+  );
+  const canManageCustomSections = isBackendUser && isOrderLoginStage;
 
  
   const users =
     companyVendors?.map((vendor: any) => ({
       id: vendor.id,
       label: vendor.company_name,
+      in_house: Boolean(vendor.in_house),
     })) || [];
 
   // 🧩 Mandatory + Default Titles
@@ -136,44 +163,126 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     }
   }, [orderLoginData]);
 
+  const handleTitleUpdate = async (item: any, nextTitle: string) => {
+    const trimmedTitle = nextTitle.trim();
+
+    if (!trimmedTitle) {
+      toast.error("Section name cannot be empty");
+      return false;
+    }
+
+    if (defaultTitles.includes(trimmedTitle)) {
+      toast.error("Section name cannot match a default section");
+      return false;
+    }
+
+    if (trimmedTitle === item.item_type) return true;
+
+    if (breakups[trimmedTitle]) {
+      toast.error("Section name already exists");
+      return false;
+    }
+
+    if (!item?.id) {
+      toast.error("Unable to update section name");
+      return false;
+    }
+
+    try {
+      await updateSingle({
+        orderLoginId: item.id,
+        payload: {
+          lead_id: item.lead_id ?? leadId,
+          item_type: trimmedTitle,
+          item_desc: (item.item_desc || "N/A").trim() || "N/A",
+          company_vendor_id: item.company_vendor_id ?? null,
+          updated_by: userId,
+        },
+      });
+
+      setBreakups((prev) => {
+        const next = { ...prev };
+        const current = next[item.item_type] || {
+          item_desc: "",
+          company_vendor_id: null,
+        };
+        delete next[item.item_type];
+        next[trimmedTitle] = current;
+        return next;
+      });
+
+      toast.success("Section name updated successfully");
+
+      queryClient.invalidateQueries({
+        queryKey: ["orderLoginByLead", vendorId, leadId],
+      });
+      return true;
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to update section");
+      return false;
+    }
+  };
+
+  const handleDeleteSection = async () => {
+    if (!confirmDelete || !userId) return;
+    try {
+      await deleteOrderLogin({
+        orderLoginId: confirmDelete.id,
+        deleted_by: userId,
+      });
+
+      setBreakups((prev) => {
+        const next = { ...prev };
+        delete next[confirmDelete.title];
+        return next;
+      });
+
+      toast.success("Section deleted successfully");
+      setConfirmDelete(null);
+
+      queryClient.invalidateQueries({
+        queryKey: ["orderLoginByLead", vendorId, leadId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["leadProductionReadiness", vendorId, leadId],
+      });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to delete section");
+    }
+  };
+
   const handleSubmitAll = async () => {
     try {
-      const clearedItems = Object.entries(breakups).filter(([title, val]) => {
+      const entries = Object.entries(breakups).map(([title, val]) => {
         const existing = orderLoginData?.find(
           (item: any) => item.item_type === title
         );
+        const trimmedDesc = (val.item_desc || "").trim();
+        const hasVendor = val.company_vendor_id !== null;
 
-        return existing && (!val.item_desc || val.item_desc.trim() === "");
+        return {
+          title,
+          val,
+          existing,
+          trimmedDesc,
+          hasVendor,
+        };
       });
 
-      if (clearedItems.length > 0) {
-        const names = clearedItems.map(([title]) => title).join(", ");
-        toast.error(`Description cannot be empty for: ${names}`);
-        return;
-      }
+      const formatted = entries
+        .filter((entry) => entry.hasVendor)
+        .map((entry) => ({
+          id: entry.existing?.id || null,
+          item_type: entry.title,
+          item_desc: entry.trimmedDesc || "N/A",
+          company_vendor_id: entry.val.company_vendor_id,
+          created_by: userId,
+          updated_by: userId,
+        }));
 
-      const formatted = Object.entries(breakups)
-        .filter(([_, val]) => val.item_desc?.trim())
-        .map(([title, val]) => {
-          const existing = orderLoginData?.find(
-            (item: any) => item.item_type === title
-          );
-          return {
-            id: existing?.id || null,
-            item_type: title,
-            item_desc: val.item_desc.trim(),
-            company_vendor_id: val.company_vendor_id,
-            created_by: userId,
-            updated_by: userId,
-          };
-        });
-
-      if (formatted.length === 0) {
-        toast.info(
-          "Please fill at least one order login field before submitting."
-        );
-        return;
-      }
+      const deletions = entries
+        .filter((entry) => entry.existing?.id && !entry.hasVendor)
+        .map((entry) => entry.existing.id);
 
       const newRecords = formatted.filter((r) => !r.id);
       const updates = formatted.filter((r) => {
@@ -186,6 +295,21 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         );
       });
 
+      if (!userId) {
+        toast.error("User not found. Please re-login.");
+        return;
+      }
+
+      if (deletions.length > 0) {
+        await Promise.all(
+          deletions.map((orderLoginId) =>
+            deleteOrderLogin({
+              orderLoginId,
+              deleted_by: userId,
+            })
+          )
+        );
+      }
       if (updates.length > 0) await updateMultiple(updates);
       if (newRecords.length > 0) await uploadMultiple(newRecords);
 
@@ -284,6 +408,14 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             cardContent: <ApprovedDocsSection leadId={leadId} />,
           },
           {
+            id: "production-files",
+            title: "Production Files",
+            color: "bg-zinc-800 hover:bg-zinc-900",
+            cardContent: (
+              <ProductionFilesSection leadId={leadId} accountId={accountId} />
+            ),
+          },
+          {
             id: "order-login",
             title: "Order Login",
             color: "bg-zinc-800 hover:bg-zinc-900",
@@ -305,7 +437,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                   {canAccessSaveButton && (
                     <Button
                       size="sm"
-                      onClick={handleSubmitAll}
+                      onClick={() => setConfirmSave(true)}
                       disabled={isPending}
                       variant="default"
                       className="cursor-pointer"
@@ -320,7 +452,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           
                   {/* Default Cards */}
-                  {defaultCards.map(({ title }) => (
+                  {defaultCards.map(({ title, existingData }) => (
                     <FileBreakUpField
                       key={`default-${title}`}
                       title={title}
@@ -334,6 +466,11 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                       disable={!canAccessInput}
                       onChange={handleFieldChange}
                       isMandatory={mandatoryTitles.includes(title)}
+                      vendorId={vendorId}
+                      leadId={leadId}
+                      orderLoginId={existingData?.id}
+                      userId={userId}
+                      showPoUpload
                     />
                   ))}
           
@@ -352,6 +489,22 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                       disable={!canAccessInput}
                       onChange={handleFieldChange}
                       isMandatory={false}
+                      isTitleEditable={canManageCustomSections && !!item.id}
+                      canDelete={canManageCustomSections && !!item.id}
+                      onTitleSave={(nextTitle) =>
+                        handleTitleUpdate(item, nextTitle)
+                      }
+                      onDelete={() =>
+                        setConfirmDelete({
+                          id: item.id,
+                          title: item.item_type,
+                        })
+                      }
+                      vendorId={vendorId}
+                      leadId={leadId}
+                      orderLoginId={item.id}
+                      userId={userId}
+                      showPoUpload
                     />
                   ))}
           
@@ -392,16 +545,54 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
               </div>
             ),
           },
-          {
-            id: "production-files",
-            title: "Production Files",
-            color: "bg-zinc-800 hover:bg-zinc-900",
-            cardContent: (
-              <ProductionFilesSection leadId={leadId} accountId={accountId} />
-            ),
-          },
         ]}
       />
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete section?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the section and its data. This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteSection} disabled={isDeleting}>
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmSave} onOpenChange={setConfirmSave}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save Order Login?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will apply all changes, including removing any items where
+              the vendor was cleared.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmSave(false);
+                handleSubmitAll();
+              }}
+              disabled={isPending}
+            >
+              {isPending ? "Saving..." : "Confirm Save"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

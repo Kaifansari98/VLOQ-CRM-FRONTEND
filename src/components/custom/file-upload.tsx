@@ -34,7 +34,7 @@ export function FileUploadField({
   disabled,
   maxFiles,
 }: FileUploadFieldProps) {
-  const finalAccept = accept ?? ".png,.jpg,.jpeg";
+  const finalAccept = accept ?? "*/*";
   const finalMaxFiles = maxFiles ?? (multiple ? 20 : 1);
 
   // Upload simulation
@@ -93,17 +93,20 @@ export function FileUploadField({
 
       if (!multiple && message.toLowerCase().includes("max")) {
         toast.error("Only 1 file is allowed");
-      } else if (message.toLowerCase().includes("type")) {
+      } else if (
+        message.toLowerCase().includes("type") &&
+        finalAccept !== "*/*"
+      ) {
         toast.error("This file type is not allowed");
-      } else {
+      } else if (message) {
         toast.error(message); // fallback
       }
     },
-    [multiple]
+    [multiple, finalAccept]
   );
 
   const readableAccept = React.useMemo(() => {
-    if (!finalAccept) return "any file type";
+    if (!finalAccept || finalAccept === "*/*") return "any file type";
 
     return finalAccept
       .split(",")
@@ -141,8 +144,8 @@ export function FileUploadField({
           </p>
           <p className="text-muted-foreground text-xs">
             {multiple
-              ? `On click to browse (max ${finalMaxFiles} files, allowed: ${readableAccept})`
-              : `On click to browse (only 1 file allowed, allowed: ${readableAccept})`}
+              ? `On click to browse (max ${finalMaxFiles} files allowed)`
+              : `On click to browse (only 1 file allowed`}
           </p>
         </div>
         <FileUploadTrigger asChild>

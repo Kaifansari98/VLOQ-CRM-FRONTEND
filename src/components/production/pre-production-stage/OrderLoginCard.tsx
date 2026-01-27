@@ -115,6 +115,7 @@ export default function OrderLoginCard({
     }
   }, [remark, title]);
 
+
   return (
     <>
       <motion.div
@@ -167,6 +168,7 @@ export default function OrderLoginCard({
                 </p>
               </CardContent>
             )}
+
           </div>
           {/* 🔹 Vendor Info (optional) */}
           {hasVendorInfo && (

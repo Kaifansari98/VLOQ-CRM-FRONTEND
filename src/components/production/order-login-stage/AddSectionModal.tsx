@@ -16,7 +16,7 @@ import { useUploadFileBreakup } from "@/api/production/order-login";
 import { useAppSelector } from "@/redux/store";
 
 interface AddSectionModalProps {
-  users: { id: number; label: string }[];
+  users: { id: number; label: string; in_house?: boolean }[];
   leadId: number;
   accountId: number;
   onSectionAdded: (section: { title: string }) => void;

@@ -121,6 +121,25 @@ export const useUpdateOrderLogin = (vendorId: number | undefined) =>
       updateOrderLogin(vendorId!, vars.orderLoginId, vars.payload),
   });
 
+// ✅ --- Delete order login detail ---
+export const deleteOrderLogin = async (
+  vendorId: number,
+  orderLoginId: number,
+  deleted_by: number
+) => {
+  const { data } = await apiClient.delete(
+    `/leads/production/order-login/vendorId/${vendorId}/order-login-id/${orderLoginId}/delete`,
+    { data: { deleted_by } }
+  );
+  return data;
+};
+
+export const useDeleteOrderLogin = (vendorId: number | undefined) =>
+  useMutation({
+    mutationFn: (vars: { orderLoginId: number; deleted_by: number }) =>
+      deleteOrderLogin(vendorId!, vars.orderLoginId, vars.deleted_by),
+  });
+
 // ✅ --- Fetch Approved Tech Check Documents ---
 export const getApprovedTechCheckDocuments = async (
   vendorId: number,
@@ -186,6 +205,56 @@ export const useProductionFiles = (
     queryKey: ["productionFiles", vendorId, leadId],
     queryFn: () => getProductionFiles(vendorId!, leadId!),
     enabled: !!vendorId && !!leadId,
+  });
+
+// ✅ --- Upload Order Login PO Files ---
+export const uploadOrderLoginPoFiles = async (
+  vendorId: number,
+  leadId: number,
+  orderLoginId: number,
+  formData: FormData
+) => {
+  const { data } = await apiClient.post(
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/order-login-id/${orderLoginId}/upload-po-files`,
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    }
+  );
+  return data;
+};
+
+export const useUploadOrderLoginPoFiles = (
+  vendorId: number | undefined,
+  leadId: number | undefined,
+  orderLoginId: number | undefined
+) =>
+  useMutation({
+    mutationFn: (formData: FormData) =>
+      uploadOrderLoginPoFiles(vendorId!, leadId!, orderLoginId!, formData),
+  });
+
+// ✅ --- Fetch Order Login PO Files ---
+export const getOrderLoginPoFiles = async (
+  vendorId: number,
+  leadId: number,
+  orderLoginId: number
+) => {
+  const { data } = await apiClient.get(
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/order-login-id/${orderLoginId}/po-files`
+  );
+  return data?.data || [];
+};
+
+export const useOrderLoginPoFiles = (
+  vendorId: number | undefined,
+  leadId: number | undefined,
+  orderLoginId: number | undefined
+) =>
+  useQuery({
+    queryKey: ["orderLoginPoFiles", vendorId, leadId, orderLoginId],
+    queryFn: () => getOrderLoginPoFiles(vendorId!, leadId!, orderLoginId!),
+    enabled: !!vendorId && !!leadId && !!orderLoginId,
   });
 
 // ✅ --- Move Lead to Production Stage ---

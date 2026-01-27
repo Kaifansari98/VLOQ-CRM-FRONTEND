@@ -23,8 +23,14 @@ interface SelectData {
   label: string;
 }
 
+interface SelectGroup {
+  label: string;
+  items: SelectData[];
+}
+
 interface Props {
   data: SelectData[];
+  groups?: SelectGroup[];
   value?: number;
   onChange?: (selectedId: number | null) => void;
   placeholder?: string;
@@ -34,6 +40,7 @@ interface Props {
 
 export default function AssignToPicker({
   data,
+  groups,
   value,
   onChange,
   placeholder = "Search user...",
@@ -43,9 +50,17 @@ export default function AssignToPicker({
   const id = useId();
   const [open, setOpen] = useState<boolean>(false);
 
+  const groupedData =
+    groups && groups.length > 0
+      ? groups.reduce<SelectData[]>(
+          (acc, group) => acc.concat(group.items),
+          []
+        )
+      : data;
+
   const stringValue =
     value !== undefined && value !== null ? String(value) : "";
-  const selectedItem = data.find((item) => item.id === value);
+  const selectedItem = groupedData.find((item) => item.id === value);
 
   return (
     <div className="relative *:not-first:mt-2 group">
@@ -90,22 +105,57 @@ export default function AssignToPicker({
               <CommandList>
                 <CommandEmpty>No options found.</CommandEmpty>
                 <CommandGroup>
-                  {data.map((item) => (
-                    <CommandItem
-                      key={item.id}
-                      value={item.label.toLowerCase()}
-                      onSelect={() => {
-                        setOpen(false);
-                        onChange?.(item.id);
-                      }}
-                    >
-                      {item.label}
-                      {value === item.id && (
-                        <CheckIcon size={16} className="ml-auto" />
-                      )}
-                    </CommandItem>
-                  ))}
+                  <CommandItem
+                    value="clear-selection"
+                    onSelect={() => {
+                      setOpen(false);
+                      onChange?.(null);
+                    }}
+                  >
+                    Clear selection
+                  </CommandItem>
                 </CommandGroup>
+                {groups && groups.length > 0 ? (
+                  groups
+                    .filter((group) => group.items.length > 0)
+                    .map((group) => (
+                      <CommandGroup key={group.label} heading={group.label}>
+                        {group.items.map((item) => (
+                          <CommandItem
+                            key={item.id}
+                            value={item.label.toLowerCase()}
+                            onSelect={() => {
+                              setOpen(false);
+                              onChange?.(value === item.id ? null : item.id);
+                            }}
+                          >
+                            {item.label}
+                            {value === item.id && (
+                              <CheckIcon size={16} className="ml-auto" />
+                            )}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    ))
+                ) : (
+                  <CommandGroup>
+                    {data.map((item) => (
+                      <CommandItem
+                        key={item.id}
+                        value={item.label.toLowerCase()}
+                        onSelect={() => {
+                          setOpen(false);
+                          onChange?.(value === item.id ? null : item.id);
+                        }}
+                      >
+                        {item.label}
+                        {value === item.id && (
+                          <CheckIcon size={16} className="ml-auto" />
+                        )}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                )}
               </CommandList>
             </Command>
           </PopoverContent>
