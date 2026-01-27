@@ -39,6 +39,7 @@ export interface VendorUserTask {
     account_id: number;
     phone_number: string;
     site_type: string | null;
+    lead_status?: string | null;
     product_type: string[];
     product_structure: string[];
   };
