@@ -3,7 +3,10 @@
 import React, { useEffect, useState } from "react";
 
 import { motion } from "framer-motion";
-import { useCompanyVendors } from "@/api/production/order-login";
+import {
+  useCompanyVendors,
+  useOrderLoginPoFiles,
+} from "@/api/production/order-login";
 import {
   useHandleFactoryVendorSelection,
   useHandleOrderLoginCompletion,
@@ -16,11 +19,13 @@ import CustomeDatePicker from "@/components/date-picker";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
+import DocumentCard from "@/components/utils/documentCard";
 import CustomeTooltip from "@/components/custom-tooltip";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 import { useAppSelector } from "@/redux/store";
 import BaseModal from "@/components/utils/baseModal";
+import { ImageComponent } from "@/components/utils/ImageCard";
 
 interface OrderLoginModalProps {
   open: boolean;
@@ -59,6 +64,11 @@ export default function OrderLoginModal({
 
   const queryClient = useQueryClient();
   const { data: vendors } = useCompanyVendors(vendorId);
+  const { data: poFileList = [] } = useOrderLoginPoFiles(
+    vendorId,
+    leadId,
+    orderLoginId
+  );
   const { mutateAsync } = useHandleFactoryVendorSelection();
   const [selectedVendorId, setSelectedVendorId] = useState<number | null>(
     currentCompanyVendorId || null
@@ -239,7 +249,49 @@ export default function OrderLoginModal({
               <div className="max-h-48 overflow-y-auto p-3 rounded-md border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                 {desc || "No description available."}
               </div>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-gray-900 dark:text-gray-300">
+                PO Files
+              </p>
+              {poFileList.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No PO files uploaded yet.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-1 gap-3 max-h-[250px] overflow-y-scroll">
+                  {poFileList.map((doc: any) => {
+                    const isImage = doc.doc_og_name?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                    if (isImage) {
+                      return (
+                        <ImageComponent
+                          key={doc.id}
+                          doc={{
+                            id: doc.id,
+                            doc_og_name: doc.doc_og_name,
+                            signedUrl: doc.signed_url,
+                            created_at: doc.created_at,
+                          }}
+                        />
+                      );
+                    } else {
+                      return (
+                        <DocumentCard
+                          key={doc.id}
+                          doc={{
+                            id: doc.id,
+                            originalName: doc.doc_og_name,
+                            signedUrl: doc.signed_url,
+                            created_at: doc.created_at,
+                          }}
+                        />
+                      );
+                    }
+                  })}
+                </div>
+              )}
             </div>
+            </div>
+
 
             {hasVendorInfo && (
               <div className="flex items-center gap-3 pt-2">
