@@ -175,6 +175,29 @@ const MyTaskTable = () => {
         router.push(
           `/dashboard/production/pre-post-prod/details/${row.leadId}?accountId=${row.accountId}&remark=${clearnRemark}`
         );
+      } else if (row.taskType === "Order Login") {
+        const stage = (row.leadStage || "").toLowerCase();
+        const basePath = stage.includes("order login")
+          ? `/dashboard/production/order-login/details/${row.leadId}`
+          : stage.includes("tech")
+          ? `/dashboard/production/tech-check/details/${row.leadId}`
+          : stage.includes("production")
+          ? `/dashboard/production/pre-post-prod/details/${row.leadId}`
+          : stage.includes("ready")
+          ? `/dashboard/production/ready-to-dispatch/details/${row.leadId}`
+          : stage.includes("site readiness")
+          ? `/dashboard/installation/site-readiness/details/${row.leadId}`
+          : stage.includes("dispatch planning")
+          ? `/dashboard/installation/dispatch-planning/details/${row.leadId}`
+          : stage.includes("dispatch")
+          ? `/dashboard/installation/dispatch-stage/details/${row.leadId}`
+          : stage.includes("under installation")
+          ? `/dashboard/installation/under-installation/details/${row.leadId}`
+          : stage.includes("final handover")
+          ? `/dashboard/installation/final-handover/details/${row.leadId}`
+          : `/dashboard/production/order-login/details/${row.leadId}`;
+
+        router.push(`${basePath}?accountId=${row.accountId}&tab=orderLogin`);
       } else {
         console.log("follow up is under development");
       }
@@ -200,6 +223,7 @@ const MyTaskTable = () => {
       name: task.leadMaster.name,
       phoneNumber: task.leadMaster.phone_number,
       leadStatus: task.userLeadTask.status,
+      leadStage: task.leadMaster.lead_status,
       siteType: task.leadMaster.site_type || "",
       productTypes: task.leadMaster.product_type.join(", "),
       productStructures: task.leadMaster.product_structure.join(", "),

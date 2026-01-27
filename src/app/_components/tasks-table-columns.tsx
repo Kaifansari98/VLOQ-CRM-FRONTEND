@@ -20,6 +20,7 @@ export type ProcessedTask = {
   name: string; // leadMaster.name
   phoneNumber: string; // leadMaster.phone_number
   leadStatus: string; // userLeadTask.status
+  leadStage?: string; // leadMaster.lead_status
   siteType: string; // leadMaster.site_type
   productTypes: string; // joined string from array
   productStructures: string; // joined string from array
