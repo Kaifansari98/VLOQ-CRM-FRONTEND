@@ -44,9 +44,13 @@ interface FileBreakUpFieldProps {
   onChange: (
     title: string,
     field: keyof FileBreakUpFieldProps["value"],
-    val: any
+    val: any,
   ) => void;
   disable?: boolean;
+  leadStage: string;
+  userRole: string;
+  canEditDescription: boolean;
+  canEditVendor: boolean;
 }
 
 const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
@@ -65,6 +69,10 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   value,
   onChange,
   disable,
+  leadStage,
+  userRole,
+  canEditDescription,
+  canEditVendor,
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
@@ -91,7 +99,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   // ✅ Simplified handler — no validation
   const handleFieldChange = (
     field: keyof FileBreakUpFieldProps["value"],
-    val: any
+    val: any,
   ) => {
     onChange(title, field, val);
   };
@@ -119,7 +127,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   const { data: poFileList = [] } = useOrderLoginPoFiles(
     vendorId,
     leadId,
-    orderLoginId
+    orderLoginId,
   );
   const { mutateAsync: uploadPoFiles, isPending: isUploadingPo } =
     useUploadOrderLoginPoFiles(vendorId, leadId, orderLoginId);
@@ -143,10 +151,36 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
         queryKey: ["orderLoginPoFiles", vendorId, leadId, orderLoginId],
       });
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to upload PO files.");
+      toast.error(
+        error?.response?.data?.message || "Failed to upload PO files.",
+      );
     }
   };
 
+  const role = userRole?.toLowerCase();
+  const stage = leadStage?.toLowerCase();
+
+  const isAdmin = role === "admin" || role === "super-admin";
+  const isBackend = role === "backend";
+
+  const isAllowedBackendStage =
+    stage === "production-stage" || stage === "order-login-stage";
+
+  const hasPoFiles = poFileList.length > 0;
+
+  // ---------- FINAL PERMISSIONS ----------
+
+  let canManagePo = false;
+
+  // ✅ Admin override
+  if (isAdmin) {
+    canManagePo = true;
+  }
+
+  // ✅ Backend controlled access
+  else if (isBackend && isAllowedBackendStage) {
+    canManagePo = !hasPoFiles;
+  }
   return (
     <div className="rounded-xl border bg-card flex flex-col gap-4">
       {/* 🔹 Header */}
@@ -163,11 +197,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
           ) : (
             <p className="font-semibold text-sm flex items-center gap-2 truncate">
               <span className="truncate">{title}</span>
-              {isMandatory && (
-                <span className="text-md text-red-500">
-                  *
-                </span>
-              )}
+              {isMandatory && <span className="text-md text-red-500">*</span>}
             </p>
           )}
         </div>
@@ -224,7 +254,6 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
 
       {/* 🔹 Body */}
       <div className="px-4 pb-4 space-y-3">
-
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground block min-h-[16px]">
@@ -237,7 +266,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
               onChange={(id) => handleFieldChange("company_vendor_id", id)}
               placeholder="Search vendor..."
               emptyLabel="Select a vendor"
-              disabled={disable}
+              disabled={!canEditVendor}
             />
           </div>
 
@@ -251,7 +280,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => setPoModalOpen(true)}
-                disabled={!canUsePoUpload || disable}
+                disabled={!canUsePoUpload}
                 className="w-full h-9"
               >
                 Manage PO Files
@@ -268,10 +297,9 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
             value={value.item_desc}
             onChange={(val) => handleFieldChange("item_desc", val)}
             placeholder={`Add notes or specs for ${title} (optional)`}
-            disabled={disable}
+            disabled={!canEditDescription}
           />
         </div>
-
       </div>
       {showPoUpload && (
         <BaseModal
@@ -283,43 +311,45 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
           icon={<FolderOpen className="w-4 h-4 text-primary" />}
         >
           <div className="p-6 space-y-4">
-            <div className="space-y-3">
-              <FileUploadField
-                value={poFiles}
-                onChange={setPoFiles}
-                accept=".pdf,.pyo,.pytha,.dwg,.dxf,.zip,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff"
-                multiple
-                disabled={!canUsePoUpload || disable}
-                maxFiles={10}
-              />
-  
-              <div className="flex justify-end">
-                <Button
-                  size="sm"
-                  onClick={handlePoUpload}
-                  disabled={
-                    !canUsePoUpload ||
-                    disable ||
-                    isUploadingPo ||
-                    poFiles.length === 0
-                  }
-                  className="flex items-center gap-2"
-                >
-                  {isUploadingPo ? (
-                    <>
-                      <Loader2 className="animate-spin size-4" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload size={16} />
-                      Upload Files
-                    </>
-                  )}
-                </Button>
+            {canManagePo && (
+              <div className="space-y-3">
+                <FileUploadField
+                  value={poFiles}
+                  onChange={setPoFiles}
+                  accept=".pdf,.pyo,.pytha,.dwg,.dxf,.zip,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff"
+                  multiple
+                  disabled={!canUsePoUpload || disable}
+                  maxFiles={10}
+                />
+
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    onClick={handlePoUpload}
+                    disabled={
+                      !canUsePoUpload ||
+                      disable ||
+                      isUploadingPo ||
+                      poFiles.length === 0
+                    }
+                    className="flex items-center gap-2"
+                  >
+                    {isUploadingPo ? (
+                      <>
+                        <Loader2 className="animate-spin size-4" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={16} />
+                        Upload Files
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
-            </div>
-  
+            )}
+
             {poFileList.length === 0 ? (
               <div className="p-10 border border-dashed rounded-xl flex flex-col items-center justify-center text-center bg-muted/40">
                 <FolderOpen className="w-10 h-10 text-muted-foreground mb-3" />
@@ -333,14 +363,11 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2 p-1">
                 {poFileList.map((doc: any) => {
-                  const imageExtensions = [
-                    ".jpeg",
-                    ".jpg",
-                    ".png",
-                    ".webp",
-                  ];
+                  const imageExtensions = [".jpeg", ".jpg", ".png", ".webp"];
                   const lowerCaseName = doc.doc_og_name.toLowerCase();
-                  const isImage = imageExtensions.some(ext => lowerCaseName.endsWith(ext));
+                  const isImage = imageExtensions.some((ext) =>
+                    lowerCaseName.endsWith(ext),
+                  );
                   if (isImage) {
                     return (
                       <ImageComponent
@@ -368,12 +395,11 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                   }
                 })}
               </div>
-            )} 
+            )}
           </div>
         </BaseModal>
       )}
     </div>
-
   );
 };
 

@@ -251,7 +251,10 @@ export function canAccessAddNewSectionButton(
   stage: string,
 ): boolean {
   const allowedRoles = ["super_admin", "admin", "backend"];
-  return stage === "production-stage" && allowedRoles.includes(role);
+  return (
+    stage === "production-stage" ||
+    (stage === "order-login-stage" && allowedRoles.includes(role))
+  );
 }
 
 export function canAccessSaveOrderLoginButton(
@@ -261,7 +264,8 @@ export function canAccessSaveOrderLoginButton(
   return (
     role === "admin" ||
     role === "super-admin" ||
-    (role === "backend" && stage === "production-stage")
+    (role === "backend" && stage === "production-stage") ||
+    (role === "backend" && stage === "order-login-stage")
   );
 }
 

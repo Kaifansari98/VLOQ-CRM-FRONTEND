@@ -350,24 +350,6 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       ? "order-login"
       : "approved-docs";
 
-  // Helper function to check if user can edit a specific item
-  const canEditItem = (item: any) => {
-    const isAdmin =
-      userType?.toLowerCase() === "admin" ||
-      userType?.toLowerCase() === "super-admin";
-
-    // If item already has a vendor assigned, only admin can edit
-    if (
-      item?.company_vendor_id !== null &&
-      item?.company_vendor_id !== undefined
-    ) {
-      return isAdmin;
-    }
-
-    // Otherwise, check general access
-    return canAccessInput;
-  };
-
   const getItemEditPermissions = (item: any) => {
     const role = userType?.toLowerCase();
     const stage = leadStatus?.toLowerCase();
@@ -375,12 +357,17 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     const isAdmin = role === "admin" || role === "super-admin";
     const isBackend = role === "backend";
 
+    // Backend allowed ONLY in these stages
+    const isAllowedBackendStage =
+      stage === "production-stage" || stage === "order-login-stage";
+
     const hasVendorAssigned =
-      item?.company_vendor_id !== null && item?.company_vendor_id !== undefined;
+      !!item?.companyVendor && !!item?.companyVendor?.id;
 
-    const isProductionStage = stage === "production-stage";
+    const hasDescription =
+      typeof item?.item_desc === "string" && item.item_desc.trim().length > 0;
 
-    // Admin = full access
+    // ✅ Admin override — full control
     if (isAdmin) {
       return {
         canEditVendor: true,
@@ -388,33 +375,22 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       };
     }
 
-    // Backend rules
-    if (isBackend) {
-      // Existing uploaded item → readonly
-      if (hasVendorAssigned) {
-        return {
-          canEditVendor: false,
-          canEditDescription: false,
-        };
-      }
-
-      // New item in production stage → editable
-      if (!hasVendorAssigned && isProductionStage) {
-        return {
-          canEditVendor: true,
-          canEditDescription: true,
-        };
-      }
+    // ✅ Backend rules
+    if (isBackend && isAllowedBackendStage) {
+      return {
+        // Backend can CREATE only (not modify existing)
+        canEditVendor: !hasVendorAssigned,
+        canEditDescription: !hasDescription,
+      };
     }
 
-    // Default deny
+    // ❌ Everything else blocked
     return {
       canEditVendor: false,
       canEditDescription: false,
     };
   };
 
-  
   return (
     <div className="space-y-6  bg-[#fff] dark:bg-[#0a0a0a]">
       <motion.div
@@ -534,61 +510,73 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                 {/* ---------------- GRID OF BREAKUPS ---------------- */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {/* Default Cards */}
-                  {defaultCards.map(({ title, existingData }) => (
-                    <FileBreakUpField
-                      key={`default-${title}`}
-                      title={title}
-                      users={users}
-                      value={
-                        breakups[title] || {
-                          item_desc: "",
-                          company_vendor_id: null,
+                  {defaultCards.map(({ title, existingData }) => {
+                    const perms = getItemEditPermissions(existingData);
+                    return (
+                      <FileBreakUpField
+                        key={`default-${title}`}
+                        title={title}
+                        users={users}
+                        leadStage={leadStatus}
+                        userRole={userType}
+                        value={
+                          breakups[title] || {
+                            item_desc: "",
+                            company_vendor_id: null,
+                          }
                         }
-                      }
-                      disable={!canEditItem(existingData)}
-                      onChange={handleFieldChange}
-                      isMandatory={mandatoryTitles.includes(title)}
-                      vendorId={vendorId}
-                      leadId={leadId}
-                      orderLoginId={existingData?.id}
-                      userId={userId}
-                      showPoUpload
-                    />
-                  ))}
+                        onChange={handleFieldChange}
+                        canEditVendor={perms.canEditVendor}
+                        canEditDescription={perms.canEditDescription}
+                        isMandatory={mandatoryTitles.includes(title)}
+                        vendorId={vendorId}
+                        leadId={leadId}
+                        orderLoginId={existingData?.id}
+                        userId={userId}
+                        showPoUpload
+                      />
+                    );
+                  })}
 
                   {/* Extra Section From API */}
-                  {extraFromApi.map((item: any) => (
-                    <FileBreakUpField
-                      key={`extra-${item.id ?? item.item_type}`}
-                      title={item.item_type}
-                      users={users}
-                      value={
-                        breakups[item.item_type] || {
-                          item_desc: item.item_desc || "",
-                          company_vendor_id: item.company_vendor_id || null,
+                  {extraFromApi.map((item: any) => {
+                    const perms = getItemEditPermissions(item);
+                    return (
+                      <FileBreakUpField
+                        key={`extra-${item.id ?? item.item_type}`}
+                        title={item.item_type}
+                        leadStage={leadStatus}
+                        userRole={userType}
+                        users={users}
+                        value={
+                          breakups[item.item_type] || {
+                            item_desc: item.item_desc || "",
+                            company_vendor_id: item.company_vendor_id || null,
+                          }
                         }
-                      }
-                      disable={!canEditItem(item)}
-                      onChange={handleFieldChange}
-                      isMandatory={false}
-                      isTitleEditable={canManageCustomSections && !!item.id}
-                      canDelete={canManageCustomSections && !!item.id}
-                      onTitleSave={(nextTitle) =>
-                        handleTitleUpdate(item, nextTitle)
-                      }
-                      onDelete={() =>
-                        setConfirmDelete({
-                          id: item.id,
-                          title: item.item_type,
-                        })
-                      }
-                      vendorId={vendorId}
-                      leadId={leadId}
-                      orderLoginId={item.id}
-                      userId={userId}
-                      showPoUpload
-                    />
-                  ))}
+                        canEditDescription={perms.canEditDescription}
+                        canEditVendor={perms.canEditVendor}
+                        onChange={handleFieldChange}
+                        isMandatory={false}
+                        isTitleEditable={canManageCustomSections && !!item.id}
+                        canDelete={canManageCustomSections && !!item.id}
+                        onTitleSave={(nextTitle) =>
+                          handleTitleUpdate(item, nextTitle)
+                        }
+                        onDelete={() =>
+                          setConfirmDelete({
+                            id: item.id,
+                            title: item.item_type,
+                          })
+                        }
+                        vendorId={vendorId}
+                        leadId={leadId}
+                        orderLoginId={item.id}
+                        userId={userId}
+                        showPoUpload
+                      />
+                    );
+                  })}
 
                   {/* ---------------- ADD NEW SECTION CARD ---------------- */}
                   {canAccessButtons && (

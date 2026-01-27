@@ -17,6 +17,7 @@ import {
   tableSingleValueMultiSelectFilter,
   tableTextSearchFilter,
 } from "@/lib/utils";
+import CustomeStatusBadge from "@/components/origin-status-badge";
 
 interface UniversalColumnOptions {
   showStageColumn?: boolean;
@@ -82,6 +83,15 @@ export function getUniversalTableColumns(
             header: ({ column }) => (
               <DataTableColumnHeader column={column} title="Stage" />
             ),
+
+            cell: ({ row }) => {
+              const status = row.getValue("status") as string;
+              return (
+                <div className="flex w-full justify-center">
+                  <CustomeStatusBadge title={status} />
+                </div>
+              );
+            },
             enableSorting: false,
             enableHiding: true,
             enableColumnFilter: true,
