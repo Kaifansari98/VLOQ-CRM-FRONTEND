@@ -277,6 +277,10 @@ export function mapTableFiltersToPayload(filters: ColumnFiltersState) {
       case "status":
         payload.stagetag = value;
         break;
+
+      case "site_map_link":
+        payload.site_map_link = value;
+        break;
     }
   });
 

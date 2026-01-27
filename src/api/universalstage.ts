@@ -145,7 +145,7 @@ export const useUniversalStageLeads = (
 
 export interface UniversalStagePostPayload {
   userId: number;
-  tag: string;
+  tag?: string;
   page: number;
   limit: number;
 
@@ -179,6 +179,33 @@ export const postUniversalStageLeads = async (
   );
 
   return data;
+};
+
+export const getUnderInstallationLeadsWithMiscellaneous = async (
+  vendorId: number,
+  payload: UniversalStagePostPayload,
+): Promise<UniversalStageLeadResponse> => {
+  const { data } = await apiClient.post<UniversalStageLeadResponse>(
+    `/leads/installation/under-installation/vendorId/${vendorId}/get-all-leads-which-includes-any-miscellaneous-item`,
+    payload,
+  );
+
+  return data;
+};
+
+// hooks/useUnderInstallationLeadsWithMiscellaneous
+export const useUnderInstallationLeadsWithMiscellaneous = (
+  vendorId: number,
+  payload: UniversalStagePostPayload,
+) => {
+  return useQuery<UniversalStageLeadResponse>({
+    queryKey: ["under-installation-misc-leads", vendorId, payload],
+    queryFn: () =>
+      getUnderInstallationLeadsWithMiscellaneous(vendorId, payload),
+    enabled: !!vendorId && !!payload?.userId,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
+  });
 };
 
 // hooks/useUniversalStageLeadsPost.ts

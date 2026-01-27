@@ -288,7 +288,7 @@ export function getUniversalTableColumns(
         </div>
       ),
 
-      enableSorting: false,
+      enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
 

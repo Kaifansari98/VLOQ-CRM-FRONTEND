@@ -24,13 +24,13 @@ import { DataTableViewOptions } from "@/components/data-table/data-table-view-op
 
 import {
   UniversalStagePostPayload,
+  useUnderInstallationLeadsWithMiscellaneous,
   useUniversalStageLeadsPost,
   useVendorLeadsByTagPost,
   VendorLeadsByTagPostPayload,
 } from "@/api/universalstage";
 import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
 
-import { useUnderInstallationLeadsWithMiscellaneous } from "@/hooks/booking-stage/use-booking";
 import { getUniversalTableColumns } from "../utils/column/Universal-column";
 import { LeadColumn } from "../utils/column/column-type";
 import { mapTableFiltersToPayload } from "@/lib/utils";
@@ -228,14 +228,42 @@ export function UniversalTable({
   const { data: overallData, isLoading: isOverallLoading } =
     useVendorLeadsByTagPost(vendorId!, overallPostPayload);
 
-  const miscPayload = useMemo(
-    () => ({
-      userId: dataMode === "misc" ? (userId ?? 0) : 0,
+  // -------------------- MISCELLANEOUS LEADS POST PAYLOAD --------------------
+
+  const miscPayload: UniversalStagePostPayload = useMemo(() => {
+    const sortOrder: "asc" | "desc" = mySorting[0]?.desc ? "desc" : "asc";
+    const mappedFilters = mapTableFiltersToPayload(myColumnFilters);
+
+    return {
+      userId: userId!,
       page: myPagination.pageIndex + 1,
       limit: myPagination.pageSize,
-    }),
-    [dataMode, myPagination.pageIndex, myPagination.pageSize, userId],
-  );
+
+      global_search: myGlobalFilter || "",
+
+      filter_lead_code: mappedFilters.filter_lead_code,
+      filter_name: mappedFilters.filter_name,
+      contact: mappedFilters.contact,
+
+      alt_contact_no: mappedFilters.alt_contact_no,
+      email: mappedFilters.email,
+      source: mappedFilters.source,
+
+      assign_to: mappedFilters.assign_to,
+      site_address: mappedFilters.site_address,
+      archetech_name: mappedFilters.archetech_name,
+      designer_remark: mappedFilters.designer_remark,
+      stagetag: mappedFilters.stagetag,
+
+      furniture_type: mappedFilters.furniture_type,
+      furniture_structure: mappedFilters.furniture_structure,
+      site_type: mappedFilters.site_type,
+
+      site_map_link: mappedFilters.site_map_link,
+      date_range: mappedFilters.date_range,
+      created_at: sortOrder,
+    };
+  }, [userId, myPagination, mySorting, myColumnFilters, myGlobalFilter]);
 
   const { data: miscData, isLoading: isMiscLoading } =
     useUnderInstallationLeadsWithMiscellaneous(vendorId!, miscPayload);
