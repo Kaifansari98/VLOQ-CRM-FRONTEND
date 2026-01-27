@@ -326,7 +326,7 @@ const MyTaskTable = () => {
       name: task.leadMaster.name,
       phoneNumber: task.leadMaster.phone_number,
       leadStatus: task.userLeadTask.status,
-      leadStage: task.leadMaster.lead_status,
+      leadStage: task.leadMaster.lead_status ?? "",
       siteType: task.leadMaster.site_type || "",
       furnitureType: task.leadMaster.product_type.join(", "),
       furnitueStructures: task.leadMaster.product_structure.join(", "),
