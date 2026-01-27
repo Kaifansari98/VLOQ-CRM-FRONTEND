@@ -9,6 +9,8 @@ import { ProtectedLayout } from "@/providers/ProtectedLayout";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import Script from "next/script";
 import { Suspense } from "react";
+import { MAINTENANCE_MODE } from "@/lib/maintainanceManagement";
+import MaintenanceScreen from "@/components/maintenance-screen";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -47,24 +49,28 @@ export default function RootLayout({
           strategy="beforeInteractive"
         />
 
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <AppProviders>
-            <SessionLoader />
-            <ProtectedLayout>
-              <Suspense fallback={null}>
-                <NuqsAdapter>
-                  {children}
-                  <ToastProvider />
-                </NuqsAdapter>
-              </Suspense>
-            </ProtectedLayout>
-          </AppProviders>
-        </ThemeProvider>
+        {MAINTENANCE_MODE ? (
+          <MaintenanceScreen />
+        ) : (
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <AppProviders>
+              <SessionLoader />
+              <ProtectedLayout>
+                <Suspense fallback={null}>
+                  <NuqsAdapter>
+                    {children}
+                    <ToastProvider />
+                  </NuqsAdapter>
+                </Suspense>
+              </ProtectedLayout>
+            </AppProviders>
+          </ThemeProvider>
+        )}
       </body>
     </html>
   );

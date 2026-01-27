@@ -42,6 +42,7 @@ import {
   MiscellaneousEntry,
   CreateMiscellaneousPayload,
   useUpdateMiscERD,
+  useMarkMiscellaneousTaskReady,
 } from "@/api/installation/useUnderInstallationStageLeads";
 import { useAppSelector } from "@/redux/store";
 import TextSelectPicker from "@/components/TextSelectPicker";
@@ -116,16 +117,24 @@ export default function InstallationMiscellaneous({
   const createMutation = useCreateMiscellaneousEntry();
   const { data: entries, refetch } = useMiscellaneousEntries(vendorId, leadId);
   const updateERDMutation = useUpdateMiscERD();
+  const markReadyMutation = useMarkMiscellaneousTaskReady();
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
   const [selectedERD, setSelectedERD] = useState<string | undefined>(undefined);
   const [showConfirm, setShowConfirm] = useState(false); // confirmation modal toggle
+  const [showReadyConfirm, setShowReadyConfirm] = useState(false);
   const canDoERDDate = canDoERDMiscellaneousDate(userType, leadStatus);
   const canDoMarkAsResolved = canMiscellaneousMarkAsResolved(
     userType,
     leadStatus
   );
+  const canMarkAsReady =
+    userType === "factory" ||
+    userType === "admin" ||
+    userType === "super-admin";
+  const isTaskReady = viewModal.data?.task?.status === "completed";
+  const canUpdateERD = canDoERDDate && !isTaskReady;
   const { data: orderLoginSummary = [], isLoading: loadingSummary } =
     useOrderLoginSummary(vendorId, leadId);
   const [initialModalHandled, setInitialModalHandled] = useState(false);
@@ -925,73 +934,81 @@ export default function InstallationMiscellaneous({
                         ? userType === "factory"
                           ? "This lead has moved ahead."
                           : "Only factory user can do this."
+                        : isTaskReady
+                        ? "Marked as ready. ERD cannot be updated."
                         : undefined
                     }
                     onChange={(newDate) => {
-                      if (!canDoERDDate || !newDate) return;
+                      if (!canUpdateERD || !newDate) return;
                       setSelectedERD(newDate);
                       setShowConfirm(true);
                     }}
                   />
                 </div>
-
-                {/* Resolve Button */}
-                {viewModal.data?.expected_ready_date && canDoMarkAsResolved && (
-                  <Button
-                    variant="default"
-                    size="default"
-                    disabled={resolveMisc.isPending}
-                    onClick={() =>
-                      resolveMisc.mutate(
-                        {
-                          vendorId,
-                          leadId,
-                          miscId: viewModal?.data?.id || 0,
-                          resolved_by: userId!,
-                        },
-                        {
-                          onSuccess: () => {
-                            queryClient.invalidateQueries({
-                              queryKey: [
-                                "miscellaneousEntries",
-                                vendorId,
-                                leadId,
-                              ],
-                            });
-
-                            setViewModal((prev) => ({
-                              ...prev,
-                              data: prev.data
-                                ? {
-                                    ...prev.data,
-                                    is_resolved: true, // immediate UI change
-                                    resolved_by: userId, // optional
-                                    resolved_at: new Date().toString(), // optional
-                                  }
-                                : null,
-                            }));
-                          },
-                        }
-                      )
-                    }
-                    className="gap-2"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    {resolveMisc.isPending ? "Resolving..." : "Mark Resolved"}
-                  </Button>
-                )}
               </div>
             ) : (
               <div className="flex-1" />
             )}
 
-            <Button
-              variant="outline"
-              onClick={() => setViewModal({ open: false, data: null })}
-              className="min-w-[100px]"
-            >
-              Close
-            </Button>
+            {/* Resolve Button */}
+            {viewModal.data?.expected_ready_date && canDoMarkAsResolved && (
+              <Button
+                variant="default"
+                size="default"
+                disabled={resolveMisc.isPending}
+                onClick={() =>
+                  resolveMisc.mutate(
+                    {
+                      vendorId,
+                      leadId,
+                      miscId: viewModal?.data?.id || 0,
+                      resolved_by: userId!,
+                    },
+                    {
+                      onSuccess: () => {
+                        queryClient.invalidateQueries({
+                          queryKey: ["miscellaneousEntries", vendorId, leadId],
+                        });
+
+                        setViewModal((prev) => ({
+                          ...prev,
+                          data: prev.data
+                            ? {
+                                ...prev.data,
+                                is_resolved: true, // immediate UI change
+                                resolved_by: userId, // optional
+                                resolved_at: new Date().toString(), // optional
+                              }
+                            : null,
+                        }));
+                      },
+                    }
+                  )
+                }
+                className="gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {resolveMisc.isPending ? "Resolving..." : "Mark as Resolved"}
+              </Button>
+            )}
+
+            {/* Mark as Ready Button */}
+            {viewModal.data?.expected_ready_date && canMarkAsReady && (
+              <Button
+                variant="default"
+                size="default"
+                disabled={markReadyMutation.isPending || isTaskReady}
+                onClick={() => !isTaskReady && setShowReadyConfirm(true)}
+                className="gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {isTaskReady
+                  ? "Marked as Ready"
+                  : markReadyMutation.isPending
+                  ? "Marking..."
+                  : "Mark as Ready"}
+              </Button>
+            )}
           </DialogFooter>
         </div>
       </BaseModal>
@@ -1044,9 +1061,48 @@ export default function InstallationMiscellaneous({
             >
               Confirm
             </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog open={showReadyConfirm} onOpenChange={setShowReadyConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Mark task as ready?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to mark this task as ready?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setShowReadyConfirm(false)}>
+            Cancel
+          </AlertDialogCancel>
+
+          <AlertDialogAction
+            onClick={() => {
+              if (!viewModal.data) return;
+
+              markReadyMutation.mutate(
+                {
+                  vendorId,
+                  leadId,
+                  miscId: viewModal.data.id,
+                  ready_by: userId!,
+                },
+                {
+                  onSuccess: () => {
+                    setShowReadyConfirm(false);
+                  },
+                }
+              );
+            }}
+          >
+            Confirm
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
       <AlertDialog
         open={!!confirmDelete}

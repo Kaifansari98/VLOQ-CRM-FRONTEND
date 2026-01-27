@@ -30,6 +30,7 @@ import {
 } from "@/api/universalstage";
 import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
 
+import { useUnderInstallationLeadsWithMiscellaneous } from "@/hooks/booking-stage/use-booking";
 import { getUniversalTableColumns } from "../utils/column/Universal-column";
 import { LeadColumn } from "../utils/column/column-type";
 import { mapTableFiltersToPayload } from "@/lib/utils";
@@ -48,6 +49,7 @@ export interface UniversalTableProps {
   enableOverallData?: boolean;
   showStageColumn?: boolean;
   defaultViewType?: "my" | "overall";
+  dataMode?: "universal" | "misc";
 }
 
 // -------------------------------------------------------
@@ -64,6 +66,7 @@ export function UniversalTable({
   showStageColumn = false,
   defaultViewType = "my",
   type,
+  dataMode = "universal",
 }: UniversalTableProps) {
   // -------------------- GLOBAL STATE --------------------
 
@@ -215,7 +218,6 @@ export function UniversalTable({
     overallGlobalFilter,
   ]);
 
-
   // -------------------- API CALLS --------------------
 
   const { data: myData, isLoading: isMyLoading } = useUniversalStageLeadsPost(
@@ -226,18 +228,38 @@ export function UniversalTable({
   const { data: overallData, isLoading: isOverallLoading } =
     useVendorLeadsByTagPost(vendorId!, overallPostPayload);
 
-  // -------------------- DATA SELECTION --------------------
+  const miscPayload = useMemo(
+    () => ({
+      userId: dataMode === "misc" ? (userId ?? 0) : 0,
+      page: myPagination.pageIndex + 1,
+      limit: myPagination.pageSize,
+    }),
+    [dataMode, myPagination.pageIndex, myPagination.pageSize, userId],
+  );
 
+  const { data: miscData, isLoading: isMiscLoading } =
+    useUnderInstallationLeadsWithMiscellaneous(vendorId!, miscPayload);
+
+  //
+  // 🔵 Active Dataset
+  //
   const activeData =
-    viewType === "overall" ? (overallData?.data ?? []) : (myData?.data ?? []);
+    dataMode === "misc"
+      ? (miscData?.data ?? [])
+      : viewType === "overall"
+        ? (overallData?.data ?? [])
+        : (myData?.data ?? []);
 
   const totalPages =
-    viewType === "overall"
-      ? (overallData?.pagination?.totalPages ?? 1)
-      : (myData?.pagination?.totalPages ?? 1);
+    dataMode === "misc"
+      ? (miscData?.pagination?.totalPages ?? 1)
+      : viewType === "overall"
+        ? (overallData?.pagination?.totalPages ?? 1)
+        : (myData?.pagination?.totalPages ?? 1);
 
-  const myCount = myData?.count ?? 0;
-  const overallCount = overallData?.count ?? 0;
+  const myCount =
+    dataMode === "misc" ? (miscData?.count ?? 0) : (myData?.count ?? 0);
+  const overallCount = dataMode === "misc" ? 0 : (overallData?.count ?? 0);
 
   // -------------------- ROW MAPPER --------------------
 

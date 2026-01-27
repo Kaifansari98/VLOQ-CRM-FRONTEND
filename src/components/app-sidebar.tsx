@@ -12,6 +12,7 @@ import {
   CalendarCheck2,
   BookOpenCheck,
   Users,
+  AlertTriangle,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -25,6 +26,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { useAppSelector } from "@/redux/store";
+import { useUnderInstallationLeadsWithMiscellaneous } from "@/hooks/booking-stage/use-booking";
 
 const data = {
   user: {
@@ -191,6 +193,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const userType = user?.user_type?.user_type?.toLowerCase();
   const canSeeOverallLeads =
     userType === "admin" || userType === "super-admin";
+  const canSeeMiscLeads =
+    userType === "admin" ||
+    userType === "super-admin" ||
+    userType === "factory" ||
+    userType === "site-supervisor";
+  const vendorId = user?.vendor_id;
+  const userId = user?.id;
+
+  const miscPayload = React.useMemo(
+    () => ({
+      userId: canSeeMiscLeads ? userId ?? 0 : 0,
+      page: 1,
+      limit: 1,
+    }),
+    [canSeeMiscLeads, userId]
+  );
+
+  const { data: miscLeadData, isLoading: isMiscLeadLoading } =
+    useUnderInstallationLeadsWithMiscellaneous(
+      vendorId ?? 0,
+      miscPayload
+    );
+  const miscLeadsCount = miscLeadData?.count ?? 0;
 
   const userData = user
     ? {
@@ -199,6 +224,38 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         email: user?.user_email || "N/A",
       }
     : data.user;
+
+  const navItems = React.useMemo(() => {
+    const baseItems = canSeeOverallLeads
+      ? data.navMain
+      : data.navMain.filter((item) => item.title !== "Overall Leads");
+
+    if (!canSeeMiscLeads || miscLeadsCount <= 0) return baseItems;
+
+    const miscItem = {
+      title: "Miscellaneous Leads",
+      url: "/dashboard/installation/under-installation/miscellaneous-leads",
+      icon: AlertTriangle,
+      customCount: miscLeadsCount,
+      customCountLoading: isMiscLeadLoading,
+      className: "",
+      iconClassName: "",
+      badgeClassName: "bg-red-500 text-white",
+    };
+
+    const insertIndex = baseItems.findIndex(
+      (item) => item.title === "My Task"
+    );
+    if (insertIndex === -1) {
+      return [...baseItems, miscItem];
+    }
+
+    return [
+      ...baseItems.slice(0, insertIndex + 1),
+      miscItem,
+      ...baseItems.slice(insertIndex + 1),
+    ];
+  }, [canSeeMiscLeads, canSeeOverallLeads, miscLeadsCount, isMiscLeadLoading]);
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -217,13 +274,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        <NavMain
-          items={
-            canSeeOverallLeads
-              ? data.navMain
-              : data.navMain.filter((item) => item.title !== "Overall Leads")
-          }
-        />
+        <NavMain items={navItems} />
       </SidebarContent>
 
       <SidebarFooter>

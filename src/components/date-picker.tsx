@@ -2,15 +2,15 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { format, parseISO } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 import { Calendar as CalendarIcon, X } from "lucide-react";
 import CustomeTooltip from "./custom-tooltip";
+import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
 
 interface CustomeDatePickerProps {
   value?: string;
@@ -27,6 +27,8 @@ interface CustomeDatePickerProps {
   disabledReason?: string; // ✅ new
   intervalStartDate?: string;
   intervalEndDate?: string;
+  disabledDates?: string[];
+  disabledDatesReason?: string;
 }
 
 export default function CustomeDatePicker({
@@ -36,10 +38,32 @@ export default function CustomeDatePicker({
   minDate,
   disabledReason,
   intervalStartDate,
-  intervalEndDate,  
+  intervalEndDate,
+  disabledDates,
+  disabledDatesReason,
 }: CustomeDatePickerProps) {
   const [date, setDate] = React.useState<Date | undefined>(
     value ? parseISO(value) : undefined
+  );
+  const disabledDateSet = React.useMemo(
+    () => new Set(disabledDates ?? []),
+    [disabledDates]
+  );
+  const disabledDateObjects = React.useMemo(() => {
+    if (!disabledDates?.length) return [];
+    return disabledDates
+      .map((dateString) => parseISO(dateString))
+      .filter((parsed) => isValid(parsed));
+  }, [disabledDates]);
+  const blockedDatesTooltip =
+    disabledDatesReason ?? "A report has already been uploaded for this date.";
+
+  const DayButtonWithTooltip = React.useCallback(
+    (props: React.ComponentProps<typeof CalendarDayButton>) => {
+      const title = props.modifiers?.blocked ? blockedDatesTooltip : undefined;
+      return <CalendarDayButton {...props} title={title} />;
+    },
+    [blockedDatesTooltip]
   );
 
   React.useEffect(() => {
@@ -74,6 +98,10 @@ export default function CustomeDatePicker({
   const disableDates = (date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    if (disabledDateSet.size > 0) {
+      const dateKey = format(date, "yyyy-MM-dd");
+      if (disabledDateSet.has(dateKey)) return true;
+    }
 
     // ✔ Installation interval mode
     if (restriction === "installationInterval") {
@@ -182,6 +210,17 @@ export default function CustomeDatePicker({
           selected={date}
           onSelect={handleSelect}
           autoFocus
+          modifiers={
+            disabledDateObjects.length > 0
+              ? { blocked: disabledDateObjects }
+              : undefined
+          }
+          modifiersClassNames={
+            disabledDateObjects.length > 0
+              ? { blocked: "opacity-60" }
+              : undefined
+          }
+          components={{ DayButton: DayButtonWithTooltip }}
           disabled={disableDates}
         />
       </PopoverContent>

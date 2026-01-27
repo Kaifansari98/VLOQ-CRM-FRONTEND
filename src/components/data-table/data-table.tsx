@@ -42,7 +42,7 @@ export function DataTable<TData>({
                   <TableHead
                     key={header.id}
                     colSpan={header.colSpan}
-                    className="font-extrabold text-foreground cursor-pointer select-none"
+                    className="!font-extrabold !text-foreground cursor-pointer select-none"
                     style={{
                       ...getCommonPinningStyles({ column: header.column }),
                     }}

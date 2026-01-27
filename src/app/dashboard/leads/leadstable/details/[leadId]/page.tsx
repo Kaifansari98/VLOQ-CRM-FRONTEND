@@ -64,6 +64,8 @@ import {
   canReassignLeadButton,
   canDeleteLedForSalesExecutiveButton,
   canEditLeadForSalesExecutiveButton,
+  canViewPaymentTab,
+  canViewSiteHistoryTab,
 } from "@/components/utils/privileges";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
 import CustomeTooltip from "@/components/custom-tooltip";
@@ -118,6 +120,8 @@ export default function LeadDetails() {
   const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLedForSalesExecutiveButton(userType);
   const canEdit = canEditLeadForSalesExecutiveButton(userType);
+  const canViewPayment = canViewPaymentTab(userType);
+  const canViewSiteHistory = canViewSiteHistoryTab(userType);
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -341,14 +345,18 @@ export default function LeadDetails() {
               </TabsTrigger>
             )}
 
-            <TabsTrigger value="history" disabled={uiDisabled}>
-              <BoxIcon size={16} className="mr-1 opacity-60" />
-              Site History
-            </TabsTrigger>
-            <TabsTrigger value="team" disabled={uiDisabled}>
-              <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-              Payment Information
-            </TabsTrigger>
+            {canViewSiteHistory && (
+              <TabsTrigger value="history" disabled={uiDisabled}>
+                <BoxIcon size={16} className="mr-1 opacity-60" />
+                Site History
+              </TabsTrigger>
+            )}
+            {canViewPayment && (
+              <TabsTrigger value="team" disabled={uiDisabled}>
+                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                Payment Information
+              </TabsTrigger>
+            )}
             <TabsTrigger value="chats" disabled={uiDisabled}>
               <MessageSquare size={16} className="mr-1 opacity-60" />
               Chats
@@ -364,13 +372,17 @@ export default function LeadDetails() {
           </main>
         </TabsContent>
 
-        <TabsContent value="history">
-          <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
-        </TabsContent>
+        {canViewSiteHistory && (
+          <TabsContent value="history">
+            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
+          </TabsContent>
+        )}
 
-        <TabsContent value="team">
-          <PaymentComingSoon />
-        </TabsContent>
+        {canViewPayment && (
+          <TabsContent value="team">
+            <PaymentComingSoon />
+          </TabsContent>
+        )}
 
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />

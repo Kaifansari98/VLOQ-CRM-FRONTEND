@@ -80,6 +80,8 @@ import {
   canDeleteLeadButton,
   canEditLeadButton,
   canReassignLeadButton,
+  canViewPaymentTab,
+  canViewSiteHistoryTab,
 } from "@/components/utils/privileges";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
@@ -133,6 +135,8 @@ export default function UnderInstallationLeadDetails() {
   const canEdit = canEditLeadButton(userType);
   const deleteLeadMutation = useDeleteLead();
   const canAccessTodoTab = canAccessTodoTaskTabUnderInstallationStage(userType);
+  const canViewPayment = canViewPaymentTab(userType);
+  const canViewSiteHistory = canViewSiteHistoryTab(userType);
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -377,16 +381,20 @@ export default function UnderInstallationLeadDetails() {
               )}
 
               {/* Site History */}
-              <TabsTrigger value="history">
-                <BoxIcon size={16} className="mr-1 opacity-60" />
-                Site History
-              </TabsTrigger>
+              {canViewSiteHistory && (
+                <TabsTrigger value="history">
+                  <BoxIcon size={16} className="mr-1 opacity-60" />
+                  Site History
+                </TabsTrigger>
+              )}
 
               {/* Payment */}
-              <TabsTrigger value="payment">
-                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                Payment Information
-              </TabsTrigger>
+              {canViewPayment && (
+                <TabsTrigger value="payment">
+                  <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                  Payment Information
+                </TabsTrigger>
+              )}
               <TabsTrigger value="chats">
                 <MessageSquare size={16} className="mr-1 opacity-60" />
                 Chats
@@ -466,13 +474,17 @@ export default function UnderInstallationLeadDetails() {
             )}
           </main>
         </TabsContent>
-        <TabsContent value="history">
-          <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
-        </TabsContent>
+        {canViewSiteHistory && (
+          <TabsContent value="history">
+            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
+          </TabsContent>
+        )}
 
-        <TabsContent value="payment">
-          <PaymentInformation accountId={accountId} />
-        </TabsContent>
+        {canViewPayment && (
+          <TabsContent value="payment">
+            <PaymentInformation accountId={accountId} />
+          </TabsContent>
+        )}
 
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />

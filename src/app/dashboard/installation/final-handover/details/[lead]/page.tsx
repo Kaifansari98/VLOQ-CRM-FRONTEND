@@ -70,6 +70,8 @@ import {
   canDeleteLeadButton,
   canEditLeadButton,
   canReassignLeadButton,
+  canViewPaymentTab,
+  canViewSiteHistoryTab,
 } from "@/components/utils/privileges";
 import {
   useFinalHandoverReadiness,
@@ -110,8 +112,11 @@ export default function FinalHandoverLeadDetails() {
   const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadButton(userType);
+  const canViewPayment = canViewPaymentTab(userType);
+  const canViewSiteHistory = canViewSiteHistoryTab(userType);
   const canAccessTodoTab =
     canAccessTodoTaskTabUnderFinalHandoverStage(userType);
+  const isSiteSupervisor = userType?.toLowerCase() === "site-supervisor";
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -155,8 +160,11 @@ export default function FinalHandoverLeadDetails() {
       return "Checking readiness and payment status...";
     if (!isReady) return tooltipMessage;
     if (!paymentStatus) return "Unable to verify payment status.";
-    if (!paymentStatus.is_paid)
-      return `Pending amount remaining: ${paymentStatus.pending_amount.toLocaleString()}`;
+    if (!paymentStatus.is_paid) {
+      return isSiteSupervisor
+        ? "Payment pending. Please contact admin."
+        : `Pending amount remaining: ${paymentStatus.pending_amount.toLocaleString()}`;
+    }
     return "";
   })();
 
@@ -355,16 +363,20 @@ export default function FinalHandoverLeadDetails() {
                   )}
 
                   {/* Site History */}
-                  <TabsTrigger value="history">
-                    <BoxIcon size={16} className="mr-1 opacity-60" />
-                    Site History
-                  </TabsTrigger>
+                  {canViewSiteHistory && (
+                    <TabsTrigger value="history">
+                      <BoxIcon size={16} className="mr-1 opacity-60" />
+                      Site History
+                    </TabsTrigger>
+                  )}
 
                   {/* Payment */}
-                  <TabsTrigger value="payment">
-                    <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                    Payment Information
-                  </TabsTrigger>
+                  {canViewPayment && (
+                    <TabsTrigger value="payment">
+                      <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                      Payment Information
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger value="chats">
                     <MessageSquare size={16} className="mr-1 opacity-60" />
                     Chats
@@ -406,13 +418,17 @@ export default function FinalHandoverLeadDetails() {
           </main>
         </TabsContent>
 
-        <TabsContent value="history">
-          <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
-        </TabsContent>
+        {canViewSiteHistory && (
+          <TabsContent value="history">
+            <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />
+          </TabsContent>
+        )}
 
-        <TabsContent value="payment">
-          <PaymentInformation accountId={accountId} />
-        </TabsContent>
+        {canViewPayment && (
+          <TabsContent value="payment">
+            <PaymentInformation accountId={accountId} />
+          </TabsContent>
+        )}
 
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />
@@ -524,7 +540,9 @@ export default function FinalHandoverLeadDetails() {
                         : 0;
                     toast.error(
                       payment
-                        ? `Pending amount remaining: ${pending.toLocaleString()}`
+                        ? isSiteSupervisor
+                          ? "Payment pending. Please contact admin."
+                          : `Pending amount remaining: ${pending.toLocaleString()}`
                         : "Unable to verify payment status."
                     );
                     setValidatingPayment(false);

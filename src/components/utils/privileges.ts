@@ -466,6 +466,18 @@ export function canMiscellaneousMarkAsResolved(
   );
 }
 
+export function canViewPaymentTab(role: string): boolean {
+  return (
+    role === "sales-executive" ||
+    role === "admin" ||
+    role === "super-admin"
+  );
+}
+
+export function canViewSiteHistoryTab(role: string): boolean {
+  return role === "admin" || role === "super-admin";
+}
+
 export function canUpdateDessingStageSelectionInputs(
   role: string,
   stage: string

@@ -19,7 +19,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { EllipsisVertical, CircleCheck, CircleX, XCircle } from "lucide-react";
+import { EllipsisVertical, CircleCheck, CircleX, XCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "react-toastify";
 import {
@@ -33,6 +33,12 @@ import { useRouter } from "next/navigation";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function PendingLeadDetails() {
   const router = useRouter();
@@ -59,6 +65,30 @@ export default function PendingLeadDetails() {
 
   const markAsLostMutation = useUpdateActivityStatus();
 
+  const { data: leadResponse } = useLeadById(leadIdNum, vendorId, userId);
+  const latestActivityStatus =
+    leadResponse?.data?.lead?.latest_activity_status;
+  const shouldShowStatusInfo = !!latestActivityStatus;
+  const activityCreatedAt = latestActivityStatus?.created_at
+    ? new Date(latestActivityStatus.created_at).toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "—";
+  const formatStatusLabel = (value?: string) => {
+    if (!value) return "—";
+    const spaced = value.replace(/([a-z])([A-Z])/g, "$1 $2");
+    return spaced
+      .split(/\s+/)
+      .map((part) =>
+        part.length > 0 ? part[0].toUpperCase() + part.slice(1) : part
+      )
+      .join(" ");
+  };
+
   return (
     <>
       {/* Header */}
@@ -83,9 +113,70 @@ export default function PendingLeadDetails() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+
         </div>
 
         <div className="flex items-center space-x-2">
+          {shouldShowStatusInfo && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="relative bg-accent p-1.5 rounded-sm"
+                  aria-label="Latest activity status"
+                >
+                  <Info size={16} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="w-64 p-0 bg-transparent shadow-none">
+                <div className="rounded-lg border bg-background shadow-md">
+                  <div className="border-b px-3 py-2 text-sm font-semibold text-primary">
+                    Latest Activity Status
+                  </div>
+                  <div className="space-y-2 px-3 py-2 text-xs text-muted-foreground">
+                    <div className="flex items-center justify-between">
+                      <span>Lead status</span>
+                      <span className="font-medium text-foreground">
+                        {formatStatusLabel(
+                          latestActivityStatus.activity_status
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>
+                        {formatStatusLabel(
+                          latestActivityStatus.activity_status
+                        )}{" "}
+                        by
+                      </span>
+                      <span className="font-medium text-foreground">
+                        {latestActivityStatus.created_by_name ||
+                          latestActivityStatus.created_by}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>
+                        {formatStatusLabel(
+                          latestActivityStatus.activity_status
+                        )}{" "}
+                        at
+                      </span>
+                      <span className="font-medium text-foreground">
+                        {activityCreatedAt}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span>Remark</span>
+                      <span className="rounded-md bg-muted px-2 py-1 text-foreground">
+                        {latestActivityStatus.activity_status_remark || "—"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          )}
           <NotificationBell />
           <AnimatedThemeToggler />
 

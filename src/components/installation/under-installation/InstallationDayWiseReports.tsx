@@ -99,7 +99,7 @@ export default function InstallationDayWiseReports({
     useDeleteDocument(leadId);
   const usedDates = React.useMemo(() => {
     if (!reports) return new Set<string>();
-    return new Set(
+    return new Set<string>(
       reports.map((r: any) =>
         new Date(r.update_date).toISOString().slice(0, 10)
       )
@@ -377,8 +377,11 @@ export default function InstallationDayWiseReports({
             <CustomeDatePicker
               value={selectedDate}
               onChange={setSelectedDate}
+              restriction="installationInterval"
               intervalStartDate={underDetails?.actual_installation_start_date}
               intervalEndDate={underDetails?.expected_installation_end_date}
+              disabledDates={Array.from(usedDates)}
+              disabledDatesReason="A report has already been uploaded for this date."
             />
           </div>
 

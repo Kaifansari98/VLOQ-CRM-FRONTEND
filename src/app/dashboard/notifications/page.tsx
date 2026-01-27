@@ -58,6 +58,12 @@ const TYPE_CONFIG: Record<
     color: "text-purple-500 dark:text-purple-500",
     bgColor: "bg-purple-500/10 border-purple-500/20",
   },
+  LEAD_ACTION: {
+    label: "Lead Action",
+    Icon: Bell,
+    color: "text-sky-500 dark:text-sky-500",
+    bgColor: "bg-sky-500/10 border-sky-500/20",
+  },
 };
 
 const getInitial = (name?: string | null) =>

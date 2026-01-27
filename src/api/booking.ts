@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/apiClient";
 import { BookingLeadById, BookingLeadResponse } from "@/types/booking-types";
+import { UniversalStageLeadResponse } from "@/api/universalstage";
 
 export interface BookingPayload {
   lead_id: number;
@@ -237,4 +238,37 @@ export const addAdditionalPayment = async (payload: AddPaymentPayload) => {
   });
 
   return response.data;
+};
+
+export interface UniversalTablePayload {
+  userId: number;
+  page?: number;
+  limit?: number;
+  filter_lead_code?: string;
+  filter_name?: string;
+  contact?: string;
+  furniture_type?: Array<number | string>;
+  furniture_structure?: Array<number | string>;
+  site_map_link?: boolean;
+  site_type?: Array<number | string>;
+  assign_to?: number | string;
+  site_address?: string;
+  archetech_name?: string;
+  source?: Array<number | string>;
+  created_at?: "asc" | "desc";
+  alt_contact_no?: string;
+  email?: string;
+  designer_remark?: string;
+}
+
+export const getUnderInstallationLeadsWithMiscellaneous = async (
+  vendorId: number,
+  payload: UniversalTablePayload
+): Promise<UniversalStageLeadResponse> => {
+  const { data } = await apiClient.post<UniversalStageLeadResponse>(
+    `/leads/installation/under-installation/vendorId/${vendorId}/get-all-leads-which-includes-any-miscellaneous-item`,
+    payload
+  );
+
+  return data;
 };

@@ -14,6 +14,8 @@ import {
   PaymentLogsResponse,
   UploadBookingDoc,
   UploadBookintPayload,
+  getUnderInstallationLeadsWithMiscellaneous,
+  UniversalTablePayload,
 } from "@/api/booking";
 import { BookingLeadResponse } from "@/types/booking-types";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -22,6 +24,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
 import { apiClient } from "@/lib/apiClient";
 import { addAdditionalPayment, AddPaymentPayload } from "@/api/booking";
+import { UniversalStageLeadResponse } from "@/api/universalstage";
 export const useMoveToBookingStage = () => {
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -232,5 +235,18 @@ export const useUpdateBookingAmount = () => {
         queryKey: ["bookingLeads", variables.vendorId],
       });
     },
+  });
+};
+
+export const useUnderInstallationLeadsWithMiscellaneous = (
+  vendorId: number,
+  payload: UniversalTablePayload
+) => {
+  return useQuery<UniversalStageLeadResponse>({
+    queryKey: ["under-installation-misc-leads", vendorId, payload],
+    queryFn: () => getUnderInstallationLeadsWithMiscellaneous(vendorId, payload),
+    enabled: !!vendorId && !!payload?.userId,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
   });
 };
