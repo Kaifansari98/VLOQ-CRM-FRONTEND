@@ -1116,7 +1116,12 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                         {designDocs.map((doc: any) => (
                           <DocumentCard
                             key={doc.id}
-                            doc={doc}
+                            doc={{
+                              id: doc.id,
+                              originalName: doc.doc_og_name ?? doc.originalName,
+                              signedUrl: doc.signedUrl ?? doc.signed_url ?? doc.doc_sys_name,
+                              created_at: doc.created_at,
+                            }}
                             canDelete={false}
                           />
                         ))}
