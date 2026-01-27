@@ -248,7 +248,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
               </label>
               <Button
                 type="button"
-                variant="default"
+                variant="outline"
                 size="sm"
                 onClick={() => setPoModalOpen(true)}
                 disabled={!canUsePoUpload || disable}
