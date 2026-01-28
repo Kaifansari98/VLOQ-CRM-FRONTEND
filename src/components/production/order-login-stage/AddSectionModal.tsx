@@ -30,28 +30,50 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
-  const [sectionData, setSectionData] = useState({
+
+  // ✅ Fixed: Proper type with number | null
+  const [sectionData, setSectionData] = useState<{
+    company_vendor_id: number | null;
+    item_desc: string;
+  }>({
     company_vendor_id: null,
     item_desc: "",
   });
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
 
   // Initialize mutation
   const { mutateAsync: uploadFileBreakup, isPending } =
     useUploadFileBreakup(vendorId);
 
-  const handleFieldChange = (title: string, field: string, value: any) => {
+  // ✅ Handler for vendor change
+  const handleVendorChange = (selectedVendorId: number) => {
     setSectionData((prev) => ({
       ...prev,
-      [field]: value,
+      company_vendor_id: selectedVendorId,
+    }));
+  };
+
+  // ✅ Handler for description blur
+  const handleDescriptionBlur = (description: string) => {
+    setSectionData((prev) => ({
+      ...prev,
+      item_desc: description,
     }));
   };
 
   const handleSectionCreated = async () => {
     if (!newTitle.trim()) {
       toast.error("Please enter a section name");
+      return;
+    }
+
+    if (!sectionData.company_vendor_id) {
+      toast.error("Please select a vendor");
       return;
     }
 
@@ -65,7 +87,7 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
         lead_id: leadId,
         account_id: accountId,
         item_type: newTitle.trim(),
-        item_desc: sectionData.item_desc,
+        item_desc: sectionData.item_desc.trim(),
         company_vendor_id: sectionData.company_vendor_id,
         created_by: userId,
       };
@@ -85,10 +107,19 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
     } catch (err: any) {
       console.error("❌ Error uploading file breakup:", err);
       toast.error(
-        err?.response?.data?.message || "Failed to add file breakup section"
+        err?.response?.data?.message || "Failed to add file breakup section",
       );
     }
   };
+
+  // ✅ Check if user is admin/backend/super-admin
+  const role = userType?.toLowerCase();
+  const isBackendUser =
+    role === "backend" || role === "admin" || role === "super-admin";
+
+  // ✅ In Add Section Modal, backend users should have full access
+  const canEditVendor = isBackendUser;
+  const canEditDescription = isBackendUser;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -115,23 +146,30 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               className="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              disabled={!isBackendUser}
             />
           </div>
 
-          {/* Render FileBreakUpField only when title entered */}
+          {/* ✅ Render FileBreakUpField only when title entered */}
           {newTitle.trim() !== "" && (
             <FileBreakUpField
               title={newTitle}
               users={users}
               value={sectionData}
-              onChange={handleFieldChange}
-              disable={false}
+              onVendorChange={handleVendorChange}
+              onDescriptionBlur={handleDescriptionBlur}
+              canEditVendor={canEditVendor}
+              canEditDescription={canEditDescription}
+              leadStage="order-login-stage"
+              userRole={userType}
+              isMandatory={false}
+              showPoUpload={false}
             />
           )}
 
           <Button
             onClick={handleSectionCreated}
-            disabled={!newTitle.trim() || isPending}
+            disabled={!newTitle.trim() || isPending || !isBackendUser}
           >
             {isPending ? "Saving..." : "Save Section"}
           </Button>
