@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import AssignToPicker from "@/components/assign-to-picker";
 import TextAreaInput from "@/components/origin-text-area";
 import {
@@ -41,14 +41,11 @@ interface FileBreakUpFieldProps {
     company_vendor_id: number | null;
     item_desc: string;
   };
-  onChange: (
-    title: string,
-    field: keyof FileBreakUpFieldProps["value"],
-    val: any,
-  ) => void;
+  onVendorChange?: (vendorId: number) => void;
+  onDescriptionBlur?: (description: string) => void;
   disable?: boolean;
-  leadStage: string;
-  userRole: string;
+  leadStage?: string;
+  userRole?: string;
   canEditDescription: boolean;
   canEditVendor: boolean;
 }
@@ -67,18 +64,23 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   userId,
   showPoUpload = false,
   value,
-  onChange,
+  onVendorChange,
+  onDescriptionBlur,
   disable,
-  leadStage,
-  userRole,
+  leadStage = "",
+  userRole = "",
   canEditDescription,
   canEditVendor,
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
+  const [descriptionValue, setDescriptionValue] = useState(value.item_desc);
   const [poFiles, setPoFiles] = useState<File[]>([]);
   const [poModalOpen, setPoModalOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  // Track previous description to detect changes
+  const prevDescriptionRef = useRef(value.item_desc);
 
   const inHouseVendors = users.filter((user) => user.in_house);
   const companyVendors = users.filter((user) => !user.in_house);
@@ -96,12 +98,37 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
     setTitleDraft(title);
   }, [title]);
 
-  // ✅ Simplified handler — no validation
-  const handleFieldChange = (
-    field: keyof FileBreakUpFieldProps["value"],
-    val: any,
-  ) => {
-    onChange(title, field, val);
+  useEffect(() => {
+    setDescriptionValue(value.item_desc);
+    prevDescriptionRef.current = value.item_desc;
+  }, [value.item_desc]);
+
+  // ✅ Fixed: Handle vendor select with proper null type
+  const handleVendorSelect = (id: number | null) => {
+    if (id !== null && onVendorChange) {
+      onVendorChange(id);
+    }
+  };
+
+  const handleDescriptionChange = (val: string) => {
+    setDescriptionValue(val);
+  };
+
+  // ✅ Manual blur handler using textarea wrapper
+  const handleTextAreaWrapperBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    // Check if focus is leaving the textarea wrapper entirely
+    const currentTarget = e.currentTarget;
+    const relatedTarget = e.relatedTarget as Node | null;
+
+    if (!currentTarget.contains(relatedTarget)) {
+      // Only save if description actually changed
+      if (descriptionValue !== prevDescriptionRef.current) {
+        if (onDescriptionBlur) {
+          onDescriptionBlur(descriptionValue);
+          prevDescriptionRef.current = descriptionValue;
+        }
+      }
+    }
   };
 
   const handleTitleCancel = () => {
@@ -129,6 +156,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
     leadId,
     orderLoginId,
   );
+
   const { mutateAsync: uploadPoFiles, isPending: isUploadingPo } =
     useUploadOrderLoginPoFiles(vendorId, leadId, orderLoginId);
 
@@ -147,6 +175,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
       await uploadPoFiles(formData);
       toast.success("PO files uploaded successfully!");
       setPoFiles([]);
+      setPoModalOpen(false);
       queryClient.invalidateQueries({
         queryKey: ["orderLoginPoFiles", vendorId, leadId, orderLoginId],
       });
@@ -158,32 +187,15 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   };
 
   const role = userRole?.toLowerCase();
-  const stage = leadStage?.toLowerCase();
+  const isBackend =
+    role === "backend" || role === "admin" || role === "super-admin";
 
-  const isAdmin = role === "admin" || role === "super-admin";
-  const isBackend = role === "backend";
+  // ✅ No restrictions on PO management - backend can upload anytime
+  const canManagePo = isBackend;
 
-  const isAllowedBackendStage =
-    stage === "production-stage" || stage === "order-login-stage";
-
-  const hasPoFiles = poFileList.length > 0;
-
-  // ---------- FINAL PERMISSIONS ----------
-
-  let canManagePo = false;
-
-  // ✅ Admin override
-  if (isAdmin) {
-    canManagePo = true;
-  }
-
-  // ✅ Backend controlled access
-  else if (isBackend && isAllowedBackendStage) {
-    canManagePo = !hasPoFiles;
-  }
   return (
     <div className="rounded-xl border bg-card flex flex-col gap-4">
-      {/* 🔹 Header */}
+      {/* Header */}
       <div className="flex items-start justify-between gap-3 border-b px-4 py-3 bg-muted/30 rounded-t-xl">
         <div className="flex items-center gap-2 min-w-0">
           {isEditingTitle ? (
@@ -252,7 +264,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
         )}
       </div>
 
-      {/* 🔹 Body */}
+      {/* Body */}
       <div className="px-4 pb-4 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
           <div className="space-y-1">
@@ -263,10 +275,10 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
               data={users}
               groups={shouldGroupVendors ? vendorGroups : undefined}
               value={value.company_vendor_id ?? undefined}
-              onChange={(id) => handleFieldChange("company_vendor_id", id)}
+              onChange={handleVendorSelect}
               placeholder="Search vendor..."
               emptyLabel="Select a vendor"
-              disabled={!canEditVendor}
+              disabled={!canEditVendor || disable}
             />
           </div>
 
@@ -280,7 +292,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => setPoModalOpen(true)}
-                disabled={!canUsePoUpload}
+                disabled={!canUsePoUpload || disable}
                 className="w-full h-9"
               >
                 Manage PO Files
@@ -289,18 +301,23 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
           )}
         </div>
 
+        {/* ✅ Description with blur detection wrapper */}
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">
             Description
           </label>
-          <TextAreaInput
-            value={value.item_desc}
-            onChange={(val) => handleFieldChange("item_desc", val)}
-            placeholder={`Add notes or specs for ${title} (optional)`}
-            disabled={!canEditDescription}
-          />
+          <div onBlur={handleTextAreaWrapperBlur}>
+            <TextAreaInput
+              value={descriptionValue}
+              onChange={handleDescriptionChange}
+              placeholder={`Add notes or specs for ${title} (optional)`}
+              disabled={!canEditDescription || disable}
+            />
+          </div>
         </div>
       </div>
+
+      {/* PO Files Modal */}
       {showPoUpload && (
         <BaseModal
           open={poModalOpen}
