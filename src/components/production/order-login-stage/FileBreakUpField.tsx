@@ -333,7 +333,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                 <FileUploadField
                   value={poFiles}
                   onChange={setPoFiles}
-                  accept=".pdf,.pyo,.pytha,.dwg,.dxf,.zip,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff"
+                  accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
                   multiple
                   disabled={!canUsePoUpload || disable}
                   maxFiles={10}
