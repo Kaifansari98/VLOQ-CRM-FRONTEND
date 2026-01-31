@@ -57,6 +57,7 @@ export interface DocumentBooking {
   s3Key: string;
   signedUrl: string;
   type: string;
+  created_at?: string;
 }
 
 export interface PaymentInfo {
