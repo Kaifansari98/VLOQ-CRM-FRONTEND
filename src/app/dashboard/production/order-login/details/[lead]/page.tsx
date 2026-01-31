@@ -93,8 +93,6 @@ export default function OrderLoginLeadDetails() {
 
   // derive convenience flags & message
   const lacksProdFiles = readiness ? !readiness.productionFiles?.hasAny : false;
-  console.log("Has any............", lacksProdFiles);
-  console.log("Readiness data........", readiness);
   const canMove = readiness?.readyForProduction === true;
   const canMoveToProductionStage = canMoveToProduction(userType);
   const canViewTodoTask = canWorkTodoTaskOrderLoginStage(userType);

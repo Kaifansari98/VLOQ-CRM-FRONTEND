@@ -1,4 +1,3 @@
-
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
@@ -8,13 +7,13 @@ export const getOrderLoginLeads = async (
   vendorId: number,
   userId: number,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ) => {
   const { data } = await apiClient.get(
     `/leads/production/order-login/vendorId/${vendorId}/userId/${userId}`,
     {
       params: { page, limit },
-    }
+    },
   );
   return data?.data;
 };
@@ -24,7 +23,7 @@ export const useOrderLoginLeads = (
   vendorId: number | undefined,
   userId: number | undefined,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ) => {
   return useQuery({
     queryKey: ["orderLoginLeads", vendorId, userId, page, limit],
@@ -33,14 +32,12 @@ export const useOrderLoginLeads = (
   });
 };
 
-
-
 // ✅ --- Fetch all company vendors by vendor_id ---
 export const getCompanyVendorsByVendorId = async (vendorId: number) => {
   const { data } = await apiClient.get(
-    `/vendor/company-vendors/vendorId/${vendorId}`
+    `/vendor/company-vendors/vendorId/${vendorId}`,
   );
-  console.log("company vendor data: ", data)
+  console.log("company vendor data: ", data);
   return data?.data;
 };
 
@@ -52,8 +49,6 @@ export const useCompanyVendors = (vendorId: number | undefined) => {
     enabled: !!vendorId,
   });
 };
-
-
 
 export interface uploadFileBreakupPropa {
   lead_id: number | string;
@@ -68,7 +63,7 @@ export interface uploadFileBreakupPropa {
 export const uploadFileBreakup = async (vendorId: number, payload: any) => {
   const { data } = await apiClient.post(
     `/leads/production/order-login/vendorId/${vendorId}/upload-file-breakups`,
-    payload
+    payload,
   );
   return data;
 };
@@ -83,26 +78,32 @@ export const useUploadFileBreakup = (vendorId: number | undefined) =>
 export const getOrderLoginByLead = async (vendorId: number, leadId: number) => {
   const { data } = await apiClient.get(
     `/leads/production/order-login/vendorId/${vendorId}/get-order-login-details`,
-    { params: { lead_id: leadId } }
+    { params: { lead_id: leadId } },
   );
-  return data?.data;
+
+  return data?.data ?? [];
 };
 
 export const useOrderLoginByLead = (
   vendorId: number | undefined,
-  leadId: number | undefined
+  leadId: number | undefined,
 ) =>
   useQuery({
     queryKey: ["orderLoginByLead", vendorId, leadId],
-    queryFn: () => getOrderLoginByLead(vendorId!, leadId!),
-    enabled: !!vendorId && !!leadId,
+    queryFn: async () => {
+      if (!vendorId || !leadId) return [];
+      return getOrderLoginByLead(vendorId, leadId);
+    },
+    enabled: Boolean(vendorId && leadId),
+    staleTime: 60 * 1000, // 1 minute cache freshness
+    retry: 1,
   });
 
 // ✅ --- Update order login details ---
 export const updateOrderLogin = async (
   vendorId: number,
   orderLoginId: number,
-  payload: any
+  payload: any,
 ) => {
   // replace empty string with N/A for item_desc
   if (!payload.item_desc || payload.item_desc.trim() === "") {
@@ -111,7 +112,7 @@ export const updateOrderLogin = async (
 
   const { data } = await apiClient.put(
     `/leads/production/order-login/vendorId/${vendorId}/order-login-id/${orderLoginId}/update`,
-    payload
+    payload,
   );
   return data;
 };
@@ -126,11 +127,11 @@ export const useUpdateOrderLogin = (vendorId: number | undefined) =>
 export const deleteOrderLogin = async (
   vendorId: number,
   orderLoginId: number,
-  deleted_by: number
+  deleted_by: number,
 ) => {
   const { data } = await apiClient.delete(
     `/leads/production/order-login/vendorId/${vendorId}/order-login-id/${orderLoginId}/delete`,
-    { data: { deleted_by } }
+    { data: { deleted_by } },
   );
   return data;
 };
@@ -144,10 +145,10 @@ export const useDeleteOrderLogin = (vendorId: number | undefined) =>
 // ✅ --- Fetch Approved Tech Check Documents ---
 export const getApprovedTechCheckDocuments = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   const { data } = await apiClient.get(
-    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/tech-check-approved`
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/tech-check-approved`,
   );
   return data?.data;
 };
@@ -155,7 +156,7 @@ export const getApprovedTechCheckDocuments = async (
 // ✅ --- React Query Hook: Approved Tech Check Docs ---
 export const useApprovedTechCheckDocuments = (
   vendorId: number | undefined,
-  leadId: number | undefined
+  leadId: number | undefined,
 ) =>
   useQuery({
     queryKey: ["approvedTechCheckDocuments", vendorId, leadId],
@@ -167,14 +168,14 @@ export const useApprovedTechCheckDocuments = (
 export const uploadProductionFiles = async (
   vendorId: number,
   leadId: number,
-  formData: FormData
+  formData: FormData,
 ) => {
   const { data } = await apiClient.post(
     `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/upload-production-files`,
     formData,
     {
       headers: { "Content-Type": "multipart/form-data" },
-    }
+    },
   );
   return data;
 };
@@ -182,7 +183,7 @@ export const uploadProductionFiles = async (
 // ✅ --- Mutation Hook: Upload Production Files ---
 export const useUploadProductionFiles = (
   vendorId: number | undefined,
-  leadId: number | undefined
+  leadId: number | undefined,
 ) =>
   useMutation({
     mutationFn: (formData: FormData) =>
@@ -192,7 +193,7 @@ export const useUploadProductionFiles = (
 // ✅ --- Fetch Production Files ---
 export const getProductionFiles = async (vendorId: number, leadId: number) => {
   const { data } = await apiClient.get(
-    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/production-files`
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/production-files`,
   );
   return data?.data;
 };
@@ -200,7 +201,7 @@ export const getProductionFiles = async (vendorId: number, leadId: number) => {
 // ✅ --- React Query Hook: Production Files ---
 export const useProductionFiles = (
   vendorId: number | undefined,
-  leadId: number | undefined
+  leadId: number | undefined,
 ) =>
   useQuery({
     queryKey: ["productionFiles", vendorId, leadId],
@@ -213,14 +214,14 @@ export const uploadOrderLoginPoFiles = async (
   vendorId: number,
   leadId: number,
   orderLoginId: number,
-  formData: FormData
+  formData: FormData,
 ) => {
   const { data } = await apiClient.post(
     `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/order-login-id/${orderLoginId}/upload-po-files`,
     formData,
     {
       headers: { "Content-Type": "multipart/form-data" },
-    }
+    },
   );
   return data;
 };
@@ -228,7 +229,7 @@ export const uploadOrderLoginPoFiles = async (
 export const useUploadOrderLoginPoFiles = (
   vendorId: number | undefined,
   leadId: number | undefined,
-  orderLoginId: number | undefined
+  orderLoginId: number | undefined,
 ) =>
   useMutation({
     mutationFn: (formData: FormData) =>
@@ -239,10 +240,10 @@ export const useUploadOrderLoginPoFiles = (
 export const getOrderLoginPoFiles = async (
   vendorId: number,
   leadId: number,
-  orderLoginId: number
+  orderLoginId: number,
 ) => {
   const { data } = await apiClient.get(
-    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/order-login-id/${orderLoginId}/po-files`
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/order-login-id/${orderLoginId}/po-files`,
   );
   return data?.data || [];
 };
@@ -250,7 +251,7 @@ export const getOrderLoginPoFiles = async (
 export const useOrderLoginPoFiles = (
   vendorId: number | undefined,
   leadId: number | undefined,
-  orderLoginId: number | undefined
+  orderLoginId: number | undefined,
 ) =>
   useQuery({
     queryKey: ["orderLoginPoFiles", vendorId, leadId, orderLoginId],
@@ -262,14 +263,14 @@ export const useOrderLoginPoFiles = (
 export const moveLeadToProductionStage = async (
   vendorId: number,
   leadId: number,
-  formData: FormData
+  formData: FormData,
 ) => {
   const { data } = await apiClient.put(
     `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/move-to-production-stage`,
     formData,
     {
       headers: { "Content-Type": "multipart/form-data" },
-    }
+    },
   );
   return data;
 };
@@ -277,7 +278,7 @@ export const moveLeadToProductionStage = async (
 // ✅ --- Mutation Hook: Move Lead to Production Stage ---
 export const useMoveLeadToProductionStage = (
   vendorId: number | undefined,
-  leadId: number | undefined
+  leadId: number | undefined,
 ) =>
   useMutation({
     mutationFn: (formData: FormData) =>
@@ -287,17 +288,17 @@ export const useMoveLeadToProductionStage = (
 // ✅ --- Production Readiness Check ---
 export const getLeadProductionReadiness = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   const { data } = await apiClient.get(
-    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/move-to-production-readiness-check`
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/move-to-production-readiness-check`,
   );
   return data?.data;
 };
 
 export const useLeadProductionReadiness = (
   vendorId: number | undefined,
-  leadId: number | undefined
+  leadId: number | undefined,
 ) =>
   useQuery({
     queryKey: ["leadProductionReadiness", vendorId, leadId],
@@ -310,11 +311,11 @@ export const uploadMultipleFileBreakupsByLead = async (
   vendorId: number,
   leadId: number,
   accountId: number,
-  breakups: any[]
+  breakups: any[],
 ) => {
   const { data } = await apiClient.post(
     `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/accountId/${accountId}/upload-multiple-file-breakups`,
-    { breakups }
+    { breakups },
   );
   return data;
 };
@@ -322,7 +323,7 @@ export const uploadMultipleFileBreakupsByLead = async (
 export const useUploadMultipleFileBreakupsByLead = (
   vendorId: number | undefined,
   leadId: number | undefined,
-  accountId: number | undefined
+  accountId: number | undefined,
 ) =>
   useMutation({
     mutationFn: (breakups: any[]) =>
@@ -330,7 +331,7 @@ export const useUploadMultipleFileBreakupsByLead = (
         vendorId!,
         leadId!,
         accountId!,
-        breakups
+        breakups,
       ),
   });
 
@@ -338,18 +339,18 @@ export const useUploadMultipleFileBreakupsByLead = (
 export const updateMultipleOrderLogins = async (
   vendorId: number,
   leadId: number,
-  updates: any[]
+  updates: any[],
 ) => {
   const { data } = await apiClient.put(
     `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/update-multiple`,
-    { updates }
+    { updates },
   );
   return data;
 };
 
 export const useUpdateMultipleOrderLogins = (
   vendorId: number | undefined,
-  leadId: number | undefined
+  leadId: number | undefined,
 ) =>
   useMutation({
     mutationFn: (updates: any[]) =>
@@ -381,7 +382,7 @@ export const useRequestToProduction = () => {
           user_id: created_by,
           assign_to_user_id,
           client_required_order_login_complition_date, // ✅ ADD THIS
-        }
+        },
       );
       return data;
     },
@@ -400,7 +401,7 @@ export const useFactoryUsers = (vendorId: number) => {
     queryKey: ["factoryUsers", vendorId],
     queryFn: async () => {
       const { data } = await apiClient.get(
-        `/leads/production/order-login/factory-users/vendorId/${vendorId}`
+        `/leads/production/order-login/factory-users/vendorId/${vendorId}`,
       );
       return data?.data?.factory_users || [];
     },
