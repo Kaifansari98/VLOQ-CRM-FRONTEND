@@ -1208,32 +1208,50 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                   </div>
                 )}
 
-                {bookingStagePhotos.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Images size={18} />
-                      <h2 className="text-base font-semibold">
-                        Final Measurement Assignment Docs (
-                        {bookingStagePhotos.length})
-                      </h2>
+                  {bookingStagePhotos.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Images size={18} />
+                        <h2 className="text-base font-semibold">
+                          Final Measurement Assignment Docs (
+                          {bookingStagePhotos.length})
+                        </h2>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {bookingStagePhotos.map((photo, index) => (
+                          <ImageComponent
+                            key={photo.id}
+                            doc={{
+                              id: photo.id,
+                              doc_og_name: photo.originalName,
+                              signedUrl: photo.signedUrl,
+                              created_at: photo.createdAt,
+                            }}
+                            index={index}
+                            canDelete={false}
+                          />
+                        ))}
+                        {canEditBookingValues && (
+                          <div
+                            onClick={() => setCspUploadOpen(true)}
+                            className="
+                              flex flex-col items-center justify-center
+                              h-28
+                              border-2 border-dashed border-border
+                              rounded-xl cursor-pointer
+                              hover:bg-mutedBg dark:hover:bg-neutral-800
+                              transition-all duration-200
+                            "
+                          >
+                            <Plus size={26} className="text-muted-foreground mb-1" />
+                            <span className="text-xs font-medium text-muted-foreground">
+                              Add Photos
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {bookingStagePhotos.map((photo, index) => (
-                        <ImageComponent
-                          key={photo.id}
-                          doc={{
-                            id: photo.id,
-                            doc_og_name: photo.originalName,
-                            signedUrl: photo.signedUrl,
-                            created_at: photo.createdAt,
-                          }}
-                          index={index}
-                          canDelete={false}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  )}
               </div>
             </div>
           </div>
