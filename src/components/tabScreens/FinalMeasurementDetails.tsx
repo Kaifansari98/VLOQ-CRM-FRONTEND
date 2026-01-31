@@ -51,7 +51,7 @@ const documentMimeTypes = [
   "image/png",
   "image/gif",
 ];
-const documentAccept = ".pdf,.png,.jpg,.jpeg,.gif";
+const documentAccept = ".pdf";
 const imageMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
 const imageAccept = ".jpg,.jpeg,.png,.gif";
 
@@ -263,20 +263,39 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {sitePhotos.length > 0 ? (
               <>
-                {sitePhotos.map((photo, index) => (
-                  <ImageComponent
-                    key={photo.id}
-                    doc={{
-                      id: photo.id,
-                      doc_og_name: photo.doc_og_name,
-                      signedUrl: photo.signedUrl,
-                      created_at: photo.created_at,
-                    }}
-                    index={index}
-                    canDelete={canDelete}
-                    onDelete={(id) => setConfirmDelete(Number(id))}
-                  />
-                ))}
+                {sitePhotos.map((photo, index) => {
+                  const fileName = photo.doc_og_name || "";
+                  const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|tif|tiff|heic|heif|avif|svg|jfif)$/i.test(
+                    fileName
+                  );
+
+                  return isImage ? (
+                    <ImageComponent
+                      key={photo.id}
+                      doc={{
+                        id: photo.id,
+                        doc_og_name: photo.doc_og_name,
+                        signedUrl: photo.signedUrl,
+                        created_at: photo.created_at,
+                      }}
+                      index={index}
+                      canDelete={canDelete}
+                      onDelete={(id) => setConfirmDelete(Number(id))}
+                    />
+                  ) : (
+                    <DocumentCard
+                      key={photo.id}
+                      doc={{
+                        id: photo.id,
+                        originalName: photo.doc_og_name,
+                        signedUrl: photo.signedUrl,
+                        created_at: photo.created_at,
+                      }}
+                      canDelete={canDelete}
+                      onDelete={(id) => setConfirmDelete(Number(id))}
+                    />
+                  );
+                })}
                 {canUpload && (
                   <button
                     type="button"

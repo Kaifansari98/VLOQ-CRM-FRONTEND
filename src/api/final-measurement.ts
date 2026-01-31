@@ -186,11 +186,11 @@ export const addMoreFinalMeasurementFiles = async (
   formData.append("created_by", payload.createdBy.toString());
 
   payload.sitePhotos.forEach((file) => {
-    formData.append("site_photos", file);
+    formData.append("final_measurement_doc", file);
   });
 
   const { data } = await apiClient.post(
-    `/leads/final-measurement/add-files`,
+    `/leads/final-measurement/add-final-measurement-docs`,
     formData,
     {
       headers: {
