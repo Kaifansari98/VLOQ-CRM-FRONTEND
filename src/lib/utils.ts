@@ -290,8 +290,6 @@ export function mapTableFiltersToPayload(filters: ColumnFiltersState) {
 export function mapTaskTableFiltersToPayload(filters: ColumnFiltersState) {
   const payload: Record<string, any> = {};
 
-  console.log("🔍 ALL FILTERS RECEIVED:", JSON.stringify(filters, null, 2));
-
   const formatLocalDate = (date: Date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -300,19 +298,12 @@ export function mapTaskTableFiltersToPayload(filters: ColumnFiltersState) {
   };
 
   filters.forEach(({ id, value }) => {
-    console.log(
-      `🔍 Processing Filter ID: ${id}, Value:`,
-      value,
-      `Type: ${typeof value}`,
-    );
-
     if (
       value === undefined ||
       value === null ||
       (Array.isArray(value) && value.length === 0) ||
       value === ""
     ) {
-      console.log(`⚠️ SKIPPED ${id} - empty value`);
       return;
     }
 
@@ -320,12 +311,10 @@ export function mapTaskTableFiltersToPayload(filters: ColumnFiltersState) {
       case "dueDate":
         if (value === "today" || value === "upcoming" || value === "overdue") {
           payload.due_filter = value;
-          console.log("✅ SET due_filter:", value);
         }
         // ✅ HANDLE OBJECT FORMAT (from custom date picker)
         else if (typeof value === "object" && !Array.isArray(value)) {
           const dateValue = value as { from?: Date; to?: Date };
-          console.log("🔍 dueDate dateValue (object):", dateValue);
 
           if (dateValue.from || dateValue.to) {
             payload.date_range = {
@@ -334,17 +323,11 @@ export function mapTaskTableFiltersToPayload(filters: ColumnFiltersState) {
                 : undefined,
               to: dateValue.to ? formatLocalDate(dateValue.to) : undefined,
             };
-            console.log("✅ SET date_range:", payload.date_range);
           }
         }
         // ✅ HANDLE ARRAY FORMAT (from DataTableDateFilter)
         else if (Array.isArray(value) && value.length === 2) {
           const [fromTimestamp, toTimestamp] = value;
-          console.log(
-            "🔍 dueDate timestamps (array):",
-            fromTimestamp,
-            toTimestamp,
-          );
 
           if (fromTimestamp || toTimestamp) {
             payload.date_range = {
@@ -355,18 +338,14 @@ export function mapTaskTableFiltersToPayload(filters: ColumnFiltersState) {
                 ? formatLocalDate(new Date(toTimestamp))
                 : undefined,
             };
-            console.log("✅ SET date_range:", payload.date_range);
           }
         }
         break;
 
       case "assignedAt":
-        console.log("🔍 assignedAt raw value:", value);
-
         // ✅ HANDLE OBJECT FORMAT (from custom date picker)
         if (typeof value === "object" && !Array.isArray(value)) {
           const dateValue = value as { from?: Date; to?: Date };
-          console.log("🔍 assignedAt dateValue (object):", dateValue);
 
           if (dateValue.from || dateValue.to) {
             payload.assignat_range = {
@@ -375,17 +354,11 @@ export function mapTaskTableFiltersToPayload(filters: ColumnFiltersState) {
                 : undefined,
               to: dateValue.to ? formatLocalDate(dateValue.to) : undefined,
             };
-            console.log("✅ SET assignat_range:", payload.assignat_range);
           }
         }
         // ✅ HANDLE ARRAY FORMAT (from DataTableDateFilter) - THIS WAS MISSING!
         else if (Array.isArray(value) && value.length === 2) {
           const [fromTimestamp, toTimestamp] = value;
-          console.log(
-            "🔍 assignedAt timestamps (array):",
-            fromTimestamp,
-            toTimestamp,
-          );
 
           if (fromTimestamp || toTimestamp) {
             payload.assignat_range = {
@@ -396,7 +369,6 @@ export function mapTaskTableFiltersToPayload(filters: ColumnFiltersState) {
                 ? formatLocalDate(new Date(toTimestamp))
                 : undefined,
             };
-            console.log("✅ SET assignat_range:", payload.assignat_range);
           }
         }
         break;
@@ -440,11 +412,9 @@ export function mapTaskTableFiltersToPayload(filters: ColumnFiltersState) {
         break;
 
       default:
-        console.log(`⚠️ Unknown filter ID: ${id}`);
         break;
     }
   });
 
-  console.log("🎯 FINAL PAYLOAD:", payload);
   return payload;
 }

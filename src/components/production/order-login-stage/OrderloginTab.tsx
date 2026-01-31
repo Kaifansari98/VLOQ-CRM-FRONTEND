@@ -45,14 +45,18 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
   // API hooks
   const { data: companyVendors } = useCompanyVendors(vendorId);
   const { data: orderLoginData } = useOrderLoginByLead(vendorId, leadId);
+
   const { data: leadData } = useLeadStatus(leadId, vendorId);
 
   // Mutations
   const { mutateAsync: updateSingle } = useUpdateOrderLogin(vendorId);
   const { mutateAsync: deleteOrderLogin, isPending: isDeleting } =
     useDeleteOrderLogin(vendorId);
-  const { mutateAsync: uploadMultiple } =
-    useUploadMultipleFileBreakupsByLead(vendorId, leadId, accountId);
+  const { mutateAsync: uploadMultiple } = useUploadMultipleFileBreakupsByLead(
+    vendorId,
+    leadId,
+    accountId,
+  );
 
   // Local state
   const [breakups, setBreakups] = useState<
@@ -202,13 +206,19 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
 
     // Check if vendor already assigned in production
     if (isProduction && existingData?.company_vendor_id) {
-      toast.error("Vendor already assigned. Cannot change in production stage.");
+      toast.error(
+        "Vendor already assigned. Cannot change in production stage.",
+      );
       return;
     }
 
     // Production stage requires confirmation
     if (isProduction) {
-      setConfirmVendorChange({ title, vendorId: selectedVendorId, existingData });
+      setConfirmVendorChange({
+        title,
+        vendorId: selectedVendorId,
+        existingData,
+      });
       return;
     }
 
@@ -255,7 +265,9 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
         });
       } catch (err: any) {
         console.error("Failed to save vendor", err);
-        toast.error(err?.response?.data?.message || "Failed to save vendor selection");
+        toast.error(
+          err?.response?.data?.message || "Failed to save vendor selection",
+        );
       }
       return;
     }
@@ -284,7 +296,9 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
       });
     } catch (err: any) {
       console.error("Failed to save vendor", err);
-      toast.error(err?.response?.data?.message || "Failed to save vendor selection");
+      toast.error(
+        err?.response?.data?.message || "Failed to save vendor selection",
+      );
     }
   };
 

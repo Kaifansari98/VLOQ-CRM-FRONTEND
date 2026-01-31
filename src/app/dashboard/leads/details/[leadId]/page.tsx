@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { Loader2 } from "lucide-react";
 
 const STAGE_ROUTE_BY_TYPE: Record<string, string> = {
   "Type 1": "/dashboard/leads/leadstable/details",
@@ -34,7 +35,6 @@ export default function LeadDetailsRedirectPage() {
   const { leadId } = useParams();
   const searchParams = useSearchParams();
   const accountId = searchParams.get("accountId");
-
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const leadIdNum = Number(leadId);
 
@@ -45,21 +45,27 @@ export default function LeadDetailsRedirectPage() {
 
   const targetUrl = useMemo(() => {
     if (!Number.isFinite(leadIdNum)) return null;
+
     const routeBase =
       (leadStatus?.status_tag && STAGE_ROUTE_BY_TYPE[leadStatus.status_tag]) ||
       STAGE_ROUTE_BY_TYPE["Type 1"];
+
     return `${routeBase}/${leadIdNum}${buildQueryString(searchParams)}`;
   }, [accountId, leadIdNum, leadStatus?.status_tag, searchParams]);
 
   useEffect(() => {
     if (!vendorId || isLoading) return;
     if (!targetUrl) return;
+
     router.replace(targetUrl);
   }, [isLoading, router, targetUrl, vendorId]);
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">
-      Redirecting to lead details...
+    <div className="min-h-screen w-full flex flex-col items-center justify-center gap-4">
+      <Loader2 className="w-8 h-8 animate-spin text-black dark:text-white" />
+      <p className="text-sm text-black dark:text-white">
+        Redirecting to lead details...
+      </p>
     </div>
   );
 }

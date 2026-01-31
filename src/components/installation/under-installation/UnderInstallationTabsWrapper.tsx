@@ -13,8 +13,6 @@ import { useUsableHandoverReady } from "@/api/installation/useUnderInstallationS
 
 import { useAppSelector } from "@/redux/store";
 
-
-
 export default function UnderInstallationTabsWrapper({
   leadId,
   accountId,
@@ -46,8 +44,8 @@ export default function UnderInstallationTabsWrapper({
   const usableHandoverTooltip = usableReady
     ? ""
     : readyData
-    ? `Not ready yet :\n${readyData.pending.join(", ")} are required`
-    : "Loading status...";
+      ? `Not ready yet :\n${readyData.pending.join(", ")} are required`
+      : "Loading status...";
 
   const tabs = [
     {

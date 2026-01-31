@@ -85,7 +85,7 @@ export default function OrderLoginLeadDetails() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth?.user?.user_type.user_type
+    (state) => state.auth?.user?.user_type.user_type,
   );
 
   const { data: readiness, isLoading: readinessLoading } =
@@ -99,17 +99,19 @@ export default function OrderLoginLeadDetails() {
   const canViewSiteHistory = canViewSiteHistoryTab(userType);
 
   const disabledReason = readinessLoading
-    ? "Checking prerequisites…"
-    : [lacksProdFiles ? "No Production Files uploaded" : ""]
-        .filter(Boolean)
-        .join(" • ");
+    ? "Checking production prerequisites..."
+    : !readiness
+      ? "Production readiness data unavailable"
+      : lacksProdFiles
+        ? "Production files are required before moving forward"
+        : "";
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(
-    userType === "backend" ? "todo" : "details"
+    userType === "backend" ? "todo" : "details",
   );
   useChatTabFromUrl(setActiveTab);
   const [openMoveToProduction, setOpenMoveToProduction] = useState(false);
@@ -143,7 +145,7 @@ export default function OrderLoginLeadDetails() {
       {
         onSuccess: () => toast.success("Lead deleted successfully!"),
         onError: (err) => toast.error(err?.message || "Failed to delete lead"),
-      }
+      },
     );
 
     setOpenDelete(false);
@@ -437,7 +439,7 @@ export default function OrderLoginLeadDetails() {
               onError: (err) => {
                 toast.error(err?.message || "Failed to update lead status");
               },
-            }
+            },
           );
         }}
         loading={updateStatusMutation.isPending}

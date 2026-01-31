@@ -86,11 +86,7 @@ export function getUniversalTableColumns(
 
             cell: ({ row }) => {
               const status = row.getValue("status") as string;
-              return (
-                <div className="flex w-full justify-center">
-                  <CustomeStatusBadge title={status} />
-                </div>
-              );
+              return <CustomeStatusBadge title={status} />;
             },
             enableSorting: false,
             enableHiding: true,
