@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDeleteDocument } from "@/api/leads";
 import { useSelectionData } from "@/hooks/designing-stage/designing-leads-hooks";
+import SelectionsTabForClientDocs from "@/components/sales-executive/designing-stage/pill-tabs-component/SelectionsTabForClientDocs";
 
 type Props = {
   leadId: number;
@@ -42,9 +43,10 @@ export default function ClientDocumentationDetails({
 }: Props) {
   // 🧩 Redux data
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const userType = useAppSelector(
+  const rawUserType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type
   );
+  const userType = rawUserType?.toLowerCase() ?? "";
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   // 🧩 API hooks
@@ -84,7 +86,14 @@ export default function ClientDocumentationDetails({
   );
 
   // 🧩 Permissions
-  const canDelete = userType === "admin" || userType === "super-admin";
+  const canDelete =
+    userType === "admin" ||
+    userType === "super-admin" ||
+    userType === "super admin";
+  const canEditSelections =
+    userType === "admin" ||
+    userType === "super-admin" ||
+    userType === "super admin";
 
   // 🧩 Delete handler
   const handleConfirmDelete = () => {
@@ -272,39 +281,45 @@ export default function ClientDocumentationDetails({
           icon={<FileText size={20} />}
         />
 
-        <div className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Carcas */}
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Carcas</p>
-              <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
-                {selections.carcas && selections.carcas !== "NULL"
-                  ? selections.carcas
-                  : "—"}
+        {canEditSelections ? (
+          <div className="p-0 bg-[#fff] dark:bg-[#0a0a0a]">
+            <SelectionsTabForClientDocs leadId={leadId} accountId={accountId} />
+          </div>
+        ) : (
+          <div className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Carcas */}
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Carcas</p>
+                <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
+                  {selections.carcas && selections.carcas !== "NULL"
+                    ? selections.carcas
+                    : "—"}
+                </div>
               </div>
-            </div>
 
-            {/* Shutter */}
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Shutter</p>
-              <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
-                {selections.shutter && selections.shutter !== "NULL"
-                  ? selections.shutter
-                  : "—"}
+              {/* Shutter */}
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Shutter</p>
+                <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
+                  {selections.shutter && selections.shutter !== "NULL"
+                    ? selections.shutter
+                    : "—"}
+                </div>
               </div>
-            </div>
 
-            {/* Handles */}
-            <div className="md:col-span-2">
-              <p className="text-sm text-muted-foreground mb-1">Handles</p>
-              <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
-                {selections.handles && selections.handles !== "NULL"
-                  ? selections.handles
-                  : "—"}
+              {/* Handles */}
+              <div className="md:col-span-2">
+                <p className="text-sm text-muted-foreground mb-1">Handles</p>
+                <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
+                  {selections.handles && selections.handles !== "NULL"
+                    ? selections.handles
+                    : "—"}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </motion.section>
 
       {/* -------- Modals -------- */}
