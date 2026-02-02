@@ -13,6 +13,7 @@ import {
   BookOpenCheck,
   Users,
   AlertTriangle,
+  LayoutDashboard,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -55,7 +56,7 @@ const data = {
     {
       title: "Dashboard",
       url: "/dashboard",
-      icon: Command,
+      icon: LayoutDashboard,
     },
     {
       title: "My Task",
