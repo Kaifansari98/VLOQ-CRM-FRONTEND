@@ -127,7 +127,7 @@ export default function InstallationMiscellaneous({
   const canDoERDDate = canDoERDMiscellaneousDate(userType, leadStatus);
   const canDoMarkAsResolved = canMiscellaneousMarkAsResolved(
     userType,
-    leadStatus
+    leadStatus,
   );
   const canMarkAsReady =
     userType === "factory" ||
@@ -566,7 +566,7 @@ export default function InstallationMiscellaneous({
               options={
                 orderLoginSummary.map(
                   (item: any) =>
-                    item.item_desc || item.item_type || "Untitled Item"
+                    item.item_desc || item.item_type || "Untitled Item",
                 ) || []
               }
               value={formData.reorder_material_details}
@@ -893,7 +893,7 @@ export default function InstallationMiscellaneous({
                           canDelete={canWork}
                           onDelete={(id) =>
                             setConfirmDelete(
-                              typeof id === "number" ? id : Number(id)
+                              typeof id === "number" ? id : Number(id),
                             )
                           }
                         />
@@ -935,8 +935,8 @@ export default function InstallationMiscellaneous({
                           ? "This lead has moved ahead."
                           : "Only factory user can do this."
                         : isTaskReady
-                        ? "Marked as ready. ERD cannot be updated."
-                        : undefined
+                          ? "Marked as ready. ERD cannot be updated."
+                          : undefined
                     }
                     onChange={(newDate) => {
                       if (!canUpdateERD || !newDate) return;
@@ -982,7 +982,7 @@ export default function InstallationMiscellaneous({
                             : null,
                         }));
                       },
-                    }
+                    },
                   )
                 }
                 className="gap-2"
@@ -1005,8 +1005,8 @@ export default function InstallationMiscellaneous({
                 {isTaskReady
                   ? "Marked as Ready"
                   : markReadyMutation.isPending
-                  ? "Marking..."
-                  : "Mark as Ready"}
+                    ? "Marking..."
+                    : "Mark as Ready"}
               </Button>
             )}
           </DialogFooter>
@@ -1055,54 +1055,54 @@ export default function InstallationMiscellaneous({
 
                       setShowConfirm(false);
                     },
-                  }
+                  },
                 );
               }}
             >
               Confirm
             </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-    <AlertDialog open={showReadyConfirm} onOpenChange={setShowReadyConfirm}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Mark task as ready?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to mark this task as ready?
-          </AlertDialogDescription>
-        </AlertDialogHeader>
+      <AlertDialog open={showReadyConfirm} onOpenChange={setShowReadyConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark task as ready?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to mark this task as ready?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => setShowReadyConfirm(false)}>
-            Cancel
-          </AlertDialogCancel>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowReadyConfirm(false)}>
+              Cancel
+            </AlertDialogCancel>
 
-          <AlertDialogAction
-            onClick={() => {
-              if (!viewModal.data) return;
+            <AlertDialogAction
+              onClick={() => {
+                if (!viewModal.data) return;
 
-              markReadyMutation.mutate(
-                {
-                  vendorId,
-                  leadId,
-                  miscId: viewModal.data.id,
-                  ready_by: userId!,
-                },
-                {
-                  onSuccess: () => {
-                    setShowReadyConfirm(false);
+                markReadyMutation.mutate(
+                  {
+                    vendorId,
+                    leadId,
+                    miscId: viewModal.data.id,
+                    ready_by: userId!,
                   },
-                }
-              );
-            }}
-          >
-            Confirm
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+                  {
+                    onSuccess: () => {
+                      setShowReadyConfirm(false);
+                    },
+                  },
+                );
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={!!confirmDelete}
