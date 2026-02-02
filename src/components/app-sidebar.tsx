@@ -226,11 +226,38 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     : data.user;
 
   const navItems = React.useMemo(() => {
-    const baseItems = canSeeOverallLeads
+    const withoutOverall = canSeeOverallLeads
       ? data.navMain
       : data.navMain.filter((item) => item.title !== "Overall Leads");
+    const hideSectionsForRole =
+      userType === "site-supervisor" ||
+      userType === "tech-check" ||
+      userType === "backend" ||
+      userType === "factory";
+    const baseItems = hideSectionsForRole
+      ? withoutOverall.filter(
+          (item) => item.title !== "Leads" && item.title !== "Project"
+        )
+      : withoutOverall;
 
-    if (!canSeeMiscLeads || miscLeadsCount <= 0) return baseItems;
+    const filteredItems =
+      userType === "backend" || userType === "factory"
+        ? baseItems.map((item) =>
+            item.title === "Production"
+              ? {
+                  ...item,
+                  items: item.items?.filter((subItem) =>
+                    userType === "backend"
+                      ? subItem.title !== "Tech Check"
+                      : subItem.title !== "Tech Check" &&
+                        subItem.title !== "Order Login"
+                  ),
+                }
+              : item
+          )
+        : baseItems;
+
+    if (!canSeeMiscLeads || miscLeadsCount <= 0) return filteredItems;
 
     const miscItem = {
       title: "Miscellaneous Leads",
@@ -243,19 +270,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       badgeClassName: "bg-red-500 text-white",
     };
 
-    const insertIndex = baseItems.findIndex(
+    const insertIndex = filteredItems.findIndex(
       (item) => item.title === "My Task"
     );
     if (insertIndex === -1) {
-      return [...baseItems, miscItem];
+      return [...filteredItems, miscItem];
     }
 
     return [
-      ...baseItems.slice(0, insertIndex + 1),
+      ...filteredItems.slice(0, insertIndex + 1),
       miscItem,
-      ...baseItems.slice(insertIndex + 1),
+      ...filteredItems.slice(insertIndex + 1),
     ];
-  }, [canSeeMiscLeads, canSeeOverallLeads, miscLeadsCount, isMiscLeadLoading]);
+  }, [
+    canSeeMiscLeads,
+    canSeeOverallLeads,
+    miscLeadsCount,
+    isMiscLeadLoading,
+    userType,
+  ]);
 
   return (
     <Sidebar collapsible="icon" {...props}>
