@@ -112,9 +112,6 @@ export function UniversalTable({
   const [overallColumnFilters, setOverallColumnFilters] =
     useState<ColumnFiltersState>([]);
 
-  console.log("My Column Filters: ", myColumnFilters);
-  console.log("Overall Column Filters: ", overallColumnFilters);
-
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     architechName: false,
@@ -327,7 +324,6 @@ export function UniversalTable({
     return activeData.map((item, idx) => mapUniversalRow(item, idx));
   }, [activeData]);
 
-  console.log("Overall Post Payload: ", tableData);
 
   // -------------------- COLUMNS --------------------
 
@@ -399,7 +395,9 @@ export function UniversalTable({
         <div className="flex flex-col gap-2 md:flex-row items-start justify-between">
           <div>
             <h1 className="text-lg font-semibold">{title}</h1>
-            <p className="text-sm text-muted-foreground hidden md:block">{description}</p>
+            <p className="text-sm text-muted-foreground hidden md:block">
+              {description}
+            </p>
           </div>
 
           {/* My Leads / Overall Leads Buttons */}
