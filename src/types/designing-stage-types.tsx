@@ -383,6 +383,7 @@ export interface DesignSelection {
   lead_id: number;
   account_id: number;
   vendor_id: number;
+  product_structure_instance_id?: number | null;
   type: string;
   desc: string;
   created_by: number;
