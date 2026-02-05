@@ -118,14 +118,22 @@ export default function MoveToOrderLoginModal({
         productStructureInstanceId: data.instanceId ?? undefined,
       },
       {
-        onSuccess: () => {
+        onSuccess: (response: any) => {
+          const movedToOrderLogin = Boolean(
+            response?.data?.moved_to_order_login ||
+              response?.moved_to_order_login
+          );
           toast.success(
-            data.instanceId
+            movedToOrderLogin
+              ? "All instances completed. Lead moved to Order Login successfully!"
+              : data.instanceId
               ? "Tech Check marked complete for this instance."
               : "Lead moved to Order Login successfully!"
           );
           router.push(
-            data.instanceId
+            movedToOrderLogin
+              ? "/dashboard/production/order-login"
+              : data.instanceId
               ? "/dashboard/production/tech-check"
               : "/dashboard/production/order-login"
           );
