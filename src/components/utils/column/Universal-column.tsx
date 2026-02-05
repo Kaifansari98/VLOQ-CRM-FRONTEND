@@ -125,6 +125,36 @@ export function getUniversalTableColumns(
       enableColumnFilter: true,
     },
 
+    // 4.1) Furniture Structures
+    {
+      accessorKey: "furnitueStructures",
+      filterFn: tableMultiValueFilter,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Furniture Structures" />
+      ),
+      meta: {
+        label: "Furniture Structures",
+      },
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
+    },
+
+    // 4.1) Furniture Structures
+    {
+      accessorKey: "furnitueStructures",
+      filterFn: tableMultiValueFilter,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Furniture Structures" />
+      ),
+      meta: {
+        label: "Furniture Structures",
+      },
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
+    },
+
     // 14) Product Structures
     {
       accessorKey: "furnitueStructures",

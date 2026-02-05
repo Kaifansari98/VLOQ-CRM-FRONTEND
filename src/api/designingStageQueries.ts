@@ -177,6 +177,7 @@ export interface SubmitSelectionPayload {
   lead_id: number;
   user_id: number;
   account_id: number;
+  product_structure_instance_id?: number | null;
 }
 
 export const submitSelection = async (payload: SubmitSelectionPayload) => {
@@ -188,6 +189,12 @@ export const submitSelection = async (payload: SubmitSelectionPayload) => {
   formData.append("lead_id", String(payload.lead_id));
   formData.append("created_by", String(payload.user_id));
   formData.append("account_id", String(payload.account_id));
+  if (payload.product_structure_instance_id) {
+    formData.append(
+      "product_structure_instance_id",
+      String(payload.product_structure_instance_id)
+    );
+  }
 
   const response = await apiClient.post(
     "/leads/designing-stage/design-selection",
@@ -214,10 +221,14 @@ export const getDesignsDoc = async (
 
 export const getSelectionData = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  productStructureInstanceId?: number
 ): Promise<DesignSelectionsResponse> => {
+  const query = productStructureInstanceId
+    ? `?product_structure_instance_id=${productStructureInstanceId}`
+    : "";
   const { data } = await apiClient.get<DesignSelectionsResponse>(
-    `/leads/designing-stage/${vendorId}/${leadId}/design-selections`
+    `/leads/designing-stage/${vendorId}/${leadId}/design-selections${query}`
   );
   return data;
 };
@@ -226,6 +237,7 @@ export interface EditSelectionPayload {
   type: string;
   desc: string;
   updated_by: number;
+  product_structure_instance_id?: number | null;
 }
 
 export const editSelection = async (
@@ -236,6 +248,14 @@ export const editSelection = async (
   formData.append("desc", payload.desc);
   formData.append("type", payload.type);
   formData.append("updated_by", String(payload.updated_by));
+  if (typeof payload.product_structure_instance_id !== "undefined") {
+    formData.append(
+      "product_structure_instance_id",
+      payload.product_structure_instance_id
+        ? String(payload.product_structure_instance_id)
+        : ""
+    );
+  }
   const response = await apiClient.put(
     `/leads/designing-stage/design-selection/${selectionId}`,
     formData,

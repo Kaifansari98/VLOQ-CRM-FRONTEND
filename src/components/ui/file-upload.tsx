@@ -456,13 +456,14 @@ function FileUploadRoot(props: FileUploadRootProps) {
 
         if (acceptTypes) {
           const fileType = file.type;
-          const fileExtension = `.${file.name.split(".").pop()}`;
+          const fileExtension = `.${file.name.split(".").pop()}`.toLowerCase();
 
           if (
             !acceptTypes.some(
               (type) =>
+                type === "*/*" ||
                 type === fileType ||
-                type === fileExtension ||
+                type.toLowerCase() === fileExtension ||
                 (type.includes("/*") &&
                   fileType.startsWith(type.replace("/*", "/")))
             )
