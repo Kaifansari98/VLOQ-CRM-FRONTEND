@@ -1,4 +1,6 @@
 export type LeadColumn = {
+  rowKey?: string;
+  instanceId?: number;
   srNo: number; // n
   id: number; //n
   lead_code: string; // R

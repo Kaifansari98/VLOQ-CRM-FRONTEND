@@ -35,6 +35,7 @@ import SectionHeader from "@/utils/sectionHeader";
 
 type Props = {
   leadId: number;
+  instanceId?: number | null;
 };
 
 const containerVariants = {
@@ -47,7 +48,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
 };
 
-export default function TechCheckDetails({ leadId }: Props) {
+export default function TechCheckDetails({ leadId, instanceId }: Props) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)!;
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type
@@ -65,7 +66,11 @@ export default function TechCheckDetails({ leadId }: Props) {
   console.log("Client Documentation: ", clientDocs);
   const { data } = useClientRequiredCompletionDate(vendorId, leadId);
 
-  const { data: selectionsData } = useSelectionData(vendorId!, leadId);
+  const { data: selectionsData } = useSelectionData(
+    vendorId!,
+    leadId,
+    instanceId ?? undefined
+  );
 
   const selections = {
     carcas: selectionsData?.data?.find((s: any) => s.type === "Carcas")?.desc,
@@ -96,8 +101,34 @@ export default function TechCheckDetails({ leadId }: Props) {
   };
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-  const pptDocs = clientDocs?.documents?.ppt ?? [];
-  const pythaDocs = clientDocs?.documents?.pytha ?? [];
+  const groupedDocs = clientDocs?.documents_by_instance ?? [];
+  const scopedGroup = instanceId
+    ? groupedDocs.find((group: any) => group?.instance_id === instanceId)
+    : null;
+
+  const fallbackPptDocsByInstance = instanceId
+    ? (clientDocs?.documents?.ppt ?? []).filter(
+        (doc: any) => doc?.product_structure_instance_id === instanceId
+      )
+    : [];
+  const fallbackPythaDocsByInstance = instanceId
+    ? (clientDocs?.documents?.pytha ?? []).filter(
+        (doc: any) => doc?.product_structure_instance_id === instanceId
+      )
+    : [];
+
+  const pptDocs =
+    instanceId && scopedGroup
+      ? scopedGroup?.documents?.ppt ?? []
+      : instanceId
+      ? fallbackPptDocsByInstance
+      : clientDocs?.documents?.ppt ?? [];
+  const pythaDocs =
+    instanceId && scopedGroup
+      ? scopedGroup?.documents?.pytha ?? []
+      : instanceId
+      ? fallbackPythaDocsByInstance
+      : clientDocs?.documents?.pytha ?? [];
   const allDocs = [...pptDocs, ...pythaDocs];
 
   // ✅ Delete mutation

@@ -28,6 +28,14 @@ export interface ProductStructureMapping {
   productStructure: ProductStructure;
 }
 
+export interface ProductStructureInstance {
+  id: number;
+  title: string;
+  quantity_index: number;
+  product_structure_id: number;
+  productStructure?: ProductStructure | null;
+}
+
 // -------------------------
 // Needed Child Objects
 // -------------------------
@@ -96,6 +104,7 @@ export interface UniversalStageLead {
 
   productMappings: ProductMapping[];
   leadProductStructureMapping: ProductStructureMapping[];
+  productStructureInstances?: ProductStructureInstance[];
 }
 
 // -------------------------

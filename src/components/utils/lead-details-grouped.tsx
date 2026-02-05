@@ -35,6 +35,7 @@ export interface LeadDetailsGroupedProps {
   maxVisibleStage?: StageId;
   /** 👇 NEW PROP to control visible group range */
   defaultParentTab?: GroupKey;
+  techCheckInstanceId?: number | null;
 }
 
 const GROUP_ORDER: GroupKey[] = [
@@ -53,6 +54,7 @@ export default function LeadDetailsGrouped({
   leadName,
   maxVisibleStage,
   defaultParentTab = "installation", // default: show all
+  techCheckInstanceId,
 }: LeadDetailsGroupedProps) {
   const searchParams = useSearchParams();
   const groups = {
@@ -108,6 +110,7 @@ export default function LeadDetailsGrouped({
         component: (
           <TechCheckDetails
             leadId={leadId}
+            instanceId={techCheckInstanceId}
           />
         ),
       },

@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
@@ -98,7 +98,10 @@ import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
+  const searchParams = useSearchParams();
   const leadIdNum = Number(leadId);
+  const instanceId = searchParams.get("instance_id");
+  const instanceIdNum = instanceId ? Number(instanceId) : null;
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -131,6 +134,12 @@ export default function ClientApprovalLeadDetails() {
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    if (instanceId) {
+      console.log("instance_id from URL:", instanceId);
+    }
+  }, [instanceId]);
+
   // ✅ Auto-open To-Do modal when screen loads (only for allowed roles)
   useEffect(() => {
     if (isChatNotification) return;
@@ -157,8 +166,34 @@ export default function ClientApprovalLeadDetails() {
     leadIdNum
   );
 
-  const pptDocs = clientDocsData?.documents?.ppt ?? [];
-  const pythaDocs = clientDocsData?.documents?.pytha ?? [];
+  const allPptDocs = clientDocsData?.documents?.ppt ?? [];
+  const allPythaDocs = clientDocsData?.documents?.pytha ?? [];
+  const allDocs = [...allPptDocs, ...allPythaDocs];
+
+  const validInstanceId =
+    instanceIdNum && !Number.isNaN(instanceIdNum) ? instanceIdNum : null;
+  const groupedDocs = clientDocsData?.documents_by_instance ?? [];
+  const scopedGroup = validInstanceId
+    ? groupedDocs.find((group: any) => group?.instance_id === validInstanceId)
+    : null;
+
+  const pptDocs =
+    validInstanceId && scopedGroup
+      ? scopedGroup?.documents?.ppt ?? []
+      : validInstanceId
+      ? allPptDocs.filter(
+          (doc: any) => doc?.product_structure_instance_id === validInstanceId
+        )
+      : allPptDocs;
+
+  const pythaDocs =
+    validInstanceId && scopedGroup
+      ? scopedGroup?.documents?.pytha ?? []
+      : validInstanceId
+      ? allPythaDocs.filter(
+          (doc: any) => doc?.product_structure_instance_id === validInstanceId
+        )
+      : allPythaDocs;
 
   const docs = [...pptDocs, ...pythaDocs];
 
@@ -174,6 +209,10 @@ export default function ClientApprovalLeadDetails() {
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
 
   const accountId = Number(lead?.account_id);
+
+  useEffect(() => {
+    setSelectedDocs([]);
+  }, [validInstanceId]);
 
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
@@ -236,17 +275,17 @@ export default function ClientApprovalLeadDetails() {
           <div className="hidden lg:flex">
             {canMoveToOrderLogin(userType) &&
               (() => {
-                const approvedPPT = pptDocs.filter(
+                const approvedPPT = allPptDocs.filter(
                   (d) => d.tech_check_status === "APPROVED"
                 ).length;
 
-                const approvedPytha = pythaDocs.filter(
+                const approvedPytha = allPythaDocs.filter(
                   (d) => d.tech_check_status === "APPROVED"
                 ).length;
 
                 const approvedCount = approvedPPT + approvedPytha;
 
-                const pendingCount = docs.filter(
+                const pendingCount = allDocs.filter(
                   (d) =>
                     !d.tech_check_status ||
                     d.tech_check_status === "PENDING" ||
@@ -349,17 +388,17 @@ export default function ClientApprovalLeadDetails() {
 
               {canMoveToOrderLogin(userType) &&
                 (() => {
-                  const approvedPPT = pptDocs.filter(
+                  const approvedPPT = allPptDocs.filter(
                     (d) => d.tech_check_status === "APPROVED"
                   ).length;
 
-                  const approvedPytha = pythaDocs.filter(
+                  const approvedPytha = allPythaDocs.filter(
                     (d) => d.tech_check_status === "APPROVED"
                   ).length;
 
                   const approvedCount = approvedPPT + approvedPytha;
 
-                  const pendingCount = docs.filter(
+                  const pendingCount = allDocs.filter(
                     (d) =>
                       !d.tech_check_status ||
                       d.tech_check_status === "PENDING" ||
@@ -576,6 +615,11 @@ export default function ClientApprovalLeadDetails() {
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
+            techCheckInstanceId={
+              instanceIdNum && !Number.isNaN(instanceIdNum)
+                ? instanceIdNum
+                : null
+            }
           />
         </TabsContent>
 
@@ -1305,6 +1349,7 @@ export default function ClientApprovalLeadDetails() {
         data={{
           leadId: leadIdNum,
           accountId: accountId,
+          selectedInstanceId: validInstanceId,
         }}
       />
 
