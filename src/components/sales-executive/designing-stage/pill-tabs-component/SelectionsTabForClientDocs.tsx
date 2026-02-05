@@ -120,9 +120,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
-  const leadStatus = leadData?.status;
+  const leadStatus = String(leadData?.status || "").toLowerCase();
+  const leadStatusTag = String((leadData as any)?.status_tag || "").toLowerCase();
   const isClientDocumentationStage =
-    String(leadStatus || "").toLowerCase() === "client-documentation-stage";
+    leadStatus === "client-documentation-stage" ||
+    leadStatus === "client-documentation" ||
+    leadStatus === "client documentation" ||
+    leadStatusTag === "type 6";
   const canUpdateInput = canUpdateDessingStageSelectionInputs(
     userType,
     leadStatus

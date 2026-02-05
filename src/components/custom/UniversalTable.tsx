@@ -335,9 +335,11 @@ export function UniversalTable({
   // -------------------- TABLE DATA --------------------
 
   const tableData = useMemo<LeadColumn[]>(() => {
-    const isType8 = String(type || "").trim().toLowerCase() === "type 8";
+    const normalizedType = String(type || "").trim().toLowerCase();
+    const isType8 = normalizedType === "type 8";
+    const isType9 = normalizedType === "type 9";
 
-    if (!isType8) {
+    if (!isType8 && !isType9) {
       return activeData.map((item, idx) =>
         mapUniversalRow(item, idx, { rowKey: String(item.id) }),
       );
@@ -349,8 +351,10 @@ export function UniversalTable({
       const instances = Array.isArray(lead?.productStructureInstances)
         ? lead.productStructureInstances
         : [];
-      const pendingInstances = instances.filter(
-        (instance: any) => instance?.is_tech_check_completed !== true
+      const pendingInstances = instances.filter((instance: any) =>
+        isType8
+          ? instance?.is_tech_check_completed !== true
+          : instance?.is_order_login_completed !== true
       );
 
       if (pendingInstances.length === 0) {

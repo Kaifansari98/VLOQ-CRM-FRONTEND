@@ -102,6 +102,21 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const groupedDocs = clientDocs?.documents_by_instance ?? [];
+  const hasMultipleInstances = (clientDocs?.instance_count ?? 0) > 1;
+  const docInstanceMap = React.useMemo(() => {
+    const map = new Map<number, string>();
+    groupedDocs.forEach((group: any) => {
+      const title = group?.instance_title || "Instance";
+      const docs = [...(group?.documents?.ppt || []), ...(group?.documents?.pytha || [])];
+      docs.forEach((doc: any) => {
+        if (doc?.id) map.set(doc.id, title);
+      });
+    });
+    return map;
+  }, [groupedDocs]);
+
+  const getInstanceTitleForDoc = (doc: any) =>
+    docInstanceMap.get(doc?.id) || (doc?.product_structure_instance_id ? `Instance #${doc.product_structure_instance_id}` : "General");
   const scopedGroup = instanceId
     ? groupedDocs.find((group: any) => group?.instance_id === instanceId)
     : null;
@@ -501,35 +516,47 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {/* Image Files */}
                   {filteredPptImages?.map((doc: any, index: number) => (
-                    <ImageComponent
-                      key={doc.id}
-                      doc={{
-                        id: doc.id,
-                        doc_og_name: doc.doc_og_name,
-                        signedUrl: doc.signed_url,
-                        created_at: doc.created_at,
-                      }}
-                      index={index}
-                      status={doc.tech_check_status ?? "PENDING"}
-                      canDelete={canDelete}
-                      onDelete={(id) => setConfirmDelete(Number(id))}
-                    />
+                    <div key={doc.id} className="space-y-2">
+                      {hasMultipleInstances && (
+                        <div className="text-xs px-2 py-1 rounded-md border bg-muted/40 w-fit">
+                          {getInstanceTitleForDoc(doc)}
+                        </div>
+                      )}
+                      <ImageComponent
+                        doc={{
+                          id: doc.id,
+                          doc_og_name: doc.doc_og_name,
+                          signedUrl: doc.signed_url,
+                          created_at: doc.created_at,
+                        }}
+                        index={index}
+                        status={doc.tech_check_status ?? "PENDING"}
+                        canDelete={canDelete}
+                        onDelete={(id) => setConfirmDelete(Number(id))}
+                      />
+                    </div>
                   ))}
 
                   {/* Document Files */}
                   {filteredPptDocuments.map((doc) => (
-                    <DocumentCard
-                      key={doc.id}
-                      doc={{
-                        id: doc.id,
-                        originalName: doc.doc_og_name,
-                        signedUrl: doc.signed_url,
-                        created_at: doc.created_at,
-                      }}
-                      canDelete={canDelete}
-                      status={doc.tech_check_status ?? "PENDING"}
-                      onDelete={(id) => setConfirmDelete(id)}
-                    />
+                    <div key={doc.id} className="space-y-2">
+                      {hasMultipleInstances && (
+                        <div className="text-xs px-2 py-1 rounded-md border bg-muted/40 w-fit">
+                          {getInstanceTitleForDoc(doc)}
+                        </div>
+                      )}
+                      <DocumentCard
+                        doc={{
+                          id: doc.id,
+                          originalName: doc.doc_og_name,
+                          signedUrl: doc.signed_url,
+                          created_at: doc.created_at,
+                        }}
+                        canDelete={canDelete}
+                        status={doc.tech_check_status ?? "PENDING"}
+                        onDelete={(id) => setConfirmDelete(id)}
+                      />
+                    </div>
                   ))}
                 </div>
               )}
@@ -578,18 +605,24 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {filteredPythaDocuments.map((doc: any) => (
-                    <DocumentCard
-                      key={doc.id}
-                      doc={{
-                        id: doc.id,
-                        originalName: doc.doc_og_name,
-                        signedUrl: doc.signed_url,
-                        created_at: doc.created_at,
-                      }}
-                      canDelete={canDelete}
-                      status={doc.tech_check_status ?? "PENDING"}
-                      onDelete={(id) => setConfirmDelete(id)}
-                    />
+                    <div key={doc.id} className="space-y-2">
+                      {hasMultipleInstances && (
+                        <div className="text-xs px-2 py-1 rounded-md border bg-muted/40 w-fit">
+                          {getInstanceTitleForDoc(doc)}
+                        </div>
+                      )}
+                      <DocumentCard
+                        doc={{
+                          id: doc.id,
+                          originalName: doc.doc_og_name,
+                          signedUrl: doc.signed_url,
+                          created_at: doc.created_at,
+                        }}
+                        canDelete={canDelete}
+                        status={doc.tech_check_status ?? "PENDING"}
+                        onDelete={(id) => setConfirmDelete(id)}
+                      />
+                    </div>
                   ))}
                 </div>
               )}
