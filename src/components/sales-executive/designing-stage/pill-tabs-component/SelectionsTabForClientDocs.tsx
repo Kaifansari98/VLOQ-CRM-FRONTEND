@@ -55,7 +55,8 @@ type FormValues = z.infer<typeof formSchema>;
 const SelectionsTabForClientDocs: React.FC<Props> = ({ leadId, accountId }) => {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
-  const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
+  const rawUserType = useAppSelector((s) => s.auth.user?.user_type.user_type);
+  const userType = rawUserType?.toLowerCase() ?? "";
   const queryClient = useQueryClient();
 
   const { mutate: createSelection, isPending: isCreating } =
@@ -177,6 +178,11 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({ leadId, accountId }) => {
     if (dirtyFields.handles)
       promises.push(upsertSelection("Handles", values.handles));
 
+    if (!canUpdateInput) {
+      toast.error("You do not have permission to update selections.");
+      return;
+    }
+
     if (promises.length === 0) {
       toast.info("No changes detected");
       return;
@@ -264,7 +270,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({ leadId, accountId }) => {
                 <span>
                   <Button
                     type="submit"
-                    disabled={isPending}
+                    disabled={isPending || !canUpdateInput}
                     className="px-6 h-10"
                     onClick={form.handleSubmit(onSubmit)}
                   >
@@ -310,7 +316,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({ leadId, accountId }) => {
                               ? "Enter Carcas selection..."
                               : "This Field is Empty"
                           }
-                          disabled={isPending}
+                    disabled={isPending || !canUpdateInput}
                           className="h-28"
                         />
                       </FormControl>
@@ -343,7 +349,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({ leadId, accountId }) => {
                               ? "Enter Shutter details..."
                               : "This Field is Empty"
                           }
-                          disabled={isPending}
+                    disabled={isPending || !canUpdateInput}
                           className="h-28"
                         />
                       </FormControl>

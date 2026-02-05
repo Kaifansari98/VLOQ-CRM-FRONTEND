@@ -192,8 +192,7 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const user = useAppSelector((state) => state.auth.user);
   const userType = user?.user_type?.user_type?.toLowerCase();
-  const canSeeOverallLeads =
-    userType === "admin" || userType === "super-admin";
+  const canSeeOverallLeads = userType === "admin" || userType === "super-admin";
   const canSeeMiscLeads =
     userType === "admin" ||
     userType === "super-admin" ||
@@ -204,18 +203,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const miscPayload = React.useMemo(
     () => ({
-      userId: canSeeMiscLeads ? userId ?? 0 : 0,
+      userId: canSeeMiscLeads ? (userId ?? 0) : 0,
       page: 1,
       limit: 1,
     }),
-    [canSeeMiscLeads, userId]
+    [canSeeMiscLeads, userId],
   );
 
   const { data: miscLeadData, isLoading: isMiscLeadLoading } =
-    useUnderInstallationLeadsWithMiscellaneous(
-      vendorId ?? 0,
-      miscPayload
-    );
+    useUnderInstallationLeadsWithMiscellaneous(vendorId ?? 0, miscPayload);
   const miscLeadsCount = miscLeadData?.count ?? 0;
 
   const userData = user
@@ -227,11 +223,48 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     : data.user;
 
   const navItems = React.useMemo(() => {
-    const baseItems = canSeeOverallLeads
+    const withoutOverall = canSeeOverallLeads
       ? data.navMain
       : data.navMain.filter((item) => item.title !== "Overall Leads");
+    const baseItems = (() => {
+      // site-supervisor: hide only Leads
+      if (userType === "site-supervisor") {
+        return withoutOverall.filter((item) => item.title !== "Leads");
+      }
 
-    if (!canSeeMiscLeads || miscLeadsCount <= 0) return baseItems;
+      // tech-check / backend / factory: hide Leads + Project
+      if (
+        userType === "tech-check" ||
+        userType === "backend" ||
+        userType === "factory"
+      ) {
+        return withoutOverall.filter(
+          (item) => item.title !== "Leads" && item.title !== "Project",
+        );
+      }
+
+      // everyone else
+      return withoutOverall;
+    })();
+
+    const filteredItems =
+      userType === "backend" || userType === "factory"
+        ? baseItems.map((item) =>
+            item.title === "Production"
+              ? {
+                  ...item,
+                  items: item.items?.filter((subItem) =>
+                    userType === "backend"
+                      ? subItem.title !== "Tech Check"
+                      : subItem.title !== "Tech Check" &&
+                        subItem.title !== "Order Login",
+                  ),
+                }
+              : item,
+          )
+        : baseItems;
+
+    if (!canSeeMiscLeads || miscLeadsCount <= 0) return filteredItems;
 
     const miscItem = {
       title: "Miscellaneous Leads",
@@ -244,19 +277,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       badgeClassName: "bg-red-500 text-white",
     };
 
-    const insertIndex = baseItems.findIndex(
-      (item) => item.title === "My Task"
+    const insertIndex = filteredItems.findIndex(
+      (item) => item.title === "My Task",
     );
     if (insertIndex === -1) {
-      return [...baseItems, miscItem];
+      return [...filteredItems, miscItem];
     }
 
     return [
-      ...baseItems.slice(0, insertIndex + 1),
+      ...filteredItems.slice(0, insertIndex + 1),
       miscItem,
-      ...baseItems.slice(insertIndex + 1),
+      ...filteredItems.slice(insertIndex + 1),
     ];
-  }, [canSeeMiscLeads, canSeeOverallLeads, miscLeadsCount, isMiscLeadLoading]);
+  }, [
+    canSeeMiscLeads,
+    canSeeOverallLeads,
+    miscLeadsCount,
+    isMiscLeadLoading,
+    userType,
+  ]);
 
   return (
     <Sidebar collapsible="icon" {...props}>

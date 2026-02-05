@@ -114,6 +114,7 @@ const AddPaymentDetailsPhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
                       <FileUploadField
                         value={field.value}
                         onChange={field.onChange}
+                        accept="image/*,.heic,.heif,.avif,.webp,.bmp,.tif,.tiff,.svg,.jfif"
                       />
                     </FormControl>
                     <FormDescription className="text-xs">

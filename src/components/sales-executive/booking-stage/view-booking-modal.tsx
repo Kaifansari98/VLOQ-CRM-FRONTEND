@@ -80,6 +80,7 @@ import { FileUploadField } from "@/components/custom/file-upload";
 import { useReplaceInitialSiteMeasurementPdf } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import { useSubmitDesigns } from "@/api/designingStageQueries";
 import { DocumentsUploader } from "@/components/document-upload";
+import { useUploadCSPBooking } from "@/hooks/useUploadCSPBooking";
 
 interface Props {
   leadId: number;
@@ -120,7 +121,7 @@ const totalProjectSchema = z.object({
     .min(1, "Total project amount is required")
     .refine(
       (value) => Number(value) >= 0,
-      "Total project amount must be 0 or greater"
+      "Total project amount must be 0 or greater",
     ),
 });
 
@@ -132,7 +133,7 @@ const bookingAmountSchema = z.object({
     .min(1, "Booking amount is required")
     .refine(
       (value) => Number(value) >= 0,
-      "Booking amount must be 0 or greater"
+      "Booking amount must be 0 or greater",
     ),
 });
 
@@ -151,12 +152,12 @@ const designsSchema = z.object({
       (files: File[]) =>
         files.every((f) =>
           /\.(pdf|zip|pyo|pytha|dwg|dxf|stl|step|stp|iges|igs|3ds|obj|skp|sldprt|sldasm|prt|catpart|catproduct)$/i.test(
-            f.name
-          )
+            f.name,
+          ),
         ),
       {
         message: "Only PDF, ZIP or supported design formats are allowed.",
-      }
+      },
     ),
 });
 
@@ -167,7 +168,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type
+    (state) => state.auth.user?.user_type?.user_type,
   );
 
   // 🧩 States
@@ -180,7 +181,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const [bookingAmountModalOpen, setBookingAmountModalOpen] = useState(false);
   const [initialSitePhotosOpen, setInitialSitePhotosOpen] = useState(false);
   const [replaceInitialDocId, setReplaceInitialDocId] = useState<number | null>(
-    null
+    null,
   );
   const [replaceInitialFiles, setReplaceInitialFiles] = useState<File[]>([]);
   const [designsModalOpen, setDesignsModalOpen] = useState(false);
@@ -188,6 +189,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     id: number;
     user_name: string;
   } | null>(null);
+  const [cspUploadOpen, setCspUploadOpen] = useState(false);
+  const [cspFiles, setCspFiles] = useState<File[]>([]);
 
   // 🧩 API Hooks
   const { mutate: deleteDocument, isPending: deleting } =
@@ -211,6 +214,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const { mutateAsync: replaceInitialPdf, isPending: replacingInitialPdf } =
     useReplaceInitialSiteMeasurementPdf();
   const submitDesignsMutation = useSubmitDesigns();
+  const uploadCspBookingMutation = useUploadCSPBooking();
   const queryClient = useQueryClient();
 
   const mrpForm = useForm<MrpFormValues>({
@@ -241,12 +245,12 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
 
   const { data: cspBookingData, isLoading: cspLoading } = useCSPBookingPhotos(
     vendorId!,
-    leadId
+    leadId,
   );
   const { data: siteMeasurementDetails } = useSiteMeasurementLeadById(leadId);
   const { data: bookingDoneIsmDetails } = useBookingDoneIsmDetails(
     leadId,
-    vendorId
+    vendorId,
   );
   const { data: designDocsData } = useDesignsDoc(vendorId!, leadId);
 
@@ -269,12 +273,12 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
 
   const finalDocs =
     leadData?.documents?.filter((doc) =>
-      doc.s3Key.includes("final-documents-booking")
+      doc.s3Key.includes("final-documents-booking"),
     ) || [];
 
   const bookingPaymentDocs =
     leadData?.documents?.filter((doc) =>
-      doc.s3Key.includes("booking-amount-payment-details")
+      doc.s3Key.includes("booking-amount-payment-details"),
     ) || [];
 
   const status = leadStatus?.status;
@@ -316,8 +320,40 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     }
   }, [designsModalOpen, designsForm]);
 
-  if (isLoading || loading)
-    return <p>booking details loading...</p>;
+  const handleCspUpload = async () => {
+    if (!vendorId || !userId || !leadId || !accountId) {
+      toast.error("Missing required identifiers");
+      return;
+    }
+    if (cspFiles.length === 0) {
+      toast.error("Please select at least one photo");
+      return;
+    }
+
+    try {
+      await uploadCspBookingMutation.mutateAsync({
+        lead_id: leadId,
+        account_id: accountId,
+        vendor_id: vendorId,
+        assigned_to: userId,
+        created_by: userId,
+        site_photos: cspFiles,
+      });
+
+      toast.success("Current site photos uploaded successfully");
+      setCspFiles([]);
+      setCspUploadOpen(false);
+      queryClient.invalidateQueries({
+        queryKey: ["csp-booking-photos", vendorId, leadId],
+      });
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "Failed to upload site photos"
+      );
+    }
+  };
+
+  if (isLoading || loading) return <p>booking details loading...</p>;
 
   // 🧩 Delete handler
   const handleConfirmDelete = () => {
@@ -348,10 +384,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         },
         onError: (error: any) => {
           toast.error(
-            error?.response?.data?.message || "Failed to update MRP value."
+            error?.response?.data?.message || "Failed to update MRP value.",
           );
         },
-      }
+      },
     );
   };
 
@@ -373,10 +409,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         onError: (error: any) => {
           toast.error(
             error?.response?.data?.message ||
-              "Failed to update total project amount."
+              "Failed to update total project amount.",
           );
         },
-      }
+      },
     );
   };
 
@@ -397,10 +433,11 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         },
         onError: (error: any) => {
           toast.error(
-            error?.response?.data?.message || "Failed to update booking amount."
+            error?.response?.data?.message ||
+              "Failed to update booking amount.",
           );
         },
-      }
+      },
     );
   };
 
@@ -441,7 +478,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       });
     } catch (error: any) {
       toast.error(
-        error?.response?.data?.message || "Failed to replace document."
+        error?.response?.data?.message || "Failed to replace document.",
       );
     }
   };
@@ -494,10 +531,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         },
         onError: (error: any) => {
           toast.error(
-            error?.response?.data?.message || "Failed to reassign supervisor."
+            error?.response?.data?.message || "Failed to reassign supervisor.",
           );
         },
-      }
+      },
     );
   };
 
@@ -523,189 +560,190 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         animate="visible"
         className="w-full bg-[#fff] dark:bg-[#0a0a0a]"
       >
-          <div className="space-y-6">
-            {/* -------- Top Summary Cards -------- */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 pt-2">
-              {/* Site Supervisor */}
-              <div
-                className="
+        <div className="space-y-6">
+          {/* -------- Top Summary Cards -------- */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 pt-2">
+            {/* Site Supervisor */}
+            <div
+              className="
     bg-white dark:bg-neutral-900
     border border-border rounded-2xl 
     p-5 flex items-center gap-4
 
   "
-              >
-                {/* Icon Container */}
-                <div
-                  className="
+            >
+              {/* Icon Container */}
+              <div
+                className="
       w-7 h-7 rounded-xl flex items-center justify-center
       bg-[#fff] dark:bg-[#0a0a0a] 
       text-gray-600 dark:text-gray-400
     "
+              >
+                <User className="w-6 h-6" />
+              </div>
+
+              {/* Text */}
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground font-medium">
+                  Site Supervisor
+                </p>
+
+                <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
+                  {leadData?.supervisors?.[0]?.userName || "Not Assigned"}
+                </p>
+              </div>
+
+              {canEditBookingValues && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setReassignOpen(true)}
                 >
-                  <User className="w-6 h-6" />
-                </div>
-
-                {/* Text */}
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground font-medium">
-                    Site Supervisor
-                  </p>
-
-                  <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
-                    {leadData?.supervisors?.[0]?.userName || "Not Assigned"}
-                  </p>
-                </div>
-
-                {canEditBookingValues && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setReassignOpen(true)}
-                  >
-                    <UserPen />
-                  </Button>
-                )}
-              </div>
-
-              {/* MRP Value */}
-              <div
-                className="
-    bg-white dark:bg-neutral-900
-    border border-border rounded-2xl 
-    p-5 flex items-center justify-between gap-4
-    transition-all duration-200 
-    hover:ring-1 hover:ring-primary/30
-  "
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className="
-      w-7 h-7 rounded-xl flex items-center justify-center
-      bg-[#fff] dark:bg-[#0a0a0a]
-      text-gray-600 dark:text-gray-400
-    "
-                  >
-                    <IndianRupee className="w-6 h-6" />
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-muted-foreground font-medium">
-                      MRP Value
-                    </p>
-
-                    <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
-                      ₹{leadData?.mrpValue?.toLocaleString("en-IN") || "0"}
-                    </p>
-                  </div>
-                </div>
-
-                {canEditBookingValues && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setMrpModalOpen(true)}
-                  >
-                    <UserPen className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-
-              {/* Total Booking Value */}
-              <div
-                className="
-    bg-white dark:bg-neutral-900
-    border border-border rounded-2xl 
-    p-5 flex items-center justify-between gap-4
-    transition-all duration-200 
-    hover:ring-1 hover:ring-primary/30
-  "
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className="
-      w-7 h-7 rounded-xl flex items-center justify-center
-      bg-[#fff] dark:bg-[#0a0a0a]
-      text-gray-600 dark:text-gray-400
-    "
-                  >
-                    <CreditCard className="w-6 h-6" />
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-muted-foreground font-medium">
-                      Total Booking Value
-                    </p>
-
-                    <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
-                      ₹
-                      {leadData?.finalBookingAmount?.toLocaleString("en-IN") ||
-                        "0"}
-                    </p>
-                  </div>
-                </div>
-
-                {canEditBookingValues && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setTotalProjectModalOpen(true)}
-                  >
-                    <UserPen className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-
-              {/* Amount Received */}
-              <div
-                className="
-    bg-white dark:bg-neutral-900
-    border border-border rounded-2xl 
-    p-5 flex items-center justify-between gap-4
-    transition-all duration-200 
-    hover:ring-1 hover:ring-primary/30
-  "
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className="
-      w-7 h-7 rounded-xl flex items-center justify-center
-      bg-[#fff] dark:bg-[#0a0a0a]
-      text-gray-600 dark:text-gray-400
-    "
-                  >
-                    <IndianRupee className="w-6 h-6" />
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-muted-foreground font-medium">
-                      Booking Amount
-                    </p>
-
-                    <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
-                      ₹{leadData?.bookingAmount?.toLocaleString("en-IN") || "0"}
-                    </p>
-                  </div>
-                </div>
-
-                {canEditBookingValues && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setBookingAmountModalOpen(true)}
-                  >
-                    <UserPen className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
+                  <UserPen />
+                </Button>
+              )}
             </div>
 
-            {/* -------- Booking Stage – Current Site Photos -------- */}
-            {!cspLoading && bookingStagePhotos.length > 0 && (
+            {/* MRP Value */}
+            <div
+              className="
+    bg-white dark:bg-neutral-900
+    border border-border rounded-2xl 
+    p-5 flex items-center justify-between gap-4
+    transition-all duration-200 
+    hover:ring-1 hover:ring-primary/30
+  "
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className="
+      w-7 h-7 rounded-xl flex items-center justify-center
+      bg-[#fff] dark:bg-[#0a0a0a]
+      text-gray-600 dark:text-gray-400
+    "
+                >
+                  <IndianRupee className="w-6 h-6" />
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground font-medium">
+                    MRP Value
+                  </p>
+
+                  <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
+                    ₹{leadData?.mrpValue?.toLocaleString("en-IN") || "0"}
+                  </p>
+                </div>
+              </div>
+
+              {canEditBookingValues && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMrpModalOpen(true)}
+                >
+                  <UserPen className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+
+            {/* Total Booking Value */}
+            <div
+              className="
+    bg-white dark:bg-neutral-900
+    border border-border rounded-2xl 
+    p-5 flex items-center justify-between gap-4
+    transition-all duration-200 
+    hover:ring-1 hover:ring-primary/30
+  "
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className="
+      w-7 h-7 rounded-xl flex items-center justify-center
+      bg-[#fff] dark:bg-[#0a0a0a]
+      text-gray-600 dark:text-gray-400
+    "
+                >
+                  <CreditCard className="w-6 h-6" />
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground font-medium">
+                    Total Booking Value
+                  </p>
+
+                  <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
+                    ₹
+                    {leadData?.finalBookingAmount?.toLocaleString("en-IN") ||
+                      "0"}
+                  </p>
+                </div>
+              </div>
+
+              {canEditBookingValues && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTotalProjectModalOpen(true)}
+                >
+                  <UserPen className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+
+            {/* Amount Received */}
+            <div
+              className="
+    bg-white dark:bg-neutral-900
+    border border-border rounded-2xl 
+    p-5 flex items-center justify-between gap-4
+    transition-all duration-200 
+    hover:ring-1 hover:ring-primary/30
+  "
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className="
+      w-7 h-7 rounded-xl flex items-center justify-center
+      bg-[#fff] dark:bg-[#0a0a0a]
+      text-gray-600 dark:text-gray-400
+    "
+                >
+                  <IndianRupee className="w-6 h-6" />
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground font-medium">
+                    Booking Amount
+                  </p>
+
+                  <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
+                    ₹{leadData?.bookingAmount?.toLocaleString("en-IN") || "0"}
+                  </p>
+                </div>
+              </div>
+
+              {canEditBookingValues && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBookingAmountModalOpen(true)}
+                >
+                  <UserPen className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* -------- Booking Stage – Current Site Photos -------- */}
+            {!cspLoading &&
+              (bookingStagePhotos.length > 0 || canEditBookingValues) && (
               <div
                 className="
       bg-white dark:bg-neutral-900
@@ -734,19 +772,37 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                         canDelete={false}
                       />
                     ))}
+                    {canEditBookingValues && (
+                      <div
+                        onClick={() => setCspUploadOpen(true)}
+                        className="
+            flex flex-col items-center justify-center 
+            h-28 
+            border-2 border-dashed border-border 
+            rounded-xl cursor-pointer 
+            hover:bg-mutedBg dark:hover:bg-neutral-800 
+            transition-all duration-200
+          "
+                      >
+                        <Plus size={26} className="text-muted-foreground mb-1" />
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Add Photos
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               </div>
             )}
 
-            {/* -------- Design Remarks -------- */}
-            <div className="space-y-3 mb-6">
-              <h2 className="text-sm font-semibold tracking-tight">
-                Design Remarks
-              </h2>
+          {/* -------- Design Remarks -------- */}
+          <div className="space-y-3 mb-6">
+            <h2 className="text-sm font-semibold tracking-tight">
+              Design Remarks
+            </h2>
 
-              <div
-                className="
+            <div
+              className="
       bg-[#fff] dark:bg-[#0a0a0a] 
       border border-border 
       rounded-xl 
@@ -754,56 +810,56 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       text-sm leading-relaxed 
       max-h-[250px] overflow-y-auto
     "
-              >
-                {leadData?.payments?.[0].text || "N/A"}
-              </div>
+            >
+              {leadData?.payments?.[0].text || "N/A"}
             </div>
+          </div>
 
-            {/* -------- Booking Documents Section -------- */}
-            <div className="space-y-6 mb-6">
-              {/* ----- Booking Documents Card ----- */}
-              <div
-                className="
+          {/* -------- Booking Documents Section -------- */}
+          <div className="space-y-6 mb-6">
+            {/* ----- Booking Documents Card ----- */}
+            <div
+              className="
       bg-[#fff] dark:bg-[#0a0a0a]
       rounded-2xl 
       border border-border 
       overflow-hidden
     "
-              >
-                {/* Header */}
-                <div
-                  className="
+            >
+              {/* Header */}
+              <div
+                className="
         flex items-center justify-between 
         px-5 py-3 
         border-b border-border
         bg-[#fff] dark:bg-[#0a0a0a]
       "
-                >
-                  <div className="flex items-center gap-2">
-                    <Images size={20} className="text-muted-foreground" />
-                    <h1 className="text-base font-semibold tracking-tight">
-                      Booking Documents (Quotations + Design)
-                    </h1>
-                  </div>
+              >
+                <div className="flex items-center gap-2">
+                  <Images size={20} className="text-muted-foreground" />
+                  <h1 className="text-base font-semibold tracking-tight">
+                    Booking Documents (Quotations + Design)
+                  </h1>
                 </div>
+              </div>
 
-                {/* Body */}
-                <div className="p-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {finalDocs.map((doc: DocumentBooking) => (
-                      <DocumentCard
-                        key={doc.id}
-                        doc={doc}
-                        canDelete={canDelete}
-                        onDelete={(id) => setConfirmDelete(Number(id))}
-                      />
-                    ))}
+              {/* Body */}
+              <div className="p-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {finalDocs.map((doc: DocumentBooking) => (
+                    <DocumentCard
+                      key={doc.id}
+                      doc={doc}
+                      canDelete={canDelete}
+                      onDelete={(id) => setConfirmDelete(Number(id))}
+                    />
+                  ))}
 
-                    {/* Add File Button */}
-                    {canDelete && (
-                      <div
-                        onClick={() => setOpenFinalDocModal(true)}
-                        className="
+                  {/* Add File Button */}
+                  {canDelete && (
+                    <div
+                      onClick={() => setOpenFinalDocModal(true)}
+                      className="
               flex flex-col items-center justify-center 
               min-h-[120px]
               border-2 border-dashed border-border/70 
@@ -812,144 +868,138 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
               hover:bg-mutedBg/40 dark:hover:bg-neutral-800/40 
               transition-all
             "
-                      >
-                        <Plus
-                          size={28}
-                          className="text-muted-foreground mb-1"
-                        />
-                        <span className="text-xs font-medium text-muted-foreground">
-                          Add File
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* ----- Payment Proofs Card ----- */}
-              <div
-                className="
-      bg-[#fff] dark:bg-[#0a0a0a]
-      rounded-2xl 
-      border border-border 
-      overflow-hidden
-    "
-              >
-                {/* Header */}
-                <div
-                  className="
-        flex items-center justify-between 
-        px-5 py-3 
-        border-b border-border 
-        bg-[#fff] dark:bg-[#0a0a0a]
-      "
-                >
-                  <div className="flex items-center gap-2">
-                    <Images size={20} className="text-muted-foreground" />
-                    <h1 className="text-base font-semibold tracking-tight">
-                      Booking Payment Proofs
-                    </h1>
-                  </div>
-                </div>
-
-                {/* Body */}
-                <div className="p-5">
-                  {bookingPaymentDocs.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {bookingPaymentDocs.map((doc, index) => (
-                        <ImageComponent
-                          key={doc.id}
-                          doc={{
-                            id: doc.id,
-                            doc_og_name: doc.originalName,
-                            signedUrl: doc.signedUrl,
-                          }}
-                          index={index}
-                          canDelete={canDelete}
-                          onDelete={(id) => setConfirmDelete(Number(id))}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div
-                      className="
-            flex flex-col items-center justify-center 
-            py-12 
-            text-center
-          "
                     >
-                      <Images
-                        size={40}
-                        className="text-muted-foreground mb-3"
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        No payment proofs uploaded yet.
-                      </p>
+                      <Plus size={28} className="text-muted-foreground mb-1" />
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Add File
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
             </div>
-          </div>
-          {/* -------- Consolidated Documents -------- */}
-          {(initialMeasurementDocs.length > 0 ||
-            initialCurrentSitePhotos.length > 0 ||
-            bookingDoneIsmDocs.length > 0 ||
-            bookingDoneIsmCurrentSite.length > 0 ||
-            bookingDoneIsmPaymentImages.length > 0 ||
-            designDocs.length > 0 ||
-            bookingStagePhotos.length > 0) && (
-            <div className="">
+
+            {/* ----- Payment Proofs Card ----- */}
+            <div
+              className="
+      bg-[#fff] dark:bg-[#0a0a0a]
+      rounded-2xl 
+      border border-border 
+      overflow-hidden
+    "
+            >
+              {/* Header */}
               <div
                 className="
+        flex items-center justify-between 
+        px-5 py-3 
+        border-b border-border 
+        bg-[#fff] dark:bg-[#0a0a0a]
+      "
+              >
+                <div className="flex items-center gap-2">
+                  <Images size={20} className="text-muted-foreground" />
+                  <h1 className="text-base font-semibold tracking-tight">
+                    Booking Payment Proofs
+                  </h1>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-5">
+                {bookingPaymentDocs.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {bookingPaymentDocs.map((doc, index) => (
+                      <ImageComponent
+                        key={doc.id}
+                        doc={{
+                          id: doc.id,
+                          doc_og_name: doc.originalName,
+                          signedUrl: doc.signedUrl,
+                        }}
+                        index={index}
+                        canDelete={canDelete}
+                        onDelete={(id) => setConfirmDelete(Number(id))}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div
+                    className="
+            flex flex-col items-center justify-center 
+            py-12 
+            text-center
+          "
+                  >
+                    <Images size={40} className="text-muted-foreground mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      No payment proofs uploaded yet.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* -------- Consolidated Documents -------- */}
+        {(initialMeasurementDocs.length > 0 ||
+          initialCurrentSitePhotos.length > 0 ||
+          bookingDoneIsmDocs.length > 0 ||
+          bookingDoneIsmCurrentSite.length > 0 ||
+          bookingDoneIsmPaymentImages.length > 0 ||
+          designDocs.length > 0 ||
+          bookingStagePhotos.length > 0) && (
+          <div className="">
+            <div
+              className="
           bg-white dark:bg-neutral-900
           rounded-2xl
           border border-border
           overflow-hidden
         "
-              >
-                <SectionHeader
-                  title="Consolidated Documents"
-                  icon={<Folder size={20} />}
-                />
+            >
+              <SectionHeader
+                title="Consolidated Documents"
+                icon={<Folder size={20} />}
+              />
 
-                <div className="p-6 space-y-8">
-                  {(initialMeasurementDocs.length > 0 ||
-                    initialCurrentSitePhotos.length > 0) && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <FileText size={18} />
-                        <h2 className="text-base font-semibold">
-                          Initial Site Measurement
-                        </h2>
-                      </div>
-                      <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
-                        {initialCurrentSitePhotos.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium text-muted-foreground">
-                              Current Site Photos (
-                              {initialCurrentSitePhotos.length})
-                            </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                              {initialCurrentSitePhotos.map(
-                                (photo: any, index: any) => (
-                                  <ImageComponent
-                                    key={photo.id}
-                                    doc={{
-                                      id: photo.id,
-                                      doc_og_name: photo.originalName,
-                                      signedUrl: photo.signedUrl,
-                                      created_at: photo.uploadedAt,
-                                    }}
-                                    index={index}
-                                    canDelete={false}
-                                  />
-                                )
-                              )}
-                              {canEditBookingValues && (
-                                <div
-                                  onClick={() => setInitialSitePhotosOpen(true)}
-                                  className="
+              <div className="p-6 space-y-8">
+                {(initialMeasurementDocs.length > 0 ||
+                  initialCurrentSitePhotos.length > 0) && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <FileText size={18} />
+                      <h2 className="text-base font-semibold">
+                        Initial Site Measurement
+                      </h2>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
+                      {initialCurrentSitePhotos.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Current Site Photos (
+                            {initialCurrentSitePhotos.length})
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {initialCurrentSitePhotos.map(
+                              (photo: any, index: any) => (
+                                <ImageComponent
+                                  key={photo.id}
+                                  doc={{
+                                    id: photo.id,
+                                    doc_og_name: photo.originalName,
+                                    signedUrl: photo.signedUrl,
+                                    created_at: photo.uploadedAt,
+                                  }}
+                                  index={index}
+                                  canDelete={false}
+                                />
+                              ),
+                            )}
+                            {canEditBookingValues && (
+                              <div
+                                onClick={() => setInitialSitePhotosOpen(true)}
+                                className="
                                     flex flex-col items-center justify-center
                                     h-28
                                     border-2 border-dashed border-border
@@ -957,179 +1007,189 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                     hover:bg-mutedBg dark:hover:bg-neutral-800
                                     transition-all duration-200
                                   "
-                                >
-                                  <Plus size={26} className="text-muted-foreground mb-1" />
-                                  <span className="text-xs font-medium text-muted-foreground">
-                                    Add Photos
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {initialMeasurementDocs.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium text-muted-foreground">
-                              Measurement Documents (
-                              {initialMeasurementDocs.length})
-                            </p>
-                            <div className="space-y-3 w-fit">
-                              {initialMeasurementDocs.map((doc: any) => (
-                                <DocumentCard
-                                  key={doc.id}
-                                  doc={{
-                                    id: doc.id,
-                                    originalName: doc.originalName,
-                                    signedUrl: doc.signedUrl,
-                                    created_at: doc.uploadedAt,
-                                  }}
-                                  canDelete={false}
+                              >
+                                <Plus
+                                  size={26}
+                                  className="text-muted-foreground mb-1"
                                 />
-                              ))}
-                              {canEditBookingValues && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (!initialMeasurementDocs.length) {
-                                      toast.error("No document available to replace.");
-                                      return;
-                                    }
-                                    setReplaceInitialDocId(initialMeasurementDocs[0].id);
-                                  }}
-                                  className="
+                                <span className="text-xs font-medium text-muted-foreground">
+                                  Add Photos
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {initialMeasurementDocs.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Measurement Documents (
+                            {initialMeasurementDocs.length})
+                          </p>
+                          <div className="space-y-3 w-fit">
+                            {initialMeasurementDocs.map((doc: any) => (
+                              <DocumentCard
+                                key={doc.id}
+                                doc={{
+                                  id: doc.id,
+                                  originalName: doc.originalName,
+                                  signedUrl: doc.signedUrl,
+                                  created_at: doc.uploadedAt,
+                                }}
+                                canDelete={false}
+                              />
+                            ))}
+                            {canEditBookingValues && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!initialMeasurementDocs.length) {
+                                    toast.error(
+                                      "No document available to replace.",
+                                    );
+                                    return;
+                                  }
+                                  setReplaceInitialDocId(
+                                    initialMeasurementDocs[0].id,
+                                  );
+                                }}
+                                className="
                                     flex items-center gap-2
                                     rounded-md border border-dashed border-border
                                     px-3 py-2 text-xs text-muted-foreground
                                     hover:bg-mutedBg dark:hover:bg-neutral-800
                                     transition
                                   "
-                                >
-                                  <Plus size={14} />
-                                  Replace Document
-                                </button>
-                              )}
-                            </div>
+                              >
+                                <Plus size={14} />
+                                Replace Document
+                              </button>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {(bookingDoneIsmDocs.length > 0 ||
-                    bookingDoneIsmCurrentSite.length > 0 ||
-                    bookingDoneIsmPaymentImages.length > 0) && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <FileText size={18} />
-                        <h2 className="text-base font-semibold">
-                          Booking Done – ISM
-                        </h2>
-                      </div>
-                      <div className="space-y-4">
-                        {bookingDoneIsmDocs.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium text-muted-foreground">
-                              Documents ({bookingDoneIsmDocs.length})
-                            </p>
-                            <div className="space-y-3 w-fit">
-                              {bookingDoneIsmDocs.map((doc: any) => (
-                                <DocumentCard
-                                  key={doc.id}
+                {(bookingDoneIsmDocs.length > 0 ||
+                  bookingDoneIsmCurrentSite.length > 0 ||
+                  bookingDoneIsmPaymentImages.length > 0) && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <FileText size={18} />
+                      <h2 className="text-base font-semibold">
+                        Booking Done – ISM
+                      </h2>
+                    </div>
+                    <div className="space-y-4">
+                      {bookingDoneIsmDocs.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Documents ({bookingDoneIsmDocs.length})
+                          </p>
+                          <div className="space-y-3 w-fit">
+                            {bookingDoneIsmDocs.map((doc: any) => (
+                              <DocumentCard
+                                key={doc.id}
+                                doc={{
+                                  id: doc.id,
+                                  originalName: doc.originalName,
+                                  signedUrl: doc.signedUrl,
+                                  created_at: doc.createdAt,
+                                }}
+                                canDelete={false}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {bookingDoneIsmCurrentSite.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Current Site Photos (
+                            {bookingDoneIsmCurrentSite.length})
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {bookingDoneIsmCurrentSite.map(
+                              (photo: any, index: any) => (
+                                <ImageComponent
+                                  key={photo.id}
                                   doc={{
-                                    id: doc.id,
-                                    originalName: doc.originalName,
-                                    signedUrl: doc.signedUrl,
-                                    created_at: doc.createdAt,
+                                    id: photo.id,
+                                    doc_og_name: photo.originalName,
+                                    signedUrl: photo.signedUrl,
+                                    created_at: photo.createdAt,
                                   }}
+                                  index={index}
                                   canDelete={false}
                                 />
-                              ))}
-                            </div>
+                              ),
+                            )}
                           </div>
-                        )}
+                        </div>
+                      )}
 
-                        {bookingDoneIsmCurrentSite.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium text-muted-foreground">
-                              Current Site Photos (
-                              {bookingDoneIsmCurrentSite.length})
-                            </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                              {bookingDoneIsmCurrentSite.map(
-                                (photo: any, index: any) => (
-                                  <ImageComponent
-                                    key={photo.id}
-                                    doc={{
-                                      id: photo.id,
-                                      doc_og_name: photo.originalName,
-                                      signedUrl: photo.signedUrl,
-                                      created_at: photo.createdAt,
-                                    }}
-                                    index={index}
-                                    canDelete={false}
-                                  />
-                                )
-                              )}
-                            </div>
+                      {bookingDoneIsmPaymentImages.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Payment Images ({bookingDoneIsmPaymentImages.length}
+                            )
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {bookingDoneIsmPaymentImages.map(
+                              (photo: any, index: any) => (
+                                <ImageComponent
+                                  key={photo.id}
+                                  doc={{
+                                    id: photo.id,
+                                    doc_og_name: photo.originalName,
+                                    signedUrl: photo.signedUrl,
+                                    created_at: photo.createdAt,
+                                  }}
+                                  index={index}
+                                  canDelete={false}
+                                />
+                              ),
+                            )}
                           </div>
-                        )}
-
-                        {bookingDoneIsmPaymentImages.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium text-muted-foreground">
-                              Payment Images (
-                              {bookingDoneIsmPaymentImages.length})
-                            </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                              {bookingDoneIsmPaymentImages.map(
-                                (photo: any, index: any) => (
-                                  <ImageComponent
-                                    key={photo.id}
-                                    doc={{
-                                      id: photo.id,
-                                      doc_og_name: photo.originalName,
-                                      signedUrl: photo.signedUrl,
-                                      created_at: photo.createdAt,
-                                    }}
-                                    index={index}
-                                    canDelete={false}
-                                  />
-                                )
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {designDocs.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <FileText size={18} />
-                        <h2 className="text-base font-semibold">
-                          Design Documents ({designDocs.length})
-                        </h2>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {designDocs.map((doc: any) => (
-                          <DocumentCard
-                            key={doc.id}
-                            doc={{
-                              id: doc.id,
-                              originalName: doc.doc_og_name ?? doc.originalName,
-                              signedUrl: doc.signedUrl ?? doc.signed_url ?? doc.doc_sys_name,
-                              created_at: doc.created_at,
-                            }}
-                            canDelete={false}
-                          />
-                        ))}
-                        {canEditBookingValues && (
-                          <button
-                            type="button"
-                            onClick={() => setDesignsModalOpen(true)}
-                            className="
+                {designDocs.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <FileText size={18} />
+                      <h2 className="text-base font-semibold">
+                        Design Documents ({designDocs.length})
+                      </h2>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {designDocs.map((doc: any) => (
+                        <DocumentCard
+                          key={doc.id}
+                          doc={{
+                            id: doc.id,
+                            originalName: doc.doc_og_name ?? doc.originalName,
+                            signedUrl:
+                              doc.signedUrl ??
+                              doc.signed_url ??
+                              doc.doc_sys_name,
+                            created_at: doc.created_at,
+                          }}
+                          canDelete={false}
+                        />
+                      ))}
+                      {canEditBookingValues && (
+                        <button
+                          type="button"
+                          onClick={() => setDesignsModalOpen(true)}
+                          className="
                               flex flex-col items-center justify-center
                               border border-dashed border-border/70
                               rounded-xl p-6 text-center
@@ -1137,16 +1197,16 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                               hover:bg-muted/40 dark:hover:bg-neutral-800/60
                               transition
                             "
-                          >
-                            <Plus className="w-8 h-8 text-muted-foreground mb-2" />
-                            <p className="text-sm font-medium text-muted-foreground">
-                              Upload Designs
-                            </p>
-                          </button>
-                        )}
-                      </div>
+                        >
+                          <Plus className="w-8 h-8 text-muted-foreground mb-2" />
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Upload Designs
+                          </p>
+                        </button>
+                      )}
                     </div>
-                  )}
+                  </div>
+                )}
 
                   {bookingStagePhotos.length > 0 && (
                     <div className="space-y-3">
@@ -1171,13 +1231,31 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                             canDelete={false}
                           />
                         ))}
+                        {canEditBookingValues && (
+                          <div
+                            onClick={() => setCspUploadOpen(true)}
+                            className="
+                              flex flex-col items-center justify-center
+                              h-28
+                              border-2 border-dashed border-border
+                              rounded-xl cursor-pointer
+                              hover:bg-mutedBg dark:hover:bg-neutral-800
+                              transition-all duration-200
+                            "
+                          >
+                            <Plus size={26} className="text-muted-foreground mb-1" />
+                            <span className="text-xs font-medium text-muted-foreground">
+                              Add Photos
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
-                </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
         {/* -------- Upload Modal -------- */}
         <UploadFinalDoc
@@ -1196,6 +1274,49 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
             paymentId: initialPaymentInfo?.id ?? null,
           }}
         />
+
+        <BaseModal
+          open={cspUploadOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setCspUploadOpen(false);
+              setCspFiles([]);
+            }
+          }}
+          title="Add Booking Stage Site Photos"
+          description="Upload current site photos for the booking stage."
+          size="md"
+        >
+          <div className="p-5 space-y-4">
+            <FileUploadField
+              value={cspFiles}
+              onChange={setCspFiles}
+              accept="image/*,.heic,.heif,.avif,.webp,.bmp,.tif,.tiff,.svg,.jfif"
+              multiple
+              maxFiles={10}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setCspUploadOpen(false);
+                  setCspFiles([]);
+                }}
+                disabled={uploadCspBookingMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleCspUpload}
+                disabled={uploadCspBookingMutation.isPending}
+              >
+                {uploadCspBookingMutation.isPending ? "Uploading..." : "Upload"}
+              </Button>
+            </div>
+          </div>
+        </BaseModal>
 
         {/* -------- Delete Confirmation Dialog -------- */}
         <AlertDialog
@@ -1304,7 +1425,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={submitDesignsMutation.isPending}>
+                <Button
+                  type="submit"
+                  disabled={submitDesignsMutation.isPending}
+                >
                   {submitDesignsMutation.isPending
                     ? "Uploading..."
                     : "Submit Designs"}
@@ -1410,12 +1534,12 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                     <FormControl>
                       <CurrencyInput
                         value={
-                          field.value === ""
-                            ? undefined
-                            : Number(field.value)
+                          field.value === "" ? undefined : Number(field.value)
                         }
                         onChange={(value) =>
-                          field.onChange(value !== undefined ? String(value) : "")
+                          field.onChange(
+                            value !== undefined ? String(value) : "",
+                          )
                         }
                         placeholder="Enter MRP value"
                       />
@@ -1471,12 +1595,12 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                     <FormControl>
                       <CurrencyInput
                         value={
-                          field.value === ""
-                            ? undefined
-                            : Number(field.value)
+                          field.value === "" ? undefined : Number(field.value)
                         }
                         onChange={(value) =>
-                          field.onChange(value !== undefined ? String(value) : "")
+                          field.onChange(
+                            value !== undefined ? String(value) : "",
+                          )
                         }
                         placeholder="Enter total booking value"
                       />
@@ -1519,7 +1643,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
           <Form {...bookingAmountForm}>
             <form
               onSubmit={bookingAmountForm.handleSubmit(
-                handleBookingAmountSubmit
+                handleBookingAmountSubmit,
               )}
               className="space-y-4"
             >
@@ -1532,12 +1656,12 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                     <FormControl>
                       <CurrencyInput
                         value={
-                          field.value === ""
-                            ? undefined
-                            : Number(field.value)
+                          field.value === "" ? undefined : Number(field.value)
                         }
                         onChange={(value) =>
-                          field.onChange(value !== undefined ? String(value) : "")
+                          field.onChange(
+                            value !== undefined ? String(value) : "",
+                          )
                         }
                         placeholder="Enter booking amount"
                       />

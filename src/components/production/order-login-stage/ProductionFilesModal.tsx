@@ -137,7 +137,7 @@ export default function ProductionFilesSection({
           <FileUploadField
             value={selectedFiles}
             onChange={setSelectedFiles}
-            accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
+            accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
             multiple
           />
 

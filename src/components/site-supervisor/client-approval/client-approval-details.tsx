@@ -4,7 +4,10 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { FileText, Ban, Images } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useClientApprovalDetails } from "@/api/client-approval";
+import {
+  useClientApprovalDetails,
+  uploadMoreClientApprovalDocs,
+} from "@/api/client-approval";
 import { useAppSelector } from "@/redux/store";
 import { useDeleteDocument } from "@/api/leads";
 import { ImageComponent } from "@/components/utils/ImageCard";
@@ -20,6 +23,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+import { useMutation } from "@tanstack/react-query";
+import BaseModal from "@/components/utils/baseModal";
+import { FileUploadField } from "@/components/custom/file-upload";
+import { toast } from "react-toastify";
+import { canUploadClientApproval } from "@/components/utils/privileges";
 
 interface Props {
   leadId: number;
@@ -38,6 +47,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
     vendorId,
     leadId
   );
+  const { data: leadDetails } = useLeadById(leadId, vendorId, userId);
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
@@ -48,12 +58,19 @@ export default function ClientApprovalDetails({ leadId }: Props) {
 
   // 🧩 Local State
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
+  const [openUploadMore, setOpenUploadMore] = useState(false);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
 
   //🧩 Permissions
   const canDelete =
     userType === "admin" ||
     userType === "super-admin" ||
     (userType === "sales-executive" && leadStatus === "client-approval-stage");
+  const canUpload = canUploadClientApproval(userType);
+  const accountId =
+    leadDetails?.data?.lead?.account_id ||
+    leadDetails?.data?.lead?.account?.id ||
+    0;
 
   // 🧩 Handlers
   const handleConfirmDelete = () => {
@@ -85,6 +102,40 @@ export default function ClientApprovalDetails({ leadId }: Props) {
     if (!amount) return "N/A";
     const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
     return new Intl.NumberFormat("en-IN").format(numAmount);
+  };
+
+  const uploadMoreMutation = useMutation({
+    mutationFn: () =>
+      uploadMoreClientApprovalDocs({
+        leadId,
+        accountId,
+        vendorId: vendorId!,
+        createdBy: userId!,
+        documents: uploadFiles,
+      }),
+    onSuccess: () => {
+      toast.success("Screenshots uploaded successfully");
+      setUploadFiles([]);
+      setOpenUploadMore(false);
+      refetch();
+    },
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.message || "Failed to upload screenshots"
+      );
+    },
+  });
+
+  const handleUploadMore = () => {
+    if (!vendorId || !userId || !accountId) {
+      toast.error("Missing required identifiers");
+      return;
+    }
+    if (uploadFiles.length === 0) {
+      toast.error("Please select at least one file");
+      return;
+    }
+    uploadMoreMutation.mutate();
   };
 
   // 🧩 Loading & Error UI
@@ -219,46 +270,48 @@ export default function ClientApprovalDetails({ leadId }: Props) {
       )}
 
       {/* -------- Approval Screenshots Section -------- */}
-      {screenshots && screenshots.length > 0 && (
-        <div
-          className="
+      <div
+        className="
     bg-[#fff] dark:bg-[#0a0a0a]
     rounded-2xl border border-border 
     overflow-hidden shadow-soft
   "
-        >
-          {/* Header */}
-          <div
-            className="
+      >
+        {/* Header */}
+        <div
+          className="
       flex items-center justify-between 
       px-5 py-3 
       border-b border-border 
       bg-[#fff] dark:bg-[#0a0a0a]
     "
-          >
-            <div className="flex items-center gap-2">
-              <FileText size={20} />
-              <h1 className="text-lg font-semibold tracking-tight">
-                Client Approval Screenshots
-              </h1>
-            </div>
+        >
+          <div className="flex items-center gap-2">
+            <FileText size={20} />
+            <h1 className="text-lg font-semibold tracking-tight">
+              Client Approval Screenshots
+            </h1>
+          </div>
 
-            {/* <Button
+          {canUpload && (
+            <Button
               variant="outline"
               size="sm"
-              onClick={() => refetch()}
+              onClick={() => setOpenUploadMore(true)}
               className="
           rounded-lg border-border 
           bg-[#fff] dark:bg-[#0a0a0a]
           dark:border-neutral-700
         "
             >
-              Refresh
-            </Button> */}
-          </div>
+              Add More Screenshots
+            </Button>
+          )}
+        </div>
 
-          {/* Body */}
-          <div className="p-6">
+        {/* Body */}
+        <div className="p-6">
+          {screenshots && screenshots.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {screenshots.map((img: any, index: any) => (
                 <ImageComponent
@@ -276,9 +329,26 @@ export default function ClientApprovalDetails({ leadId }: Props) {
                 />
               ))}
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <Images size={42} className="text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">
+                No approval screenshots uploaded yet.
+              </p>
+              {canUpload && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => setOpenUploadMore(true)}
+                >
+                  Add More Screenshots
+                </Button>
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* -------- Delete Confirmation Dialog -------- */}
       <AlertDialog
@@ -304,6 +374,51 @@ export default function ClientApprovalDetails({ leadId }: Props) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {canUpload && accountId ? (
+        <BaseModal
+          open={openUploadMore}
+          onOpenChange={(open) => {
+            if (!open) {
+              setOpenUploadMore(false);
+              setUploadFiles([]);
+            }
+          }}
+          title="Add Client Approval Screenshots"
+          description="Upload additional client approval screenshots."
+          size="md"
+        >
+          <div className="p-5 space-y-4">
+            <FileUploadField
+              value={uploadFiles}
+              onChange={setUploadFiles}
+              accept="image/*,.heic,.heif,.avif,.webp,.bmp,.tif,.tiff,.svg,.jfif"
+              multiple
+              maxFiles={10}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setOpenUploadMore(false);
+                  setUploadFiles([]);
+                }}
+                disabled={uploadMoreMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleUploadMore}
+                disabled={uploadMoreMutation.isPending}
+              >
+                {uploadMoreMutation.isPending ? "Uploading..." : "Upload"}
+              </Button>
+            </div>
+          </div>
+        </BaseModal>
+      ) : null}
     </motion.div>
   );
 }
