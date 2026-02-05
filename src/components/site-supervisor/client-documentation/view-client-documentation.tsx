@@ -47,10 +47,12 @@ export default function ClientDocumentationDetails({
   );
   const userId = useAppSelector((state) => state.auth.user?.id);
 
+
   // 🧩 API hooks
   const { data: leadDetails, isLoading } = useClientDocumentationDetails(
     vendorId!,
-    leadId
+    leadId,
+    userId!
   );
 
   const { data: selectionsData } = useSelectionData(vendorId!, leadId);

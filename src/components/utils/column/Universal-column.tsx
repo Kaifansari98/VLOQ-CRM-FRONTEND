@@ -125,6 +125,21 @@ export function getUniversalTableColumns(
       enableColumnFilter: true,
     },
 
+    // 14) Product Structures
+    {
+      accessorKey: "furnitueStructures",
+      filterFn: tableMultiValueFilter,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Furniture Structures" />
+      ),
+      meta: {
+        label: "Furniture Structures",
+      },
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
+    },
+    
     // 5) Address / Map Link
     {
       accessorKey: "site_map_link",
@@ -346,20 +361,6 @@ export function getUniversalTableColumns(
       },
     },
 
-    // 14) Product Structures
-    {
-      accessorKey: "furnitueStructures",
-      filterFn: tableMultiValueFilter,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Furniture Structures" />
-      ),
-      meta: {
-        label: "Furniture Structures",
-      },
-      enableSorting: false,
-      enableHiding: true,
-      enableColumnFilter: true,
-    },
     // 15) Designer Remark
     {
       accessorKey: "designerRemark",

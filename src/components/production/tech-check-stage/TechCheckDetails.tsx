@@ -50,16 +50,20 @@ const itemVariants = {
 export default function TechCheckDetails({ leadId }: Props) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)!;
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type
+    (state) => state.auth.user?.user_type.user_type,
   );
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   // ✅ Hooks
-  const { data: clientDocs } = useClientDocumentationDetails(vendorId, leadId);
+  const { data: clientDocs } = useClientDocumentationDetails(
+    vendorId,
+    leadId,
+    userId!,
+  );
   const { data: siteMeasurement } = useSiteMeasurementLeadById(leadId);
   const { data: finalMeasurement } = useFinalMeasurementLeadById(
     vendorId,
-    leadId
+    leadId,
   );
 
   console.log("Client Documentation: ", clientDocs);
@@ -88,7 +92,7 @@ export default function TechCheckDetails({ leadId }: Props) {
         (d) =>
           !d.tech_check_status ||
           d.tech_check_status === "PENDING" ||
-          d.tech_check_status === "REVISED"
+          d.tech_check_status === "REVISED",
       );
     }
 
@@ -128,33 +132,33 @@ export default function TechCheckDetails({ leadId }: Props) {
 
   const filteredPptImages = filteredPptDocs.filter((file) =>
     imageExtensions.includes(
-      file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
-    )
+      file.doc_og_name?.split(".").pop()?.toLowerCase() || "",
+    ),
   );
   const filteredPptDocuments = filteredPptDocs.filter((file) =>
     documentExtensions.includes(
-      file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
-    )
+      file.doc_og_name?.split(".").pop()?.toLowerCase() || "",
+    ),
   );
 
   const filteredPythaDocuments = filteredPythaDocs.filter((file) =>
     documentExtensions.includes(
-      file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
-    )
+      file.doc_og_name?.split(".").pop()?.toLowerCase() || "",
+    ),
   );
 
   // Calculate stats from ALL docs (ppt + pytha)
   const approvedDocs = allDocs.filter(
-    (d) => d.tech_check_status === "APPROVED"
+    (d) => d.tech_check_status === "APPROVED",
   ).length;
   const rejectedDocs = allDocs.filter(
-    (d) => d.tech_check_status === "REJECTED"
+    (d) => d.tech_check_status === "REJECTED",
   ).length;
   const pendingDocs = allDocs.filter(
     (d) =>
       !d.tech_check_status ||
       d.tech_check_status === "PENDING" ||
-      d.tech_check_status === "REVISED"
+      d.tech_check_status === "REVISED",
   ).length;
 
   // ✅ Permissions
@@ -229,7 +233,7 @@ export default function TechCheckDetails({ leadId }: Props) {
             <span className="text-sm font-semibold text-foreground">
               {data?.client_required_order_login_complition_date
                 ? new Date(
-                    data.client_required_order_login_complition_date
+                    data.client_required_order_login_complition_date,
                   ).toLocaleDateString("en-GB", {
                     weekday: "long",
                     day: "2-digit",
@@ -740,8 +744,8 @@ export default function TechCheckDetails({ leadId }: Props) {
                     No Final Measurement Documents
                   </h3>
                   <p className="text-xs text-muted-foreground text-center max-w-xs">
-                    Once final measurement documents are uploaded, they will appear
-                    here.
+                    Once final measurement documents are uploaded, they will
+                    appear here.
                   </p>
                 </div>
               ) : (

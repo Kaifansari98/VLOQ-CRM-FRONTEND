@@ -119,7 +119,6 @@ export function UniversalTable({
     createdAt: false,
     altContact: false,
     email: false,
-    furnitueStructures: false,
     designerRemark: false,
   });
 

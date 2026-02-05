@@ -7,6 +7,8 @@ import {
 import {
   getClientDocumentationDetails,
   getClientDocumentationLeads,
+  getOrderLoginEligibility,
+  OrderLoginEligibilityResponse,
   uploadMoreClientDocumentation,
   UploadMoreDocPayload,
 } from "@/api/client-documentation";
@@ -48,13 +50,26 @@ export const useClientDocumentationLeads = () => {
 
 export const useClientDocumentationDetails = (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  userId: number,
 ) => {
   return useQuery<ClientDocDetailsResponse>({
     queryKey: ["clientDocumentationDetails", vendorId, leadId],
-    queryFn: () => getClientDocumentationDetails(vendorId, leadId),
-    enabled: !!vendorId && !!leadId,
+    queryFn: () => getClientDocumentationDetails(vendorId, leadId, userId),
+    enabled: !!vendorId && !!leadId && !!userId,
     staleTime: 5 * 60 * 1000,
+  });
+};
+
+export const useOrderLoginEligibility = (vendorId: number, leadId: number) => {
+  return useQuery<OrderLoginEligibilityResponse>({
+    queryKey: ["MoveToOrderLogin", vendorId, leadId],
+
+    queryFn: () => getOrderLoginEligibility(vendorId, leadId),
+
+    enabled: !!vendorId && !!leadId,
+
+    staleTime: 2 * 60 * 1000, // eligibility should refresh quickly
   });
 };
 
