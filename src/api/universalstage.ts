@@ -33,6 +33,8 @@ export interface ProductStructureInstance {
   title: string;
   quantity_index: number;
   product_structure_id: number;
+  is_tech_check_completed?: boolean | null;
+  tech_check_completed_at?: string | null;
   productStructure?: ProductStructure | null;
 }
 

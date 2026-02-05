@@ -242,6 +242,42 @@ export default function ClientApprovalLeadDetails() {
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory = canViewSiteHistoryTab(userType);
 
+  const moveScope = validInstanceId
+    ? {
+        ppt: pptDocs,
+        pytha: pythaDocs,
+        docs,
+      }
+    : {
+        ppt: allPptDocs,
+        pytha: allPythaDocs,
+        docs: allDocs,
+      };
+
+  const approvedPPTCount = moveScope.ppt.filter(
+    (d) => d.tech_check_status === "APPROVED"
+  ).length;
+  const approvedPythaCount = moveScope.pytha.filter(
+    (d) => d.tech_check_status === "APPROVED"
+  ).length;
+  const approvedCount = approvedPPTCount + approvedPythaCount;
+  const pendingCount = moveScope.docs.filter(
+    (d) =>
+      !d.tech_check_status ||
+      d.tech_check_status === "PENDING" ||
+      d.tech_check_status === "REVISED"
+  ).length;
+  const requiredApprovalCount = validInstanceId
+    ? moveScope.docs.length
+    : (no_of_client_documents_initially_submitted || 0);
+  const isMoveToOrderLoginDisabled =
+    requiredApprovalCount > 0
+      ? approvedCount < requiredApprovalCount ||
+        pendingCount > 0 ||
+        approvedPPTCount === 0 ||
+        approvedPythaCount === 0
+      : pendingCount > 0 || approvedPPTCount === 0 || approvedPythaCount === 0;
+
   return (
     <>
       {/* Header */}
@@ -275,50 +311,18 @@ export default function ClientApprovalLeadDetails() {
           <div className="hidden lg:flex">
             {canMoveToOrderLogin(userType) &&
               (() => {
-                const approvedPPT = allPptDocs.filter(
-                  (d) => d.tech_check_status === "APPROVED"
-                ).length;
-
-                const approvedPytha = allPythaDocs.filter(
-                  (d) => d.tech_check_status === "APPROVED"
-                ).length;
-
-                const approvedCount = approvedPPT + approvedPytha;
-
-                const pendingCount = allDocs.filter(
-                  (d) =>
-                    !d.tech_check_status ||
-                    d.tech_check_status === "PENDING" ||
-                    d.tech_check_status === "REVISED"
-                ).length;
-
-                // Disabled if:
-                // 1. No approved docs
-                // 2. Still some pending docs
-                // 3. No PPT approved
-                // 4. No Pytha approved
-                const isDisabled =
-                  approvedCount <
-                    (no_of_client_documents_initially_submitted || 0) ||
-                  pendingCount > 0 ||
-                  approvedPPT === 0 ||
-                  approvedPytha === 0;
-
-                if (isDisabled) {
+                if (isMoveToOrderLoginDisabled) {
                   let tooltipMsg = "";
 
-                  if (
-                    no_of_client_documents_initially_submitted &&
-                    approvedCount < no_of_client_documents_initially_submitted
-                  ) {
+                  if (requiredApprovalCount && approvedCount < requiredApprovalCount) {
                     tooltipMsg =
                       userType === "sales-executive"
                         ? `Once Tech Check is completed, then only lead can be move to Order Login.`
-                        : `You must approve all initially submitted client documents (${no_of_client_documents_initially_submitted}) before moving to Order Login.`;
-                  } else if (approvedPPT === 0) {
+                        : `You must approve all required client documents (${requiredApprovalCount}) before moving to Order Login.`;
+                  } else if (approvedPPTCount === 0) {
                     tooltipMsg =
                       "At least one PPT file must be approved before moving to Order Login.";
-                  } else if (approvedPytha === 0) {
+                  } else if (approvedPythaCount === 0) {
                     tooltipMsg =
                       "At least one Pytha file must be approved before moving to Order Login.";
                   } else if (pendingCount > 0) {
@@ -388,47 +392,15 @@ export default function ClientApprovalLeadDetails() {
 
               {canMoveToOrderLogin(userType) &&
                 (() => {
-                  const approvedPPT = allPptDocs.filter(
-                    (d) => d.tech_check_status === "APPROVED"
-                  ).length;
-
-                  const approvedPytha = allPythaDocs.filter(
-                    (d) => d.tech_check_status === "APPROVED"
-                  ).length;
-
-                  const approvedCount = approvedPPT + approvedPytha;
-
-                  const pendingCount = allDocs.filter(
-                    (d) =>
-                      !d.tech_check_status ||
-                      d.tech_check_status === "PENDING" ||
-                      d.tech_check_status === "REVISED"
-                  ).length;
-
-                  // Disabled if:
-                  // 1. No approved docs
-                  // 2. Still some pending docs
-                  // 3. No PPT approved
-                  // 4. No Pytha approved
-                  const isDisabled =
-                    approvedCount <
-                      (no_of_client_documents_initially_submitted || 0) ||
-                    pendingCount > 0 ||
-                    approvedPPT === 0 ||
-                    approvedPytha === 0;
-
-                  if (isDisabled) {
+                  if (isMoveToOrderLoginDisabled) {
                     let tooltipMsg = "";
 
-                    if (
-                      no_of_client_documents_initially_submitted &&
-                      approvedCount < no_of_client_documents_initially_submitted
-                    ) {
-                      tooltipMsg = `You must approve all initially submitted client documents (${no_of_client_documents_initially_submitted}) before moving to Order Login.`;
-                    } else if (approvedPPT === 0) {
+                    if (requiredApprovalCount && approvedCount < requiredApprovalCount) {
+                      tooltipMsg = `You must approve all required client documents (${requiredApprovalCount}) before moving to Order Login.`;
+                    } else if (approvedPPTCount === 0) {
                       tooltipMsg =
                         "At least one PPT file must be approved before moving to Order Login.";
-                    } else if (approvedPytha === 0) {
+                    } else if (approvedPythaCount === 0) {
                       tooltipMsg =
                         "At least one Pytha file must be approved before moving to Order Login.";
                     } else if (pendingCount > 0) {
@@ -1366,6 +1338,7 @@ export default function ClientApprovalLeadDetails() {
         data={{
           id: leadIdNum,
           accountId: accountId,
+          instanceId: validInstanceId,
         }}
       />
     </>

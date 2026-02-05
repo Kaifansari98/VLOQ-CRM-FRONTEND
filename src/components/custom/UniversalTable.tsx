@@ -349,23 +349,36 @@ export function UniversalTable({
       const instances = Array.isArray(lead?.productStructureInstances)
         ? lead.productStructureInstances
         : [];
+      const pendingInstances = instances.filter(
+        (instance: any) => instance?.is_tech_check_completed !== true
+      );
 
-      if (instances.length <= 1) {
+      if (pendingInstances.length === 0) {
+        return;
+      }
+
+      if (pendingInstances.length <= 1) {
+        const onlyInstance = pendingInstances[0];
         const structureType =
-          instances[0]?.productStructure?.type ??
+          onlyInstance?.productStructure?.type ??
           lead.leadProductStructureMapping?.[0]?.productStructure?.type ??
           "";
+        const suffix =
+          instances.length > 1
+            ? `.${(onlyInstance?.quantity_index ?? 0) + 1}`
+            : "";
         expanded.push(
           mapUniversalRow(lead, expanded.length, {
             rowKey: String(lead.id),
-            instanceId: instances[0]?.id,
+            instanceId: onlyInstance?.id,
+            leadCodeSuffix: suffix,
             furnitureStructureOverride: structureType,
           }),
         );
         return;
       }
 
-      instances.forEach((instance: any, instanceIndex: number) => {
+      pendingInstances.forEach((instance: any, instanceIndex: number) => {
         const structureType =
           instance?.productStructure?.type ??
           lead.leadProductStructureMapping?.find(

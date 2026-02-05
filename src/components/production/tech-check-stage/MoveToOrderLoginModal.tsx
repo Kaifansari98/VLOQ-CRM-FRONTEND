@@ -53,6 +53,7 @@ interface MoveToOrderLoginModalProps {
   data: {
     id: number;
     accountId: number;
+    instanceId?: number | null;
   };
 }
 
@@ -114,11 +115,20 @@ export default function MoveToOrderLoginModal({
         userId,
         assignToUserId: assignUserId,
         accountId: data.accountId,
+        productStructureInstanceId: data.instanceId ?? undefined,
       },
       {
         onSuccess: () => {
-          toast.success("Lead moved to Order Login successfully!");
-          router.push("/dashboard/production/order-login");
+          toast.success(
+            data.instanceId
+              ? "Tech Check marked complete for this instance."
+              : "Lead moved to Order Login successfully!"
+          );
+          router.push(
+            data.instanceId
+              ? "/dashboard/production/tech-check"
+              : "/dashboard/production/order-login"
+          );
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
           queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
           setConfirmOpen(false);
