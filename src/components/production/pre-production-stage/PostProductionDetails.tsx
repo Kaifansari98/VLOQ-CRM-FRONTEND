@@ -56,11 +56,13 @@ type BoxFormValues = z.infer<typeof boxSchema>;
 interface PostProductionDetailsProps {
   leadId: number;
   accountId?: number;
+  instanceId?: number | null;
 }
 
 export default function PostProductionDetails({
   leadId,
   accountId,
+  instanceId,
 }: PostProductionDetailsProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
@@ -128,6 +130,7 @@ export default function PostProductionDetails({
         <WoodworkPackingDetailsSection
           leadId={leadId}
           accountId={accountId ?? null}
+          instanceId={instanceId}
         />
       ),
     },
@@ -143,6 +146,7 @@ export default function PostProductionDetails({
         <HardwarePackingDetailsSection
           leadId={leadId}
           accountId={accountId ?? null}
+          instanceId={instanceId}
         />
       ),
     },
@@ -158,6 +162,7 @@ export default function PostProductionDetails({
         <PostProductionQcPhotosSection
           leadId={leadId}
           accountId={accountId ?? null}
+          instanceId={instanceId}
         />
       ),
     },

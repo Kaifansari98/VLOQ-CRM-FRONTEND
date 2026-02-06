@@ -72,7 +72,11 @@ export default function LeadDetailsProductionUtil({
       disabledReason:
         "You can access Post Production only after completing Under-Production.",
       cardContent: (
-        <PostProductionDetails leadId={leadId} accountId={accountId} />
+        <PostProductionDetails
+          leadId={leadId}
+          accountId={accountId}
+          instanceId={instanceId}
+        />
       ),
     },
   ];

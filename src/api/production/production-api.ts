@@ -174,13 +174,20 @@ export const useLatestOrderLoginByLead = (
   });
 };
 
-export const useQcPhotos = (vendorId?: number, leadId?: number) => {
+export const useQcPhotos = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null
+) => {
   return useQuery({
-    queryKey: ["qcPhotos", vendorId, leadId],
+    queryKey: ["qcPhotos", vendorId, leadId, instanceId ?? "all"],
     queryFn: async () => {
       if (!vendorId || !leadId) return [];
       const { data } = await apiClient.get(
-        `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/get-qc-photos`
+        `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/get-qc-photos`,
+        {
+          params: instanceId != null ? { instance_id: instanceId } : undefined,
+        }
       );
       return data?.data || [];
     },
@@ -188,14 +195,22 @@ export const useQcPhotos = (vendorId?: number, leadId?: number) => {
   });
 };
 
-export const useUploadQcPhotos = (vendorId?: number, leadId?: number) => {
+export const useUploadQcPhotos = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null
+) => {
   return useMutation({
     mutationFn: async (formData: FormData) => {
       if (!vendorId || !leadId) throw new Error("Missing vendorId or leadId");
+      if (instanceId != null) {
+        formData.append("instance_id", String(instanceId));
+      }
       const { data } = await apiClient.post(
         `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/upload-qc-photos`,
         formData,
         {
+          params: instanceId != null ? { instance_id: instanceId } : undefined,
           headers: { "Content-Type": "multipart/form-data" },
         }
       );
@@ -209,10 +224,14 @@ export const useUploadQcPhotos = (vendorId?: number, leadId?: number) => {
 // ──────────────────────────────────────────────
 export const getHardwarePackingDetails = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.get(
-    `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/get-hardware-packing-details`
+    `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/get-hardware-packing-details`,
+    {
+      params: instanceId != null ? { instance_id: instanceId } : undefined,
+    }
   );
   return data;
 };
@@ -223,12 +242,17 @@ export const getHardwarePackingDetails = async (
 export const uploadHardwarePackingDetails = async (
   vendorId: number,
   leadId: number,
-  formData: FormData
+  formData: FormData,
+  instanceId?: number | null
 ) => {
+  if (instanceId != null) {
+    formData.append("instance_id", String(instanceId));
+  }
   const { data } = await apiClient.post(
     `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/upload-hardware-packing-details`,
     formData,
     {
+      params: instanceId != null ? { instance_id: instanceId } : undefined,
       headers: { "Content-Type": "multipart/form-data" },
     }
   );
@@ -240,22 +264,24 @@ export const uploadHardwarePackingDetails = async (
 // ──────────────────────────────────────────────
 export const useGetHardwarePackingDetails = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
+  instanceId?: number | null
 ) => {
   return useQuery({
-    queryKey: ["hardwarePackingDetails", vendorId, leadId],
-    queryFn: () => getHardwarePackingDetails(vendorId!, leadId!),
+    queryKey: ["hardwarePackingDetails", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getHardwarePackingDetails(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
 
 export const useUploadHardwarePackingDetails = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
+  instanceId?: number | null
 ) => {
   return useMutation({
     mutationFn: (formData: FormData) =>
-      uploadHardwarePackingDetails(vendorId!, leadId!, formData),
+      uploadHardwarePackingDetails(vendorId!, leadId!, formData, instanceId),
   });
 };
 
@@ -264,10 +290,14 @@ export const useUploadHardwarePackingDetails = (
 // ──────────────────────────────────────────────
 export const getWoodworkPackingDetails = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.get(
-    `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/get-woodwork-packing-details`
+    `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/get-woodwork-packing-details`,
+    {
+      params: instanceId != null ? { instance_id: instanceId } : undefined,
+    }
   );
   return data;
 };
@@ -278,12 +308,17 @@ export const getWoodworkPackingDetails = async (
 export const uploadWoodworkPackingDetails = async (
   vendorId: number,
   leadId: number,
-  formData: FormData
+  formData: FormData,
+  instanceId?: number | null
 ) => {
+  if (instanceId != null) {
+    formData.append("instance_id", String(instanceId));
+  }
   const { data } = await apiClient.post(
     `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/upload-woodwork-packing-details`,
     formData,
     {
+      params: instanceId != null ? { instance_id: instanceId } : undefined,
       headers: { "Content-Type": "multipart/form-data" },
     }
   );
@@ -295,22 +330,24 @@ export const uploadWoodworkPackingDetails = async (
 // ──────────────────────────────────────────────
 export const useGetWoodworkPackingDetails = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
+  instanceId?: number | null
 ) => {
   return useQuery({
-    queryKey: ["woodworkPackingDetails", vendorId, leadId],
-    queryFn: () => getWoodworkPackingDetails(vendorId!, leadId!),
+    queryKey: ["woodworkPackingDetails", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getWoodworkPackingDetails(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
 
 export const useUploadWoodworkPackingDetails = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
+  instanceId?: number | null
 ) => {
   return useMutation({
     mutationFn: (formData: FormData) =>
-      uploadWoodworkPackingDetails(vendorId!, leadId!, formData),
+      uploadWoodworkPackingDetails(vendorId!, leadId!, formData, instanceId),
   });
 };
 
@@ -364,10 +401,14 @@ export const useGetNoOfBoxes = (vendorId?: number, leadId?: number) => {
 // ✅ --- Check Post-Production Completeness ---
 export const getPostProductionCompleteness = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.get(
-    `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/check-post-production-completeness`
+    `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/check-post-production-completeness`,
+    {
+      params: instanceId != null ? { instance_id: instanceId } : undefined,
+    }
   );
   return data?.data;
 };
@@ -375,11 +416,12 @@ export const getPostProductionCompleteness = async (
 // ✅ --- React Query Hook: Post-Production Completeness ---
 export const usePostProductionCompleteness = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
+  instanceId?: number | null
 ) => {
   return useQuery({
-    queryKey: ["postProductionCompleteness", vendorId, leadId],
-    queryFn: () => getPostProductionCompleteness(vendorId!, leadId!),
+    queryKey: ["postProductionCompleteness", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getPostProductionCompleteness(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
