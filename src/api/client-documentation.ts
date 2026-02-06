@@ -13,15 +13,9 @@ export const getClientDocumentationLeads = async (
 export const getClientDocumentationDetails = async (
   vendorId: number,
   leadId: number,
-  userId: number,
 ) => {
   const { data } = await apiClient.get(
     `/leads/client-documentation/vendorId/${vendorId}/leadId/${leadId}`,
-    {
-      params: {
-        userId, // 👈 GET query param
-      },
-    },
   );
 
   return data.data;

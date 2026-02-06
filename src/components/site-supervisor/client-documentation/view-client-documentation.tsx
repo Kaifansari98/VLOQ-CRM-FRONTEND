@@ -43,12 +43,10 @@ export default function ClientDocumentationDetails({
   const userType = rawUserType?.toLowerCase() ?? "";
   const userId = useAppSelector((state) => state.auth.user?.id);
 
-
   // 🧩 API hooks
   const { data: leadDetails, isLoading } = useClientDocumentationDetails(
     vendorId!,
-    leadId,
-    userId!
+    leadId
   );
 
   const { mutate: deleteDocument, isPending: deleting } =
