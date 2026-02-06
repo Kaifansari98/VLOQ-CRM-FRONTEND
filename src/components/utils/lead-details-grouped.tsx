@@ -36,6 +36,8 @@ export interface LeadDetailsGroupedProps {
   /** 👇 NEW PROP to control visible group range */
   defaultParentTab?: GroupKey;
   techCheckInstanceId?: number | null;
+  orderLoginInstanceId?: number | null;
+  productionInstanceId?: number | null;
 }
 
 const GROUP_ORDER: GroupKey[] = [
@@ -55,6 +57,8 @@ export default function LeadDetailsGrouped({
   maxVisibleStage,
   defaultParentTab = "installation", // default: show all
   techCheckInstanceId,
+  orderLoginInstanceId,
+  productionInstanceId,
 }: LeadDetailsGroupedProps) {
   const searchParams = useSearchParams();
   const groups = {
@@ -122,6 +126,7 @@ export default function LeadDetailsGrouped({
             leadId={leadId}
             accountId={accountId}
             name={leadName}
+            instanceId={orderLoginInstanceId}
           />
         ),
       },
@@ -129,7 +134,11 @@ export default function LeadDetailsGrouped({
         id: "production",
         title: "Production Stage",
         component: (
-          <LeadDetailsProductionUtil leadId={leadId} accountId={accountId} />
+          <LeadDetailsProductionUtil
+            leadId={leadId}
+            accountId={accountId}
+            instanceId={productionInstanceId}
+          />
         ),
       },
       {

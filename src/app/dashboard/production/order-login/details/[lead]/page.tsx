@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
@@ -80,7 +80,12 @@ import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 
 export default function OrderLoginLeadDetails() {
   const { lead: leadId } = useParams();
+  const searchParams = useSearchParams();
   const leadIdNum = Number(leadId);
+  const instanceId = searchParams.get("instance_id");
+  const instanceIdNum = instanceId ? Number(instanceId) : null;
+  const validInstanceId =
+    instanceIdNum && !Number.isNaN(instanceIdNum) ? instanceIdNum : null;
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -89,7 +94,7 @@ export default function OrderLoginLeadDetails() {
   );
 
   const { data: readiness, isLoading: readinessLoading } =
-    useLeadProductionReadiness(vendorId, leadIdNum);
+    useLeadProductionReadiness(vendorId, leadIdNum, validInstanceId ?? undefined);
 
   // derive convenience flags & message
   const lacksProdFiles = readiness ? !readiness.productionFiles?.hasAny : false;
@@ -372,6 +377,11 @@ export default function OrderLoginLeadDetails() {
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
+            orderLoginInstanceId={
+              instanceIdNum && !Number.isNaN(instanceIdNum)
+                ? instanceIdNum
+                : null
+            }
           />
         </TabsContent>
 
@@ -382,6 +392,11 @@ export default function OrderLoginLeadDetails() {
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
+            orderLoginInstanceId={
+              instanceIdNum && !Number.isNaN(instanceIdNum)
+                ? instanceIdNum
+                : null
+            }
           />
         </TabsContent>
 
@@ -468,7 +483,7 @@ export default function OrderLoginLeadDetails() {
       <MoveToProductionModal
         open={openMoveToProduction}
         onOpenChange={setOpenMoveToProduction}
-        data={{ id: Number(leadId), accountId }}
+        data={{ id: Number(leadId), accountId, instanceId: validInstanceId }}
         client_required_order_login_complition_date={
           client_required_order_login_complition_date
         }

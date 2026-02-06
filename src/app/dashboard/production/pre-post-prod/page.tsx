@@ -59,7 +59,7 @@ export default function ProductionPage() {
         >
           <UniversalTable
             title="Production Stage"
-            description="Monitor, validate, and manage all pre- and post-production workflow activities efficiently."
+            description="Monitor, validate, and manage all pre and post production workflow activities efficiently."
             type="Type 10"
             enableAdminTabs={true}
             onRowNavigate={navigateProductionStage}

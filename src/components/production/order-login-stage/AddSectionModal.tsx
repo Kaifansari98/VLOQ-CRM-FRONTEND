@@ -19,6 +19,7 @@ interface AddSectionModalProps {
   users: { id: number; label: string; in_house?: boolean }[];
   leadId: number;
   accountId: number;
+  instanceId?: number | null;
   onSectionAdded: (section: { title: string }) => void;
 }
 
@@ -26,6 +27,7 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
   users,
   leadId,
   accountId,
+  instanceId,
   onSectionAdded,
 }) => {
   const [open, setOpen] = useState(false);
@@ -86,6 +88,7 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
       const payload = {
         lead_id: leadId,
         account_id: accountId,
+        instance_id: instanceId ?? null,
         item_type: newTitle.trim(),
         item_desc: sectionData.item_desc.trim(),
         company_vendor_id: sectionData.company_vendor_id,

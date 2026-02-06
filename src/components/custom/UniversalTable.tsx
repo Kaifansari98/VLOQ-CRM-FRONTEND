@@ -338,8 +338,9 @@ export function UniversalTable({
     const normalizedType = String(type || "").trim().toLowerCase();
     const isType8 = normalizedType === "type 8";
     const isType9 = normalizedType === "type 9";
+    const isType10 = normalizedType === "type 10";
 
-    if (!isType8 && !isType9) {
+    if (!isType8 && !isType9 && !isType10) {
       return activeData.map((item, idx) =>
         mapUniversalRow(item, idx, { rowKey: String(item.id) }),
       );
@@ -356,13 +357,14 @@ export function UniversalTable({
           ? instance?.is_tech_check_completed !== true
           : instance?.is_order_login_completed !== true
       );
+      const instanceRows = isType10 ? instances : pendingInstances;
 
-      if (pendingInstances.length === 0) {
+      if (instanceRows.length === 0) {
         return;
       }
 
-      if (pendingInstances.length <= 1) {
-        const onlyInstance = pendingInstances[0];
+      if (instanceRows.length <= 1) {
+        const onlyInstance = instanceRows[0];
         const structureType =
           onlyInstance?.productStructure?.type ??
           lead.leadProductStructureMapping?.[0]?.productStructure?.type ??
@@ -382,7 +384,7 @@ export function UniversalTable({
         return;
       }
 
-      pendingInstances.forEach((instance: any, instanceIndex: number) => {
+      instanceRows.forEach((instance: any, instanceIndex: number) => {
         const structureType =
           instance?.productStructure?.type ??
           lead.leadProductStructureMapping?.find(

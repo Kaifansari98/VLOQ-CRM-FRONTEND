@@ -10,6 +10,7 @@ import ComingSoon from "@/components/generics/ComingSoon";
 interface PreProductionDetailsProps {
   leadId?: number;
   accountId?: number;
+  instanceId?: number | null;
 }
 
 export interface CompanyVendor {
@@ -36,9 +37,14 @@ export interface OrderLoginItem {
 
 export default function PreProductionDetails({
   leadId,
+  instanceId,
 }: PreProductionDetailsProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
-  const { data, isLoading, isError } = useOrderLoginByLead(vendorId, leadId);
+  const { data, isLoading, isError } = useOrderLoginByLead(
+    vendorId,
+    leadId,
+    instanceId ?? undefined
+  );
   console.log("Under production Data: ", data);
 
   const { data: ClientRequiredCompletionDate } =

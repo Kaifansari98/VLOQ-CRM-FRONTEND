@@ -33,12 +33,14 @@ interface ProductionFilesSectionProps {
   leadId: number;
   accountId: number | null;
   readOnly?: boolean;
+  instanceId?: number | null;
 }
 
 export default function ProductionFilesSection({
   leadId,
   accountId,
   readOnly = false,
+  instanceId,
 }: ProductionFilesSectionProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
@@ -51,11 +53,13 @@ export default function ProductionFilesSection({
 
   const { data: productionFiles, isLoading } = useProductionFiles(
     vendorId,
-    leadId
+    leadId,
+    instanceId
   );
   const { mutateAsync: uploadFiles, isPending } = useUploadProductionFiles(
     vendorId,
-    leadId
+    leadId,
+    instanceId
   );
 
   const leadStatus = leadData?.status;
@@ -81,7 +85,7 @@ export default function ProductionFilesSection({
       setSelectedFiles([]);
 
       queryClient.invalidateQueries({
-        queryKey: ["productionFiles", vendorId, leadId],
+        queryKey: ["productionFiles", vendorId, leadId, instanceId ?? "all"],
       });
       queryClient.invalidateQueries({
         queryKey: ["leadProductionReadiness", vendorId, leadId],

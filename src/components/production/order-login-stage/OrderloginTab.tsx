@@ -30,9 +30,14 @@ import AddSectionModal from "./AddSectionModal";
 interface OrderLoginTabProps {
   leadId: number;
   accountId: number;
+  instanceId?: number | null;
 }
 
-const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
+const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
+  leadId,
+  accountId,
+  instanceId,
+}) => {
   const queryClient = useQueryClient();
 
   // Redux selectors
@@ -44,7 +49,11 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
 
   // API hooks
   const { data: companyVendors } = useCompanyVendors(vendorId);
-  const { data: orderLoginData } = useOrderLoginByLead(vendorId, leadId);
+  const { data: orderLoginData } = useOrderLoginByLead(
+    vendorId,
+    leadId,
+    instanceId ?? undefined,
+  );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
 
@@ -56,6 +65,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
     vendorId,
     leadId,
     accountId,
+    instanceId ?? undefined,
   );
 
   // Local state
@@ -158,6 +168,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
           item_type: title,
           item_desc: description.trim() || "N/A",
           company_vendor_id: breakups[title]?.company_vendor_id || null,
+          instance_id: instanceId ?? null,
           created_by: userId,
           updated_by: userId,
         };
@@ -165,7 +176,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
         await uploadMultiple([newRecord]);
 
         queryClient.invalidateQueries({
-          queryKey: ["orderLoginByLead", vendorId, leadId],
+          queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
         });
         // ✅ No toast for description save - silent
       } catch (err: any) {
@@ -188,7 +199,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
       });
 
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId],
+        queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
       });
       // ✅ No toast for description save - silent
     } catch (err: any) {
@@ -248,6 +259,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
           item_type: title,
           item_desc: breakups[title]?.item_desc?.trim() || "N/A",
           company_vendor_id: selectedVendorId,
+          instance_id: instanceId ?? null,
           created_by: userId,
           updated_by: userId,
         };
@@ -258,7 +270,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
         toast.success(`Vendor assigned to ${title} successfully!`);
 
         queryClient.invalidateQueries({
-          queryKey: ["orderLoginByLead", vendorId, leadId],
+          queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
         });
         queryClient.invalidateQueries({
           queryKey: ["leadProductionReadiness", vendorId, leadId],
@@ -289,7 +301,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
       toast.success(`Vendor updated for ${title} successfully!`);
 
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId],
+        queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
       });
       queryClient.invalidateQueries({
         queryKey: ["leadProductionReadiness", vendorId, leadId],
@@ -353,7 +365,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
       toast.success("Section name updated successfully");
 
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId],
+        queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
       });
       return true;
     } catch (err: any) {
@@ -380,7 +392,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
       setConfirmDelete(null);
 
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId],
+        queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
       });
       queryClient.invalidateQueries({
         queryKey: ["leadProductionReadiness", vendorId, leadId],
@@ -552,9 +564,10 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
               users={users}
               leadId={leadId}
               accountId={accountId}
+              instanceId={instanceId}
               onSectionAdded={() => {
                 queryClient.invalidateQueries({
-                  queryKey: ["orderLoginByLead", vendorId, leadId],
+                  queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
                 });
               }}
             />

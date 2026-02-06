@@ -86,21 +86,27 @@ export const useHandleFactoryVendorSelection = () =>
 // ✅ --- Check if Lead is Ready for Post Production ---
 export const checkPostProductionReady = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.get(
-    `/leads/production/pre-production/vendorId/${vendorId}/leadId/${leadId}/check-post-production-ready`
+    `/leads/production/pre-production/vendorId/${vendorId}/leadId/${leadId}/check-post-production-ready`,
+    {
+      params:
+        typeof instanceId !== "undefined" ? { instance_id: instanceId } : undefined,
+    }
   );
   return data;
 };
 
 export const useCheckPostProductionReady = (
   vendorId: number | undefined,
-  leadId: number | undefined
+  leadId: number | undefined,
+  instanceId?: number | null
 ) => {
   return useQuery({
-    queryKey: ["postProductionReady", vendorId, leadId],
-    queryFn: () => checkPostProductionReady(vendorId!, leadId!),
+    queryKey: ["postProductionReady", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => checkPostProductionReady(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };

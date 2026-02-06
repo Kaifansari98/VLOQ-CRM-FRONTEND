@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
@@ -89,8 +89,13 @@ import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 export default function ProductionLeadDetails() {
   const router = useRouter();
   const { lead: leadId, remark } = useParams();
+  const searchParams = useSearchParams();
   const leadIdNum = Number(leadId);
   console.log("Remark param:", remark);
+  const instanceId = searchParams.get("instance_id");
+  const instanceIdNum = instanceId ? Number(instanceId) : null;
+  const validInstanceId =
+    instanceIdNum && !Number.isNaN(instanceIdNum) ? instanceIdNum : null;
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -498,6 +503,7 @@ export default function ProductionLeadDetails() {
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
+            productionInstanceId={validInstanceId}
           />
         </TabsContent>
 
@@ -509,6 +515,7 @@ export default function ProductionLeadDetails() {
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
+            productionInstanceId={validInstanceId}
           />
         </TabsContent>
 
