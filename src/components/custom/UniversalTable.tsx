@@ -112,9 +112,6 @@ export function UniversalTable({
   const [overallColumnFilters, setOverallColumnFilters] =
     useState<ColumnFiltersState>([]);
 
-  console.log("My Column Filters: ", myColumnFilters);
-  console.log("Overall Column Filters: ", overallColumnFilters);
-
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     architechName: false,
@@ -291,10 +288,21 @@ export function UniversalTable({
 
   // -------------------- ROW MAPPER --------------------
 
-  const mapUniversalRow = (lead: any, index: number): LeadColumn => ({
+  const mapUniversalRow = (
+    lead: any,
+    index: number,
+    options?: {
+      rowKey?: string;
+      instanceId?: number;
+      leadCodeSuffix?: string;
+      furnitureStructureOverride?: string;
+    },
+  ): LeadColumn => ({
+    rowKey: options?.rowKey,
+    instanceId: options?.instanceId,
     id: lead.id,
     srNo: index + 1,
-    lead_code: lead.lead_code ?? "",
+    lead_code: `${lead.lead_code ?? ""}${options?.leadCodeSuffix ?? ""}`,
     name: `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim(),
     email: lead.email ?? "",
     contact: `${lead.country_code ?? ""}${lead.contact_no ?? ""}`,
@@ -305,10 +313,11 @@ export function UniversalTable({
     furnitureType:
       lead.productMappings?.map((p: any) => p.productType?.type).join(", ") ??
       "",
-    furnitueStructures:
-      lead.leadProductStructureMapping
-        ?.map((p: any) => p.productStructure?.type)
-        .join(", ") ?? "",
+    furnitueStructures: options?.furnitureStructureOverride
+      ? options.furnitureStructureOverride
+      : lead.leadProductStructureMapping
+          ?.map((p: any) => p.productStructure?.type)
+          .join(", ") ?? "",
     source: lead.source?.type ?? "",
     siteType: lead.siteType?.type ?? "",
     createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",
@@ -324,10 +333,75 @@ export function UniversalTable({
   // -------------------- TABLE DATA --------------------
 
   const tableData = useMemo<LeadColumn[]>(() => {
-    return activeData.map((item, idx) => mapUniversalRow(item, idx));
-  }, [activeData]);
+    const normalizedType = String(type || "").trim().toLowerCase();
+    const isType8 = normalizedType === "type 8";
+    const isType9 = normalizedType === "type 9";
 
-  console.log("Overall Post Payload: ", tableData);
+    if (!isType8 && !isType9) {
+      return activeData.map((item, idx) =>
+        mapUniversalRow(item, idx, { rowKey: String(item.id) }),
+      );
+    }
+
+    const expanded: LeadColumn[] = [];
+
+    activeData.forEach((lead) => {
+      const instances = Array.isArray(lead?.productStructureInstances)
+        ? lead.productStructureInstances
+        : [];
+      const pendingInstances = instances.filter((instance: any) =>
+        isType8
+          ? instance?.is_tech_check_completed !== true
+          : instance?.is_order_login_completed !== true
+      );
+
+      if (pendingInstances.length === 0) {
+        return;
+      }
+
+      if (pendingInstances.length <= 1) {
+        const onlyInstance = pendingInstances[0];
+        const structureType =
+          onlyInstance?.productStructure?.type ??
+          lead.leadProductStructureMapping?.[0]?.productStructure?.type ??
+          "";
+        const suffix =
+          instances.length > 1
+            ? `.${(onlyInstance?.quantity_index ?? 0) + 1}`
+            : "";
+        expanded.push(
+          mapUniversalRow(lead, expanded.length, {
+            rowKey: String(lead.id),
+            instanceId: onlyInstance?.id,
+            leadCodeSuffix: suffix,
+            furnitureStructureOverride: structureType,
+          }),
+        );
+        return;
+      }
+
+      pendingInstances.forEach((instance: any, instanceIndex: number) => {
+        const structureType =
+          instance?.productStructure?.type ??
+          lead.leadProductStructureMapping?.find(
+            (item: any) =>
+              item?.productStructure?.id === instance?.product_structure_id
+          )?.productStructure?.type ??
+          "";
+        expanded.push(
+          mapUniversalRow(lead, expanded.length, {
+            rowKey: `${lead.id}-${instance?.id ?? instanceIndex + 1}`,
+            instanceId: instance?.id,
+            leadCodeSuffix: `.${instanceIndex + 1}`,
+            furnitureStructureOverride: structureType,
+          }),
+        );
+      });
+    });
+
+    return expanded;
+  }, [activeData, type]);
+
 
   // -------------------- COLUMNS --------------------
 
@@ -369,13 +443,23 @@ export function UniversalTable({
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
 
-    getRowId: getRowId ?? ((row) => row.id.toString()),
+    getRowId: getRowId ?? ((row) => row.rowKey ?? row.id.toString()),
   });
 
   // -------------------- ROW NAVIGATION --------------------
+  const withInstanceId = (path: string, instanceId?: number) => {
+    if (!instanceId) return path;
+    const [baseAndQuery, hash = ""] = path.split("#");
+    const [basePath, queryString = ""] = baseAndQuery.split("?");
+    const params = new URLSearchParams(queryString);
+    params.set("instance_id", String(instanceId));
+    const next = `${basePath}?${params.toString()}`;
+    return hash ? `${next}#${hash}` : next;
+  };
 
   const handleRowClick = (row: LeadColumn) => {
-    router.push(onRowNavigate(row));
+    const targetPath = onRowNavigate(row);
+    router.push(withInstanceId(targetPath, row.instanceId));
   };
 
   // ✅ HANDLE VIEW SWITCH
@@ -399,7 +483,9 @@ export function UniversalTable({
         <div className="flex flex-col gap-2 md:flex-row items-start justify-between">
           <div>
             <h1 className="text-lg font-semibold">{title}</h1>
-            <p className="text-sm text-muted-foreground hidden md:block">{description}</p>
+            <p className="text-sm text-muted-foreground hidden md:block">
+              {description}
+            </p>
           </div>
 
           {/* My Leads / Overall Leads Buttons */}

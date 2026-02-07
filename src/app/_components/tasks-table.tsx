@@ -185,8 +185,6 @@ const MyTaskTable = () => {
     overallTaskTypeFilter, // ✅ ADD DEPENDENCY
   ]);
 
-  console.log("My Task Payload:", myTaskPayload);
-  console.log("Overall Task Payload:", overallTaskPayload);
 
   // Fetch tasks using new hooks
   const {
@@ -201,8 +199,6 @@ const MyTaskTable = () => {
     isFetching: isVendorAllFetching,
   } = useVendorAllTasksFilter(vendorId || 0, overallTaskPayload);
 
-  console.log("vendorUserData:", vendorUserData);
-  console.log("vendorAllData:", vendorAllData);
   const activeTaskData =
     viewScope === "overall"
       ? (vendorAllData?.data ?? [])
@@ -302,7 +298,7 @@ const MyTaskTable = () => {
 
         router.push(`${basePath}?accountId=${row.accountId}&tab=orderLogin`);
       } else {
-        console.log("follow up is under development");
+        
       }
     },
     [router],

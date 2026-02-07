@@ -82,10 +82,19 @@ export const useSubmitSelection = () => {
   });
 };
 
-export const useSelectionData = (vendorId: number, leadId: number) => {
+export const useSelectionData = (
+  vendorId: number,
+  leadId: number,
+  productStructureInstanceId?: number
+) => {
   return useQuery<DesignSelectionsResponse>({
-    queryKey: ["getSelectionData", vendorId, leadId],
-    queryFn: () => getSelectionData(vendorId, leadId),
+    queryKey: [
+      "getSelectionData",
+      vendorId,
+      leadId,
+      productStructureInstanceId ?? "all",
+    ],
+    queryFn: () => getSelectionData(vendorId, leadId, productStructureInstanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
