@@ -143,15 +143,37 @@ export default function InstallationMiscellaneous({
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
   const handleConfirmDelete = () => {
-    if (confirmDelete) {
-      deleteDocument({
-        vendorId: vendorId!,
-        documentId: confirmDelete,
-        deleted_by: userId!,
-      });
-      setConfirmDelete(null);
+  if (!confirmDelete) return;
+
+  deleteDocument(
+    {
+      vendorId,
+      deleted_by: userId!,
+      documentId: confirmDelete,
+    },
+    {
+      onSuccess: () => {
+        // 🔥 REMOVE document from modal state
+        setViewModal((prev) => {
+          if (!prev.data) return prev;
+
+          return {
+            ...prev,
+            data: {
+              ...prev.data,
+              documents: prev.data.documents.filter(
+                (doc) => doc.document_id !== confirmDelete
+              ),
+            },
+          };
+        });
+
+        setConfirmDelete(null);
+      },
     }
-  };
+  );
+};
+    
   useEffect(() => {
     setInitialModalHandled(false);
   }, [initialTaskId]);
@@ -891,11 +913,7 @@ export default function InstallationMiscellaneous({
                             created_at: doc.uploaded_at,
                           }}
                           canDelete={canWork}
-                          onDelete={(id) =>
-                            setConfirmDelete(
-                              typeof id === "number" ? id : Number(id),
-                            )
-                          }
+                          onDelete={(id) => setConfirmDelete(Number(id))}
                         />
                       );
                     }
@@ -910,6 +928,7 @@ export default function InstallationMiscellaneous({
                           created_at: doc.uploaded_at,
                         }}
                         canDelete={canWork}
+                        onDelete={(id) => setConfirmDelete(Number(id))}
                       />
                     );
                   })}

@@ -31,7 +31,6 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
   const [open, setOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
 
-  // ✅ Fixed: Proper type with number | null
   const [sectionData, setSectionData] = useState<{
     company_vendor_id: number | null;
     item_desc: string;
@@ -58,8 +57,8 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
     }));
   };
 
-  // ✅ Handler for description blur
-  const handleDescriptionBlur = (description: string) => {
+  // ✅ Handler for description change (real-time)
+  const handleDescriptionChange = (description: string) => {
     setSectionData((prev) => ({
       ...prev,
       item_desc: description,
@@ -117,10 +116,6 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
   const isBackendUser =
     role === "backend" || role === "admin" || role === "super-admin";
 
-  // ✅ In Add Section Modal, backend users should have full access
-  const canEditVendor = isBackendUser;
-  const canEditDescription = isBackendUser;
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -157,9 +152,8 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
               users={users}
               value={sectionData}
               onVendorChange={handleVendorChange}
-              onDescriptionBlur={handleDescriptionBlur}
-              canEditVendor={canEditVendor}
-              canEditDescription={canEditDescription}
+              onDescriptionChange={handleDescriptionChange}
+              disabled={!isBackendUser}
               leadStage="order-login-stage"
               userRole={userType}
               isMandatory={false}

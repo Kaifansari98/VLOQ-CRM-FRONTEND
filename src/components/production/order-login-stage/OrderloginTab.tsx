@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Save } from "lucide-react";
 import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -14,6 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import {
   useCompanyVendors,
   useOrderLoginByLead,
@@ -44,8 +45,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
 
   // API hooks
   const { data: companyVendors } = useCompanyVendors(vendorId);
-  const { data: orderLoginData } = useOrderLoginByLead(vendorId, leadId);
-
+  const { data: orderLoginData } = useOrderLoginByLead(vendorId, leadId, userId);
   const { data: leadData } = useLeadStatus(leadId, vendorId);
 
   // Mutations
@@ -62,14 +62,11 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
   const [breakups, setBreakups] = useState<
     Record<string, { item_desc: string; company_vendor_id: number | null }>
   >({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<null | {
     id: number;
     title: string;
-  }>(null);
-  const [confirmVendorChange, setConfirmVendorChange] = useState<null | {
-    title: string;
-    vendorId: number;
-    existingData: any;
   }>(null);
 
   // Derived state
@@ -110,7 +107,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
         title,
         existingData: orderLoginData?.find((i: any) => i.item_type === title),
       })),
-    [orderLoginData, defaultTitles],
+    [orderLoginData],
   );
 
   const extraFromApi = useMemo(
@@ -118,7 +115,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
       (orderLoginData || []).filter(
         (i: any) => !defaultTitles.includes(i.item_type),
       ),
-    [orderLoginData, defaultTitles],
+    [orderLoginData],
   );
 
   // Pre-fill breakups from API data
@@ -132,173 +129,89 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
         return acc;
       }, {});
       setBreakups(prefilled);
+      setHasUnsavedChanges(false);
     }
   }, [orderLoginData]);
 
-  // Auto-save description (silent - no toast)
-  const handleDescriptionSave = async (title: string, description: string) => {
-    const existing = orderLoginData?.find(
-      (item: any) => item.item_type === title,
-    );
-
-    // Update local state first
+  // Handle local state changes
+  const handleLocalChange = (
+    title: string,
+    field: "item_desc" | "company_vendor_id",
+    value: string | number | null,
+  ) => {
     setBreakups((prev) => ({
       ...prev,
       [title]: {
         ...prev[title],
-        item_desc: description,
+        [field]: value,
       },
     }));
-
-    if (!existing?.id) {
-      // If no existing record, create new one
-      try {
-        const newRecord = {
-          id: null,
-          item_type: title,
-          item_desc: description.trim() || "N/A",
-          company_vendor_id: breakups[title]?.company_vendor_id || null,
-          created_by: userId,
-          updated_by: userId,
-        };
-
-        await uploadMultiple([newRecord]);
-
-        queryClient.invalidateQueries({
-          queryKey: ["orderLoginByLead", vendorId, leadId],
-        });
-        // ✅ No toast for description save - silent
-      } catch (err: any) {
-        console.error("Failed to save description", err);
-      }
-      return;
-    }
-
-    // Update existing record silently
-    try {
-      await updateSingle({
-        orderLoginId: existing.id,
-        payload: {
-          lead_id: existing.lead_id ?? leadId,
-          item_type: title,
-          item_desc: description.trim() || "N/A",
-          company_vendor_id: existing.company_vendor_id ?? null,
-          updated_by: userId,
-        },
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId],
-      });
-      // ✅ No toast for description save - silent
-    } catch (err: any) {
-      console.error("Failed to save description", err);
-    }
+    setHasUnsavedChanges(true);
   };
 
   // Handle vendor selection
-  const handleVendorChange = async (
+  const handleVendorChange = (
     title: string,
     selectedVendorId: number,
-    existingData: any,
   ) => {
-    const isProduction = isProductionStage;
-
-    // Check if vendor already assigned in production
-    if (isProduction && existingData?.company_vendor_id) {
-      toast.error(
-        "Vendor already assigned. Cannot change in production stage.",
-      );
-      return;
-    }
-
-    // Production stage requires confirmation
-    if (isProduction) {
-      setConfirmVendorChange({
-        title,
-        vendorId: selectedVendorId,
-        existingData,
-      });
-      return;
-    }
-
-    // Order login stage - save directly
-    await saveVendorChange(title, selectedVendorId, existingData);
+    handleLocalChange(title, "company_vendor_id", selectedVendorId);
   };
 
-  const saveVendorChange = async (
-    title: string,
-    selectedVendorId: number,
-    existingData: any,
-  ) => {
-    // Update local state first
-    setBreakups((prev) => ({
-      ...prev,
-      [title]: {
-        ...prev[title],
-        company_vendor_id: selectedVendorId,
-      },
-    }));
-
-    if (!existingData?.id) {
-      // Create new record
-      try {
-        const newRecord = {
-          id: null,
-          item_type: title,
-          item_desc: breakups[title]?.item_desc?.trim() || "N/A",
-          company_vendor_id: selectedVendorId,
-          created_by: userId,
-          updated_by: userId,
-        };
-
-        await uploadMultiple([newRecord]);
-
-        // ✅ Show success toast
-        toast.success(`Vendor assigned to ${title} successfully!`);
-
-        queryClient.invalidateQueries({
-          queryKey: ["orderLoginByLead", vendorId, leadId],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ["leadProductionReadiness", vendorId, leadId],
-        });
-      } catch (err: any) {
-        console.error("Failed to save vendor", err);
-        toast.error(
-          err?.response?.data?.message || "Failed to save vendor selection",
-        );
-      }
-      return;
-    }
-
-    // Update existing record
+  // Save all changes
+  const handleSaveAll = async () => {
+    setIsSaving(true);
     try {
-      await updateSingle({
-        orderLoginId: existingData.id,
-        payload: {
-          lead_id: existingData.lead_id ?? leadId,
-          item_type: title,
-          item_desc: existingData.item_desc || "N/A",
-          company_vendor_id: selectedVendorId,
-          updated_by: userId,
-        },
-      });
+      const promises = Object.entries(breakups).map(
+        async ([title, values]) => {
+          const existing = orderLoginData?.find(
+            (item: any) => item.item_type === title,
+          );
 
-      // ✅ Show success toast
-      toast.success(`Vendor updated for ${title} successfully!`);
+          if (!existing?.id) {
+            // Create new record
+            const newRecord = {
+              id: null,
+              item_type: title,
+              item_desc: values.item_desc?.trim() || "N/A",
+              company_vendor_id: values.company_vendor_id || null,
+              created_by: userId,
+              updated_by: userId,
+            };
+            return uploadMultiple([newRecord]);
+          } else {
+            // Update existing record
+            return updateSingle({
+              orderLoginId: existing.id,
+              payload: {
+                lead_id: existing.lead_id ?? leadId,
+                item_type: title,
+                item_desc: values.item_desc?.trim() || "N/A",
+                company_vendor_id: values.company_vendor_id ?? null,
+                updated_by: userId,
+              },
+            });
+          }
+        },
+      );
+
+      await Promise.all(promises);
+
+      toast.success("Order Login saved successfully!");
+      setHasUnsavedChanges(false);
 
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId],
+        queryKey: ["orderLoginByLead", vendorId, leadId, userId],
       });
       queryClient.invalidateQueries({
         queryKey: ["leadProductionReadiness", vendorId, leadId],
       });
     } catch (err: any) {
-      console.error("Failed to save vendor", err);
+      console.error("Failed to save order login", err);
       toast.error(
-        err?.response?.data?.message || "Failed to save vendor selection",
+        err?.response?.data?.message || "Failed to save order login",
       );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -353,7 +266,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
       toast.success("Section name updated successfully");
 
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId],
+        queryKey: ["orderLoginByLead", vendorId, leadId, userId],
       });
       return true;
     } catch (err: any) {
@@ -380,7 +293,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
       setConfirmDelete(null);
 
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId],
+        queryKey: ["orderLoginByLead", vendorId, leadId, userId],
       });
       queryClient.invalidateQueries({
         queryKey: ["leadProductionReadiness", vendorId, leadId],
@@ -402,35 +315,38 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
 
     const hasVendorAssigned = !!item?.company_vendor_id;
 
-    // ✅ Admin override — full control always
+    // Admin override — full control always
     if (isAdmin) {
       return {
-        canEditVendor: true,
-        canEditDescription: true,
+        canEdit: true,
       };
     }
 
-    // ✅ Backend in order-login-stage
+    // Backend in order-login-stage - can edit multiple times
     if (isBackend && isOrderLoginStageCheck) {
       return {
-        canEditVendor: true, // Can edit vendor anytime in order-login-stage
-        canEditDescription: true, // Can edit description anytime
+        canEdit: true,
       };
     }
 
-    // ✅ Backend in production-stage
+    // Backend in production-stage - can edit only if vendor not assigned yet
     if (isBackend && isProductionStageCheck) {
       return {
-        canEditVendor: !hasVendorAssigned, // Can only edit if not assigned yet
-        canEditDescription: true, // Can always edit description
+        canEdit: !hasVendorAssigned, // Disable once vendor is assigned
       };
     }
 
-    // ❌ Everything else blocked
+    // Everything else blocked
     return {
-      canEditVendor: false,
-      canEditDescription: false,
+      canEdit: false,
     };
+  };
+
+  const canShowSaveButton = () => {
+    const role = userType?.toLowerCase();
+    const isAdmin = role === "admin" || role === "super-admin";
+    const isBackend = role === "backend";
+    return isAdmin || isBackend;
   };
 
   return (
@@ -444,6 +360,17 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
             order login is finalized.
           </p>
         </div>
+
+        {canShowSaveButton() && (
+          <Button
+            onClick={handleSaveAll}
+            disabled={isSaving || !hasUnsavedChanges}
+            className="flex items-center gap-2 shrink-0"
+          >
+            <Save className="w-4 h-4" />
+            {isSaving ? "Saving..." : "Save Order Login"}
+          </Button>
+        )}
       </div>
 
       {/* Grid of Breakups */}
@@ -464,14 +391,13 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
                   company_vendor_id: null,
                 }
               }
-              onVendorChange={(selectedVendorId) =>
-                handleVendorChange(title, selectedVendorId, existingData)
+              onVendorChange={(selectedVendorId) => {
+                handleVendorChange(title, selectedVendorId);
+              }}
+              onDescriptionChange={(description) =>
+                handleLocalChange(title, "item_desc", description)
               }
-              onDescriptionBlur={(description) =>
-                handleDescriptionSave(title, description)
-              }
-              canEditVendor={perms.canEditVendor}
-              canEditDescription={perms.canEditDescription}
+              disabled={!perms.canEdit}
               isMandatory={mandatoryTitles.includes(title)}
               vendorId={vendorId}
               leadId={leadId}
@@ -498,14 +424,13 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
                   company_vendor_id: item.company_vendor_id || null,
                 }
               }
-              onVendorChange={(selectedVendorId) =>
-                handleVendorChange(item.item_type, selectedVendorId, item)
+              onVendorChange={(selectedVendorId) => {
+                handleVendorChange(item.item_type, selectedVendorId);
+              }}
+              onDescriptionChange={(description) =>
+                handleLocalChange(item.item_type, "item_desc", description)
               }
-              onDescriptionBlur={(description) =>
-                handleDescriptionSave(item.item_type, description)
-              }
-              canEditDescription={perms.canEditDescription}
-              canEditVendor={perms.canEditVendor}
+              disabled={!perms.canEdit}
               isMandatory={false}
               isTitleEditable={canManageCustomSections && !!item.id}
               canDelete={canManageCustomSections && !!item.id}
@@ -554,7 +479,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
               accountId={accountId}
               onSectionAdded={() => {
                 queryClient.invalidateQueries({
-                  queryKey: ["orderLoginByLead", vendorId, leadId],
+                  queryKey: ["orderLoginByLead", vendorId, leadId, userId],
                 });
               }}
             />
@@ -584,60 +509,6 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
               disabled={isDeleting}
             >
               {isDeleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Vendor Change Confirmation Dialog (Production Stage Only) */}
-      <AlertDialog
-        open={!!confirmVendorChange}
-        onOpenChange={(open) => {
-          if (!open) setConfirmVendorChange(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Vendor Selection</AlertDialogTitle>
-            <AlertDialogDescription>
-              You can select the vendor only once in production stage. Once
-              confirmed, you won't be able to change it. Are you sure you want
-              to proceed?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                // Reset local state on cancel
-                if (confirmVendorChange) {
-                  setBreakups((prev) => ({
-                    ...prev,
-                    [confirmVendorChange.title]: {
-                      ...prev[confirmVendorChange.title],
-                      company_vendor_id:
-                        confirmVendorChange.existingData?.company_vendor_id ||
-                        null,
-                    },
-                  }));
-                }
-                setConfirmVendorChange(null);
-              }}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                if (confirmVendorChange) {
-                  await saveVendorChange(
-                    confirmVendorChange.title,
-                    confirmVendorChange.vendorId,
-                    confirmVendorChange.existingData,
-                  );
-                  setConfirmVendorChange(null);
-                }
-              }}
-            >
-              Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

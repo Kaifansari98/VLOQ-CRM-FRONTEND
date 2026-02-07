@@ -487,6 +487,6 @@ export function canUpdateDessingStageSelectionInputs(
   return (
     role === "admin" ||
     role === "super-admin" ||
-    (role === "sales-executive" && stage === "designing-stage")
+    (role === "sales-executive" && stage === "client-documentation-stage")
   );
 }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from "react";
@@ -41,7 +42,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ImageComponent } from "@/components/utils/ImageCard";
-import Loader from "@/components/utils/loader";
 import { canUploadOrDeleteBookingDone } from "@/components/utils/privileges";
 import { useCSPBookingPhotos } from "@/hooks/useCSPBookingPhotos";
 import SectionHeader from "@/utils/sectionHeader";
@@ -538,6 +538,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     );
   };
 
+
+
   // 🧩 Error Handling
   if (isError || error) {
     return (
@@ -769,7 +771,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                           created_at: photo.createdAt,
                         }}
                         index={index}
-                        canDelete={false}
+                         onDelete={(id) => setConfirmDelete(Number(id))}
+                        canDelete={canDelete}
                       />
                     ))}
                     {canEditBookingValues && (
@@ -992,7 +995,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                     created_at: photo.uploadedAt,
                                   }}
                                   index={index}
-                                  canDelete={false}
+                                  canDelete={canDelete}
+                                   onDelete={(id) => setConfirmDelete(Number(id))}
                                 />
                               ),
                             )}
@@ -1037,7 +1041,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                   signedUrl: doc.signedUrl,
                                   created_at: doc.uploadedAt,
                                 }}
-                                canDelete={false}
+                               canDelete={canDelete}
+                                onDelete={(id) => setConfirmDelete(Number(id))}
                               />
                             ))}
                             {canEditBookingValues && (
@@ -1099,7 +1104,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                   signedUrl: doc.signedUrl,
                                   created_at: doc.createdAt,
                                 }}
-                                canDelete={false}
+                                canDelete={canDelete}
+                                 onDelete={(id) => setConfirmDelete(Number(id))}
                               />
                             ))}
                           </div>
@@ -1124,7 +1130,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                     created_at: photo.createdAt,
                                   }}
                                   index={index}
-                                  canDelete={false}
+                                  canDelete={canDelete}
+                                   onDelete={(id) => setConfirmDelete(Number(id))}
                                 />
                               ),
                             )}
@@ -1150,7 +1157,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                     created_at: photo.createdAt,
                                   }}
                                   index={index}
-                                  canDelete={false}
+                                  canDelete={canDelete}
+                                   onDelete={(id) => setConfirmDelete(Number(id))}
                                 />
                               ),
                             )}
@@ -1182,7 +1190,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                               doc.doc_sys_name,
                             created_at: doc.created_at,
                           }}
-                          canDelete={false}
+                          canDelete={canDelete}
+                           onDelete={(id) => setConfirmDelete(Number(id))}
                         />
                       ))}
                       {canEditBookingValues && (
@@ -1228,7 +1237,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                               created_at: photo.createdAt,
                             }}
                             index={index}
-                            canDelete={false}
+                            canDelete={canDelete}
+                             onDelete={(id) => setConfirmDelete(Number(id))}
                           />
                         ))}
                         {canEditBookingValues && (
