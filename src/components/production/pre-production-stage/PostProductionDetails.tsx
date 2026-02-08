@@ -72,7 +72,11 @@ export default function PostProductionDetails({
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
-  const { data: boxesData, isLoading } = useGetNoOfBoxes(vendorId, leadId);
+  const { data: boxesData, isLoading } = useGetNoOfBoxes(
+    vendorId,
+    leadId,
+    instanceId ?? undefined
+  );
   const noOfBoxesValue = boxesData?.data?.no_of_boxes || null;
 
   const [open, setOpen] = useState(false);
@@ -80,7 +84,8 @@ export default function PostProductionDetails({
   // 🧩 API hook for update
   const { mutateAsync: updateNoBoxes, isPending } = useUpdateNoOfBoxes(
     vendorId,
-    leadId
+    leadId,
+    instanceId ?? undefined
   );
 
   // ✅ Form setup with live validation
@@ -102,6 +107,9 @@ export default function PostProductionDetails({
       formData.append("user_id", String(userId || 0));
       formData.append("account_id", String(accountId || 0));
       formData.append("no_of_boxes", values.noOfBoxes);
+      if (instanceId != null) {
+        formData.append("instance_id", String(instanceId));
+      }
 
       await updateNoBoxes(formData);
 

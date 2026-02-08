@@ -10,7 +10,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
-import { useLeadById } from "@/hooks/useLeadsQueries";
+import { useLeadById, useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import {
@@ -70,6 +70,7 @@ import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/ass
 import CustomeDatePicker from "@/components/date-picker";
 import {
   useLatestOrderLoginByLead,
+  useMarkProductionCompleted,
   usePostProductionCompleteness,
   useUpdateExpectedOrderLoginReadyDate,
 } from "@/api/production/production-api";
@@ -121,6 +122,10 @@ export default function ProductionLeadDetails() {
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
+  const { data: instancesResponse } = useLeadProductStructureInstances(
+    leadIdNum,
+    vendorId
+  );
 
   // 🔍 Check Post Prouction Readiness
   const { data: postProductionStatus } = useCheckPostProductionReady(
@@ -216,6 +221,34 @@ export default function ProductionLeadDetails() {
     leadIdNum
   );
 
+  const instances = Array.isArray(instancesResponse?.data)
+    ? instancesResponse?.data
+    : instancesResponse?.data?.data || [];
+
+  const currentInstance = validInstanceId
+    ? instances.find((instance: any) => Number(instance?.id) === validInstanceId)
+    : null;
+
+  const incompleteInstances = instances.filter(
+    (instance: any) => instance?.is_production_completed !== true
+  );
+
+  const hasInstances = instances.length > 0;
+  const allInstancesCompleted = hasInstances
+    ? incompleteInstances.length === 0
+    : true;
+
+  const incompleteTitles =
+    incompleteInstances
+      ?.map((instance: any) => instance?.title)
+      .filter(Boolean) || [];
+
+  const markProductionCompletedMutation = useMarkProductionCompleted(
+    vendorId,
+    leadIdNum,
+    validInstanceId
+  );
+
   const handleExpectedDateChange = async (newDate?: string) => {
     if (!newDate || !vendorId || !userId || !leadIdNum) return;
 
@@ -290,7 +323,7 @@ export default function ProductionLeadDetails() {
 
         <div className="flex items-center space-x-2">
           {canMoveReadyToDispatchStage &&
-            (completeness?.all_exists && lead?.no_of_boxes > 0 ? (
+            (allInstancesCompleted ? (
               <Button
                 size="sm"
                 className="hidden md:flex"
@@ -302,16 +335,43 @@ export default function ProductionLeadDetails() {
             ) : (
               <CustomeTooltip
                 truncateValue={
-                  <Button size="sm" className="hidden md:flex" disabled>
-                    Ready To Dispatch
+                  <Button
+                    size="sm"
+                    className="hidden md:flex"
+                    disabled={!validInstanceId || currentInstance?.is_production_completed}
+                    onClick={async () => {
+                      if (!validInstanceId || currentInstance?.is_production_completed) {
+                        return;
+                      }
+                      if (!vendorId || !leadIdNum || !userId) {
+                        toast.error("Missing vendor or user info!");
+                        return;
+                      }
+                      try {
+                        await markProductionCompletedMutation.mutateAsync({
+                          updatedBy: userId,
+                        });
+                        toast.success("Production marked completed!");
+                      } catch (err: any) {
+                        toast.error(
+                          err?.response?.data?.message ||
+                            err?.message ||
+                            "Failed to mark production completed"
+                        );
+                      }
+                    }}
+                  >
+                    Production Completed
                   </Button>
                 }
                 value={
-                  !completeness?.all_exists
-                    ? "Cannot move yet please complete all production tasks (QC photos, hardware packing, and woodwork packing)."
-                    : !lead?.no_of_boxes || lead?.no_of_boxes <= 0
-                    ? "Add number of boxes before dispatch."
-                    : "Action unavailable."
+                  !validInstanceId
+                    ? "instance_id is required to mark production completed."
+                    : currentInstance?.is_production_completed
+                    ? `Already completed. Pending: ${incompleteTitles.join(", ")}`
+                    : incompleteTitles.length
+                    ? `Pending: ${incompleteTitles.join(", ")}`
+                    : "Pending production instances."
                 }
               />
             ))}
@@ -346,7 +406,7 @@ export default function ProductionLeadDetails() {
               </DropdownMenuItem>
 
               {canMoveReadyToDispatchStage &&
-                (completeness?.all_exists && lead?.no_of_boxes > 0 ? (
+                (allInstancesCompleted ? (
                   <DropdownMenuItem
                     className="md:hidden"
                     onClick={() => setOpenReadyToDispatch(true)}
@@ -357,17 +417,43 @@ export default function ProductionLeadDetails() {
                 ) : (
                   <CustomeTooltip
                     truncateValue={
-                      <DropdownMenuItem className=" md:hidden" disabled>
+                      <DropdownMenuItem
+                        className="md:hidden"
+                        disabled={!validInstanceId || currentInstance?.is_production_completed}
+                        onClick={async () => {
+                          if (!validInstanceId || currentInstance?.is_production_completed) {
+                            return;
+                          }
+                          if (!vendorId || !leadIdNum || !userId) {
+                            toast.error("Missing vendor or user info!");
+                            return;
+                          }
+                          try {
+                            await markProductionCompletedMutation.mutateAsync({
+                              updatedBy: userId,
+                            });
+                            toast.success("Production marked completed!");
+                          } catch (err: any) {
+                            toast.error(
+                              err?.response?.data?.message ||
+                                err?.message ||
+                                "Failed to mark production completed"
+                            );
+                          }
+                        }}
+                      >
                         <Truck size={20} />
-                        Ready To Dispatch
+                        Production Completed
                       </DropdownMenuItem>
                     }
                     value={
-                      !completeness?.all_exists
-                        ? "Cannot move yet — please complete all production tasks (QC photos, hardware packing, and woodwork packing)."
-                        : !lead?.no_of_boxes || lead?.no_of_boxes <= 0
-                        ? "Add number of boxes before dispatch."
-                        : "Action unavailable."
+                      !validInstanceId
+                        ? "instance_id is required to mark production completed."
+                        : currentInstance?.is_production_completed
+                        ? `Already completed. Pending: ${incompleteTitles.join(", ")}`
+                        : incompleteTitles.length
+                        ? `Pending: ${incompleteTitles.join(", ")}`
+                        : "Pending production instances."
                     }
                   />
                 ))}

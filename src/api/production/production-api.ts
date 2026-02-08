@@ -355,12 +355,14 @@ export const useUploadWoodworkPackingDetails = (
 export const updateNoOfBoxes = async (
   vendorId: number,
   leadId: number,
-  formData: FormData
+  formData: FormData,
+  instanceId?: number | null
 ) => {
   const { data } = await apiClient.put(
     `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/update-no-of-boxes`,
     formData,
     {
+      params: instanceId != null ? { instance_id: instanceId } : undefined,
       headers: { "Content-Type": "multipart/form-data" },
     }
   );
@@ -368,11 +370,15 @@ export const updateNoOfBoxes = async (
 };
 
 // ✅ React Query Hook
-export const useUpdateNoOfBoxes = (vendorId?: number, leadId?: number) => {
+export const useUpdateNoOfBoxes = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null
+) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (formData: FormData) =>
-      updateNoOfBoxes(vendorId!, leadId!, formData),
+      updateNoOfBoxes(vendorId!, leadId!, formData, instanceId),
     onSuccess: async () => {
       // ♻️ Invalidate relevant queries
       await Promise.all([
@@ -383,17 +389,26 @@ export const useUpdateNoOfBoxes = (vendorId?: number, leadId?: number) => {
   });
 };
 
-export const getNoOfBoxes = async (vendorId: number, leadId: number) => {
+export const getNoOfBoxes = async (
+  vendorId: number,
+  leadId: number,
+  instanceId?: number | null
+) => {
   const { data } = await apiClient.get(
-    `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/get-no-of-boxes`
+    `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/get-no-of-boxes`,
+    { params: instanceId != null ? { instance_id: instanceId } : undefined }
   );
   return data;
 };
 
-export const useGetNoOfBoxes = (vendorId?: number, leadId?: number) => {
+export const useGetNoOfBoxes = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null
+) => {
   return useQuery({
-    queryKey: ["noOfBoxes", vendorId, leadId],
-    queryFn: () => getNoOfBoxes(vendorId!, leadId!),
+    queryKey: ["noOfBoxes", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getNoOfBoxes(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -423,5 +438,40 @@ export const usePostProductionCompleteness = (
     queryKey: ["postProductionCompleteness", vendorId, leadId, instanceId ?? "all"],
     queryFn: () => getPostProductionCompleteness(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
+  });
+};
+
+export const markProductionCompleted = async (
+  vendorId: number,
+  leadId: number,
+  instanceId: number,
+  updatedBy: number
+) => {
+  const { data } = await apiClient.put(
+    `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/mark-production-completed`,
+    { updated_by: updatedBy, instance_id: instanceId }
+  );
+  return data;
+};
+
+export const useMarkProductionCompleted = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null
+) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { updatedBy: number }) =>
+      markProductionCompleted(vendorId!, leadId!, instanceId!, payload.updatedBy),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["lead-product-structure-instances", leadId, vendorId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["postProductionCompleteness", vendorId, leadId],
+        }),
+      ]);
+    },
   });
 };
