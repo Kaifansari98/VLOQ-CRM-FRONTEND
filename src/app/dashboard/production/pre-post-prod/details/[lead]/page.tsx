@@ -222,6 +222,12 @@ export default function ProductionLeadDetails() {
     leadIdNum
   );
 
+  const { data: instanceCompleteness } = usePostProductionCompleteness(
+    vendorId,
+    leadIdNum,
+    validInstanceId ?? undefined
+  );
+
   const instances = Array.isArray(instancesResponse?.data)
     ? instancesResponse?.data
     : instancesResponse?.data?.data || [];
@@ -243,6 +249,56 @@ export default function ProductionLeadDetails() {
     incompleteInstances
       ?.map((instance: any) => instance?.title)
       .filter(Boolean) || [];
+
+  const missingPrerequisites: string[] = [];
+  const missingDocsOrRemarks: string[] = [];
+
+  if (validInstanceId) {
+    if (!instanceCompleteness?.qc_photos) {
+      missingDocsOrRemarks.push("QC photos");
+    }
+    if (!instanceCompleteness?.hardware_docs) {
+      missingDocsOrRemarks.push("Hardware packing docs");
+    }
+    if (!instanceCompleteness?.hardware_remark) {
+      missingDocsOrRemarks.push("Hardware packing remark");
+    }
+    if (!instanceCompleteness?.woodwork_docs) {
+      missingDocsOrRemarks.push("Woodwork packing docs");
+    }
+    if (!instanceCompleteness?.woodwork_remark) {
+      missingDocsOrRemarks.push("Woodwork packing remark");
+    }
+  }
+
+  if (validInstanceId && currentInstance) {
+    if (!currentInstance?.no_of_boxes || currentInstance?.no_of_boxes <= 0) {
+      missingPrerequisites.push("Set No. of Boxes");
+    }
+
+    if (currentInstance?.is_order_login_completed !== true) {
+      missingPrerequisites.push("Order Login cards completion");
+    }
+  }
+
+  const canMarkProductionCompleted =
+    !!validInstanceId &&
+    !currentInstance?.is_production_completed &&
+    missingDocsOrRemarks.length === 0 &&
+    missingPrerequisites.length === 0;
+
+  const productionCompletedTooltip =
+    !validInstanceId
+      ? "instance_id is required to mark production completed."
+      : currentInstance?.is_production_completed
+      ? "Production already completed for this instance."
+      : missingDocsOrRemarks.length || missingPrerequisites.length
+      ? `Pending: ${[...missingDocsOrRemarks, ...missingPrerequisites].join(
+          ", "
+        )}`
+      : incompleteTitles.length
+      ? `Other pending instances: ${incompleteTitles.join(", ")}`
+      : "Ready to mark production completed.";
 
   const markProductionCompletedMutation = useMarkProductionCompleted(
     vendorId,
@@ -336,14 +392,14 @@ export default function ProductionLeadDetails() {
             ) : (
               <CustomeTooltip
                 truncateValue={
-                    <Button
-                      size="sm"
-                      className="hidden md:flex"
-                      disabled={!validInstanceId || currentInstance?.is_production_completed}
-                      onClick={async () => {
-                        if (!validInstanceId || currentInstance?.is_production_completed) {
-                          return;
-                        }
+                  <Button
+                    size="sm"
+                    className="hidden md:flex"
+                    disabled={!canMarkProductionCompleted}
+                    onClick={async () => {
+                      if (!canMarkProductionCompleted) {
+                        return;
+                      }
                       if (!vendorId || !leadIdNum || !userId) {
                         toast.error("Missing vendor or user info!");
                         return;
@@ -372,15 +428,7 @@ export default function ProductionLeadDetails() {
                     )}
                   </Button>
                 }
-                value={
-                  !validInstanceId
-                    ? "instance_id is required to mark production completed."
-                    : currentInstance?.is_production_completed
-                    ? `Already completed. Pending: ${incompleteTitles.join(", ")}`
-                    : incompleteTitles.length
-                    ? `Pending: ${incompleteTitles.join(", ")}`
-                    : "Pending production instances."
-                }
+                value={productionCompletedTooltip}
               />
             ))}
 
@@ -427,9 +475,9 @@ export default function ProductionLeadDetails() {
                     truncateValue={
                       <DropdownMenuItem
                         className="md:hidden"
-                        disabled={!validInstanceId || currentInstance?.is_production_completed}
+                        disabled={!canMarkProductionCompleted}
                         onClick={async () => {
-                          if (!validInstanceId || currentInstance?.is_production_completed) {
+                          if (!canMarkProductionCompleted) {
                             return;
                           }
                           if (!vendorId || !leadIdNum || !userId) {
@@ -461,15 +509,7 @@ export default function ProductionLeadDetails() {
                         )}
                       </DropdownMenuItem>
                     }
-                    value={
-                      !validInstanceId
-                        ? "instance_id is required to mark production completed."
-                        : currentInstance?.is_production_completed
-                        ? `Already completed. Pending: ${incompleteTitles.join(", ")}`
-                        : incompleteTitles.length
-                        ? `Pending: ${incompleteTitles.join(", ")}`
-                        : "Pending production instances."
-                    }
+                    value={productionCompletedTooltip}
                   />
                 ))}
 
