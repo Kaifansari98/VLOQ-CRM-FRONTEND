@@ -31,6 +31,7 @@ import {
   Factory,
   CalendarCheck2,
   Clock,
+  CheckCircle2,
   UserPlus,
   Truck,
   MessageSquare,
@@ -335,14 +336,14 @@ export default function ProductionLeadDetails() {
             ) : (
               <CustomeTooltip
                 truncateValue={
-                  <Button
-                    size="sm"
-                    className="hidden md:flex"
-                    disabled={!validInstanceId || currentInstance?.is_production_completed}
-                    onClick={async () => {
-                      if (!validInstanceId || currentInstance?.is_production_completed) {
-                        return;
-                      }
+                    <Button
+                      size="sm"
+                      className="hidden md:flex"
+                      disabled={!validInstanceId || currentInstance?.is_production_completed}
+                      onClick={async () => {
+                        if (!validInstanceId || currentInstance?.is_production_completed) {
+                          return;
+                        }
                       if (!vendorId || !leadIdNum || !userId) {
                         toast.error("Missing vendor or user info!");
                         return;
@@ -360,8 +361,15 @@ export default function ProductionLeadDetails() {
                         );
                       }
                     }}
-                  >
-                    Production Completed
+                    >
+                    {currentInstance?.is_production_completed ? (
+                      <span className="flex items-center gap-2 text-green-600">
+                        <CheckCircle2 size={16} />
+                        Production has been completed
+                      </span>
+                    ) : (
+                      "Production Completed"
+                    )}
                   </Button>
                 }
                 value={
@@ -443,7 +451,14 @@ export default function ProductionLeadDetails() {
                         }}
                       >
                         <Truck size={20} />
-                        Production Completed
+                        {currentInstance?.is_production_completed ? (
+                          <span className="flex items-center gap-2 text-green-600">
+                            <CheckCircle2 size={16} />
+                            Production has been completed
+                          </span>
+                        ) : (
+                          "Production Completed"
+                        )}
                       </DropdownMenuItem>
                     }
                     value={
