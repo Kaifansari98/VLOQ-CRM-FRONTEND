@@ -457,72 +457,85 @@ export default function InstallationIssueLog({
             <AlertCircle className="w-5 h-5 text-destructive" />
           </div>
         }
-        size="lg"   
+        size="lg"
       >
         <div className="px-6 py-4 space-y-5">
           {/* Issue Types Section - Enhanced */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  {/* Reported By Card */}
-  <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
-    <div className="space-y-3">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-2 min-w-0">
-          <User className="w-4 h-4 text-muted-foreground shrink-0" />
-          <div className="min-w-0">
-            <p className="text-xs text-muted-foreground mb-0.5">Reported By</p>
-            <p className="text-sm font-medium truncate">
-              {viewModal.data?.createdBy?.user_name || 'N/A'}
-            </p>
-          </div>
-        </div>
-      </div>
-      
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-2 min-w-0">
-          <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
-          <div className="min-w-0">
-            <p className="text-xs text-muted-foreground mb-0.5">Reported Date</p>
-            <p className="text-sm font-medium">
-              {viewModal.data && formatDate(viewModal.data.created_at)}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+            {/* Reported By Card */}
+            <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <User className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground mb-0.5">
+                        Reported By
+                      </p>
+                      <p className="text-sm font-medium truncate">
+                        {viewModal.data?.createdBy?.user_name || "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-  {/* Impact Details Card */}
-  {viewModal.data?.issueTypes && viewModal.data.issueTypes.length > 0 && (
-    <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
-      <div className="space-y-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs text-muted-foreground mb-0.5">Impact Type</p>
-            <div className="flex flex-wrap gap-1.5">
-              {viewModal.data.issueTypes.map((it: any, index: number) => (
-                <span key={index} className="text-sm font-medium">
-                  {it.type.name}
-                  {index < viewModal.data.issueTypes.length - 1 && ','}
-                </span>
-              ))}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground mb-0.5">
+                        Reported Date
+                      </p>
+                      <p className="text-sm font-medium">
+                        {viewModal.data &&
+                          formatDate(viewModal.data.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            {/* Impact Details Card */}
+            {viewModal.data?.issueTypes &&
+              viewModal.data.issueTypes.length > 0 && (
+                <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-muted-foreground mb-0.5">
+                          Impact Type
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {viewModal.data.issueTypes.map(
+                            (it: any, index: number) => (
+                              <span key={index} className="text-sm font-medium">
+                                {it.type.name}
+                                {index < viewModal.data.issueTypes.length - 1 &&
+                                  ","}
+                              </span>
+                            ),
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {viewModal.data?.issue_impact && (
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs text-muted-foreground mb-0.5">
+                            Impact Level
+                          </p>
+                          <p className="text-sm font-medium">
+                            {viewModal.data.issue_impact}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
           </div>
-        </div>
-        
-        {viewModal.data?.issue_impact && (
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs text-muted-foreground mb-0.5">Impact Level</p>
-              <p className="text-sm font-medium">
-                {viewModal.data.issue_impact}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )}
-</div>
 
           {/* Issue Description */}
           {viewModal.data?.issue_description && (

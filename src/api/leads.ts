@@ -638,6 +638,10 @@ export const useDeleteDocument = (leadId?: number) => {
         });
 
         queryClient.invalidateQueries({
+          queryKey: ["usableHandover"],
+        });
+
+        queryClient.invalidateQueries({
           queryKey: ["underInstallationDetails"],
         });
 
