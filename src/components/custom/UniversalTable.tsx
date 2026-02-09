@@ -409,7 +409,7 @@ export function UniversalTable({
           mapUniversalRow(lead, expanded.length, {
             rowKey: `${lead.id}-${instance?.id ?? instanceIndex + 1}`,
             instanceId: instance?.id,
-            leadCodeSuffix: `.${suffixIndex}`,
+            leadCodeSuffix: instances.length > 1 ? `.${suffixIndex}` : "",
             furnitureStructureOverride: structureType,
           }),
         );
