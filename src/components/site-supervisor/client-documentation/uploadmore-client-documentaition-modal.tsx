@@ -125,10 +125,6 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       setSelectedFiles([]);
       return;
     }
-    if (!hasMultipleInstances) {
-      setActiveInstanceId(undefined);
-      return;
-    }
     if (
       activeInstanceId &&
       structureInstances.some((item) => item.id === activeInstanceId)
@@ -142,7 +138,11 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       setActiveInstanceId(selectedInstanceId);
       return;
     }
-    setActiveInstanceId(structureInstances[0]?.id);
+    if (hasMultipleInstances) {
+      setActiveInstanceId(structureInstances[0]?.id);
+    } else {
+      setActiveInstanceId(selectedInstanceId || undefined);
+    }
   }, [
     open,
     hasMultipleInstances,
@@ -153,9 +153,9 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
 
   const docsForSection = useMemo(() => {
     const resolvedInstanceId =
-      hasMultipleInstances
-        ? activeInstanceId ?? structureInstances[0]?.id
-        : undefined;
+      activeInstanceId ??
+      selectedInstanceId ??
+      (hasMultipleInstances ? structureInstances[0]?.id : undefined);
 
     const flatProject = docsDetails?.documents?.ppt || [];
     const flatPytha = docsDetails?.documents?.pytha || [];
@@ -174,13 +174,15 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
         );
 
       if (sectionId === "project") {
-        return hasMultipleInstances
-          ? targetGroup?.documents?.ppt || filteredFromFlat(flatProject)
-          : flatProject;
+        if (resolvedInstanceId) {
+          return targetGroup?.documents?.ppt || filteredFromFlat(flatProject);
+        }
+        return flatProject;
       }
-      return hasMultipleInstances
-        ? targetGroup?.documents?.pytha || filteredFromFlat(flatPytha)
-        : flatPytha;
+      if (resolvedInstanceId) {
+        return targetGroup?.documents?.pytha || filteredFromFlat(flatPytha);
+      }
+      return flatPytha;
     };
 
     return {
@@ -192,7 +194,11 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
   const handleUpload = async () => {
     if (!activeSection) return;
     if (!vendorId || !createdBy) return;
-    if (hasMultipleInstances && !activeInstanceId) {
+    const resolvedInstanceId =
+      activeInstanceId ??
+      selectedInstanceId ??
+      (hasMultipleInstances ? structureInstances[0]?.id : undefined);
+    if (hasMultipleInstances && !resolvedInstanceId) {
       toast.error("Please select an instance before upload");
       return;
     }
@@ -206,7 +212,7 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       accountId,
       vendorId,
       createdBy,
-      productStructureInstanceId: activeInstanceId || undefined,
+      productStructureInstanceId: resolvedInstanceId || undefined,
       pptDocuments: activeSection.id === "project" ? selectedFiles : [],
       pythaDocuments: activeSection.id === "pytha" ? selectedFiles : [],
     });

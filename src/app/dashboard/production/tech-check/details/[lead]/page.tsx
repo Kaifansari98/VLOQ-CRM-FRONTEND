@@ -107,7 +107,7 @@ export default function ClientApprovalLeadDetails() {
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   const userType = useAppSelector(
-    (state) => state.auth?.user?.user_type.user_type
+    (state) => state.auth?.user?.user_type.user_type,
   );
 
   const { mutate: approveTechCheckMutate, isPending: approving } =
@@ -163,7 +163,7 @@ export default function ClientApprovalLeadDetails() {
 
   const { data: clientDocsData } = useClientDocumentationDetails(
     vendorId!,
-    leadIdNum
+    leadIdNum,
   );
 
   const allPptDocs = clientDocsData?.documents?.ppt ?? [];
@@ -179,21 +179,23 @@ export default function ClientApprovalLeadDetails() {
 
   const pptDocs =
     validInstanceId && scopedGroup
-      ? scopedGroup?.documents?.ppt ?? []
+      ? (scopedGroup?.documents?.ppt ?? [])
       : validInstanceId
-      ? allPptDocs.filter(
-          (doc: any) => doc?.product_structure_instance_id === validInstanceId
-        )
-      : allPptDocs;
+        ? allPptDocs.filter(
+            (doc: any) =>
+              doc?.product_structure_instance_id === validInstanceId,
+          )
+        : allPptDocs;
 
   const pythaDocs =
     validInstanceId && scopedGroup
-      ? scopedGroup?.documents?.pytha ?? []
+      ? (scopedGroup?.documents?.pytha ?? [])
       : validInstanceId
-      ? allPythaDocs.filter(
-          (doc: any) => doc?.product_structure_instance_id === validInstanceId
-        )
-      : allPythaDocs;
+        ? allPythaDocs.filter(
+            (doc: any) =>
+              doc?.product_structure_instance_id === validInstanceId,
+          )
+        : allPythaDocs;
 
   const docs = [...pptDocs, ...pythaDocs];
 
@@ -204,6 +206,11 @@ export default function ClientApprovalLeadDetails() {
 
   const no_of_client_documents_initially_submitted =
     lead?.no_of_client_documents_initially_submitted;
+  const instanceDocCount = validInstanceId
+    ? clientDocsData?.product_structure_instances?.find(
+        (instance: any) => instance.id === validInstanceId
+      )?.no_of_client_documents_initially_submitted
+    : undefined;
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
@@ -226,7 +233,7 @@ export default function ClientApprovalLeadDetails() {
       {
         onSuccess: () => toast.success("Lead deleted successfully!"),
         onError: (err) => toast.error(err?.message || "Failed to delete lead"),
-      }
+      },
     );
 
     setOpenDelete(false);
@@ -255,21 +262,23 @@ export default function ClientApprovalLeadDetails() {
       };
 
   const approvedPPTCount = moveScope.ppt.filter(
-    (d) => d.tech_check_status === "APPROVED"
+    (d) => d.tech_check_status === "APPROVED",
   ).length;
   const approvedPythaCount = moveScope.pytha.filter(
-    (d) => d.tech_check_status === "APPROVED"
+    (d) => d.tech_check_status === "APPROVED",
   ).length;
   const approvedCount = approvedPPTCount + approvedPythaCount;
   const pendingCount = moveScope.docs.filter(
     (d) =>
       !d.tech_check_status ||
       d.tech_check_status === "PENDING" ||
-      d.tech_check_status === "REVISED"
+      d.tech_check_status === "REVISED",
   ).length;
   const requiredApprovalCount = validInstanceId
-    ? moveScope.docs.length
-    : (no_of_client_documents_initially_submitted || 0);
+    ? instanceDocCount ??
+      no_of_client_documents_initially_submitted ??
+      moveScope.docs.length
+    : no_of_client_documents_initially_submitted ?? moveScope.docs.length;
   const isMoveToOrderLoginDisabled =
     requiredApprovalCount > 0
       ? approvedCount < requiredApprovalCount ||
@@ -314,7 +323,10 @@ export default function ClientApprovalLeadDetails() {
                 if (isMoveToOrderLoginDisabled) {
                   let tooltipMsg = "";
 
-                  if (requiredApprovalCount && approvedCount < requiredApprovalCount) {
+                  if (
+                    requiredApprovalCount &&
+                    approvedCount < requiredApprovalCount
+                  ) {
                     tooltipMsg =
                       userType === "sales-executive"
                         ? `Once Tech Check is completed, then only lead can be move to Order Login.`
@@ -395,7 +407,10 @@ export default function ClientApprovalLeadDetails() {
                   if (isMoveToOrderLoginDisabled) {
                     let tooltipMsg = "";
 
-                    if (requiredApprovalCount && approvedCount < requiredApprovalCount) {
+                    if (
+                      requiredApprovalCount &&
+                      approvedCount < requiredApprovalCount
+                    ) {
                       tooltipMsg = `You must approve all required client documents (${requiredApprovalCount}) before moving to Order Login.`;
                     } else if (approvedPPTCount === 0) {
                       tooltipMsg =
@@ -863,7 +878,7 @@ export default function ClientApprovalLeadDetails() {
                       (d) =>
                         !d.tech_check_status ||
                         d.tech_check_status === "PENDING" ||
-                        d.tech_check_status === "REVISED"
+                        d.tech_check_status === "REVISED",
                     )
                     .sort((a, b) => {
                       const dateA = new Date(a.created_at).getTime();
@@ -954,17 +969,17 @@ export default function ClientApprovalLeadDetails() {
                             isRejected
                               ? ""
                               : isApproved
-                              ? ""
-                              : isSelected
-                              ? "border-zinc-900 dark:border-white dark:bg-zinc-950/30"
-                              : "border-gray-200 dark:border-gray-700 bg-white dark:bg-zinc-900/50 hover:border-zinc-300 dark:hover:border-zinc-700"
+                                ? ""
+                                : isSelected
+                                  ? "border-zinc-900 dark:border-white dark:bg-zinc-950/30"
+                                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-zinc-900/50 hover:border-zinc-300 dark:hover:border-zinc-700",
                           )}
                           onClick={() => {
                             if (isDisabled) return;
                             setSelectedDocs((prev) =>
                               prev.includes(doc.id)
                                 ? prev.filter((d) => d !== doc.id)
-                                : [...prev, doc.id]
+                                : [...prev, doc.id],
                             );
                           }}
                         >
@@ -976,10 +991,10 @@ export default function ClientApprovalLeadDetails() {
                                 isRejected
                                   ? "bg-red-100 dark:bg-red-900/50"
                                   : isApproved
-                                  ? "bg-green-100 dark:bg-green-900/50"
-                                  : isSelected
-                                  ? "bg-amber-100 dark:bg-amber-900/50"
-                                  : "bg-blue-50 dark:bg-blue-900/30 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50"
+                                    ? "bg-green-100 dark:bg-green-900/50"
+                                    : isSelected
+                                      ? "bg-amber-100 dark:bg-amber-900/50"
+                                      : "bg-blue-50 dark:bg-blue-900/30 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50",
                               )}
                             >
                               <FileText
@@ -987,10 +1002,10 @@ export default function ClientApprovalLeadDetails() {
                                   isRejected
                                     ? "text-red-500 dark:text-red-400"
                                     : isApproved
-                                    ? "text-green-500 dark:text-green-400"
-                                    : isSelected
-                                    ? "text-amber-600 dark:text-amber-400"
-                                    : "text-blue-500 dark:text-blue-400"
+                                      ? "text-green-500 dark:text-green-400"
+                                      : isSelected
+                                        ? "text-amber-600 dark:text-amber-400"
+                                        : "text-blue-500 dark:text-blue-400"
                                 }
                                 size={24}
                               />
@@ -1003,7 +1018,7 @@ export default function ClientApprovalLeadDetails() {
                                   "font-semibold text-sm line-clamp-2",
                                   isDisabled
                                     ? "text-gray-500 dark:text-gray-400"
-                                    : "text-gray-900 dark:text-white"
+                                    : "text-gray-900 dark:text-white",
                                 )}
                               >
                                 {doc.doc_og_name}
@@ -1309,7 +1324,7 @@ export default function ClientApprovalLeadDetails() {
               onError: (err) => {
                 toast.error(err?.message || "Failed to update lead status");
               },
-            }
+            },
           );
         }}
         loading={updateStatusMutation.isPending}
