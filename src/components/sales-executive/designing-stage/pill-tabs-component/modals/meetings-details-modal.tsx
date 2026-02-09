@@ -36,14 +36,16 @@ const MeetingDetailsModal = ({
   onOpenChange,
   meeting,
 }: MeetingDetailProps) => {
-  const meetings = meeting.designMeetingDocsMapping;
   const { leadId } = useDetails();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type
+    (state) => state.auth.user?.user_type?.user_type,
   );
-
+  const [meetingDocs, setMeetingDocs] = useState(
+    meeting.designMeetingDocsMapping,
+  );
+  const meetings = meetingDocs;
 
   const [openAddFilesModal, setOpenAddFilesModal] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
@@ -74,7 +76,7 @@ const MeetingDetailsModal = ({
   // 🧩 Non-image docs
   const docsArray = meetings
     .filter(
-      (m) => !isImageExt(getFileExtension(m.document?.doc_sys_name || ""))
+      (m) => !isImageExt(getFileExtension(m.document?.doc_sys_name || "")),
     )
     .map((m) => ({
       id: m.document?.id,
@@ -82,6 +84,12 @@ const MeetingDetailsModal = ({
       signedUrl: m.document?.signedUrl,
       created_at: m.document?.created_at,
     }));
+
+  React.useEffect(() => {
+    if (open) {
+      setMeetingDocs(meeting.designMeetingDocsMapping);
+    }
+  }, [open, meeting.designMeetingDocsMapping]);
 
   // 🧩 Permission logic
   const canDelete =
@@ -91,14 +99,25 @@ const MeetingDetailsModal = ({
 
   // 🧩 Delete confirmation
   const handleConfirmDelete = () => {
-    if (confirmDelete) {
-      deleteDocument({
+    if (!confirmDelete || !userId) return;
+
+    deleteDocument(
+      {
         vendorId: vendorId!,
         documentId: confirmDelete,
         deleted_by: userId!,
-      });
-      setConfirmDelete(null);
-    }
+      },
+      {
+        onSuccess: () => {
+          // 🔥 SAME LOGIC AS viewModal
+          setMeetingDocs((prev) =>
+            prev.filter((m) => m.document?.id !== confirmDelete),
+          );
+
+          setConfirmDelete(null);
+        },
+      },
+    );
   };
 
   return (
@@ -235,7 +254,6 @@ const MeetingDetailsModal = ({
                       }}
                       index={index}
                       canDelete={canDelete}
-                    
                       onDelete={(id) => setConfirmDelete(Number(id))}
                     />
                   ))}
@@ -269,13 +287,12 @@ const MeetingDetailsModal = ({
         </div>
       </BaseModal>
 
- 
-
       {/* ➕ Add Files Modal */}
       <AddMeetingFilesModal
         open={openAddFilesModal}
         onOpenChange={setOpenAddFilesModal}
         meetingId={meeting.id}
+        
       />
 
       {/* 🗑️ Delete Confirmation */}

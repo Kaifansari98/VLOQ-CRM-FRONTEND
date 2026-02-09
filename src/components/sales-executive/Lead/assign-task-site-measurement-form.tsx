@@ -64,7 +64,7 @@ const formSchema = z
     {
       message: "Remark is required for Follow Up",
       path: ["remark"], // Attach error to remark field
-    }
+    },
   );
 
 const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
@@ -114,13 +114,15 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       onSuccess: (data) => {
         console.log("API Response:", data);
         toast.success("Task assigned successfully!");
-        queryClient.invalidateQueries({
-          queryKey: ["leadStats", vendorId, userId],
-        });
+
         queryClient.invalidateQueries({
           queryKey: ["universal-stage-leads"],
           exact: false,
         });
+
+        queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+        queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+        queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
         onOpenChange(false);
 
         // ✅ Redirect if task type is Initial Site Measurement

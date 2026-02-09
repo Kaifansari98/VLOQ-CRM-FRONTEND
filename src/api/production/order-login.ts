@@ -75,7 +75,11 @@ export const useUploadFileBreakup = (vendorId: number | undefined) =>
   });
 
 // ✅ --- Fetch order login details by lead ---
-export const getOrderLoginByLead = async (vendorId: number, leadId: number, senderUserId: number) => {
+export const getOrderLoginByLead = async (
+  vendorId: number,
+  leadId: number,
+  senderUserId: number,
+) => {
   const { data } = await apiClient.get(
     `/leads/production/order-login/vendorId/${vendorId}/get-order-login-details`,
     { params: { lead_id: leadId, senderUserId: senderUserId } },

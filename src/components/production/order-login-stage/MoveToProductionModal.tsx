@@ -53,7 +53,7 @@ interface MoveToProductionModalProps {
     id: number;
     accountId: number;
   };
-  client_required_order_login_complition_date? : string;
+  client_required_order_login_complition_date?: string;
 }
 
 export default function MoveToProductionModal({
@@ -124,18 +124,22 @@ export default function MoveToProductionModal({
         onSuccess: () => {
           toast.success("Lead moved to Production stage successfully!");
           router.push("/dashboard/production/pre-post-prod");
+          queryClient.invalidateQueries({
+            queryKey: ["universal-stage-leads"],
+          });
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
-          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
+          queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+          queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
           setConfirmOpen(false);
           onOpenChange(false);
         },
-      }
+      },
     );
   };
 
   const onSubmit: SubmitHandler<FormValues> = (values) => {
     const selectedUser = mappedUsers.find(
-      (u: any) => u.id === values.assign_to_user_id
+      (u: any) => u.id === values.assign_to_user_id,
     );
     setSelectedUserName(selectedUser?.label || null);
     setSelectedUserId(values.assign_to_user_id);

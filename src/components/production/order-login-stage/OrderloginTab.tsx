@@ -45,7 +45,11 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
 
   // API hooks
   const { data: companyVendors } = useCompanyVendors(vendorId);
-  const { data: orderLoginData } = useOrderLoginByLead(vendorId, leadId, userId);
+  const { data: orderLoginData } = useOrderLoginByLead(
+    vendorId,
+    leadId,
+    userId,
+  );
   const { data: leadData } = useLeadStatus(leadId, vendorId);
 
   // Mutations
@@ -150,10 +154,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
   };
 
   // Handle vendor selection
-  const handleVendorChange = (
-    title: string,
-    selectedVendorId: number,
-  ) => {
+  const handleVendorChange = (title: string, selectedVendorId: number) => {
     handleLocalChange(title, "company_vendor_id", selectedVendorId);
   };
 
@@ -161,38 +162,36 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
   const handleSaveAll = async () => {
     setIsSaving(true);
     try {
-      const promises = Object.entries(breakups).map(
-        async ([title, values]) => {
-          const existing = orderLoginData?.find(
-            (item: any) => item.item_type === title,
-          );
+      const promises = Object.entries(breakups).map(async ([title, values]) => {
+        const existing = orderLoginData?.find(
+          (item: any) => item.item_type === title,
+        );
 
-          if (!existing?.id) {
-            // Create new record
-            const newRecord = {
-              id: null,
+        if (!existing?.id) {
+          // Create new record
+          const newRecord = {
+            id: null,
+            item_type: title,
+            item_desc: values.item_desc?.trim() || "N/A",
+            company_vendor_id: values.company_vendor_id || null,
+            created_by: userId,
+            updated_by: userId,
+          };
+          return uploadMultiple([newRecord]);
+        } else {
+          // Update existing record
+          return updateSingle({
+            orderLoginId: existing.id,
+            payload: {
+              lead_id: existing.lead_id ?? leadId,
               item_type: title,
               item_desc: values.item_desc?.trim() || "N/A",
-              company_vendor_id: values.company_vendor_id || null,
-              created_by: userId,
+              company_vendor_id: values.company_vendor_id ?? null,
               updated_by: userId,
-            };
-            return uploadMultiple([newRecord]);
-          } else {
-            // Update existing record
-            return updateSingle({
-              orderLoginId: existing.id,
-              payload: {
-                lead_id: existing.lead_id ?? leadId,
-                item_type: title,
-                item_desc: values.item_desc?.trim() || "N/A",
-                company_vendor_id: values.company_vendor_id ?? null,
-                updated_by: userId,
-              },
-            });
-          }
-        },
-      );
+            },
+          });
+        }
+      });
 
       await Promise.all(promises);
 
@@ -205,11 +204,11 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({ leadId, accountId }) => {
       queryClient.invalidateQueries({
         queryKey: ["leadProductionReadiness", vendorId, leadId],
       });
+      queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
     } catch (err: any) {
       console.error("Failed to save order login", err);
-      toast.error(
-        err?.response?.data?.message || "Failed to save order login",
-      );
+      toast.error(err?.response?.data?.message || "Failed to save order login");
     } finally {
       setIsSaving(false);
     }
