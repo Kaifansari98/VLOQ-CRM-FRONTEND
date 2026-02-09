@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import BaseModal from "@/components/utils/baseModal";
 import { useAppSelector } from "@/redux/store";
@@ -87,6 +88,11 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
   const leadId = data?.leadId ?? 0;
   const accountId = data?.accountId ?? 0;
   const selectedInstanceId = data?.selectedInstanceId ?? undefined;
+  const searchParams = useSearchParams();
+  const urlInstanceIdRaw = searchParams.get("instance_id");
+  const urlInstanceId = urlInstanceIdRaw ? Number(urlInstanceIdRaw) : null;
+  const validUrlInstanceId =
+    urlInstanceId && !Number.isNaN(urlInstanceId) ? urlInstanceId : null;
 
   const { data: structureInstancesData } = useLeadProductStructureInstances(
     leadId,
@@ -106,14 +112,21 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
   )
     ? structureInstancesData.data
     : [];
-  const hasMultipleInstances = structureInstances.length > 1;
+  const displayInstances = useMemo(
+    () =>
+      validUrlInstanceId
+        ? structureInstances.filter((item) => item.id === validUrlInstanceId)
+        : structureInstances,
+    [structureInstances, validUrlInstanceId]
+  );
+  const hasMultipleInstances = displayInstances.length > 1;
   const canDelete =
     userType === "admin" ||
     userType === "super-admin" ||
     userType === "super admin";
 
   const [activeInstanceId, setActiveInstanceId] = useState<number | undefined>(
-    selectedInstanceId || undefined
+    validUrlInstanceId ?? selectedInstanceId ?? undefined
   );
   const [activeSection, setActiveSection] = useState<Section | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -125,37 +138,43 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       setSelectedFiles([]);
       return;
     }
-    if (
-      activeInstanceId &&
-      structureInstances.some((item) => item.id === activeInstanceId)
-    ) {
-      return;
-    }
-    if (
-      selectedInstanceId &&
-      structureInstances.some((item) => item.id === selectedInstanceId)
-    ) {
-      setActiveInstanceId(selectedInstanceId);
-      return;
-    }
-    if (hasMultipleInstances) {
-      setActiveInstanceId(structureInstances[0]?.id);
+
+    const hasActive = !!activeInstanceId;
+    const activeExists =
+      hasActive && displayInstances.some((item) => item.id === activeInstanceId);
+    const urlExists =
+      validUrlInstanceId &&
+      displayInstances.some((item) => item.id === validUrlInstanceId);
+
+    if (activeExists) return;
+
+    let nextId: number | undefined;
+    if (urlExists) {
+      nextId = validUrlInstanceId ?? undefined;
+    } else if (hasMultipleInstances) {
+      nextId = displayInstances[0]?.id;
     } else {
-      setActiveInstanceId(selectedInstanceId || undefined);
+      nextId = validUrlInstanceId ?? selectedInstanceId ?? undefined;
+    }
+
+    if (nextId !== activeInstanceId) {
+      setActiveInstanceId(nextId);
     }
   }, [
     open,
     hasMultipleInstances,
-    structureInstances,
+    displayInstances,
     activeInstanceId,
     selectedInstanceId,
+    validUrlInstanceId,
   ]);
 
   const docsForSection = useMemo(() => {
     const resolvedInstanceId =
       activeInstanceId ??
+      validUrlInstanceId ??
       selectedInstanceId ??
-      (hasMultipleInstances ? structureInstances[0]?.id : undefined);
+      (hasMultipleInstances ? displayInstances[0]?.id : undefined);
 
     const flatProject = docsDetails?.documents?.ppt || [];
     const flatPytha = docsDetails?.documents?.pytha || [];
@@ -189,15 +208,16 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       project: getBySection("project"),
       pytha: getBySection("pytha"),
     };
-  }, [docsDetails, hasMultipleInstances, activeInstanceId, structureInstances]);
+  }, [docsDetails, hasMultipleInstances, activeInstanceId, displayInstances, validUrlInstanceId, selectedInstanceId]);
 
   const handleUpload = async () => {
     if (!activeSection) return;
     if (!vendorId || !createdBy) return;
     const resolvedInstanceId =
       activeInstanceId ??
+      validUrlInstanceId ??
       selectedInstanceId ??
-      (hasMultipleInstances ? structureInstances[0]?.id : undefined);
+      (hasMultipleInstances ? displayInstances[0]?.id : undefined);
     if (hasMultipleInstances && !resolvedInstanceId) {
       toast.error("Please select an instance before upload");
       return;
@@ -251,11 +271,11 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       description="Manage additional client docs by section."
     >
       <div className="space-y-6 py-4 px-5">
-        {hasMultipleInstances && (
+        {(hasMultipleInstances || validUrlInstanceId) && (
           <div>
-            <p className="text-sm font-medium mb-3">Product Instances</p>
+            <p className="text-sm font-medium mb-3">Product Instance</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {structureInstances.map((instance) => {
+              {displayInstances.map((instance) => {
                 const isActive = activeInstanceId === instance.id;
                 return (
                   <Card
