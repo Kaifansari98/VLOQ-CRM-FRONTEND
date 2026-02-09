@@ -77,6 +77,7 @@ import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 
 export default function OrderLoginLeadDetails() {
   const { lead: leadId } = useParams();
@@ -122,6 +123,10 @@ export default function OrderLoginLeadDetails() {
   const [openMoveToProduction, setOpenMoveToProduction] = useState(false);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+  const { data: instancesResponse } = useLeadProductStructureInstances(
+    leadIdNum,
+    vendorId,
+  );
 
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
@@ -135,12 +140,19 @@ export default function OrderLoginLeadDetails() {
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
-  const totalInstanceCount = lead?.productStructureInstances?.length ?? 0;
+  const instances = Array.isArray(instancesResponse?.data)
+    ? instancesResponse?.data
+    : instancesResponse?.data?.data || [];
+  const totalInstanceCount =
+    instances.length || lead?.productStructureInstances?.length || 0;
   const instanceSuffix =
     validInstanceId && totalInstanceCount > 1
-      ? lead?.productStructureInstances?.find(
-          (instance: any) => instance.id === validInstanceId
-        )?.quantity_index
+      ? (instances.find(
+          (instance: any) => instance.id === validInstanceId,
+        ) ??
+          lead?.productStructureInstances?.find(
+            (instance: any) => instance.id === validInstanceId,
+          ))?.quantity_index
       : null;
   const displayLeadCode =
     leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
