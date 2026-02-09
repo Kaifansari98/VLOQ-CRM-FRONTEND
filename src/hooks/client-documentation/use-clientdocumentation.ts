@@ -46,6 +46,7 @@ export interface ClientDocDetailsResponse {
     id: number;
     title: string;
     quantity_index: number;
+    no_of_client_documents_initially_submitted?: number | null;
     productStructure?: {
       id: number;
       type: string;
