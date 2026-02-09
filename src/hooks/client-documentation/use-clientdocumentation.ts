@@ -77,9 +77,10 @@ export const useClientDocumentationDetails = (
   vendorId: number,
   leadId: number
 ) => {
+  const userId = useAppSelector((state) => state.auth.user?.id);
   return useQuery<ClientDocDetailsResponse>({
     queryKey: ["clientDocumentationDetails", vendorId, leadId],
-    queryFn: () => getClientDocumentationDetails(vendorId, leadId),
+    queryFn: () => getClientDocumentationDetails(vendorId, leadId, userId),
     enabled: !!vendorId && !!leadId,
     staleTime: 5 * 60 * 1000,
   });
