@@ -87,8 +87,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   const canDelete = userType === "admin" || userType === "super_admin";
   const canUpload =
     userType === "admin" ||
-    userType === "super_admin" ||
-    userType === "sales-executive";
+    userType === "super_admin";
 
   // 🧩 --- Delete Handler ---
   const handleConfirmDelete = () => {
