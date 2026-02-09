@@ -475,7 +475,7 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
                                 }}
                                 index={index}
                                 canDelete={canDelete}
-                                status={doc.tech_check_status}
+                                status={doc.tech_check_status ?? "Pending"}
                                 onDelete={(id) => setConfirmDelete(Number(id))}
                               />
                             ))}
@@ -489,7 +489,7 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
                                   created_at: doc.created_at,
                                 }}
                                 canDelete={canDelete}
-                                status={doc.tech_check_status}
+                                status={doc.tech_check_status ?? "Pending"}
                                 onDelete={(id) => setConfirmDelete(Number(id))}
                               />
                             ))}
