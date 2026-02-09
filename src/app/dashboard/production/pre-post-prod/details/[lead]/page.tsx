@@ -294,7 +294,11 @@ export default function ProductionLeadDetails() {
     !validInstanceId
       ? "instance_id is required to mark production completed."
       : currentInstance?.is_production_completed
-      ? "Production already completed for this instance."
+      ? `Production already completed for this instance.${
+          incompleteTitles.length
+            ? ` Pending Instances: ${incompleteTitles.join(", ")}`
+            : ""
+        }`
       : missingDocsOrRemarks.length || missingPrerequisites.length
       ? `Pending: ${[...missingDocsOrRemarks, ...missingPrerequisites].join(
           ", "
