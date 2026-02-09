@@ -371,7 +371,7 @@ export function UniversalTable({
           "";
         const suffix =
           instances.length > 1
-            ? `.${(onlyInstance?.quantity_index ?? 0) + 1}`
+            ? `.${onlyInstance?.quantity_index ?? 1}`
             : "";
         expanded.push(
           mapUniversalRow(lead, expanded.length, {
@@ -392,11 +392,12 @@ export function UniversalTable({
               item?.productStructure?.id === instance?.product_structure_id
           )?.productStructure?.type ??
           "";
+        const suffixIndex = instance?.quantity_index ?? instanceIndex + 1;
         expanded.push(
           mapUniversalRow(lead, expanded.length, {
             rowKey: `${lead.id}-${instance?.id ?? instanceIndex + 1}`,
             instanceId: instance?.id,
-            leadCodeSuffix: `.${instanceIndex + 1}`,
+            leadCodeSuffix: `.${suffixIndex}`,
             furnitureStructureOverride: structureType,
           }),
         );

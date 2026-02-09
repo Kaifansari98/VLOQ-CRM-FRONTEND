@@ -214,6 +214,13 @@ export default function ClientApprovalLeadDetails() {
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
+  const instanceSuffix = validInstanceId
+    ? clientDocsData?.product_structure_instances?.find(
+        (instance: any) => instance.id === validInstanceId
+      )?.quantity_index
+    : null;
+  const displayLeadCode =
+    leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
 
   const accountId = Number(lead?.account_id);
 
@@ -299,8 +306,8 @@ export default function ClientApprovalLeadDetails() {
               <BreadcrumbItem>
                 <BreadcrumbPage>
                   <p className="font-bold">
-                    {leadCode || "Loading…"}
-                    {leadCode && (clientName ? ` - ${clientName}` : "")}
+                    {displayLeadCode || "Loading…"}
+                    {displayLeadCode && (clientName ? ` - ${clientName}` : "")}
                   </p>
                 </BreadcrumbPage>
               </BreadcrumbItem>
