@@ -214,11 +214,14 @@ export default function ClientApprovalLeadDetails() {
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
-  const instanceSuffix = validInstanceId
-    ? clientDocsData?.product_structure_instances?.find(
-        (instance: any) => instance.id === validInstanceId
-      )?.quantity_index
-    : null;
+  const totalInstanceCount =
+    clientDocsData?.product_structure_instances?.length ?? 0;
+  const instanceSuffix =
+    validInstanceId && totalInstanceCount > 1
+      ? clientDocsData?.product_structure_instances?.find(
+          (instance: any) => instance.id === validInstanceId
+        )?.quantity_index
+      : null;
   const displayLeadCode =
     leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
 

@@ -135,6 +135,15 @@ export default function OrderLoginLeadDetails() {
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
+  const totalInstanceCount = lead?.productStructureInstances?.length ?? 0;
+  const instanceSuffix =
+    validInstanceId && totalInstanceCount > 1
+      ? lead?.productStructureInstances?.find(
+          (instance: any) => instance.id === validInstanceId
+        )?.quantity_index
+      : null;
+  const displayLeadCode =
+    leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
   const accountId = Number(lead?.account_id);
 
   const deleteLeadMutation = useDeleteLead();
@@ -176,8 +185,8 @@ export default function OrderLoginLeadDetails() {
               <BreadcrumbItem>
                 <BreadcrumbPage>
                   <p className="font-bold">
-                    {leadCode || "Loading…"}
-                    {leadCode && (clientName ? ` - ${clientName}` : "")}
+                    {displayLeadCode || "Loading…"}
+                    {displayLeadCode && (clientName ? ` - ${clientName}` : "")}
                   </p>
                 </BreadcrumbPage>
               </BreadcrumbItem>

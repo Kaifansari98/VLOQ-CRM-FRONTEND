@@ -232,6 +232,15 @@ export default function ProductionLeadDetails() {
     ? instancesResponse?.data
     : instancesResponse?.data?.data || [];
 
+  const totalInstanceCount = instances.length;
+  const instanceSuffix =
+    validInstanceId && totalInstanceCount > 1
+      ? instances.find((instance: any) => Number(instance?.id) === validInstanceId)
+          ?.quantity_index
+      : null;
+  const displayLeadCode =
+    leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
+
   const currentInstance = validInstanceId
     ? instances.find((instance: any) => Number(instance?.id) === validInstanceId)
     : null;
@@ -369,8 +378,8 @@ export default function ProductionLeadDetails() {
               <BreadcrumbItem>
                 <BreadcrumbPage>
                   <p className="font-bold">
-                    {leadCode || "Loading…"}
-                    {leadCode && (clientName ? ` - ${clientName}` : "")}
+                    {displayLeadCode || "Loading…"}
+                    {displayLeadCode && (clientName ? ` - ${clientName}` : "")}
                   </p>
                 </BreadcrumbPage>
               </BreadcrumbItem>
