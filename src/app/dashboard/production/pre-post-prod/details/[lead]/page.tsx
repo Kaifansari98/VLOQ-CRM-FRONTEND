@@ -269,14 +269,8 @@ export default function ProductionLeadDetails() {
     if (!instanceCompleteness?.hardware_docs) {
       missingDocsOrRemarks.push("Hardware packing docs");
     }
-    if (!instanceCompleteness?.hardware_remark) {
-      missingDocsOrRemarks.push("Hardware packing remark");
-    }
     if (!instanceCompleteness?.woodwork_docs) {
       missingDocsOrRemarks.push("Woodwork packing docs");
-    }
-    if (!instanceCompleteness?.woodwork_remark) {
-      missingDocsOrRemarks.push("Woodwork packing remark");
     }
   }
 
