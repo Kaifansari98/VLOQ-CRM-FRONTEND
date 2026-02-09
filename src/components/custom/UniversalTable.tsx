@@ -352,12 +352,24 @@ export function UniversalTable({
       const instances = Array.isArray(lead?.productStructureInstances)
         ? lead.productStructureInstances
         : [];
-      const pendingInstances = instances.filter((instance: any) =>
-        isType8
-          ? instance?.is_tech_check_completed !== true
-          : instance?.is_order_login_completed !== true
-      );
-      const instanceRows = isType10 ? instances : pendingInstances;
+      let instanceRows = instances;
+      if (isType8) {
+        instanceRows = instances.filter(
+          (instance: any) => instance?.is_tech_check_completed !== true,
+        );
+      } else if (isType9) {
+        instanceRows = instances.filter(
+          (instance: any) =>
+            instance?.is_tech_check_completed === true &&
+            instance?.is_order_login_completed !== true,
+        );
+      } else if (isType10) {
+        instanceRows = instances.filter(
+          (instance: any) =>
+            instance?.is_tech_check_completed === true &&
+            instance?.is_order_login_completed === true,
+        );
+      }
 
       if (instanceRows.length === 0) {
         return;
