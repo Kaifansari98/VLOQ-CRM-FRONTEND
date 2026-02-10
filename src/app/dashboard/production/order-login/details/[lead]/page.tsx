@@ -34,6 +34,8 @@ import {
   Clock,
   UserPlus,
   MessageSquare,
+  User2,
+  Layers3,
 } from "lucide-react";
 
 import {
@@ -202,11 +204,46 @@ export default function OrderLoginLeadDetails() {
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbPage>
-                  <p className="font-bold text-sm sm:text-base break-words">
-                    {displayLeadCode || "Loading…"}
-                    {displayLeadCode && (clientName ? ` - ${clientName}` : "")}
-                    {instanceName ? ` • ${instanceName}` : ""}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {displayLeadCode ? (
+                      <>
+                        {/* Dot + Lead Code */}
+                        <span className="inline-flex items-center gap-1.5 font-semibold text-sm text-primary">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          {displayLeadCode}
+                        </span>
+
+                        {clientName && (
+                          <>
+                            {/* Separator */}
+                            <span className="text-muted-foreground">|</span>
+
+                            {/* Client Name */}
+                            <span className="inline-flex items-center gap-1.5 font-medium text-sm text-foreground">
+                              <User2 className="w-3.5 h-3.5 text-muted-foreground" />
+                              {clientName}
+                            </span>
+                          </>
+                        )}
+
+                        {instanceName && (
+                          <>
+                            {/* Separator */}
+                            <span className="text-muted-foreground">-</span>
+
+                            {/* Instance Name */}
+                            <span className="inline-flex items-center gap-1.5 font-medium text-xs text-muted-foreground">
+                              <Layers3 className="w-3 h-3" />
+                              {instanceName}
+                            </span>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Loading…
+                      </span>
+                    )}
+                  </div>
                 </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
