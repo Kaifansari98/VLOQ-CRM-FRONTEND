@@ -55,7 +55,7 @@ export default function TechCheckDetails({ leadId }: Props) {
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   // ✅ Hooks
-  const { data: clientDocs } = useClientDocumentationDetails(vendorId, leadId);
+  const { data: clientDocs } = useClientDocumentationDetails(vendorId, leadId, userId!);
   const { data: siteMeasurement } = useSiteMeasurementLeadById(leadId);
   const { data: finalMeasurement } = useFinalMeasurementLeadById(
     vendorId,
