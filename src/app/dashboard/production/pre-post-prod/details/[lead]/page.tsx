@@ -426,7 +426,7 @@ export default function ProductionLeadDetails() {
           </Breadcrumb>
         </div>
 
-        <div className="flex w-full flex-wrap items-center justify-end gap-2 md:w-auto">
+        <div className="flex w-full items-center justify-end gap-2 md:w-auto">
           {canMoveReadyToDispatchStage &&
             (allInstancesCompleted ? (
               <Button
@@ -440,41 +440,41 @@ export default function ProductionLeadDetails() {
             ) : (
               <CustomeTooltip
                 truncateValue={
-                  <Button
-                    size="sm"
-                    className="hidden md:flex"
-                    disabled={!canMarkProductionCompleted}
-                    onClick={async () => {
-                      if (!canMarkProductionCompleted) {
-                        return;
-                      }
-                      if (!vendorId || !leadIdNum || !userId) {
-                        toast.error("Missing vendor or user info!");
-                        return;
-                      }
-                      try {
-                        await markProductionCompletedMutation.mutateAsync({
-                          updatedBy: userId,
-                        });
-                        toast.success("Production marked completed!");
-                      } catch (err: any) {
-                        toast.error(
-                          err?.response?.data?.message ||
-                            err?.message ||
-                            "Failed to mark production completed"
-                        );
-                      }
-                    }}
+                  currentInstance?.is_production_completed ? (
+                    <span className="hidden md:inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                      <CheckCircle2 size={14} />
+                      Completed
+                    </span>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="hidden md:flex"
+                      disabled={!canMarkProductionCompleted}
+                      onClick={async () => {
+                        if (!canMarkProductionCompleted) {
+                          return;
+                        }
+                        if (!vendorId || !leadIdNum || !userId) {
+                          toast.error("Missing vendor or user info!");
+                          return;
+                        }
+                        try {
+                          await markProductionCompletedMutation.mutateAsync({
+                            updatedBy: userId,
+                          });
+                          toast.success("Production marked completed!");
+                        } catch (err: any) {
+                          toast.error(
+                            err?.response?.data?.message ||
+                              err?.message ||
+                              "Failed to mark production completed"
+                          );
+                        }
+                      }}
                     >
-                    {currentInstance?.is_production_completed ? (
-                      <span className="flex items-center gap-2 text-green-600">
-                        <CheckCircle2 size={16} />
-                        Production has been completed
-                      </span>
-                    ) : (
-                      "Production Completed"
-                    )}
-                  </Button>
+                      Mark Completed
+                    </Button>
+                  )
                 }
                 value={productionCompletedTooltip}
               />
@@ -519,46 +519,46 @@ export default function ProductionLeadDetails() {
                     Ready To Dispatch
                   </DropdownMenuItem>
                 ) : (
-                  <CustomeTooltip
-                    truncateValue={
-                      <DropdownMenuItem
-                        className="md:hidden"
-                        disabled={!canMarkProductionCompleted}
-                        onClick={async () => {
-                          if (!canMarkProductionCompleted) {
-                            return;
-                          }
-                          if (!vendorId || !leadIdNum || !userId) {
-                            toast.error("Missing vendor or user info!");
-                            return;
-                          }
-                          try {
-                            await markProductionCompletedMutation.mutateAsync({
-                              updatedBy: userId,
-                            });
-                            toast.success("Production marked completed!");
-                          } catch (err: any) {
-                            toast.error(
-                              err?.response?.data?.message ||
-                                err?.message ||
-                                "Failed to mark production completed"
-                            );
-                          }
-                        }}
-                      >
-                        <Truck size={20} />
-                        {currentInstance?.is_production_completed ? (
-                          <span className="flex items-center gap-2 text-green-600">
-                            <CheckCircle2 size={16} />
-                            Production has been completed
-                          </span>
+                    <CustomeTooltip
+                      truncateValue={
+                        currentInstance?.is_production_completed ? (
+                          <DropdownMenuItem className="md:hidden" disabled>
+                            <CheckCircle2 size={18} className="text-emerald-600" />
+                            Completed
+                          </DropdownMenuItem>
                         ) : (
-                          "Production Completed"
-                        )}
-                      </DropdownMenuItem>
-                    }
-                    value={productionCompletedTooltip}
-                  />
+                          <DropdownMenuItem
+                            className="md:hidden"
+                            disabled={!canMarkProductionCompleted}
+                            onClick={async () => {
+                              if (!canMarkProductionCompleted) {
+                                return;
+                              }
+                              if (!vendorId || !leadIdNum || !userId) {
+                                toast.error("Missing vendor or user info!");
+                                return;
+                              }
+                              try {
+                                await markProductionCompletedMutation.mutateAsync({
+                                  updatedBy: userId,
+                                });
+                                toast.success("Production marked completed!");
+                              } catch (err: any) {
+                                toast.error(
+                                  err?.response?.data?.message ||
+                                    err?.message ||
+                                    "Failed to mark production completed"
+                                );
+                              }
+                            }}
+                          >
+                            <Truck size={20} />
+                            Mark Completed
+                          </DropdownMenuItem>
+                        )
+                      }
+                      value={productionCompletedTooltip}
+                    />
                 ))}
 
               {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}

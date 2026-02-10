@@ -298,6 +298,7 @@ export function UniversalTable({
       instanceId?: number;
       leadCodeSuffix?: string;
       furnitureStructureOverride?: string;
+      productionStatus?: string;
     },
   ): LeadColumn => ({
     rowKey: options?.rowKey,
@@ -320,6 +321,7 @@ export function UniversalTable({
       : lead.leadProductStructureMapping
           ?.map((p: any) => p.productStructure?.type)
           .join(", ") ?? "",
+    productionStatus: options?.productionStatus,
     source: lead.source?.type ?? "",
     siteType: lead.siteType?.type ?? "",
     createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",
@@ -381,6 +383,7 @@ export function UniversalTable({
           onlyInstance?.productStructure?.type ??
           lead.leadProductStructureMapping?.[0]?.productStructure?.type ??
           "";
+        const instanceCompleted = Boolean(onlyInstance?.is_production_completed);
         const suffix =
           instances.length > 1
             ? `.${onlyInstance?.quantity_index ?? 1}`
@@ -391,12 +394,25 @@ export function UniversalTable({
             instanceId: onlyInstance?.id,
             leadCodeSuffix: suffix,
             furnitureStructureOverride: structureType,
+            productionStatus: isType10
+              ? instanceCompleted
+                ? "Completed"
+                : "Pending"
+              : undefined,
           }),
         );
         return;
       }
 
       instanceRows.forEach((instance: any, instanceIndex: number) => {
+        console.log("Type 10 instance status debug:", {
+          type,
+          leadId: lead?.id,
+          instanceId: instance?.id,
+          is_production_completed: instance?.is_production_completed,
+          instanceKeys: instance ? Object.keys(instance) : [],
+          instance,
+        });
         const structureType =
           instance?.productStructure?.type ??
           lead.leadProductStructureMapping?.find(
@@ -404,6 +420,7 @@ export function UniversalTable({
               item?.productStructure?.id === instance?.product_structure_id
           )?.productStructure?.type ??
           "";
+        const instanceCompleted = Boolean(instance?.is_production_completed);
         const suffixIndex = instance?.quantity_index ?? instanceIndex + 1;
         expanded.push(
           mapUniversalRow(lead, expanded.length, {
@@ -411,6 +428,11 @@ export function UniversalTable({
             instanceId: instance?.id,
             leadCodeSuffix: instances.length > 1 ? `.${suffixIndex}` : "",
             furnitureStructureOverride: structureType,
+            productionStatus: isType10
+              ? instanceCompleted
+                ? "Completed"
+                : "Pending"
+              : undefined,
           }),
         );
       });
@@ -423,9 +445,18 @@ export function UniversalTable({
 
   // -------------------- COLUMNS --------------------
 
+  const showProductionStatusColumn = useMemo(() => {
+    const normalizedType = String(type || "").trim().toLowerCase();
+    return normalizedType === "type 10";
+  }, [type]);
+
   const columns = useMemo(
-    () => getUniversalTableColumns({ showStageColumn }),
-    [showStageColumn],
+    () =>
+      getUniversalTableColumns({
+        showStageColumn,
+        showProductionStatusColumn,
+      }),
+    [showStageColumn, showProductionStatusColumn],
   );
 
   // -------------------- TABLE INSTANCE --------------------

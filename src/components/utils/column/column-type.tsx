@@ -19,6 +19,7 @@ export type LeadColumn = {
   email: string; // R
   // site_supervisor?: string;
   furnitueStructures: string;
+  productionStatus?: string;
   designerRemark: string;
   accountId: number; // n
   updatedAt: string; //n

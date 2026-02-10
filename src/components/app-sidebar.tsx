@@ -189,6 +189,9 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+
   const user = useAppSelector((state) => state.auth.user);
   const userType = user?.user_type?.user_type?.toLowerCase();
   const canSeeOverallLeads =
@@ -257,7 +260,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           )
         : baseItems;
 
-    if (!canSeeMiscLeads || miscLeadsCount <= 0) return filteredItems;
+    if (!mounted || !canSeeMiscLeads || miscLeadsCount <= 0) {
+      return filteredItems;
+    }
 
     const miscItem = {
       title: "Miscellaneous",
@@ -285,6 +290,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     });
   }, [
     canSeeMiscLeads,
+    mounted,
     canSeeOverallLeads,
     miscLeadsCount,
     isMiscLeadLoading,
