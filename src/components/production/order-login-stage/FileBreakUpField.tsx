@@ -295,7 +295,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                 disabled={!canUsePoUpload || disable}
                 className="w-full h-9"
               >
-                Manage PO Files
+                Upload PO Files
               </Button>
             </div>
           )}
