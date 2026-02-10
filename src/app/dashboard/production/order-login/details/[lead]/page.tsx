@@ -156,6 +156,12 @@ export default function OrderLoginLeadDetails() {
       : null;
   const displayLeadCode =
     leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
+  const instanceName = validInstanceId
+    ? (instances.find((instance: any) => instance.id === validInstanceId) ??
+        lead?.productStructureInstances?.find(
+          (instance: any) => instance.id === validInstanceId,
+        ))?.title ?? ""
+    : "";
   const accountId = Number(lead?.account_id);
 
   const deleteLeadMutation = useDeleteLead();
@@ -188,17 +194,18 @@ export default function OrderLoginLeadDetails() {
   return (
     <>
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
-        <div className="flex items-center gap-2">
+      <header className="flex shrink-0 flex-col gap-2 px-4 py-2 border-b md:h-16 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 items-center gap-2">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbPage>
-                  <p className="font-bold">
+                  <p className="font-bold text-sm sm:text-base break-words">
                     {displayLeadCode || "Loading…"}
                     {displayLeadCode && (clientName ? ` - ${clientName}` : "")}
+                    {instanceName ? ` • ${instanceName}` : ""}
                   </p>
                 </BreadcrumbPage>
               </BreadcrumbItem>
@@ -206,7 +213,7 @@ export default function OrderLoginLeadDetails() {
           </Breadcrumb>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 md:w-auto">
           <div className="flex items-center justify-end gap-2">
             {/* ✅ Show only if user has permission */}
             {canMoveToProductionStage &&
