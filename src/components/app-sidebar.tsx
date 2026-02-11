@@ -14,6 +14,8 @@ import {
   Users,
   AlertTriangle,
   LayoutDashboard,
+  MonitorCheck,
+  Monitor,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -185,6 +187,11 @@ const data = {
           url: "#",
         },
       ],
+    },
+    {
+      title: "Track Trace",
+      url: "/dashboard/track-trace",
+      icon: Monitor,
     },
   ],
 };
