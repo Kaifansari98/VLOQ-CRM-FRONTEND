@@ -156,10 +156,12 @@ export default function InstallationMiscellaneous({
     return map;
   }, [instances]);
 
-  const instanceOptions = useMemo(() => {
+  const instanceOptions = useMemo<{ value: string; label: string }[]>(() => {
     return instances.map((instance: any) => ({
       value: String(instance.id),
-      label: instance?.title || `Instance ${instance?.quantity_index ?? instance?.id}`,
+      label:
+        instance?.title ||
+        `Instance ${instance?.quantity_index ?? instance?.id}`,
     }));
   }, [instances]);
 
