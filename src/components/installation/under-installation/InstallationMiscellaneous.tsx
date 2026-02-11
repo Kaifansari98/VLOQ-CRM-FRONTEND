@@ -174,15 +174,6 @@ export default function InstallationMiscellaneous({
   }, [orderLoginSummary, formData.selected_instance_id]);
 
   useEffect(() => {
-    if (!formData.selected_instance_id && instanceOptions.length > 0) {
-      setFormData((prev) => ({
-        ...prev,
-        selected_instance_id: Number(instanceOptions[0].value),
-      }));
-    }
-  }, [formData.selected_instance_id, instanceOptions]);
-
-  useEffect(() => {
     setFormData((prev) => ({
       ...prev,
       reorder_material_details: "",

@@ -82,12 +82,6 @@ export default function PendingMaterialDetails({
     : undefined;
 
   useEffect(() => {
-    if (!selectedInstanceLabel && instanceOptions.length > 0) {
-      setSelectedInstanceLabel(instanceOptions[0]);
-    }
-  }, [instanceOptions, selectedInstanceLabel]);
-
-  useEffect(() => {
     setTitle("");
   }, [selectedInstanceId]);
 

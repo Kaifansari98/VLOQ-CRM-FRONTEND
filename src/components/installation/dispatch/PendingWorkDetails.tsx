@@ -103,12 +103,6 @@ export default function PendingWorkDetails({
     ? instanceIdByLabel.get(selectedInstanceLabel)
     : undefined;
 
-  useEffect(() => {
-    if (!selectedInstanceLabel && instanceOptions.length > 0) {
-      setSelectedInstanceLabel(instanceOptions[0]);
-    }
-  }, [instanceOptions, selectedInstanceLabel]);
-
   const filteredWorkTitleOptions = useMemo(() => {
     if (!selectedInstanceId) return workTitleOptions ?? [];
     return (workTitleOptions ?? []).filter(
