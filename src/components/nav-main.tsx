@@ -33,6 +33,9 @@ import Link from "next/link";
 interface NavSubItem {
   title: string;
   url: string;
+  customCount?: number;
+  customCountLoading?: boolean;
+  badgeClassName?: string;
   showCount?:
     | "total_leads"
     | "total_overall_leads"
@@ -248,18 +251,23 @@ export function NavMain({ items }: { items: NavItem[] }) {
                                   <span>{subItem.title}</span>
 
                                   {(() => {
-                                    if (!subItem.showCount) return null;
+                                    const hasShowCount = !!subItem.showCount;
+                                    const hasCustomCount = subItem.customCount !== undefined;
 
-                                    const count = getCountForItem(
-                                      subItem.showCount
-                                    );
+                                    if (!hasShowCount && !hasCustomCount) return null;
+
+                                    const count = hasCustomCount
+                                      ? subItem.customCount
+                                      : getCountForItem(subItem.showCount!);
 
                                     // Hide when 0, undefined, null
                                     if (!count) return null;
 
                                     return (
-                                      <Badge className="ml-2 rounded-full">
-                                        {isLoading ? "…" : count}
+                                      <Badge className={cn("ml-2 rounded-full", subItem.badgeClassName)}>
+                                        {isLoading || subItem.customCountLoading
+                                          ? "…"
+                                          : count}
                                       </Badge>
                                     );
                                   })()}

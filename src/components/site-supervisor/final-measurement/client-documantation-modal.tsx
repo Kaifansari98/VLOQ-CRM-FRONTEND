@@ -1,29 +1,9 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import BaseModal from "@/components/utils/baseModal";
-import { useAppSelector } from "@/redux/store";
-import { FileUploadField } from "@/components/custom/file-upload";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { toast } from "react-toastify";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { useUploadClientDocumentation } from "@/hooks/final-measurement/use-final-measurement";
-import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
-import { useSelectionData } from "@/hooks/designing-stage/designing-leads-hooks";
 import SelectionsTabForClientDocs from "@/components/sales-executive/designing-stage/pill-tabs-component/SelectionsTabForClientDocs";
 
-// -------------------- Props --------------------
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -34,165 +14,28 @@ interface Props {
   };
 }
 
-// -------------------- Form Validation Schema --------------------
-const clientDocSchema = z.object({
-  pptDocuments: z
-    .array(z.instanceof(File))
-    .min(1, "Please upload at least one PPT file"),
-  pythaDocuments: z
-    .array(z.instanceof(File))
-    .min(1, "Please upload at least one Design file"),
-});
-
-type ClientDocFormValues = z.infer<typeof clientDocSchema>;
-
-// -------------------- Modal Component --------------------
 const ClientDocumentationModal: React.FC<Props> = ({
   open,
   onOpenChange,
   data,
 }) => {
-  const queryClient = useQueryClient();
-  const router = useRouter();
-
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const createdBy = useAppSelector((state) => state.auth.user?.id);
   const leadId = data?.id;
   const accountId = data?.accountId;
-  const { data: selectionsData } = useSelectionData(vendorId!, leadId!);
-
-  const hasSelections =
-    Array.isArray(selectionsData?.data) &&
-    selectionsData.data.some((s: any) => s.desc && s.desc !== "NULL");
-
-  const { mutateAsync, isPending } = useUploadClientDocumentation();
-
-  const form = useForm<ClientDocFormValues>({
-    resolver: zodResolver(clientDocSchema),
-    defaultValues: {
-      pptDocuments: [],
-      pythaDocuments: [],
-    },
-  });
-
-  // Reset form when modal closes or data changes
-  useEffect(() => {
-    if (!open) {
-      form.reset({ pptDocuments: [], pythaDocuments: [] });
-    }
-  }, [open, form]);
-
-  // -------------------- Form Submit --------------------
-  const onSubmit = async (values: ClientDocFormValues) => {
-    if (!hasSelections) {
-      toast.error(
-        "Please complete design selections before uploading documents"
-      );
-      return;
-    }
-    if (!leadId || !accountId || !vendorId || !createdBy) {
-      toast.error("Missing required information");
-      console.log("lead id :- ", leadId);
-      console.log("account id :- ", accountId);
-      console.log("vendor id :- ", vendorId);
-      console.log("user id :- ", createdBy);
-      return;
-    }
-
-    try {
-      await mutateAsync({
-        leadId,
-        accountId,
-        vendorId,
-        createdBy,
-        pptDocuments: values.pptDocuments,
-        pythaDocuments: values.pythaDocuments,
-      });
-
-      toast.success("Documents uploaded successfully");
-
-      // ✅ Invalidate queries
-      queryClient.invalidateQueries({
-        queryKey: ["leadStats", vendorId, createdBy],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["universal-stage-leads"],
-        exact: false,
-      });
-
-      onOpenChange(false);
-      form.reset({ pptDocuments: [], pythaDocuments: [] });
-
-      // ✅ Redirect
-      router.push("/dashboard/project/client-approval");
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to upload documents");
-    }
-  };
 
   return (
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title={`Client Documentation`}
+      title="Client Documentation"
       size="xl"
-      description="upload and manage client-related documentation in one place."
+      description="Upload docs per product instance, save selections, and move stage when all requirements are complete."
     >
       <div className="px-5 py-4">
-        <div className="mb-6">
-          <SelectionsTabForClientDocs leadId={leadId!} accountId={accountId!} />
-        </div>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="pptDocuments"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">
-                    Client Documentation – Project Files *
-                  </FormLabel>
-                  <FormControl>
-                    <FileUploadField
-                      value={field.value}
-                      onChange={field.onChange}
-                      accept=".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="pythaDocuments"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">
-                    Client Documentation – Pytha Design Files *
-                  </FormLabel>
-                  <FormControl>
-                    <FileUploadField
-                      value={field.value}
-                      onChange={field.onChange}
-                      accept=".pdf,.zip"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex justify-end gap-2 pt-4">
-              <Button type="submit" disabled={isPending || !hasSelections}>
-                {isPending ? "Uploading..." : "Upload"}
-              </Button>
-            </div>
-          </form>
-        </Form>
+        {leadId && accountId ? (
+          <SelectionsTabForClientDocs leadId={leadId} accountId={accountId} />
+        ) : (
+          <p className="text-sm text-muted-foreground">Lead details missing.</p>
+        )}
       </div>
     </BaseModal>
   );

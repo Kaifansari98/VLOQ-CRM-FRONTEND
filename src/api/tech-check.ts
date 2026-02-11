@@ -1,7 +1,6 @@
 import { apiClient } from "@/lib/apiClient";
 import { toastError } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 
 // ✅ --- Fetch Tech-Check Leads (paginated) ---
@@ -41,18 +40,23 @@ export const approveTechCheck = async ({
   userId,
   assignToUserId,
   accountId,
+  productStructureInstanceId,
 }: {
   vendorId: number;
   leadId: number;
   userId: number;
   assignToUserId: number;
   accountId: number;
+  productStructureInstanceId?: number | null;
 }) => {
   const { data } = await apiClient.post(
     `/leads/production/tech-check/leadId/${leadId}/vendorId/${vendorId}/userId/${userId}/approve`,
     {
       assign_to_user_id: assignToUserId,
       account_id: accountId,
+      ...(productStructureInstanceId
+        ? { product_structure_instance_id: productStructureInstanceId }
+        : {}),
     }
   );
   return data;
@@ -79,13 +83,11 @@ export const rejectTechCheck = async ({
 
 export const useApproveTechCheck = () => {
   const queryClient = useQueryClient();
-  const router = useRouter();
   return useMutation({
     mutationFn: approveTechCheck,
     onSuccess: async () => {
       toast.success("Tech Check approved successfully!");
       await queryClient.invalidateQueries({ queryKey: ["techCheckLeads"] });
-      router.push(`/dashboard/production/order-login`);
       await queryClient.invalidateQueries({ queryKey: ["leadStats"] });
     },
     onError: (error: unknown) => {

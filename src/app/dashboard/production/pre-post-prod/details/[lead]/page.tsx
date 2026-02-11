@@ -8,9 +8,9 @@ import {
 } from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
-import { useLeadById } from "@/hooks/useLeadsQueries";
+import { useLeadById, useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import {
@@ -31,9 +31,12 @@ import {
   Factory,
   CalendarCheck2,
   Clock,
+  CheckCircle2,
   UserPlus,
   Truck,
   MessageSquare,
+  User2,
+  Layers3,
 } from "lucide-react";
 
 import {
@@ -70,6 +73,7 @@ import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/ass
 import CustomeDatePicker from "@/components/date-picker";
 import {
   useLatestOrderLoginByLead,
+  useMarkProductionCompleted,
   usePostProductionCompleteness,
   useUpdateExpectedOrderLoginReadyDate,
 } from "@/api/production/production-api";
@@ -89,8 +93,13 @@ import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 export default function ProductionLeadDetails() {
   const router = useRouter();
   const { lead: leadId, remark } = useParams();
+  const searchParams = useSearchParams();
   const leadIdNum = Number(leadId);
   console.log("Remark param:", remark);
+  const instanceId = searchParams.get("instance_id");
+  const instanceIdNum = instanceId ? Number(instanceId) : null;
+  const validInstanceId =
+    instanceIdNum && !Number.isNaN(instanceIdNum) ? instanceIdNum : null;
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -116,6 +125,10 @@ export default function ProductionLeadDetails() {
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
+  const { data: instancesResponse } = useLeadProductStructureInstances(
+    leadIdNum,
+    vendorId
+  );
 
   // 🔍 Check Post Prouction Readiness
   const { data: postProductionStatus } = useCheckPostProductionReady(
@@ -211,6 +224,101 @@ export default function ProductionLeadDetails() {
     leadIdNum
   );
 
+  const { data: instanceCompleteness } = usePostProductionCompleteness(
+    vendorId,
+    leadIdNum,
+    validInstanceId ?? undefined
+  );
+
+  const instances = Array.isArray(instancesResponse?.data)
+    ? instancesResponse?.data
+    : instancesResponse?.data?.data || [];
+
+  const totalInstanceCount = instances.length;
+  const instanceSuffix =
+    validInstanceId && totalInstanceCount > 1
+      ? instances.find((instance: any) => Number(instance?.id) === validInstanceId)
+          ?.quantity_index
+      : null;
+  const displayLeadCode =
+    leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
+  const instanceName = validInstanceId
+    ? instances.find((instance: any) => Number(instance?.id) === validInstanceId)
+        ?.title ?? ""
+    : "";
+
+  const currentInstance = validInstanceId
+    ? instances.find((instance: any) => Number(instance?.id) === validInstanceId)
+    : null;
+
+  const incompleteInstances = instances.filter(
+    (instance: any) => instance?.is_production_completed !== true
+  );
+
+  const hasInstances = instances.length > 0;
+  const allInstancesCompleted = hasInstances
+    ? incompleteInstances.length === 0
+    : true;
+
+  const incompleteTitles =
+    incompleteInstances
+      ?.map((instance: any) => instance?.title)
+      .filter(Boolean) || [];
+
+  const missingPrerequisites: string[] = [];
+  const missingDocsOrRemarks: string[] = [];
+
+  if (validInstanceId) {
+    if (!instanceCompleteness?.qc_photos) {
+      missingDocsOrRemarks.push("QC photos");
+    }
+    if (!instanceCompleteness?.hardware_docs) {
+      missingDocsOrRemarks.push("Hardware packing docs");
+    }
+    if (!instanceCompleteness?.woodwork_docs) {
+      missingDocsOrRemarks.push("Woodwork packing docs");
+    }
+  }
+
+  if (validInstanceId && currentInstance) {
+    if (!currentInstance?.no_of_boxes || currentInstance?.no_of_boxes <= 0) {
+      missingPrerequisites.push("Set No. of Boxes");
+    }
+
+    if (currentInstance?.is_order_login_completed !== true) {
+      missingPrerequisites.push("Order Login cards completion");
+    }
+  }
+
+  const canMarkProductionCompleted =
+    !!validInstanceId &&
+    !currentInstance?.is_production_completed &&
+    missingDocsOrRemarks.length === 0 &&
+    missingPrerequisites.length === 0;
+
+  const productionCompletedTooltip =
+    !validInstanceId
+      ? "instance_id is required to mark production completed."
+      : currentInstance?.is_production_completed
+      ? `Production already completed for this instance.${
+          incompleteTitles.length
+            ? ` Pending Instances: ${incompleteTitles.join(", ")}`
+            : ""
+        }`
+      : missingDocsOrRemarks.length || missingPrerequisites.length
+      ? `Pending: ${[...missingDocsOrRemarks, ...missingPrerequisites].join(
+          ", "
+        )}`
+      : incompleteTitles.length
+      ? `Other pending instances: ${incompleteTitles.join(", ")}`
+      : "Ready to mark production completed.";
+
+  const markProductionCompletedMutation = useMarkProductionCompleted(
+    vendorId,
+    leadIdNum,
+    validInstanceId
+  );
+
   const handleExpectedDateChange = async (newDate?: string) => {
     if (!newDate || !vendorId || !userId || !leadIdNum) return;
 
@@ -265,27 +373,62 @@ export default function ProductionLeadDetails() {
   return (
     <>
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
-        <div className="flex items-center gap-2">
+      <header className="flex shrink-0 flex-col gap-2 px-4 py-2 border-b md:h-16 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 items-center gap-2">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbPage>
-                  <p className="font-bold">
-                    {leadCode || "Loading…"}
-                    {leadCode && (clientName ? ` - ${clientName}` : "")}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {displayLeadCode ? (
+                      <>
+                        {/* Dot + Lead Code */}
+                        <span className="inline-flex items-center gap-1.5 font-semibold text-sm text-primary">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          {displayLeadCode}
+                        </span>
+
+                        {clientName && (
+                          <>
+                            {/* Separator */}
+                            <span className="text-muted-foreground">|</span>
+
+                            {/* Client Name */}
+                            <span className="inline-flex items-center gap-1.5 font-medium text-sm text-foreground">
+                              <User2 className="w-3.5 h-3.5 text-muted-foreground" />
+                              {clientName}
+                            </span>
+                          </>
+                        )}
+
+                        {instanceName && (
+                          <>
+                            {/* Separator */}
+                            <span className="text-muted-foreground">-</span>
+
+                            {/* Instance Name */}
+                            <span className="inline-flex items-center gap-1.5 font-medium text-xs text-muted-foreground">
+                              <Layers3 className="w-3 h-3" />
+                              {instanceName}
+                            </span>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Loading…</span>
+                    )}
+                  </div>
                 </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex w-full items-center justify-end gap-2 md:w-auto">
           {canMoveReadyToDispatchStage &&
-            (completeness?.all_exists && lead?.no_of_boxes > 0 ? (
+            (allInstancesCompleted ? (
               <Button
                 size="sm"
                 className="hidden md:flex"
@@ -297,17 +440,43 @@ export default function ProductionLeadDetails() {
             ) : (
               <CustomeTooltip
                 truncateValue={
-                  <Button size="sm" className="hidden md:flex" disabled>
-                    Ready To Dispatch
-                  </Button>
+                  currentInstance?.is_production_completed ? (
+                    <span className="hidden md:inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                      <CheckCircle2 size={14} />
+                      Completed
+                    </span>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="hidden md:flex"
+                      disabled={!canMarkProductionCompleted}
+                      onClick={async () => {
+                        if (!canMarkProductionCompleted) {
+                          return;
+                        }
+                        if (!vendorId || !leadIdNum || !userId) {
+                          toast.error("Missing vendor or user info!");
+                          return;
+                        }
+                        try {
+                          await markProductionCompletedMutation.mutateAsync({
+                            updatedBy: userId,
+                          });
+                          toast.success("Production marked completed!");
+                        } catch (err: any) {
+                          toast.error(
+                            err?.response?.data?.message ||
+                              err?.message ||
+                              "Failed to mark production completed"
+                          );
+                        }
+                      }}
+                    >
+                      Mark Completed
+                    </Button>
+                  )
                 }
-                value={
-                  !completeness?.all_exists
-                    ? "Cannot move yet please complete all production tasks (QC photos, hardware packing, and woodwork packing)."
-                    : !lead?.no_of_boxes || lead?.no_of_boxes <= 0
-                    ? "Add number of boxes before dispatch."
-                    : "Action unavailable."
-                }
+                value={productionCompletedTooltip}
               />
             ))}
 
@@ -341,7 +510,7 @@ export default function ProductionLeadDetails() {
               </DropdownMenuItem>
 
               {canMoveReadyToDispatchStage &&
-                (completeness?.all_exists && lead?.no_of_boxes > 0 ? (
+                (allInstancesCompleted ? (
                   <DropdownMenuItem
                     className="md:hidden"
                     onClick={() => setOpenReadyToDispatch(true)}
@@ -350,21 +519,46 @@ export default function ProductionLeadDetails() {
                     Ready To Dispatch
                   </DropdownMenuItem>
                 ) : (
-                  <CustomeTooltip
-                    truncateValue={
-                      <DropdownMenuItem className=" md:hidden" disabled>
-                        <Truck size={20} />
-                        Ready To Dispatch
-                      </DropdownMenuItem>
-                    }
-                    value={
-                      !completeness?.all_exists
-                        ? "Cannot move yet — please complete all production tasks (QC photos, hardware packing, and woodwork packing)."
-                        : !lead?.no_of_boxes || lead?.no_of_boxes <= 0
-                        ? "Add number of boxes before dispatch."
-                        : "Action unavailable."
-                    }
-                  />
+                    <CustomeTooltip
+                      truncateValue={
+                        currentInstance?.is_production_completed ? (
+                          <DropdownMenuItem className="md:hidden" disabled>
+                            <CheckCircle2 size={18} className="text-emerald-600" />
+                            Completed
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem
+                            className="md:hidden"
+                            disabled={!canMarkProductionCompleted}
+                            onClick={async () => {
+                              if (!canMarkProductionCompleted) {
+                                return;
+                              }
+                              if (!vendorId || !leadIdNum || !userId) {
+                                toast.error("Missing vendor or user info!");
+                                return;
+                              }
+                              try {
+                                await markProductionCompletedMutation.mutateAsync({
+                                  updatedBy: userId,
+                                });
+                                toast.success("Production marked completed!");
+                              } catch (err: any) {
+                                toast.error(
+                                  err?.response?.data?.message ||
+                                    err?.message ||
+                                    "Failed to mark production completed"
+                                );
+                              }
+                            }}
+                          >
+                            <Truck size={20} />
+                            Mark Completed
+                          </DropdownMenuItem>
+                        )
+                      }
+                      value={productionCompletedTooltip}
+                    />
                 ))}
 
               {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
@@ -498,6 +692,7 @@ export default function ProductionLeadDetails() {
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
+            productionInstanceId={validInstanceId}
           />
         </TabsContent>
 
@@ -509,6 +704,7 @@ export default function ProductionLeadDetails() {
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
+            productionInstanceId={validInstanceId}
           />
         </TabsContent>
 

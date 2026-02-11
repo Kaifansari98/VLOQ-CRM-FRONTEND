@@ -17,16 +17,19 @@ import {
   tableSingleValueMultiSelectFilter,
   tableTextSearchFilter,
 } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import CustomeStatusBadge from "@/components/origin-status-badge";
 
 interface UniversalColumnOptions {
   showStageColumn?: boolean;
+  showProductionStatusColumn?: boolean;
 }
 
 export function getUniversalTableColumns(
   options: UniversalColumnOptions = {},
 ): ColumnDef<LeadColumn>[] {
-  const { showStageColumn = false } = options;
+  const { showStageColumn = false, showProductionStatusColumn = false } =
+    options;
   const columns: ColumnDef<LeadColumn>[] = [
     // 1) Lead Code
     {
@@ -124,6 +127,65 @@ export function getUniversalTableColumns(
       enableHiding: true,
       enableColumnFilter: true,
     },
+
+    // 4.1) Furniture Structures
+    {
+      accessorKey: "furnitueStructures",
+      filterFn: tableMultiValueFilter,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Furniture Structures" />
+      ),
+      meta: {
+        label: "Furniture Structures",
+      },
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
+    },
+
+    // 4.2) Production Status (Type 10 only)
+    ...(showProductionStatusColumn
+      ? ([
+          {
+            accessorKey: "productionStatus",
+            header: ({ column }) => (
+              <DataTableColumnHeader
+                column={column}
+                title="Production Status"
+              />
+            ),
+            cell: ({ row }) => {
+              const status = (row.getValue("productionStatus") as string) || "";
+              if (!status) return "—";
+              const isCompleted = status.toLowerCase() === "completed";
+              return (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium",
+                    isCompleted
+                      ? "border-zinc-200 "
+                      : "border-zinc-200 "
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "h-2 w-2 rounded-full",
+                      isCompleted ? "bg-green-500" : "bg-blue-500"
+                    )}
+                  />
+                  {status}
+                </span>
+              );
+            },
+            meta: {
+              label: "Production Status",
+            },
+            enableSorting: false,
+            enableHiding: true,
+            enableColumnFilter: false,
+          },
+        ] satisfies ColumnDef<LeadColumn>[])
+      : []),
 
     // 5) Address / Map Link
     {
@@ -346,21 +408,7 @@ export function getUniversalTableColumns(
       },
     },
 
-    // 14) Product Structures
-    {
-      accessorKey: "furnitueStructures",
-      filterFn: tableMultiValueFilter,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Furniture Structures" />
-      ),
-      meta: {
-        label: "Furniture Structures",
-      },
-      enableSorting: false,
-      enableHiding: true,
-      enableColumnFilter: true,
-    },
-    // 15) Designer Remark
+    // 14) Designer Remark
     {
       accessorKey: "designerRemark",
       header: ({ column }) => (

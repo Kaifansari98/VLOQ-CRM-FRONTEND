@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { FolderOpen, Upload, Loader2, Paperclip } from "lucide-react";
@@ -38,10 +39,21 @@ import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 export default function WoodworkPackingDetailsSection({
   leadId,
   accountId,
+  instanceId,
 }: {
   leadId: number;
   accountId: number | null;
+  instanceId?: number | null;
 }) {
+  const searchParams = useSearchParams();
+  const instanceFromUrl = searchParams.get("instance_id");
+  const instanceIdFromUrl = instanceFromUrl ? Number(instanceFromUrl) : null;
+  const effectiveInstanceId =
+    typeof instanceId !== "undefined"
+      ? instanceId
+      : instanceIdFromUrl && !Number.isNaN(instanceIdFromUrl)
+      ? instanceIdFromUrl
+      : null;
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
@@ -50,7 +62,8 @@ export default function WoodworkPackingDetailsSection({
 
   const { data: packingDetails, isLoading } = useGetWoodworkPackingDetails(
     vendorId,
-    leadId
+    leadId,
+    effectiveInstanceId ?? undefined
   );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
@@ -60,15 +73,24 @@ export default function WoodworkPackingDetailsSection({
     useDeleteDocument(leadId);
 
   const { mutateAsync: uploadPackingDetails, isPending } =
-    useUploadWoodworkPackingDetails(vendorId, leadId);
+    useUploadWoodworkPackingDetails(
+      vendorId,
+      leadId,
+      effectiveInstanceId ?? undefined
+    );
 
   const { refetch: refetchCompleteness } = usePostProductionCompleteness(
     vendorId,
-    leadId
+    leadId,
+    effectiveInstanceId ?? undefined
   );
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [remark, setRemark] = useState(packingDetails?.remark || "");
+  const normalizedRemark =
+    packingDetails?.remark ?? packingDetails?.data?.remark ?? "";
+  const normalizedDocs =
+    packingDetails?.data ?? packingDetails?.documents ?? [];
+  const [remark, setRemark] = useState(normalizedRemark);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
   const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatus);
@@ -78,23 +100,22 @@ export default function WoodworkPackingDetailsSection({
     (userType === "factory" && leadStatus === "production-stage");
 
   useEffect(() => {
-    if (packingDetails?.remark) setRemark(packingDetails.remark);
-  }, [packingDetails?.remark]);
+    if (normalizedRemark) setRemark(normalizedRemark);
+  }, [normalizedRemark]);
 
-  const hasFiles =
-    Array.isArray(packingDetails?.data) && packingDetails.data.length > 0;
+  const hasFiles = Array.isArray(normalizedDocs) && normalizedDocs.length > 0;
 
   const imageExt = ["jpg", "jpeg", "png"];
   const docExt = ["pdf", "zip"];
 
   const images =
-    packingDetails?.data?.filter((file: any) => {
+    normalizedDocs?.filter((file: any) => {
       const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
       return imageExt.includes(ext);
     }) || [];
 
   const Documents =
-    packingDetails?.data?.filter((file: any) => {
+    normalizedDocs?.filter((file: any) => {
       const ext = file.doc_og_name?.split(".").pop()?.toLowerCase();
       return docExt.includes(ext);
     }) || [];
@@ -119,7 +140,12 @@ export default function WoodworkPackingDetailsSection({
       setSelectedFiles([]);
 
       queryClient.invalidateQueries({
-        queryKey: ["woodworkPackingDetails", vendorId, leadId],
+        queryKey: [
+          "woodworkPackingDetails",
+          vendorId,
+          leadId,
+          effectiveInstanceId ?? "all",
+        ],
       });
 
       await refetchCompleteness();
@@ -144,7 +170,12 @@ export default function WoodworkPackingDetailsSection({
       toast.success("Remark updated!");
 
       queryClient.invalidateQueries({
-        queryKey: ["woodworkPackingDetails", vendorId, leadId],
+        queryKey: [
+          "woodworkPackingDetails",
+          vendorId,
+          leadId,
+          effectiveInstanceId ?? "all",
+        ],
       });
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Failed to update remark.");
@@ -235,7 +266,7 @@ export default function WoodworkPackingDetailsSection({
               className="flex items-center gap-2"
             >
               <Paperclip size={16} />
-              {packingDetails?.remark ? "Update Remark" : "Add Remark"}
+              {normalizedRemark ? "Update Remark" : "Add Remark"}
             </Button>
           </div>
         </div>
@@ -247,8 +278,8 @@ export default function WoodworkPackingDetailsSection({
           <h4 className="text-sm font-semibold">Uploaded Documents</h4>
           {hasFiles && (
             <span className="text-xs text-muted-foreground">
-              {packingDetails.data.length} file
-              {packingDetails.data.length > 1 && "s"}
+              {normalizedDocs.length} file
+              {normalizedDocs.length > 1 && "s"}
             </span>
           )}
         </div>

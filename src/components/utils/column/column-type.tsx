@@ -1,4 +1,6 @@
 export type LeadColumn = {
+  rowKey?: string;
+  instanceId?: number;
   srNo: number; // n
   id: number; //n
   lead_code: string; // R
@@ -17,6 +19,7 @@ export type LeadColumn = {
   email: string; // R
   // site_supervisor?: string;
   furnitueStructures: string;
+  productionStatus?: string;
   designerRemark: string;
   accountId: number; // n
   updatedAt: string; //n

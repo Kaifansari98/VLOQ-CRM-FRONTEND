@@ -28,6 +28,19 @@ export interface ProductStructureMapping {
   productStructure: ProductStructure;
 }
 
+export interface ProductStructureInstance {
+  id: number;
+  title: string;
+  quantity_index: number;
+  product_structure_id: number;
+  is_tech_check_completed?: boolean | null;
+  tech_check_completed_at?: string | null;
+  is_order_login_completed?: boolean | null;
+  order_login_completed_at?: string | null;
+  is_production_completed?: boolean | null;
+  productStructure?: ProductStructure | null;
+}
+
 // -------------------------
 // Needed Child Objects
 // -------------------------
@@ -96,6 +109,7 @@ export interface UniversalStageLead {
 
   productMappings: ProductMapping[];
   leadProductStructureMapping: ProductStructureMapping[];
+  productStructureInstances?: ProductStructureInstance[];
 }
 
 // -------------------------

@@ -53,6 +53,7 @@ export const useCompanyVendors = (vendorId: number | undefined) => {
 export interface uploadFileBreakupPropa {
   lead_id: number | string;
   account_id: number | string;
+  instance_id?: number | string | null;
   item_type: string;
   item_desc: string;
   company_vendor_id: number | string;
@@ -76,28 +77,44 @@ export const useUploadFileBreakup = (vendorId: number | undefined) =>
 
 // ✅ --- Fetch order login details by lead ---
 export const getOrderLoginByLead = async (
+  
   vendorId: number,
+ 
   leadId: number,
   senderUserId: number,
+  instanceId?: number | null,
 ) => {
-  const { data } = await apiClient.get(
-    `/leads/production/order-login/vendorId/${vendorId}/get-order-login-details`,
-    { params: { lead_id: leadId, senderUserId: senderUserId } },
-  );
+  try {
+    const { data } = await apiClient.get(
+      `/leads/production/order-login/vendorId/${vendorId}/get-order-login-details`,
+      {
+        params: {
+          lead_id: leadId, senderUserId: senderUserId,
+          ...(typeof instanceId !== "undefined"
+            ? { instance_id: instanceId }
+            : {}),
+        },
+      },
+    );
 
-  return data?.data ?? [];
+    return data?.data ?? [];
+  } catch (error: any) {
+    if (error?.response?.status === 404) return [];
+    throw error;
+  }
 };
 
 export const useOrderLoginByLead = (
   vendorId: number | undefined,
   leadId: number | undefined,
   senderUserId: number | undefined,
+  instanceId?: number | null,
 ) =>
   useQuery({
-    queryKey: ["orderLoginByLead", vendorId, leadId, senderUserId],
+    queryKey: ["orderLoginByLead", vendorId, leadId, senderUserId, instanceId ?? "all"],
     queryFn: async () => {
       if (!vendorId || !leadId || !senderUserId) return [];
-      return getOrderLoginByLead(vendorId, leadId, senderUserId);
+      return getOrderLoginByLead(vendorId, leadId, senderUserId, instanceId);
     },
     enabled: Boolean(vendorId && leadId),
     staleTime: 60 * 1000, // 1 minute cache freshness
@@ -174,7 +191,11 @@ export const uploadProductionFiles = async (
   vendorId: number,
   leadId: number,
   formData: FormData,
+  instanceId?: number | null,
 ) => {
+  if (instanceId != null) {
+    formData.append("instance_id", String(instanceId));
+  }
   const { data } = await apiClient.post(
     `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/upload-production-files`,
     formData,
@@ -189,28 +210,42 @@ export const uploadProductionFiles = async (
 export const useUploadProductionFiles = (
   vendorId: number | undefined,
   leadId: number | undefined,
+  instanceId?: number | null,
 ) =>
   useMutation({
     mutationFn: (formData: FormData) =>
-      uploadProductionFiles(vendorId!, leadId!, formData),
+      uploadProductionFiles(vendorId!, leadId!, formData, instanceId),
   });
 
 // ✅ --- Fetch Production Files ---
-export const getProductionFiles = async (vendorId: number, leadId: number) => {
-  const { data } = await apiClient.get(
-    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/production-files`,
-  );
-  return data?.data;
+export const getProductionFiles = async (
+  vendorId: number,
+  leadId: number,
+  instanceId?: number | null,
+) => {
+  try {
+    const { data } = await apiClient.get(
+      `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/production-files`,
+      {
+        params: instanceId != null ? { instance_id: instanceId } : undefined,
+      },
+    );
+    return data?.data ?? [];
+  } catch (error: any) {
+    if (error?.response?.status === 404) return [];
+    throw error;
+  }
 };
 
 // ✅ --- React Query Hook: Production Files ---
 export const useProductionFiles = (
   vendorId: number | undefined,
   leadId: number | undefined,
+  instanceId?: number | null,
 ) =>
   useQuery({
-    queryKey: ["productionFiles", vendorId, leadId],
-    queryFn: () => getProductionFiles(vendorId!, leadId!),
+    queryKey: ["productionFiles", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getProductionFiles(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 
@@ -294,9 +329,14 @@ export const useMoveLeadToProductionStage = (
 export const getLeadProductionReadiness = async (
   vendorId: number,
   leadId: number,
+  instanceId?: number | null,
 ) => {
   const { data } = await apiClient.get(
     `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/move-to-production-readiness-check`,
+    {
+      params:
+        typeof instanceId !== "undefined" ? { instance_id: instanceId } : undefined,
+    },
   );
   return data?.data;
 };
@@ -304,10 +344,11 @@ export const getLeadProductionReadiness = async (
 export const useLeadProductionReadiness = (
   vendorId: number | undefined,
   leadId: number | undefined,
+  instanceId?: number | null,
 ) =>
   useQuery({
-    queryKey: ["leadProductionReadiness", vendorId, leadId],
-    queryFn: () => getLeadProductionReadiness(vendorId!, leadId!),
+    queryKey: ["leadProductionReadiness", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getLeadProductionReadiness(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 
@@ -329,6 +370,7 @@ export const useUploadMultipleFileBreakupsByLead = (
   vendorId: number | undefined,
   leadId: number | undefined,
   accountId: number | undefined,
+  instanceId?: number | null,
 ) =>
   useMutation({
     mutationFn: (breakups: any[]) =>
@@ -336,7 +378,10 @@ export const useUploadMultipleFileBreakupsByLead = (
         vendorId!,
         leadId!,
         accountId!,
-        breakups,
+        breakups.map((item) => ({
+          ...item,
+          instance_id: typeof instanceId !== "undefined" ? instanceId : item.instance_id,
+        })),
       ),
   });
 
@@ -372,6 +417,7 @@ export const useRequestToProduction = () => {
       assign_to_user_id,
       created_by,
       client_required_order_login_complition_date, // ✅ ADD THIS
+      instanceId,
     }: {
       vendorId: number;
       leadId: number;
@@ -379,6 +425,7 @@ export const useRequestToProduction = () => {
       assign_to_user_id: number;
       created_by: number;
       client_required_order_login_complition_date: string; // ✅ ADD THIS
+      instanceId?: number | null;
     }) => {
       const { data } = await apiClient.put(
         `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/move-to-production-stage`,
@@ -387,6 +434,9 @@ export const useRequestToProduction = () => {
           user_id: created_by,
           assign_to_user_id,
           client_required_order_login_complition_date, // ✅ ADD THIS
+          ...(typeof instanceId !== "undefined"
+            ? { instance_id: instanceId }
+            : {}),
         },
       );
       return data;

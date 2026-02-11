@@ -32,7 +32,8 @@ import {
   usePendingMaterialTasks,
 } from "@/api/installation/useDispatchStageLeads";
 import { useAppSelector } from "@/redux/store";
-import { useUpdateNoOfBoxes } from "@/api/production/production-api";
+import { updateNoOfBoxes, useUpdateNoOfBoxes } from "@/api/production/production-api";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -172,11 +173,19 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   const [noOfBoxesInput, setNoOfBoxesInput] = useState(
     requiredDateData?.no_of_boxes?.toString() || ""
   );
+  const [instanceBoxes, setInstanceBoxes] = useState<
+    { id: number; title: string; value: string }[]
+  >([]);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
   const queryClient = useQueryClient();
   const { mutateAsync: updateNoBoxes, isPending: updatingBoxes } =
     useUpdateNoOfBoxes(vendorId, leadId);
+
+  const { data: instancesResponse } = useLeadProductStructureInstances(
+    leadId,
+    vendorId
+  );
 
   React.useEffect(() => {
     if (dispatchDetails) {
@@ -192,6 +201,25 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
       });
     }
   }, [dispatchDetails]);
+
+  React.useEffect(() => {
+    const instances = Array.isArray(instancesResponse?.data)
+      ? instancesResponse?.data
+      : instancesResponse?.data?.data || [];
+
+    if (instances.length > 0) {
+      setInstanceBoxes(
+        instances.map((instance: any) => ({
+          id: Number(instance.id),
+          title: instance.title || `Instance ${instance.id}`,
+          value:
+            instance.no_of_boxes != null
+              ? String(instance.no_of_boxes)
+              : "",
+        }))
+      );
+    }
+  }, [instancesResponse]);
 
   const onSubmit = form.handleSubmit((values) => {
     addDispatchMutation.mutate({
@@ -237,6 +265,13 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
   // const canDelete = userType === "admin" || userType === "super-admin";
   const canViewAndWork = canViewAndWorkDispatchStage(userType, leadStatus);
+
+  const leadLevelBoxes = Number(requiredDateData?.no_of_boxes || 0);
+  const useLeadLevelBoxes = leadLevelBoxes > 0;
+  const totalInstanceBoxes = instanceBoxes.reduce((sum, item) => {
+    const val = Number(item.value || 0);
+    return sum + (Number.isFinite(val) ? val : 0);
+  }, 0);
 
   return (
     <div className="space-y-4 sm:space-y-6 bg-[#fff] dark:bg-[#0a0a0a] p-2 sm:p-4 md:p-0">
@@ -291,7 +326,9 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               ) : (
                 <div className="flex items-center gap-2 mt-1">
                   <p className="text-base sm:text-lg md:text-xl font-semibold text-foreground">
-                    {requiredDateData?.no_of_boxes || 0}
+                    {useLeadLevelBoxes
+                      ? requiredDateData?.no_of_boxes || 0
+                      : totalInstanceBoxes}
                   </p>
 
                   {canViewAndWork && (
@@ -681,24 +718,67 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               <Package className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               Update Number of Boxes
             </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground mt-1">
-              Enter the total number of boxes ready for dispatch.
+            <DialogDescription className="text-sm text-muted-foreground">
+              {useLeadLevelBoxes
+                ? "Enter the total number of boxes ready for dispatch."
+                : "Update boxes per instance to match the total."}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-3 sm:py-4 space-y-3">
-            <Label className="text-sm font-medium text-foreground">
-              Number of Boxes
-            </Label>
-            <Input
-              type="number"
-              min={1}
-              value={noOfBoxesInput}
-              onChange={(e) => setNoOfBoxesInput(e.target.value)}
-              placeholder="e.g. 12"
-              className="border rounded-md text-sm"
-            />
-          </div>
+          {useLeadLevelBoxes ? (
+            <div className="py-3 sm:py-4 space-y-3">
+              <Label className="text-sm font-medium text-foreground">
+                Number of Boxes
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                value={noOfBoxesInput}
+                onChange={(e) => setNoOfBoxesInput(e.target.value)}
+                placeholder="e.g. 12"
+                className="border rounded-md text-sm"
+              />
+            </div>
+          ) : (
+            <div className="py-3 sm:py-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-foreground">
+                  Total No. of Boxes
+                </Label>
+                <Badge variant="secondary" className="text-xs">
+                  {totalInstanceBoxes}
+                </Badge>
+              </div>
+              <div className="space-y-2 max-h-64 overflow-auto pr-1">
+                {instanceBoxes.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-2"
+                  >
+                    <div className="flex-1 text-sm text-muted-foreground">
+                      {item.title}
+                    </div>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={item.value}
+                      onChange={(e) =>
+                        setInstanceBoxes((prev) =>
+                          prev.map((box) =>
+                            box.id === item.id
+                              ? { ...box, value: e.target.value }
+                              : box
+                          )
+                        )
+                      }
+                      placeholder="e.g. 12"
+                      className="w-24 border rounded-md text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <DialogFooter className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 mt-2">
             <Button
@@ -712,20 +792,42 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
             </Button>
             <Button
               onClick={async () => {
-                if (!noOfBoxesInput || Number(noOfBoxesInput) <= 0) {
-                  toast.error("Please enter a valid positive number");
-                  return;
-                }
-                const formData = new FormData();
-                formData.append("user_id", String(userId || 0));
-                formData.append("account_id", String(accountId || 0));
-                formData.append("no_of_boxes", String(noOfBoxesInput));
-
                 try {
-                  await updateNoBoxes(formData);
+                  if (useLeadLevelBoxes) {
+                    if (!noOfBoxesInput || Number(noOfBoxesInput) <= 0) {
+                      toast.error("Please enter a valid positive number");
+                      return;
+                    }
+                    const formData = new FormData();
+                    formData.append("user_id", String(userId || 0));
+                    formData.append("account_id", String(accountId || 0));
+                    formData.append("no_of_boxes", String(noOfBoxesInput));
+
+                    await updateNoBoxes(formData);
+                  } else {
+                    const invalid = instanceBoxes.find(
+                      (item) => !item.value || Number(item.value) <= 0
+                    );
+                    if (invalid) {
+                      toast.error("Please enter boxes for all instances");
+                      return;
+                    }
+
+                    for (const item of instanceBoxes) {
+                      const formData = new FormData();
+                      formData.append("user_id", String(userId || 0));
+                      formData.append("account_id", String(accountId || 0));
+                      formData.append("no_of_boxes", String(item.value));
+                      await updateNoOfBoxes(vendorId, leadId, formData, item.id);
+                    }
+                  }
+
                   toast.success("No. of Boxes updated successfully!");
                   queryClient.invalidateQueries({
                     queryKey: ["requiredDateForDispatch"],
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ["lead-product-structure-instances", leadId, vendorId],
                   });
                   setOpenBoxesModal(false);
                 } catch (err: any) {

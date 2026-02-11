@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import DocumentCard from "@/components/utils/documentCard";
 import { ImageComponent } from "@/components/utils/ImageCard";
 
-interface FileBreakUpFieldProps {
+export interface FileBreakUpFieldProps {
   title: string;
   users: { id: number; label: string; in_house?: boolean }[];
   value: {
@@ -280,7 +280,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                 disabled={!canUsePoUpload}
                 className="w-full h-9"
               >
-                Manage PO Files
+                Upload PO Files
               </Button>
             </div>
           )}

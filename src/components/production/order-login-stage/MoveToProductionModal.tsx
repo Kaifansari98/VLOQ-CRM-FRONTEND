@@ -52,6 +52,7 @@ interface MoveToProductionModalProps {
   data: {
     id: number;
     accountId: number;
+    instanceId?: number | null;
   };
   client_required_order_login_complition_date?: string;
 }
@@ -119,14 +120,27 @@ export default function MoveToProductionModal({
         assign_to_user_id,
         created_by: userId,
         client_required_order_login_complition_date,
+        instanceId: data.instanceId ?? undefined,
       },
       {
-        onSuccess: () => {
-          toast.success("Lead moved to Production stage successfully!");
-          router.push("/dashboard/production/pre-post-prod");
-          queryClient.invalidateQueries({
-            queryKey: ["universal-stage-leads"],
-          });
+        onSuccess: (response: any) => {
+          const movedToProduction = Boolean(
+            response?.data?.moved_to_production || response?.moved_to_production
+          );
+          toast.success(
+            movedToProduction
+              ? "All instances completed. Lead moved to Production successfully!"
+              : data.instanceId
+              ? "Order Login marked complete for this instance."
+              : "Lead moved to Production stage successfully!"
+          );
+          router.push(
+            movedToProduction
+              ? "/dashboard/production/pre-post-prod"
+              : data.instanceId
+              ? "/dashboard/production/order-login"
+              : "/dashboard/production/pre-post-prod"
+          );
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
           queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
           queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });

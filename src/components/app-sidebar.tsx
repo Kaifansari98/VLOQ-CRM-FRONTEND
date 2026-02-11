@@ -12,7 +12,6 @@ import {
   CalendarCheck2,
   BookOpenCheck,
   Users,
-  AlertTriangle,
   LayoutDashboard,
 } from "lucide-react";
 
@@ -190,6 +189,9 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+
   const user = useAppSelector((state) => state.auth.user);
   const userType = user?.user_type?.user_type?.toLowerCase();
   const canSeeOverallLeads = userType === "admin" || userType === "super-admin";
@@ -264,33 +266,37 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           )
         : baseItems;
 
-    if (!canSeeMiscLeads || miscLeadsCount <= 0) return filteredItems;
+    if (!mounted || !canSeeMiscLeads || miscLeadsCount <= 0) {
+      return filteredItems;
+    }
 
     const miscItem = {
-      title: "Miscellaneous Leads",
+      title: "Miscellaneous",
       url: "/dashboard/installation/under-installation/miscellaneous-leads",
-      icon: AlertTriangle,
       customCount: miscLeadsCount,
       customCountLoading: isMiscLeadLoading,
-      className: "",
-      iconClassName: "",
       badgeClassName: "bg-red-500 text-white",
     };
 
-    const insertIndex = filteredItems.findIndex(
-      (item) => item.title === "My Task",
-    );
-    if (insertIndex === -1) {
-      return [...filteredItems, miscItem];
-    }
-
-    return [
-      ...filteredItems.slice(0, insertIndex + 1),
-      miscItem,
-      ...filteredItems.slice(insertIndex + 1),
-    ];
+    return filteredItems.map((item) => {
+      if (item.title === "Installation" && item.items) {
+        const underInstallationIndex = item.items.findIndex(
+          (subItem) => subItem.title === "Under Installation"
+        );
+        if (underInstallationIndex !== -1) {
+          const updatedItems = [
+            ...item.items.slice(0, underInstallationIndex + 1),
+            miscItem,
+            ...item.items.slice(underInstallationIndex + 1),
+          ];
+          return { ...item, items: updatedItems };
+        }
+      }
+      return item;
+    });
   }, [
     canSeeMiscLeads,
+    mounted,
     canSeeOverallLeads,
     miscLeadsCount,
     isMiscLeadLoading,

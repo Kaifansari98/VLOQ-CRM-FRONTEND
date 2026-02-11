@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
@@ -39,6 +39,8 @@ import {
   Clock,
   UserPlus,
   MessageSquare,
+  User2,
+  Layers3,
 } from "lucide-react";
 import CustomeTooltip from "@/components/custom-tooltip";
 
@@ -98,13 +100,16 @@ import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
+  const searchParams = useSearchParams();
   const leadIdNum = Number(leadId);
+  const instanceId = searchParams.get("instance_id");
+  const instanceIdNum = instanceId ? Number(instanceId) : null;
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   const userType = useAppSelector(
-    (state) => state.auth?.user?.user_type.user_type
+    (state) => state.auth?.user?.user_type.user_type,
   );
 
   const { mutate: approveTechCheckMutate, isPending: approving } =
@@ -131,6 +136,12 @@ export default function ClientApprovalLeadDetails() {
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    if (instanceId) {
+      console.log("instance_id from URL:", instanceId);
+    }
+  }, [instanceId]);
+
   // ✅ Auto-open To-Do modal when screen loads (only for allowed roles)
   useEffect(() => {
     if (isChatNotification) return;
@@ -155,11 +166,39 @@ export default function ClientApprovalLeadDetails() {
   const { data: clientDocsData } = useClientDocumentationDetails(
     vendorId!,
     leadIdNum,
-    userId! 
+    userId! ,
   );
 
-  const pptDocs = clientDocsData?.documents?.ppt ?? [];
-  const pythaDocs = clientDocsData?.documents?.pytha ?? [];
+  const allPptDocs = clientDocsData?.documents?.ppt ?? [];
+  const allPythaDocs = clientDocsData?.documents?.pytha ?? [];
+  const allDocs = [...allPptDocs, ...allPythaDocs];
+
+  const validInstanceId =
+    instanceIdNum && !Number.isNaN(instanceIdNum) ? instanceIdNum : null;
+  const groupedDocs = clientDocsData?.documents_by_instance ?? [];
+  const scopedGroup = validInstanceId
+    ? groupedDocs.find((group: any) => group?.instance_id === validInstanceId)
+    : null;
+
+  const pptDocs =
+    validInstanceId && scopedGroup
+      ? (scopedGroup?.documents?.ppt ?? [])
+      : validInstanceId
+        ? allPptDocs.filter(
+            (doc: any) =>
+              doc?.product_structure_instance_id === validInstanceId,
+          )
+        : allPptDocs;
+
+  const pythaDocs =
+    validInstanceId && scopedGroup
+      ? (scopedGroup?.documents?.pytha ?? [])
+      : validInstanceId
+        ? allPythaDocs.filter(
+            (doc: any) =>
+              doc?.product_structure_instance_id === validInstanceId,
+          )
+        : allPythaDocs;
 
   const docs = [...pptDocs, ...pythaDocs];
 
@@ -170,11 +209,35 @@ export default function ClientApprovalLeadDetails() {
 
   const no_of_client_documents_initially_submitted =
     lead?.no_of_client_documents_initially_submitted;
+  const instanceDocCount = validInstanceId
+    ? clientDocsData?.product_structure_instances?.find(
+        (instance: any) => instance.id === validInstanceId
+      )?.no_of_client_documents_initially_submitted
+    : undefined;
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
+  const totalInstanceCount =
+    clientDocsData?.product_structure_instances?.length ?? 0;
+  const instanceSuffix =
+    validInstanceId && totalInstanceCount > 1
+      ? clientDocsData?.product_structure_instances?.find(
+          (instance: any) => instance.id === validInstanceId
+        )?.quantity_index
+      : null;
+  const displayLeadCode =
+    leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
+  const instanceName = validInstanceId
+    ? clientDocsData?.product_structure_instances?.find(
+        (instance: any) => instance.id === validInstanceId
+      )?.title ?? ""
+    : "";
 
   const accountId = Number(lead?.account_id);
+
+  useEffect(() => {
+    setSelectedDocs([]);
+  }, [validInstanceId]);
 
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
@@ -188,7 +251,7 @@ export default function ClientApprovalLeadDetails() {
       {
         onSuccess: () => toast.success("Lead deleted successfully!"),
         onError: (err) => toast.error(err?.message || "Failed to delete lead"),
-      }
+      },
     );
 
     setOpenDelete(false);
@@ -204,27 +267,100 @@ export default function ClientApprovalLeadDetails() {
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory = canViewSiteHistoryTab(userType);
 
+  const moveScope = validInstanceId
+    ? {
+        ppt: pptDocs,
+        pytha: pythaDocs,
+        docs,
+      }
+    : {
+        ppt: allPptDocs,
+        pytha: allPythaDocs,
+        docs: allDocs,
+      };
+
+  const approvedPPTCount = moveScope.ppt.filter(
+    (d) => d.tech_check_status === "APPROVED",
+  ).length;
+  const approvedPythaCount = moveScope.pytha.filter(
+    (d) => d.tech_check_status === "APPROVED",
+  ).length;
+  const approvedCount = approvedPPTCount + approvedPythaCount;
+  const pendingCount = moveScope.docs.filter(
+    (d) =>
+      !d.tech_check_status ||
+      d.tech_check_status === "PENDING" ||
+      d.tech_check_status === "REVISED",
+  ).length;
+  const requiredApprovalCount = validInstanceId
+    ? instanceDocCount ??
+      no_of_client_documents_initially_submitted ??
+      moveScope.docs.length
+    : no_of_client_documents_initially_submitted ?? moveScope.docs.length;
+  const isMoveToOrderLoginDisabled =
+    requiredApprovalCount > 0
+      ? approvedCount < requiredApprovalCount ||
+        pendingCount > 0 ||
+        approvedPPTCount === 0 ||
+        approvedPythaCount === 0
+      : pendingCount > 0 || approvedPPTCount === 0 || approvedPythaCount === 0;
+
   return (
     <>
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
-        <div className="flex items-center gap-2">
+      <header className="flex shrink-0 flex-col gap-2 px-4 py-2 border-b md:h-16 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 items-center gap-2">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbPage>
-                  <p className="font-bold">
-                    {leadCode || "Loading…"}
-                    {leadCode && (clientName ? ` - ${clientName}` : "")}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {displayLeadCode ? (
+                      <>
+                        {/* Dot + Lead Code */}
+                        <span className="inline-flex items-center gap-1.5 font-semibold text-sm text-primary">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          {displayLeadCode}
+                        </span>
+
+                        {clientName && (
+                          <>
+                            {/* Separator */}
+                            <span className="text-muted-foreground">|</span>
+
+                            {/* Client Name */}
+                            <span className="inline-flex items-center gap-1.5 font-medium text-sm text-foreground">
+                              <User2 className="w-3.5 h-3.5 text-muted-foreground" />
+                              {clientName}
+                            </span>
+                          </>
+                        )}
+
+                        {instanceName && (
+                          <>
+                            {/* Separator */}
+                            <span className="text-muted-foreground">-</span>
+
+                            {/* Instance Name */}
+                            <span className="inline-flex items-center gap-1.5 font-medium text-xs text-muted-foreground">
+                              <Layers3 className="w-3 h-3" />
+                              {instanceName}
+                            </span>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Loading…</span>
+                    )}
+                  </div>
                 </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 md:w-auto">
           <Button
             size="sm"
             className="hidden md:block"
@@ -237,50 +373,21 @@ export default function ClientApprovalLeadDetails() {
           <div className="hidden lg:flex">
             {canMoveToOrderLogin(userType) &&
               (() => {
-                const approvedPPT = pptDocs.filter(
-                  (d) => d.tech_check_status === "APPROVED"
-                ).length;
-
-                const approvedPytha = pythaDocs.filter(
-                  (d) => d.tech_check_status === "APPROVED"
-                ).length;
-
-                const approvedCount = approvedPPT + approvedPytha;
-
-                const pendingCount = docs.filter(
-                  (d) =>
-                    !d.tech_check_status ||
-                    d.tech_check_status === "PENDING" ||
-                    d.tech_check_status === "REVISED"
-                ).length;
-
-                // Disabled if:
-                // 1. No approved docs
-                // 2. Still some pending docs
-                // 3. No PPT approved
-                // 4. No Pytha approved
-                const isDisabled =
-                  approvedCount <
-                    (no_of_client_documents_initially_submitted || 0) ||
-                  pendingCount > 0 ||
-                  approvedPPT === 0 ||
-                  approvedPytha === 0;
-
-                if (isDisabled) {
+                if (isMoveToOrderLoginDisabled) {
                   let tooltipMsg = "";
 
                   if (
-                    no_of_client_documents_initially_submitted &&
-                    approvedCount < no_of_client_documents_initially_submitted
+                    requiredApprovalCount &&
+                    approvedCount < requiredApprovalCount
                   ) {
                     tooltipMsg =
                       userType === "sales-executive"
                         ? `Once Tech Check is completed, then only lead can be move to Order Login.`
-                        : `You must approve all initially submitted client documents (${no_of_client_documents_initially_submitted}) before moving to Order Login.`;
-                  } else if (approvedPPT === 0) {
+                        : `You must approve all required client documents (${requiredApprovalCount}) before moving to Order Login.`;
+                  } else if (approvedPPTCount === 0) {
                     tooltipMsg =
                       "At least one PPT file must be approved before moving to Order Login.";
-                  } else if (approvedPytha === 0) {
+                  } else if (approvedPythaCount === 0) {
                     tooltipMsg =
                       "At least one Pytha file must be approved before moving to Order Login.";
                   } else if (pendingCount > 0) {
@@ -350,47 +457,18 @@ export default function ClientApprovalLeadDetails() {
 
               {canMoveToOrderLogin(userType) &&
                 (() => {
-                  const approvedPPT = pptDocs.filter(
-                    (d) => d.tech_check_status === "APPROVED"
-                  ).length;
-
-                  const approvedPytha = pythaDocs.filter(
-                    (d) => d.tech_check_status === "APPROVED"
-                  ).length;
-
-                  const approvedCount = approvedPPT + approvedPytha;
-
-                  const pendingCount = docs.filter(
-                    (d) =>
-                      !d.tech_check_status ||
-                      d.tech_check_status === "PENDING" ||
-                      d.tech_check_status === "REVISED"
-                  ).length;
-
-                  // Disabled if:
-                  // 1. No approved docs
-                  // 2. Still some pending docs
-                  // 3. No PPT approved
-                  // 4. No Pytha approved
-                  const isDisabled =
-                    approvedCount <
-                      (no_of_client_documents_initially_submitted || 0) ||
-                    pendingCount > 0 ||
-                    approvedPPT === 0 ||
-                    approvedPytha === 0;
-
-                  if (isDisabled) {
+                  if (isMoveToOrderLoginDisabled) {
                     let tooltipMsg = "";
 
                     if (
-                      no_of_client_documents_initially_submitted &&
-                      approvedCount < no_of_client_documents_initially_submitted
+                      requiredApprovalCount &&
+                      approvedCount < requiredApprovalCount
                     ) {
-                      tooltipMsg = `You must approve all initially submitted client documents (${no_of_client_documents_initially_submitted}) before moving to Order Login.`;
-                    } else if (approvedPPT === 0) {
+                      tooltipMsg = `You must approve all required client documents (${requiredApprovalCount}) before moving to Order Login.`;
+                    } else if (approvedPPTCount === 0) {
                       tooltipMsg =
                         "At least one PPT file must be approved before moving to Order Login.";
-                    } else if (approvedPytha === 0) {
+                    } else if (approvedPythaCount === 0) {
                       tooltipMsg =
                         "At least one Pytha file must be approved before moving to Order Login.";
                     } else if (pendingCount > 0) {
@@ -577,6 +655,11 @@ export default function ClientApprovalLeadDetails() {
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
+            techCheckInstanceId={
+              instanceIdNum && !Number.isNaN(instanceIdNum)
+                ? instanceIdNum
+                : null
+            }
           />
         </TabsContent>
 
@@ -848,7 +931,7 @@ export default function ClientApprovalLeadDetails() {
                       (d) =>
                         !d.tech_check_status ||
                         d.tech_check_status === "PENDING" ||
-                        d.tech_check_status === "REVISED"
+                        d.tech_check_status === "REVISED",
                     )
                     .sort((a, b) => {
                       const dateA = new Date(a.created_at).getTime();
@@ -939,17 +1022,17 @@ export default function ClientApprovalLeadDetails() {
                             isRejected
                               ? ""
                               : isApproved
-                              ? ""
-                              : isSelected
-                              ? "border-zinc-900 dark:border-white dark:bg-zinc-950/30"
-                              : "border-gray-200 dark:border-gray-700 bg-white dark:bg-zinc-900/50 hover:border-zinc-300 dark:hover:border-zinc-700"
+                                ? ""
+                                : isSelected
+                                  ? "border-zinc-900 dark:border-white dark:bg-zinc-950/30"
+                                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-zinc-900/50 hover:border-zinc-300 dark:hover:border-zinc-700",
                           )}
                           onClick={() => {
                             if (isDisabled) return;
                             setSelectedDocs((prev) =>
                               prev.includes(doc.id)
                                 ? prev.filter((d) => d !== doc.id)
-                                : [...prev, doc.id]
+                                : [...prev, doc.id],
                             );
                           }}
                         >
@@ -961,10 +1044,10 @@ export default function ClientApprovalLeadDetails() {
                                 isRejected
                                   ? "bg-red-100 dark:bg-red-900/50"
                                   : isApproved
-                                  ? "bg-green-100 dark:bg-green-900/50"
-                                  : isSelected
-                                  ? "bg-amber-100 dark:bg-amber-900/50"
-                                  : "bg-blue-50 dark:bg-blue-900/30 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50"
+                                    ? "bg-green-100 dark:bg-green-900/50"
+                                    : isSelected
+                                      ? "bg-amber-100 dark:bg-amber-900/50"
+                                      : "bg-blue-50 dark:bg-blue-900/30 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50",
                               )}
                             >
                               <FileText
@@ -972,10 +1055,10 @@ export default function ClientApprovalLeadDetails() {
                                   isRejected
                                     ? "text-red-500 dark:text-red-400"
                                     : isApproved
-                                    ? "text-green-500 dark:text-green-400"
-                                    : isSelected
-                                    ? "text-amber-600 dark:text-amber-400"
-                                    : "text-blue-500 dark:text-blue-400"
+                                      ? "text-green-500 dark:text-green-400"
+                                      : isSelected
+                                        ? "text-amber-600 dark:text-amber-400"
+                                        : "text-blue-500 dark:text-blue-400"
                                 }
                                 size={24}
                               />
@@ -988,7 +1071,7 @@ export default function ClientApprovalLeadDetails() {
                                   "font-semibold text-sm line-clamp-2",
                                   isDisabled
                                     ? "text-gray-500 dark:text-gray-400"
-                                    : "text-gray-900 dark:text-white"
+                                    : "text-gray-900 dark:text-white",
                                 )}
                               >
                                 {doc.doc_og_name}
@@ -1294,7 +1377,7 @@ export default function ClientApprovalLeadDetails() {
               onError: (err) => {
                 toast.error(err?.message || "Failed to update lead status");
               },
-            }
+            },
           );
         }}
         loading={updateStatusMutation.isPending}
@@ -1306,6 +1389,7 @@ export default function ClientApprovalLeadDetails() {
         data={{
           leadId: leadIdNum,
           accountId: accountId,
+          selectedInstanceId: validInstanceId,
         }}
       />
 
@@ -1322,6 +1406,7 @@ export default function ClientApprovalLeadDetails() {
         data={{
           id: leadIdNum,
           accountId: accountId,
+          instanceId: validInstanceId,
         }}
       />
     </>

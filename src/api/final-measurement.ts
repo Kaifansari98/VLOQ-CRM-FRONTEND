@@ -83,6 +83,7 @@ export interface uploadClientDocPayload {
   accountId: number;
   vendorId: number;
   createdBy: number;
+  productStructureInstanceId?: number;
   pptDocuments: File[];
   pythaDocuments: File[];
 }
@@ -95,6 +96,12 @@ export const UploadClientDocumantation = async (
   formData.append("account_id", payload.accountId.toString());
   formData.append("vendor_id", payload.vendorId.toString());
   formData.append("created_by", payload.createdBy.toString());
+  if (payload.productStructureInstanceId) {
+    formData.append(
+      "product_structure_instance_id",
+      payload.productStructureInstanceId.toString()
+    );
+  }
 
   payload.pptDocuments.forEach((file) => {
     formData.append("client_documentations_ppt", file);

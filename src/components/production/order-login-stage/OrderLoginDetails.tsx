@@ -15,15 +15,24 @@ interface OrderLoginDetailsProps {
   accountId: number;
   name?: string;
   forceDefaultTab?: string;
+  instanceId?: number | null;
 }
 
 const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   leadId,
   accountId,
   forceDefaultTab,
+  instanceId,
 }) => {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
+  const instanceFromUrl = searchParams.get("instance_id");
+  const scopedInstanceId =
+    typeof instanceId !== "undefined"
+      ? instanceId
+      : instanceFromUrl
+      ? Number(instanceFromUrl)
+      : undefined;
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
   const { data } = useClientRequiredCompletionDate(vendorId, leadId);
@@ -43,9 +52,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   };
 
   const activeTab =
-    tabMapping[tabParam || ""] || forceDefaultTab
-      ? "order-login"
-      : "approved-docs";
+    tabMapping[tabParam || ""] || forceDefaultTab || "order-login";
 
   return (
     <div className="space-y-6 bg-[#fff] dark:bg-[#0a0a0a]">
@@ -125,7 +132,11 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             title: "Production Files",
             color: "bg-zinc-800 hover:bg-zinc-900",
             cardContent: (
-              <ProductionFilesSection leadId={leadId} accountId={accountId} />
+              <ProductionFilesSection
+                leadId={leadId}
+                accountId={accountId}
+                instanceId={scopedInstanceId}
+              />
             ),
           },
           {
@@ -133,7 +144,11 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             title: "Order Login",
             color: "bg-zinc-800 hover:bg-zinc-900",
             cardContent: (
-              <OrderLoginTab leadId={leadId} accountId={accountId} />
+              <OrderLoginTab
+                leadId={leadId}
+                accountId={accountId}
+                instanceId={scopedInstanceId}
+              />
             ),
           },
         ]}

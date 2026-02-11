@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
@@ -34,6 +34,8 @@ import {
   Clock,
   UserPlus,
   MessageSquare,
+  User2,
+  Layers3,
 } from "lucide-react";
 
 import {
@@ -77,10 +79,16 @@ import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 
 export default function OrderLoginLeadDetails() {
   const { lead: leadId } = useParams();
+  const searchParams = useSearchParams();
   const leadIdNum = Number(leadId);
+  const instanceId = searchParams.get("instance_id");
+  const instanceIdNum = instanceId ? Number(instanceId) : null;
+  const validInstanceId =
+    instanceIdNum && !Number.isNaN(instanceIdNum) ? instanceIdNum : null;
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -89,7 +97,7 @@ export default function OrderLoginLeadDetails() {
   );
 
   const { data: readiness, isLoading: readinessLoading } =
-    useLeadProductionReadiness(vendorId, leadIdNum);
+    useLeadProductionReadiness(vendorId, leadIdNum, validInstanceId ?? undefined);
 
   // derive convenience flags & message
   const lacksProdFiles = readiness ? !readiness.productionFiles?.hasAny : false;
@@ -117,6 +125,10 @@ export default function OrderLoginLeadDetails() {
   const [openMoveToProduction, setOpenMoveToProduction] = useState(false);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+  const { data: instancesResponse } = useLeadProductStructureInstances(
+    leadIdNum,
+    vendorId,
+  );
 
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
@@ -130,6 +142,28 @@ export default function OrderLoginLeadDetails() {
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
+  const instances = Array.isArray(instancesResponse?.data)
+    ? instancesResponse?.data
+    : instancesResponse?.data?.data || [];
+  const totalInstanceCount =
+    instances.length || lead?.productStructureInstances?.length || 0;
+  const instanceSuffix =
+    validInstanceId && totalInstanceCount > 1
+      ? (instances.find(
+          (instance: any) => instance.id === validInstanceId,
+        ) ??
+          lead?.productStructureInstances?.find(
+            (instance: any) => instance.id === validInstanceId,
+          ))?.quantity_index
+      : null;
+  const displayLeadCode =
+    leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
+  const instanceName = validInstanceId
+    ? (instances.find((instance: any) => instance.id === validInstanceId) ??
+        lead?.productStructureInstances?.find(
+          (instance: any) => instance.id === validInstanceId,
+        ))?.title ?? ""
+    : "";
   const accountId = Number(lead?.account_id);
 
   const deleteLeadMutation = useDeleteLead();
@@ -162,25 +196,61 @@ export default function OrderLoginLeadDetails() {
   return (
     <>
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b">
-        <div className="flex items-center gap-2">
+      <header className="flex shrink-0 flex-col gap-2 px-4 py-2 border-b md:h-16 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 items-center gap-2">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbPage>
-                  <p className="font-bold">
-                    {leadCode || "Loading…"}
-                    {leadCode && (clientName ? ` - ${clientName}` : "")}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {displayLeadCode ? (
+                      <>
+                        {/* Dot + Lead Code */}
+                        <span className="inline-flex items-center gap-1.5 font-semibold text-sm text-primary">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          {displayLeadCode}
+                        </span>
+
+                        {clientName && (
+                          <>
+                            {/* Separator */}
+                            <span className="text-muted-foreground">|</span>
+
+                            {/* Client Name */}
+                            <span className="inline-flex items-center gap-1.5 font-medium text-sm text-foreground">
+                              <User2 className="w-3.5 h-3.5 text-muted-foreground" />
+                              {clientName}
+                            </span>
+                          </>
+                        )}
+
+                        {instanceName && (
+                          <>
+                            {/* Separator */}
+                            <span className="text-muted-foreground">-</span>
+
+                            {/* Instance Name */}
+                            <span className="inline-flex items-center gap-1.5 font-medium text-xs text-muted-foreground">
+                              <Layers3 className="w-3 h-3" />
+                              {instanceName}
+                            </span>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Loading…
+                      </span>
+                    )}
+                  </div>
                 </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 md:w-auto">
           <div className="flex items-center justify-end gap-2">
             {/* ✅ Show only if user has permission */}
             {canMoveToProductionStage &&
@@ -372,6 +442,11 @@ export default function OrderLoginLeadDetails() {
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
+            orderLoginInstanceId={
+              instanceIdNum && !Number.isNaN(instanceIdNum)
+                ? instanceIdNum
+                : null
+            }
           />
         </TabsContent>
 
@@ -382,6 +457,11 @@ export default function OrderLoginLeadDetails() {
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
+            orderLoginInstanceId={
+              instanceIdNum && !Number.isNaN(instanceIdNum)
+                ? instanceIdNum
+                : null
+            }
           />
         </TabsContent>
 
@@ -468,7 +548,7 @@ export default function OrderLoginLeadDetails() {
       <MoveToProductionModal
         open={openMoveToProduction}
         onOpenChange={setOpenMoveToProduction}
-        data={{ id: Number(leadId), accountId }}
+        data={{ id: Number(leadId), accountId, instanceId: validInstanceId }}
         client_required_order_login_complition_date={
           client_required_order_login_complition_date
         }

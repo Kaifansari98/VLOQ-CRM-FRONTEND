@@ -122,7 +122,6 @@ export function UniversalTable({
     createdAt: false,
     altContact: false,
     email: false,
-    furnitueStructures: false,
     designerRemark: false,
   });
 
@@ -291,10 +290,22 @@ export function UniversalTable({
 
   // -------------------- ROW MAPPER --------------------
 
-  const mapUniversalRow = (lead: any, index: number): LeadColumn => ({
+  const mapUniversalRow = (
+    lead: any,
+    index: number,
+    options?: {
+      rowKey?: string;
+      instanceId?: number;
+      leadCodeSuffix?: string;
+      furnitureStructureOverride?: string;
+      productionStatus?: string;
+    },
+  ): LeadColumn => ({
+    rowKey: options?.rowKey,
+    instanceId: options?.instanceId,
     id: lead.id,
     srNo: index + 1,
-    lead_code: lead.lead_code ?? "",
+    lead_code: `${lead.lead_code ?? ""}${options?.leadCodeSuffix ?? ""}`,
     name: `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim(),
     email: lead.email ?? "",
     contact: `${lead.country_code ?? ""}${lead.contact_no ?? ""}`,
@@ -305,10 +316,12 @@ export function UniversalTable({
     furnitureType:
       lead.productMappings?.map((p: any) => p.productType?.type).join(", ") ??
       "",
-    furnitueStructures:
-      lead.leadProductStructureMapping
-        ?.map((p: any) => p.productStructure?.type)
-        .join(", ") ?? "",
+    furnitueStructures: options?.furnitureStructureOverride
+      ? options.furnitureStructureOverride
+      : lead.leadProductStructureMapping
+          ?.map((p: any) => p.productStructure?.type)
+          .join(", ") ?? "",
+    productionStatus: options?.productionStatus,
     source: lead.source?.type ?? "",
     siteType: lead.siteType?.type ?? "",
     createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",
@@ -324,16 +337,126 @@ export function UniversalTable({
   // -------------------- TABLE DATA --------------------
 
   const tableData = useMemo<LeadColumn[]>(() => {
-    return activeData.map((item, idx) => mapUniversalRow(item, idx));
-  }, [activeData]);
+    const normalizedType = String(type || "").trim().toLowerCase();
+    const isType8 = normalizedType === "type 8";
+    const isType9 = normalizedType === "type 9";
+    const isType10 = normalizedType === "type 10";
+
+    if (!isType8 && !isType9 && !isType10) {
+      return activeData.map((item, idx) =>
+        mapUniversalRow(item, idx, { rowKey: String(item.id) }),
+      );
+    }
+
+    const expanded: LeadColumn[] = [];
+
+    activeData.forEach((lead) => {
+      const instances = Array.isArray(lead?.productStructureInstances)
+        ? lead.productStructureInstances
+        : [];
+      let instanceRows = instances;
+      if (isType8) {
+        instanceRows = instances.filter(
+          (instance: any) => instance?.is_tech_check_completed !== true,
+        );
+      } else if (isType9) {
+        instanceRows = instances.filter(
+          (instance: any) =>
+            instance?.is_tech_check_completed === true &&
+            instance?.is_order_login_completed !== true,
+        );
+      } else if (isType10) {
+        instanceRows = instances.filter(
+          (instance: any) =>
+            instance?.is_tech_check_completed === true &&
+            instance?.is_order_login_completed === true,
+        );
+      }
+
+      if (instanceRows.length === 0) {
+        return;
+      }
+
+      if (instanceRows.length <= 1) {
+        const onlyInstance = instanceRows[0];
+        const structureType =
+          onlyInstance?.productStructure?.type ??
+          lead.leadProductStructureMapping?.[0]?.productStructure?.type ??
+          "";
+        const instanceCompleted = Boolean(onlyInstance?.is_production_completed);
+        const suffix =
+          instances.length > 1
+            ? `.${onlyInstance?.quantity_index ?? 1}`
+            : "";
+        expanded.push(
+          mapUniversalRow(lead, expanded.length, {
+            rowKey: String(lead.id),
+            instanceId: onlyInstance?.id,
+            leadCodeSuffix: suffix,
+            furnitureStructureOverride: structureType,
+            productionStatus: isType10
+              ? instanceCompleted
+                ? "Completed"
+                : "Pending"
+              : undefined,
+          }),
+        );
+        return;
+      }
+
+      instanceRows.forEach((instance: any, instanceIndex: number) => {
+        console.log("Type 10 instance status debug:", {
+          type,
+          leadId: lead?.id,
+          instanceId: instance?.id,
+          is_production_completed: instance?.is_production_completed,
+          instanceKeys: instance ? Object.keys(instance) : [],
+          instance,
+        });
+        const structureType =
+          instance?.productStructure?.type ??
+          lead.leadProductStructureMapping?.find(
+            (item: any) =>
+              item?.productStructure?.id === instance?.product_structure_id
+          )?.productStructure?.type ??
+          "";
+        const instanceCompleted = Boolean(instance?.is_production_completed);
+        const suffixIndex = instance?.quantity_index ?? instanceIndex + 1;
+        expanded.push(
+          mapUniversalRow(lead, expanded.length, {
+            rowKey: `${lead.id}-${instance?.id ?? instanceIndex + 1}`,
+            instanceId: instance?.id,
+            leadCodeSuffix: instances.length > 1 ? `.${suffixIndex}` : "",
+            furnitureStructureOverride: structureType,
+            productionStatus: isType10
+              ? instanceCompleted
+                ? "Completed"
+                : "Pending"
+              : undefined,
+          }),
+        );
+      });
+    });
+
+    return expanded;
+  }, [activeData, type]);
 
   console.log("Overall Post Payload: ", tableData);
 
   // -------------------- COLUMNS --------------------
 
+  const showProductionStatusColumn = useMemo(() => {
+    const normalizedType = String(type || "").trim().toLowerCase();
+    return normalizedType === "type 10";
+  }, [type]);
+
   const columns = useMemo(
-    () => getUniversalTableColumns({ showStageColumn }),
-    [showStageColumn],
+    () =>
+      getUniversalTableColumns({
+        showStageColumn,
+        showProductionStatusColumn,
+      }),
+    [showStageColumn, showProductionStatusColumn],
   );
 
   // -------------------- TABLE INSTANCE --------------------
@@ -369,13 +492,23 @@ export function UniversalTable({
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
 
-    getRowId: getRowId ?? ((row) => row.id.toString()),
+    getRowId: getRowId ?? ((row) => row.rowKey ?? row.id.toString()),
   });
 
   // -------------------- ROW NAVIGATION --------------------
+  const withInstanceId = (path: string, instanceId?: number) => {
+    if (!instanceId) return path;
+    const [baseAndQuery, hash = ""] = path.split("#");
+    const [basePath, queryString = ""] = baseAndQuery.split("?");
+    const params = new URLSearchParams(queryString);
+    params.set("instance_id", String(instanceId));
+    const next = `${basePath}?${params.toString()}`;
+    return hash ? `${next}#${hash}` : next;
+  };
 
   const handleRowClick = (row: LeadColumn) => {
-    router.push(onRowNavigate(row));
+    const targetPath = onRowNavigate(row);
+    router.push(withInstanceId(targetPath, row.instanceId));
   };
 
   // ✅ HANDLE VIEW SWITCH

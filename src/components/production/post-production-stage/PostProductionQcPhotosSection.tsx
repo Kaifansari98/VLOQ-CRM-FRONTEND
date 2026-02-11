@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,22 +33,38 @@ import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 interface PostProductionQcPhotosSectionProps {
   leadId: number;
   accountId: number | null;
+  instanceId?: number | null;
 }
 
 export default function PostProductionQcPhotosSection({
   leadId,
   accountId,
+  instanceId,
 }: PostProductionQcPhotosSectionProps) {
+  const searchParams = useSearchParams();
+  const instanceFromUrl = searchParams.get("instance_id");
+  const instanceIdFromUrl = instanceFromUrl ? Number(instanceFromUrl) : null;
+  const effectiveInstanceId =
+    typeof instanceId !== "undefined"
+      ? instanceId
+      : instanceIdFromUrl && !Number.isNaN(instanceIdFromUrl)
+      ? instanceIdFromUrl
+      : null;
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
 
   const queryClient = useQueryClient();
 
-  const { data: qcPhotos, isLoading } = useQcPhotos(vendorId, leadId);
+  const { data: qcPhotos, isLoading } = useQcPhotos(
+    vendorId,
+    leadId,
+    effectiveInstanceId ?? undefined
+  );
   const { mutateAsync: uploadQcFiles, isPending } = useUploadQcPhotos(
     vendorId,
-    leadId
+    leadId,
+    effectiveInstanceId ?? undefined
   );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
@@ -57,7 +74,8 @@ export default function PostProductionQcPhotosSection({
     useDeleteDocument(leadId);
   const { refetch: refetchCompleteness } = usePostProductionCompleteness(
     vendorId,
-    leadId
+    leadId,
+    effectiveInstanceId ?? undefined
   );
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
@@ -95,10 +113,20 @@ export default function PostProductionQcPhotosSection({
       setSelectedFiles([]);
 
       queryClient.invalidateQueries({
-        queryKey: ["qcPhotos", vendorId, leadId],
+        queryKey: [
+          "qcPhotos",
+          vendorId,
+          leadId,
+          effectiveInstanceId ?? "all",
+        ],
       });
       queryClient.invalidateQueries({
-        queryKey: ["postProductionCompleteness", vendorId, leadId],
+        queryKey: [
+          "postProductionCompleteness",
+          vendorId,
+          leadId,
+          effectiveInstanceId ?? "all",
+        ],
       });
 
       await refetchCompleteness();

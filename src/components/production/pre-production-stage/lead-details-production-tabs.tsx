@@ -12,16 +12,22 @@ import ProductionFilesSection from "../order-login-stage/ProductionFilesModal";
 interface LeadDetailsProductionUtilProps {
   leadId: number;
   accountId?: number;
+  instanceId?: number | null;
 }
 
 export default function LeadDetailsProductionUtil({
   leadId,
   accountId,
+  instanceId,
 }: LeadDetailsProductionUtilProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
 
-  const { data } = useCheckPostProductionReady(vendorId, leadId);
+  const { data } = useCheckPostProductionReady(
+    vendorId,
+    leadId,
+    instanceId ?? undefined
+  );
 
   const readyForPostProduction = data?.readyForPostProduction ?? false;
 
@@ -36,6 +42,7 @@ export default function LeadDetailsProductionUtil({
         <ProductionFilesSection
           leadId={leadId}
           accountId={accountId ?? null}
+          instanceId={instanceId}
           readOnly
         />
       ),
@@ -50,7 +57,11 @@ export default function LeadDetailsProductionUtil({
         : "This lead is work on under production",
 
       cardContent: (
-        <PreProductionDetails leadId={leadId} accountId={accountId} />
+        <PreProductionDetails
+          leadId={leadId}
+          accountId={accountId}
+          instanceId={instanceId}
+        />
       ),
     },
     {
@@ -61,7 +72,11 @@ export default function LeadDetailsProductionUtil({
       disabledReason:
         "You can access Post Production only after completing Under-Production.",
       cardContent: (
-        <PostProductionDetails leadId={leadId} accountId={accountId} />
+        <PostProductionDetails
+          leadId={leadId}
+          accountId={accountId}
+          instanceId={instanceId}
+        />
       ),
     },
   ];

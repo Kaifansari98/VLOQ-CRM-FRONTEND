@@ -67,6 +67,12 @@ export const uploadMoreClientDocumentation = async (
       payload.productStructureInstanceId.toString()
     );
   }
+  if (payload.productStructureInstanceId) {
+    formData.append(
+      "product_structure_instance_id",
+      payload.productStructureInstanceId.toString()
+    );
+  }
 
   payload.pptDocuments.forEach((file) => {
     formData.append("client_documentations_ppt", file);
@@ -82,6 +88,22 @@ export const uploadMoreClientDocumentation = async (
     { headers: { "Content-Type": "multipart/form-data" } },
   );
 
+  return data;
+};
+
+export const moveLeadToClientApproval = async (payload: {
+  leadId: number;
+  vendorId: number;
+  updatedBy: number;
+}) => {
+  const { data } = await apiClient.post(
+    `/leads/client-documentation/move-to-client-approval`,
+    {
+      lead_id: payload.leadId,
+      vendor_id: payload.vendorId,
+      updated_by: payload.updatedBy,
+    }
+  );
   return data;
 };
 
