@@ -48,16 +48,14 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     (state) => state.auth.user?.user_type?.user_type,
   );
 
-  // API hooks
+  // API hooks - Using instance logic from auto-save version
   const { data: companyVendors } = useCompanyVendors(vendorId);
   const { data: orderLoginData } = useOrderLoginByLead(
-    
     vendorId,
-   
     leadId,
-    userId,
     instanceId ?? undefined,
   );
+
   const { data: leadData } = useLeadStatus(leadId, vendorId);
 
   // Mutations
@@ -84,6 +82,8 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
 
   // Derived state
   const leadStatus = leadData?.status;
+
+  console.log("Lead Status:", leadStatus);
   const canAccessButtons = canAccessAddNewSectionButton(userType, leadStatus);
 
   const normalizedStage = (leadStatus || "").toLowerCase().replace(/_/g, "-");
@@ -120,7 +120,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
         title,
         existingData: orderLoginData?.find((i: any) => i.item_type === title),
       })),
-    [orderLoginData],
+    [orderLoginData, defaultTitles],
   );
 
   const extraFromApi = useMemo(
@@ -128,10 +128,10 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       (orderLoginData || []).filter(
         (i: any) => !defaultTitles.includes(i.item_type),
       ),
-    [orderLoginData],
+    [orderLoginData, defaultTitles],
   );
 
-  // Pre-fill breakups from API data
+  // Pre-fill breakups from API data - Reset when instance changes
   useEffect(() => {
     if (orderLoginData && orderLoginData.length > 0) {
       const prefilled = orderLoginData.reduce((acc: any, item: any) => {
@@ -143,8 +143,12 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       }, {});
       setBreakups(prefilled);
       setHasUnsavedChanges(false);
+    } else {
+      // Reset breakups when no data (switching to new instance)
+      setBreakups({});
+      setHasUnsavedChanges(false);
     }
-  }, [orderLoginData]);
+  }, [orderLoginData, instanceId]); // Added instanceId dependency
 
   // Handle local state changes
   const handleLocalChange = (
@@ -163,7 +167,12 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   };
 
   // Handle vendor selection
-  const handleVendorChange = (title: string, selectedVendorId: number) => {
+  const handleVendorChange = async (
+    title: string,
+    selectedVendorId: number,
+    existingData: any,
+  ) => {
+    // Simply update local state - disable logic handled by getItemEditPermissions
     handleLocalChange(title, "company_vendor_id", selectedVendorId);
   };
 
@@ -177,12 +186,13 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
         );
 
         if (!existing?.id) {
-          // Create new record
+          // Create new record with instance_id
           const newRecord = {
             id: null,
             item_type: title,
             item_desc: values.item_desc?.trim() || "N/A",
             company_vendor_id: values.company_vendor_id || null,
+            instance_id: instanceId ?? null,
             created_by: userId,
             updated_by: userId,
           };
@@ -208,13 +218,11 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       setHasUnsavedChanges(false);
 
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId, userId, instanceId ?? "all"],
+        queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
       });
       queryClient.invalidateQueries({
         queryKey: ["leadProductionReadiness", vendorId, leadId],
       });
-      queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
-      queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
     } catch (err: any) {
       console.error("Failed to save order login", err);
       toast.error(err?.response?.data?.message || "Failed to save order login");
@@ -274,7 +282,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       toast.success("Section name updated successfully");
 
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId, userId, instanceId ?? "all"],
+        queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
       });
       return true;
     } catch (err: any) {
@@ -301,7 +309,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       setConfirmDelete(null);
 
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId, userId, instanceId ?? "all"],
+        queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
       });
       queryClient.invalidateQueries({
         queryKey: ["leadProductionReadiness", vendorId, leadId],
@@ -322,34 +330,36 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     const isProductionStageCheck = stage === "production-stage";
 
     const hasVendorAssigned = !!item?.company_vendor_id;
+    const hasDescription = !!(item?.item_desc && item?.item_desc !== "N/A");
 
-    // Admin override — full control always
+    // ✅ Admin/Super-Admin override — full control always in both stages
     if (isAdmin) {
       return {
         canEdit: true,
       };
     }
 
-    // Backend in order-login-stage - can edit multiple times
+    // ✅ Backend in order-login-stage — can edit everything multiple times
     if (isBackend && isOrderLoginStageCheck) {
       return {
         canEdit: true,
       };
     }
 
-    // Backend in production-stage - can edit only if vendor not assigned yet
+    // ✅ Backend in production-stage — can edit only if BOTH vendor AND description are NOT filled
     if (isBackend && isProductionStageCheck) {
       return {
-        canEdit: !hasVendorAssigned, // Disable once vendor is assigned
+        canEdit: !(hasVendorAssigned && hasDescription), // Disable only when BOTH are filled
       };
     }
 
-    // Everything else blocked
+    // ❌ Everything else blocked
     return {
       canEdit: false,
     };
   };
 
+  
   const canShowSaveButton = () => {
     const role = userType?.toLowerCase();
     const isAdmin = role === "admin" || role === "super-admin";
@@ -399,9 +409,9 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
                   company_vendor_id: null,
                 }
               }
-              onVendorChange={(selectedVendorId) => {
-                handleVendorChange(title, selectedVendorId);
-              }}
+              onVendorChange={(selectedVendorId) =>
+                handleVendorChange(title, selectedVendorId, existingData)
+              }
               onDescriptionChange={(description) =>
                 handleLocalChange(title, "item_desc", description)
               }
@@ -432,9 +442,9 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
                   company_vendor_id: item.company_vendor_id || null,
                 }
               }
-              onVendorChange={(selectedVendorId) => {
-                handleVendorChange(item.item_type, selectedVendorId);
-              }}
+              onVendorChange={(selectedVendorId) =>
+                handleVendorChange(item.item_type, selectedVendorId, item)
+              }
               onDescriptionChange={(description) =>
                 handleLocalChange(item.item_type, "item_desc", description)
               }
@@ -488,7 +498,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
               instanceId={instanceId}
               onSectionAdded={() => {
                 queryClient.invalidateQueries({
-                  queryKey: ["orderLoginByLead", vendorId, leadId, userId, instanceId ?? "all"],
+                  queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
                 });
               }}
             />

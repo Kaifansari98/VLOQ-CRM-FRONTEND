@@ -91,21 +91,7 @@ export const uploadMoreClientDocumentation = async (
   return data;
 };
 
-export const moveLeadToClientApproval = async (payload: {
-  leadId: number;
-  vendorId: number;
-  updatedBy: number;
-}) => {
-  const { data } = await apiClient.post(
-    `/leads/client-documentation/move-to-client-approval`,
-    {
-      lead_id: payload.leadId,
-      vendor_id: payload.vendorId,
-      updated_by: payload.updatedBy,
-    }
-  );
-  return data;
-};
+
 
 export const moveLeadToClientApproval = async (payload: {
   leadId: number;

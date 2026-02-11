@@ -65,8 +65,6 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   orderLoginId,
   userId,
   showPoUpload = false,
-  leadStage = "",
-  userRole = "",
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
@@ -156,27 +154,6 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
       );
     }
   };
-
-  const role = userRole?.toLowerCase();
-  const stage = leadStage?.toLowerCase();
-  const isBackend =
-    role === "backend" || role === "admin" || role === "super-admin";
-  const isAdmin = role === "admin" || role === "super-admin";
-
-  const isOrderLoginStage = stage === "order-login-stage";
-  const isProductionStage = stage === "production-stage";
-
-  // PO upload privileges
-  const hasExistingPoFiles = poFileList && poFileList.length > 0;
-  
-  // Admin can always upload
-  // Backend in Order Login: can upload multiple times
-  // Backend in Production: can upload only if no files exist yet
-  const canUploadPo = isAdmin || 
-    (isBackend && isOrderLoginStage) || 
-    (isBackend && isProductionStage && !hasExistingPoFiles);
-
-  const canManagePo = isBackend || isAdmin;
 
   return (
     <div className="rounded-xl border bg-card flex flex-col gap-4">
@@ -310,51 +287,39 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
           icon={<FolderOpen className="w-4 h-4 text-primary" />}
         >
           <div className="p-6 space-y-4">
-            {canUploadPo && (
-              <div className="space-y-3">
-                <FileUploadField
-                  value={poFiles}
-                  onChange={setPoFiles}
-                  accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
-                  multiple
-                  disabled={!canUsePoUpload}
-                  maxFiles={10}
-                />
+            <div className="space-y-3">
+              <FileUploadField
+                value={poFiles}
+                onChange={setPoFiles}
+                accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
+                multiple
+                disabled={!canUsePoUpload}
+                maxFiles={10}
+              />
 
-                <div className="flex justify-end">
-                  <Button
-                    size="sm"
-                    onClick={handlePoUpload}
-                    disabled={
-                      !canUsePoUpload ||
-                      isUploadingPo ||
-                      poFiles.length === 0
-                    }
-                    className="flex items-center gap-2"
-                  >
-                    {isUploadingPo ? (
-                      <>
-                        <Loader2 className="animate-spin size-4" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload size={16} />
-                        Upload Files
-                      </>
-                    )}
-                  </Button>
-                </div>
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={handlePoUpload}
+                  disabled={
+                    !canUsePoUpload || isUploadingPo || poFiles.length === 0
+                  }
+                  className="flex items-center gap-2"
+                >
+                  {isUploadingPo ? (
+                    <>
+                      <Loader2 className="animate-spin size-4" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={16} />
+                      Upload Files
+                    </>
+                  )}
+                </Button>
               </div>
-            )}
-
-            {!canUploadPo && hasExistingPoFiles && (
-              <div className="p-4 border border-amber-200 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
-                <p className="text-sm text-amber-800 dark:text-amber-200">
-                  PO files have already been uploaded for this section. You cannot add more files in production stage.
-                </p>
-              </div>
-            )}
+            </div>
 
             {poFileList.length === 0 ? (
               <div className="p-10 border border-dashed rounded-xl flex flex-col items-center justify-center text-center bg-muted/40">
@@ -409,4 +374,4 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   );
 };
 
-export default FileBreakUpField;  
+export default FileBreakUpField;
