@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import AssignToPicker from "@/components/assign-to-picker";
 import TextAreaInput from "@/components/origin-text-area";
 import {
@@ -27,13 +27,6 @@ import { ImageComponent } from "@/components/utils/ImageCard";
 interface FileBreakUpFieldProps {
   title: string;
   users: { id: number; label: string; in_house?: boolean }[];
-  value: {
-    company_vendor_id: number | null;
-    item_desc: string;
-  };
-  onVendorChange?: (vendorId: number) => void;
-  onDescriptionChange?: (description: string) => void;
-  disabled?: boolean;
   isMandatory?: boolean;
   isTitleEditable?: boolean;
   canDelete?: boolean;
@@ -44,17 +37,22 @@ interface FileBreakUpFieldProps {
   orderLoginId?: number;
   userId?: number;
   showPoUpload?: boolean;
+  value: {
+    company_vendor_id: number | null;
+    item_desc: string;
+  };
+  onVendorChange?: (vendorId: number) => void;
+  onDescriptionBlur?: (description: string) => void;
+  disable?: boolean;
   leadStage?: string;
   userRole?: string;
+  canEditDescription: boolean;
+  canEditVendor: boolean;
 }
 
 const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   title,
   users,
-  value,
-  onVendorChange,
-  onDescriptionChange,
-  disabled = false,
   isMandatory = false,
   isTitleEditable = false,
   canDelete = false,
@@ -65,14 +63,24 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   orderLoginId,
   userId,
   showPoUpload = false,
+  value,
+  onVendorChange,
+  onDescriptionBlur,
+  disable,
   leadStage = "",
   userRole = "",
+  canEditDescription,
+  canEditVendor,
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
+  const [descriptionValue, setDescriptionValue] = useState(value.item_desc);
   const [poFiles, setPoFiles] = useState<File[]>([]);
   const [poModalOpen, setPoModalOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  // Track previous description to detect changes
+  const prevDescriptionRef = useRef(value.item_desc);
 
   const inHouseVendors = users.filter((user) => user.in_house);
   const companyVendors = users.filter((user) => !user.in_house);
@@ -90,6 +98,12 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
     setTitleDraft(title);
   }, [title]);
 
+  useEffect(() => {
+    setDescriptionValue(value.item_desc);
+    prevDescriptionRef.current = value.item_desc;
+  }, [value.item_desc]);
+
+  // ✅ Fixed: Handle vendor select with proper null type
   const handleVendorSelect = (id: number | null) => {
     if (id !== null && onVendorChange) {
       onVendorChange(id);
@@ -97,8 +111,23 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   };
 
   const handleDescriptionChange = (val: string) => {
-    if (onDescriptionChange) {
-      onDescriptionChange(val);
+    setDescriptionValue(val);
+  };
+
+  // ✅ Manual blur handler using textarea wrapper
+  const handleTextAreaWrapperBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    // Check if focus is leaving the textarea wrapper entirely
+    const currentTarget = e.currentTarget;
+    const relatedTarget = e.relatedTarget as Node | null;
+
+    if (!currentTarget.contains(relatedTarget)) {
+      // Only save if description actually changed
+      if (descriptionValue !== prevDescriptionRef.current) {
+        if (onDescriptionBlur) {
+          onDescriptionBlur(descriptionValue);
+          prevDescriptionRef.current = descriptionValue;
+        }
+      }
     }
   };
 
@@ -158,25 +187,11 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   };
 
   const role = userRole?.toLowerCase();
-  const stage = leadStage?.toLowerCase();
   const isBackend =
     role === "backend" || role === "admin" || role === "super-admin";
-  const isAdmin = role === "admin" || role === "super-admin";
 
-  const isOrderLoginStage = stage === "order-login-stage";
-  const isProductionStage = stage === "production-stage";
-
-  // PO upload privileges
-  const hasExistingPoFiles = poFileList && poFileList.length > 0;
-  
-  // Admin can always upload
-  // Backend in Order Login: can upload multiple times
-  // Backend in Production: can upload only if no files exist yet
-  const canUploadPo = isAdmin || 
-    (isBackend && isOrderLoginStage) || 
-    (isBackend && isProductionStage && !hasExistingPoFiles);
-
-  const canManagePo = isBackend || isAdmin;
+  // ✅ No restrictions on PO management - backend can upload anytime
+  const canManagePo = isBackend;
 
   return (
     <div className="rounded-xl border bg-card flex flex-col gap-4">
@@ -189,7 +204,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
               value={titleDraft}
               onChange={(e) => setTitleDraft(e.target.value)}
               className="w-full max-w-[220px] border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              disabled={disabled}
+              disabled={disable}
             />
           ) : (
             <p className="font-semibold text-sm flex items-center gap-2 truncate">
@@ -205,7 +220,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
               <button
                 type="button"
                 onClick={() => setIsEditingTitle(true)}
-                disabled={disabled}
+                disabled={disable}
                 className="p-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
                 aria-label="Edit section title"
               >
@@ -217,7 +232,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                 <button
                   type="button"
                   onClick={handleTitleSave}
-                  disabled={disabled}
+                  disabled={disable}
                   className="p-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
                   aria-label="Save section title"
                 >
@@ -226,7 +241,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                 <button
                   type="button"
                   onClick={handleTitleCancel}
-                  disabled={disabled}
+                  disabled={disable}
                   className="p-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
                   aria-label="Cancel title edit"
                 >
@@ -238,7 +253,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
               <button
                 type="button"
                 onClick={onDelete}
-                disabled={disabled}
+                disabled={disable}
                 className="p-1 text-destructive/80 hover:text-destructive disabled:cursor-not-allowed"
                 aria-label="Delete section"
               >
@@ -263,11 +278,11 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
               onChange={handleVendorSelect}
               placeholder="Search vendor..."
               emptyLabel="Select a vendor"
-              disabled={disabled}
+              disabled={!canEditVendor || disable}
             />
           </div>
 
-          {showPoUpload && value.company_vendor_id && (
+          {showPoUpload && (
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground block min-h-[16px]">
                 PO Files
@@ -277,7 +292,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => setPoModalOpen(true)}
-                disabled={!canUsePoUpload}
+                disabled={!canUsePoUpload || disable}
                 className="w-full h-9"
               >
                 Manage PO Files
@@ -286,16 +301,19 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
           )}
         </div>
 
+        {/* ✅ Description with blur detection wrapper */}
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">
             Description
           </label>
-          <TextAreaInput
-            value={value.item_desc}
-            onChange={handleDescriptionChange}
-            placeholder={`Add notes or specs for ${title} (optional)`}
-            disabled={disabled}
-          />
+          <div onBlur={handleTextAreaWrapperBlur}>
+            <TextAreaInput
+              value={descriptionValue}
+              onChange={handleDescriptionChange}
+              placeholder={`Add notes or specs for ${title} (optional)`}
+              disabled={!canEditDescription || disable}
+            />
+          </div>
         </div>
       </div>
 
@@ -310,14 +328,14 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
           icon={<FolderOpen className="w-4 h-4 text-primary" />}
         >
           <div className="p-6 space-y-4">
-            {canUploadPo && (
+            {canManagePo && (
               <div className="space-y-3">
                 <FileUploadField
                   value={poFiles}
                   onChange={setPoFiles}
-                  accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
+                  accept=".pdf,.pyo,.pytha,.dwg,.dxf,.zip,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff"
                   multiple
-                  disabled={!canUsePoUpload}
+                  disabled={!canUsePoUpload || disable}
                   maxFiles={10}
                 />
 
@@ -327,6 +345,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                     onClick={handlePoUpload}
                     disabled={
                       !canUsePoUpload ||
+                      disable ||
                       isUploadingPo ||
                       poFiles.length === 0
                     }
@@ -345,14 +364,6 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                     )}
                   </Button>
                 </div>
-              </div>
-            )}
-
-            {!canUploadPo && hasExistingPoFiles && (
-              <div className="p-4 border border-amber-200 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
-                <p className="text-sm text-amber-800 dark:text-amber-200">
-                  PO files have already been uploaded for this section. You cannot add more files in production stage.
-                </p>
               </div>
             )}
 
@@ -409,4 +420,4 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   );
 };
 
-export default FileBreakUpField;  
+export default FileBreakUpField;
