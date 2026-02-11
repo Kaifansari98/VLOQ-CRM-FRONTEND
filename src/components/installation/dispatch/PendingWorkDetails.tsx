@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import CustomeDatePicker from "@/components/date-picker";
@@ -26,6 +26,7 @@ import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkUnderInstallationStage } from "@/components/utils/privileges";
 import { Checkbox } from "@/components/ui/checkbox";
 import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 
 interface PendingWorkDetailsProps {
   leadId: number;
@@ -61,16 +62,63 @@ export default function PendingWorkDetails({
 
   const { data: workTitleOptions = [], isLoading: loadingTitles } =
     useOrderLoginSummary(vendorId, leadId);
+  const { data: instancesResponse, isLoading: loadingInstances } =
+    useLeadProductStructureInstances(leadId, vendorId);
+  const instances = Array.isArray(instancesResponse?.data)
+    ? instancesResponse?.data
+    : instancesResponse?.data?.data || [];
 
   /* 📝 Form State */
   const [title, setTitle] = useState("");
   const [remark, setRemark] = useState("");
   const [dueDate, setDueDate] = useState<string | null>(null);
+  const [selectedInstanceLabel, setSelectedInstanceLabel] = useState("");
   const [pendingWorkAnswer, setPendingWorkAnswer] = useState<
     "yes" | "no" | null
   >("no");
   const [openTaskModal, setOpenTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
+
+  const instanceOptions = useMemo(() => {
+    if (!instances.length) return [];
+    return instances.map((instance: any) => {
+      const base = instance?.title || `Instance ${instance?.quantity_index ?? instance?.id}`;
+      return base;
+    });
+  }, [instances]);
+
+  const instanceIdByLabel = useMemo(() => {
+    const map = new Map<string, number>();
+    instances.forEach((instance: any) => {
+      const label =
+        instance?.title || `Instance ${instance?.quantity_index ?? instance?.id}`;
+      if (!map.has(label)) {
+        map.set(label, instance?.id);
+      }
+    });
+    return map;
+  }, [instances]);
+
+  const selectedInstanceId = selectedInstanceLabel
+    ? instanceIdByLabel.get(selectedInstanceLabel)
+    : undefined;
+
+  useEffect(() => {
+    if (!selectedInstanceLabel && instanceOptions.length > 0) {
+      setSelectedInstanceLabel(instanceOptions[0]);
+    }
+  }, [instanceOptions, selectedInstanceLabel]);
+
+  const filteredWorkTitleOptions = useMemo(() => {
+    if (!selectedInstanceId) return workTitleOptions ?? [];
+    return (workTitleOptions ?? []).filter(
+      (item: any) => Number(item?.instance_id) === Number(selectedInstanceId)
+    );
+  }, [workTitleOptions, selectedInstanceId]);
+
+  useEffect(() => {
+    setTitle("");
+  }, [selectedInstanceId]);
 
   const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
   const allowForm = canWork && pendingWorkAnswer === "yes";
@@ -83,7 +131,10 @@ export default function PendingWorkDetails({
       return;
     }
 
-    const combinedRemark = `${title.trim()} — ${remark.trim()}`;
+    const formattedTitle = selectedInstanceLabel
+      ? `${selectedInstanceLabel} - ${title.trim()}`
+      : title.trim();
+    const combinedRemark = `${formattedTitle} — ${remark.trim()}`;
 
     try {
       await createPendingWork({
@@ -194,6 +245,27 @@ export default function PendingWorkDetails({
           <form onSubmit={handleSubmit} className="space-y-5">
               {/* Grid Inputs */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Instance Picker */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1 text-sm font-medium">
+                    <Wrench className="h-4 w-4" />
+                    Instance
+                  </Label>
+
+                  <TextSelectPicker
+                    options={instanceOptions}
+                    value={selectedInstanceLabel}
+                    onChange={(text) => setSelectedInstanceLabel(text)}
+                    placeholder={
+                      loadingInstances ? "Loading instances..." : "Select instance..."
+                    }
+                    emptyLabel={
+                      instanceOptions.length ? "Select instance" : "No instances"
+                    }
+                    disabled={loadingInstances || instanceOptions.length === 0}
+                  />
+                </div>
+
                 {/* Title Picker */}
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1 text-sm font-medium">
@@ -204,7 +276,7 @@ export default function PendingWorkDetails({
 
                   <TextSelectPicker
                     options={
-                      workTitleOptions.map(
+                      filteredWorkTitleOptions.map(
                         (item: any) => item.item_type || "Untitled Work"
                       ) || []
                     }
@@ -216,7 +288,7 @@ export default function PendingWorkDetails({
                         : "Select work..."
                     }
                     emptyLabel="Select Work"
-                    disabled={loadingTitles || !allowForm}
+                    disabled={loadingTitles || !allowForm || !selectedInstanceId}
                   />
                 </div>
 

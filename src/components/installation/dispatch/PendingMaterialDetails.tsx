@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import CustomeDatePicker from "@/components/date-picker";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import TextSelectPicker from "@/components/TextSelectPicker";
 import { Checkbox } from "@/components/ui/checkbox";
 import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 
 interface PendingMaterialDetailsProps {
   leadId: number;
@@ -43,11 +44,59 @@ export default function PendingMaterialDetails({
 
   const { data: orderLoginSummary = [], isLoading: loadingSummary } =
     useOrderLoginSummary(vendorId, leadId);
+  const { data: instancesResponse, isLoading: loadingInstances } =
+    useLeadProductStructureInstances(leadId, vendorId);
+
+  const instances = Array.isArray(instancesResponse?.data)
+    ? instancesResponse?.data
+    : instancesResponse?.data?.data || [];
 
   // Form State
   const [title, setTitle] = useState("");
   const [remark, setRemark] = useState("");
   const [dueDate, setDueDate] = useState<string | null>(null);
+  const [selectedInstanceLabel, setSelectedInstanceLabel] = useState("");
+
+  const instanceOptions = useMemo(() => {
+    if (!instances.length) return [];
+    return instances.map((instance: any) => {
+      const base = instance?.title || `Instance ${instance?.quantity_index ?? instance?.id}`;
+      return base;
+    });
+  }, [instances]);
+
+  const instanceIdByLabel = useMemo(() => {
+    const map = new Map<string, number>();
+    instances.forEach((instance: any) => {
+      const label =
+        instance?.title || `Instance ${instance?.quantity_index ?? instance?.id}`;
+      if (!map.has(label)) {
+        map.set(label, instance?.id);
+      }
+    });
+    return map;
+  }, [instances]);
+
+  const selectedInstanceId = selectedInstanceLabel
+    ? instanceIdByLabel.get(selectedInstanceLabel)
+    : undefined;
+
+  useEffect(() => {
+    if (!selectedInstanceLabel && instanceOptions.length > 0) {
+      setSelectedInstanceLabel(instanceOptions[0]);
+    }
+  }, [instanceOptions, selectedInstanceLabel]);
+
+  useEffect(() => {
+    setTitle("");
+  }, [selectedInstanceId]);
+
+  const filteredOrderLoginSummary = useMemo(() => {
+    if (!selectedInstanceId) return orderLoginSummary ?? [];
+    return (orderLoginSummary ?? []).filter(
+      (item: any) => Number(item?.instance_id) === Number(selectedInstanceId)
+    );
+  }, [orderLoginSummary, selectedInstanceId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +106,10 @@ export default function PendingMaterialDetails({
       return;
     }
 
-    const combinedRemark = `${title.trim()} — ${remark.trim()}`;
+    const formattedTitle = selectedInstanceLabel
+      ? `${selectedInstanceLabel} - ${title.trim()}`
+      : title.trim();
+    const combinedRemark = `${formattedTitle} — ${remark.trim()}`;
 
     try {
       await createPendingTask({
@@ -160,6 +212,25 @@ export default function PendingMaterialDetails({
             className="space-y-6"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Instance */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  <Package className="h-4 w-4" />
+                  Instance
+                </Label>
+
+                <TextSelectPicker
+                  options={instanceOptions}
+                  value={selectedInstanceLabel}
+                  onChange={(v) => setSelectedInstanceLabel(v)}
+                  placeholder={
+                    loadingInstances ? "Loading instances..." : "Select instance..."
+                  }
+                  emptyLabel={instanceOptions.length ? "Select instance" : "No instances"}
+                  disabled={loadingInstances || instanceOptions.length === 0}
+                />
+              </div>
+
               {/* Title */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-1">
@@ -169,7 +240,7 @@ export default function PendingMaterialDetails({
 
                 <TextSelectPicker
                   options={
-                    orderLoginSummary?.map(
+                    filteredOrderLoginSummary?.map(
                       (item: any) => item.item_type || "Untitled Item"
                     ) ?? []
                   }
@@ -181,7 +252,7 @@ export default function PendingMaterialDetails({
                       : "Select material..."
                   }
                   emptyLabel="Select Material"
-                  disabled={loadingSummary}
+                  disabled={loadingSummary || !selectedInstanceId}
                 />
               </div>
 

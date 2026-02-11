@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   Plus,
@@ -71,6 +71,7 @@ import DocumentCard from "@/components/utils/documentCard";
 import { useQueryClient } from "@tanstack/react-query";
 import BaseModal from "@/components/utils/baseModal";
 import { useDeleteDocument } from "@/api/leads";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 interface InstallationMiscellaneousProps {
   vendorId: number;
   leadId: number;
@@ -97,6 +98,7 @@ export default function InstallationMiscellaneous({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     misc_type_id: undefined as number | undefined,
+    selected_instance_id: undefined as number | undefined,
     problem_description: "",
     reorder_material_details: "",
     quantity: undefined as number | undefined,
@@ -137,6 +139,53 @@ export default function InstallationMiscellaneous({
   const canUpdateERD = canDoERDDate && !isTaskReady;
   const { data: orderLoginSummary = [], isLoading: loadingSummary } =
     useOrderLoginSummary(vendorId, leadId);
+  const { data: instancesResponse } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+  );
+  const instances = Array.isArray(instancesResponse?.data)
+    ? instancesResponse?.data
+    : instancesResponse?.data?.data || [];
+  const instanceTitleById = useMemo(() => {
+    const map = new Map<number, string>();
+    instances.forEach((instance: any) => {
+      if (instance?.id) {
+        map.set(instance.id, instance?.title || `Instance ${instance.id}`);
+      }
+    });
+    return map;
+  }, [instances]);
+
+  const instanceOptions = useMemo(() => {
+    return instances.map((instance: any) => ({
+      value: String(instance.id),
+      label: instance?.title || `Instance ${instance?.quantity_index ?? instance?.id}`,
+    }));
+  }, [instances]);
+
+  const filteredOrderLoginSummary = useMemo(() => {
+    if (!formData.selected_instance_id) return [];
+    return orderLoginSummary.filter(
+      (item: any) =>
+        Number(item?.instance_id) === Number(formData.selected_instance_id)
+    );
+  }, [orderLoginSummary, formData.selected_instance_id]);
+
+  useEffect(() => {
+    if (!formData.selected_instance_id && instanceOptions.length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        selected_instance_id: Number(instanceOptions[0].value),
+      }));
+    }
+  }, [formData.selected_instance_id, instanceOptions]);
+
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      reorder_material_details: "",
+    }));
+  }, [formData.selected_instance_id]);
   const [initialModalHandled, setInitialModalHandled] = useState(false);
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
@@ -170,11 +219,23 @@ export default function InstallationMiscellaneous({
       toast.error("Please select an issue type");
       return;
     }
+    if (!formData.selected_instance_id) {
+      toast.error("Please select an instance");
+      return;
+    }
 
     if (files.length === 0) {
       toast.error("Please upload at least one document");
       return;
     }
+
+    const selectedInstanceTitle = formData.selected_instance_id
+      ? instanceTitleById.get(Number(formData.selected_instance_id)) || ""
+      : "";
+    const formattedReorderMaterial =
+      selectedInstanceTitle && formData.reorder_material_details
+        ? `${selectedInstanceTitle} - ${formData.reorder_material_details}`
+        : formData.reorder_material_details;
 
     const payload: CreateMiscellaneousPayload = {
       vendorId,
@@ -182,8 +243,7 @@ export default function InstallationMiscellaneous({
       account_id: accountId,
       misc_type_id: formData.misc_type_id,
       problem_description: formData.problem_description.trim() || undefined,
-      reorder_material_details:
-        formData.reorder_material_details.trim() || undefined,
+      reorder_material_details: formattedReorderMaterial.trim() || undefined,
       quantity: formData.quantity,
       cost: formData.cost,
       supervisor_remark: formData.supervisor_remark.trim() || undefined,
@@ -209,6 +269,7 @@ export default function InstallationMiscellaneous({
   const resetForm = () => {
     setFormData({
       misc_type_id: undefined,
+      selected_instance_id: undefined,
       problem_description: "",
       reorder_material_details: "",
       quantity: undefined,
@@ -557,33 +618,64 @@ export default function InstallationMiscellaneous({
             />
           </div>
 
-          {/* Reorder Material Type */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">
-              Reorder Material Type *
-            </label>
-            <TextSelectPicker
-              options={
-                orderLoginSummary.map(
-                  (item: any) =>
-                    item.item_desc || item.item_type || "Untitled Item",
-                ) || []
-              }
-              value={formData.reorder_material_details}
-              onChange={(selectedText) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  reorder_material_details: selectedText,
-                }))
-              }
-              placeholder={
-                loadingSummary
-                  ? "Loading materials..."
-                  : "Select material details..."
-              }
-              emptyLabel="Select material details"
-              disabled={loadingSummary}
-            />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {/* Select Instance */}
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Select Instance *</label>
+              <TextSelectPicker
+                options={instanceOptions.map((opt) => opt.label)}
+                value={
+                  instanceOptions.find(
+                    (opt) => Number(opt.value) === formData.selected_instance_id
+                  )?.label || ""
+                }
+                onChange={(selectedText) => {
+                  const match = instanceOptions.find(
+                    (opt) => opt.label === selectedText
+                  );
+                  setFormData((prev) => ({
+                    ...prev,
+                    selected_instance_id: match ? Number(match.value) : undefined,
+                  }));
+                }}
+                placeholder={
+                  instances.length === 0
+                    ? "No instances available"
+                    : "Select instance..."
+                }
+                emptyLabel="Select instance"
+                disabled={instances.length === 0}
+              />
+            </div>
+
+            {/* Reorder Material Type */}
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">
+                Reorder Material Type *
+              </label>
+              <TextSelectPicker
+                options={
+                  filteredOrderLoginSummary.map(
+                    (item: any) =>
+                      item.item_desc || item.item_type || "Untitled Item",
+                  ) || []
+                }
+                value={formData.reorder_material_details}
+                onChange={(selectedText) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    reorder_material_details: selectedText,
+                  }))
+                }
+                placeholder={
+                  loadingSummary
+                    ? "Loading materials..."
+                    : "Select material details..."
+                }
+                emptyLabel="Select material details"
+                disabled={loadingSummary}
+              />
+            </div>
           </div>
 
           {/* Reorder Material Details */}
