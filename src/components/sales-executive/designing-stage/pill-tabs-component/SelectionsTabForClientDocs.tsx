@@ -179,9 +179,15 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   useEffect(() => {
     const rows = Array.isArray(selectionsData?.data) ? selectionsData.data : [];
     const activeInstanceId = activeInstance?.id ?? null;
-    const scoped = rows.filter(
+    let scoped = rows.filter(
       (row) => (row.product_structure_instance_id ?? null) === activeInstanceId
     );
+    if (activeInstanceId !== null && scoped.length === 0) {
+      // Fallback to lead-level selections when instance-specific rows are missing
+      scoped = rows.filter(
+        (row) => (row.product_structure_instance_id ?? null) === null
+      );
+    }
 
     const byType = (type: string) =>
       scoped.find((item) => {
