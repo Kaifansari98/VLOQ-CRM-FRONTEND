@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Ban,
   Layers3,
+  FolderOpen,
 } from "lucide-react";
 import { useClientRequiredCompletionDate } from "@/api/tech-check";
 import { useDeleteDocument } from "@/api/leads";
@@ -32,6 +33,7 @@ import { ImageComponent } from "@/components/utils/ImageCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { useSelectionData } from "@/hooks/designing-stage/designing-leads-hooks";
 import SectionHeader from "@/utils/sectionHeader";
+import { Card, CardContent } from "@/components/ui/card";
 
 type Props = {
   leadId: number;
@@ -66,18 +68,6 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
   console.log("Client Documentation: ", clientDocs);
   const { data } = useClientRequiredCompletionDate(vendorId, leadId);
 
-  const { data: selectionsData } = useSelectionData(
-    vendorId!,
-    leadId,
-    instanceId ?? undefined
-  );
-
-  const selections = {
-    carcas: selectionsData?.data?.find((s: any) => s.type === "Carcas")?.desc,
-    shutter: selectionsData?.data?.find((s: any) => s.type === "Shutter")?.desc,
-    handles: selectionsData?.data?.find((s: any) => s.type === "Handles")?.desc,
-  };
-
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
@@ -102,8 +92,43 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const groupedDocs = clientDocs?.documents_by_instance ?? [];
+  const instances = clientDocs?.product_structure_instances ?? [];
   const hasMultipleInstances = (clientDocs?.instance_count ?? 0) > 1;
-  const docInstanceMap = React.useMemo(() => {
+  const [activeInstanceId, setActiveInstanceId] = useState<number | null>(
+    instanceId ?? null
+  );
+
+  useEffect(() => {
+    if (!hasMultipleInstances) {
+      setActiveInstanceId(instanceId ?? null);
+      return;
+    }
+    if (instanceId) {
+      setActiveInstanceId(instanceId);
+      return;
+    }
+    if (!activeInstanceId && instances.length > 0) {
+      setActiveInstanceId(instances[0]?.id ?? null);
+    }
+  }, [hasMultipleInstances, instanceId, instances, activeInstanceId]);
+
+  const scopedInstanceId = hasMultipleInstances
+    ? activeInstanceId
+    : instanceId ?? null;
+
+  const { data: selectionsData } = useSelectionData(
+    vendorId!,
+    leadId,
+    scopedInstanceId ?? undefined
+  );
+
+  const selections = {
+    carcas: selectionsData?.data?.find((s: any) => s.type === "Carcas")?.desc,
+    shutter: selectionsData?.data?.find((s: any) => s.type === "Shutter")?.desc,
+    handles: selectionsData?.data?.find((s: any) => s.type === "Handles")?.desc,
+  };
+
+  const docInstanceMap = useMemo(() => {
     const map = new Map<number, string>();
     groupedDocs.forEach((group: any) => {
       const title = group?.instance_title || "Instance";
@@ -117,31 +142,31 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
 
   const getInstanceTitleForDoc = (doc: any) =>
     docInstanceMap.get(doc?.id) || (doc?.product_structure_instance_id ? `Instance #${doc.product_structure_instance_id}` : "General");
-  const scopedGroup = instanceId
-    ? groupedDocs.find((group: any) => group?.instance_id === instanceId)
+  const scopedGroup = scopedInstanceId
+    ? groupedDocs.find((group: any) => group?.instance_id === scopedInstanceId)
     : null;
 
-  const fallbackPptDocsByInstance = instanceId
+  const fallbackPptDocsByInstance = scopedInstanceId
     ? (clientDocs?.documents?.ppt ?? []).filter(
-        (doc: any) => doc?.product_structure_instance_id === instanceId
+        (doc: any) => doc?.product_structure_instance_id === scopedInstanceId
       )
     : [];
-  const fallbackPythaDocsByInstance = instanceId
+  const fallbackPythaDocsByInstance = scopedInstanceId
     ? (clientDocs?.documents?.pytha ?? []).filter(
-        (doc: any) => doc?.product_structure_instance_id === instanceId
+        (doc: any) => doc?.product_structure_instance_id === scopedInstanceId
       )
     : [];
 
   const pptDocs =
-    instanceId && scopedGroup
+    scopedInstanceId && scopedGroup
       ? scopedGroup?.documents?.ppt ?? []
-      : instanceId
+      : scopedInstanceId
       ? fallbackPptDocsByInstance
       : clientDocs?.documents?.ppt ?? [];
   const pythaDocs =
-    instanceId && scopedGroup
+    scopedInstanceId && scopedGroup
       ? scopedGroup?.documents?.pytha ?? []
-      : instanceId
+      : scopedInstanceId
       ? fallbackPythaDocsByInstance
       : clientDocs?.documents?.pytha ?? [];
   const allDocs = [...pptDocs, ...pythaDocs];
@@ -233,6 +258,36 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
         animate="visible"
         className="w-full space-y-4"
       >
+        {hasMultipleInstances && instances.length > 0 && (
+          <motion.div variants={itemVariants} className="px-3 md:px-6">
+            <p className="text-sm font-medium mb-3">Product Instance</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {instances.map((instance: any) => {
+                const isActive = scopedInstanceId === instance.id;
+                return (
+                  <Card
+                    key={instance.id}
+                    className={`cursor-pointer transition ${
+                      isActive ? "border-primary bg-primary/5" : ""
+                    }`}
+                    onClick={() => setActiveInstanceId(instance.id)}
+                  >
+                    <CardContent className="px-4 py-3 flex items-start justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">{instance.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {instance.productStructure?.type || "Product Structure"}
+                        </p>
+                      </div>
+                      <FolderOpen className="size-4 text-muted-foreground" />
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+
         {/* -------- Client Required Completion Section -------- */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}

@@ -302,6 +302,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       queryClient.invalidateQueries({
         queryKey: ["designingStageCounts", vendorId, leadId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["getSelectionData", vendorId, leadId],
+      });
     } catch (e: any) {
       toast.error(e?.message || "Some selections failed to update");
     }
@@ -377,6 +380,14 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         return Boolean(tracker?.Carcas && tracker?.Shutter && tracker?.Handles);
       })
     : (() => {
+        // No instances -> validate at lead level (null bucket)
+        if (structureInstances.length === 0) {
+          const nullBucket = selectionsByInstance.get(null);
+          return Boolean(
+            nullBucket?.Carcas && nullBucket?.Shutter && nullBucket?.Handles
+          );
+        }
+        // Single instance -> allow either null bucket or the instance bucket
         const nullBucket = selectionsByInstance.get(null);
         const firstInstanceBucket = activeInstance
           ? selectionsByInstance.get(activeInstance.id)
@@ -421,6 +432,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       uploadForm.reset({ pptDocuments: [], pythaDocuments: [] });
       await queryClient.invalidateQueries({
         queryKey: ["clientDocumentationDetails", vendorId, leadId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["getSelectionData", vendorId, leadId],
       });
     } catch (e: any) {
       toast.error(e?.response?.data?.message || "Failed to upload files");
