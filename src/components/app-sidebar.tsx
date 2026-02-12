@@ -190,9 +190,19 @@ const data = {
     },
     {
       title: "Track Trace",
-      url: "/dashboard/track-trace",
+      url: "#",
       icon: Monitor,
-    },
+      items: [
+        {
+          title: "Dashboard",
+          url: "/dashboard/track-trace",          
+        },
+        {
+          title: "Manage Projects",
+          url: "/dashboard/track-trace/manage-project",          
+        },
+      ],
+    },    
   ],
 };
 
