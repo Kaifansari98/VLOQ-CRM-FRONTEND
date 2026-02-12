@@ -6,7 +6,8 @@ import { Check, X } from "lucide-react";
 
 export function getCutListColumns(
   machineColumns: string[],
-  onMachineHeaderClick?: (machineName: string) => void
+  onMachineHeaderClick?: (machineName: string) => void,
+  onMachineCellClick?: (cutListId: number, machineId: number, machineName: string, currentlyAssigned: boolean) => void // ✅ Add cell click handler
 ): ColumnDef<any>[] {
   return [
     // ✅ Checkbox column - PINNED LEFT
@@ -29,7 +30,7 @@ export function getCutListColumns(
           aria-label="Select row"
         />
       ),
-      size: 50, // ✅ Fixed width
+      size: 50,
       enableSorting: false,
       enableHiding: false,
       enablePinning: true,
@@ -39,7 +40,7 @@ export function getCutListColumns(
     {
       accessorKey: "id",
       header: "ID",
-      size: 80, // ✅ Fixed width
+      size: 80,
       enablePinning: true,
     },
 
@@ -47,7 +48,7 @@ export function getCutListColumns(
     {
       accessorKey: "description",
       header: "Description",
-      size: 250, // ✅ Fixed width
+      size: 250,
       enablePinning: true,
     },
 
@@ -113,7 +114,7 @@ export function getCutListColumns(
       size: 80,
     },
 
-    // Dynamic machine columns with clickable headers
+    // Dynamic machine columns with clickable cells
     ...machineColumns.map((machineName) => ({
       accessorKey: machineName,
       header: () => (
@@ -128,18 +129,29 @@ export function getCutListColumns(
       cell: ({ row }: any) => {
         const machineData = row.getValue(machineName);
         const isAssigned = machineData?.assigned || false;
+        const machineId = machineData?.machineId;
+        const cutListId = row.original.id;
         
         return (
-          <div className="flex items-center justify-center">
+          <div 
+            className="flex items-center justify-center cursor-pointer hover:bg-accent rounded p-1 transition-colors"
+            onClick={() => {
+              // ✅ Call API on click
+              if (machineId && onMachineCellClick) {
+                onMachineCellClick(cutListId, machineId, machineName, isAssigned);
+              }
+            }}
+            title={isAssigned ? `Click to unassign ${machineName}` : `Click to assign ${machineName}`}
+          >
             {isAssigned ? (
               <Check className="h-5 w-5 text-green-600" />
             ) : (
-              <X className="h-5 w-5 text-gray-300" />
+              <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
             )}
           </div>
         );
       },
-      size: 120, // ✅ Fixed width for machine columns
+      size: 120,
     })),
   ];
 }

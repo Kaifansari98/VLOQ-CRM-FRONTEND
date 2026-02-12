@@ -35,27 +35,29 @@ export default function CutListTable({
     id: number;
   } | null>(null);
 
-  const columns = useMemo(
-    () => getCutListColumns(machineColumns, handleMachineHeaderClick),
-    [machineColumns, data]
-  );
+  // ✅ Handle individual cell click (toggle assignment)
+  const handleMachineCellClick = async (
+    cutListId: number,
+    machineId: number,
+    machineName: string,
+    currentlyAssigned: boolean
+  ) => {
+    if (!onMachineAssign) return;
 
-  const table = useReactTable({
-    data: data ?? [],
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getRowId: (row: any) => String(row.id ?? row.unique_code ?? Math.random()),
-    onRowSelectionChange: setRowSelection,
-    state: {
-      rowSelection,
-      columnPinning: {
-        left: ['select', 'id', 'description'], // ✅ Pin these columns to the left
-      },
-    },
-    enableRowSelection: true,
-    enableColumnPinning: true, // ✅ Enable column pinning
-  });
+    try {
+      // Toggle the assignment (if currently assigned, unassign; if not assigned, assign)
+      await onMachineAssign([cutListId], machineId, machineName, !currentlyAssigned);
+      
+      toast.success(
+        `${machineName} ${!currentlyAssigned ? 'assigned to' : 'unassigned from'} item`
+      );
+    } catch (error) {
+      toast.error("Failed to update machine assignment");
+      console.error(error);
+    }
+  };
 
+  // ✅ Handle header click (bulk assignment via dialog)
   function handleMachineHeaderClick(machineName: string) {
     const currentSelectedRows = table.getFilteredSelectedRowModel().rows;
     
@@ -87,8 +89,34 @@ export default function CutListTable({
     setDialogOpen(true);
   }
 
+  const columns = useMemo(
+    () => getCutListColumns(
+      machineColumns, 
+      handleMachineHeaderClick,
+      handleMachineCellClick // ✅ Pass cell click handler
+    ),
+    [machineColumns, data, onMachineAssign]
+  );
+
+  const table = useReactTable({
+    data: data ?? [],
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getRowId: (row: any) => String(row.id ?? row.unique_code ?? Math.random()),
+    onRowSelectionChange: setRowSelection,
+    state: {
+      rowSelection,
+      columnPinning: {
+        left: ['select', 'id', 'description'],
+      },
+    },
+    enableRowSelection: true,
+    enableColumnPinning: true,
+  });
+
   const selectedRows = table.getFilteredSelectedRowModel().rows;
 
+  // ✅ Handle bulk assignment from dialog
   const handleAssign = async (machineId: number, machineName: string, assigned: boolean) => {
     const rowsToUpdate = selectedRows.map(row => row.original.id);
 
@@ -102,7 +130,7 @@ export default function CutListTable({
       }
     }
 
-    //setRowSelection({});
+    setRowSelection({});
   };
 
   return (
@@ -128,6 +156,7 @@ export default function CutListTable({
         }
       />
 
+      {/* ✅ Dialog for bulk assignment (still available when clicking headers with selected rows) */}
       {selectedMachine && (
         <MachineAssignmentDialog
           open={dialogOpen}
@@ -141,27 +170,3 @@ export default function CutListTable({
     </div>
   );
 }
-
-export const cutListStyles = {
-  stickyColumn: {
-    position: 'sticky' as const,
-    background: 'white',
-    zIndex: 10,
-  },
-  stickyColumnCheckbox: {
-    left: 0,
-    width: '50px',
-  },
-  stickyColumnId: {
-    left: '50px',
-    width: '80px',
-  },
-  stickyColumnDescription: {
-    left: '130px',
-    minWidth: '200px',
-  },
-
-  
-
-  
-};
