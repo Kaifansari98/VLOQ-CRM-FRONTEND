@@ -412,7 +412,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
   const handleUploadForInstance = async (values: InstanceUploadValues) => {
     if (!vendorId || !userId) return;
-    if (!activeInstance) {
+    if (!activeInstance && structureInstances.length > 0) {
       toast.error("Please select product instance");
       return;
     }
@@ -423,11 +423,15 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         accountId,
         vendorId,
         createdBy: userId,
-        productStructureInstanceId: activeInstance.id,
+        productStructureInstanceId: activeInstance?.id,
         pptDocuments: values.pptDocuments,
         pythaDocuments: values.pythaDocuments,
       });
-      toast.success(`Files uploaded for ${activeInstance.title}`);
+      toast.success(
+        activeInstance
+          ? `Files uploaded for ${activeInstance.title}`
+          : "Files uploaded"
+      );
       setUploadModalOpen(false);
       uploadForm.reset({ pptDocuments: [], pythaDocuments: [] });
       await queryClient.invalidateQueries({
