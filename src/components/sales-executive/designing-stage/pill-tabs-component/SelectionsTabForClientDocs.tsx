@@ -184,48 +184,46 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     );
 
     const byType = (type: string) =>
-      scoped.find(
-        (item) => item.type === type && (item.desc || "").trim().toUpperCase() !== "NULL"
-      ) || scoped.find((item) => item.type === type);
+      scoped.find((item) => {
+        if (item.type !== type) return false;
+        const value = (item.desc || "").trim().toUpperCase();
+        return value !== "NULL" && value !== "N/A";
+      }) || scoped.find((item) => item.type === type);
 
     const carcas = byType("Carcas");
     const shutter = byType("Shutter");
     const handles = byType("Handles");
 
     setExistingSelections({ carcas, shutter, handles });
+    const sanitize = (val?: string) => {
+      const v = (val || "").trim().toUpperCase();
+      return v && v !== "NULL" && v !== "N/A" ? val : "";
+    };
     selectionForm.reset({
-      carcas: carcas?.desc && carcas.desc !== "NULL" ? carcas.desc : "",
-      shutter: shutter?.desc && shutter.desc !== "NULL" ? shutter.desc : "",
-      handles: handles?.desc && handles.desc !== "NULL" ? handles.desc : "",
+      carcas: sanitize(carcas?.desc),
+      shutter: sanitize(shutter?.desc),
+      handles: sanitize(handles?.desc),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeInstance?.id, selectionsData?.data]);
 
   useEffect(() => {
     if (!uploadModalOpen) {
+      const sanitize = (val?: string) => {
+        const v = (val || "").trim().toUpperCase();
+        return v && v !== "NULL" && v !== "N/A" ? val : "";
+      };
       selectionForm.reset({
-        carcas:
-          existingSelections.carcas?.desc &&
-          existingSelections.carcas.desc !== "NULL"
-            ? existingSelections.carcas.desc
-            : "",
-        shutter:
-          existingSelections.shutter?.desc &&
-          existingSelections.shutter.desc !== "NULL"
-            ? existingSelections.shutter.desc
-            : "",
-        handles:
-          existingSelections.handles?.desc &&
-          existingSelections.handles.desc !== "NULL"
-            ? existingSelections.handles.desc
-            : "",
+        carcas: sanitize(existingSelections.carcas?.desc),
+        shutter: sanitize(existingSelections.shutter?.desc),
+        handles: sanitize(existingSelections.handles?.desc),
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadModalOpen]);
 
   const normalizeValue = (v?: string) =>
-    v?.trim() && v.trim() !== "" ? v.trim() : "NULL";
+    v?.trim() && v.trim() !== "" ? v.trim() : "N/A";
 
   const upsertSelection = async (
     type: "Carcas" | "Shutter" | "Handles",
@@ -365,7 +363,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       }
       const tracker = grouped.get(key)!;
       const value = (row.desc || "").trim();
-      if (!value || value.toUpperCase() === "NULL") continue;
+      if (!value) continue;
+      const upper = value.toUpperCase();
+      if (upper === "NULL" || upper === "N/A") continue;
       if (row.type === "Carcas" || row.type === "Shutter" || row.type === "Handles") {
         tracker[row.type] = true;
       }
