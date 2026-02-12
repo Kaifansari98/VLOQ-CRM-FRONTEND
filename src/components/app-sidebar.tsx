@@ -192,6 +192,12 @@ const data = {
       title: "Track Trace",
       url: "/dashboard/track-trace",
       icon: Monitor,
+      items: [
+        {
+          title: "Master",
+          url: "/dashboard/track-trace/master",
+        },
+      ],
     },
   ],
 };
