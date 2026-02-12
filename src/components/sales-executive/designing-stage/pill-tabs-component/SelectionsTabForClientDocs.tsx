@@ -179,11 +179,23 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   useEffect(() => {
     const rows = Array.isArray(selectionsData?.data) ? selectionsData.data : [];
     const activeInstanceId = activeInstance?.id ?? null;
+
+    // First, get instance-specific selections
     let scoped = rows.filter(
       (row) => (row.product_structure_instance_id ?? null) === activeInstanceId
     );
-    if (activeInstanceId !== null && scoped.length === 0) {
-      // Fallback to lead-level selections when instance-specific rows are missing
+
+    // If no instance-specific selections found, fall back to lead-level selections
+    // This handles cases where selections were created before instances existed
+    if (scoped.length === 0 && activeInstanceId !== null) {
+      const leadLevelSelections = rows.filter(
+        (row) => (row.product_structure_instance_id ?? null) === null
+      );
+      scoped = leadLevelSelections;
+    }
+
+    // For leads with no instances, use lead-level selections
+    if (structureInstances.length === 0 && scoped.length === 0) {
       scoped = rows.filter(
         (row) => (row.product_structure_instance_id ?? null) === null
       );
@@ -202,6 +214,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
     console.log("[Design Selections] scoped:", {
       activeInstanceId,
+      totalRows: rows.length,
+      scopedCount: scoped.length,
       carcas,
       shutter,
       handles,
