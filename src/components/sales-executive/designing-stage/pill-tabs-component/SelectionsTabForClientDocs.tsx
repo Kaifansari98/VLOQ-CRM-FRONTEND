@@ -200,6 +200,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     const shutter = byType("Shutter");
     const handles = byType("Handles");
 
+    console.log("[Design Selections] scoped:", {
+      activeInstanceId,
+      carcas,
+      shutter,
+      handles,
+    });
+
     setExistingSelections({ carcas, shutter, handles });
     const sanitize = (val?: string) => {
       const v = (val || "").trim().toUpperCase();
