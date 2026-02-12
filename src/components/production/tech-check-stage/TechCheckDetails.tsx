@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
@@ -56,16 +57,25 @@ const itemVariants = {
 export default function TechCheckDetails({ leadId, instanceId }: Props) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)!;
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type
+    (state) => state.auth.user?.user_type.user_type,
   );
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const searchParams = useSearchParams();
+  const instanceIdFromUrlRaw = searchParams.get("instance_id");
+  const instanceIdFromUrl = instanceIdFromUrlRaw
+    ? Number(instanceIdFromUrlRaw)
+    : null;
+  const resolvedInstanceId =
+    Number.isFinite(instanceIdFromUrl) && instanceIdFromUrl
+      ? instanceIdFromUrl
+      : instanceId ?? null;
 
   // ✅ Hooks
   const { data: clientDocs } = useClientDocumentationDetails(vendorId, leadId);
   const { data: siteMeasurement } = useSiteMeasurementLeadById(leadId);
   const { data: finalMeasurement } = useFinalMeasurementLeadById(
     vendorId,
-    leadId
+    leadId,
   );
 
   console.log("Client Documentation: ", clientDocs);
@@ -86,7 +96,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
         (d) =>
           !d.tech_check_status ||
           d.tech_check_status === "PENDING" ||
-          d.tech_check_status === "REVISED"
+          d.tech_check_status === "REVISED",
       );
     }
 
@@ -98,31 +108,36 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
   const instances = clientDocs?.product_structure_instances ?? [];
   const hasMultipleInstances = (clientDocs?.instance_count ?? 0) > 1;
   const [activeInstanceId, setActiveInstanceId] = useState<number | null>(
-    instanceId ?? null
+    resolvedInstanceId,
   );
 
   useEffect(() => {
     if (!hasMultipleInstances) {
-      setActiveInstanceId(instanceId ?? null);
+      setActiveInstanceId(resolvedInstanceId);
       return;
     }
-    if (instanceId) {
-      setActiveInstanceId(instanceId);
+    if (resolvedInstanceId) {
+      setActiveInstanceId(resolvedInstanceId);
       return;
     }
     if (!activeInstanceId && instances.length > 0) {
       setActiveInstanceId(instances[0]?.id ?? null);
     }
-  }, [hasMultipleInstances, instanceId, instances, activeInstanceId]);
+  }, [
+    hasMultipleInstances,
+    resolvedInstanceId,
+    instances,
+    activeInstanceId,
+  ]);
 
   const scopedInstanceId = hasMultipleInstances
     ? activeInstanceId
-    : instanceId ?? null;
+    : resolvedInstanceId;
 
   const { data: techCheckInstanceStatus } = useTechCheckInstanceStatus(
     vendorId,
     leadId,
-    scopedInstanceId
+    scopedInstanceId,
   );
 
   useEffect(() => {
@@ -133,12 +148,14 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
   const showInstanceTabs =
     hasMultipleInstances &&
     instances.length > 0 &&
-    techCheckInstanceStatus?.is_tech_check_completed === true;
+    techCheckInstanceStatus?.is_tech_check_completed === true &&
+    techCheckInstanceStatus?.is_order_login_completed === true &&
+    techCheckInstanceStatus?.is_production_completed === true;
 
   const { data: selectionsData } = useSelectionData(
     vendorId!,
     leadId,
-    scopedInstanceId ?? undefined
+    scopedInstanceId ?? undefined,
   );
 
   const selections = {
@@ -151,7 +168,10 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
     const map = new Map<number, string>();
     groupedDocs.forEach((group: any) => {
       const title = group?.instance_title || "Instance";
-      const docs = [...(group?.documents?.ppt || []), ...(group?.documents?.pytha || [])];
+      const docs = [
+        ...(group?.documents?.ppt || []),
+        ...(group?.documents?.pytha || []),
+      ];
       docs.forEach((doc: any) => {
         if (doc?.id) map.set(doc.id, title);
       });
@@ -160,34 +180,37 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
   }, [groupedDocs]);
 
   const getInstanceTitleForDoc = (doc: any) =>
-    docInstanceMap.get(doc?.id) || (doc?.product_structure_instance_id ? `Instance #${doc.product_structure_instance_id}` : "General");
+    docInstanceMap.get(doc?.id) ||
+    (doc?.product_structure_instance_id
+      ? `Instance #${doc.product_structure_instance_id}`
+      : "General");
   const scopedGroup = scopedInstanceId
     ? groupedDocs.find((group: any) => group?.instance_id === scopedInstanceId)
     : null;
 
   const fallbackPptDocsByInstance = scopedInstanceId
     ? (clientDocs?.documents?.ppt ?? []).filter(
-        (doc: any) => doc?.product_structure_instance_id === scopedInstanceId
+        (doc: any) => doc?.product_structure_instance_id === scopedInstanceId,
       )
     : [];
   const fallbackPythaDocsByInstance = scopedInstanceId
     ? (clientDocs?.documents?.pytha ?? []).filter(
-        (doc: any) => doc?.product_structure_instance_id === scopedInstanceId
+        (doc: any) => doc?.product_structure_instance_id === scopedInstanceId,
       )
     : [];
 
   const pptDocs =
     scopedInstanceId && scopedGroup
-      ? scopedGroup?.documents?.ppt ?? []
+      ? (scopedGroup?.documents?.ppt ?? [])
       : scopedInstanceId
-      ? fallbackPptDocsByInstance
-      : clientDocs?.documents?.ppt ?? [];
+        ? fallbackPptDocsByInstance
+        : (clientDocs?.documents?.ppt ?? []);
   const pythaDocs =
     scopedInstanceId && scopedGroup
-      ? scopedGroup?.documents?.pytha ?? []
+      ? (scopedGroup?.documents?.pytha ?? [])
       : scopedInstanceId
-      ? fallbackPythaDocsByInstance
-      : clientDocs?.documents?.pytha ?? [];
+        ? fallbackPythaDocsByInstance
+        : (clientDocs?.documents?.pytha ?? []);
   const allDocs = [...pptDocs, ...pythaDocs];
 
   // ✅ Delete mutation
@@ -218,33 +241,33 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
 
   const filteredPptImages = filteredPptDocs.filter((file) =>
     imageExtensions.includes(
-      file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
-    )
+      file.doc_og_name?.split(".").pop()?.toLowerCase() || "",
+    ),
   );
   const filteredPptDocuments = filteredPptDocs.filter((file) =>
     documentExtensions.includes(
-      file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
-    )
+      file.doc_og_name?.split(".").pop()?.toLowerCase() || "",
+    ),
   );
 
   const filteredPythaDocuments = filteredPythaDocs.filter((file) =>
     documentExtensions.includes(
-      file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
-    )
+      file.doc_og_name?.split(".").pop()?.toLowerCase() || "",
+    ),
   );
 
   // Calculate stats from ALL docs (ppt + pytha)
   const approvedDocs = allDocs.filter(
-    (d) => d.tech_check_status === "APPROVED"
+    (d) => d.tech_check_status === "APPROVED",
   ).length;
   const rejectedDocs = allDocs.filter(
-    (d) => d.tech_check_status === "REJECTED"
+    (d) => d.tech_check_status === "REJECTED",
   ).length;
   const pendingDocs = allDocs.filter(
     (d) =>
       !d.tech_check_status ||
       d.tech_check_status === "PENDING" ||
-      d.tech_check_status === "REVISED"
+      d.tech_check_status === "REVISED",
   ).length;
 
   // ✅ Permissions
@@ -279,29 +302,28 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
       >
         {showInstanceTabs && (
           <motion.div variants={itemVariants}>
-            <p className="text-sm font-medium mb-2">Product Instance</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-end gap-2 border-b border-border">
               {instances.map((instance: any) => {
                 const isActive = scopedInstanceId === instance.id;
                 return (
-                  <Card
+                  <div
                     key={instance.id}
-                    className={`cursor-pointer transition ${
+                    className={`cursor-pointer transition px-3 py-2 rounded-t-lg border border-b-0 ${
                       isActive
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-background"
+                        ? "bg-background text-foreground border-border"
+                        : "bg-muted/40 text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/60"
                     }`}
                     onClick={() => setActiveInstanceId(instance.id)}
                   >
-                    <CardContent className="px-3 flex flex-col items-center">
-                      <span className="text-xs font-semibold">
+                    <div className="flex flex-col items-start">
+                      <span className="text-xs font-semibold leading-none">
                         {instance.title}
                       </span>
                       <span className="text-[10px] text-muted-foreground">
                         {instance.productStructure?.type || "Product Structure"}
                       </span>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -350,7 +372,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
             <span className="text-sm font-semibold text-foreground">
               {data?.client_required_order_login_complition_date
                 ? new Date(
-                    data.client_required_order_login_complition_date
+                    data.client_required_order_login_complition_date,
                   ).toLocaleDateString("en-GB", {
                     weekday: "long",
                     day: "2-digit",
@@ -879,8 +901,8 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                     No Final Measurement Documents
                   </h3>
                   <p className="text-xs text-muted-foreground text-center max-w-xs">
-                    Once final measurement documents are uploaded, they will appear
-                    here.
+                    Once final measurement documents are uploaded, they will
+                    appear here.
                   </p>
                 </div>
               ) : (
