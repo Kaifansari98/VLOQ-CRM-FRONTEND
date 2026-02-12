@@ -16,7 +16,10 @@ import {
   Layers3,
   FolderOpen,
 } from "lucide-react";
-import { useClientRequiredCompletionDate } from "@/api/tech-check";
+import {
+  useClientRequiredCompletionDate,
+  useTechCheckInstanceStatus,
+} from "@/api/tech-check";
 import { useDeleteDocument } from "@/api/leads";
 import {
   AlertDialog,
@@ -115,6 +118,22 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
   const scopedInstanceId = hasMultipleInstances
     ? activeInstanceId
     : instanceId ?? null;
+
+  const { data: techCheckInstanceStatus } = useTechCheckInstanceStatus(
+    vendorId,
+    leadId,
+    scopedInstanceId
+  );
+
+  useEffect(() => {
+    if (!scopedInstanceId) return;
+    console.log("Tech Check Instance Status:", techCheckInstanceStatus);
+  }, [scopedInstanceId, techCheckInstanceStatus]);
+
+  const showInstanceTabs =
+    hasMultipleInstances &&
+    instances.length > 0 &&
+    techCheckInstanceStatus?.is_tech_check_completed === true;
 
   const { data: selectionsData } = useSelectionData(
     vendorId!,
@@ -258,28 +277,29 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
         animate="visible"
         className="w-full space-y-4"
       >
-        {hasMultipleInstances && instances.length > 0 && (
-          <motion.div variants={itemVariants} className="px-3 md:px-6">
-            <p className="text-sm font-medium mb-3">Product Instance</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {showInstanceTabs && (
+          <motion.div variants={itemVariants}>
+            <p className="text-sm font-medium mb-2">Product Instance</p>
+            <div className="flex flex-wrap gap-2">
               {instances.map((instance: any) => {
                 const isActive = scopedInstanceId === instance.id;
                 return (
                   <Card
                     key={instance.id}
                     className={`cursor-pointer transition ${
-                      isActive ? "border-primary bg-primary/5" : ""
+                      isActive
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-background"
                     }`}
                     onClick={() => setActiveInstanceId(instance.id)}
                   >
-                    <CardContent className="px-4 py-3 flex items-start justify-between">
-                      <div>
-                        <p className="text-sm font-semibold">{instance.title}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {instance.productStructure?.type || "Product Structure"}
-                        </p>
-                      </div>
-                      <FolderOpen className="size-4 text-muted-foreground" />
+                    <CardContent className="px-3 flex flex-col items-center">
+                      <span className="text-xs font-semibold">
+                        {instance.title}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {instance.productStructure?.type || "Product Structure"}
+                      </span>
                     </CardContent>
                   </Card>
                 );

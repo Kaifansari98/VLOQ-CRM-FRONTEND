@@ -501,6 +501,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       {
         onSuccess: () => {
           router.push("/dashboard/project/client-approval");
+          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads", "leadStats"] });
         },
       }
     );

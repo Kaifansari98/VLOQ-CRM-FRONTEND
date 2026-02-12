@@ -33,6 +33,31 @@ export const useTechCheckLeads = (
   });
 };
 
+// ✅ --- Fetch Tech-Check Instance Status ---
+export const getTechCheckInstanceStatus = async (
+  vendorId: number,
+  leadId: number,
+  instanceId: number
+) => {
+  const { data } = await apiClient.get(
+    `/leads/production/tech-check/vendorId/${vendorId}/leadId/${leadId}/instanceId/${instanceId}/status`
+  );
+  return data?.data;
+};
+
+export const useTechCheckInstanceStatus = (
+  vendorId: number | undefined,
+  leadId: number | undefined,
+  instanceId: number | null | undefined
+) => {
+  return useQuery({
+    queryKey: ["techCheckInstanceStatus", vendorId, leadId, instanceId],
+    queryFn: () =>
+      getTechCheckInstanceStatus(vendorId!, leadId!, instanceId!),
+    enabled: !!vendorId && !!leadId && !!instanceId,
+  });
+};
+
 // ✅ --- Approve Tech Check ---
 export const approveTechCheck = async ({
   vendorId,
