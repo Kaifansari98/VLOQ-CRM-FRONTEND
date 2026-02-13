@@ -177,7 +177,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
                     key={instance.id}
                     className={`cursor-pointer transition px-3 py-2 rounded-t-lg border border-b-0 ${
                       isActive
-                        ? "bg-background text-foreground border-border shadow-sm"
+                        ? "bg-background text-foreground border-border"
                         : "bg-muted/40 text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/60"
                     }`}
                     onClick={() => setActiveInstanceId(instance.id)}
