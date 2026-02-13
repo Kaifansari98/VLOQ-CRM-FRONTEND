@@ -1,9 +1,14 @@
 import { apiClient } from "@/lib/apiClient";
 import {
+  ApplyConfigurationPayload,
+  ApplyConfigurationResponse,
+  ConfigureResponse,
   CreateMachinePayload,
   GetMachinesByVendorResponse,
   MachineData,
   UpdateMachineParams,
+  VendorLeadsPostPayload,
+  VendorLeadsResponse,
 } from "@/types/track-trace";
 
 export const getMachinesByVendor = async (
@@ -47,8 +52,6 @@ export const createMachine = async (
   return res.data.data;
 };
 
-
-
 export const updateMachine = async ({
   id,
   vendor_id,
@@ -76,10 +79,46 @@ export const updateMachine = async ({
 
   const res = await apiClient.put(
     `/track-trace-master/machines/${id}/vendor/${vendor_id}`,
-    formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  }
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
   );
 
   return res.data.data;
+};
+
+export const fetchVendorLeads = async (
+  token: string,
+  projectId: string,
+): Promise<ConfigureResponse> => {
+  const { data } = await apiClient.get<ConfigureResponse>(
+    `/track-trace-configure/project/${token}/${projectId}`,
+  );
+
+  return data;
+};
+
+export const applyConfigurationApi = async (
+  payload: ApplyConfigurationPayload,
+): Promise<ApplyConfigurationResponse> => {
+  const { data } = await apiClient.post<ApplyConfigurationResponse>(
+    "/track-trace-configure/apply",
+    payload,
+  );
+
+  return data;
+};
+
+export const postVendorLeads = async (
+  token: string,
+  projectId: string,
+  payload: VendorLeadsPostPayload,
+): Promise<VendorLeadsResponse> => {
+  const { data } = await apiClient.post(
+    `/track-trace-configure/project/${token}/${projectId}/leads`,
+    payload,
+  );
+
+  return data;
 };

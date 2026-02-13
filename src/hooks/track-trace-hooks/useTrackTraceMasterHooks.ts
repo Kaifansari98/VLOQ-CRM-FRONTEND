@@ -1,9 +1,18 @@
 import {
+  applyConfigurationApi,
   createMachine,
+  fetchVendorLeads,
   getMachinesByVendor,
+  postVendorLeads,
   updateMachine,
 } from "@/api/trackAndTrace/track-trace-master";
-import { CreateMachinePayload, MachineData } from "@/types/track-trace";
+import {
+  ApplyConfigurationPayload,
+  CreateMachinePayload,
+  MachineData,
+  VendorLeadsPostPayload,
+  VendorLeadsResponse,
+} from "@/types/track-trace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const useMachinesByVendor = (vendorId: number) => {
@@ -31,7 +40,6 @@ export const useCreateMachine = () => {
   });
 };
 
-
 export const useUpdateMachine = (vendorId: number) => {
   const queryClient = useQueryClient();
 
@@ -43,5 +51,52 @@ export const useUpdateMachine = (vendorId: number) => {
         queryKey: ["machines", vendorId],
       });
     },
+  });
+};
+
+export const useConfigureVendorLeads = (token: string, projectId: string) => {
+  return useQuery({
+    queryKey: ["configure-leads", token, projectId],
+    queryFn: () => fetchVendorLeads(token, projectId),
+    enabled: !!token && !!projectId,
+    staleTime: 1000 * 60 * 5, // 5 min cache
+    retry: 1,
+  });
+};
+
+export const useApplyConfiguration = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: ApplyConfigurationPayload) =>
+      applyConfigurationApi(payload),
+
+    onSuccess: () => {
+      // refresh leads list automatically
+      queryClient.invalidateQueries({
+        queryKey: ["vendor-leads"],
+      });
+    },
+
+    onError: (error: any) => {
+      console.error("Apply configuration failed:", error);
+    },
+  });
+};
+
+// api/universalstage.ts or wherever your hook is
+
+export const useVendorLeads = (
+  token: string,
+  projectId: string,
+  payload: VendorLeadsPostPayload,
+  options?: { enabled?: boolean } // ✅ Add options parameter
+) => {
+  return useQuery<VendorLeadsResponse>({
+    queryKey: ["vendor-leads", token, projectId, payload],
+    queryFn: () => postVendorLeads(token, projectId, payload),
+    enabled: options?.enabled ?? (!!token && !!projectId), // ✅ Use options
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 };

@@ -148,3 +148,162 @@ export interface UpdateMachineParams {
   vendor_id: number;
   data: UpdateMachinePayload;
 }
+
+
+
+
+
+// configure leads types
+export interface ProductType {
+  id: number;
+  type: string;
+  vendor_id: number;
+  tag: string;
+  status: string;
+}
+
+export interface ProductMapping {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  account_id: number;
+  product_type_id: number;
+  created_by: number;
+  created_at: string;
+  productType: ProductType;
+}
+
+export interface ProductStructure {
+  id: number;
+  type: string;
+  vendor_id: number;
+  parent: string | null;
+  status: string;
+}
+
+export interface ProductStructureInstance {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  account_id: number;
+  product_type_id: number;
+  product_structure_id: number;
+  quantity_index: number;
+  title: string;
+  status: string;
+  description: string | null;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
+  productStructure: ProductStructure;
+  productType: ProductType;
+}
+
+export interface Account {
+  id: number;
+  name: string;
+  country_code: string;
+  contact_no: string;
+  email: string | null;
+}
+
+export interface Lead {
+  id: number;
+  firstname: string;
+  lastname: string;
+  contact_no: string;
+  email: string;
+  site_address: string;
+  site_map_link: string; // ✅ Changed from boolean to string
+  lead_code: string;
+
+  productMappings: ProductMapping[];
+  productStructureInstances: ProductStructureInstance[];
+  account: Account;
+}
+
+export interface ConfigureResponse {
+  success: boolean;
+  message: string;
+  data: {
+    vendorId: number;
+    projectId: string;
+    total: number;
+    leads: Lead[];
+  };
+}
+
+export interface ApplyConfigurationPayload {
+  projectId: string;
+  leadId: number;
+}
+
+export interface ApplyConfigurationResponse {
+  success: boolean;
+  message: string;
+  data: {
+    projectId: string;
+    leadId: number;
+    clientId: number;
+  };
+}
+
+export interface VendorLeadsPostPayload {
+  page: number;
+  limit: number;
+
+  // 🔎 Global Search (leadcode, name, contact)
+  global_search?: string;
+
+  // 🎯 Filters
+  product_structure?: number[];
+  product_mapping?: number[];
+
+  site_type?: number[];
+  assign_to?: number[];
+  source?: number[];
+
+  site_map_link?: boolean | null; // ✅ This is correct (filter parameter)
+  site_address?: string;
+
+  // 📅 Date Range
+  date_range?: {
+    from?: string;
+    to?: string;
+  };
+}
+
+export interface VendorLead {
+  id: number;
+  lead_code: string;
+  firstname: string;
+  lastname: string;
+  email: string;
+  site_map_link: string | null; // ✅ Changed from boolean | null to string | null
+  contact_no: string;
+  site_address: string | null;
+  created_at: string;
+
+  productMappings: any[];
+  productStructureInstances: any[];
+
+  statusType: any;
+  source: any;
+  siteType: any;
+  account: any;
+}
+
+export interface VendorLeadsResponse {
+  success: boolean;
+  message: string;
+  count: number;
+  data: VendorLead[];
+
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalRecords: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}

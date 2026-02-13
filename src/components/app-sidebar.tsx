@@ -197,6 +197,10 @@ const data = {
           title: "Master",
           url: "/dashboard/track-trace/master",
         },
+        {
+          title: "Configure",
+          url: "/dashboard/track-trace/configure",
+        },
       ],
     },
   ],
