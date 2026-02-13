@@ -239,7 +239,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       userType === "factory";
     const baseItems = hideSectionsForRole
       ? withoutOverall.filter(
-          (item) => item.title !== "Leads" && item.title !== "Project"
+          (item) =>
+            item.title !== "Leads" &&
+            (userType === "site-supervisor" ? true : item.title !== "Project")
         )
       : withoutOverall;
 
