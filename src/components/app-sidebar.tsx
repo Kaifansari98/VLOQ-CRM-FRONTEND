@@ -70,6 +70,12 @@ const data = {
       showCount: "total_overall_leads" as const,
     },
     {
+      title: "Delivered Projects",
+      url: "/dashboard/delivered-projects",
+      icon: Users,
+      showCount: "total_project_completed_stage_leads" as const,
+    },
+    {
       title: "Leads",
       url: "#",
       icon: BookOpenCheck,
@@ -245,9 +251,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         )
       : withoutOverall;
 
+    const adminOnlyItems =
+      userType === "admin" || userType === "super-admin"
+        ? baseItems
+        : baseItems.filter((item) => item.title !== "Delivered Projects");
+
     const filteredItems =
       userType === "backend" || userType === "factory"
-        ? baseItems.map((item) =>
+        ? adminOnlyItems.map((item) =>
             item.title === "Production"
               ? {
                   ...item,
@@ -260,7 +271,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 }
               : item
           )
-        : baseItems;
+        : adminOnlyItems;
 
     if (!mounted || !canSeeMiscLeads || miscLeadsCount <= 0) {
       return filteredItems;
