@@ -7,7 +7,10 @@ import SmoothTab from "@/components/kokonutui/smooth-tab";
 import ProductionFilesSection from "./ProductionFilesModal";
 import ApprovedDocsSection from "./ApprovedDocsModal";
 import OrderLoginTab from "./OrderloginTab";
-import { useClientRequiredCompletionDate } from "@/api/tech-check";
+import {
+  useClientRequiredCompletionDate,
+  useTechCheckInstanceStatus,
+} from "@/api/tech-check";
 import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
 
@@ -29,6 +32,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const tabParam = searchParams.get("tab");
   const instanceFromUrlRaw = searchParams.get("instance_id");
   const instanceFromUrl = instanceFromUrlRaw ? Number(instanceFromUrlRaw) : null;
+  const lockInstanceFromUrl =
+    Number.isFinite(instanceFromUrl) && !!instanceFromUrl;
   const resolvedInstanceId =
     Number.isFinite(instanceFromUrl) && instanceFromUrl
       ? instanceFromUrl
@@ -65,6 +70,11 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const scopedInstanceId = hasMultipleInstances
     ? activeInstanceId
     : resolvedInstanceId;
+  const { data: techCheckInstanceStatus } = useTechCheckInstanceStatus(
+    vendorId,
+    leadId,
+    scopedInstanceId
+  );
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -146,7 +156,12 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         </motion.div>
       </motion.div>
 
-      {hasMultipleInstances && instances.length > 0 && (
+      {hasMultipleInstances &&
+        instances.length > 0 &&
+        techCheckInstanceStatus?.is_tech_check_completed === true &&
+        techCheckInstanceStatus?.is_order_login_completed === true &&
+        techCheckInstanceStatus?.is_production_completed === true &&
+        !lockInstanceFromUrl && (
         <motion.div
           variants={containerVariants}
           initial="hidden"

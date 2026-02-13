@@ -65,6 +65,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
   const instanceIdFromUrl = instanceIdFromUrlRaw
     ? Number(instanceIdFromUrlRaw)
     : null;
+  const lockInstanceFromUrl = Number.isFinite(instanceIdFromUrl) && !!instanceIdFromUrl;
   const resolvedInstanceId =
     Number.isFinite(instanceIdFromUrl) && instanceIdFromUrl
       ? instanceIdFromUrl
@@ -150,7 +151,8 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
     instances.length > 0 &&
     techCheckInstanceStatus?.is_tech_check_completed === true &&
     techCheckInstanceStatus?.is_order_login_completed === true &&
-    techCheckInstanceStatus?.is_production_completed === true;
+    techCheckInstanceStatus?.is_production_completed === true &&
+    !lockInstanceFromUrl;
 
   const { data: selectionsData } = useSelectionData(
     vendorId!,
