@@ -17,6 +17,7 @@ interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   table: TanstackTable<TData>;
   actionBar?: React.ReactNode;
   onRowDoubleClick?: (row: TData) => void;
+  showPagination?: boolean; // ✅ Add this prop
 }
 
 export function DataTable<TData>({
@@ -25,6 +26,7 @@ export function DataTable<TData>({
   children,
   className,
   onRowDoubleClick,
+  showPagination = true, // ✅ Default to true for backward compatibility
   ...props
 }: DataTableProps<TData>) {
   return (
@@ -74,7 +76,7 @@ export function DataTable<TData>({
                     ) {
                       return;
                     }
-                    onRowDoubleClick?.(row.original); // ✅ only double click works
+                    onRowDoubleClick?.(row.original);
                   }}
                   className={onRowDoubleClick ? "cursor-pointer" : undefined}
                 >
@@ -106,12 +108,15 @@ export function DataTable<TData>({
           </TableBody>
         </Table>
       </div>
-      <div className="flex flex-col gap-2.5">
-        <DataTablePagination table={table} />
-        {actionBar &&
-          table.getFilteredSelectedRowModel().rows.length > 0 &&
-          actionBar}
-      </div>
+      {/* ✅ Conditionally render pagination and action bar */}
+      {(showPagination || (actionBar && table.getFilteredSelectedRowModel().rows.length > 0)) && (
+        <div className="flex flex-col gap-2.5">
+          {showPagination && <DataTablePagination table={table} />}
+          {actionBar &&
+            table.getFilteredSelectedRowModel().rows.length > 0 &&
+            actionBar}
+        </div>
+      )}
     </div>
   );
 }

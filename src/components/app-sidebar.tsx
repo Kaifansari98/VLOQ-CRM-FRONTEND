@@ -190,7 +190,7 @@ const data = {
     },
     {
       title: "Track Trace",
-      url: "/dashboard/track-trace",
+      url: "#",
       icon: Monitor,
       items: [
         {
@@ -198,11 +198,15 @@ const data = {
           url: "/dashboard/track-trace/master",
         },
         {
+          title: "Manage Projects",
+          url: "/dashboard/track-trace/manage-project",          
+        },
+        {
           title: "Configure",
           url: "/dashboard/track-trace/configure",
         },
       ],
-    },
+    },    
   ],
 };
 

@@ -116,7 +116,7 @@ export default function TraceTraceDashboard() {
         queryKey: ["track-trace", vendorId, filters],
         queryFn: fetchTrackTraceData,
         enabled: !!vendorId,
-        refetchInterval: 5000,
+        refetchInterval: 500000,
         placeholderData: (previousData) => previousData,
     });
 
