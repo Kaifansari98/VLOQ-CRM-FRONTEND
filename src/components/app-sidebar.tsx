@@ -12,6 +12,7 @@ import {
   CalendarCheck2,
   BookOpenCheck,
   Users,
+  ListTodo,
   LayoutDashboard,
 } from "lucide-react";
 
@@ -72,7 +73,7 @@ const data = {
     {
       title: "Delivered Projects",
       url: "/dashboard/delivered-projects",
-      icon: Users,
+      icon: ListTodo,
       showCount: "total_project_completed_stage_leads" as const,
     },
     {
