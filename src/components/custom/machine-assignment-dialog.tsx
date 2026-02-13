@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { toast } from "react-toastify";
 
 interface MachineAssignmentDialogProps {
   open: boolean;
@@ -30,15 +31,32 @@ export function MachineAssignmentDialog({
   selectedRows,
   onAssign,
 }: MachineAssignmentDialogProps) {
-  const [assigned, setAssigned] = useState<boolean>(true);
+  const [assigned, setAssigned] = useState<boolean | null>(null); // ✅ No default selection
 
   const handleAssign = () => {
+    // ✅ Validation: Check if user selected an option
+    if (assigned === null) {
+      toast.error("Please select either Assign or Unassign option");
+      return;
+    }
+
     onAssign(machineId, machineName, assigned);
-    onOpenChange(false);    
+    onOpenChange(false);
+    
+    // ✅ Reset selection when dialog closes
+    setAssigned(null);
+  };
+
+  // ✅ Reset selection when dialog opens/closes
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setAssigned(null);
+    }
+    onOpenChange(open);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Assign Machine: {machineName}</DialogTitle>
@@ -52,18 +70,19 @@ export function MachineAssignmentDialog({
         
         <div className="grid gap-4 py-4">
           <div className="flex flex-col gap-3">
+            {/* ✅ Assign Option */}
             <button
               onClick={() => setAssigned(true)}
               className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-colors cursor-pointer ${
-                assigned
+                assigned === true
                   ? "border-primary bg-primary/10"
                   : "border-gray-200 hover:border-gray-300"
               }`}
             >
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                assigned ? "border-primary" : "border-gray-300"
+                assigned === true ? "border-primary" : "border-gray-300"
               }`}>
-                {assigned && (
+                {assigned === true && (
                   <div className="w-3 h-3 rounded-full bg-primary" />
                 )}
               </div>
@@ -75,18 +94,19 @@ export function MachineAssignmentDialog({
               </div>
             </button>
 
+            {/* ✅ Unassign Option */}
             <button
               onClick={() => setAssigned(false)}
               className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-colors cursor-pointer ${
-                !assigned
+                assigned === false
                   ? "border-primary bg-primary/10"
                   : "border-gray-200 hover:border-gray-300"
               }`}
             >
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                !assigned ? "border-primary" : "border-gray-300"
+                assigned === false ? "border-primary" : "border-gray-300"
               }`}>
-                {!assigned && (
+                {assigned === false && (
                   <div className="w-3 h-3 rounded-full bg-primary" />
                 )}
               </div>
@@ -101,7 +121,7 @@ export function MachineAssignmentDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={handleAssign}>

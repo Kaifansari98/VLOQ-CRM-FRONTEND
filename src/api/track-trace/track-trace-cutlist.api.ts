@@ -30,4 +30,18 @@ export const updateCutListMachine = async (payload: CutListSavePayload) => {
 
 
 
+export const generateQRLabels = async (vendorId: number, projectId: string, cutListIds?: number[]) => {
+  const { data } = await apiClient.post(
+    `/track-trace/create-qr-code`,
+    {
+      vendorId,
+      projectId,
+      cutListIds 
+    }
+  );
+  return data.data; // Returns the PDF URL
+};
+
+
+
 

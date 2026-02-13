@@ -12,6 +12,7 @@ import { getCutListColumns } from "./cutlist-columns";
 import { Button } from "@/components/ui/button";
 import { MachineAssignmentDialog } from "./machine-assignment-dialog";
 import { toast } from "react-toastify";
+import { Download,Printer } from "lucide-react";
 
 export type CutListRow = Record<string, any>;
 
@@ -20,20 +21,89 @@ interface Props {
   machineColumns: string[];
   className?: string;
   onMachineAssign?: (cutListIds: number[], machineId: number, machineName: string, assigned: boolean) => Promise<void>;
+  onDownloadLabels?: (cutListIds?: number[]) => Promise<string>;
 }
 
 export default function CutListTable({ 
   data, 
   machineColumns, 
   className,
-  onMachineAssign 
+  onMachineAssign,
+  onDownloadLabels
 }: Props) {
   const [rowSelection, setRowSelection] = useState({});
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState<{
     name: string;
     id: number;
   } | null>(null);
+
+  // ✅ Handle download/print labels
+ // ✅ Handle download labels
+const handleDownloadLabels = async () => {
+  if (!onDownloadLabels) return;
+
+  try {
+    setIsDownloading(true);
+    
+    const selectedRowIds = selectedRows.length > 0 
+      ? selectedRows.map(row => row.original.id)
+      : undefined;
+
+    const pdfUrl = await onDownloadLabels(selectedRowIds);
+    
+    if (!pdfUrl) {
+      throw new Error("No PDF URL received");
+    }
+
+    window.open(pdfUrl, '_blank');
+
+    // // ✅ Download only
+    // const link = document.createElement('a');
+    // link.href = pdfUrl;
+    // link.download = `qr-labels-${Date.now()}.pdf`;
+    // document.body.appendChild(link);
+    // link.click();
+    // document.body.removeChild(link);
+
+    toast.success("Labels downloaded successfully");
+  } catch (error) {
+    console.error("Error downloading labels:", error);
+    toast.error("Failed to download labels");
+  } finally {
+    setIsDownloading(false);
+  }
+};
+
+// ✅ Handle print labels
+const handlePrintLabels = async () => {
+  if (!onDownloadLabels) return;
+
+  try {
+    setIsDownloading(true);
+    
+    const selectedRowIds = selectedRows.length > 0 
+      ? selectedRows.map(row => row.original.id)
+      : undefined;
+
+    const pdfUrl = await onDownloadLabels(selectedRowIds);
+    
+    if (!pdfUrl) {
+      throw new Error("No PDF URL received");
+    }
+
+    // ✅ Print only - open in new tab
+    window.open(pdfUrl, '_blank');
+
+    toast.success("Labels opened for printing");
+  } catch (error) {
+    console.error("Error printing labels:", error);
+    toast.error("Failed to print labels");
+  } finally {
+    setIsDownloading(false);
+  }
+};
 
   // ✅ Handle individual cell click (toggle assignment)
   const handleMachineCellClick = async (
@@ -45,7 +115,6 @@ export default function CutListTable({
     if (!onMachineAssign) return;
 
     try {
-      // Toggle the assignment (if currently assigned, unassign; if not assigned, assign)
       await onMachineAssign([cutListId], machineId, machineName, !currentlyAssigned);
       
       toast.success(
@@ -93,7 +162,7 @@ export default function CutListTable({
     () => getCutListColumns(
       machineColumns, 
       handleMachineHeaderClick,
-      handleMachineCellClick // ✅ Pass cell click handler
+      handleMachineCellClick
     ),
     [machineColumns, data, onMachineAssign]
   );
@@ -129,34 +198,84 @@ export default function CutListTable({
         console.error(error);
       }
     }
-
-    setRowSelection({});
   };
 
   return (
     <div className={className}>
+      {/* ✅ Buttons section above the table */}
+      <div className="flex justify-end gap-2 mb-3">
+        {/* Download Labels Button */}
+
+        {/* <Button 
+        variant="default" 
+        size="sm"
+        onClick={handlePrintLabels}
+        disabled={isDownloading}
+        className="gap-2"
+      >
+         {isDownloading ? (
+          <>
+            <span className="animate-spin">⏳</span>
+            Generating...
+          </>
+        ) : (
+          <>
+            <Printer className="h-4 w-4" />
+            Print Labels
+            {selectedRows.length > 0 && ` (${selectedRows.length})`}
+          </>
+        )}
+      </Button> */}
+      
+        <Button 
+          variant="default" 
+          size="sm"
+          onClick={handleDownloadLabels}
+          disabled={isDownloading}
+          className="gap-2"
+        >
+          {isDownloading ? (
+            <>
+              <span className="animate-spin">⏳</span>
+              Generating...
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4" />
+              Download Labels
+              {selectedRows.length > 0 && ` (${selectedRows.length})`}
+            </>
+          )}
+        </Button>
+        
+        {/* Clear Selection Button - only show when rows are selected */}
+        {selectedRows.length > 0 && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setRowSelection({})}
+          >
+            Clear Selection ({selectedRows.length})
+          </Button>
+        )}
+      </div>
+
+      {/* DataTable */}
       <DataTable 
         table={table} 
         showPagination={false}
         actionBar={
-          <div className="flex items-center justify-between p-3 bg-muted rounded-md">
-            <span className="text-sm font-medium">
-              {selectedRows.length} row(s) selected
-            </span>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setRowSelection({})}
-              >
-                Clear Selection
-              </Button>
+          selectedRows.length > 0 ? (
+            <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+              <span className="text-sm font-medium">
+                {selectedRows.length} row(s) selected
+              </span>
             </div>
-          </div>
+          ) : undefined
         }
       />
 
-      {/* ✅ Dialog for bulk assignment (still available when clicking headers with selected rows) */}
+      {/* ✅ Dialog for bulk assignment */}
       {selectedMachine && (
         <MachineAssignmentDialog
           open={dialogOpen}
