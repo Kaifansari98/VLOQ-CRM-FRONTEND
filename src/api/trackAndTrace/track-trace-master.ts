@@ -4,6 +4,8 @@ import {
   ApplyConfigurationResponse,
   ConfigureResponse,
   CreateMachinePayload,
+  CreateTrackTraceProjectRequest,
+  CreateTrackTraceProjectResponse,
   GetMachinesByVendorResponse,
   MachineData,
   UpdateMachineParams,
@@ -121,4 +123,29 @@ export const postVendorLeads = async (
   );
 
   return data;
+};
+
+
+
+export const createTrackTraceProjectApi = async (
+  payload: CreateTrackTraceProjectRequest
+): Promise<CreateTrackTraceProjectResponse> => {
+  const formData = new FormData();
+
+  formData.append("vendorToken", payload.vendorToken);
+  formData.append("vendorId",    String(payload.vendorId));
+  formData.append("projectName", payload.projectName);
+  formData.append("file",        payload.file);
+
+  const response = await apiClient.post<CreateTrackTraceProjectResponse>(
+    "/track-trace-project/onboard/create-project",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return response.data;
 };

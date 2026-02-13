@@ -1,7 +1,7 @@
 export interface Machine {
   id: string;
   name: string;
-  status: 'ACTIVE' | 'MAINTENANCE' | 'INACTIVE' | 'IDLE';
+  status: "ACTIVE" | "MAINTENANCE" | "INACTIVE" | "IDLE";
   operator?: string;
   utilization: number;
 }
@@ -13,7 +13,7 @@ export interface Item {
   description: string;
   machine: string;
   operator?: string;
-  status: 'in_process' | 'queued' | 'completed' | 'on_hold';
+  status: "in_process" | "queued" | "completed" | "on_hold";
   duration?: string;
   timestamp: Date;
 }
@@ -42,13 +42,13 @@ export interface BottleneckData {
   operator?: string;
   queueCount: number;
   avgWait: string;
-  severity: 'high' | 'medium' | 'low';
+  severity: "high" | "medium" | "low";
   percentage: number;
 }
 
 export interface Alert {
   id: string;
-  type: 'error' | 'warning' | 'success' | 'info';
+  type: "error" | "warning" | "success" | "info";
   title: string;
   message: string;
 }
@@ -62,14 +62,14 @@ export interface ActivityLog {
   operator?: string;
   action: string;
   duration?: string;
-  status: 'in_process' | 'queued' | 'completed' | 'on_hold';
+  status: "in_process" | "queued" | "completed" | "on_hold";
 }
 
 export interface KPIMetric {
   label: string;
   value: string | number;
   change?: string;
-  trend?: 'up' | 'down' | 'neutral';
+  trend?: "up" | "down" | "neutral";
   icon: string;
 }
 
@@ -80,7 +80,6 @@ export interface FilterOptions {
   dateRange: string;
   status: string;
 }
-
 
 export type MachineStatus = "ACTIVE" | "MAINTENANCE" | "INACTIVE" | "RETIRED";
 export type MachineScanType = "IN" | "OUT" | "BOTH" | "PASS";
@@ -104,13 +103,10 @@ export interface MachineData {
   updated_by: number;
 }
 
-
-
 export interface GetMachinesByVendorResponse {
   success: boolean;
   data: MachineData[];
 }
-
 
 export interface CreateMachinePayload {
   vendor_id: number;
@@ -126,8 +122,6 @@ export interface CreateMachinePayload {
   created_by: number;
   machine_image: File;
 }
-
-
 
 export interface UpdateMachinePayload {
   machine_name: string;
@@ -148,10 +142,6 @@ export interface UpdateMachineParams {
   vendor_id: number;
   data: UpdateMachinePayload;
 }
-
-
-
-
 
 // configure leads types
 export interface ProductType {
@@ -306,4 +296,19 @@ export interface VendorLeadsResponse {
     hasNext: boolean;
     hasPrev: boolean;
   };
+}
+
+export interface CreateTrackTraceProjectRequest {
+  vendorToken: string;
+  vendorId: number;
+  projectName: string;
+  file: File;
+}
+
+export interface CreateTrackTraceProjectResponse {
+  success: boolean;
+  project_id: number;
+  excel_url: string;
+  storage_key: string;
+  message?: string;
 }

@@ -1,6 +1,7 @@
 import {
   applyConfigurationApi,
   createMachine,
+  createTrackTraceProjectApi,
   fetchVendorLeads,
   getMachinesByVendor,
   postVendorLeads,
@@ -9,6 +10,8 @@ import {
 import {
   ApplyConfigurationPayload,
   CreateMachinePayload,
+  CreateTrackTraceProjectRequest,
+  CreateTrackTraceProjectResponse,
   MachineData,
   VendorLeadsPostPayload,
   VendorLeadsResponse,
@@ -90,7 +93,7 @@ export const useVendorLeads = (
   token: string,
   projectId: string,
   payload: VendorLeadsPostPayload,
-  options?: { enabled?: boolean } // ✅ Add options parameter
+  options?: { enabled?: boolean }, // ✅ Add options parameter
 ) => {
   return useQuery<VendorLeadsResponse>({
     queryKey: ["vendor-leads", token, projectId, payload],
@@ -98,5 +101,27 @@ export const useVendorLeads = (
     enabled: options?.enabled ?? (!!token && !!projectId), // ✅ Use options
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+  });
+};
+
+
+
+export const useCreateTrackTraceProject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    CreateTrackTraceProjectResponse,
+    Error,
+    CreateTrackTraceProjectRequest
+  >({
+    mutationFn: createTrackTraceProjectApi,
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["track-trace-projects"] });
+    },
+
+    onError: (error: Error) => {
+      console.error("Create Project Failed:", error.message);
+    },
   });
 };

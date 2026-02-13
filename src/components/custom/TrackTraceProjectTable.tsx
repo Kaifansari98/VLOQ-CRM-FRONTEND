@@ -14,7 +14,7 @@ import { TrackTraceProject } from "@/types/track-trace/track-trace.types";
 
 interface Props {
   table: TrackTraceProject[] | null;
-  onRowDoubleClick: (row: TrackTraceProject) => string;
+  onRowDoubleClick?: (row: TrackTraceProject) => void;
   className?: string;
 }
 
@@ -38,8 +38,7 @@ export default function TrackTraceProjectTable({
   });
 
   const handleRowClick = (row: TrackTraceProject) => {
-    const path = onRowDoubleClick(row);
-    if (path) router.push(path);
+    onRowDoubleClick?.(row);
   };
 
   return (
