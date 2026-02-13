@@ -23,10 +23,12 @@ import {
 
 interface ApprovedDocsSectionProps {
   leadId: number;
+  instanceId?: number | null;
 }
 
 export default function ApprovedDocsSection({
   leadId,
+  instanceId,
 }: ApprovedDocsSectionProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
@@ -46,15 +48,22 @@ export default function ApprovedDocsSection({
   const imageExtensions = ["jpg", "jpeg", "png"];
   const documentExtensions = ["pdf", "zip"];
 
+  const scopedDocs =
+    instanceId != null
+      ? (data || []).filter(
+          (file: any) => file?.product_structure_instance_id === instanceId
+        )
+      : data || [];
+
   const approvedImages =
-    data?.filter((file: any) =>
+    scopedDocs.filter((file: any) =>
       imageExtensions.includes(
         file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
       )
     ) || [];
 
   const approvedDocuments =
-    data?.filter((file: any) =>
+    scopedDocs.filter((file: any) =>
       documentExtensions.includes(
         file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
       )

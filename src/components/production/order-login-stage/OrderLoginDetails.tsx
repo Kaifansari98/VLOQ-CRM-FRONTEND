@@ -206,7 +206,12 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             id: "approved-docs",
             title: "Approved Documents",
             color: "bg-zinc-800 hover:bg-zinc-900",
-            cardContent: <ApprovedDocsSection leadId={leadId} />,
+            cardContent: (
+              <ApprovedDocsSection
+                leadId={leadId}
+                instanceId={scopedInstanceId}
+              />
+            ),
           },
           {
             id: "production-files",
