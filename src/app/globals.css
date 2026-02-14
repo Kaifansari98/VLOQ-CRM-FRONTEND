@@ -167,3 +167,124 @@
   -moz-user-select: none;
   -ms-user-select: none;
 }
+
+
+
+
+/* Sticky table header for cutlist */
+.cutlist-table-container {
+  max-height: calc(100vh - 250px);
+  overflow: auto;
+}
+
+.cutlist-table-container [data-slot="table-container"] {
+  overflow: visible !important;
+}
+
+
+/* Remove overflow from DataTable's flex container */
+.cutlist-table-container > div {
+  overflow: visible !important;
+}
+
+/* Make the border container scrollable */
+.cutlist-table-container .overflow-hidden {
+  overflow: visible !important;
+}
+
+.cutlist-table-container table thead {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.cutlist-table-container table thead th {
+  position: sticky; /* ✅ Changed from fixed to sticky */
+  top: 0;
+  background: hsl(var(--muted));
+  z-index: 30;
+}
+
+/* Pinned columns in header */
+.cutlist-table-container table thead th[style*="left"] {
+  z-index: 35;
+  background: hsl(var(--muted));
+}
+
+/* Pinned columns in body */
+.cutlist-table-container table tbody td[style*="left"] {
+  background: hsl(var(--background));
+  z-index: 10;
+}
+
+/* Custom scrollbars */
+.cutlist-table-container::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+.cutlist-table-container::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+.cutlist-table-container::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+.cutlist-table-container::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+
+
+/* Fullscreen table container */
+.cutlist-table-container-fullscreen {
+  max-height: calc(100vh - 100px) !important;
+  overflow: auto !important;
+  position: relative !important;
+  display: block !important;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.375rem;
+}
+
+.cutlist-table-container-fullscreen > div {
+  overflow: visible !important;
+  max-height: none !important;
+  display: block !important;
+}
+
+.cutlist-table-container-fullscreen .overflow-hidden {
+  overflow: visible !important;
+  max-height: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+.cutlist-table-container-fullscreen [data-slot="table-container"] {
+  overflow: visible !important;
+}
+
+.cutlist-table-container-fullscreen table thead th:not([style*="left"]) {
+  position: sticky !important;
+  top: 0 !important;
+  background: #F5F5F5 !important; 
+  z-index: 20 !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
+}
+
+.cutlist-table-container-fullscreen table thead th[style*="left"] {
+  position: sticky !important;
+  top: 0 !important;
+  /* background: hsl(var(--muted)) !important;  */
+  z-index: 999 !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
+}
+
+.cutlist-table-container-fullscreen table tbody td[style*="left"] {
+  /* background: hsl(var(--background)) !important; */
+  z-index: 10 !important;
+}
+
+
+

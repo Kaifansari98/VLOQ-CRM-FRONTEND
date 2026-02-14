@@ -7,8 +7,8 @@ import {
   useReactTable,
   getPaginationRowModel,
   getSortedRowModel,
-  getFilteredRowModel, // ✅ Already added
-  ColumnFiltersState, // ✅ Already added
+  getFilteredRowModel,
+  ColumnFiltersState,
 } from "@tanstack/react-table";
 
 import { DataTable } from "@/components/data-table/data-table";
@@ -16,7 +16,7 @@ import { getCutListColumns } from "./cutlist-columns";
 import { Button } from "@/components/ui/button";
 import { MachineAssignmentDialog } from "./machine-assignment-dialog";
 import { toast } from "react-toastify";
-import { Download, Printer } from "lucide-react";
+import { Download, Printer, Maximize2, Minimize2 } from "lucide-react";
 
 export type CutListRow = Record<string, any>;
 
@@ -38,15 +38,15 @@ export default function CutListTable({
   onDownloadExcel
 }: Props) {
   const [rowSelection, setRowSelection] = useState({});
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]); // ✅ Add filter state
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false); // ✅ Add fullscreen state
   const [selectedMachine, setSelectedMachine] = useState<{
     name: string;
     id: number;
   } | null>(null);
 
-  // ✅ Handle download labels
   const handleDownloadLabels = async () => {
     if (!onDownloadLabels) return;
 
@@ -101,7 +101,6 @@ export default function CutListTable({
     }
   };
 
-  // ✅ Handle individual cell click (toggle assignment)
   const handleMachineCellClick = async (
     cutListId: number,
     machineId: number,
@@ -122,7 +121,6 @@ export default function CutListTable({
     }
   };
 
-  // ✅ Handle header click (bulk assignment via dialog)
   function handleMachineHeaderClick(machineName: string) {
     const currentSelectedRows = table.getFilteredSelectedRowModel().rows;
     
@@ -167,14 +165,14 @@ export default function CutListTable({
     data: data ?? [],
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(), // ✅ Add filtered row model
-    getSortedRowModel: getSortedRowModel(), // ✅ Add sorted row model (optional but recommended)
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     getRowId: (row: any) => String(row.id ?? row.unique_code ?? Math.random()),
     onRowSelectionChange: setRowSelection,
-    onColumnFiltersChange: setColumnFilters, // ✅ Add filter change handler
+    onColumnFiltersChange: setColumnFilters,
     state: {
       rowSelection,
-      columnFilters, // ✅ Add filter state
+      columnFilters,
       columnPinning: {
         left: ['select', 'id', 'description'],
       },
@@ -185,7 +183,6 @@ export default function CutListTable({
 
   const selectedRows = table.getFilteredSelectedRowModel().rows;
 
-  // ✅ Handle bulk assignment from dialog
   const handleAssign = async (machineId: number, machineName: string, assigned: boolean) => {
     const rowsToUpdate = selectedRows.map(row => row.original.id);
 
@@ -200,108 +197,235 @@ export default function CutListTable({
     }
   };
 
-  return (
-    <div className={className}>
-      {/* ✅ Buttons section above the table */}
-      <div className="flex justify-between items-center mb-3">
-        {/* ✅ Show active filter count */}
-        <div className="text-sm text-muted-foreground">
-          {columnFilters.length > 0 && (
-            <span>
-              {columnFilters.length} filter{columnFilters.length > 1 ? 's' : ''} active
-              <Button
-                variant="link"
-                size="sm"
-                onClick={() => setColumnFilters([])}
-                className="ml-2 h-auto p-0 text-primary"
-              >
-                Clear all filters
-              </Button>
-            </span>
-          )}
-        </div>
+  // ✅ Toggle fullscreen
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
 
-        <div className="flex gap-2">
-          <Button 
-            variant="default" 
-            size="sm"
-            onClick={handleDownloadExcel}
-            disabled={isDownloading}
-            className="gap-2"
-          >
-            {isDownloading ? (
-              <>
-                <span className="animate-spin">⏳</span>
-                Generating...
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4" />
-                Download Cut List
-              </>
+  return (
+    <>
+      {/* ✅ Fullscreen overlay */}
+      {isFullscreen && (
+        <div 
+          className="fixed inset-0 z-50 bg-background"
+          style={{ padding: '1rem' }}
+        >
+          <div className="h-full flex flex-col">
+            {/* Fullscreen header */}
+            <div className="flex justify-between items-center mb-3">
+              <div className="text-sm text-muted-foreground">
+                {columnFilters.length > 0 && (
+                  <span>
+                    {columnFilters.length} filter{columnFilters.length > 1 ? 's' : ''} active
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => setColumnFilters([])}
+                      className="ml-2 h-auto p-0 text-primary"
+                    >
+                      Clear all filters
+                    </Button>
+                  </span>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  onClick={handleDownloadExcel}
+                  disabled={isDownloading}
+                  className="gap-2"
+                >
+                  {isDownloading ? (
+                    <>
+                      <span className="animate-spin">⏳</span>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      Download Cut List
+                    </>
+                  )}
+                </Button>
+              
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  onClick={handleDownloadLabels}
+                  disabled={isDownloading}
+                  className="gap-2"
+                >
+                  {isDownloading ? (
+                    <>
+                      <span className="animate-spin">⏳</span>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      Download Labels
+                      {selectedRows.length > 0 && ` (${selectedRows.length})`}
+                    </>
+                  )}
+                </Button>
+                
+                {selectedRows.length > 0 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setRowSelection({})}
+                  >
+                    Clear Selection ({selectedRows.length})
+                  </Button>
+                )}
+
+                {/* ✅ Exit fullscreen button */}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={toggleFullscreen}
+                  className="gap-2"
+                >
+                  <Minimize2 className="h-4 w-4" />
+                  Exit Fullscreen
+                </Button>
+              </div>
+            </div>
+
+
+            {/* ✅ Fullscreen table */}
+            <div className="cutlist-table-container-fullscreen flex-1">
+              <DataTable 
+                table={table} 
+                showPagination={false}
+                actionBar={
+                  selectedRows.length > 0 ? (
+                    <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+                      <span className="text-sm font-medium">
+                        {selectedRows.length} row(s) selected
+                      </span>
+                    </div>
+                  ) : undefined
+                }
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ Normal view */}
+      <div className={className}>
+        <div className="flex justify-between items-center mb-3">
+          <div className="text-sm text-muted-foreground">
+            {columnFilters.length > 0 && (
+              <span>
+                {columnFilters.length} filter{columnFilters.length > 1 ? 's' : ''} active
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => setColumnFilters([])}
+                  className="ml-2 h-auto p-0 text-primary"
+                >
+                  Clear all filters
+                </Button>
+              </span>
             )}
-          </Button>
-        
-          <Button 
-            variant="default" 
-            size="sm"
-            onClick={handleDownloadLabels}
-            disabled={isDownloading}
-            className="gap-2"
-          >
-            {isDownloading ? (
-              <>
-                <span className="animate-spin">⏳</span>
-                Generating...
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4" />
-                Download Labels
-                {selectedRows.length > 0 && ` (${selectedRows.length})`}
-              </>
-            )}
-          </Button>
+          </div>
+
+          <div className="flex gap-2">
+            <Button 
+              variant="default" 
+              size="sm"
+              onClick={handleDownloadExcel}
+              disabled={isDownloading}
+              className="gap-2"
+            >
+              {isDownloading ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Download Cut List
+                </>
+              )}
+            </Button>
           
-          {/* Clear Selection Button - only show when rows are selected */}
-          {selectedRows.length > 0 && (
+            <Button 
+              variant="default" 
+              size="sm"
+              onClick={handleDownloadLabels}
+              disabled={isDownloading}
+              className="gap-2"
+            >
+              {isDownloading ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Download Labels
+                  {selectedRows.length > 0 && ` (${selectedRows.length})`}
+                </>
+              )}
+            </Button>
+            
+            {selectedRows.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setRowSelection({})}
+              >
+                Clear Selection ({selectedRows.length})
+              </Button>
+            )}
+
+            {/* ✅ Fullscreen button */}
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => setRowSelection({})}
+              onClick={toggleFullscreen}
+              className="gap-2"
             >
-              Clear Selection ({selectedRows.length})
+              <Maximize2 className="h-4 w-4" />
+              Fullscreen
             </Button>
-          )}
+          </div>
         </div>
+
+        <div className="cutlist-table-container">
+          <DataTable 
+            table={table} 
+            showPagination={false}
+            actionBar={
+              selectedRows.length > 0 ? (
+                <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+                  <span className="text-sm font-medium">
+                    {selectedRows.length} row(s) selected
+                  </span>
+                </div>
+              ) : undefined
+            }
+          />
+        </div>
+
+        {selectedMachine && (
+          <MachineAssignmentDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            machineName={selectedMachine.name}
+            machineId={selectedMachine.id}
+            selectedRows={selectedRows.map(r => r.original)}
+            onAssign={handleAssign}
+          />
+        )}
       </div>
-
-      {/* DataTable */}
-      <DataTable 
-        table={table} 
-        showPagination={false}
-        actionBar={
-          selectedRows.length > 0 ? (
-            <div className="flex items-center justify-between p-3 bg-muted rounded-md">
-              <span className="text-sm font-medium">
-                {selectedRows.length} row(s) selected
-              </span>
-            </div>
-          ) : undefined
-        }
-      />
-
-      {/* ✅ Dialog for bulk assignment */}
-      {selectedMachine && (
-        <MachineAssignmentDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          machineName={selectedMachine.name}
-          machineId={selectedMachine.id}
-          selectedRows={selectedRows.map(r => r.original)}
-          onAssign={handleAssign}
-        />
-      )}
-    </div>
+    </>
   );
 }
