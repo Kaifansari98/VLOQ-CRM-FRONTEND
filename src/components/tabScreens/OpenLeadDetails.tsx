@@ -92,10 +92,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
   const leadStage = lead?.statusType?.type;
   console.log("Lead Stage In Lead Details: ", leadStage);
-  const isOpenStage = leadStage?.toLowerCase() === "open";
+  const isBookingStage = leadStage?.toLowerCase() === "booking-stage";
   const leadStatusTag = lead?.statusType?.tag;
   const canEditStructures =
-    isOpenStage || ["admin", "super-admin"].includes(userType || "");
+  isBookingStage || ["admin", "super-admin"].includes(userType || "");
   const structureInstances = structureInstancesData?.data || [];
   const structureSummary = useMemo(() => {
     const total = structureInstances.length;
@@ -123,7 +123,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const normalizedUserType = (userType || "").toLowerCase();
   const canEditProductType =
     (normalizedUserType === "admin" || normalizedUserType === "super-admin") ||
-    (normalizedUserType === "sales-executive" && isOpenStage);
+    (normalizedUserType === "sales-executive" && isBookingStage);
 
   const isModularKitchenType = useMemo(() => {
     const label = String(currentProductTypeLabel).toLowerCase();
