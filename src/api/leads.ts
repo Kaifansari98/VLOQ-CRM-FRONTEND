@@ -139,8 +139,6 @@ export interface EditLeadPayload {
   source_id?: number;
   archetech_name?: string;
   designer_remark?: string;
-  product_types?: number[];
-  product_structures?: number[];
   updated_by: number;
   initial_site_measurement_date?: string;
 }
