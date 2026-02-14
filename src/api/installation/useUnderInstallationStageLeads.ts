@@ -184,8 +184,8 @@ export const useMoveLeadToUnderInstallation = () => {
     }) => moveLeadToUnderInstallation(vendorId, leadId, updated_by),
 
     onSuccess: () => {
-      toast.success("Lead successfully moved to Under Installation stage");
-      // 🔄 Refresh any affected lists (e.g., dispatch or under-installation leads)
+      
+     
       queryClient.invalidateQueries({
         queryKey: ["leadStats"],
       });

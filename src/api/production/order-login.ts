@@ -75,10 +75,14 @@ export const useUploadFileBreakup = (vendorId: number | undefined) =>
   });
 
 // ✅ --- Fetch order login details by lead ---
-export const getOrderLoginByLead = async (vendorId: number, leadId: number) => {
+export const getOrderLoginByLead = async (
+  vendorId: number,
+  leadId: number,
+  senderUserId: number,
+) => {
   const { data } = await apiClient.get(
     `/leads/production/order-login/vendorId/${vendorId}/get-order-login-details`,
-    { params: { lead_id: leadId } },
+    { params: { lead_id: leadId, senderUserId: senderUserId } },
   );
 
   return data?.data ?? [];
@@ -87,12 +91,13 @@ export const getOrderLoginByLead = async (vendorId: number, leadId: number) => {
 export const useOrderLoginByLead = (
   vendorId: number | undefined,
   leadId: number | undefined,
+  senderUserId: number | undefined,
 ) =>
   useQuery({
-    queryKey: ["orderLoginByLead", vendorId, leadId],
+    queryKey: ["orderLoginByLead", vendorId, leadId, senderUserId],
     queryFn: async () => {
-      if (!vendorId || !leadId) return [];
-      return getOrderLoginByLead(vendorId, leadId);
+      if (!vendorId || !leadId || !senderUserId) return [];
+      return getOrderLoginByLead(vendorId, leadId, senderUserId);
     },
     enabled: Boolean(vendorId && leadId),
     staleTime: 60 * 1000, // 1 minute cache freshness

@@ -101,8 +101,8 @@ export default function InstallationDayWiseReports({
     if (!reports) return new Set<string>();
     return new Set<string>(
       reports.map((r: any) =>
-        new Date(r.update_date).toISOString().slice(0, 10)
-      )
+        new Date(r.update_date).toISOString().slice(0, 10),
+      ),
     );
   }, [reports]);
 
@@ -115,7 +115,7 @@ export default function InstallationDayWiseReports({
     // duplicate check
     if (usedDates.has(selectedDate)) {
       toast.error(
-        "An update for this date already exists. Choose another date."
+        "An update for this date already exists. Choose another date.",
       );
       return;
     }
@@ -146,7 +146,7 @@ export default function InstallationDayWiseReports({
         onError: (error) => {
           toast.error(error?.message || "Failed to upload report");
         },
-      }
+      },
     );
   };
 
@@ -203,23 +203,45 @@ export default function InstallationDayWiseReports({
     fileName.split(".").pop()?.toLowerCase() ?? "";
   const imageDocuments =
     viewModal.data?.documents.filter((doc) =>
-      IMAGE_EXTENSIONS.includes(getExtension(doc.original_name))
+      IMAGE_EXTENSIONS.includes(getExtension(doc.original_name)),
     ) ?? [];
 
   const otherDocuments =
     viewModal.data?.documents.filter((doc) =>
-      DOCUMENT_EXTENSIONS.includes(getExtension(doc.original_name))
+      DOCUMENT_EXTENSIONS.includes(getExtension(doc.original_name)),
     ) ?? [];
 
   const handleConfirmDelete = () => {
-    if (confirmDelete && userId) {
-      deleteDocument({
-        vendorId: vendorId,
+    if (!confirmDelete || !userId || !viewModal.data) return;
+
+    deleteDocument(
+      {
+        vendorId,
         documentId: confirmDelete,
         deleted_by: userId,
-      });
-      setConfirmDelete(null);
-    }
+      },
+      {
+        onSuccess: () => {
+          // 🔥 remove document from modal state
+          setViewModal((prev) => {
+            if (!prev.data) return prev;
+
+            return {
+              ...prev,
+              data: {
+                ...prev.data,
+                documents: prev.data.documents.filter(
+                  (doc) => doc.document_id !== confirmDelete,
+                ),
+              },
+            };
+          });
+
+          setConfirmDelete(null);
+          refetch(); // keep main list in sync
+        },
+      },
+    );
   };
 
   const canDelete =

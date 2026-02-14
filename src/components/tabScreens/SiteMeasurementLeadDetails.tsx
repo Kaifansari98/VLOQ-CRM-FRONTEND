@@ -55,7 +55,7 @@ const documentMimeTypes = [
   "image/png",
   "image/gif",
 ];
-const documentAccept = ".pdf,.png,.jpg,.jpeg,.gif";
+const documentAccept = ".png,.jpg,.jpeg";
 
 export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   // 🧩 --- Redux & Auth Context ---

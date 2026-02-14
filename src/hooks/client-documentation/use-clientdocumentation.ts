@@ -48,11 +48,13 @@ export const useClientDocumentationLeads = () => {
 
 export const useClientDocumentationDetails = (
   vendorId: number,
-  leadId: number
+  leadId: number,
+
+  userId: number,
 ) => {
   return useQuery<ClientDocDetailsResponse>({
     queryKey: ["clientDocumentationDetails", vendorId, leadId],
-    queryFn: () => getClientDocumentationDetails(vendorId, leadId),
+    queryFn: () => getClientDocumentationDetails(vendorId, leadId, userId),
     enabled: !!vendorId && !!leadId,
     staleTime: 5 * 60 * 1000,
   });

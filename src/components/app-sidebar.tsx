@@ -189,17 +189,32 @@ const data = {
       ],
     },
     {
+      title: "Master",
+      url: "#",
+      icon: Monitor,
+      items: [
+        {
+          title: "Machine",
+          url: "/dashboard/track-trace/master",
+        }
+      ],
+    },  
+    {
       title: "Track Trace",
       url: "#",
       icon: Monitor,
       items: [
         {
           title: "Dashboard",
-          url: "/dashboard/track-trace",          
+          url: "/dashboard/track-trace",
         },
         {
           title: "Manage Projects",
           url: "/dashboard/track-trace/manage-project",          
+        },
+        {
+          title: "Configure",
+          url: "/dashboard/track-trace/configure",
         },
       ],
     },    

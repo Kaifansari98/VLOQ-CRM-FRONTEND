@@ -38,7 +38,8 @@ export default function PreProductionDetails({
   leadId,
 }: PreProductionDetailsProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
-  const { data, isLoading, isError } = useOrderLoginByLead(vendorId, leadId);
+  const userId = useAppSelector((s) => s.auth.user?.id)
+  const { data, isLoading, isError } = useOrderLoginByLead(vendorId, leadId, userId!);
   console.log("Under production Data: ", data);
 
   const { data: ClientRequiredCompletionDate } =

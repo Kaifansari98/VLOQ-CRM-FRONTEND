@@ -44,4 +44,16 @@ export const generateQRLabels = async (vendorId: number, projectId: string, cutL
 
 
 
+export const downloadCutListExcel = async (vendorId: number, unique_project_id: string) => {
+  const { data } = await apiClient.post(
+    `/track-trace/download-cut-list-excel`,
+    {
+      vendorId,
+      unique_project_id,       
+    }
+  );
+  return data.data; // Returns the PDF URL
+};
+
+
 

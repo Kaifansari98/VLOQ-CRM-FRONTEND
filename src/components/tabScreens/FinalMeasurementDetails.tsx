@@ -87,8 +87,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   const canDelete = userType === "admin" || userType === "super_admin";
   const canUpload =
     userType === "admin" ||
-    userType === "super_admin" ||
-    userType === "sales-executive";
+    userType === "super_admin";
 
   // 🧩 --- Delete Handler ---
   const handleConfirmDelete = () => {
@@ -474,7 +473,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
         }}
         title="Add More Final Measurement Files"
         description="Upload additional final measurement files (PDF or images, max 10)."
-        size="md"
+        size="smd"
       >
         <div className="p-5 space-y-4">
           <FileUploadField
@@ -513,7 +512,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
         }}
         title="Add More Site Photos"
         description="Upload additional site photos (max 10)."
-        size="md"
+        size="smd"
       >
         <div className="p-5 space-y-4">
           <FileUploadField

@@ -154,7 +154,8 @@ export default function ClientApprovalLeadDetails() {
 
   const { data: clientDocsData } = useClientDocumentationDetails(
     vendorId!,
-    leadIdNum
+    leadIdNum,
+    userId! 
   );
 
   const pptDocs = clientDocsData?.documents?.ppt ?? [];

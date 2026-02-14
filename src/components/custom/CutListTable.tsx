@@ -5,6 +5,10 @@ import React, { useMemo, useState } from "react";
 import {
   getCoreRowModel,
   useReactTable,
+  getPaginationRowModel,
+  getSortedRowModel,
+  getFilteredRowModel, // ✅ Already added
+  ColumnFiltersState, // ✅ Already added
 } from "@tanstack/react-table";
 
 import { DataTable } from "@/components/data-table/data-table";
@@ -12,7 +16,7 @@ import { getCutListColumns } from "./cutlist-columns";
 import { Button } from "@/components/ui/button";
 import { MachineAssignmentDialog } from "./machine-assignment-dialog";
 import { toast } from "react-toastify";
-import { Download,Printer } from "lucide-react";
+import { Download, Printer } from "lucide-react";
 
 export type CutListRow = Record<string, any>;
 
@@ -22,6 +26,7 @@ interface Props {
   className?: string;
   onMachineAssign?: (cutListIds: number[], machineId: number, machineName: string, assigned: boolean) => Promise<void>;
   onDownloadLabels?: (cutListIds?: number[]) => Promise<string>;
+  onDownloadExcel?: (cutListIds?: number[]) => Promise<string>;
 }
 
 export default function CutListTable({ 
@@ -29,9 +34,11 @@ export default function CutListTable({
   machineColumns, 
   className,
   onMachineAssign,
-  onDownloadLabels
+  onDownloadLabels,
+  onDownloadExcel
 }: Props) {
   const [rowSelection, setRowSelection] = useState({});
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]); // ✅ Add filter state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState<{
@@ -39,71 +46,60 @@ export default function CutListTable({
     id: number;
   } | null>(null);
 
-  // ✅ Handle download/print labels
- // ✅ Handle download labels
-const handleDownloadLabels = async () => {
-  if (!onDownloadLabels) return;
+  // ✅ Handle download labels
+  const handleDownloadLabels = async () => {
+    if (!onDownloadLabels) return;
 
-  try {
-    setIsDownloading(true);
-    
-    const selectedRowIds = selectedRows.length > 0 
-      ? selectedRows.map(row => row.original.id)
-      : undefined;
+    try {
+      setIsDownloading(true);
+      
+      const selectedRowIds = selectedRows.length > 0 
+        ? selectedRows.map(row => row.original.id)
+        : undefined;
 
-    const pdfUrl = await onDownloadLabels(selectedRowIds);
-    
-    if (!pdfUrl) {
-      throw new Error("No PDF URL received");
+      const pdfUrl = await onDownloadLabels(selectedRowIds);
+      
+      if (!pdfUrl) {
+        throw new Error("No PDF URL received");
+      }
+
+      window.open(pdfUrl, '_blank');
+
+      toast.success("Labels downloaded successfully");
+    } catch (error) {
+      console.error("Error downloading labels:", error);
+      toast.error("Failed to download labels");
+    } finally {
+      setIsDownloading(false);
     }
+  };
 
-    window.open(pdfUrl, '_blank');
+  const handleDownloadExcel = async () => {
+    if (!onDownloadExcel) return;
 
-    // // ✅ Download only
-    // const link = document.createElement('a');
-    // link.href = pdfUrl;
-    // link.download = `qr-labels-${Date.now()}.pdf`;
-    // document.body.appendChild(link);
-    // link.click();
-    // document.body.removeChild(link);
+    try {
+      setIsDownloading(true);
+      
+      const selectedRowIds = selectedRows.length > 0 
+        ? selectedRows.map(row => row.original.id)
+        : undefined;
 
-    toast.success("Labels downloaded successfully");
-  } catch (error) {
-    console.error("Error downloading labels:", error);
-    toast.error("Failed to download labels");
-  } finally {
-    setIsDownloading(false);
-  }
-};
+      const pdfUrl = await onDownloadExcel(selectedRowIds);
+      
+      if (!pdfUrl) {
+        throw new Error("No PDF URL received");
+      }
 
-// ✅ Handle print labels
-const handlePrintLabels = async () => {
-  if (!onDownloadLabels) return;
+      window.open(pdfUrl, '_blank');
 
-  try {
-    setIsDownloading(true);
-    
-    const selectedRowIds = selectedRows.length > 0 
-      ? selectedRows.map(row => row.original.id)
-      : undefined;
-
-    const pdfUrl = await onDownloadLabels(selectedRowIds);
-    
-    if (!pdfUrl) {
-      throw new Error("No PDF URL received");
+      toast.success("Excel downloaded successfully");
+    } catch (error) {
+      console.error("Error downloading excel:", error);
+      toast.error("Failed to download excel");
+    } finally {
+      setIsDownloading(false);
     }
-
-    // ✅ Print only - open in new tab
-    window.open(pdfUrl, '_blank');
-
-    toast.success("Labels opened for printing");
-  } catch (error) {
-    console.error("Error printing labels:", error);
-    toast.error("Failed to print labels");
-  } finally {
-    setIsDownloading(false);
-  }
-};
+  };
 
   // ✅ Handle individual cell click (toggle assignment)
   const handleMachineCellClick = async (
@@ -171,10 +167,14 @@ const handlePrintLabels = async () => {
     data: data ?? [],
     columns,
     getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(), // ✅ Add filtered row model
+    getSortedRowModel: getSortedRowModel(), // ✅ Add sorted row model (optional but recommended)
     getRowId: (row: any) => String(row.id ?? row.unique_code ?? Math.random()),
     onRowSelectionChange: setRowSelection,
+    onColumnFiltersChange: setColumnFilters, // ✅ Add filter change handler
     state: {
       rowSelection,
+      columnFilters, // ✅ Add filter state
       columnPinning: {
         left: ['select', 'id', 'description'],
       },
@@ -203,61 +203,77 @@ const handlePrintLabels = async () => {
   return (
     <div className={className}>
       {/* ✅ Buttons section above the table */}
-      <div className="flex justify-end gap-2 mb-3">
-        {/* Download Labels Button */}
-
-        {/* <Button 
-        variant="default" 
-        size="sm"
-        onClick={handlePrintLabels}
-        disabled={isDownloading}
-        className="gap-2"
-      >
-         {isDownloading ? (
-          <>
-            <span className="animate-spin">⏳</span>
-            Generating...
-          </>
-        ) : (
-          <>
-            <Printer className="h-4 w-4" />
-            Print Labels
-            {selectedRows.length > 0 && ` (${selectedRows.length})`}
-          </>
-        )}
-      </Button> */}
-      
-        <Button 
-          variant="default" 
-          size="sm"
-          onClick={handleDownloadLabels}
-          disabled={isDownloading}
-          className="gap-2"
-        >
-          {isDownloading ? (
-            <>
-              <span className="animate-spin">⏳</span>
-              Generating...
-            </>
-          ) : (
-            <>
-              <Download className="h-4 w-4" />
-              Download Labels
-              {selectedRows.length > 0 && ` (${selectedRows.length})`}
-            </>
+      <div className="flex justify-between items-center mb-3">
+        {/* ✅ Show active filter count */}
+        <div className="text-sm text-muted-foreground">
+          {columnFilters.length > 0 && (
+            <span>
+              {columnFilters.length} filter{columnFilters.length > 1 ? 's' : ''} active
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => setColumnFilters([])}
+                className="ml-2 h-auto p-0 text-primary"
+              >
+                Clear all filters
+              </Button>
+            </span>
           )}
-        </Button>
-        
-        {/* Clear Selection Button - only show when rows are selected */}
-        {selectedRows.length > 0 && (
+        </div>
+
+        <div className="flex gap-2">
           <Button 
-            variant="outline" 
+            variant="default" 
             size="sm"
-            onClick={() => setRowSelection({})}
+            onClick={handleDownloadExcel}
+            disabled={isDownloading}
+            className="gap-2"
           >
-            Clear Selection ({selectedRows.length})
+            {isDownloading ? (
+              <>
+                <span className="animate-spin">⏳</span>
+                Generating...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" />
+                Download Cut List
+              </>
+            )}
           </Button>
-        )}
+        
+          <Button 
+            variant="default" 
+            size="sm"
+            onClick={handleDownloadLabels}
+            disabled={isDownloading}
+            className="gap-2"
+          >
+            {isDownloading ? (
+              <>
+                <span className="animate-spin">⏳</span>
+                Generating...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" />
+                Download Labels
+                {selectedRows.length > 0 && ` (${selectedRows.length})`}
+              </>
+            )}
+          </Button>
+          
+          {/* Clear Selection Button - only show when rows are selected */}
+          {selectedRows.length > 0 && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setRowSelection({})}
+            >
+              Clear Selection ({selectedRows.length})
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* DataTable */}
