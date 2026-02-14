@@ -357,6 +357,25 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     });
   };
 
+  const handleEditStructureChange = (selectedId: number) => {
+    const selectedStructure = productStructureTypes?.data?.find(
+      (type: any) => type.id === selectedId
+    );
+    setEditStructure((prev) =>
+      prev
+        ? {
+            ...prev,
+            product_structure_id: selectedId,
+            title:
+              selectedStructure?.type?.trim() ||
+              prev.title ||
+              "",
+          }
+        : prev
+    );
+    if (editStructureError) setEditStructureError("");
+  };
+
   const handleEditSave = () => {
     if (!editStructure || !vendorId) return;
     if (!editStructure.title.trim()) {
@@ -1166,15 +1185,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                         setEditStructureError("Please select a structure.");
                         return;
                       }
-                      setEditStructure((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              product_structure_id: selectedId,
-                            }
-                          : prev
-                      );
-                      if (editStructureError) setEditStructureError("");
+                      handleEditStructureChange(selectedId);
                     }}
                     placeholder="Select structure..."
                   />
