@@ -172,27 +172,35 @@ export default function MachineMasterPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-15">Seq</TableHead>
+                    <TableHead className="w-10">Id</TableHead>
+                    <TableHead className="w-15">Sequence</TableHead>
+                    <TableHead>Code</TableHead>
+
                     <TableHead className="w-20">Image</TableHead>
                     <TableHead>Machine Name</TableHead>
-                    <TableHead>Code</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Scan Type</TableHead>
-                    <TableHead className="w-25">Target per Hour (per Sqft)</TableHead>
+                    <TableHead className="w-25">
+                      Target per Hour (per Sqft)
+                    </TableHead>
                     <TableHead className="min-w-50">Description</TableHead>
                     <TableHead>Created At</TableHead>
-                    <TableHead className="w-20 text-center">
-                      Actions
-                    </TableHead>
+                    <TableHead className="w-20 text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {machines.map((machine) => (
                     <TableRow key={machine.id}>
                       {/* Sequence Number */}
+                      <TableCell className="font-medium">{machine.id}</TableCell>
                       <TableCell className="font-medium">
                         {machine.sequence_no}
+                      </TableCell>
+
+                      {/* Machine Code */}
+                      <TableCell className="font-medium">
+                        {machine.machine_code}
                       </TableCell>
 
                       {/* Image */}
@@ -219,11 +227,6 @@ export default function MachineMasterPage() {
                         {machine.machine_name}
                       </TableCell>
 
-                      {/* Machine Code */}
-                      <TableCell className="font-mono text-sm">
-                        {machine.machine_code}
-                      </TableCell>
-
                       {/* Machine Type */}
                       <TableCell>{machine.machine_type}</TableCell>
 
@@ -248,7 +251,7 @@ export default function MachineMasterPage() {
                       </TableCell>
 
                       {/* Created At */}
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-sm">
                         {formatDate(machine.created_at)}
                       </TableCell>
 

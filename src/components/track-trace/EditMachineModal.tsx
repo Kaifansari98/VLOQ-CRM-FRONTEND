@@ -383,7 +383,7 @@ export function EditMachineModal({
           </div>
 
           {/* Factory ID - Optional */}
-          <FormField
+          {/* <FormField
             control={form.control}
             name="factory_id"
             render={({ field }) => (
@@ -401,7 +401,7 @@ export function EditMachineModal({
                 <FormMessage />
               </FormItem>
             )}
-          />
+          /> */}
 
           {/* Description */}
           <FormField
