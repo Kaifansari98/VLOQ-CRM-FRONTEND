@@ -93,6 +93,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const leadStage = lead?.statusType?.type;
   console.log("Lead Stage In Lead Details: ", leadStage);
   const isOpenStage = leadStage?.toLowerCase() === "open";
+  const leadStatusTag = lead?.statusType?.tag;
   const canEditStructures =
     isOpenStage || ["admin", "super-admin"].includes(userType || "");
   const structureInstances = structureInstancesData?.data || [];
