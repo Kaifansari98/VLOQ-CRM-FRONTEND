@@ -32,6 +32,7 @@ import { useRouter } from "next/navigation";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { useUploadCSPBooking } from "@/hooks/useUploadCSPBooking";
 import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 interface Props {
   open: boolean;
@@ -99,9 +100,19 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     return null;
   }
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type
+  );
   const mutation = useAssignToFinalMeasurement(leadId);
   const queryClient = useQueryClient();
   const uploadCSPMutation = useUploadCSPBooking();
+  const { data: leadData } = useLeadById(leadId, vendorId, userId);
+  const lead = leadData?.data?.lead;
+  const normalizedUserType = String(userType).toLowerCase();
+  const isSalesExecutive = normalizedUserType === "sales-executive";
+  const isAdminUser =
+    normalizedUserType === "admin" || normalizedUserType === "super-admin";
+  const leadStatusTag = lead?.statusType?.tag;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -137,6 +148,18 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
+      if (
+        values.task_type === "Final Measurements" &&
+        (isSalesExecutive || isAdminUser) &&
+        leadStatusTag === "Type 4" &&
+        !lead?.site_map_link
+      ) {
+        toast.error(
+          "Site Map Link is compulsory before assigning lead to Final Measurement"
+        );
+        return;
+      }
+
       // 🔴 STEP 1: Upload CSP Photos (ONLY for Final Measurements)
       if (values.task_type === "Final Measurements") {
         await uploadCSPMutation.mutateAsync({

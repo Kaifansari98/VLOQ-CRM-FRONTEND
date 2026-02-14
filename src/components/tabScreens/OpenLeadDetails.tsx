@@ -679,22 +679,24 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                                   >
                                     <Pencil className="h-4 w-4" />
                                   </button>
-                                  <button
-                                    type="button"
-                                    className="text-muted-foreground/70 hover:text-destructive focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
-                                    onClick={() =>
-                                      setConfirmStructureDelete({
-                                        id: item.id,
-                                        title:
-                                          item.title ||
-                                          item.productStructure?.type ||
-                                          "this item",
-                                      })
-                                    }
-                                    aria-label="Delete"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
+                                  {structureInstances.length > 1 && (
+                                    <button
+                                      type="button"
+                                      className="text-muted-foreground/70 hover:text-destructive focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
+                                      onClick={() =>
+                                        setConfirmStructureDelete({
+                                          id: item.id,
+                                          title:
+                                            item.title ||
+                                            item.productStructure?.type ||
+                                            "this item",
+                                        })
+                                      }
+                                      aria-label="Delete"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  )}
                                 </>
                               )}
                             </div>
