@@ -31,7 +31,7 @@ export const createMachine = async (
   formData.append("vendor_id", String(payload.vendor_id));
   formData.append("machine_name", payload.machine_name);
   formData.append("machine_code", payload.machine_code);
-  formData.append("machine_type", payload.machine_type);
+  formData.append("machine_type_id", String(payload.machine_type_id));
   formData.append("status", payload.status);
   formData.append("scan_type", payload.scan_type);
 
@@ -63,7 +63,7 @@ export const updateMachine = async ({
 
   formData.append("machine_name", data.machine_name);
   formData.append("machine_code", data.machine_code);
-  formData.append("machine_type", data.machine_type);
+  formData.append("machine_type_id",String(data.machine_type_id));
   formData.append("status", data.status);
   formData.append("scan_type", data.scan_type);
   formData.append("description", data.description);

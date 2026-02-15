@@ -12,3 +12,9 @@ export const getAllTrackTraceProjects = async (
   return data.data;
 };
 
+
+
+export const fetchMachineTypes = async () => {
+  const res = await apiClient.get(`/track-trace-master/machine-type`)
+  return res.data
+}

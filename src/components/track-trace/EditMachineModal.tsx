@@ -30,12 +30,15 @@ import { toast } from "react-toastify";
 import { Loader2, Pencil } from "lucide-react";
 import type { MachineStatus, MachineScanType, MachineData } from "@/types/track-trace";
 import Image from "next/image";
+import MachinePicker from "../machine-picker";
+import { useMachineTypes } from "@/hooks/track-trace/useTrackTraceProjects";
 
 // Zod Schema - Image is optional in edit
 const editMachineSchema = z.object({
   machine_name: z.string().min(1, "Machine name is required"),
   machine_code: z.string().min(1, "Machine code is required"),
-  machine_type: z.string().min(1, "Machine type is required"),
+  machine_type_id: z.string().min(1, "Machine type is required"),
+  
   status: z
     .enum(["ACTIVE", "MAINTENANCE", "INACTIVE", "RETIRED"])
     .refine((val) => val !== undefined, {
@@ -84,8 +87,8 @@ export function EditMachineModal({
     resolver: zodResolver(editMachineSchema),
     defaultValues: {
       machine_name: "",
-      machine_code: "",
-      machine_type: "",
+      machine_code: "",      
+      machine_type_id:"",
       status: undefined,
       scan_type: undefined,
       description: "",
@@ -102,7 +105,7 @@ export function EditMachineModal({
       form.reset({
         machine_name: machine.machine_name,
         machine_code: machine.machine_code,
-        machine_type: machine.machine_type,
+        machine_type_id:String(machine.machine_type_id),
         status: machine.status as any,
         scan_type: machine.scan_type as any,
         description: machine.description,
@@ -133,7 +136,7 @@ export function EditMachineModal({
     const payload = {
       machine_name: data.machine_name.trim(),
       machine_code: data.machine_code.trim(),
-      machine_type: data.machine_type.trim(),
+      machine_type_id: data.machine_type_id.trim(),
       status: data.status as MachineStatus,
       scan_type: data.scan_type as MachineScanType,
       description: data.description.trim(),
@@ -141,8 +144,8 @@ export function EditMachineModal({
       sequence_no: Number(data.sequence_no),
       target_per_hour: Number(data.target_per_hour),
       updated_by: userId,
-      machine_image: data.machine_image && data.machine_image.length > 0 
-        ? data.machine_image[0] 
+      machine_image: data.machine_image && data.machine_image.length > 0
+        ? data.machine_image[0]
         : undefined as any, // If no new image, send undefined
     };
 
@@ -251,25 +254,46 @@ export function EditMachineModal({
               )}
             />
 
+            
             <FormField
               control={form.control}
-              name="machine_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Machine Type <span className="text-destructive">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g., CNC, Lathe, etc."
-                      {...field}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              name="machine_type_id"
+              render={({ field }) => {
+                const { data: siteTypes, isLoading } = useMachineTypes();
+
+                const pickerData =
+                  siteTypes?.data?.map((site: any) => ({
+                    id: site.id,
+                    label: site.machine_type,
+                  })) || [];
+
+                return (
+                  <FormItem>
+                    <FormLabel className="text-sm">Machine Type *</FormLabel>
+
+                    {isLoading ? (
+                      <p className="text-xs text-muted-foreground">
+                        Loading site types...
+                      </p>
+                    ) : (
+                      
+                      <MachinePicker
+                        data={pickerData}
+                        value={field.value ? Number(field.value) : undefined}
+                        onChange={(selectedId: number | null) => {
+                          field.onChange(selectedId ? String(selectedId) : "");
+                        }}
+                        placeholder="Search machine type..."
+                      />
+                    )}
+
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
+
+
           </div>
 
           {/* Status & Scan Type - Row */}
@@ -383,7 +407,7 @@ export function EditMachineModal({
           </div>
 
           {/* Factory ID - Optional */}
-          <FormField
+          {/* <FormField
             control={form.control}
             name="factory_id"
             render={({ field }) => (
@@ -401,7 +425,7 @@ export function EditMachineModal({
                 <FormMessage />
               </FormItem>
             )}
-          />
+          /> */}
 
           {/* Description */}
           <FormField

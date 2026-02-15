@@ -41,7 +41,7 @@ export default function MachineMasterPage() {
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const { data: machines, isLoading, error } = useMachinesByVendor(vendorId!);
-
+  // console.log("useMachinesByVendor", machines)
   const getStatusBadge = (status: string) => {
     const statusStyles = {
       ACTIVE: "bg-foreground text-background",

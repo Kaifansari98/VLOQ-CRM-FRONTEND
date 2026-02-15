@@ -88,7 +88,7 @@ export interface MachineData {
   id: number;
   machine_name: string;
   machine_code: string;
-  machine_type: string;
+  machine_type_id:number;
   status: MachineStatus;
   scan_type: MachineScanType;
   description: string;
@@ -101,6 +101,7 @@ export interface MachineData {
   created_at: string;
   updated_at: string;
   updated_by: number;
+  
 }
 
 export interface GetMachinesByVendorResponse {
@@ -112,7 +113,7 @@ export interface CreateMachinePayload {
   vendor_id: number;
   machine_name: string;
   machine_code: string;
-  machine_type: string;
+  machine_type_id: number;
   status: MachineStatus;
   scan_type: MachineScanType;
   description: string;
@@ -126,7 +127,7 @@ export interface CreateMachinePayload {
 export interface UpdateMachinePayload {
   machine_name: string;
   machine_code: string;
-  machine_type: string;
+  machine_type_id: number;
   status: MachineStatus;
   scan_type: MachineScanType;
   description: string;

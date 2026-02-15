@@ -25,16 +25,19 @@ import {
 } from "@/components/ui/select";
 import { FileUploadField } from "../custom/file-upload";
 import { useCreateMachine } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
+import { useMachineTypes } from "@/hooks/track-trace/useTrackTraceProjects";
 import { useAppSelector } from "@/redux/store";
 import { toast } from "react-toastify";
 import { Loader2, Cog } from "lucide-react";
 import type { MachineStatus, MachineScanType } from "@/types/track-trace";
+import AssignToPicker from "../assign-to-picker";
+import MachinePicker from "../machine-picker";
 
 // Zod Schema - Fixed
 const createMachineSchema = z.object({
   machine_name: z.string().min(1, "Machine name is required"),
   machine_code: z.string().min(1, "Machine code is required"),
-  machine_type: z.string().min(1, "Machine type is required"),
+  machine_type_id: z.string().min(1, "Machine type is required"),
   status: z
     .enum(["ACTIVE", "MAINTENANCE", "INACTIVE", "RETIRED"])
     .refine((val) => val !== undefined, {
@@ -85,7 +88,7 @@ export function CreateMachineModal({
     defaultValues: {
       machine_name: "",
       machine_code: "",
-      machine_type: "",
+      machine_type_id: "",
       status: undefined,
       scan_type: undefined,
       description: "",
@@ -122,7 +125,7 @@ export function CreateMachineModal({
       vendor_id: vendorId,
       machine_name: data.machine_name.trim(),
       machine_code: data.machine_code.trim(),
-      machine_type: data.machine_type.trim(),
+      machine_type_id: data.machine_type_id.trim(),
       status: data.status as MachineStatus,
       scan_type: data.scan_type as MachineScanType,
       description: data.description.trim(),
@@ -213,6 +216,44 @@ export function CreateMachineModal({
 
             <FormField
               control={form.control}
+              name="machine_type_id"
+              render={({ field }) => {
+                const { data: machineType, isLoading } = useMachineTypes();
+
+                // ✅ Transform API data into AssignToPicker format
+                const machineData =
+                  machineType?.data?.map((machine: any) => ({
+                    id: machine.id,
+                    label: machine.machine_type, // Display field
+                  })) || [];
+
+                return (
+                  <FormItem>
+                    <FormLabel className="text-sm">Machine Type *</FormLabel>
+
+                    {isLoading ? (
+                      <p className="text-xs text-muted-foreground">
+                        Loading machine types...
+                      </p>
+                    ) : (
+                      <MachinePicker
+                        data={machineData}
+                        value={field.value ? Number(field.value) : undefined}
+                        onChange={(selectedId: number | null) => {
+                          field.onChange(selectedId ? String(selectedId) : ""); // ✅ cast to string
+                        }}
+                        placeholder="Search machine type..."
+                      />
+                    )}
+
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+
+            {/* <FormField
+              control={form.control}
               name="machine_type"
               render={({ field }) => (
                 <FormItem>
@@ -229,13 +270,13 @@ export function CreateMachineModal({
                   <FormMessage />
                 </FormItem>
               )}
-            />
+            /> */}
           </div>
 
           {/* Status & Scan Type - Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ">
             <FormField
-          
+
               control={form.control}
               name="status"
               render={({ field }) => (
@@ -247,7 +288,7 @@ export function CreateMachineModal({
                     onValueChange={field.onChange}
                     value={field.value}
                     disabled={isPending}
-               
+
                   >
                     <FormControl>
                       <SelectTrigger className="w-full">
@@ -345,7 +386,7 @@ export function CreateMachineModal({
           </div>
 
           {/* Factory ID - Optional */}
-          <FormField
+          {/* <FormField
             control={form.control}
             name="factory_id"
             render={({ field }) => (
@@ -363,7 +404,7 @@ export function CreateMachineModal({
                 <FormMessage />
               </FormItem>
             )}
-          />
+          /> */}
 
           {/* Description */}
           <FormField
