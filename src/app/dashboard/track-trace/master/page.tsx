@@ -200,7 +200,7 @@ export default function MachineMasterPage() {
                         <div className="relative w-12 h-12 rounded border overflow-hidden bg-muted">
                           {machine.image_path ? (
                             <Image
-                              src={`${machine.image_path}`}
+                              src={machine.image_path}
                               alt={machine.machine_name}
                               fill
                               className="object-cover"
