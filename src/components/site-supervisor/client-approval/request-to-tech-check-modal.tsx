@@ -163,6 +163,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
           toast.success("Lead moved to Tech Check stage successfully!");
           router.push("/dashboard/production/tech-check");
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
           form.reset();
           onOpenChange(false);
         },

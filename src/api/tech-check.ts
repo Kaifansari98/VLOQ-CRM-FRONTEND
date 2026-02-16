@@ -33,6 +33,31 @@ export const useTechCheckLeads = (
   });
 };
 
+// ✅ --- Fetch Tech-Check Instance Status ---
+export const getTechCheckInstanceStatus = async (
+  vendorId: number,
+  leadId: number,
+  instanceId: number
+) => {
+  const { data } = await apiClient.get(
+    `/leads/production/tech-check/vendorId/${vendorId}/leadId/${leadId}/instanceId/${instanceId}/status`
+  );
+  return data?.data;
+};
+
+export const useTechCheckInstanceStatus = (
+  vendorId: number | undefined,
+  leadId: number | undefined,
+  instanceId: number | null | undefined
+) => {
+  return useQuery({
+    queryKey: ["techCheckInstanceStatus", vendorId, leadId, instanceId],
+    queryFn: () =>
+      getTechCheckInstanceStatus(vendorId!, leadId!, instanceId!),
+    enabled: !!vendorId && !!leadId && !!instanceId,
+  });
+};
+
 // ✅ --- Approve Tech Check ---
 export const approveTechCheck = async ({
   vendorId,
@@ -67,15 +92,17 @@ export const rejectTechCheck = async ({
   vendorId,
   leadId,
   userId,
+  instanceId,
   payload,
 }: {
   vendorId: number;
   leadId: number;
   userId: number;
+  instanceId: number;
   payload: { rejectedDocs: number[]; remark: string };
 }) => {
   const { data } = await apiClient.post(
-    `/leads/production/tech-check/leadId/${leadId}/vendorId/${vendorId}/userId/${userId}/reject`,
+    `/leads/production/tech-check/leadId/${leadId}/vendorId/${vendorId}/userId/${userId}/instanceId/${instanceId}/reject`,
     payload
   );
   return data;
@@ -118,15 +145,17 @@ export const approveMultipleDocuments = async ({
   vendorId,
   leadId,
   userId,
+  instanceId,
   approvedDocs,
 }: {
   vendorId: number;
   leadId: number;
   userId: number;
+  instanceId: number;
   approvedDocs: number[];
 }) => {
   const { data } = await apiClient.post(
-    `/leads/production/tech-check/leadId/${leadId}/vendorId/${vendorId}/userId/${userId}/documents/approve`,
+    `/leads/production/tech-check/leadId/${leadId}/vendorId/${vendorId}/userId/${userId}/instanceId/${instanceId}/documents/approve`,
     { approvedDocs }
   );
   return data;

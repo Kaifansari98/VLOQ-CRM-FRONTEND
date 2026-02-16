@@ -166,7 +166,8 @@ export default function ClientApprovalLeadDetails() {
   const { data: clientDocsData } = useClientDocumentationDetails(
     vendorId!,
     leadIdNum,
-    userId! ,
+    userId!,
+    instanceIdNum!
   );
 
   const allPptDocs = clientDocsData?.documents?.ppt ?? [];
@@ -1281,6 +1282,7 @@ export default function ClientApprovalLeadDetails() {
                   vendorId: vendorId!,
                   leadId: leadIdNum,
                   userId: userId!,
+                  instanceId: instanceIdNum!,
                   payload: { rejectedDocs: selectedDocs, remark },
                 });
 
@@ -1325,7 +1327,8 @@ export default function ClientApprovalLeadDetails() {
                   vendorId: vendorId!,
                   leadId: leadIdNum,
                   userId: userId!,
-                  approvedDocs: selectedDocs,
+                  instanceId: instanceIdNum!,
+                  approvedDocs: selectedDocs
                 });
 
                 setOpenApproveConfirmModal(false);

@@ -131,6 +131,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     userType,
     leadStatus
   );
+
+
   const structureInstances: LeadProductStructureInstance[] = Array.isArray(
     structureInstancesData?.data
   )
@@ -179,63 +181,97 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   useEffect(() => {
     const rows = Array.isArray(selectionsData?.data) ? selectionsData.data : [];
     const activeInstanceId = activeInstance?.id ?? null;
-    const scoped = rows.filter(
+
+    // First, get instance-specific selections
+    let scoped = rows.filter(
       (row) => (row.product_structure_instance_id ?? null) === activeInstanceId
     );
 
+    // If no instance-specific selections found, fall back to lead-level selections
+    // This handles cases where selections were created before instances existed
+    if (scoped.length === 0 && activeInstanceId !== null) {
+      const leadLevelSelections = rows.filter(
+        (row) => (row.product_structure_instance_id ?? null) === null
+      );
+      scoped = leadLevelSelections;
+    }
+
+    // For leads with no instances, use lead-level selections
+    if (structureInstances.length === 0 && scoped.length === 0) {
+      scoped = rows.filter(
+        (row) => (row.product_structure_instance_id ?? null) === null
+      );
+    }
+
     const byType = (type: string) =>
-      scoped.find(
-        (item) => item.type === type && (item.desc || "").trim().toUpperCase() !== "NULL"
-      ) || scoped.find((item) => item.type === type);
+      scoped.find((item) => {
+        if (item.type !== type) return false;
+        const value = (item.desc || "").trim().toUpperCase();
+        return value !== "NULL" && value !== "N/A";
+      }) || scoped.find((item) => item.type === type);
 
     const carcas = byType("Carcas");
     const shutter = byType("Shutter");
     const handles = byType("Handles");
 
+    console.log("[Design Selections] scoped:", {
+      activeInstanceId,
+      totalRows: rows.length,
+      scopedCount: scoped.length,
+      carcas,
+      shutter,
+      handles,
+    });
+
     setExistingSelections({ carcas, shutter, handles });
+    const sanitize = (val?: string) => {
+      const v = (val || "").trim().toUpperCase();
+      return v && v !== "NULL" && v !== "N/A" ? val : "";
+    };
     selectionForm.reset({
-      carcas: carcas?.desc && carcas.desc !== "NULL" ? carcas.desc : "",
-      shutter: shutter?.desc && shutter.desc !== "NULL" ? shutter.desc : "",
-      handles: handles?.desc && handles.desc !== "NULL" ? handles.desc : "",
+      carcas: sanitize(carcas?.desc),
+      shutter: sanitize(shutter?.desc),
+      handles: sanitize(handles?.desc),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeInstance?.id, selectionsData?.data]);
 
   useEffect(() => {
     if (!uploadModalOpen) {
+      const sanitize = (val?: string) => {
+        const v = (val || "").trim().toUpperCase();
+        return v && v !== "NULL" && v !== "N/A" ? val : "";
+      };
       selectionForm.reset({
-        carcas:
-          existingSelections.carcas?.desc &&
-          existingSelections.carcas.desc !== "NULL"
-            ? existingSelections.carcas.desc
-            : "",
-        shutter:
-          existingSelections.shutter?.desc &&
-          existingSelections.shutter.desc !== "NULL"
-            ? existingSelections.shutter.desc
-            : "",
-        handles:
-          existingSelections.handles?.desc &&
-          existingSelections.handles.desc !== "NULL"
-            ? existingSelections.handles.desc
-            : "",
+        carcas: sanitize(existingSelections.carcas?.desc),
+        shutter: sanitize(existingSelections.shutter?.desc),
+        handles: sanitize(existingSelections.handles?.desc),
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadModalOpen]);
 
   const normalizeValue = (v?: string) =>
-    v?.trim() && v.trim() !== "" ? v.trim() : "NULL";
+    v?.trim() && v.trim() !== "" ? v.trim() : "N/A";
 
   const upsertSelection = async (
     type: "Carcas" | "Shutter" | "Handles",
     descRaw?: string
   ) => {
     const desc = normalizeValue(descRaw);
-    const existing =
-      existingSelections[type.toLowerCase() as keyof typeof existingSelections];
+    const currentInstanceId = activeInstance?.id ?? null;
 
-    if (existing) {
+    // Get selections for the current instance to find the correct one
+    const instanceSelections = getSelectionsByInstanceId(currentInstanceId);
+    const existing = instanceSelections[type.toLowerCase() as keyof typeof instanceSelections];
+
+    // Check if the existing selection is actually for THIS specific instance
+    // (not a lead-level fallback)
+    const isInstanceSpecific = existing &&
+      (existing.product_structure_instance_id ?? null) === currentInstanceId;
+
+    if (existing && isInstanceSpecific) {
+      // Update the instance-specific selection
       return new Promise<void>((resolve, reject) =>
         editSelection(
           {
@@ -244,7 +280,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
               type,
               desc,
               updated_by: userId!,
-              product_structure_instance_id: activeInstance?.id ?? null,
+              // Don't change the instance_id when updating
+              product_structure_instance_id: existing.product_structure_instance_id ?? null,
             },
           },
           {
@@ -255,6 +292,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       );
     }
 
+    // Create new selection (either no selection exists, or only lead-level exists)
+    // Don't modify lead-level selections; create instance-specific ones instead
     return new Promise<void>((resolve, reject) =>
       createSelection(
         {
@@ -264,7 +303,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           lead_id: leadId!,
           user_id: userId!,
           account_id: accountId!,
-          product_structure_instance_id: activeInstance?.id ?? null,
+          product_structure_instance_id: currentInstanceId,
         },
         {
           onSuccess: () => resolve(),
@@ -301,6 +340,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       await refetch();
       queryClient.invalidateQueries({
         queryKey: ["designingStageCounts", vendorId, leadId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["getSelectionData", vendorId, leadId],
       });
     } catch (e: any) {
       toast.error(e?.message || "Some selections failed to update");
@@ -362,7 +404,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       }
       const tracker = grouped.get(key)!;
       const value = (row.desc || "").trim();
-      if (!value || value.toUpperCase() === "NULL") continue;
+      if (!value) continue;
+      const upper = value.toUpperCase();
+      if (upper === "NULL" || upper === "N/A") continue;
       if (row.type === "Carcas" || row.type === "Shutter" || row.type === "Handles") {
         tracker[row.type] = true;
       }
@@ -377,6 +421,14 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         return Boolean(tracker?.Carcas && tracker?.Shutter && tracker?.Handles);
       })
     : (() => {
+        // No instances -> validate at lead level (null bucket)
+        if (structureInstances.length === 0) {
+          const nullBucket = selectionsByInstance.get(null);
+          return Boolean(
+            nullBucket?.Carcas && nullBucket?.Shutter && nullBucket?.Handles
+          );
+        }
+        // Single instance -> allow either null bucket or the instance bucket
         const nullBucket = selectionsByInstance.get(null);
         const firstInstanceBucket = activeInstance
           ? selectionsByInstance.get(activeInstance.id)
@@ -401,7 +453,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
   const handleUploadForInstance = async (values: InstanceUploadValues) => {
     if (!vendorId || !userId) return;
-    if (!activeInstance) {
+    if (!activeInstance && structureInstances.length > 0) {
       toast.error("Please select product instance");
       return;
     }
@@ -412,15 +464,22 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         accountId,
         vendorId,
         createdBy: userId,
-        productStructureInstanceId: activeInstance.id,
+        productStructureInstanceId: activeInstance?.id,
         pptDocuments: values.pptDocuments,
         pythaDocuments: values.pythaDocuments,
       });
-      toast.success(`Files uploaded for ${activeInstance.title}`);
+      toast.success(
+        activeInstance
+          ? `Files uploaded for ${activeInstance.title}`
+          : "Files uploaded"
+      );
       setUploadModalOpen(false);
       uploadForm.reset({ pptDocuments: [], pythaDocuments: [] });
       await queryClient.invalidateQueries({
         queryKey: ["clientDocumentationDetails", vendorId, leadId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["getSelectionData", vendorId, leadId],
       });
     } catch (e: any) {
       toast.error(e?.response?.data?.message || "Failed to upload files");
@@ -444,6 +503,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       {
         onSuccess: () => {
           router.push("/dashboard/project/client-approval");
+          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads", "leadStats"] });
         },
       }
     );
@@ -475,8 +535,65 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
   const isPending = isCreating || isEditing;
 
-  const renderInstanceEditorContent = () => {
-    if (!activeInstance) return null;
+  // Helper function to get selections for a specific instance_id
+  const getSelectionsByInstanceId = (instance_id: number | null) => {
+    const rows = Array.isArray(selectionsData?.data) ? selectionsData.data : [];
+
+    // Filter by instance_id
+    let scoped = rows.filter(
+      (row) => (row.product_structure_instance_id ?? null) === instance_id
+    );
+
+    // If no instance-specific selections found and instance_id is not null,
+    // fall back to lead-level selections
+    if (scoped.length === 0 && instance_id !== null) {
+      const leadLevelSelections = rows.filter(
+        (row) => (row.product_structure_instance_id ?? null) === null
+      );
+      scoped = leadLevelSelections;
+    }
+
+    // For leads with no instances, use lead-level selections
+    if (structureInstances.length === 0 && scoped.length === 0) {
+      scoped = rows.filter(
+        (row) => (row.product_structure_instance_id ?? null) === null
+      );
+    }
+
+    const byType = (type: string) =>
+      scoped.find((item) => {
+        if (item.type !== type) return false;
+        const value = (item.desc || "").trim().toUpperCase();
+        return value !== "NULL" && value !== "N/A";
+      }) || scoped.find((item) => item.type === type);
+
+    return {
+      carcas: byType("Carcas"),
+      shutter: byType("Shutter"),
+      handles: byType("Handles"),
+    };
+  };
+
+  const renderInstanceEditorContent = (instance_id: number | null) => {
+    if (instance_id === null && structureInstances.length > 0) return null;
+
+    // Get selections for this specific instance_id
+    const instanceSelections = getSelectionsByInstanceId(instance_id);
+
+    // Get the current instance object (if exists)
+    const currentInstance = instance_id
+      ? structureInstances.find(inst => inst.id === instance_id)
+      : null;
+
+    // Sanitize selection values for display
+    const sanitize = (val?: string) => {
+      const v = (val || "").trim().toUpperCase();
+      return v && v !== "NULL" && v !== "N/A" ? val : "";
+    };
+
+    const displayCarcas = sanitize(instanceSelections.carcas?.desc);
+    const displayShutter = sanitize(instanceSelections.shutter?.desc);
+    const displayHandles = sanitize(instanceSelections.handles?.desc);
 
     return (
       <div className="flex-1 space-y-6 py-4 px-5">
@@ -514,7 +631,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                       <FormLabel className="font-medium">Carcas</FormLabel>
                       <FormControl>
                         <TextAreaInput
-                          value={field.value ?? ""}
+                          value={displayCarcas || field.value || ""}
                           onChange={field.onChange}
                           placeholder="Enter Carcas selection..."
                           disabled={isPending || !canUpdateInput}
@@ -534,7 +651,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                       <FormLabel className="font-medium">Shutter</FormLabel>
                       <FormControl>
                         <TextAreaInput
-                          value={field.value ?? ""}
+                          value={displayShutter || field.value || ""}
                           onChange={field.onChange}
                           placeholder="Enter Shutter details..."
                           disabled={isPending || !canUpdateInput}
@@ -554,7 +671,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                       <FormLabel className="font-medium">Handles</FormLabel>
                       <FormControl>
                         <TextAreaInput
-                          value={field.value ?? ""}
+                          value={displayHandles || field.value || ""}
                           onChange={field.onChange}
                           placeholder="Enter Handles details..."
                           disabled={isPending || !canUpdateInput}
@@ -673,14 +790,14 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold">Uploaded Files</h4>
             {(() => {
-              const docs = getDocs(activeInstance.id);
+              const docs = getDocs(instance_id);
               const totalDocs = docs.pptCount + docs.pythaCount;
               return <Badge variant="outline">{totalDocs} total</Badge>;
             })()}
           </div>
 
           {(() => {
-            const docs = getDocs(activeInstance.id);
+            const docs = getDocs(instance_id);
             const allDocs = [...docs.ppt, ...docs.pytha];
             const { images, nonImages } = separateImageAndDocs(allDocs);
 
@@ -907,7 +1024,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         <div className="space-y-4">
           <h3 className="text-sm font-semibold">{activeInstance.title}</h3>
           <div className="rounded-2xl border bg-white dark:bg-neutral-900">
-            {renderInstanceEditorContent()}
+            {renderInstanceEditorContent(activeInstance.id)}
           </div>
         </div>
       )}
@@ -962,7 +1079,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             }
             size="xl"
           >
-            {renderInstanceEditorContent()}
+            {renderInstanceEditorContent(activeInstance.id)}
           </BaseModal>
         )}
       </AnimatePresence>

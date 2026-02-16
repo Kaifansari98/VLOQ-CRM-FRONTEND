@@ -13,31 +13,17 @@ export const getClientDocumentationLeads = async (
 export const getClientDocumentationDetails = async (
   vendorId: number,
   leadId: number,
-  userId: number,
+  userId?: number,
+  instanceId?: number,
 ) => {
   const { data } = await apiClient.get(
     `/leads/client-documentation/vendorId/${vendorId}/leadId/${leadId}`,
     {
       params: {
-        userId, // 👈 GET query param
+        userId,
+        instanceId,
       },
     },
-  );
-
-  return data.data;
-};
-
-export interface OrderLoginEligibilityResponse {
-  allowed: boolean;
-  reason: string;
-}
-
-export const getOrderLoginEligibility = async (
-  vendorId: number,
-  leadId: number,
-) => {
-  const { data } = await apiClient.get(
-    `/leads/client-documentation/order-login/eligibility/${vendorId}/${leadId}`,
   );
 
   return data.data;
@@ -64,13 +50,7 @@ export const uploadMoreClientDocumentation = async (
   if (payload.productStructureInstanceId) {
     formData.append(
       "product_structure_instance_id",
-      payload.productStructureInstanceId.toString()
-    );
-  }
-  if (payload.productStructureInstanceId) {
-    formData.append(
-      "product_structure_instance_id",
-      payload.productStructureInstanceId.toString()
+      payload.productStructureInstanceId.toString(),
     );
   }
 
@@ -91,8 +71,6 @@ export const uploadMoreClientDocumentation = async (
   return data;
 };
 
-
-
 export const moveLeadToClientApproval = async (payload: {
   leadId: number;
   vendorId: number;
@@ -104,7 +82,7 @@ export const moveLeadToClientApproval = async (payload: {
       lead_id: payload.leadId,
       vendor_id: payload.vendorId,
       updated_by: payload.updatedBy,
-    }
+    },
   );
   return data;
 };

@@ -51,6 +51,7 @@ import AssignToPicker from "@/components/assign-to-picker";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { useProductStructureTypes, useProductTypes } from "@/hooks/useTypesMaster";
+import { updateLeadProductType } from "@/api/leads";
 
 type OpenLeadDetailsProps = {
   leadId: number;
@@ -91,9 +92,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
   const leadStage = lead?.statusType?.type;
   console.log("Lead Stage In Lead Details: ", leadStage);
-  const isOpenStage = leadStage?.toLowerCase() === "open";
+  const isBookingStage = leadStage?.toLowerCase() === "booking-stage";
+  const leadStatusTag = lead?.statusType?.tag;
   const canEditStructures =
-    isOpenStage || ["admin", "super-admin"].includes(userType || "");
+  isBookingStage || ["admin", "super-admin"].includes(userType || "");
   const structureInstances = structureInstancesData?.data || [];
   const structureSummary = useMemo(() => {
     const total = structureInstances.length;
@@ -109,6 +111,26 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       "";
     return String(typeLabel).toLowerCase().includes("kitchen");
   }, [lead?.productMappings]);
+
+  const currentProductTypeLabel = useMemo(() => {
+    return (
+      lead?.productMappings?.[0]?.productType?.type ||
+      lead?.productMappings?.[0]?.product_type?.type ||
+      ""
+    );
+  }, [lead?.productMappings]);
+
+  const normalizedUserType = (userType || "").toLowerCase();
+  const canEditProductType =
+    (normalizedUserType === "admin" || normalizedUserType === "super-admin") ||
+    (normalizedUserType === "sales-executive" && isBookingStage);
+
+  const isModularKitchenType = useMemo(() => {
+    const label = String(currentProductTypeLabel).toLowerCase();
+    return (
+      label === "modular kitchen" || label === "semi-modular kitchen"
+    );
+  }, [currentProductTypeLabel]);
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [confirmStructureDelete, setConfirmStructureDelete] = useState<{
@@ -130,6 +152,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   } | null>(null);
   const [editTitleError, setEditTitleError] = useState("");
   const [editStructureError, setEditStructureError] = useState("");
+  const [editProductTypeOpen, setEditProductTypeOpen] = useState(false);
+  const [selectedProductTypeId, setSelectedProductTypeId] = useState<number | null>(null);
+  const [confirmProductTypeSave, setConfirmProductTypeSave] = useState(false);
   const queryClient = useQueryClient();
   const { mutate: deleteDocument, isPending: deleting } = useDeleteDocument();
   const { mutate: deleteStructureInstance, isPending: deletingStructure } =
@@ -159,6 +184,75 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     });
   const { data: productStructureTypes } = useProductStructureTypes();
   const { data: productTypes } = useProductTypes();
+
+  const modularKitchenType = useMemo(
+    () =>
+      productTypes?.data?.find(
+        (type: any) =>
+          String(type.type).toLowerCase() === "modular kitchen"
+      ),
+    [productTypes?.data]
+  );
+  const semiModularKitchenType = useMemo(
+    () =>
+      productTypes?.data?.find(
+        (type: any) =>
+          String(type.type).toLowerCase() === "semi-modular kitchen"
+      ),
+    [productTypes?.data]
+  );
+
+  const currentProductTypeId =
+    lead?.productMappings?.[0]?.product_type_id ||
+    lead?.productMappings?.[0]?.productType?.id ||
+    lead?.productMappings?.[0]?.product_type?.id ||
+    null;
+
+  const { mutate: updateLeadProductTypeMutation, isPending: updatingLeadType } =
+    useMutation({
+      mutationFn: (nextProductTypeId: number) => {
+        const nextTypeLabel =
+          nextProductTypeId === modularKitchenType?.id
+            ? "Modular Kitchen"
+            : nextProductTypeId === semiModularKitchenType?.id
+            ? "Semi-Modular Kitchen"
+            : undefined;
+        return updateLeadProductType(leadId, userId || 0, {
+          productType: nextTypeLabel,
+        });
+      },
+      onSuccess: async () => {
+        toast.success("Product type updated successfully.");
+        setEditProductTypeOpen(false);
+        await queryClient.invalidateQueries({
+          queryKey: ["lead", leadId, vendorId, userId],
+        });
+      },
+      onError: (error: any) => {
+        toast.error(
+          error?.response?.data?.message || "Failed to update product type."
+        );
+      },
+    });
+
+  const handleOpenProductTypeEdit = () => {
+    if (!currentProductTypeId) return;
+    setSelectedProductTypeId(currentProductTypeId);
+    setEditProductTypeOpen(true);
+  };
+
+  const handleSaveProductType = () => {
+    if (!selectedProductTypeId) {
+      toast.error("Please select a product type.");
+      return;
+    }
+    if (selectedProductTypeId === currentProductTypeId) {
+      toast.info("No changes to update.");
+      setEditProductTypeOpen(false);
+      return;
+    }
+    setConfirmProductTypeSave(true);
+  };
   const { mutate: createStructureInstance, isPending: creatingStructure } =
     useMutation({
       mutationFn: ({
@@ -261,6 +355,25 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       product_structure_id: item.product_structure_id,
       product_type_id: item.product_type_id,
     });
+  };
+
+  const handleEditStructureChange = (selectedId: number) => {
+    const selectedStructure = productStructureTypes?.data?.find(
+      (type: any) => type.id === selectedId
+    );
+    setEditStructure((prev) =>
+      prev
+        ? {
+            ...prev,
+            product_structure_id: selectedId,
+            title:
+              selectedStructure?.type?.trim() ||
+              prev.title ||
+              "",
+          }
+        : prev
+    );
+    if (editStructureError) setEditStructureError("");
   };
 
   const handleEditSave = () => {
@@ -508,7 +621,21 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               <div className="flex items-center w-full justify-between">
                 <InfoRow
                   icon={Package}
-                  label="Product Types"
+                  label={
+                    <span className="inline-flex items-center gap-2">
+                      <span>Product Types</span>
+                      {canEditProductType && isModularKitchenType && (
+                        <button
+                          type="button"
+                          onClick={handleOpenProductTypeEdit}
+                          className="text-muted-foreground/70 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-6 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
+                          aria-label="Edit product type"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </span>
+                  }
                   value={lead.productMappings
                     ?.map((pm: any) => pm.productType?.type)
                     ?.filter(Boolean)
@@ -572,22 +699,24 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                                   >
                                     <Pencil className="h-4 w-4" />
                                   </button>
-                                  <button
-                                    type="button"
-                                    className="text-muted-foreground/70 hover:text-destructive focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
-                                    onClick={() =>
-                                      setConfirmStructureDelete({
-                                        id: item.id,
-                                        title:
-                                          item.title ||
-                                          item.productStructure?.type ||
-                                          "this item",
-                                      })
-                                    }
-                                    aria-label="Delete"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
+                                  {structureInstances.length > 1 && (
+                                    <button
+                                      type="button"
+                                      className="text-muted-foreground/70 hover:text-destructive focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
+                                      onClick={() =>
+                                        setConfirmStructureDelete({
+                                          id: item.id,
+                                          title:
+                                            item.title ||
+                                            item.productStructure?.type ||
+                                            "this item",
+                                        })
+                                      }
+                                      aria-label="Delete"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  )}
                                 </>
                               )}
                             </div>
@@ -907,6 +1036,106 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           </AlertDialog>
 
           <BaseModal
+            open={editProductTypeOpen}
+            onOpenChange={(open) => {
+              if (!open) {
+                setEditProductTypeOpen(false);
+                setSelectedProductTypeId(currentProductTypeId);
+              }
+            }}
+            title="Edit Product Type"
+            description="Switch between Modular Kitchen and Semi‑Modular Kitchen."
+            size="sm"
+          >
+            <div className="space-y-4 p-5">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Product Type <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-2 grid grid-cols-1 gap-2">
+                  {modularKitchenType && (
+                    <Button
+                      type="button"
+                      variant={
+                        selectedProductTypeId === modularKitchenType.id
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() =>
+                        setSelectedProductTypeId(modularKitchenType.id)
+                      }
+                    >
+                      Modular Kitchen
+                    </Button>
+                  )}
+                  {semiModularKitchenType && (
+                    <Button
+                      type="button"
+                      variant={
+                        selectedProductTypeId === semiModularKitchenType.id
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() =>
+                        setSelectedProductTypeId(semiModularKitchenType.id)
+                      }
+                    >
+                      Semi‑Modular Kitchen
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditProductTypeOpen(false)}
+                  disabled={updatingLeadType}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSaveProductType}
+                  disabled={updatingLeadType}
+                >
+                  {updatingLeadType ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </div>
+          </BaseModal>
+
+          <AlertDialog
+            open={confirmProductTypeSave}
+            onOpenChange={setConfirmProductTypeSave}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirm Product Type Change?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will update the product type for this lead.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={updatingLeadType}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    setConfirmProductTypeSave(false);
+                    if (selectedProductTypeId) {
+                      updateLeadProductTypeMutation(selectedProductTypeId);
+                    }
+                  }}
+                  disabled={updatingLeadType}
+                >
+                  {updatingLeadType ? "Saving..." : "Confirm"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <BaseModal
             open={!!editStructure}
             onOpenChange={(open) => {
               if (!open) {
@@ -956,15 +1185,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                         setEditStructureError("Please select a structure.");
                         return;
                       }
-                      setEditStructure((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              product_structure_id: selectedId,
-                            }
-                          : prev
-                      );
-                      if (editStructureError) setEditStructureError("");
+                      handleEditStructureChange(selectedId);
                     }}
                     placeholder="Select structure..."
                   />

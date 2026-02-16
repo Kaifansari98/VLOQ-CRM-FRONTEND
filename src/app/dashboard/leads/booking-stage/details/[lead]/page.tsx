@@ -56,8 +56,8 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 import {
   canAssignFM,
-  canEditLeadButton,
   canDeleteLeadButton,
+  canEditLeadForSalesExecutiveButton,
   canReassignLeadButton,
   canViewPaymentTab,
   canViewSiteHistoryTab,
@@ -150,7 +150,7 @@ export default function BookingStageLeadsDetails() {
 
   const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadButton(userType);
+  const canEdit = canEditLeadForSalesExecutiveButton(userType);
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory = canViewSiteHistoryTab(userType);
   return (

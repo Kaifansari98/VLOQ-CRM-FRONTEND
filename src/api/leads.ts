@@ -127,10 +127,10 @@ export interface AssignToPayload {
 }
 
 export interface EditLeadPayload {
-  firstname: string;
-  lastname: string;
-  country_code: string;
-  contact_no: string;
+  firstname?: string;
+  lastname?: string;
+  country_code?: string;
+  contact_no?: string;
   alt_contact_no?: string;
   email?: string;
   site_address?: string;
@@ -226,6 +226,21 @@ export const updateLead = async (
   const response = await apiClient.put(
     `/leads/update/${leadId}/userId/${userId}`,
     payload,
+  );
+  return response.data;
+};
+
+export const updateLeadProductType = async (
+  leadId: number,
+  userId: number,
+  payload: { productTypeId?: number; productType?: string },
+) => {
+  const response = await apiClient.put(
+    `/leads/update-product-type/${leadId}/userId/${userId}`,
+    {
+      ...(payload.productTypeId ? { product_type_id: payload.productTypeId } : {}),
+      ...(payload.productType ? { product_type: payload.productType } : {}),
+    },
   );
   return response.data;
 };

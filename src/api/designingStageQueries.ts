@@ -224,9 +224,16 @@ export const getSelectionData = async (
   leadId: number,
   productStructureInstanceId?: number
 ): Promise<DesignSelectionsResponse> => {
-  const query = productStructureInstanceId
-    ? `?product_structure_instance_id=${productStructureInstanceId}`
-    : "";
+  const params = new URLSearchParams();
+  if (productStructureInstanceId) {
+    params.set(
+      "product_structure_instance_id",
+      String(productStructureInstanceId)
+    );
+  }
+  params.set("page", "1");
+  params.set("limit", "1000");
+  const query = params.toString() ? `?${params.toString()}` : "";
   const { data } = await apiClient.get<DesignSelectionsResponse>(
     `/leads/designing-stage/${vendorId}/${leadId}/design-selections${query}`
   );

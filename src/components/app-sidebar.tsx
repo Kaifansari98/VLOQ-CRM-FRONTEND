@@ -12,6 +12,7 @@ import {
   CalendarCheck2,
   BookOpenCheck,
   Users,
+  ListTodo,
   LayoutDashboard,
 } from "lucide-react";
 
@@ -68,6 +69,12 @@ const data = {
       url: "/dashboard/overall-leads",
       icon: Users,
       showCount: "total_overall_leads" as const,
+    },
+    {
+      title: "Delivered Projects",
+      url: "/dashboard/delivered-projects",
+      icon: ListTodo,
+      showCount: "total_project_completed_stage_leads" as const,
     },
     {
       title: "Leads",
@@ -228,30 +235,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const withoutOverall = canSeeOverallLeads
       ? data.navMain
       : data.navMain.filter((item) => item.title !== "Overall Leads");
-    const baseItems = (() => {
-      // site-supervisor: hide only Leads
-      if (userType === "site-supervisor") {
-        return withoutOverall.filter((item) => item.title !== "Leads");
-      }
+    const hideSectionsForRole =
+      userType === "site-supervisor" ||
+      userType === "tech-check" ||
+      userType === "backend" ||
+      userType === "factory";
+    const baseItems = hideSectionsForRole
+      ? withoutOverall.filter(
+          (item) =>
+            item.title !== "Leads" &&
+            (userType === "site-supervisor" ? true : item.title !== "Project")
+        )
+      : withoutOverall;
 
-      // tech-check / backend / factory: hide Leads + Project
-      if (
-        userType === "tech-check" ||
-        userType === "backend" ||
-        userType === "factory"
-      ) {
-        return withoutOverall.filter(
-          (item) => item.title !== "Leads" && item.title !== "Project",
-        );
-      }
-
-      // everyone else
-      return withoutOverall;
-    })();
+    const adminOnlyItems =
+      userType === "admin" || userType === "super-admin"
+        ? baseItems
+        : baseItems.filter((item) => item.title !== "Delivered Projects");
 
     const filteredItems =
       userType === "backend" || userType === "factory"
-        ? baseItems.map((item) =>
+        ? adminOnlyItems.map((item) =>
             item.title === "Production"
               ? {
                   ...item,
@@ -264,7 +268,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 }
               : item,
           )
-        : baseItems;
+        : adminOnlyItems;
 
     if (!mounted || !canSeeMiscLeads || miscLeadsCount <= 0) {
       return filteredItems;

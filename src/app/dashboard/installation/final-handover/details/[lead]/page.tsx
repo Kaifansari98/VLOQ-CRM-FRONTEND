@@ -118,11 +118,6 @@ export default function FinalHandoverLeadDetails() {
     canAccessTodoTaskTabUnderFinalHandoverStage(userType);
   const normalizedUserType = userType?.toLowerCase() ?? "";
   const isSiteSupervisor = normalizedUserType === "site-supervisor";
-  const canShowMarkCompleted = [
-    "admin",
-    "super-admin",
-    "site-supervisor",
-  ].includes(normalizedUserType);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -130,6 +125,10 @@ export default function FinalHandoverLeadDetails() {
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = lead?.account_id;
+  const leadStatusTag = lead?.statusType?.tag;
+  const canShowMarkCompleted =
+    ["admin", "super-admin", "site-supervisor"].includes(normalizedUserType) &&
+    leadStatusTag !== "Type 17";
 
   const { data: readiness, isLoading: readinessLoading } =
     useFinalHandoverReadiness(vendorId!, leadIdNum);
