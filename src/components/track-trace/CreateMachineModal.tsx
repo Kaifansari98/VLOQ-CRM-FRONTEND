@@ -29,7 +29,7 @@ import { useMachineTypes } from "@/hooks/track-trace/useTrackTraceProjects";
 import { useAppSelector } from "@/redux/store";
 import { toast } from "react-toastify";
 import { Loader2, Cog } from "lucide-react";
-import type { MachineStatus, MachineScanType } from "@/types/track-trace";
+import type { MachineStatus, MachineScanType, CreateMachinePayload } from "@/types/track-trace";
 import AssignToPicker from "../assign-to-picker";
 import MachinePicker from "../machine-picker";
 
@@ -121,22 +121,22 @@ export function CreateMachineModal({
       return;
     }
 
-    const payload = {
-      vendor_id: vendorId,
+    const payload : CreateMachinePayload = {
+      vendor_id: Number(vendorId),
       machine_name: data.machine_name.trim(),
       machine_code: data.machine_code.trim(),
-      machine_type_id: data.machine_type_id.trim(),
+      machine_type_id: Number(data.machine_type_id.trim()),
       status: data.status as MachineStatus,
       scan_type: data.scan_type as MachineScanType,
       description: data.description.trim(),
       factory_id: data.factory_id ? Number(data.factory_id) : null,
       sequence_no: Number(data.sequence_no),
       target_per_hour: Number(data.target_per_hour),
-      created_by: userId,
-      machine_image: data.machine_image[0],
+      created_by: Number(userId),
+      machine_image: data.machine_image[0],      
     };
 
-    console.log("Submitting payload:", payload);
+    //console.log("Submitting payload:", payload);
 
     createMachine(payload, {
       onSuccess: (response) => {

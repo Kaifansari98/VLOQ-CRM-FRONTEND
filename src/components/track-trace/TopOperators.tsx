@@ -1,6 +1,6 @@
 'use client';
 
-import { Operator } from '@/types';
+import { Operator } from '@/types/track-trace';
 
 interface TopOperatorsProps {
   operators: Operator[];

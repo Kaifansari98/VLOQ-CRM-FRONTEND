@@ -41,3 +41,18 @@ export interface TrackTraceProject {
   details: any[];
   items: any[];
 }
+
+export interface ProjectFilterItem {
+  id: number;
+  project_name: string;
+}
+
+export interface MachineFilterItem {
+  id: number;
+  machine_name: string;
+}
+
+export interface UserFilterItem {
+  id: number;
+  user_name: string;
+}

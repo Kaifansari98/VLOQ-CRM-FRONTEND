@@ -4,18 +4,36 @@ export interface Machine {
   status: "ACTIVE" | "MAINTENANCE" | "INACTIVE" | "IDLE";
   operator?: string;
   utilization: number;
+  machine_name:string;
+  user_name:string;
 }
 
 export interface Item {
   id: string;
   itemNumber: string;
-  project: string;
+  project: Project;
   description: string;
-  machine: string;
-  operator?: string;
+  machine: Machine;
+  operator: Operator;
   status: "in_process" | "queued" | "completed" | "on_hold";
   duration?: string;
   timestamp: Date;
+  project_name:string;
+  lead_code:string;
+  lead:Lead;
+  cut_list:CutList;
+  actual_in_at_formatted:string;
+
+
+}
+export interface Operator{
+  user_name:string;
+}
+
+export interface CutList{
+  item_name:string;
+  material_details:string;
+  description:string;
 }
 
 export interface Operator {
@@ -35,6 +53,15 @@ export interface Project {
   completed: number;
   inProgress: number;
   progress: number;
+  project_name:string;
+  lead_code:string;
+  sqft_processed:string;
+processed:string;
+sqft_pending:string;
+pending:string;
+progress_sqft:string
+
+
 }
 
 export interface BottleneckData {
@@ -89,6 +116,7 @@ export interface MachineData {
   machine_name: string;
   machine_code: string;
   machine_type_id:number;
+  machine_type:string,
   status: MachineStatus;
   scan_type: MachineScanType;
   description: string;
@@ -110,7 +138,7 @@ export interface GetMachinesByVendorResponse {
 }
 
 export interface CreateMachinePayload {
-  vendor_id: number;
+  vendor_id?: number;
   machine_name: string;
   machine_code: string;
   machine_type_id: number;
@@ -120,8 +148,9 @@ export interface CreateMachinePayload {
   factory_id?: number | null;
   sequence_no: number;
   target_per_hour: number;
-  created_by: number;
+  created_by?: number;
   machine_image: File;
+  updated_by?:number;
 }
 
 export interface UpdateMachinePayload {
