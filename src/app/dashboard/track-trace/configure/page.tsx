@@ -54,7 +54,7 @@ import { VendorLeadsPostPayload } from "@/types/track-trace";
 const VENDOR_TOKEN = "7e7a9dda-cc59-4ec4-b153-cfdc0ddd6b01";
 const PROJECT_ID = "3f5ea6ec-9ece-4481-90c1-6cb163bd346c";
 
-export function mapConfigureFiltersToPayload(filters: ColumnFiltersState) {
+function mapConfigureFiltersToPayload(filters: ColumnFiltersState) {
   const payload: Record<string, any> = {};
 
   filters.forEach((filter) => {
