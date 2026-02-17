@@ -46,7 +46,8 @@ export default function ClientDocumentationDetails({
   // 🧩 API hooks
   const { data: leadDetails, isLoading } = useClientDocumentationDetails(
     vendorId!,
-    leadId
+    leadId,
+    userId!,
   );
 
   const { mutate: deleteDocument, isPending: deleting } =

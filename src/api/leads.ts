@@ -577,19 +577,19 @@ export const useDeleteDocument = (leadId?: number) => {
 
       if (leadId) {
         queryClient.invalidateQueries({
-          queryKey: ["siteMeasurementLeadDetails", leadId],
+          queryKey: ["siteMeasurementLeadDetails"],
         });
 
         queryClient.invalidateQueries({
-          queryKey: ["getQuotationDoc", leadId],
+          queryKey: ["getQuotationDoc"],
         });
 
         queryClient.invalidateQueries({
-          queryKey: ["meetings", leadId],
+          queryKey: ["meetings"],
         });
 
         queryClient.invalidateQueries({
-          queryKey: ["getDesignsDoc", leadId],
+          queryKey: ["getDesignsDoc"],
         });
 
         queryClient.invalidateQueries({
@@ -598,6 +598,14 @@ export const useDeleteDocument = (leadId?: number) => {
 
         queryClient.invalidateQueries({
           queryKey: ["bookingLead"],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["csp-booking-photos"],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["finalMeasurementLead"],
         });
 
         queryClient.invalidateQueries({
@@ -643,7 +651,19 @@ export const useDeleteDocument = (leadId?: number) => {
         });
 
         queryClient.invalidateQueries({
+          queryKey: ["usableHandover"],
+        });
+
+        queryClient.invalidateQueries({
           queryKey: ["underInstallationDetails"],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["installation-updates"],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["miscellaneousEntries"],
         });
       }
     },

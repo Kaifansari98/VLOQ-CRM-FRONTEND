@@ -95,7 +95,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
       }}
       title="Add Quotation"
       description="Upload the official quotation document for this lead."
-      size="lg"
+      size="smd"
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">

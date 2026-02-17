@@ -39,9 +39,10 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       ? instanceFromUrl
       : instanceId ?? null;
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
+  const userId = useAppSelector((state) => state.auth.user?.id)
 
   const { data } = useClientRequiredCompletionDate(vendorId, leadId);
-  const { data: clientDocs } = useClientDocumentationDetails(vendorId, leadId);
+  const { data: clientDocs } = useClientDocumentationDetails(vendorId, leadId, userId!, instanceFromUrl!);
   const instances = clientDocs?.product_structure_instances ?? [];
   const hasMultipleInstances = (clientDocs?.instance_count ?? 0) > 1;
   const [activeInstanceId, setActiveInstanceId] = useState<number | null>(

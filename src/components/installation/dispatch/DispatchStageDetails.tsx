@@ -22,6 +22,10 @@ import {
   CheckCircle2,
   Package,
   Pencil,
+  CalendarDays,
+  XCircle,
+  ArrowUpDown,
+  UserRound,
 } from "lucide-react";
 import {
   useRequiredDateForDispatch,
@@ -32,7 +36,10 @@ import {
   usePendingMaterialTasks,
 } from "@/api/installation/useDispatchStageLeads";
 import { useAppSelector } from "@/redux/store";
-import { updateNoOfBoxes, useUpdateNoOfBoxes } from "@/api/production/production-api";
+import {
+  updateNoOfBoxes,
+  useUpdateNoOfBoxes,
+} from "@/api/production/production-api";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -110,7 +117,7 @@ const DispatchDetailsSchema = z.object({
       },
       {
         message: "Enter a valid 10-digit mobile number",
-      }
+      },
     ),
 
   dispatch_remark: z.string().optional(),
@@ -132,7 +139,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id) || 0;
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type
+    (state) => state.auth.user?.user_type?.user_type,
   );
 
   const form = useForm<DispatchDetailsForm>({
@@ -159,7 +166,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
   const { data: tasks = [], isLoading } = usePendingMaterialTasks(
     vendorId,
-    leadId
+    leadId,
   );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
@@ -171,7 +178,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   // 🧩 For Edit No. of Boxes Modal
   const [openBoxesModal, setOpenBoxesModal] = useState(false);
   const [noOfBoxesInput, setNoOfBoxesInput] = useState(
-    requiredDateData?.no_of_boxes?.toString() || ""
+    requiredDateData?.no_of_boxes?.toString() || "",
   );
   const [instanceBoxes, setInstanceBoxes] = useState<
     { id: number; title: string; value: string }[]
@@ -184,7 +191,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
   const { data: instancesResponse } = useLeadProductStructureInstances(
     leadId,
-    vendorId
+    vendorId,
   );
 
   React.useEffect(() => {
@@ -202,6 +209,8 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     }
   }, [dispatchDetails]);
 
+  console.log("dispatch details data>>>>>: ", requiredDateData);
+
   React.useEffect(() => {
     const instances = Array.isArray(instancesResponse?.data)
       ? instancesResponse?.data
@@ -213,10 +222,8 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
           id: Number(instance.id),
           title: instance.title || `Instance ${instance.id}`,
           value:
-            instance.no_of_boxes != null
-              ? String(instance.no_of_boxes)
-              : "",
-        }))
+            instance.no_of_boxes != null ? String(instance.no_of_boxes) : "",
+        })),
       );
     }
   }, [instancesResponse]);
@@ -278,29 +285,29 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
       {/* Required Date & Boxes Info */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {/* ---- Required Delivery Date Card ---- */}
-        <div className="border rounded-xl bg-background transition-all">
-          <div className="p-3 sm:p-4 md:p-5 flex items-center gap-3 sm:gap-4">
-            {/* Icon */}
-            <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 shrink-0">
-              <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+        <div className="border rounded-xl bg-background hover:shadow-sm transition-all">
+          <div className="p-3 sm:p-4 md:p-5 flex items-start gap-3 sm:gap-4">
+            <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 shrink-0 mt-0.5">
+              <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             </div>
-
-            {/* Content */}
             <div className="flex flex-col min-w-0">
-              <p className="text-xs font-medium text-muted-foreground tracking-wide">
+              <p className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
                 Required OnSite Delivery Date
               </p>
-
               {loadingRequiredDate ? (
-                <div className="h-5 sm:h-6 w-32 sm:w-40 bg-muted animate-pulse rounded-md mt-1 sm:mt-2" />
+                <div className="h-5 sm:h-6 w-32 sm:w-40 bg-muted animate-pulse rounded-md mt-1.5" />
               ) : (
-                <p className="text-base sm:text-lg md:text-xl font-semibold text-foreground mt-1 break-words">
-                  {requiredDateData?.required_date_for_dispatch
-                    ? format(
-                        new Date(requiredDateData.required_date_for_dispatch),
-                        "EEEE dd MMMM yyyy"
-                      )
-                    : "Not set"}
+                <p className="text-sm sm:text-base md:text-lg font-semibold text-foreground mt-1 break-words leading-snug">
+                  {requiredDateData?.required_date_for_dispatch ? (
+                    format(
+                      new Date(requiredDateData.required_date_for_dispatch),
+                      "EEEE, dd MMMM yyyy",
+                    )
+                  ) : (
+                    <span className="text-muted-foreground font-normal text-sm">
+                      Not set
+                    </span>
+                  )}
                 </p>
               )}
             </div>
@@ -308,29 +315,24 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
         </div>
 
         {/* ---- Number of Boxes Card ---- */}
-        <div className="border rounded-xl bg-background transition-all">
-          <div className="p-3 sm:p-4 md:p-5 flex items-center gap-3 sm:gap-4">
-            {/* Icon */}
-            <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 shrink-0">
+        <div className="border rounded-xl bg-background hover:shadow-sm transition-all">
+          <div className="p-3 sm:p-4 md:p-5 flex items-start gap-3 sm:gap-4">
+            <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 shrink-0 mt-0.5">
               <Package className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             </div>
-
-            {/* Content */}
             <div className="flex flex-col w-full min-w-0">
-              <p className="text-xs font-medium text-muted-foreground tracking-wide">
+              <p className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
                 Number of Boxes
               </p>
-
               {loadingRequiredDate ? (
-                <div className="h-5 sm:h-6 w-20 sm:w-24 bg-muted animate-pulse rounded-md mt-1 sm:mt-2" />
+                <div className="h-5 sm:h-6 w-20 sm:w-24 bg-muted animate-pulse rounded-md mt-1.5" />
               ) : (
                 <div className="flex items-center gap-2 mt-1">
-                  <p className="text-base sm:text-lg md:text-xl font-semibold text-foreground">
+                  <p className="text-sm sm:text-base md:text-lg font-semibold text-foreground">
                     {useLeadLevelBoxes
                       ? requiredDateData?.no_of_boxes || 0
                       : totalInstanceBoxes}
                   </p>
-
                   {canViewAndWork && (
                     <Button
                       size="icon"
@@ -338,13 +340,87 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                       className="h-6 w-6 sm:h-7 sm:w-7 p-0 rounded-full hover:bg-accent"
                       onClick={() => {
                         setNoOfBoxesInput(
-                          requiredDateData?.no_of_boxes?.toString() || ""
+                          requiredDateData?.no_of_boxes?.toString() || "",
                         );
                         setOpenBoxesModal(true);
                       }}
                     >
                       <Pencil className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground hover:text-foreground" />
                     </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ---- OnSite Contact Person Card ---- */}
+        <div className="border rounded-xl bg-background hover:shadow-sm transition-all">
+          <div className="p-3 sm:p-4 md:p-5 flex items-start gap-3 sm:gap-4">
+            <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 shrink-0 mt-0.5">
+              <UserRound className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+            </div>
+            <div className="flex flex-col min-w-0 w-full">
+              <p className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
+                OnSite Person Name and Contact
+              </p>
+              {loadingRequiredDate ? (
+                <div className="space-y-1.5 mt-1.5">
+                  <div className="h-4 w-32 bg-muted animate-pulse rounded-md" />
+                  <div className="h-4 w-24 bg-muted animate-pulse rounded-md" />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className="text-sm sm:text-base md:text-lg font-semibold text-foreground break-words leading-snug">
+                    {requiredDateData?.onsite_contact_person_name || (
+                      <span className="text-muted-foreground font-normal text-sm">
+                        No name
+                      </span>
+                    )}
+                  </p>
+                  {requiredDateData?.onsite_contact_person_number && (
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm sm:text-base md:text-lg font-semibold text-foreground break-words leading-snug">
+                        {requiredDateData.onsite_contact_person_number}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ---- Material Lift Availability Card ---- */}
+        <div className="border rounded-xl bg-background hover:shadow-sm transition-all">
+          <div className="p-3 sm:p-4 md:p-5 flex items-start gap-3 sm:gap-4">
+            <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 shrink-0 mt-0.5">
+              <ArrowUpDown className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+            </div>
+            <div className="flex flex-col min-w-0 w-full">
+              <p className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
+                OnSite Material Lift
+              </p>
+              {loadingRequiredDate ? (
+                <div className="h-6 w-20 bg-muted animate-pulse rounded-md mt-1.5" />
+              ) : (
+                <div className="mt-1.5">
+                  {requiredDateData?.material_lift_availability === true ||
+                  requiredDateData?.material_lift_availability === "true" ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Available
+                    </span>
+                  ) : requiredDateData?.material_lift_availability === false ||
+                    requiredDateData?.material_lift_availability === "false" ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
+                      <XCircle className="h-3.5 w-3.5" />
+                      Not Available
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground font-normal text-sm">
+                      Not set
+                    </span>
                   )}
                 </div>
               )}
@@ -640,7 +716,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               <AnimatePresence mode="popLayout">
                 {tasks.map((task: any, idx: number) => {
                   const [taskTitle, ...descParts] = (task.remark || "").split(
-                    "—"
+                    "—",
                   );
                   const description = descParts.join("—").trim();
 
@@ -681,7 +757,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                                   Due:{" "}
                                   {format(
                                     new Date(task.due_date),
-                                    "dd MMM yyyy"
+                                    "dd MMM yyyy",
                                   )}
                                 </span>
                               </div>
@@ -689,7 +765,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                               <Badge
                                 variant="outline"
                                 className={`text-xs ${getStatusColor(
-                                  task.status
+                                  task.status,
                                 )} capitalize`}
                               >
                                 {task.status === "completed" && (
@@ -751,10 +827,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               </div>
               <div className="space-y-2 max-h-64 overflow-auto pr-1">
                 {instanceBoxes.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-2"
-                  >
+                  <div key={item.id} className="flex items-center gap-2">
                     <div className="flex-1 text-sm text-muted-foreground">
                       {item.title}
                     </div>
@@ -767,8 +840,8 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                           prev.map((box) =>
                             box.id === item.id
                               ? { ...box, value: e.target.value }
-                              : box
-                          )
+                              : box,
+                          ),
                         )
                       }
                       placeholder="e.g. 12"
@@ -806,7 +879,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     await updateNoBoxes(formData);
                   } else {
                     const invalid = instanceBoxes.find(
-                      (item) => !item.value || Number(item.value) <= 0
+                      (item) => !item.value || Number(item.value) <= 0,
                     );
                     if (invalid) {
                       toast.error("Please enter boxes for all instances");
@@ -818,7 +891,12 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                       formData.append("user_id", String(userId || 0));
                       formData.append("account_id", String(accountId || 0));
                       formData.append("no_of_boxes", String(item.value));
-                      await updateNoOfBoxes(vendorId, leadId, formData, item.id);
+                      await updateNoOfBoxes(
+                        vendorId,
+                        leadId,
+                        formData,
+                        item.id,
+                      );
                     }
                   }
 
@@ -827,13 +905,17 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     queryKey: ["requiredDateForDispatch"],
                   });
                   queryClient.invalidateQueries({
-                    queryKey: ["lead-product-structure-instances", leadId, vendorId],
+                    queryKey: [
+                      "lead-product-structure-instances",
+                      leadId,
+                      vendorId,
+                    ],
                   });
                   setOpenBoxesModal(false);
                 } catch (err: any) {
                   toast.error(
                     err?.response?.data?.message ||
-                      "Failed to update No. of Boxes"
+                      "Failed to update No. of Boxes",
                   );
                 }
               }}

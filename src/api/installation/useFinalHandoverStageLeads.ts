@@ -63,11 +63,11 @@ export const getFinalHandoverStageLeads = async (
   vendorId: number,
   userId: number,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ): Promise<FinalHandoverLeadsResponse> => {
   const { data } = await apiClient.get(
     `/leads/installation/final-handover/vendorId/${vendorId}/userId/${userId}`,
-    { params: { page, limit } }
+    { params: { page, limit } },
   );
 
   return data?.data; // { total, leads }
@@ -79,10 +79,10 @@ export const getFinalHandoverStageLeads = async (
  */
 export const getFinalHandoverDocuments = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ): Promise<FinalHandoverDocument[]> => {
   const { data } = await apiClient.get(
-    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/documents`
+    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/documents`,
   );
 
   return data?.data || [];
@@ -93,7 +93,7 @@ export const getFinalHandoverDocuments = async (
  * @route POST /leads/installation/final-handover/upload
  */
 export const uploadFinalHandoverDocuments = async (
-  formData: FormData
+  formData: FormData,
 ): Promise<FinalHandoverDocument[]> => {
   const { data } = await apiClient.post(
     `/leads/installation/final-handover/upload`,
@@ -102,7 +102,7 @@ export const uploadFinalHandoverDocuments = async (
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
 
   return data?.data || [];
@@ -119,7 +119,7 @@ export const useFinalHandoverStageLeads = (
   vendorId?: number,
   userId?: number,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ) => {
   return useQuery({
     queryKey: ["finalHandoverStageLeads", vendorId, userId, page, limit],
@@ -133,13 +133,12 @@ export const useFinalHandoverStageLeads = (
  */
 export const useGetFinalHandoverDocuments = (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   return useQuery({
     queryKey: ["finalHandoverDocuments", vendorId, leadId],
     queryFn: () => getFinalHandoverDocuments(vendorId, leadId),
     enabled: !!vendorId && !!leadId,
-    refetchOnMount: true,
   });
 };
 
@@ -153,8 +152,6 @@ export const useUploadFinalHandoverDocuments = () => {
     mutationFn: (formData: FormData) => uploadFinalHandoverDocuments(formData),
 
     onSuccess: (data, variables) => {
-
-
       // Extract vendorId and leadId from FormData
       const vendorId = variables.get("vendorId");
       const leadId = variables.get("leadId");
@@ -181,10 +178,10 @@ export const useUploadFinalHandoverDocuments = () => {
 
 export const fetchFinalHandoverReadiness = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   const { data } = await apiClient.get(
-    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/ready-status`
+    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/ready-status`,
   );
 
   return data?.data; // { docs_complete, pending_tasks_clear, can_move_to_final_handover }
@@ -192,7 +189,7 @@ export const fetchFinalHandoverReadiness = async (
 
 export const useFinalHandoverReadiness = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
 ) => {
   return useQuery({
     queryKey: ["finalHandoverReadiness", vendorId, leadId],
@@ -203,10 +200,10 @@ export const useFinalHandoverReadiness = (
 
 export const fetchIsTotalProjectAmountPaid = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ): Promise<TotalProjectPaymentStatus> => {
   const { data } = await apiClient.get(
-    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/is-total-project-amount-paid`
+    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/is-total-project-amount-paid`,
   );
 
   return data?.data;
@@ -214,7 +211,7 @@ export const fetchIsTotalProjectAmountPaid = async (
 
 export const useIsTotalProjectAmountPaid = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
 ) => {
   return useQuery({
     queryKey: ["isTotalProjectAmountPaid", vendorId, leadId],
@@ -228,11 +225,11 @@ export const useIsTotalProjectAmountPaid = (
 export const moveLeadToProjectCompleted = async (
   vendorId: number,
   leadId: number,
-  updated_by: number
+  updated_by: number,
 ) => {
   const { data } = await apiClient.put(
     `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/move-to-project-completed`,
-    { updated_by }
+    { updated_by },
   );
 
   return data;

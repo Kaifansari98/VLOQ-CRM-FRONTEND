@@ -201,8 +201,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const user = useAppSelector((state) => state.auth.user);
   const userType = user?.user_type?.user_type?.toLowerCase();
-  const canSeeOverallLeads =
-    userType === "admin" || userType === "super-admin";
+  const canSeeOverallLeads = userType === "admin" || userType === "super-admin";
   const canSeeMiscLeads =
     userType === "admin" ||
     userType === "super-admin" ||
@@ -213,18 +212,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const miscPayload = React.useMemo(
     () => ({
-      userId: canSeeMiscLeads ? userId ?? 0 : 0,
+      userId: canSeeMiscLeads ? (userId ?? 0) : 0,
       page: 1,
       limit: 1,
     }),
-    [canSeeMiscLeads, userId]
+    [canSeeMiscLeads, userId],
   );
 
   const { data: miscLeadData, isLoading: isMiscLeadLoading } =
-    useUnderInstallationLeadsWithMiscellaneous(
-      vendorId ?? 0,
-      miscPayload
-    );
+    useUnderInstallationLeadsWithMiscellaneous(vendorId ?? 0, miscPayload);
   const miscLeadsCount = miscLeadData?.count ?? 0;
 
   const userData = user
@@ -267,10 +263,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     userType === "backend"
                       ? subItem.title !== "Tech Check"
                       : subItem.title !== "Tech Check" &&
-                        subItem.title !== "Order Login"
+                        subItem.title !== "Order Login",
                   ),
                 }
-              : item
+              : item,
           )
         : adminOnlyItems;
 

@@ -25,6 +25,7 @@ export default function LeadDetailsProductionUtil({
 }: LeadDetailsProductionUtilProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const userId = useAppSelector((s) => s.auth.user?.id);
   const searchParams = useSearchParams();
   const instanceFromUrlRaw = searchParams.get("instance_id");
   const instanceFromUrl = instanceFromUrlRaw ? Number(instanceFromUrlRaw) : null;
@@ -35,7 +36,7 @@ export default function LeadDetailsProductionUtil({
       ? instanceFromUrl
       : instanceId ?? null;
 
-  const { data: clientDocs } = useClientDocumentationDetails(vendorId!, leadId);
+  const { data: clientDocs } = useClientDocumentationDetails(vendorId!, leadId, userId!, instanceFromUrl!);
   const instances = clientDocs?.product_structure_instances ?? [];
   const hasMultipleInstances = (clientDocs?.instance_count ?? 0) > 1;
   const [activeInstanceId, setActiveInstanceId] = useState<number | null>(

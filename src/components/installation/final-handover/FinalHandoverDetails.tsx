@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload,
@@ -71,7 +71,7 @@ export default function FinalHandover({
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [activeSection, setActiveSection] = useState<DocumentSection | null>(
-    null
+    null,
   );
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
@@ -80,14 +80,14 @@ export default function FinalHandover({
 
   const { data: documents, isLoading } = useGetFinalHandoverDocuments(
     vendorId,
-    leadId
+    leadId,
   );
   const uploadMutation = useUploadFinalHandoverDocuments();
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
   const canWork = canViewAndWorkFinalHandoverStage(userType, leadStatus);
-
+  const [localDocuments, setLocalDocuments] = useState<any[]>([]);
   const sections: DocumentSection[] = [
     {
       id: "final_site_photos",
@@ -146,18 +146,24 @@ export default function FinalHandover({
     },
   ];
 
+  useEffect(() => {
+    if (activeSection) {
+      setLocalDocuments(getDocumentsForSection(activeSection.id));
+    }
+  }, [activeSection, documents]);
+
   const docsByType = React.useMemo(() => {
     if (!documents) return {};
     return {
       final_site_photos: documents.filter(
-        (d: any) => d.doc_type_tag === "Type 27"
+        (d: any) => d.doc_type_tag === "Type 27",
       ),
       warranty_card: documents.filter((d: any) => d.doc_type_tag === "Type 28"),
       handover_booklet: documents.filter(
-        (d: any) => d.doc_type_tag === "Type 29"
+        (d: any) => d.doc_type_tag === "Type 29",
       ),
       final_handover_form: documents.filter(
-        (d: any) => d.doc_type_tag === "Type 30"
+        (d: any) => d.doc_type_tag === "Type 30",
       ),
       qc_documents: documents.filter((d: any) => d.doc_type_tag === "Type 31"),
     };
@@ -188,14 +194,25 @@ export default function FinalHandover({
   };
 
   const handleConfirmDelete = () => {
-    if (confirmDelete) {
-      deleteDocument({
-        vendorId: vendorId,
+    if (!confirmDelete) return;
+
+    deleteDocument(
+      {
+        vendorId,
         documentId: confirmDelete,
         deleted_by: userId,
-      });
-      setConfirmDelete(null);
-    }
+      },
+      {
+        onSuccess: () => {
+          // 🔥 instant UI update inside modal
+          setLocalDocuments((prev) =>
+            prev.filter((doc) => doc.id !== confirmDelete),
+          );
+
+          setConfirmDelete(null);
+        },
+      },
+    );
   };
 
   const getDocumentsForSection = (sectionId: string) => {
@@ -451,7 +468,7 @@ export default function FinalHandover({
                 </div>
 
                 {(() => {
-                  const docs = getDocumentsForSection(activeSection.id);
+                  const docs = localDocuments;
                   const { images, nonImages } = separateImageAndDocs(docs);
 
                   if (docs.length === 0) {

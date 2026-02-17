@@ -102,7 +102,7 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
   );
   const { data: docsDetails, isLoading: docsLoading } = useClientDocumentationDetails(
     vendorId,
-    leadId
+    leadId,
   );
   const { mutateAsync: uploadDocs, isPending: uploading } =
     useUploadMoreClientDocumentation();

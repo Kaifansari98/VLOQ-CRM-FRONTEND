@@ -128,7 +128,7 @@ export default function OrderLoginModal({
       toast.success("Vendor updated successfully!");
       setSelectedVendorId(pendingVendorId);
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId],
+        queryKey: ["orderLoginByLead", vendorId, leadId, userId],
       });
     } catch (err: any) {
       toast.error(err?.message || "Failed to update vendor");
@@ -160,7 +160,7 @@ export default function OrderLoginModal({
       setIsCompleted(true);
 
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId],
+        queryKey: ["orderLoginByLead", vendorId, leadId, userId],
       });
       queryClient.invalidateQueries({
         queryKey: ["postProductionReady", vendorId, leadId],
@@ -209,7 +209,7 @@ export default function OrderLoginModal({
       });
       toast.success("Production ready date updated successfully!");
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId],
+        queryKey: ["orderLoginByLead", vendorId, leadId, userId],
       });
       queryClient.invalidateQueries({
         queryKey: ["latestOrderLogin", vendorId, leadId],

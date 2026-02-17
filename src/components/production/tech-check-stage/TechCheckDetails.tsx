@@ -72,7 +72,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
       : instanceId ?? null;
 
   // ✅ Hooks
-  const { data: clientDocs } = useClientDocumentationDetails(vendorId, leadId);
+  const { data: clientDocs } = useClientDocumentationDetails(vendorId, leadId, userId!, instanceIdFromUrl!);
   const { data: siteMeasurement } = useSiteMeasurementLeadById(leadId);
   const { data: finalMeasurement } = useFinalMeasurementLeadById(
     vendorId,

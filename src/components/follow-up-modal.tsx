@@ -88,12 +88,16 @@ const FollowUpModal: React.FC<Props> = ({
             queryClient.invalidateQueries({
               queryKey: ["finalHandoverReadiness"],
             });
+
+            queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+
+            queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
           }
         },
         onError: (err) => {
           toast.error(err?.message || "❌ Failed to update lead");
         },
-      }
+      },
     );
     setOpenCompletedModal(false);
     onOpenChange(false);
@@ -124,12 +128,14 @@ const FollowUpModal: React.FC<Props> = ({
             queryClient.invalidateQueries({
               queryKey: ["vendorUserTasks", vendorId, userId],
             });
+            queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+            queryClient.invalidateQueries({ queryKey: ["leadStats"] });
           }
         },
         onError: (err) => {
           toast.error(err?.message || "Failed to cancel lead");
         },
-      }
+      },
     );
     setOpenCancelModal(false);
     onOpenChange(false);
@@ -143,15 +149,15 @@ const FollowUpModal: React.FC<Props> = ({
           variant === "Pending Work"
             ? "Pending Work Task"
             : variant === "Pending Materials"
-            ? "Pending Material Task"
-            : "Follow Up"
+              ? "Pending Material Task"
+              : "Follow Up"
         }
         description={
           variant === "Pending Work"
             ? "Update or manage this pending work task for the lead."
             : variant === "Pending Materials"
-            ? "Update the pending material task status for this lead."
-            : "Update the follow-up status for this lead."
+              ? "Update the pending material task status for this lead."
+              : "Update the follow-up status for this lead."
         }
         size="md"
       >
@@ -164,8 +170,8 @@ const FollowUpModal: React.FC<Props> = ({
                 {variant === "Pending Work"
                   ? "If this pending work has been completed, you can mark it as done."
                   : variant === "Pending Materials"
-                  ? "If this pending material has been dispatched or received, mark it as completed."
-                  : "If your follow up is completed, you can mark it as completed."}
+                    ? "If this pending material has been dispatched or received, mark it as completed."
+                    : "If your follow up is completed, you can mark it as completed."}
               </p>
             </div>
             <Button
@@ -184,8 +190,8 @@ const FollowUpModal: React.FC<Props> = ({
                 {variant === "Pending Work"
                   ? "If the work schedule has changed or delayed, you can reschedule it."
                   : variant === "Pending Materials"
-                  ? "If the material dispatch date has changed or delayed, you can reschedule it."
-                  : "If the client has pushed the meeting date, you can reschedule it."}
+                    ? "If the material dispatch date has changed or delayed, you can reschedule it."
+                    : "If the client has pushed the meeting date, you can reschedule it."}
               </p>
             </div>
             <Button
@@ -204,8 +210,8 @@ const FollowUpModal: React.FC<Props> = ({
                 {variant === "Pending Work"
                   ? "If this pending work is no longer relevant, you can cancel this task."
                   : variant === "Pending Materials"
-                  ? "If this pending material task is no longer relevant, you can cancel it."
-                  : "If this follow up is cancelled, you can mark it as cancelled."}
+                    ? "If this pending material task is no longer relevant, you can cancel it."
+                    : "If this follow up is cancelled, you can mark it as cancelled."}
               </p>
             </div>
             <Button className="w-28" onClick={() => setOpenCancelModal(true)}>
@@ -226,8 +232,8 @@ const FollowUpModal: React.FC<Props> = ({
               {variant === "Pending Work"
                 ? "Mark Pending Work Task as Completed?"
                 : variant === "Pending Materials"
-                ? "Mark Pending Material Task as Completed?"
-                : "Mark Follow Up as Completed?"}
+                  ? "Mark Pending Material Task as Completed?"
+                  : "Mark Follow Up as Completed?"}
               as Completed?
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -235,8 +241,8 @@ const FollowUpModal: React.FC<Props> = ({
               {variant === "Pending Work"
                 ? " pending work task "
                 : variant === "Pending Materials"
-                ? " pending material task "
-                : " follow up "}
+                  ? " pending material task "
+                  : " follow up "}
               as completed? This action can’t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -261,8 +267,8 @@ const FollowUpModal: React.FC<Props> = ({
               {variant === "Pending Work"
                 ? "Cancel Pending Work Task?"
                 : variant === "Pending Materials"
-                ? "Cancel Pending Material Task?"
-                : "Cancel Follow Up?"}
+                  ? "Cancel Pending Material Task?"
+                  : "Cancel Follow Up?"}
               ?
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -270,8 +276,8 @@ const FollowUpModal: React.FC<Props> = ({
               {variant === "Pending Work"
                 ? " pending work task "
                 : variant === "Pending Materials"
-                ? " pending material task "
-                : " follow up "}
+                  ? " pending material task "
+                  : " follow up "}
               ? This action can’t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -77,8 +77,11 @@ export const useUploadFileBreakup = (vendorId: number | undefined) =>
 
 // ✅ --- Fetch order login details by lead ---
 export const getOrderLoginByLead = async (
+  
   vendorId: number,
+ 
   leadId: number,
+  senderUserId: number,
   instanceId?: number | null,
 ) => {
   try {
@@ -86,7 +89,7 @@ export const getOrderLoginByLead = async (
       `/leads/production/order-login/vendorId/${vendorId}/get-order-login-details`,
       {
         params: {
-          lead_id: leadId,
+          lead_id: leadId, senderUserId: senderUserId,
           ...(typeof instanceId !== "undefined"
             ? { instance_id: instanceId }
             : {}),
@@ -104,13 +107,14 @@ export const getOrderLoginByLead = async (
 export const useOrderLoginByLead = (
   vendorId: number | undefined,
   leadId: number | undefined,
+  senderUserId: number | undefined,
   instanceId?: number | null,
 ) =>
   useQuery({
-    queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
+    queryKey: ["orderLoginByLead", vendorId, leadId, senderUserId, instanceId ?? "all"],
     queryFn: async () => {
-      if (!vendorId || !leadId) return [];
-      return getOrderLoginByLead(vendorId, leadId, instanceId);
+      if (!vendorId || !leadId || !senderUserId) return [];
+      return getOrderLoginByLead(vendorId, leadId, senderUserId, instanceId);
     },
     enabled: Boolean(vendorId && leadId),
     staleTime: 60 * 1000, // 1 minute cache freshness

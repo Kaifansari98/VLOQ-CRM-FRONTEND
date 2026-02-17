@@ -54,7 +54,7 @@ interface MoveToProductionModalProps {
     accountId: number;
     instanceId?: number | null;
   };
-  client_required_order_login_complition_date? : string;
+  client_required_order_login_complition_date?: string;
 }
 
 export default function MoveToProductionModal({
@@ -142,17 +142,18 @@ export default function MoveToProductionModal({
               : "/dashboard/production/pre-post-prod"
           );
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
-          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
+          queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+          queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
           setConfirmOpen(false);
           onOpenChange(false);
         },
-      }
+      },
     );
   };
 
   const onSubmit: SubmitHandler<FormValues> = (values) => {
     const selectedUser = mappedUsers.find(
-      (u: any) => u.id === values.assign_to_user_id
+      (u: any) => u.id === values.assign_to_user_id,
     );
     setSelectedUserName(selectedUser?.label || null);
     setSelectedUserId(values.assign_to_user_id);

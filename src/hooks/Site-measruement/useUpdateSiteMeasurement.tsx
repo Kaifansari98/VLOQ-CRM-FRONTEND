@@ -17,7 +17,7 @@ export const useUpdateSiteMeasurementMutation = () => {
     onSuccess: (_, variables) => {
       const hasImages = variables.formData.has("current_site_photos");
       const hasPaymentDetailsPhotos = variables.formData.has(
-        "payment_detail_photos"
+        "payment_detail_photos",
       );
       const hasPaymentInfo =
         variables.formData.has("amount") ||
@@ -27,7 +27,7 @@ export const useUpdateSiteMeasurementMutation = () => {
       // Show dynamic toast
       if (hasImages && hasPaymentDetailsPhotos && hasPaymentInfo) {
         toast.success(
-          "Payment info, site photos & payment details photos updated!"
+          "Payment info, site photos & payment details photos updated!",
         );
       } else if (hasImages && hasPaymentInfo) {
         toast.success("Payment info & site photos updated successfully!");
@@ -41,6 +41,7 @@ export const useUpdateSiteMeasurementMutation = () => {
 
       // Refresh query
       queryClient.invalidateQueries({ queryKey: ["siteMeasurementLeads"] });
+      queryClient.invalidateQueries({ queryKey: ["csp-booking-photos"] });
     },
 
     onError: (error: any) => {

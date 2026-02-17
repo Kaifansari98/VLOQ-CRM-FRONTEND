@@ -79,6 +79,8 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
         paymentId: data.paymentId || 0,
         formData,
       });
+      
+      
 
       form.reset();
       onOpenChange(false);
@@ -93,7 +95,7 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
       onOpenChange={onOpenChange}
       title="Add Site Photos"
       description="Upload current site photos or supporting documents."
-      size="lg"
+      size="smd"
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
@@ -111,9 +113,6 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
                     accept="image/*,.heic,.heif,.avif,.webp,.bmp,.tif,.tiff,.svg,.jfif"
                   />
                 </FormControl>
-                <FormDescription className="text-xs">
-                  Upload photos or documents related to the site.
-                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

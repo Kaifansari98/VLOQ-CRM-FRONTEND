@@ -2,10 +2,10 @@ import { apiClient } from "@/lib/apiClient";
 
 export const getClientDocumentationLeads = async (
   vendorId: number,
-  userId: number
+  userId: number,
 ) => {
   const { data } = await apiClient.get(
-    `/leads/client-documentation/allLeads/vendorId/${vendorId}/userId/${userId}`
+    `/leads/client-documentation/allLeads/vendorId/${vendorId}/userId/${userId}`,
   );
   return data;
 };
@@ -13,11 +13,17 @@ export const getClientDocumentationLeads = async (
 export const getClientDocumentationDetails = async (
   vendorId: number,
   leadId: number,
-  userId?: number
+  userId?: number,
+  instanceId?: number,
 ) => {
   const { data } = await apiClient.get(
     `/leads/client-documentation/vendorId/${vendorId}/leadId/${leadId}`,
-    { params: { userId } }
+    {
+      params: {
+        userId,
+        instanceId,
+      },
+    },
   );
 
   return data.data;
@@ -34,7 +40,7 @@ export interface UploadMoreDocPayload {
 }
 
 export const uploadMoreClientDocumentation = async (
-  payload: UploadMoreDocPayload
+  payload: UploadMoreDocPayload,
 ) => {
   const formData = new FormData();
   formData.append("lead_id", payload.leadId.toString());
@@ -44,7 +50,7 @@ export const uploadMoreClientDocumentation = async (
   if (payload.productStructureInstanceId) {
     formData.append(
       "product_structure_instance_id",
-      payload.productStructureInstanceId.toString()
+      payload.productStructureInstanceId.toString(),
     );
   }
 
@@ -59,7 +65,7 @@ export const uploadMoreClientDocumentation = async (
   const { data } = await apiClient.post(
     `/leads/client-documentation/add-documents`,
     formData,
-    { headers: { "Content-Type": "multipart/form-data" } }
+    { headers: { "Content-Type": "multipart/form-data" } },
   );
 
   return data;
@@ -76,7 +82,7 @@ export const moveLeadToClientApproval = async (payload: {
       lead_id: payload.leadId,
       vendor_id: payload.vendorId,
       updated_by: payload.updatedBy,
-    }
+    },
   );
   return data;
 };

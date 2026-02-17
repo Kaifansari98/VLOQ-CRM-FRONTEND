@@ -131,6 +131,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     userType,
     leadStatus
   );
+
+
   const structureInstances: LeadProductStructureInstance[] = Array.isArray(
     structureInstancesData?.data
   )

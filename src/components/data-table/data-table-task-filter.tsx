@@ -20,6 +20,7 @@ const TASK_TYPES = [
   "Follow Up",
   "BookingDone - ISM",
   "Initial Site Measurement",
+  "Order Login"
 ];
 
 /* ===========================
