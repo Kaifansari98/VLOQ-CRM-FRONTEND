@@ -360,18 +360,15 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
             <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 shrink-0 mt-0.5">
               <UserRound className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             </div>
-            <div className="flex flex-col min-w-0 w-full">
-              <p className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
-                OnSite Person Name and Contact
-              </p>
+            <div className="flex  min-w-0 w-full">
               {loadingRequiredDate ? (
                 <div className="space-y-1.5 mt-1.5">
                   <div className="h-4 w-32 bg-muted animate-pulse rounded-md" />
                   <div className="h-4 w-24 bg-muted animate-pulse rounded-md" />
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  <p className="text-sm sm:text-base md:text-lg font-semibold text-foreground break-words leading-snug">
+                <div className="flex flex-col items-start">
+                  <p className="text-sm sm:text-base md:text-lg capitalize font-semibold text-foreground break-words leading-snug">
                     {requiredDateData?.onsite_contact_person_name || (
                       <span className="text-muted-foreground font-normal text-sm">
                         No name
