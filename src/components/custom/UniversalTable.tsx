@@ -17,8 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import ClearInput from "@/components/origin-input";
 import { DataTable } from "@/components/data-table/data-table";
-import { DataTableSortList } from "@/components/data-table/data-table-sort-list";
-import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 
