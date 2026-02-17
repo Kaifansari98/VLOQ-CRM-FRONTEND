@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert } from '@/types';
+import { Alert } from '@/types/track-trace';
 import { AlertTriangle, Info, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface AlertsProps {

@@ -28,7 +28,7 @@ import { useUpdateMachine } from "@/hooks/track-trace-hooks/useTrackTraceMasterH
 import { useAppSelector } from "@/redux/store";
 import { toast } from "react-toastify";
 import { Loader2, Pencil } from "lucide-react";
-import type { MachineStatus, MachineScanType, MachineData } from "@/types/track-trace";
+import type { MachineStatus, MachineScanType, MachineData, CreateMachinePayload, UpdateMachinePayload } from "@/types/track-trace";
 import Image from "next/image";
 import MachinePicker from "../machine-picker";
 import { useMachineTypes } from "@/hooks/track-trace/useTrackTraceProjects";
@@ -133,17 +133,17 @@ export function EditMachineModal({
       return;
     }
 
-    const payload = {
+    const payload : UpdateMachinePayload = {      
       machine_name: data.machine_name.trim(),
       machine_code: data.machine_code.trim(),
-      machine_type_id: data.machine_type_id.trim(),
+      machine_type_id: Number(data.machine_type_id.trim()),
       status: data.status as MachineStatus,
       scan_type: data.scan_type as MachineScanType,
       description: data.description.trim(),
       factory_id: data.factory_id ? Number(data.factory_id) : null,
       sequence_no: Number(data.sequence_no),
       target_per_hour: Number(data.target_per_hour),
-      updated_by: userId,
+      updated_by: Number(userId),
       machine_image: data.machine_image && data.machine_image.length > 0
         ? data.machine_image[0]
         : undefined as any, // If no new image, send undefined

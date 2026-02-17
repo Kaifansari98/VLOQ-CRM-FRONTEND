@@ -1,6 +1,6 @@
 'use client';
 
-import { Item } from '@/types';
+import { Item } from '@/types/track-trace';
 
 interface RealTimeTrackingProps {
   items: Item[];

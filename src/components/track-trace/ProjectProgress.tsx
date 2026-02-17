@@ -1,6 +1,8 @@
 'use client';
 
-import { Project } from '@/types';
+import { Project } from "@/types/track-trace";
+
+
 
 interface ProjectProgressProps {
   projects: Project[];

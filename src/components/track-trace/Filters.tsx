@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { FilterOptions } from '@/types/track-trace';
 import { useAppSelector } from '@/redux/store';
 import { apiClient } from '@/lib/apiClient';
+import { MachineFilterItem, ProjectFilterItem, UserFilterItem } from '@/types/track-trace/track-trace.types';
 
 interface FiltersProps {
   onFilterChange?: (filters: FilterOptions) => void;
@@ -24,10 +25,16 @@ export default function Filters({ onFilterChange }: FiltersProps) {
     setFilters(newFilters);
     onFilterChange?.(newFilters);
   };
+  
 
-  const [projectFilterData, setProjectFilterData] = useState<any>(null);
-  const [machineFilterData, setMachineFilterData] = useState<any>(null);
-  const [userFilterData, setUserFilterData] = useState<any>(null);
+  // const [projectFilterData, setProjectFilterData] = useState<any>(null);
+  // const [machineFilterData, setMachineFilterData] = useState<any>(null);
+  // const [userFilterData, setUserFilterData] = useState<any>(null);
+
+  const [projectFilterData, setProjectFilterData] = useState<ProjectFilterItem[]>([]);
+const [machineFilterData, setMachineFilterData] = useState<MachineFilterItem[]>([]);
+const [userFilterData, setUserFilterData] = useState<UserFilterItem[]>([]);
+
 
   const clearFilter = (key: keyof FilterOptions) => {
     handleFilterChange(key, 'all');

@@ -1,6 +1,6 @@
 'use client';
 
-import { Machine } from '@/types';
+import { Machine } from '@/types/track-trace';
 
 interface MachineStatusProps {
   machines: Machine[];

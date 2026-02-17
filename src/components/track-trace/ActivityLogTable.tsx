@@ -1,6 +1,7 @@
 'use client';
 
-import { ActivityLog } from '@/types';
+import { ActivityLog } from '@/types/track-trace';
+// import { ActivityLog } from '@/types';
 import { Download } from 'lucide-react';
 
 interface ActivityLogTableProps {
