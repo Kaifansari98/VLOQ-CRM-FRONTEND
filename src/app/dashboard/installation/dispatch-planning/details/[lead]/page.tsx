@@ -92,6 +92,8 @@ export default function DispatchPlanningLeadDetails() {
     (state) => state.auth?.user?.user_type.user_type
   );
 
+  console.log("user tyoeeeeeeeeee",userType);
+
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
@@ -156,6 +158,12 @@ export default function DispatchPlanningLeadDetails() {
   const canEdit = canEditLeadButton(userType);
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canMoveToDispatch =
+    userType?.toLowerCase() === "admin" ||
+    userType?.toLowerCase() === "super-admin" ||
+    userType?.toLowerCase() === "sales-executive";
+
+  console.log("user can move to dispatch :- ", canMoveToDispatch);
   return (
     <>
       {/* Header */}
@@ -180,37 +188,38 @@ export default function DispatchPlanningLeadDetails() {
         <div className="flex items-center space-x-2">
           <div className="flex items-center gap-2">
             {/* Move to Dispatch Button */}
-            {isReadyForDispatch ? (
-              <Button
-                size="sm"
-                variant="default"
-                onClick={() => setOpenMoveConfirm(true)}
-                disabled={moveMutation.isPending}
-                className="hidden sm:block cursor-pointer"
-              >
-                {moveMutation.isPending ? "Moving..." : "Move to Dispatch"}
-              </Button>
-            ) : (
-              <CustomeTooltip
-                truncateValue={
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="hidden sm:block"
-                    disabled
-                  >
-                    Move to Dispatch
-                  </Button>
-                }
-                value={
-                  readinessLoading
-                    ? "Checking dispatch readiness..."
-                    : `Cannot move yet. Missing: ${
-                        missingFields.join(", ") || "data"
-                      }`
-                }
-              />
-            )}
+            {canMoveToDispatch &&
+              (isReadyForDispatch ? (
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => setOpenMoveConfirm(true)}
+                  disabled={moveMutation.isPending}
+                  className="hidden sm:block cursor-pointer"
+                >
+                  {moveMutation.isPending ? "Moving..." : "Move to Dispatch"}
+                </Button>
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="hidden sm:block"
+                      disabled
+                    >
+                      Move to Dispatch
+                    </Button>
+                  }
+                  value={
+                    readinessLoading
+                      ? "Checking dispatch readiness..."
+                      : `Cannot move yet. Missing: ${
+                          missingFields.join(", ") || "data"
+                        }`
+                  }
+                />
+              ))}
 
             {/* Assign Task Button */}
             <Button
@@ -246,28 +255,29 @@ export default function DispatchPlanningLeadDetails() {
                 Assing Task
               </DropdownMenuItem>
 
-              {isReadyForDispatch ? (
-                <DropdownMenuItem onClick={() => setOpenMoveConfirm(true)}>
-                  <Move size={20} />
-                  Move to Dispatch
-                </DropdownMenuItem>
-              ) : (
-                <CustomeTooltip
-                  truncateValue={
-                    <DropdownMenuItem disabled>
-                      <Move size={20} />
-                      Move to Dispatch
-                    </DropdownMenuItem>
-                  }
-                  value={
-                    readinessLoading
-                      ? "Checking dispatch readiness..."
-                      : `Cannot move yet. Missing: ${
-                          missingFields.join(", ") || "data"
-                        }`
-                  }
-                />
-              )}
+              {canMoveToDispatch &&
+                (isReadyForDispatch ? (
+                  <DropdownMenuItem onClick={() => setOpenMoveConfirm(true)}>
+                    <Move size={20} />
+                    Move to Dispatch
+                  </DropdownMenuItem>
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Move size={20} />
+                        Move to Dispatch
+                      </DropdownMenuItem>
+                    }
+                    value={
+                      readinessLoading
+                        ? "Checking dispatch readiness..."
+                        : `Cannot move yet. Missing: ${
+                            missingFields.join(", ") || "data"
+                          }`
+                    }
+                  />
+                ))}
               <DropdownMenuItem
                 onSelect={() => {
                   setActivityType("onHold");
