@@ -1,16 +1,19 @@
-import { apiClient } from "@/lib/apiClient"
-import { NotificationItem, NotificationListResult } from "@/types/notifications"
+import { apiClient } from "@/lib/apiClient";
+import {
+  NotificationItem,
+  NotificationListResult,
+} from "@/types/notifications";
 
 interface FetchNotificationsOptions {
-  isRead?: boolean
-  take?: number
-  skip?: number
+  isRead?: boolean;
+  take?: number;
+  skip?: number;
 }
 
 export const fetchNotifications = async (
   vendorId: number,
   userId: number,
-  options: FetchNotificationsOptions = {}
+  options: FetchNotificationsOptions = {},
 ): Promise<NotificationListResult> => {
   const { data } = await apiClient.get(
     `/notifications/vendor/${vendorId}/user/${userId}`,
@@ -20,8 +23,8 @@ export const fetchNotifications = async (
         skip: options.skip ?? 0,
         ...(options.isRead !== undefined ? { is_read: options.isRead } : {}),
       },
-    }
-  )
+    },
+  );
 
   const notifications = Array.isArray(data)
     ? data
@@ -29,32 +32,47 @@ export const fetchNotifications = async (
       ? data.data
       : Array.isArray(data?.notifications)
         ? data.notifications
-        : []
+        : [];
   const unreadCount =
     typeof data?.unread_count === "number"
       ? data.unread_count
-      : notifications.filter((item: NotificationItem) => !item.is_read).length
+      : notifications.filter((item: NotificationItem) => !item.is_read).length;
 
-  return { notifications, unreadCount }
-}
+  return { notifications, unreadCount };
+};
 
 export const markNotificationRead = async (id: number, userId: number) => {
   const { data } = await apiClient.patch(`/notifications/${id}/read`, {
     user_id: userId,
-  })
-  return data
-}
+  });
+  return data;
+};
 
 interface PushTokenPayload {
-  vendor_id: number
-  user_id: number
-  token: string
-  platform: string
-  browser?: string
-  device_id?: string
+  vendor_id: number;
+  user_id: number;
+  token: string;
+  platform: string;
+  browser?: string;
+  device_id?: string;
 }
 
 export const registerPushToken = async (payload: PushTokenPayload) => {
-  const { data } = await apiClient.post("/notifications/push-token", payload)
-  return data
+  const { data } = await apiClient.post("/notifications/push-token", payload);
+  return data;
+};
+
+interface DeactiveteTokenPayload {
+  user_id: number;
+  vendor_id: number;
+  device_id?: string;
+  token: string;
 }
+
+export const deactiveToken = async (payload: DeactiveteTokenPayload) => {
+  const { data } = await apiClient.put(
+    "/notifications/deactivate-token",
+    payload,
+  );
+  return data;
+};
