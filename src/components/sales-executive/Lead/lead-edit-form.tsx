@@ -20,7 +20,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PhoneInput } from "@/components/ui/phone-input";
 import {
   useSourceTypes,
-  useProductTypes,
   useSiteTypes,
 } from "@/hooks/useTypesMaster";
 import { updateLead, getLeadById, EditLeadPayload } from "@/api/leads";
@@ -31,11 +30,6 @@ import { MapPin } from "lucide-react";
 import CustomeDatePicker from "@/components/date-picker";
 import AssignToPicker from "@/components/assign-to-picker";
 import { toastError } from "@/lib/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 // ✅ Utility: Normalize phone numbers to E.164 format
 const toE164 = (number?: string, countryCode?: string): string => {
@@ -94,10 +88,6 @@ const formSchema = z.object({
         return digitsOnly.length >= 10;
       }
     }, "Please enter a valid alternate phone number"),
-
-  product_types: z
-    .array(z.string())
-    .min(1, "Please select at least one product type"),
 
   archetech_name: z.string().max(300).optional(),
   designer_remark: z.string().max(2000).optional(),
@@ -173,7 +163,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       site_address: "",
       site_map_link: "",
       source_id: "",
-      product_types: [],
       archetech_name: "",
       designer_remark: "",
       initial_site_measurement_date: "",
@@ -197,10 +186,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         setIsLoadingLead(true);
         const response = await getLeadById(leadData.id, vendorId, createdBy);
         const lead = response.data.lead;
-
-        const productTypeIds =
-          lead.productMappings?.map((m: any) => String(m.product_type_id)) ||
-          [];
 
         // ✅ Normalize phone numbers to E.164 format
         const formattedContactNo = toE164(
@@ -231,7 +216,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           site_address: lead.site_address || "",
           site_map_link: lead.site_map_link || "",
           source_id: lead.source_id ? String(lead.source_id) : "",
-          product_types: productTypeIds,
           archetech_name: lead.archetech_name || "",
           designer_remark: lead.designer_remark || "",
           initial_site_measurement_date: formattedDate,
@@ -321,7 +305,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     if (values.site_map_link && values.site_map_link.trim() !== "") {
       payload.site_map_link = values.site_map_link.trim();
     }
-    payload.product_types = values.product_types.map(Number);
     if (isDirty("archetech_name"))
       payload.archetech_name = values.archetech_name || "";
     if (isDirty("designer_remark"))
@@ -460,53 +443,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                 <FormMessage />
               </FormItem>
             )}
-          />
-
-          <FormField
-            control={form.control}
-            name="product_types"
-            render={({ field }) => {
-              const { data: productTypes, isLoading } = useProductTypes();
-
-              const pickerData =
-                productTypes?.data?.map((p: any) => ({
-                  id: p.id,
-                  label: p.type,
-                })) || [];
-
-              return (
-                <FormItem>
-                  <FormLabel className="text-sm">Furniture Type *</FormLabel>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="w-full cursor-not-allowed">
-                        <AssignToPicker
-                          data={pickerData}
-                          value={
-                            field.value?.length
-                              ? Number(field.value[0])
-                              : undefined
-                          }
-                          onChange={(selectedId) => {
-                            field.onChange(
-                              selectedId ? [String(selectedId)] : []
-                            );
-                          }}
-                          placeholder="Search furniture type..."
-                          disabled
-                        />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" sideOffset={6}>
-                      This field can&#39;t be edited.
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
           />
         </div>
 

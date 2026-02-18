@@ -40,7 +40,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useMemo, useState } from "react";
-import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { ImageComponent } from "../utils/ImageCard";
 import { Button } from "@/components/ui/button";
 import BaseModal from "@/components/utils/baseModal";

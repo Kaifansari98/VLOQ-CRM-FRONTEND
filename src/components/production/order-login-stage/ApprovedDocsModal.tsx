@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useAppSelector } from "@/redux/store";
 import { useApprovedTechCheckDocuments } from "@/api/production/order-login";
@@ -10,6 +10,7 @@ import SectionHeader from "@/utils/sectionHeader";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { Ban } from "lucide-react";
+import { getFileExtension, isImageExt } from "@/components/utils/filehelper";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -44,9 +45,12 @@ export default function ApprovedDocsSection({
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
-  // ✅ File type separation
-  const imageExtensions = ["jpg", "jpeg", "png"];
-  const documentExtensions = ["pdf", "zip"];
+  const getDocName = (file: any) =>
+    file?.doc_og_name ||
+    file?.original_name ||
+    file?.doc_sys_name ||
+    file?.doc_name ||
+    "";
 
   const scopedDocs =
     instanceId != null
@@ -55,19 +59,22 @@ export default function ApprovedDocsSection({
         )
       : data || [];
 
-  const approvedImages =
-    scopedDocs.filter((file: any) =>
-      imageExtensions.includes(
-        file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
-      )
-    ) || [];
+  const { approvedImages, approvedDocuments } = useMemo(() => {
+    const images: any[] = [];
+    const documents: any[] = [];
 
-  const approvedDocuments =
-    scopedDocs.filter((file: any) =>
-      documentExtensions.includes(
-        file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
-      )
-    ) || [];
+    scopedDocs.forEach((file: any) => {
+      const name = getDocName(file);
+      const ext = getFileExtension(name);
+      if (isImageExt(ext)) {
+        images.push(file);
+      } else {
+        documents.push(file);
+      }
+    });
+
+    return { approvedImages: images, approvedDocuments: documents };
+  }, [scopedDocs]);
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {
@@ -143,7 +150,7 @@ export default function ApprovedDocsSection({
                     key={doc.id}
                     doc={{
                       id: doc.id,
-                      doc_og_name: doc.doc_og_name,
+                      doc_og_name: getDocName(doc),
                       signedUrl: doc.signed_url,
                       created_at: doc.created_at,
                     }}
@@ -170,7 +177,7 @@ export default function ApprovedDocsSection({
                     key={doc.id}
                     doc={{
                       id: doc.id,
-                      originalName: doc.doc_og_name,
+                      originalName: getDocName(doc),
                       signedUrl: doc.signed_url,
                       created_at: doc.created_at,
                     }}

@@ -58,7 +58,8 @@ const sections: Section[] = [
     id: "project",
     title: "Client Documentation - Project Files",
     description: "Upload project files",
-    accept: ".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx",
+    accept:
+      ".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.PPT,.PPTX,.PDF,.JPG,.JPEG,.PNG,.DOC,.DOCX,.XLS,.XLSX,.CSV",
     icon: <FileText className="w-6 h-6" />,
     iconBg: "bg-blue-100 dark:bg-blue-900",
     color: "text-blue-600",
@@ -67,7 +68,8 @@ const sections: Section[] = [
     id: "pytha",
     title: "Client Documentation - Pytha Design Files",
     description: "Upload pytha and design files",
-    accept: ".pyo,.pytha,.pdf,.zip",
+    accept:
+      ".pyo,.pytha,.PYO,.PYTHA,.pdf,.zip,.PDF,.ZIP,.xls,.xlsx,.csv,.doc,.docx,.ppt,.pptx,.XLS,.XLSX,.CSV,.DOC,.DOCX,.PPT,.PPTX",
     icon: <FolderOpen className="w-6 h-6" />,
     iconBg: "bg-purple-100 dark:bg-purple-900",
     color: "text-purple-600",
