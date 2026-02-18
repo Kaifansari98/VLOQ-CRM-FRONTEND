@@ -126,23 +126,31 @@ export const updateOrderLogin = async (
   vendorId: number,
   orderLoginId: number,
   payload: any,
+  instanceId?: number | null,
 ) => {
-  // replace empty string with N/A for item_desc
   if (!payload.item_desc || payload.item_desc.trim() === "") {
     payload.item_desc = "N/A";
   }
 
   const { data } = await apiClient.put(
     `/leads/production/order-login/vendorId/${vendorId}/order-login-id/${orderLoginId}/update`,
-    payload,
+    {
+      ...payload,
+      instance_id: instanceId ?? null, // ✅ IMPORTANT
+    },
   );
+
   return data;
 };
 
-export const useUpdateOrderLogin = (vendorId: number | undefined) =>
+
+export const useUpdateOrderLogin = (
+  vendorId: number | undefined,
+  instanceId?: number | null,
+) =>
   useMutation({
     mutationFn: (vars: { orderLoginId: number; payload: any }) =>
-      updateOrderLogin(vendorId!, vars.orderLoginId, vars.payload),
+      updateOrderLogin(vendorId!, vars.orderLoginId, vars.payload, instanceId),
   });
 
 // ✅ --- Delete order login detail ---

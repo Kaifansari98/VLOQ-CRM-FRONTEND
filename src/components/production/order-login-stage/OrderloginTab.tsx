@@ -53,13 +53,17 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   const { data: orderLoginData } = useOrderLoginByLead(
     vendorId,
     leadId,
+    userId,
     instanceId ?? undefined,
   );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
 
   // Mutations
-  const { mutateAsync: updateSingle } = useUpdateOrderLogin(vendorId);
+  const { mutateAsync: updateSingle } = useUpdateOrderLogin(
+    vendorId,
+    instanceId ?? null,
+  );
   const { mutateAsync: deleteOrderLogin, isPending: isDeleting } =
     useDeleteOrderLogin(vendorId);
   const { mutateAsync: uploadMultiple } = useUploadMultipleFileBreakupsByLead(
@@ -68,6 +72,8 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     accountId,
     instanceId ?? undefined,
   );
+
+  console.log("Instance id from orderlogin Tab: ", instanceId);
 
   // Local state
   const [breakups, setBreakups] = useState<
@@ -207,6 +213,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
               item_desc: values.item_desc?.trim() || "N/A",
               company_vendor_id: values.company_vendor_id ?? null,
               updated_by: userId,
+              instance_id: instanceId ?? null, // ✅ REQUIRED
             },
           });
         }
@@ -218,7 +225,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       setHasUnsavedChanges(false);
 
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
+        queryKey: ["orderLoginByLead"],
       });
       queryClient.invalidateQueries({
         queryKey: ["leadProductionReadiness", vendorId, leadId],
@@ -282,7 +289,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       toast.success("Section name updated successfully");
 
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
+        queryKey: ["orderLoginByLead"],
       });
       return true;
     } catch (err: any) {
@@ -359,7 +366,6 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     };
   };
 
-  
   const canShowSaveButton = () => {
     const role = userType?.toLowerCase();
     const isAdmin = role === "admin" || role === "super-admin";
@@ -498,7 +504,12 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
               instanceId={instanceId}
               onSectionAdded={() => {
                 queryClient.invalidateQueries({
-                  queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
+                  queryKey: [
+                    "orderLoginByLead",
+                    vendorId,
+                    leadId,
+                    instanceId ?? "all",
+                  ],
                 });
               }}
             />
