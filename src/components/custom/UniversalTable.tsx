@@ -110,9 +110,6 @@ export function UniversalTable({
   const [overallColumnFilters, setOverallColumnFilters] =
     useState<ColumnFiltersState>([]);
 
-  console.log("My Column Filters: ", myColumnFilters);
-  console.log("Overall Column Filters: ", overallColumnFilters);
-
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     architechName: false,
@@ -404,14 +401,7 @@ export function UniversalTable({
       }
 
       instanceRows.forEach((instance: any, instanceIndex: number) => {
-        console.log("Type 10 instance status debug:", {
-          type,
-          leadId: lead?.id,
-          instanceId: instance?.id,
-          is_production_completed: instance?.is_production_completed,
-          instanceKeys: instance ? Object.keys(instance) : [],
-          instance,
-        });
+     
         const structureType =
           instance?.productStructure?.type ??
           lead.leadProductStructureMapping?.find(
@@ -439,9 +429,6 @@ export function UniversalTable({
 
     return expanded;
   }, [activeData, type]);
-
-  console.log("Overall Post Payload: ", tableData);
-
   // -------------------- COLUMNS --------------------
 
   const showProductionStatusColumn = useMemo(() => {
