@@ -6,7 +6,7 @@ import { useLeadStats } from "@/hooks/useLeadStats";
 import { useAppSelector } from "@/redux/store";
 import { Badge } from "./ui/badge";
 import { usePathname } from "next/navigation";
-import { useSidebar } from "@/components/ui/sidebar";
+import { SidebarSeparator, useSidebar } from "@/components/ui/sidebar";
 
 import {
   Collapsible,
@@ -167,7 +167,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarGroupLabel>CRM Platform</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
           const isSingle = !item.items || item.items.length === 0;
@@ -317,6 +317,8 @@ export function NavMain({ items }: { items: NavItem[] }) {
           );
         })}
       </SidebarMenu>
+      <SidebarGroupLabel>Track & Trace</SidebarGroupLabel>
+      
     </SidebarGroup>
   );
 }
