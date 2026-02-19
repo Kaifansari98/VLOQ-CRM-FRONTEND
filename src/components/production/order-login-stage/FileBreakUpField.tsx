@@ -126,6 +126,12 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
     orderLoginId,
   );
 
+  const hasExistingPoFiles = poFileList && poFileList.length > 0;
+
+  const poButtonLabel = hasExistingPoFiles
+    ? "Manage PO Files"
+    : "Upload PO Files";
+
   const { mutateAsync: uploadPoFiles, isPending: isUploadingPo } =
     useUploadOrderLoginPoFiles(vendorId, leadId, orderLoginId);
 
@@ -165,7 +171,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
               type="text"
               value={titleDraft}
               onChange={(e) => setTitleDraft(e.target.value)}
-              className="w-full max-w-[220px] border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full max-w-55 border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               disabled={disabled}
             />
           ) : (
@@ -230,7 +236,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
       <div className="px-4 pb-4 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground block min-h-[16px]">
+            <label className="text-xs font-medium text-muted-foreground block min-h-4">
               Vendor
             </label>
             <AssignToPicker
@@ -246,7 +252,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
 
           {showPoUpload && value.company_vendor_id && (
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground block min-h-[16px]">
+              <label className="text-xs font-medium text-muted-foreground block min-h-4">
                 PO Files
               </label>
               <Button
@@ -256,8 +262,18 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                 onClick={() => setPoModalOpen(true)}
                 disabled={!canUsePoUpload}
                 className="w-full h-9"
-              >
-                Upload PO Files
+              > 
+                {hasExistingPoFiles ? (
+                  <>
+                    <FolderOpen className="w-4 h-4 mr-1" />
+                    {poButtonLabel}
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-1" />
+                    {poButtonLabel}
+                  </>
+                )}
               </Button>
             </div>
           )}

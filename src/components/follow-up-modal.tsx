@@ -90,6 +90,9 @@ const FollowUpModal: React.FC<Props> = ({
             });
 
             queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+            queryClient.invalidateQueries({
+              queryKey: ["pendingMaterialTasks"],
+            });
 
             queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
           }

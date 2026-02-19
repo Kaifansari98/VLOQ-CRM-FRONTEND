@@ -85,6 +85,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { AnimatePresence, motion } from "framer-motion";
 import UploadDispatchDocument from "./UploadDispatchDocument";
+import { Card, CardContent } from "@/components/ui/card";
+import RemarkTooltip from "@/components/origin-tooltip";
+import FollowUpModal from "@/components/follow-up-modal";
 
 const DispatchDetailsSchema = z.object({
   dispatch_date: z.string().nonempty("Dispatch date is required"),
@@ -141,6 +144,9 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
+
+  const [openTaskModal, setOpenTaskModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
 
   const form = useForm<DispatchDetailsForm>({
     resolver: zodResolver(DispatchDetailsSchema),
@@ -692,78 +698,69 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
         {/* ---------- CONTENT ---------- */}
         <div className="p-3 sm:p-4 md:p-6">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8 sm:py-12">
-              <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : tasks.length === 0 ? (
-            <div className="p-6 sm:p-10 border border-dashed rounded-xl flex flex-col items-center justify-center bg-muted/40">
-              <div className="p-3 sm:p-4 bg-muted rounded-full">
-                <Package className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+          {tasks.length === 0 ? (
+            <div className="border-2 border-dashed rounded-2xl p-12 text-center bg-muted/30">
+              <div className="flex flex-col items-center gap-3">
+                <div className="p-4 bg-muted/60 rounded-full shadow-inner">
+                  <Package className="h-7 w-7 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  No materials pending
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Add tasks using the form above
+                </p>
               </div>
-              <p className="text-sm font-medium text-muted-foreground mt-3 text-center">
-                No pending materials yet
-              </p>
-              <p className="text-xs text-muted-foreground text-center">
-                Add materials using the form above
-              </p>
             </div>
           ) : (
-            <div className="space-y-3 sm:space-y-4 max-h-[400px] sm:max-h-[460px] overflow-y-auto pr-1 sm:pr-2">
-              <AnimatePresence mode="popLayout">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <AnimatePresence>
                 {tasks.map((task: any, idx: number) => {
                   const [taskTitle, ...descParts] = (task.remark || "").split(
                     "—",
                   );
                   const description = descParts.join("—").trim();
 
+                  const isLong = description.length > 200;
+                  const shortDesc = isLong
+                    ? description.slice(0, 200) + "..."
+                    : description;
+
                   return (
                     <motion.div
-                      key={task.id || idx}
-                      initial={{ opacity: 0, y: 20, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.3, delay: idx * 0.05 }}
-                      layout
+                      key={task.id}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25, delay: idx * 0.05 }}
                     >
-                      {/* ---------- ITEM CARD ---------- */}
-                      <div className="border rounded-xl px-3 sm:px-4 py-3 sm:py-4 bg-background/60 backdrop-blur-sm transition-all duration-300">
-                        <div className="flex items-start gap-2 sm:gap-3">
-                          {/* Left Icon */}
-                          <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
-                            <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
-                          </div>
-
-                          {/* Text Block */}
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-semibold text-foreground break-words">
-                              {taskTitle || "Untitled Material"}
-                            </h4>
-
-                            {description && (
-                              <p className="text-xs text-muted-foreground leading-relaxed mt-1 break-words">
-                                {description}
-                              </p>
-                            )}
-
-                            {/* Meta Row */}
-                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2 sm:mt-3">
-                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
-                                <span className="whitespace-nowrap">
-                                  Due:{" "}
-                                  {format(
-                                    new Date(task.due_date),
-                                    "dd MMM yyyy",
-                                  )}
-                                </span>
+                      <Card
+                        onClick={() => {
+                          if (
+                            task.status === "completed" ||
+                            task.status === "cancelled"
+                          )
+                            return;
+                          setSelectedTask({
+                            id: task.id,
+                            leadId,
+                            accountId,
+                            remark: task.remark,
+                            dueDate: task.due_date,
+                          });
+                          setOpenTaskModal(true);
+                        }}
+                        className="group h-full rounded-xl border bg-background/80 hover:border-primary/40 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.12)] transition-all duration-300 cursor-pointer"
+                      >
+                        <CardContent className="px-5 space-y-3 flex flex-col h-full justify-between">
+                          {/* HEADER */}
+                          <div>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="p-2.5 rounded-lg border bg-primary/10 border-primary/20">
+                                <Package className="h-4 w-4 text-primary" />
                               </div>
-
                               <Badge
                                 variant="outline"
-                                className={`text-xs ${getStatusColor(
-                                  task.status,
-                                )} capitalize`}
+                                className={`text-[10px] h-5 px-2 rounded-md ${getStatusColor(task.status)}`}
                               >
                                 {task.status === "completed" && (
                                   <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -771,9 +768,44 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                                 {task.status}
                               </Badge>
                             </div>
+
+                            {/* TITLE */}
+                            <h4 className="font-semibold text-sm line-clamp-1 mt-4">
+                              {taskTitle || "Untitled Material"}
+                            </h4>
+
+                            {/* DESCRIPTION */}
+                            {description && (
+                              <p className="w-full text-xs text-muted-foreground leading-relaxed mt-1">
+                                {isLong ? (
+                                  <RemarkTooltip
+                                    title="Additional Note"
+                                    remark={
+                                      <span className="block text-left line-clamp-3">
+                                        {shortDesc}
+                                      </span>
+                                    }
+                                    remarkFull={description}
+                                  />
+                                ) : (
+                                  <span className="block text-left line-clamp-3">
+                                    {shortDesc}
+                                  </span>
+                                )}
+                              </p>
+                            )}
                           </div>
-                        </div>
-                      </div>
+
+                          {/* META */}
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            <span>
+                              Due:{" "}
+                              {format(new Date(task.due_date), "dd MMM yyyy")}
+                            </span>
+                          </div>
+                        </CardContent>
+                      </Card>
                     </motion.div>
                   );
                 })}
@@ -849,6 +881,8 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               </div>
             </div>
           )}
+
+    
 
           <DialogFooter className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 mt-2">
             <Button
@@ -964,6 +998,21 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+         {selectedTask && (
+        <FollowUpModal
+          open={openTaskModal}
+          onOpenChange={setOpenTaskModal}
+          variant="Pending Work"
+          data={{
+            id: selectedTask.leadId,
+            accountId: selectedTask.accountId,
+            taskId: selectedTask.id,
+            remark: selectedTask.remark,
+            dueDate: selectedTask.dueDate,
+          }}
+        />
+      )}
     </div>
   );
 };
