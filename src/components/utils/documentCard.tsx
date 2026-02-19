@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -12,7 +12,7 @@ import {
   Download,
 } from "lucide-react";
 import { formatDate } from "@/lib/format";
-
+import { Loader2 } from "lucide-react";
 interface DocumentData {
   id: number;
   originalName: string;
@@ -60,6 +60,8 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   const fileExt = doc.originalName?.split(".").pop()?.toLowerCase() || "file";
   const { icon: Icon } = getFileIcon(fileExt);
 
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const getStatusLabel = () => {
     switch (status?.toUpperCase()) {
       case "APPROVED":
@@ -97,19 +99,54 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isDownloading) return;
+
+    setIsDownloading(true);
+    setProgress(0);
+
     try {
       const response = await fetch(doc.signedUrl);
-      const blob = await response.blob();
+
+      if (!response.ok || !response.body) {
+        throw new Error("Download failed");
+      }
+
+      const contentLength = Number(response.headers.get("content-length")) || 0;
+
+      const reader = response.body.getReader();
+      const chunks: Uint8Array[] = [];
+
+      let receivedLength = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        chunks.push(value);
+        receivedLength += value.length;
+
+        if (contentLength) {
+          const percent = Math.round((receivedLength / contentLength) * 100);
+          setProgress(percent);
+        }
+      }
+
+      // Merge chunks
+      const blob = new Blob(chunks as BlobPart[]);
       const url = window.URL.createObjectURL(blob);
+
       const a = document.createElement("a");
       a.href = url;
-      a.download = doc.originalName || "document";
+      a.download = doc.originalName;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      a.remove();
+
       window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("❌ Error downloading file:", error);
+    } catch (err) {
+      console.error("Download error:", err);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -197,16 +234,27 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
           {/* 📥 Download Button */}
           <button
             onClick={handleDownload}
+            disabled={isDownloading}
             className="
-              flex items-center gap-1.5 px-3 py-1.5 rounded-md 
-              border border-border 
-              bg-muted/30 dark:bg-neutral-800/40 
-              text-neutral-700 dark:text-neutral-300 text-xs font-medium
-              hover:bg-muted transition dark:hover:bg-neutral-700
-            "
+    flex items-center gap-1.5 px-3 py-1.5 rounded-md 
+    border border-border 
+    bg-muted/30 dark:bg-neutral-800/40 
+    text-neutral-700 dark:text-neutral-300 text-xs font-medium
+    hover:bg-muted transition dark:hover:bg-neutral-700
+    disabled:opacity-60 disabled:cursor-not-allowed
+  "
           >
-            <Download className="w-4 h-4" />
-            Download
+            {isDownloading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {progress ? `${progress}%` : "Preparing..."}
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Download
+              </>
+            )}
           </button>
 
           {/* 🟢 Status */}
