@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  ChevronsUpDown,
-  LogOut,
-} from "lucide-react";
+import { ChevronsUpDown, LogOut } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -36,7 +33,8 @@ import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import { logout } from "@/redux/slices/authSlice";
-
+import { useAppSelector } from "@/redux/store";
+import { deactiveToken } from "@/api/notifications";
 export function NavUser({
   user,
 }: {
@@ -51,26 +49,52 @@ export function NavUser({
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const userId = useAppSelector((s) => s.auth.user?.id);
 
-  const handleLogout = () => {
-    setIsLoggingOut(true);
-    setMenuOpen(false);
-    setOpen(false);
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      setMenuOpen(false);
+      setOpen(false);
 
-    // ✅ Notify user first
-    toast.success("You have been logged out 👋");
+      const deviceId = localStorage.getItem("pushDeviceId");
 
-    // ✅ Clear Redux + LocalStorage (ProtectedLayout will redirect)
-    setTimeout(() => {
+      const tokenKey = Object.keys(localStorage).find((k) =>
+        k.startsWith("pushToken:"),
+      );
+
+      const token = tokenKey ? tokenKey.split("pushToken:")[1] : undefined;
+
+      // 🔴 Call backend to deactivate this device
+      if (vendorId && userId && (deviceId || token)) {
+        await deactiveToken({
+          vendor_id: vendorId,
+          user_id: userId,
+          device_id: deviceId ?? undefined,
+          token: token ?? "",
+        });
+      }
+
+      toast.success("You have been logged out 👋");
+
+      // Now destroy frontend session
       dispatch(logout());
+
       localStorage.removeItem("token");
+      localStorage.removeItem("pushDeviceId");
+      if (tokenKey) localStorage.removeItem(tokenKey);
 
-      // ✅ Just refresh the current page
+      // Refresh app
       window.location.reload();
-
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
       setIsLoggingOut(false);
-    }, 300);
+    }
   };
+
+
 
   return (
     <>
