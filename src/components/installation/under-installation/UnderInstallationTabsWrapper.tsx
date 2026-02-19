@@ -40,12 +40,45 @@ export default function UnderInstallationTabsWrapper({
 
   const usableReady = readyData?.isReady ?? false;
 
-  // 🔥 Build tooltip message dynamically
-  const usableHandoverTooltip = usableReady
-    ? ""
-    : readyData
-      ? `Not ready yet :\n${readyData.pending.join(", ")} are required`
-      : "Loading status...";
+  // 🔥 derive pending properly
+ // 🔥 Always derive from flags — backend pending array pe trust mat karo
+  const derivedPending = React.useMemo(() => {
+    if (!readyData) return [];
+
+    const p: string[] = [];
+
+    if (!readyData.details?.carcassCompleted) {
+      p.push("Carcass Installation");
+    }
+
+    if (!readyData.details?.shutterCompleted) {
+      p.push("Shutter Installation");
+    }
+
+    if (!readyData.details?.expectedEndDateFilled) {
+      p.push("Expected Installation End Date");
+    }
+
+    if (!readyData.details?.installersAssigned) {
+      p.push("Installer Assignment");
+    }
+
+    return p;
+  }, [readyData]);
+
+
+  console.log(readyData)
+  // 🔥 Final Tooltip — always string return karo
+  const usableHandoverTooltip = React.useMemo(() => {
+    if (!readyData) return "Checking readiness...";
+    if (readyData.isReady) return "";
+    if (!derivedPending.length) return "Not ready yet.";
+
+    const list = derivedPending
+      .map((item: any) => ` ${item}`)
+      .join(", ");
+    return `Complete to unlock: ${list}`;
+  }, [readyData, derivedPending]);
 
   const tabs = [
     {
@@ -122,7 +155,7 @@ export default function UnderInstallationTabsWrapper({
       : "underInstallation";
 
   return (
-    <div className="w-full h-full bg-[#fff] dark:bg-[#0a0a0a]">
+    <div className="w-full h-full bg-white dark:bg-[#0a0a0a]">
       <SmoothTab
         key={resolvedDefaultTabId}
         items={tabs}
