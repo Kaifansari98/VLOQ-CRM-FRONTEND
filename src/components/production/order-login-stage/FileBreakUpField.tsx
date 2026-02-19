@@ -23,6 +23,7 @@ import { FileUploadField } from "@/components/custom/file-upload";
 import { Button } from "@/components/ui/button";
 import DocumentCard from "@/components/utils/documentCard";
 import { ImageComponent } from "@/components/utils/ImageCard";
+import CustomeTooltip from "@/components/custom-tooltip";
 
 export interface FileBreakUpFieldProps {
   title: string;
@@ -131,6 +132,10 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   const poButtonLabel = hasExistingPoFiles
     ? "Manage PO Files"
     : "Upload PO Files";
+
+  const existingPoMessage = hasExistingPoFiles
+    ? `${poFileList.length} PO file${poFileList.length > 1 ? "s" : ""} already uploaded for "${title}". You can manage or add more files for this section.`
+    : "";
 
   const { mutateAsync: uploadPoFiles, isPending: isUploadingPo } =
     useUploadOrderLoginPoFiles(vendorId, leadId, orderLoginId);
@@ -255,26 +260,32 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
               <label className="text-xs font-medium text-muted-foreground block min-h-4">
                 PO Files
               </label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setPoModalOpen(true)}
-                disabled={!canUsePoUpload}
-                className="w-full h-9"
-              > 
-                {hasExistingPoFiles ? (
-                  <>
-                    <FolderOpen className="w-4 h-4 mr-1" />
-                    {poButtonLabel}
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4 mr-1" />
-                    {poButtonLabel}
-                  </>
-                )}
-              </Button>
+              <CustomeTooltip
+                truncateValue={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPoModalOpen(true)}
+                    disabled={!canUsePoUpload}
+                    className="w-full h-9"
+                  >
+                    {hasExistingPoFiles ? (
+                      <>
+                        <FolderOpen className="w-4 h-4 mr-1" />
+                        {poButtonLabel}
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-1" />
+                        {poButtonLabel}
+                      </>
+                    )}
+                  </Button>
+                }
+                contentClassName="w-[300px]"
+                value={existingPoMessage}
+              />
             </div>
           )}
         </div>

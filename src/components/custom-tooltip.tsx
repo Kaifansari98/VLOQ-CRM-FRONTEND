@@ -8,30 +8,49 @@ import {
 
 interface CustomeTooltipProps {
   truncateValue: React.ReactNode;
-  value?: string; // made optional
+  value?: string;
+
+  /** 🔧 Control tooltip width / styling */
+  contentClassName?: string;
+
+  /** 🔧 Optional positioning */
+  side?: "top" | "bottom" | "left" | "right";
+  align?: "start" | "center" | "end";
+
+  /** 🔧 Delay control (default = instant) */
+  delayDuration?: number;
 }
 
 export default function CustomeTooltip({
   truncateValue,
   value,
+  contentClassName = "",
+  side = "top",
+  align = "center",
+  delayDuration = 0,
 }: CustomeTooltipProps) {
-  // 🔥 If value is empty, null, or undefined, skip tooltip entirely
+  // Skip tooltip if no value
   if (!value?.trim()) {
     return <>{truncateValue}</>;
   }
 
   return (
-    <TooltipProvider delayDuration={0}>
+    <TooltipProvider delayDuration={delayDuration}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span
-            className="border-0 w-full shadow-none p-0 font-normal text-inherit bg-transparent 
-                       hover:bg-transparent focus:bg-transparent active:bg-transparent"
-          >
+          <span className="border-0 w-full shadow-none p-0 font-normal text-inherit bg-transparent cursor-default">
             {truncateValue}
           </span>
         </TooltipTrigger>
-        <TooltipContent className="dark max-w-lg px-2 py-1 text-xs leading-snug break-words">
+
+        <TooltipContent
+          side={side}
+          align={align}
+          className={`
+            dark text-xs leading-snug wrap-break-word
+            ${contentClassName}
+          `}
+        >
           {value}
         </TooltipContent>
       </Tooltip>
