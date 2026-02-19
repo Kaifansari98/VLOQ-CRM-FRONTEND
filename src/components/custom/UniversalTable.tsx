@@ -314,11 +314,12 @@ export function UniversalTable({
     furnitureType:
       lead.productMappings?.map((p: any) => p.productType?.type).join(", ") ??
       "",
-    furnitueStructures: options?.furnitureStructureOverride
-      ? options.furnitureStructureOverride
-      : lead.leadProductStructureMapping
-          ?.map((p: any) => p.productStructure?.type)
-          .join(", ") ?? "",
+    furnitueStructures:
+  options?.furnitureStructureOverride
+    ? [options.furnitureStructureOverride]
+    : lead.leadProductStructureMapping?.map(
+        (p: any) => p.productStructure?.type
+      ) ?? [],
     productionStatus: options?.productionStatus,
     source: lead.source?.type ?? "",
     siteType: lead.siteType?.type ?? "",

@@ -15,6 +15,13 @@ import {
   tableMultiValueFilter,
   tableSingleValueMultiSelectFilter,
 } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export type ProcessedTask = {
   id: number; // userLeadTask.id
@@ -28,7 +35,7 @@ export type ProcessedTask = {
   leadStage?: string; // leadMaster.lead_status
   siteType: string; // leadMaster.site_type
   furnitureType: string; // joined string from array
-  furnitueStructures: string; // joined string from array
+  furnitueStructures: string[]; // joined string from array
   taskType: string; // userLeadTask.task_type
   dueDate: string; // userLeadTask.due_date
   assignedBy: number; // userLeadTask.created_by
@@ -297,18 +304,66 @@ export function getVendorLeadsTableColumns({
 
     // Product Structures
     {
-      accessorKey: "furnitueStructures",
-      filterFn: tableMultiValueFilter,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Furniture Structures" />
-      ),
-      enableSorting: false,
-      enableColumnFilter: true,
-      enableHiding: true,
-      meta: {
-        label: "Furniture Structures",
-      },
-    },
+         accessorKey: "furnitueStructures",
+         filterFn: tableMultiValueFilter,
+   
+         header: ({ column }) => (
+           <DataTableColumnHeader column={column} title="Furniture Structures" />
+         ),
+   
+         meta: {
+           label: "Furniture Structures",
+         },
+   
+         enableSorting: false,
+         enableHiding: true,
+         enableColumnFilter: true,
+   
+         cell: ({ row }) => {
+           const structures: string[] = row.original.furnitueStructures ?? [];
+   
+           if (!structures.length) return "—";
+   
+           const visible = structures.slice(0, 2);
+           const remaining = structures.slice(2);
+   
+           return (
+             <div className="">
+               {visible.map((name: string, index: number) => (
+                 <Badge key={index} variant="secondary" className="text-xs px-2">
+                   {name}
+                 </Badge>
+               ))}
+   
+               {remaining.length > 0 && (
+                 <TooltipProvider delayDuration={100}>
+                   <Tooltip>
+                     <TooltipTrigger asChild>
+                       <Badge
+                         variant="outline"
+                         className="text-xs px-2 cursor-pointer hover:bg-muted transition-colors"
+                       >
+                         +{remaining.length}
+                       </Badge>
+                     </TooltipTrigger>
+                     <TooltipContent
+                       side="bottom"
+                       align="start"
+                       className="max-w-[220px] p-2 space-y-1"
+                     >
+                       {remaining.map((name: string, index: number) => (
+                         <p key={index} className="text-xs ">
+                           • {name}
+                         </p>
+                       ))}
+                     </TooltipContent>
+                   </Tooltip>
+                 </TooltipProvider>
+               )}
+             </div>
+           );
+         },
+       },
 
     ...(showAssignedTo
       ? ([

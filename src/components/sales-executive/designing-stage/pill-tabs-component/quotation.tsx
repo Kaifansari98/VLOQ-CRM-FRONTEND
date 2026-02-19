@@ -24,11 +24,13 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import ComingSoon from "@/components/generics/ComingSoon";
 
+
+
 const QuotationTab = () => {
   const { leadId } = useDetails();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type
+    (state) => state.auth.user?.user_type.user_type,
   );
   const userId = useAppSelector((state) => state.auth.user?.id);
 
@@ -53,11 +55,6 @@ const QuotationTab = () => {
     }
   };
   const designQuotationDocs = data?.data?.documents || [];
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
-  };
 
   // ✅ Delete confirmation handler
 
@@ -95,8 +92,8 @@ const QuotationTab = () => {
   return (
     <div>
       {/* -------- Quotation Section (Matched UI) -------- */}
-      <motion.section
-        variants={itemVariants}
+      <div
+        
         className="
     bg-[#fff] dark:bg-[#0a0a0a]
     rounded-2xl
@@ -162,7 +159,7 @@ const QuotationTab = () => {
             </div>
           )}
         </div>
-      </motion.section>
+      </div>
 
       {/* ✅ Delete confirmation modal */}
       <AlertDialog
