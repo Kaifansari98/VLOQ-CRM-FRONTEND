@@ -161,7 +161,7 @@ export function getUniversalTableColumns(
         const remaining = structures.slice(2);
 
         return (
-          <div className="">
+          <div className="space-x-1">
             {visible.map((name: string, index: number) => (
               <Badge key={index} variant="secondary" className="text-xs px-2">
                 {name}
@@ -173,8 +173,8 @@ export function getUniversalTableColumns(
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Badge
-                      variant="outline"
-                      className="text-xs px-2 cursor-pointer hover:bg-muted transition-colors"
+                      
+                      variant="secondary" className="text-xs px-2"
                     >
                       +{remaining.length}
                     </Badge>
