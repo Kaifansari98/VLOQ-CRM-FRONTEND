@@ -131,10 +131,10 @@ export const useVendorOverallLeads = (
   });
 };
 
-export function useLeadById(leadId: number, vendorId: number, userId: number) {
+export function useLeadById(leadId?: number, vendorId?: number, userId?: number) {
   return useQuery({
     queryKey: ["lead", leadId, vendorId, userId],
-    queryFn: () => getLeadById(leadId, vendorId, userId),
+    queryFn: () => getLeadById(leadId!, vendorId!, userId!),
     enabled: !!leadId && !!vendorId && !!userId,
     placeholderData: keepPreviousData,
     staleTime: 1000 * 60 * 5,        // 5 min — baar baar refetch nahi hoga

@@ -112,7 +112,7 @@ export default function DispatchPlanningLeadDetails() {
   const isReadyForDispatch = readinessStatus?.is_ready_for_dispatch ?? false;
   const missingFields = readinessStatus?.missing_fields ?? [];
 
-  const { data, isLoading } = useLeadById(leadIdNum, Number(vendorId), Number(userId));
+  const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
 
   const leadCode = lead?.lead_code ?? "";
