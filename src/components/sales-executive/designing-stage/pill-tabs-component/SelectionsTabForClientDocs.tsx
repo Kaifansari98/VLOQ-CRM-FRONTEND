@@ -112,7 +112,11 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     leadId,
     vendorId
   );
-  const { data: docsDetails } = useClientDocumentationDetails(vendorId!, leadId);
+  const { data: docsDetails } = useClientDocumentationDetails(
+    vendorId!,
+    leadId,
+    userId ?? undefined
+  );
   const { mutateAsync: uploadClientDocs, isPending: isUploadingDocs } =
     useUploadClientDocumentation();
   const { mutate: moveToClientApproval, isPending: isMovingStage } =
@@ -356,7 +360,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       { ppt: any[]; pytha: any[]; pptCount: number; pythaCount: number }
     >();
     groups.forEach((group) => {
-      if (!group.instance_id) return;
+      if (group.instance_id === null || group.instance_id === undefined) return;
       map.set(group.instance_id, {
         ppt: group.documents?.ppt || [],
         pytha: group.documents?.pytha || [],
@@ -368,16 +372,31 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   }, [docsDetails?.documents_by_instance]);
 
   const getCounts = (instanceId?: number | null) => {
-    if (instanceId && docsByInstance.has(instanceId)) {
+    if (instanceId !== null && instanceId !== undefined && docsByInstance.has(instanceId)) {
       const data = docsByInstance.get(instanceId)!;
       return { ppt: data.pptCount, pytha: data.pythaCount };
+    }
+    if (docsDetails?.documents) {
+      return {
+        ppt: docsDetails.documents.ppt?.length || 0,
+        pytha: docsDetails.documents.pytha?.length || 0,
+      };
     }
     return { ppt: 0, pytha: 0 };
   };
 
   const getDocs = (instanceId?: number | null) => {
-    if (instanceId && docsByInstance.has(instanceId)) {
-      return docsByInstance.get(instanceId)!;
+    if (instanceId !== null && instanceId !== undefined && docsByInstance.has(instanceId)) {
+      const data = docsByInstance.get(instanceId)!;
+      return data;
+    }
+    if (docsDetails?.documents) {
+      return {
+        ppt: docsDetails.documents.ppt || [],
+        pytha: docsDetails.documents.pytha || [],
+        pptCount: docsDetails.documents.ppt?.length || 0,
+        pythaCount: docsDetails.documents.pytha?.length || 0,
+      };
     }
     return { ppt: [], pytha: [], pptCount: 0, pythaCount: 0 };
   };
@@ -452,7 +471,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   };
 
   const handleUploadForInstance = async (values: InstanceUploadValues) => {
-    if (!vendorId || !userId) return;
+    if (!vendorId || !userId) {
+      toast.error("Missing vendorId or userId for upload");
+      return;
+    }
     if (!activeInstance && structureInstances.length > 0) {
       toast.error("Please select product instance");
       return;

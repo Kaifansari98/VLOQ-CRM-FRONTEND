@@ -289,146 +289,213 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   return (
     <div className="space-y-4 sm:space-y-6 bg-[#fff] dark:bg-[#0a0a0a] p-2 sm:p-4 md:p-0">
       {/* Required Date & Boxes Info */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        {/* ---- Required Delivery Date Card ---- */}
-        <div className="border rounded-xl bg-background hover:shadow-sm transition-all">
-          <div className="p-3 sm:p-4 md:p-5 flex items-start gap-3 sm:gap-4">
-            <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 shrink-0 mt-0.5">
-              <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+      <div className="rounded-2xl border bg-muted/20 p-3 sm:p-5">
+        {/* Section Header */}
+        <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <Truck className="h-4 w-4 text-primary" />
             </div>
-            <div className="flex flex-col min-w-0">
-              <p className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
-                Required OnSite Delivery Date
+            <div>
+              <h3 className="text-sm sm:text-base font-semibold tracking-tight leading-none">
+                Dispatch Snapshot
+              </h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Key delivery and site details at a glance
               </p>
-              {loadingRequiredDate ? (
-                <div className="h-5 sm:h-6 w-32 sm:w-40 bg-muted animate-pulse rounded-md mt-1.5" />
-              ) : (
-                <p className="text-sm sm:text-base md:text-lg font-semibold text-foreground mt-1 break-words leading-snug">
-                  {requiredDateData?.required_date_for_dispatch ? (
-                    format(
-                      new Date(requiredDateData.required_date_for_dispatch),
-                      "EEEE, dd MMMM yyyy",
-                    )
-                  ) : (
-                    <span className="text-muted-foreground font-normal text-sm">
-                      Not set
-                    </span>
-                  )}
-                </p>
-              )}
             </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {loadingRequiredDate ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-muted text-muted-foreground border">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Loading
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-primary/10 text-primary border border-primary/20">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                Live
+              </span>
+            )}
           </div>
         </div>
 
-        {/* ---- Number of Boxes Card ---- */}
-        <div className="border rounded-xl bg-background hover:shadow-sm transition-all">
-          <div className="p-3 sm:p-4 md:p-5 flex items-start gap-3 sm:gap-4">
-            <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 shrink-0 mt-0.5">
-              <Package className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            </div>
-            <div className="flex flex-col w-full min-w-0">
-              <p className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
-                Number of Boxes
-              </p>
+        {/* Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+
+          {/* ---- Required Delivery Date Card ---- */}
+          <div className="relative overflow-hidden rounded-xl border bg-background hover:bg-muted/30 transition-colors duration-200">
+            <div className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 mb-2.5">
+                <div className="h-7 w-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                  <CalendarDays className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <p className="text-[10px] font-semibold text-muted-foreground tracking-widest uppercase leading-none">
+                  Delivery Date
+                </p>
+              </div>
               {loadingRequiredDate ? (
-                <div className="h-5 sm:h-6 w-20 sm:w-24 bg-muted animate-pulse rounded-md mt-1.5" />
+                <div className="space-y-1.5 mt-1">
+                  <div className="h-5 w-36 bg-muted animate-pulse rounded-md" />
+                  <div className="h-3.5 w-24 bg-muted/60 animate-pulse rounded-md" />
+                </div>
+              ) : requiredDateData?.required_date_for_dispatch ? (
+                <div>
+                  <p className="text-base sm:text-lg font-bold text-foreground leading-tight">
+                    {format(new Date(requiredDateData.required_date_for_dispatch), "dd MMM yyyy")}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">
+                    {format(new Date(requiredDateData.required_date_for_dispatch), "EEEE")}
+                  </p>
+                </div>
               ) : (
-                <div className="flex items-center gap-2 mt-1">
-                  <p className="text-sm sm:text-base md:text-lg font-semibold text-foreground">
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                  <span className="text-sm text-muted-foreground/60 italic">Not set</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ---- Number of Boxes Card ---- */}
+          <div className="relative overflow-hidden rounded-xl border bg-background hover:bg-muted/30 transition-colors duration-200">
+            <div className="p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                    <Package className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <p className="text-[10px] font-semibold text-muted-foreground tracking-widest uppercase leading-none">
+                    No. of Boxes
+                  </p>
+                </div>
+                {canViewAndWork && !loadingRequiredDate && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 p-0 rounded-lg hover:bg-accent transition-colors"
+                    onClick={() => {
+                      setNoOfBoxesInput(requiredDateData?.no_of_boxes?.toString() || "");
+                      setOpenBoxesModal(true);
+                    }}
+                  >
+                    <Pencil className="h-3 w-3 text-muted-foreground" />
+                  </Button>
+                )}
+              </div>
+              {loadingRequiredDate ? (
+                <div className="h-8 w-16 bg-muted animate-pulse rounded-md mt-1" />
+              ) : (
+                <div className="flex items-end gap-1.5">
+                  <p className="text-2xl sm:text-3xl font-bold text-foreground leading-none">
                     {useLeadLevelBoxes
                       ? requiredDateData?.no_of_boxes || 0
                       : totalInstanceBoxes}
                   </p>
-                  {canViewAndWork && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-6 w-6 sm:h-7 sm:w-7 p-0 rounded-full hover:bg-accent"
-                      onClick={() => {
-                        setNoOfBoxesInput(
-                          requiredDateData?.no_of_boxes?.toString() || "",
-                        );
-                        setOpenBoxesModal(true);
-                      }}
-                    >
-                      <Pencil className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground hover:text-foreground" />
-                    </Button>
-                  )}
+                  <p className="text-[11px] text-muted-foreground mb-0.5 font-medium">boxes</p>
                 </div>
               )}
             </div>
           </div>
-        </div>
 
-        {/* ---- OnSite Contact Person Card ---- */}
-        <div className="border rounded-xl bg-background hover:shadow-sm transition-all">
-          <div className="p-3 sm:p-4 md:p-5 flex items-start gap-3 sm:gap-4">
-            <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 shrink-0 mt-0.5">
-              <UserRound className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            </div>
-            <div className="flex  min-w-0 w-full">
+          {/* ---- OnSite Contact Person Card ---- */}
+          <div className="relative overflow-hidden rounded-xl border bg-background hover:bg-muted/30 transition-colors duration-200">
+            <div className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 mb-2.5">
+                <div className="h-7 w-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                  <UserRound className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <p className="text-[10px] font-semibold text-muted-foreground tracking-widest uppercase leading-none">
+                  Site Contact
+                </p>
+              </div>
               {loadingRequiredDate ? (
-                <div className="space-y-1.5 mt-1.5">
-                  <div className="h-4 w-32 bg-muted animate-pulse rounded-md" />
-                  <div className="h-4 w-24 bg-muted animate-pulse rounded-md" />
+                <div className="space-y-1.5 mt-1">
+                  <div className="h-5 w-28 bg-muted animate-pulse rounded-md" />
+                  <div className="h-3.5 w-20 bg-muted/60 animate-pulse rounded-md" />
                 </div>
               ) : (
-                <div className="flex flex-col items-start">
-                  <p className="text-sm sm:text-base md:text-lg capitalize font-semibold text-foreground break-words leading-snug">
+                <div className="space-y-1">
+                  <p className="text-sm sm:text-base font-bold text-foreground capitalize leading-tight truncate">
                     {requiredDateData?.onsite_contact_person_name || (
-                      <span className="text-muted-foreground font-normal text-sm">
-                        No name
-                      </span>
+                      <span className="text-muted-foreground/60 font-normal italic text-sm">No name</span>
                     )}
                   </p>
-                  {requiredDateData?.onsite_contact_person_number && (
+                  {requiredDateData?.onsite_contact_person_number ? (
                     <div className="flex items-center gap-1.5">
-                      <p className="text-sm sm:text-base md:text-lg font-semibold text-foreground break-words leading-snug">
+                      <Phone className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                      <p className="text-[11px] font-semibold text-muted-foreground tracking-wide">
                         {requiredDateData.onsite_contact_person_number}
                       </p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                      <span className="text-[11px] text-muted-foreground/60 italic">No contact</span>
                     </div>
                   )}
                 </div>
               )}
             </div>
           </div>
-        </div>
 
-        {/* ---- Material Lift Availability Card ---- */}
-        <div className="border rounded-xl bg-background hover:shadow-sm transition-all">
-          <div className="p-3 sm:p-4 md:p-5 flex items-start gap-3 sm:gap-4">
-            <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 shrink-0 mt-0.5">
-              <ArrowUpDown className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            </div>
-            <div className="flex flex-col min-w-0 w-full">
-              <p className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
-                OnSite Material Lift
-              </p>
-              {loadingRequiredDate ? (
-                <div className="h-6 w-20 bg-muted animate-pulse rounded-md mt-1.5" />
-              ) : (
-                <div className="mt-1.5">
-                  {requiredDateData?.material_lift_availability === true ||
-                  requiredDateData?.material_lift_availability === "true" ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Available
-                    </span>
-                  ) : requiredDateData?.material_lift_availability === false ||
-                    requiredDateData?.material_lift_availability === "false" ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
-                      <XCircle className="h-3.5 w-3.5" />
-                      Not Available
-                    </span>
+          {/* ---- Material Lift Availability Card ---- */}
+          {(() => {
+            const isAvailable =
+              requiredDateData?.material_lift_availability === true ||
+              requiredDateData?.material_lift_availability === "true";
+            const isUnavailable =
+              requiredDateData?.material_lift_availability === false ||
+              requiredDateData?.material_lift_availability === "false";
+            const liftSet = isAvailable || isUnavailable;
+
+            return (
+              <div className="relative overflow-hidden rounded-xl border bg-background hover:bg-muted/30 transition-colors duration-200">
+                <div className="p-3 sm:p-4">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <div className="h-7 w-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                      <ArrowUpDown className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <p className="text-[10px] font-semibold text-muted-foreground tracking-widest uppercase leading-none">
+                      Material Lift
+                    </p>
+                  </div>
+                  {loadingRequiredDate ? (
+                    <div className="h-7 w-24 bg-muted animate-pulse rounded-lg mt-1" />
+                  ) : liftSet ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      {isAvailable ? (
+                        <>
+                          <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                            <CheckCircle2 className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-foreground leading-none">Available</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">Lift on-site</p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="h-8 w-8 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center justify-center shrink-0">
+                            <XCircle className="h-4 w-4 text-destructive" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-foreground leading-none">Not Available</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">Manual handling</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   ) : (
-                    <span className="text-muted-foreground font-normal text-sm">
-                      Not set
-                    </span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                      <span className="text-sm text-muted-foreground/60 italic">Not set</span>
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 

@@ -264,6 +264,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     : data.user;
 
   const navItems = React.useMemo(() => {
+    const environment = (
+      process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION"
+    ).toUpperCase();
+    const showTrackTrace = environment === "LOCAL" || environment === "STAGING";
+
     const withoutOverall = canSeeOverallLeads
       ? data.navMain
       : data.navMain.filter((item) => item.title !== "Overall Leads");
@@ -285,9 +290,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ? baseItems
         : baseItems.filter((item) => item.title !== "Delivered Projects");
 
+    const environmentItems = showTrackTrace
+      ? adminOnlyItems
+      : adminOnlyItems.filter(
+          (item) => item.title !== "Master" && item.title !== "Track Trace",
+        );
+
     const filteredItems =
       userType === "backend" || userType === "factory"
-        ? adminOnlyItems.map((item) =>
+        ? environmentItems.map((item) =>
             item.title === "Production"
               ? {
                   ...item,
@@ -300,7 +311,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 }
               : item,
           )
-        : adminOnlyItems;
+        : environmentItems;
 
     if (!mounted || !canSeeMiscLeads || miscLeadsCount <= 0) {
       return filteredItems;

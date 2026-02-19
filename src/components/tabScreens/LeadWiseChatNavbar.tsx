@@ -5,7 +5,6 @@ import { useLeadChatMembers } from "@/hooks/useLeadChatRoom";
 import { useAppSelector } from "@/redux/store";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
-import { Search, Users } from "lucide-react";
 
 interface LeadWiseChatNavbarProps {
   leadId: number;

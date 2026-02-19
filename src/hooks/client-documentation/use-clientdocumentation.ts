@@ -81,9 +81,9 @@ export const useClientDocumentationDetails = (
   instanceId?: number,
 ) => {
   return useQuery<ClientDocDetailsResponse>({
-    queryKey: ["clientDocumentationDetails", vendorId, leadId],
+    queryKey: ["clientDocumentationDetails", vendorId, leadId, userId, instanceId],
     queryFn: () => getClientDocumentationDetails(vendorId, leadId, userId, instanceId),
-    enabled: !!vendorId && !!leadId,
+    enabled: !!vendorId && !!leadId && userId !== undefined && userId !== null,
     staleTime: 5 * 60 * 1000,
   });
 };
