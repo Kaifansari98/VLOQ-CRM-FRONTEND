@@ -329,7 +329,7 @@ const MyTaskTable = () => {
       leadStage: task.leadMaster.lead_status ?? "",
       siteType: task.leadMaster.site_type || "",
       furnitureType: task.leadMaster.product_type.join(", "),
-      furnitueStructures: task.leadMaster.product_structure.join(", "),
+      furnitueStructures: task.leadMaster.product_structure,
       taskType: task.userLeadTask.task_type,
       dueDate: task.userLeadTask.due_date,
       site_map_link: task.leadMaster.site_map_link,

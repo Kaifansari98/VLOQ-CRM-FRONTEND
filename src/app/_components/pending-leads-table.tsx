@@ -260,10 +260,12 @@ export default function PendingLeadsTable({
         lead.productMappings
           ?.map((pm: any) => pm.productType.type)
           .join(", ") || "",
+
       furnitueStructures:
-        lead.leadProductStructureMapping
-          ?.map((psm: any) => psm.productStructure.type)
-          .join(", ") || "",
+        lead.leadProductStructureMapping?.map(
+          (psm: any) => psm.productStructure?.type,
+        ) ?? [],
+
       source: lead.source?.type || "",
       siteType: lead.siteType?.type || "",
       createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",

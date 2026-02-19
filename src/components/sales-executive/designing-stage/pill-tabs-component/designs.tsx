@@ -25,11 +25,16 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import ComingSoon from "@/components/generics/ComingSoon";
 
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+};
+
 const DesigningTab = () => {
   const { leadId } = useDetails();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type
+    (state) => state.auth.user?.user_type.user_type,
   );
   const userId = useAppSelector((state) => state.auth.user?.id);
 
@@ -46,13 +51,6 @@ const DesigningTab = () => {
     useDeleteDocument(leadId);
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-
- 
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
-  };
 
   // ✅ Handle confirm delete
   const handleConfirmDelete = () => {
@@ -105,8 +103,7 @@ const DesigningTab = () => {
   return (
     <div className="">
       {/* -------- Designs Section (Matched Premium UI) -------- */}
-      <motion.section
-        variants={itemVariants}
+      <section
         className="
     bg-[#fff] dark:bg-[#0a0a0a]
     rounded-2xl
@@ -172,7 +169,7 @@ const DesigningTab = () => {
             </div>
           )}
         </div>
-      </motion.section>
+      </section>
 
       {/* ✅ Confirmation Dialog */}
       <AlertDialog

@@ -1,5 +1,6 @@
 // hooks/useLeadsQueries.ts
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -130,15 +131,15 @@ export const useVendorOverallLeads = (
   });
 };
 
-export function useLeadById(
-  leadId?: number,
-  vendorId?: number,
-  userId?: number
-) {
+export function useLeadById(leadId: number, vendorId: number, userId: number) {
   return useQuery({
     queryKey: ["lead", leadId, vendorId, userId],
-    queryFn: () => getLeadById(leadId!, vendorId!, userId!), // non-null assertion because we check enabled below
-    enabled: !!leadId && !!vendorId && !!userId, // run only if ids exist
+    queryFn: () => getLeadById(leadId, vendorId, userId),
+    enabled: !!leadId && !!vendorId && !!userId,
+    placeholderData: keepPreviousData,
+    staleTime: 1000 * 60 * 5,        // 5 min — baar baar refetch nahi hoga
+    refetchOnWindowFocus: false,      // ← YEH SABSE IMPORTANT FIX HAI
+    refetchOnReconnect: false,
   });
 }
 

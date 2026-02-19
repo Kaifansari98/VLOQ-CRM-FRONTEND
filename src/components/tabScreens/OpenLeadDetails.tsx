@@ -49,7 +49,10 @@ import TextAreaInput from "@/components/origin-text-area";
 import AssignToPicker from "@/components/assign-to-picker";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import { useProductStructureTypes, useProductTypes } from "@/hooks/useTypesMaster";
+import {
+  useProductStructureTypes,
+  useProductTypes,
+} from "@/hooks/useTypesMaster";
 import { updateLeadProductType } from "@/api/leads";
 
 type OpenLeadDetailsProps = {
@@ -76,61 +79,52 @@ const itemVariants = {
   },
 };
 
+// ✅ COMPONENT KE BAHAR — FILE LEVEL PE
+const SectionCard = ({ title, children, action }: any) => (
+  <motion.section
+    variants={itemVariants}
+    className="bg-[#fff] dark:bg-[#0a0a0a] rounded-2xl border border-border shadow-soft p-6 space-y-6"
+  >
+    <div className="flex items-center justify-between gap-3">
+      <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
+      {action}
+    </div>
+    {children}
+  </motion.section>
+);
+
+const InfoRow = ({ icon: Icon, label, value }: any) => (
+  <div className="flex flex-col gap-1">
+    <div className="flex items-center gap-2 text-sm text-subtle dark:text-neutral-400">
+      {Icon && <Icon className="w-4 h-4 stroke-[1.5]" />}
+      {label}
+    </div>
+    <div className="text-[15px] font-medium text-heading dark:text-neutral-200 pl-6">
+      {value || "—"}
+    </div>
+  </div>
+);
+
 export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
+  // ✅ 1. REDUX STATE
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type
+    (state) => state.auth.user?.user_type.user_type,
   );
 
-  const { data } = useLeadById(leadId, vendorId, userId);
+  // ✅ 2. QUERY HOOKS
+  const { data, isLoading, isPlaceholderData } = useLeadById(
+    leadId,
+    vendorId!,
+    userId!,
+  );
   const { data: structureInstancesData, isLoading: isStructuresLoading } =
     useLeadProductStructureInstances(leadId, vendorId);
-  const lead = data?.data?.lead;
-  console.log("Data", lead);
+  const { data: productStructureTypes } = useProductStructureTypes();
+  const { data: productTypes } = useProductTypes();
 
-  const leadStage = lead?.statusType?.type;
-  console.log("Lead Stage In Lead Details: ", leadStage);
-  const isBookingStage = leadStage?.toLowerCase() === "booking-stage";
-  const leadStatusTag = lead?.statusType?.tag;
-  const canEditStructures =
-  isBookingStage || ["admin", "super-admin"].includes(userType || "");
-  const structureInstances = structureInstancesData?.data || [];
-  const structureSummary = useMemo(() => {
-    const total = structureInstances.length;
-    const uniqueStructures = new Set(
-      structureInstances.map((item: any) => item.product_structure_id)
-    ).size;
-    return { total, uniqueStructures };
-  }, [structureInstances]);
-  const isKitchenType = useMemo(() => {
-    const typeLabel =
-      lead?.productMappings?.[0]?.productType?.type ||
-      lead?.productMappings?.[0]?.product_type?.type ||
-      "";
-    return String(typeLabel).toLowerCase().includes("kitchen");
-  }, [lead?.productMappings]);
-
-  const currentProductTypeLabel = useMemo(() => {
-    return (
-      lead?.productMappings?.[0]?.productType?.type ||
-      lead?.productMappings?.[0]?.product_type?.type ||
-      ""
-    );
-  }, [lead?.productMappings]);
-
-  const normalizedUserType = (userType || "").toLowerCase();
-  const canEditProductType =
-    (normalizedUserType === "admin" || normalizedUserType === "super-admin") ||
-    (normalizedUserType === "sales-executive" && isBookingStage);
-
-  const isModularKitchenType = useMemo(() => {
-    const label = String(currentProductTypeLabel).toLowerCase();
-    return (
-      label === "modular kitchen" || label === "semi-modular kitchen"
-    );
-  }, [currentProductTypeLabel]);
-
+  // ✅ 3. ALL useState HOOKS
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [confirmStructureDelete, setConfirmStructureDelete] = useState<{
     id: number;
@@ -152,9 +146,17 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const [editTitleError, setEditTitleError] = useState("");
   const [editStructureError, setEditStructureError] = useState("");
   const [editProductTypeOpen, setEditProductTypeOpen] = useState(false);
-  const [selectedProductTypeId, setSelectedProductTypeId] = useState<number | null>(null);
+  const [selectedProductTypeId, setSelectedProductTypeId] = useState<
+    number | null
+  >(null);
   const [confirmProductTypeSave, setConfirmProductTypeSave] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+
+  // ✅ 4. useQueryClient
   const queryClient = useQueryClient();
+
+  // ✅ 5. ALL useMutation HOOKS
   const { mutate: deleteDocument, isPending: deleting } = useDeleteDocument();
   const { mutate: deleteStructureInstance, isPending: deletingStructure } =
     useMutation({
@@ -166,8 +168,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         vendorId: number;
         leadId: number;
         instanceId: number;
-      }) =>
-        deleteLeadProductStructureInstance(vendorId, leadId, instanceId),
+      }) => deleteLeadProductStructureInstance(vendorId, leadId, instanceId),
       onSuccess: () => {
         toast.success("Product structure instance deleted.");
         queryClient.invalidateQueries({
@@ -177,81 +178,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       },
       onError: (error: any) => {
         toast.error(
-          error?.response?.data?.message || "Failed to delete instance."
+          error?.response?.data?.message || "Failed to delete instance.",
         );
       },
     });
-  const { data: productStructureTypes } = useProductStructureTypes();
-  const { data: productTypes } = useProductTypes();
-
-  const modularKitchenType = useMemo(
-    () =>
-      productTypes?.data?.find(
-        (type: any) =>
-          String(type.type).toLowerCase() === "modular kitchen"
-      ),
-    [productTypes?.data]
-  );
-  const semiModularKitchenType = useMemo(
-    () =>
-      productTypes?.data?.find(
-        (type: any) =>
-          String(type.type).toLowerCase() === "semi-modular kitchen"
-      ),
-    [productTypes?.data]
-  );
-
-  const currentProductTypeId =
-    lead?.productMappings?.[0]?.product_type_id ||
-    lead?.productMappings?.[0]?.productType?.id ||
-    lead?.productMappings?.[0]?.product_type?.id ||
-    null;
-
-  const { mutate: updateLeadProductTypeMutation, isPending: updatingLeadType } =
-    useMutation({
-      mutationFn: (nextProductTypeId: number) => {
-        const nextTypeLabel =
-          nextProductTypeId === modularKitchenType?.id
-            ? "Modular Kitchen"
-            : nextProductTypeId === semiModularKitchenType?.id
-            ? "Semi-Modular Kitchen"
-            : undefined;
-        return updateLeadProductType(leadId, userId || 0, {
-          productType: nextTypeLabel,
-        });
-      },
-      onSuccess: async () => {
-        toast.success("Product type updated successfully.");
-        setEditProductTypeOpen(false);
-        await queryClient.invalidateQueries({
-          queryKey: ["lead", leadId, vendorId, userId],
-        });
-      },
-      onError: (error: any) => {
-        toast.error(
-          error?.response?.data?.message || "Failed to update product type."
-        );
-      },
-    });
-
-  const handleOpenProductTypeEdit = () => {
-    if (!currentProductTypeId) return;
-    setSelectedProductTypeId(currentProductTypeId);
-    setEditProductTypeOpen(true);
-  };
-
-  const handleSaveProductType = () => {
-    if (!selectedProductTypeId) {
-      toast.error("Please select a product type.");
-      return;
-    }
-    if (selectedProductTypeId === currentProductTypeId) {
-      toast.info("No changes to update.");
-      setEditProductTypeOpen(false);
-      return;
-    }
-    setConfirmProductTypeSave(true);
-  };
   const { mutate: createStructureInstance, isPending: creatingStructure } =
     useMutation({
       mutationFn: ({
@@ -267,8 +197,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           description?: string;
           created_by: number;
         };
-      }) =>
-        createLeadProductStructureInstance(vendorId, leadId, payload),
+      }) => createLeadProductStructureInstance(vendorId, leadId, payload),
       onSuccess: () => {
         toast.success("Product structure instance added.");
         queryClient.invalidateQueries({
@@ -278,7 +207,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       },
       onError: (error: any) => {
         toast.error(
-          error?.response?.data?.message || "Failed to add instance."
+          error?.response?.data?.message || "Failed to add instance.",
         );
       },
     });
@@ -304,7 +233,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           vendorId,
           leadId,
           instanceId,
-          payload
+          payload,
         ),
       onSuccess: () => {
         toast.success("Product instance updated.");
@@ -315,14 +244,194 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       },
       onError: (error: any) => {
         toast.error(
-          error?.response?.data?.message || "Failed to update instance."
+          error?.response?.data?.message || "Failed to update instance.",
+        );
+      },
+    });
+  const { mutate: updateLeadProductTypeMutation, isPending: updatingLeadType } =
+    useMutation({
+      mutationFn: (nextProductTypeId: number) => {
+        const nextTypeLabel =
+          nextProductTypeId === modularKitchenType?.id
+            ? "Modular Kitchen"
+            : nextProductTypeId === semiModularKitchenType?.id
+              ? "Semi-Modular Kitchen"
+              : undefined;
+        return updateLeadProductType(leadId, userId || 0, {
+          productType: nextTypeLabel,
+        });
+      },
+      onSuccess: async () => {
+        toast.success("Product type updated successfully.");
+        setEditProductTypeOpen(false);
+        await queryClient.invalidateQueries({
+          queryKey: ["lead", leadId, vendorId, userId],
+        });
+      },
+      onError: (error: any) => {
+        toast.error(
+          error?.response?.data?.message || "Failed to update product type.",
         );
       },
     });
   const { mutateAsync: uploadMoreSitePhotos, isPending: uploading } =
     useUploadMoreSitePhotos();
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+
+  // ✅ 6. DERIVED VALUES (non-hook)
+  const lead = data?.data?.lead;
+  const structureInstances = structureInstancesData?.data || [];
+  const leadStage = lead?.statusType?.type;
+  const isBookingStage = leadStage?.toLowerCase() === "booking-stage";
+  const leadStatusTag = lead?.statusType?.tag;
+  const canEditStructures =
+    isBookingStage || ["admin", "super-admin"].includes(userType || "");
+  const normalizedUserType = (userType || "").toLowerCase();
+  const canEditProductType =
+    normalizedUserType === "admin" ||
+    normalizedUserType === "super-admin" ||
+    (normalizedUserType === "sales-executive" && isBookingStage);
+  const currentProductTypeId =
+    lead?.productMappings?.[0]?.product_type_id ||
+    lead?.productMappings?.[0]?.productType?.id ||
+    lead?.productMappings?.[0]?.product_type?.id ||
+    null;
+
+  // ✅ 7. HELPER FUNCTIONS (useMemo se pehle kyunki memos inhe use karte hain)
+  const getParentFilter = (productTypeId?: number) => {
+    if (!productTypeId) return null;
+    const typeLabel =
+      productTypes?.data?.find((type: any) => type.id === productTypeId)
+        ?.type || "";
+    const normalized = String(typeLabel).toLowerCase();
+    if (normalized.includes("kitchen")) return "Kitchen";
+    if (normalized.includes("wardrobe")) return "Wardrobe";
+    return "Others";
+  };
+
+  const getStructureOptions = (parentFilter: string | null) => {
+    const options =
+      productStructureTypes?.data?.map((structure: any) => ({
+        id: structure.id,
+        label: structure.type,
+        parent: structure.parent,
+      })) || [];
+    if (!parentFilter) return options;
+    return options.filter((structure: any) => {
+      const parent = String(structure.parent || "").toLowerCase();
+      if (parentFilter === "Kitchen") return parent === "kitchen";
+      if (parentFilter === "Wardrobe") return parent === "wardrobe";
+      return parent !== "kitchen" && parent !== "wardrobe";
+    });
+  };
+
+  // ✅ 8. ALL useMemo HOOKS
+  const structureSummary = useMemo(() => {
+    const total = structureInstances.length;
+    const uniqueStructures = new Set(
+      structureInstances.map((item: any) => item.product_structure_id),
+    ).size;
+    return { total, uniqueStructures };
+  }, [structureInstances]);
+
+  const isKitchenType = useMemo(() => {
+    const typeLabel =
+      lead?.productMappings?.[0]?.productType?.type ||
+      lead?.productMappings?.[0]?.product_type?.type ||
+      "";
+    return String(typeLabel).toLowerCase().includes("kitchen");
+  }, [lead?.productMappings]);
+
+  const currentProductTypeLabel = useMemo(() => {
+    return (
+      lead?.productMappings?.[0]?.productType?.type ||
+      lead?.productMappings?.[0]?.product_type?.type ||
+      ""
+    );
+  }, [lead?.productMappings]);
+
+  const isModularKitchenType = useMemo(() => {
+    const label = String(currentProductTypeLabel).toLowerCase();
+    return label === "modular kitchen" || label === "semi-modular kitchen";
+  }, [currentProductTypeLabel]);
+
+  const modularKitchenType = useMemo(
+    () =>
+      productTypes?.data?.find(
+        (type: any) => String(type.type).toLowerCase() === "modular kitchen",
+      ),
+    [productTypes?.data],
+  );
+
+  const semiModularKitchenType = useMemo(
+    () =>
+      productTypes?.data?.find(
+        (type: any) =>
+          String(type.type).toLowerCase() === "semi-modular kitchen",
+      ),
+    [productTypes?.data],
+  );
+
+  const editParentFilter = useMemo(
+    () => getParentFilter(editStructure?.product_type_id),
+    [editStructure?.product_type_id, productTypes?.data],
+  );
+
+  const addParentFilter = useMemo(
+    () => getParentFilter(addStructure?.product_type_id),
+    [addStructure?.product_type_id, productTypes?.data],
+  );
+
+  const editStructureOptions = useMemo(
+    () => getStructureOptions(editParentFilter),
+    [editParentFilter, productStructureTypes?.data],
+  );
+
+  const addStructureOptions = useMemo(
+    () => getStructureOptions(addParentFilter),
+    [addParentFilter, productStructureTypes?.data],
+  );
+
+  // ✅ 9. EARLY RETURNS — SARE HOOKS KE BAAD
+  if (isLoading && !lead) {
+    return <div>Loading...</div>;
+  }
+
+  if (!lead) {
+    return (
+      <div className="border rounded-lg p-6">
+        <p>No lead details found.</p>
+      </div>
+    );
+  }
+
+  // ✅ 10. REGULAR VARIABLES
+  console.log("Data", lead);
+  console.log("Lead Stage In Lead Details: ", leadStage);
+
+  const canUploadSitePhotos =
+    userType === "admin" ||
+    userType === "super-admin" ||
+    (userType === "sales-executive" && leadStage === "open");
+
+  // ✅ 11. EVENT HANDLERS
+  const handleOpenProductTypeEdit = () => {
+    if (!currentProductTypeId) return;
+    setSelectedProductTypeId(currentProductTypeId);
+    setEditProductTypeOpen(true);
+  };
+
+  const handleSaveProductType = () => {
+    if (!selectedProductTypeId) {
+      toast.error("Please select a product type.");
+      return;
+    }
+    if (selectedProductTypeId === currentProductTypeId) {
+      toast.info("No changes to update.");
+      setEditProductTypeOpen(false);
+      return;
+    }
+    setConfirmProductTypeSave(true);
+  };
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {
@@ -358,19 +467,16 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
   const handleEditStructureChange = (selectedId: number) => {
     const selectedStructure = productStructureTypes?.data?.find(
-      (type: any) => type.id === selectedId
+      (type: any) => type.id === selectedId,
     );
     setEditStructure((prev) =>
       prev
         ? {
             ...prev,
             product_structure_id: selectedId,
-            title:
-              selectedStructure?.type?.trim() ||
-              prev.title ||
-              "",
+            title: selectedStructure?.type?.trim() || prev.title || "",
           }
-        : prev
+        : prev,
     );
     if (editStructureError) setEditStructureError("");
   };
@@ -385,7 +491,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       setEditStructureError("Please select a structure.");
       return;
     }
-
     updateStructureInstance({
       vendorId,
       leadId,
@@ -421,7 +526,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       setEditStructureError("Please select a structure.");
       return;
     }
-
     createStructureInstance({
       vendorId,
       leadId,
@@ -433,64 +537,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       },
     });
   };
-
-  const getParentFilter = (productTypeId?: number) => {
-    if (!productTypeId) return null;
-    const typeLabel =
-      productTypes?.data?.find((type: any) => type.id === productTypeId)?.type ||
-      "";
-    const normalized = String(typeLabel).toLowerCase();
-    if (normalized.includes("kitchen")) return "Kitchen";
-    if (normalized.includes("wardrobe")) return "Wardrobe";
-    return "Others";
-  };
-
-  const editParentFilter = useMemo(
-    () => getParentFilter(editStructure?.product_type_id),
-    [editStructure?.product_type_id, productTypes?.data]
-  );
-  const addParentFilter = useMemo(
-    () => getParentFilter(addStructure?.product_type_id),
-    [addStructure?.product_type_id, productTypes?.data]
-  );
-
-  const getStructureOptions = (parentFilter: string | null) => {
-    const options =
-      productStructureTypes?.data?.map((structure: any) => ({
-        id: structure.id,
-        label: structure.type,
-        parent: structure.parent,
-      })) || [];
-    if (!parentFilter) return options;
-    return options.filter((structure: any) => {
-      const parent = String(structure.parent || "").toLowerCase();
-      if (parentFilter === "Kitchen") return parent === "kitchen";
-      if (parentFilter === "Wardrobe") return parent === "wardrobe";
-      return parent !== "kitchen" && parent !== "wardrobe";
-    });
-  };
-
-  const editStructureOptions = useMemo(
-    () => getStructureOptions(editParentFilter),
-    [editParentFilter, productStructureTypes?.data]
-  );
-  const addStructureOptions = useMemo(
-    () => getStructureOptions(addParentFilter),
-    [addParentFilter, productStructureTypes?.data]
-  );
-
-  if (!lead) {
-    return (
-      <div className="border rounded-lg p-6">
-        <p>No lead details found.</p>
-      </div>
-    );
-  }
-
-  const canUploadSitePhotos =
-    userType === "admin" ||
-    userType === "super-admin" ||
-    (userType === "sales-executive" && leadStage === "open");
 
   const handleUploadFilesChange = (files: File[]) => {
     if (files.length > 10) {
@@ -506,12 +552,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       toast.error("Vendor or user information is missing.");
       return;
     }
-
     if (uploadFiles.length === 0) {
       toast.error("Please select at least one photo to upload.");
       return;
     }
-
     try {
       await uploadMoreSitePhotos({
         vendorId,
@@ -519,7 +563,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         createdBy: userId,
         files: uploadFiles,
       });
-
       toast.success("Site photos uploaded successfully!");
       setUploadFiles([]);
       setUploadOpen(false);
@@ -528,42 +571,12 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       });
     } catch (error: any) {
       toast.error(
-        error?.response?.data?.message || "Failed to upload site photos."
+        error?.response?.data?.message || "Failed to upload site photos.",
       );
     }
   };
 
-  const SectionCard = ({ title, children, action }: any) => (
-    <motion.section
-      variants={itemVariants}
-      className="
-  bg-[#fff] dark:bg-[#0a0a0a]
-  rounded-2xl 
-  border border-border 
-  shadow-soft 
-  p-6 space-y-6
-"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
-        {action}
-      </div>
-
-      {children}
-    </motion.section>
-  );
-
-  const InfoRow = ({ icon: Icon, label, value }: any) => (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2 text-sm text-subtle dark:text-neutral-400">
-        {Icon && <Icon className="w-4 h-4 stroke-[1.5]" />}
-        {label}
-      </div>
-      <div className="text-[15px] font-medium text-heading dark:text-neutral-200 pl-6">
-        {value || "—"}
-      </div>
-    </div>
-  );
+  // ✅ 12. SUB-COMPONENTS
 
   return (
     <>
@@ -572,10 +585,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         initial="hidden"
         animate="visible"
         className="
-  rounded-lg 
-  w-full h-full   
-  bg-[#fff] dark:bg-[#0a0a0a]
-"
+    rounded-lg 
+    w-full h-full   
+    bg-[#fff] dark:bg-[#0a0a0a]
+  "
       >
         {/* Header */}
         <div>
@@ -598,12 +611,12 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         </div>
 
         <div className="py-4 space-y-4">
-
           {/* PRODUCT INFORMATION */}
           <SectionCard
             title="Product Information"
             action={
-              !isKitchenType && canEditStructures && (
+              !isKitchenType &&
+              canEditStructures && (
                 <Button
                   type="button"
                   size="sm"
@@ -640,7 +653,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     ?.filter(Boolean)
                     ?.join(", ")}
                 />
-                {(structureSummary.total > 0 || structureSummary.uniqueStructures > 0) && (
+                {(structureSummary.total > 0 ||
+                  structureSummary.uniqueStructures > 0) && (
                   <div className="flex flex-wrap items-center gap-2">
                     {structureSummary.total > 0 && (
                       <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
@@ -770,10 +784,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     href={lead.site_map_link}
                     target="_blank"
                     className="
-        pl-6 underline 
-        font-medium text-heading dark:text-neutral-200 
-        hover:opacity-80
-      "
+          pl-6 underline 
+          font-medium text-heading dark:text-neutral-200 
+          hover:opacity-80
+        "
                   >
                     View on Google Maps →
                   </a>
@@ -821,10 +835,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
                 <div
                   className="
-  bg-[#fff] dark:bg-[#0a0a0a] 
-  border border-border 
-  rounded-xl p-4 ml-6
-"
+    bg-[#fff] dark:bg-[#0a0a0a] 
+    border border-border 
+    rounded-xl p-4 ml-6
+  "
                 >
                   <p className="text-[15px] leading-relaxed text-heading dark:text-neutral-200">
                     {lead.designer_remark || "No remarks provided"}
@@ -838,21 +852,21 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           <motion.section
             variants={itemVariants}
             className="
-  bg-[#fff] dark:bg-[#0a0a0a] 
-  rounded-2xl 
-  border border-border 
-  shadow-soft 
-  overflow-hidden
-"
+    bg-[#fff] dark:bg-[#0a0a0a] 
+    rounded-2xl 
+    border border-border 
+    shadow-soft 
+    overflow-hidden
+  "
           >
             {/* Header */}
             <div
               className="
-  flex items-center justify-between 
-  px-5 py-3 
-  border-b border-border
-  bg-[#fff] dark:bg-[#0a0a0a]
-"
+    flex items-center justify-between 
+    px-5 py-3 
+    border-b border-border
+    bg-[#fff] dark:bg-[#0a0a0a]
+  "
             >
               <div className="flex flex-col items-start">
                 <h1 className="text-lg font-semibold tracking-tight">
@@ -864,20 +878,20 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 </p>
               </div>
               {/* 
-              <Button
-                variant="outline"
-                size="sm"
-                className="
-  rounded-lg 
-  border-border 
-  hover:bg-mutedBg dark:hover:bg-neutral-800 
-  dark:border-neutral-700
-  transition
-"
-              >
-                <RefreshCcw size={15} />
-                Refresh
-              </Button> */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="
+    rounded-lg 
+    border-border 
+    hover:bg-mutedBg dark:hover:bg-neutral-800 
+    dark:border-neutral-700
+    transition
+  "
+                >
+                  <RefreshCcw size={15} />
+                  Refresh
+                </Button> */}
             </div>
 
             {/* Body */}
@@ -900,21 +914,21 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                           onDelete={(id) => setConfirmDelete(Number(id))}
                         />
                       </motion.div>
-                    ) : null
+                    ) : null,
                   )}
                   {canUploadSitePhotos && (
                     <button
                       type="button"
                       onClick={() => setUploadOpen(true)}
                       className="
-                        flex flex-col items-center justify-center
-                        border border-dashed border-border/70
-                        rounded-xl p-6 text-center
-                        bg-mutedBg/40 dark:bg-neutral-800/40
-                        hover:bg-muted/40 dark:hover:bg-neutral-800/60
-                        transition
-                        w-full h-full
-                      "
+                          flex flex-col items-center justify-center
+                          border border-dashed border-border/70
+                          rounded-xl p-6 text-center
+                          bg-mutedBg/40 dark:bg-neutral-800/40
+                          hover:bg-muted/40 dark:hover:bg-neutral-800/60
+                          transition
+                          w-full h-full
+                        "
                     >
                       <ImagePlus className="w-6 h-6 text-muted-foreground mb-1" />
                       <p className="text-xs font-medium text-muted-foreground">
@@ -929,13 +943,13 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               ) : (
                 <div
                   className="
-                flex flex-col items-center justify-center 
-                py-14 px-6 
-                border border-dashed border-border/60 
-                rounded-xl 
-                bg-mutedBg/40 dark:bg-neutral-800/40
-                dark:border-neutral-700/40
-              "
+                  flex flex-col items-center justify-center 
+                  py-14 px-6 
+                  border border-dashed border-border/60 
+                  rounded-xl 
+                  bg-mutedBg/40 dark:bg-neutral-800/40
+                  dark:border-neutral-700/40
+                "
                 >
                   <svg
                     className="w-12 h-12 text-muted-foreground dark:text-neutral-500 mb-3"
@@ -963,12 +977,12 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                       type="button"
                       onClick={() => setUploadOpen(true)}
                       className="
-                        mt-4 inline-flex items-center gap-2
-                        rounded-lg border border-border px-3 py-2
-                        text-xs font-medium text-muted-foreground
-                        hover:bg-mutedBg/60 dark:hover:bg-neutral-800/60
-                        transition
-                      "
+                          mt-4 inline-flex items-center gap-2
+                          rounded-lg border border-border px-3 py-2
+                          text-xs font-medium text-muted-foreground
+                          hover:bg-mutedBg/60 dark:hover:bg-neutral-800/60
+                          transition
+                        "
                     >
                       <ImagePlus className="w-4 h-4" />
                       Add more images
@@ -1110,7 +1124,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           >
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Confirm Product Type Change?</AlertDialogTitle>
+                <AlertDialogTitle>
+                  Confirm Product Type Change?
+                </AlertDialogTitle>
                 <AlertDialogDescription>
                   This will update the product type for this lead.
                 </AlertDialogDescription>
@@ -1156,9 +1172,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   value={editStructure?.title || ""}
                   onChange={(event) => {
                     setEditStructure((prev) =>
-                      prev
-                        ? { ...prev, title: event.target.value }
-                        : prev
+                      prev ? { ...prev, title: event.target.value } : prev,
                     );
                     if (editTitleError) setEditTitleError("");
                   }}
@@ -1166,9 +1180,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   className="mt-1"
                 />
                 {editTitleError && (
-                  <p className="mt-1 text-xs text-red-500">
-                    {editTitleError}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{editTitleError}</p>
                 )}
               </div>
               <div>
@@ -1203,7 +1215,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   value={editStructure?.description || ""}
                   onChange={(value) =>
                     setEditStructure((prev) =>
-                      prev ? { ...prev, description: value } : prev
+                      prev ? { ...prev, description: value } : prev,
                     )
                   }
                   placeholder="Add description..."
@@ -1256,9 +1268,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   value={addStructure?.title || ""}
                   onChange={(event) => {
                     setAddStructure((prev) =>
-                      prev
-                        ? { ...prev, title: event.target.value }
-                        : prev
+                      prev ? { ...prev, title: event.target.value } : prev,
                     );
                     if (editTitleError) setEditTitleError("");
                   }}
@@ -1288,7 +1298,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                               ...prev,
                               product_structure_id: selectedId,
                             }
-                          : prev
+                          : prev,
                       );
                       if (editStructureError) setEditStructureError("");
                     }}
@@ -1309,7 +1319,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   value={addStructure?.description || ""}
                   onChange={(value) =>
                     setAddStructure((prev) =>
-                      prev ? { ...prev, description: value } : prev
+                      prev ? { ...prev, description: value } : prev,
                     )
                   }
                   placeholder="Add description..."

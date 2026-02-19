@@ -22,7 +22,7 @@ export type ProcessedLead = {
   architechName: string;
   designerRemark: string;
   furnitureType: string;
-  furnitueStructures: string;
+  furnitueStructures: string[];
   source: string;
   siteType: string;
   createdAt: string | number;
