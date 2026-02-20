@@ -251,7 +251,9 @@ const MyTaskTable = () => {
           row: { original: row } as any,
           variant: "Dispatch",
         });
-        setOpenFollowUp(true);
+          router.push(
+          `/dashboard/installation/dispatch-planning/details/${row.leadId}?accountId=${row.accountId}`,
+        );
       }else if (row.taskType === "Pending Materials") {
         setRowAction({
           row: { original: row } as any,
