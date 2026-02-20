@@ -38,6 +38,7 @@ import {
 } from "@/hooks/useTasksQueries";
 import FinalMeasurementModal from "@/components/sales-executive/booking-stage/final-measurement-modal";
 import FollowUpModal from "@/components/follow-up-modal";
+import MiscTaskModal from "@/components/misc-task-modal";
 import BookingDoneIsmForm from "@/components/sales-executive/Lead/booking-done-ism-form";
 import ClearInput from "@/components/origin-input";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
@@ -107,6 +108,7 @@ const MyTaskTable = () => {
   const [rowAction, setRowAction] =
     useState<DataTableRowAction<ProcessedTask> | null>(null);
   const [openFollowUp, setOpenFollowUp] = useState(false);
+  const [openMiscTaskModal, setOpenMiscTaskModal] = useState(false);
 
   const showScopeToggle = isAdminUser;
 
@@ -275,9 +277,11 @@ const MyTaskTable = () => {
           `/dashboard/installation/site-readiness/details/${row.leadId}?accountId=${row.accountId}`,
         );
       } else if (row.taskType === "Miscellaneous") {
-        router.push(
-          `/dashboard/installation/under-installation/details/${row.leadId}?accountId=${row.accountId}&tab=misc&taskId=${row.id}`,
-        );
+        setRowAction({
+          row: { original: row } as any,
+          variant: "miscellaneous",
+        });
+        setOpenMiscTaskModal(true);
       } else if (row.taskType === "Production Ready") {
         const clearnRemark = extractTitleText(row.remark);
         setRowAction({
@@ -529,7 +533,7 @@ const MyTaskTable = () => {
         </div>
 
         {/* ================= TABLE ================= */}
-        <DataTable
+      <DataTable
           table={table}
           onRowDoubleClick={handleRowDoubleClick}
           className="pt-3 px-4"
@@ -657,6 +661,22 @@ const MyTaskTable = () => {
           accountId: rowAction?.row.original.accountId || 0,
           name: rowAction?.row.original.name || "",
         }}
+      />
+
+      <MiscTaskModal
+        open={openMiscTaskModal}
+        onOpenChange={setOpenMiscTaskModal}
+        data={
+          rowAction?.row?.original && rowAction?.variant === "miscellaneous"
+            ? {
+                leadId: rowAction.row.original.leadId,
+                accountId: rowAction.row.original.accountId,
+                taskId: rowAction.row.original.id,
+                dueDate: rowAction.row.original.dueDate,
+                remark: rowAction.row.original.remark,
+              }
+            : undefined
+        }
       />
 
       <FinalMeasurementModal

@@ -831,6 +831,47 @@ export const useUpdateMiscRequiredDeliveryDate = () => {
   });
 };
 
+export const updateMiscRequiredDeliveryDateByTaskId = async ({
+  vendorId,
+  taskId,
+  required_delivery_date,
+  updated_by,
+}: {
+  vendorId: number;
+  taskId: number;
+  required_delivery_date?: string;
+  updated_by: number;
+}) => {
+  const response = await apiClient.put(
+    `/leads/installation/under-installation/vendorId/${vendorId}/taskId/${taskId}/update-required-delivery-date`,
+    {
+      required_delivery_date,
+      updated_by,
+    }
+  );
+
+  return response.data.data;
+};
+
+export const useUpdateMiscRequiredDeliveryDateByTaskId = () => {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateMiscRequiredDeliveryDateByTaskId,
+
+    onSuccess: () => {
+      toast.success("Required delivery date updated!");
+
+      client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toast.error(error?.message || "Failed to update delivery date");
+    },
+  });
+};
+
 export const useUpdateMiscApproval = () => {
   const client = useQueryClient();
 
