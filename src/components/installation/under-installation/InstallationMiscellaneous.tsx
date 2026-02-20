@@ -570,22 +570,28 @@ export default function InstallationMiscellaneous({
                   <TableCell className="py-3 text-center">
                     <Badge
                       variant={
-                        entry.task?.status === "completed"
+                        entry.misc_approved === false
+                          ? "destructive"
+                          : entry.task?.status === "completed"
                           ? "default"
                           : "secondary"
                       }
                       className={`
                         text-xs px-2
                         ${
-                          entry.task?.status === "completed"
-                            ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                            : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
+                          entry.misc_approved === false
+                            ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                            : entry.task?.status === "completed"
+                              ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                              : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
                         }
                       `}
                     >
-                      {entry.task?.status === "completed"
-                        ? "Completed"
-                        : "Pending"}
+                      {entry.misc_approved === false
+                        ? "Rejected"
+                        : entry.task?.status === "completed"
+                          ? "Completed"
+                          : "Pending"}
                     </Badge>
                   </TableCell>
 
