@@ -227,7 +227,7 @@ export function getPendingLeadsColumns({}: {
         const remaining = structures.slice(2);
 
         return (
-          <div className="">
+          <div className="space-x-1">
             {visible.map((name: string, index: number) => (
               <Badge key={index} variant="secondary" className="text-xs px-2">
                 {name}
