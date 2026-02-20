@@ -38,6 +38,8 @@ export interface MiscellaneousEntry {
   cost: number | null;
   supervisor_remark: string | null;
   expected_ready_date: string | null;
+  misc_approved?: boolean | null;
+  exp_of_rejection?: string | null;
   is_resolved: boolean;
   resolved_at: string | null;
   created_by: number;
@@ -743,6 +745,31 @@ export const updateMiscExpectedReadyDate = async ({
   return response.data.data;
 };
 
+export const updateMiscApproval = async ({
+  vendorId,
+  miscId,
+  misc_approved,
+  exp_of_rejection,
+  updated_by,
+}: {
+  vendorId: number;
+  miscId: number;
+  misc_approved: boolean;
+  exp_of_rejection?: string;
+  updated_by: number;
+}) => {
+  const response = await apiClient.put(
+    `/leads/installation/under-installation/vendorId/${vendorId}/miscId/${miscId}/update-approval`,
+    {
+      misc_approved,
+      exp_of_rejection,
+      updated_by,
+    }
+  );
+
+  return response.data.data;
+};
+
 export const useUpdateMiscERD = () => {
   const client = useQueryClient();
 
@@ -758,6 +785,25 @@ export const useUpdateMiscERD = () => {
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(error?.message || "Failed to update date");
+    },
+  });
+};
+
+export const useUpdateMiscApproval = () => {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateMiscApproval,
+
+    onSuccess: () => {
+      toast.success("Miscellaneous updated!");
+
+      client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toast.error(error?.message || "Failed to update miscellaneous");
     },
   });
 };
