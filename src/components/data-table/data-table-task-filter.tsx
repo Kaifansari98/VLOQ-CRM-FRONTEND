@@ -14,13 +14,14 @@ const TASK_TYPES = [
   "Pending Work",
   "Pending Materials",
   "Production Items",
-  "Miscelleneous Items",
+  "Miscellaneous Items",
   "Production Ready",
   "Post Dispatch Photos",
   "Follow Up",
   "BookingDone - ISM",
   "Initial Site Measurement",
-  "Order Login"
+  "Order Login",
+  "Site Readiness"
 ];
 
 /* ===========================

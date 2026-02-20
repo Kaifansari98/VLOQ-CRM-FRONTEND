@@ -43,6 +43,7 @@ import {
   CreateMiscellaneousPayload,
   useUpdateMiscERD,
   useMarkMiscellaneousTaskReady,
+  useUpdateMiscApproval,
 } from "@/api/installation/useUnderInstallationStageLeads";
 import { useAppSelector } from "@/redux/store";
 import TextSelectPicker from "@/components/TextSelectPicker";
@@ -120,12 +121,15 @@ export default function InstallationMiscellaneous({
   const { data: entries, refetch } = useMiscellaneousEntries(vendorId, leadId);
   const updateERDMutation = useUpdateMiscERD();
   const markReadyMutation = useMarkMiscellaneousTaskReady();
+  const updateApprovalMutation = useUpdateMiscApproval();
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
   const [selectedERD, setSelectedERD] = useState<string | undefined>(undefined);
   const [showConfirm, setShowConfirm] = useState(false); // confirmation modal toggle
   const [showReadyConfirm, setShowReadyConfirm] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
   const canDoERDDate = canDoERDMiscellaneousDate(userType, leadStatus);
   const canDoMarkAsResolved = canMiscellaneousMarkAsResolved(
     userType,
@@ -136,7 +140,6 @@ export default function InstallationMiscellaneous({
     userType === "admin" ||
     userType === "super-admin";
   const isTaskReady = viewModal.data?.task?.status === "completed";
-  const canUpdateERD = canDoERDDate && !isTaskReady;
   const { data: orderLoginSummary = [], isLoading: loadingSummary } =
     useOrderLoginSummary(vendorId, leadId);
   const { data: instancesResponse } = useLeadProductStructureInstances(
@@ -332,9 +335,18 @@ export default function InstallationMiscellaneous({
   const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
 
   const entry = viewModal.data;
+  const miscApproved = viewModal.data?.misc_approved;
+  const isRejected = miscApproved === false;
+  const isApproved = miscApproved === true;
+  const canApproveReject =
+    userType === "factory" ||
+    userType === "admin" ||
+    userType === "super-admin";
+  const showApprovalActions = canApproveReject && miscApproved == null;
+  const canUpdateERD = canDoERDDate && !isTaskReady && isApproved;
 
   return (
-    <div className="px-2 bg-[#fff] dark:bg-[#0a0a0a]">
+    <div className="px-2 bg-white dark:bg-[#0a0a0a]">
       <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold">Miscellaneous Issues</h3>
@@ -363,9 +375,6 @@ export default function InstallationMiscellaneous({
                 Miscellaneous Type
               </TableHead>
               <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
-                Problem Description
-              </TableHead>
-              <TableHead className="w-[140px] text-sm font-medium text-foreground/80">
                 ERD Date
               </TableHead>
               <TableHead className="w-[100px] text-sm font-medium text-foreground/80">
@@ -383,14 +392,19 @@ export default function InstallationMiscellaneous({
               <TableHead className="w-[100px] text-center text-sm font-medium text-foreground/80">
                 Status
               </TableHead>
-              <TableHead className="w-[50px]" />
+              <TableHead className="w-[140px] text-center text-sm font-medium text-foreground/80">
+                Marked As Ready
+              </TableHead>
+              <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
+                Problem Description
+              </TableHead>
             </TableRow>
           </TableHeader>
 
           <TableBody>
             {!entries || entries.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-10 text-center">
+                <TableCell colSpan={9} className="py-10 text-center">
                   <div className="flex flex-col items-center">
                     <div className="p-3 bg-muted/40 rounded-full shadow-inner mb-2">
                       <Wrench className="w-7 h-7 opacity-50" />
@@ -442,20 +456,6 @@ export default function InstallationMiscellaneous({
                         </p>
                       </div>
                     </div>
-                  </TableCell>
-
-                  {/* DESCRIPTION */}
-                  <TableCell className="py-3">
-                    <RemarkTooltip
-                      remark={
-                        entry.problem_description
-                          ? entry.problem_description.length > 40
-                            ? entry.problem_description.slice(0, 40) + "..."
-                            : entry.problem_description
-                          : "-"
-                      }
-                      remarkFull={entry.problem_description || "-"}
-                    />
                   </TableCell>
 
                   {/* ⭐ NEW ERD COLUMN */}
@@ -526,33 +526,69 @@ export default function InstallationMiscellaneous({
                   {/* STATUS */}
                   <TableCell className="py-3 text-center">
                     <Badge
-                      variant={entry.is_resolved ? "default" : "secondary"}
+                      variant={
+                        entry.misc_approved === false
+                          ? "destructive"
+                          : entry.is_resolved
+                            ? "default"
+                            : "secondary"
+                      }
                       className={`
                   text-xs px-2 text-yellow-600 bg-yellow-100
                   ${
-                    entry.is_resolved
-                      ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                      : ""
+                    entry.misc_approved === false
+                      ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                      : entry.is_resolved
+                        ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                        : ""
                   }
                 `}
                     >
-                      {entry.is_resolved ? "Resolved" : "Pending"}
+                      {entry.misc_approved === false
+                        ? "Rejected"
+                        : entry.is_resolved
+                          ? "Resolved"
+                          : entry.misc_approved === true
+                            ? "Pending"
+                            : "Awaiting Approval"}
                     </Badge>
                   </TableCell>
 
-                  {/* ACTION */}
-                  <TableCell className="py-3 text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="opacity-70 hover:opacity-100"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setViewModal({ open: true, data: entry });
-                      }}
+                  {/* MARKED AS READY */}
+                  <TableCell className="py-3 text-center">
+                    <Badge
+                      variant={
+                        entry.task?.status === "completed"
+                          ? "default"
+                          : "secondary"
+                      }
+                      className={`
+                        text-xs px-2
+                        ${
+                          entry.task?.status === "completed"
+                            ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                            : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
+                        }
+                      `}
                     >
-                      <Eye className="w-4 h-4" />
-                    </Button>
+                      {entry.task?.status === "completed"
+                        ? "Completed"
+                        : "Pending"}
+                    </Badge>
+                  </TableCell>
+
+                  {/* DESCRIPTION */}
+                  <TableCell className="py-3">
+                    <RemarkTooltip
+                      remark={
+                        entry.problem_description
+                          ? entry.problem_description.length > 40
+                            ? entry.problem_description.slice(0, 40) + "..."
+                            : entry.problem_description
+                          : "-"
+                      }
+                      remarkFull={entry.problem_description || "-"}
+                    />
                   </TableCell>
                 </TableRow>
               ))
@@ -900,6 +936,164 @@ export default function InstallationMiscellaneous({
             )}
 
             {/* ---- DETAILS SECTION (Two Column Premium Layout) ---- */}
+
+            {isRejected && (
+              <div className="space-y-2">
+                <p className="text-[13px] font-medium text-muted-foreground">
+                This Miscellaneous has been Rejected By The Factory.
+                </p>
+                <div className="border border-border rounded-lg bg-red-50/60 dark:bg-red-950/20 px-4 py-2">
+                  <p className="text-xs leading-relaxed text-red-600">
+                    {viewModal.data?.exp_of_rejection || "-"}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* -------- FOOTER -------- */}
+          <DialogFooter className="flex-row items-end justify-between gap-3 pt-2">
+            {/* Approval Actions */}
+            {showApprovalActions && (
+              <div className="flex items-center gap-3 flex-1">
+                <Button
+                  variant="default"
+                  disabled={updateApprovalMutation.isPending}
+                  onClick={() => {
+                    if (!viewModal.data) return;
+                    updateApprovalMutation.mutate(
+                      {
+                        vendorId,
+                        miscId: viewModal.data.id,
+                        misc_approved: true,
+                        updated_by: userId!,
+                      },
+                      {
+                        onSuccess: () => {
+                          setViewModal((prev) => ({
+                            ...prev,
+                            data: prev.data
+                              ? { ...prev.data, misc_approved: true }
+                              : null,
+                          }));
+                        },
+                      },
+                    );
+                  }}
+                  className="gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  {updateApprovalMutation.isPending ? "Approving..." : "Approve"}
+                </Button>
+
+                <Button
+                  variant="destructive"
+                  disabled={updateApprovalMutation.isPending}
+                  onClick={() => setShowRejectModal(true)}
+                >
+                  Reject
+                </Button>
+              </div>
+            )}
+
+            {/* Expected Ready Date + Resolve */}
+            {!viewModal.data?.is_resolved && isApproved ? (
+              <div className="flex items-center gap-3 flex-1">
+                {/* Date Picker */}
+                <div className="flex-1 max-w-xs">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Expected Ready Date
+                    </span>
+                  </div>
+                  <CustomeDatePicker
+                    key={viewModal.data?.id}
+                    value={viewModal.data?.expected_ready_date || undefined}
+                    restriction="futureOnly"
+                    disabledReason={
+                      !canDoERDDate
+                        ? userType === "factory"
+                          ? "This lead has moved ahead."
+                          : "Only factory user can do this."
+                        : isTaskReady
+                          ? "Marked as ready. ERD cannot be updated."
+                          : undefined
+                    }
+                    onChange={(newDate) => {
+                      if (!canUpdateERD || !newDate) return;
+                      setSelectedERD(newDate);
+                      setShowConfirm(true);
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1" />
+            )}
+
+            {/* Resolve Button */}
+            {viewModal.data?.expected_ready_date &&
+              canDoMarkAsResolved &&
+              isApproved && (
+              <Button
+                variant="default"
+                size="default"
+                disabled={resolveMisc.isPending}
+                onClick={() =>
+                  resolveMisc.mutate(
+                    {
+                      vendorId,
+                      leadId,
+                      miscId: viewModal?.data?.id || 0,
+                      resolved_by: userId!,
+                    },
+                    {
+                      onSuccess: () => {
+                        queryClient.invalidateQueries({
+                          queryKey: ["miscellaneousEntries", vendorId, leadId],
+                        });
+
+                        setViewModal((prev) => ({
+                          ...prev,
+                          data: prev.data
+                            ? {
+                                ...prev.data,
+                                is_resolved: true, // immediate UI change
+                                resolved_by: userId, // optional
+                                resolved_at: new Date().toString(), // optional
+                              }
+                            : null,
+                        }));
+                      },
+                    },
+                  )
+                }
+                className="gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {resolveMisc.isPending ? "Resolving..." : "Mark as Resolved"}
+              </Button>
+            )}
+
+            {/* Mark as Ready Button */}
+            {viewModal.data?.expected_ready_date && canMarkAsReady && isApproved && (
+              <Button
+                variant="default"
+                size="default"
+                disabled={markReadyMutation.isPending || isTaskReady}
+                onClick={() => !isTaskReady && setShowReadyConfirm(true)}
+                className="gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {isTaskReady
+                  ? "Marked as Ready"
+                  : markReadyMutation.isPending
+                    ? "Marking..."
+                    : "Mark as Ready"}
+              </Button>
+            )}
+          </DialogFooter>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Problem Description */}
               {viewModal.data?.problem_description && (
@@ -1021,99 +1215,83 @@ export default function InstallationMiscellaneous({
               </div>
             )}
           </div>
+        </div>
+      </BaseModal>
 
-          {/* -------- FOOTER -------- */}
-          <DialogFooter className="flex-row items-center justify-between gap-3 pt-2">
-            {/* Expected Ready Date + Resolve */}
-            {!viewModal.data?.is_resolved ? (
-              <div className="flex items-center gap-3 flex-1">
-                {/* Date Picker */}
-                <div className="flex-1 max-w-xs">
-                  <CustomeDatePicker
-                    key={viewModal.data?.id}
-                    value={viewModal.data?.expected_ready_date || undefined}
-                    restriction="futureOnly"
-                    disabledReason={
-                      !canDoERDDate
-                        ? userType === "factory"
-                          ? "This lead has moved ahead."
-                          : "Only factory user can do this."
-                        : isTaskReady
-                          ? "Marked as ready. ERD cannot be updated."
-                          : undefined
-                    }
-                    onChange={(newDate) => {
-                      if (!canUpdateERD || !newDate) return;
-                      setSelectedERD(newDate);
-                      setShowConfirm(true);
-                    }}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1" />
-            )}
+      {/* Reject Modal */}
+      <BaseModal
+        open={showRejectModal}
+        onOpenChange={(open) => {
+          setShowRejectModal(open);
+          if (!open) setRejectReason("");
+        }}
+        size="md"
+        title="Reject Miscellaneous"
+        description="Please provide a reason for rejecting this miscellaneous request."
+      >
+        <div className="space-y-4 py-4 px-6">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Reason *</label>
+            <TextAreaInput
+              value={rejectReason}
+              onChange={(value) => setRejectReason(value)}
+              placeholder="Enter rejection reason..."
+              maxLength={1000}
+            />
+          </div>
 
-            {/* Resolve Button */}
-            {viewModal.data?.expected_ready_date && canDoMarkAsResolved && (
-              <Button
-                variant="default"
-                size="default"
-                disabled={resolveMisc.isPending}
-                onClick={() =>
-                  resolveMisc.mutate(
-                    {
-                      vendorId,
-                      leadId,
-                      miscId: viewModal?.data?.id || 0,
-                      resolved_by: userId!,
-                    },
-                    {
-                      onSuccess: () => {
-                        queryClient.invalidateQueries({
-                          queryKey: ["miscellaneousEntries", vendorId, leadId],
-                        });
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowRejectModal(false);
+                setRejectReason("");
+              }}
+              disabled={updateApprovalMutation.isPending}
+            >
+              Cancel
+            </Button>
 
-                        setViewModal((prev) => ({
-                          ...prev,
-                          data: prev.data
-                            ? {
-                                ...prev.data,
-                                is_resolved: true, // immediate UI change
-                                resolved_by: userId, // optional
-                                resolved_at: new Date().toString(), // optional
-                              }
-                            : null,
-                        }));
-                      },
-                    },
-                  )
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (!viewModal.data) return;
+                if (!rejectReason.trim()) {
+                  toast.error("Please enter a rejection reason");
+                  return;
                 }
-                className="gap-2"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                {resolveMisc.isPending ? "Resolving..." : "Mark as Resolved"}
-              </Button>
-            )}
 
-            {/* Mark as Ready Button */}
-            {viewModal.data?.expected_ready_date && canMarkAsReady && (
-              <Button
-                variant="default"
-                size="default"
-                disabled={markReadyMutation.isPending || isTaskReady}
-                onClick={() => !isTaskReady && setShowReadyConfirm(true)}
-                className="gap-2"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                {isTaskReady
-                  ? "Marked as Ready"
-                  : markReadyMutation.isPending
-                    ? "Marking..."
-                    : "Mark as Ready"}
-              </Button>
-            )}
-          </DialogFooter>
+                updateApprovalMutation.mutate(
+                  {
+                    vendorId,
+                    miscId: viewModal.data.id,
+                    misc_approved: false,
+                    exp_of_rejection: rejectReason.trim(),
+                    updated_by: userId!,
+                  },
+                  {
+                    onSuccess: () => {
+                      setViewModal((prev) => ({
+                        ...prev,
+                        data: prev.data
+                          ? {
+                              ...prev.data,
+                              misc_approved: false,
+                              exp_of_rejection: rejectReason.trim(),
+                            }
+                          : null,
+                      }));
+                      setShowRejectModal(false);
+                      setRejectReason("");
+                    },
+                  },
+                );
+              }}
+              disabled={updateApprovalMutation.isPending}
+            >
+              {updateApprovalMutation.isPending ? "Rejecting..." : "Reject"}
+            </Button>
+          </div>
         </div>
       </BaseModal>
 

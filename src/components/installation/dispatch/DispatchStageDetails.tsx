@@ -499,7 +499,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
         </div>
       </div>
 
-      <Separator />
 
       {/* Dispatch Details Form */}
       <div className="border rounded-lg bg-background overflow-hidden">
@@ -718,7 +717,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
         </div>
       </div>
 
-      <Separator />
+     
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         <div className="h-full">

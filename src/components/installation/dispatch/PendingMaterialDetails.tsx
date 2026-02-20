@@ -132,7 +132,7 @@ export default function PendingMaterialDetails({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="border rounded-lg bg-background h-full flex flex-col overflow-hidden">
+      <div className="border rounded-xl bg-background h-full flex flex-col overflow-hidden">
         {/* ---------- HEADER ---------- */}
         <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
           <div className="">
