@@ -44,6 +44,7 @@ import {
   useUpdateMiscERD,
   useMarkMiscellaneousTaskReady,
   useUpdateMiscApproval,
+  useUpdateMiscRequiredDeliveryDate,
 } from "@/api/installation/useUnderInstallationStageLeads";
 import { useAppSelector } from "@/redux/store";
 import TextSelectPicker from "@/components/TextSelectPicker";
@@ -122,12 +123,17 @@ export default function InstallationMiscellaneous({
   const updateERDMutation = useUpdateMiscERD();
   const markReadyMutation = useMarkMiscellaneousTaskReady();
   const updateApprovalMutation = useUpdateMiscApproval();
+  const updateRequiredDeliveryMutation = useUpdateMiscRequiredDeliveryDate();
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
   const [selectedERD, setSelectedERD] = useState<string | undefined>(undefined);
+  const [selectedRequiredDelivery, setSelectedRequiredDelivery] = useState<
+    string | undefined
+  >(undefined);
   const [showConfirm, setShowConfirm] = useState(false); // confirmation modal toggle
   const [showReadyConfirm, setShowReadyConfirm] = useState(false);
+  const [showDeliveryConfirm, setShowDeliveryConfirm] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const canDoERDDate = canDoERDMiscellaneousDate(userType, leadStatus);
@@ -338,12 +344,18 @@ export default function InstallationMiscellaneous({
   const miscApproved = viewModal.data?.misc_approved;
   const isRejected = miscApproved === false;
   const isApproved = miscApproved === true;
+  const isReady = viewModal.data?.task?.status === "completed";
   const canApproveReject =
     userType === "factory" ||
     userType === "admin" ||
     userType === "super-admin";
   const showApprovalActions = canApproveReject && miscApproved == null;
   const canUpdateERD = canDoERDDate && !isTaskReady && isApproved;
+  const canUpdateRequiredDelivery =
+    ["admin", "super-admin", "site-supervisor"].includes(userType || "") &&
+    isApproved &&
+    isReady &&
+    !viewModal.data?.is_resolved;
 
   return (
     <div className="px-2 bg-white dark:bg-[#0a0a0a]">
@@ -999,11 +1011,11 @@ export default function InstallationMiscellaneous({
             {!viewModal.data?.is_resolved && isApproved ? (
               <div className="flex items-center gap-3 flex-1">
                 {/* Date Picker */}
-                <div className="flex-1 max-w-xs">
+                <div className="flex-1 max-w-xs space-y-3">
                   <div className="flex items-center gap-2 mb-2">
                     <Calendar className="w-4 h-4 text-muted-foreground" />
                     <span className="text-xs font-medium text-muted-foreground">
-                      Expected Ready Date
+                      Expected Ready Date (ERD)
                     </span>
                   </div>
                   <CustomeDatePicker
@@ -1023,6 +1035,32 @@ export default function InstallationMiscellaneous({
                       if (!canUpdateERD || !newDate) return;
                       setSelectedERD(newDate);
                       setShowConfirm(true);
+                    }}
+                  />
+
+                  <div className="flex items-center gap-2 mb-2 mt-4">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Required Delivery Date
+                    </span>
+                  </div>
+                  <CustomeDatePicker
+                    key={`${viewModal.data?.id}-delivery`}
+                    value={
+                      viewModal.data?.required_delivery_date || undefined
+                    }
+                    restriction="futureOnly"
+                    disabledReason={
+                      !isReady
+                        ? "Mark as ready to set delivery date."
+                        : !canUpdateRequiredDelivery
+                          ? "Only admin, super-admin or site supervisor can update."
+                          : undefined
+                    }
+                    onChange={(newDate) => {
+                      if (!canUpdateRequiredDelivery || !newDate) return;
+                      setSelectedRequiredDelivery(newDate);
+                      setShowDeliveryConfirm(true);
                     }}
                   />
                 </div>
@@ -1336,6 +1374,60 @@ export default function InstallationMiscellaneous({
                       }));
 
                       setShowConfirm(false);
+                    },
+                  },
+                );
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={showDeliveryConfirm}
+        onOpenChange={setShowDeliveryConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Set Required Delivery Date?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to set the required delivery date?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowDeliveryConfirm(false)}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={() => {
+                if (!viewModal.data || !selectedRequiredDelivery) return;
+
+                updateRequiredDeliveryMutation.mutate(
+                  {
+                    vendorId,
+                    miscId: viewModal.data.id,
+                    required_delivery_date: selectedRequiredDelivery,
+                    updated_by: userId!,
+                  },
+                  {
+                    onSuccess: () => {
+                      queryClient.invalidateQueries({
+                        queryKey: ["miscellaneousEntries", vendorId, leadId],
+                      });
+
+                      setViewModal((prev) => ({
+                        ...prev,
+                        data: {
+                          ...prev.data!,
+                          required_delivery_date: selectedRequiredDelivery,
+                        },
+                      }));
+
+                      setShowDeliveryConfirm(false);
                     },
                   },
                 );

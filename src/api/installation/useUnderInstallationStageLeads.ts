@@ -38,6 +38,7 @@ export interface MiscellaneousEntry {
   cost: number | null;
   supervisor_remark: string | null;
   expected_ready_date: string | null;
+  required_delivery_date?: string | null;
   misc_approved?: boolean | null;
   exp_of_rejection?: string | null;
   is_resolved: boolean;
@@ -785,6 +786,47 @@ export const useUpdateMiscERD = () => {
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(error?.message || "Failed to update date");
+    },
+  });
+};
+
+export const updateMiscRequiredDeliveryDate = async ({
+  vendorId,
+  miscId,
+  required_delivery_date,
+  updated_by,
+}: {
+  vendorId: number;
+  miscId: number;
+  required_delivery_date?: string;
+  updated_by: number;
+}) => {
+  const response = await apiClient.put(
+    `/leads/installation/under-installation/vendorId/${vendorId}/miscId/${miscId}/update-required-delivery-date`,
+    {
+      required_delivery_date,
+      updated_by,
+    }
+  );
+
+  return response.data.data;
+};
+
+export const useUpdateMiscRequiredDeliveryDate = () => {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateMiscRequiredDeliveryDate,
+
+    onSuccess: () => {
+      toast.success("Required delivery date updated!");
+
+      client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toast.error(error?.message || "Failed to update delivery date");
     },
   });
 };
