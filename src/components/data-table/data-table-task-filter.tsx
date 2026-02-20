@@ -21,7 +21,8 @@ const TASK_TYPES = [
   "BookingDone - ISM",
   "Initial Site Measurement",
   "Order Login",
-  "Site Readiness"
+  "Site Readiness",
+  "Dispatch"
 ];
 
 /* ===========================
