@@ -58,6 +58,7 @@ export interface DataTableRowAction<TData> {
     | "productionready"
     | "bookingdoneism"
     | "Dispatch"
+    | "miscellaneous"
 }
 
 export interface DataTableRowActionOpen<TData> {
