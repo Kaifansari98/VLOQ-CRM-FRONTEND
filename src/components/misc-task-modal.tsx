@@ -3,26 +3,20 @@
 import React, { useEffect, useState } from "react";
 import BaseModal from "./utils/baseModal";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import CustomeDatePicker from "@/components/date-picker";
 import TextAreaInput from "@/components/origin-text-area";
 import { toast } from "react-toastify";
 import { useAppSelector } from "@/redux/store";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useCompletedUpdateTask,
   useRescheduleTask,
 } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
-import { useUpdateMiscRequiredDeliveryDateByTaskId } from "@/api/installation/useUnderInstallationStageLeads";
+import {
+  uploadMiscCompletionDocumentsByTaskId,
+  useUpdateMiscRequiredDeliveryDateByTaskId,
+} from "@/api/installation/useUnderInstallationStageLeads";
+import { FileUploadField } from "@/components/custom/file-upload";
 
 interface Props {
   open: boolean;
@@ -45,11 +39,18 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
   const rescheduleMutation = useRescheduleTask();
   const updateRequiredDeliveryMutation =
     useUpdateMiscRequiredDeliveryDateByTaskId();
+  const uploadCompletionDocsMutation = useMutation({
+    mutationFn: uploadMiscCompletionDocumentsByTaskId,
+    onError: (error: any) => {
+      toast.error(error?.message || "Failed to upload documents");
+    },
+  });
 
   const [openCompletedModal, setOpenCompletedModal] = useState(false);
   const [openRescheduleModal, setOpenRescheduleModal] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState<string | undefined>();
   const [rescheduleRemark, setRescheduleRemark] = useState("");
+  const [completionFiles, setCompletionFiles] = useState<File[]>([]);
 
   useEffect(() => {
     if (data?.dueDate) {
@@ -64,31 +65,57 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
 
   const handleMarkCompleted = () => {
     if (!data) return;
-    completedUpdateMutation.mutate(
+    if (completionFiles.length === 0) {
+      toast.error("Please upload completion documents");
+      return;
+    }
+
+    const formData = new FormData();
+    completionFiles.forEach((file) => formData.append("files", file));
+    formData.append("created_by", String(userId || 0));
+
+    uploadCompletionDocsMutation.mutate(
       {
-        leadId: data.leadId,
+        vendorId: vendorId || 0,
         taskId: data.taskId,
-        payload: {
-          status: "completed",
-          updated_by: userId || 0,
-          closed_at: new Date().toISOString(),
-          closed_by: userId || 0,
-        },
+        formData,
       },
       {
         onSuccess: () => {
-          toast.success("Task marked as completed!");
-          setOpenCompletedModal(false);
-          onOpenChange(false);
-          if (vendorId) {
-            queryClient.invalidateQueries({
-              queryKey: ["vendorUserTasks", vendorId, userId],
-            });
-            queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
-          }
-        },
-        onError: (err: any) => {
-          toast.error(err?.message || "Failed to update task");
+          completedUpdateMutation.mutate(
+            {
+              leadId: data.leadId,
+              taskId: data.taskId,
+              payload: {
+                status: "completed",
+                updated_by: userId || 0,
+                closed_at: new Date().toISOString(),
+                closed_by: userId || 0,
+              },
+            },
+            {
+              onSuccess: () => {
+                toast.success("Task marked as completed!");
+                setCompletionFiles([]);
+                setOpenCompletedModal(false);
+                onOpenChange(false);
+                if (vendorId) {
+                  queryClient.invalidateQueries({
+                    queryKey: ["vendorUserTasks", vendorId, userId],
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ["vendorAllTasks"],
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ["miscellaneousEntries"],
+                  });
+                }
+              },
+              onError: (err: any) => {
+                toast.error(err?.message || "Failed to update task");
+              },
+            },
+          );
         },
       },
     );
@@ -189,28 +216,60 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
         </div>
       </BaseModal>
 
-      <AlertDialog
+      <BaseModal
         open={openCompletedModal}
         onOpenChange={setOpenCompletedModal}
+        title="Complete Task"
+        description="Upload completion documents to mark this task as completed."
+        size="md"
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Mark task as completed?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to mark this task as completed?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleMarkCompleted}
-              disabled={completedUpdateMutation.isPending}
+        <div className="p-6 space-y-4">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">
+              Upload Documents <span className="text-destructive">*</span>
+            </label>
+            <FileUploadField
+              value={completionFiles}
+              onChange={setCompletionFiles}
+              accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx"
+              multiple
+              maxFiles={10}
+              disabled={
+                uploadCompletionDocsMutation.isPending ||
+                completedUpdateMutation.isPending
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Upload up to 10 files. Supported: Images, PDFs, Documents
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setOpenCompletedModal(false)}
+              disabled={
+                uploadCompletionDocsMutation.isPending ||
+                completedUpdateMutation.isPending
+              }
             >
-              {completedUpdateMutation.isPending ? "Processing..." : "Confirm"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleMarkCompleted}
+              disabled={
+                uploadCompletionDocsMutation.isPending ||
+                completedUpdateMutation.isPending
+              }
+            >
+              {uploadCompletionDocsMutation.isPending ||
+              completedUpdateMutation.isPending
+                ? "Processing..."
+                : "Upload & Complete"}
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
 
       <BaseModal
         open={openRescheduleModal}

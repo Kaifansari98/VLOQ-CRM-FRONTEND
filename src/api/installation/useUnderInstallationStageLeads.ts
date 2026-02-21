@@ -16,6 +16,7 @@ export interface MiscellaneousDocument {
   file_key: string;
   signed_url: string;
   uploaded_at: string;
+  doc_type_tag?: string | null;
 }
 
 export interface MiscellaneousTeam {
@@ -868,6 +869,44 @@ export const useUpdateMiscRequiredDeliveryDateByTaskId = () => {
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(error?.message || "Failed to update delivery date");
+    },
+  });
+};
+
+export const uploadMiscCompletionDocumentsByTaskId = async ({
+  vendorId,
+  taskId,
+  formData,
+}: {
+  vendorId: number;
+  taskId: number;
+  formData: FormData;
+}) => {
+  const response = await apiClient.post(
+    `/leads/installation/under-installation/vendorId/${vendorId}/taskId/${taskId}/upload-completion-docs`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return response.data.data;
+};
+
+export const useUploadMiscCompletionDocumentsByTaskId = () => {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: uploadMiscCompletionDocumentsByTaskId,
+
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toast.error(error?.message || "Failed to upload documents");
     },
   });
 };

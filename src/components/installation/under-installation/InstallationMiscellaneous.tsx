@@ -345,6 +345,9 @@ export default function InstallationMiscellaneous({
   const isRejected = miscApproved === false;
   const isApproved = miscApproved === true;
   const isReady = viewModal.data?.task?.status === "completed";
+  const canResolveRole = ["admin", "super-admin", "site-supervisor"].includes(
+    userType || "",
+  );
   const canApproveReject =
     userType === "factory" ||
     userType === "admin" ||
@@ -1078,7 +1081,9 @@ export default function InstallationMiscellaneous({
             {/* Resolve Button */}
             {viewModal.data?.expected_ready_date &&
               canDoMarkAsResolved &&
-              isApproved && (
+              canResolveRole &&
+              isApproved &&
+              isReady && (
               <Button
                 variant="default"
                 size="default"
@@ -1205,24 +1210,17 @@ export default function InstallationMiscellaneous({
             </div>
 
             {/* Documents */}
-            {entry?.documents && entry.documents.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <div className="w-1 h-4 bg-primary rounded-full" />
-                    Supporting Documents
-                  </h4>
-                  <Badge
-                    variant="outline"
-                    className="text-xs px-2.5 py-0.5 bg-muted/30 dark:bg-neutral-900/50"
-                  >
-                    {entry.documents.length}{" "}
-                    {entry.documents.length === 1 ? "file" : "files"}
-                  </Badge>
-                </div>
+            {entry?.documents && entry.documents.length > 0 && (() => {
+              const completionDocs = entry.documents.filter(
+                (d) => d.doc_type_tag === "Type 37"
+              );
+              const miscDocs = entry.documents.filter(
+                (d) => d.doc_type_tag !== "Type 37"
+              );
 
+              const renderDocs = (docs: typeof entry.documents) => (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {entry.documents.map((doc) => {
+                  {docs.map((doc) => {
                     const isImage = isImageFile(doc.original_name);
 
                     if (isImage) {
@@ -1256,8 +1254,50 @@ export default function InstallationMiscellaneous({
                     );
                   })}
                 </div>
-              </div>
-            )}
+              );
+
+              return (
+                <div className="space-y-6">
+                  {miscDocs.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                          <div className="w-1 h-4 bg-primary rounded-full" />
+                          Supporting Documents
+                        </h4>
+                        <Badge
+                          variant="outline"
+                          className="text-xs px-2.5 py-0.5 bg-muted/30 dark:bg-neutral-900/50"
+                        >
+                          {miscDocs.length}{" "}
+                          {miscDocs.length === 1 ? "file" : "files"}
+                        </Badge>
+                      </div>
+                      {renderDocs(miscDocs)}
+                    </div>
+                  )}
+
+                  {completionDocs.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                          <div className="w-1 h-4 bg-green-500 rounded-full" />
+                          Completion Documents
+                        </h4>
+                        <Badge
+                          variant="outline"
+                          className="text-xs px-2.5 py-0.5 bg-muted/30 dark:bg-neutral-900/50"
+                        >
+                          {completionDocs.length}{" "}
+                          {completionDocs.length === 1 ? "file" : "files"}
+                        </Badge>
+                      </div>
+                      {renderDocs(completionDocs)}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </BaseModal>
