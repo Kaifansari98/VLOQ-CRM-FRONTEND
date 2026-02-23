@@ -69,7 +69,8 @@ export default function TechCheckStagePage() {
             title="Tech-Check Stage"
             description="Monitor and validate all technical review tasks before transitioning to order login, ensuring accuracy and production-readiness."
             type="Type 8"
-            enableAdminTabs={true}
+            enableAdminTabs={false}
+            enableOverallData={false}
             onRowNavigate={navigateTechCheck}
           />
         </Suspense>

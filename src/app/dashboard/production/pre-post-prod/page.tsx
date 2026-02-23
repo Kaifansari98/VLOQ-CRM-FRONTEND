@@ -61,7 +61,8 @@ export default function ProductionPage() {
             title="Production Stage"
             description="Monitor, validate, and manage all pre and post production workflow activities efficiently."
             type="Type 10"
-            enableAdminTabs={true}
+            enableAdminTabs={false}
+            enableOverallData={false}
             onRowNavigate={navigateProductionStage}
           />
         </Suspense>

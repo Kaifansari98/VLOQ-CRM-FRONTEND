@@ -61,7 +61,8 @@ export default function OrderLoginPage() {
             title="Order Login"
             description="Review and verify all order login entries before progressing to production workflows."
             type="Type 9"
-            enableAdminTabs={true}
+            enableAdminTabs={false}
+            enableOverallData={false}
             onRowNavigate={navigateOrderLogin}
           />
         </Suspense>

@@ -178,7 +178,7 @@ export default function InstallationMiscellaneous({
     if (!formData.selected_instance_id) return [];
     return orderLoginSummary.filter(
       (item: any) =>
-        Number(item?.instance_id) === Number(formData.selected_instance_id)
+        Number(item?.instance_id) === Number(formData.selected_instance_id),
     );
   }, [orderLoginSummary, formData.selected_instance_id]);
 
@@ -194,37 +194,37 @@ export default function InstallationMiscellaneous({
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
   const handleConfirmDelete = () => {
-  if (!confirmDelete) return;
+    if (!confirmDelete) return;
 
-  deleteDocument(
-    {
-      vendorId,
-      deleted_by: userId!,
-      documentId: confirmDelete,
-    },
-    {
-      onSuccess: () => {
-        // 🔥 REMOVE document from modal state
-        setViewModal((prev) => {
-          if (!prev.data) return prev;
-
-          return {
-            ...prev,
-            data: {
-              ...prev.data,
-              documents: prev.data.documents.filter(
-                (doc) => doc.document_id !== confirmDelete
-              ),
-            },
-          };
-        });
-
-        setConfirmDelete(null);
+    deleteDocument(
+      {
+        vendorId,
+        deleted_by: userId!,
+        documentId: confirmDelete,
       },
-    }
-  );
-};
-    
+      {
+        onSuccess: () => {
+          // 🔥 REMOVE document from modal state
+          setViewModal((prev) => {
+            if (!prev.data) return prev;
+
+            return {
+              ...prev,
+              data: {
+                ...prev.data,
+                documents: prev.data.documents.filter(
+                  (doc) => doc.document_id !== confirmDelete,
+                ),
+              },
+            };
+          });
+
+          setConfirmDelete(null);
+        },
+      },
+    );
+  };
+
   useEffect(() => {
     setInitialModalHandled(false);
   }, [initialTaskId]);
@@ -345,6 +345,9 @@ export default function InstallationMiscellaneous({
   const isRejected = miscApproved === false;
   const isApproved = miscApproved === true;
   const isReady = viewModal.data?.task?.status === "completed";
+  const hasCompletionDocs = Boolean(
+    viewModal.data?.documents?.some((d) => d.doc_type_tag === "Type 37"),
+  );
   const canResolveRole = ["admin", "super-admin", "site-supervisor"].includes(
     userType || "",
   );
@@ -576,8 +579,8 @@ export default function InstallationMiscellaneous({
                         entry.misc_approved === false
                           ? "destructive"
                           : entry.task?.status === "completed"
-                          ? "default"
-                          : "secondary"
+                            ? "default"
+                            : "secondary"
                       }
                       className={`
                         text-xs px-2
@@ -698,16 +701,19 @@ export default function InstallationMiscellaneous({
                 options={instanceOptions.map((opt) => opt.label)}
                 value={
                   instanceOptions.find(
-                    (opt) => Number(opt.value) === formData.selected_instance_id
+                    (opt) =>
+                      Number(opt.value) === formData.selected_instance_id,
                   )?.label || ""
                 }
                 onChange={(selectedText) => {
                   const match = instanceOptions.find(
-                    (opt) => opt.label === selectedText
+                    (opt) => opt.label === selectedText,
                   );
                   setFormData((prev) => ({
                     ...prev,
-                    selected_instance_id: match ? Number(match.value) : undefined,
+                    selected_instance_id: match
+                      ? Number(match.value)
+                      : undefined,
                   }));
                 }}
                 placeholder={
@@ -956,12 +962,12 @@ export default function InstallationMiscellaneous({
               </div>
             )}
 
-            {/* ---- DETAILS SECTION (Two Column Premium Layout) ---- */}
+            {/* ---- DETAILS SECTION ---- */}
 
             {isRejected && (
               <div className="space-y-2">
                 <p className="text-[13px] font-medium text-muted-foreground">
-                This Miscellaneous has been Rejected By The Factory.
+                  This miscellaneous request has been rejected.
                 </p>
                 <div className="border border-border rounded-lg bg-red-50/60 dark:bg-red-950/20 px-4 py-2">
                   <p className="text-xs leading-relaxed text-red-600">
@@ -970,178 +976,6 @@ export default function InstallationMiscellaneous({
                 </div>
               </div>
             )}
-
-            {/* -------- FOOTER -------- */}
-          <DialogFooter className="flex-row items-end justify-between gap-3 pt-2">
-            {/* Approval Actions */}
-            {showApprovalActions && (
-              <div className="flex items-center gap-3 flex-1">
-                <Button
-                  variant="default"
-                  disabled={updateApprovalMutation.isPending}
-                  onClick={() => {
-                    if (!viewModal.data) return;
-                    updateApprovalMutation.mutate(
-                      {
-                        vendorId,
-                        miscId: viewModal.data.id,
-                        misc_approved: true,
-                        updated_by: userId!,
-                      },
-                      {
-                        onSuccess: () => {
-                          setViewModal((prev) => ({
-                            ...prev,
-                            data: prev.data
-                              ? { ...prev.data, misc_approved: true }
-                              : null,
-                          }));
-                        },
-                      },
-                    );
-                  }}
-                  className="gap-2"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  {updateApprovalMutation.isPending ? "Approving..." : "Approve"}
-                </Button>
-
-                <Button
-                  variant="destructive"
-                  disabled={updateApprovalMutation.isPending}
-                  onClick={() => setShowRejectModal(true)}
-                >
-                  Reject
-                </Button>
-              </div>
-            )}
-
-            {/* Expected Ready Date + Resolve */}
-            {!viewModal.data?.is_resolved && isApproved ? (
-              <div className="flex items-center gap-3 flex-1">
-                {/* Date Picker */}
-                <div className="flex-1 max-w-xs space-y-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Expected Ready Date (ERD)
-                    </span>
-                  </div>
-                  <CustomeDatePicker
-                    key={viewModal.data?.id}
-                    value={viewModal.data?.expected_ready_date || undefined}
-                    restriction="futureOnly"
-                    disabledReason={
-                      !canDoERDDate
-                        ? userType === "factory"
-                          ? "This lead has moved ahead."
-                          : "Only factory user can do this."
-                        : isTaskReady
-                          ? "Marked as ready. ERD cannot be updated."
-                          : undefined
-                    }
-                    onChange={(newDate) => {
-                      if (!canUpdateERD || !newDate) return;
-                      setSelectedERD(newDate);
-                      setShowConfirm(true);
-                    }}
-                  />
-
-                  <div className="flex items-center gap-2 mb-2 mt-4">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Required Delivery Date
-                    </span>
-                  </div>
-                  <CustomeDatePicker
-                    key={`${viewModal.data?.id}-delivery`}
-                    value={
-                      viewModal.data?.required_delivery_date || undefined
-                    }
-                    restriction="futureOnly"
-                    disabledReason={
-                      !isReady
-                        ? "Mark as ready to set delivery date."
-                        : !canUpdateRequiredDelivery
-                          ? "Only admin, super-admin or site supervisor can update."
-                          : undefined
-                    }
-                    onChange={(newDate) => {
-                      if (!canUpdateRequiredDelivery || !newDate) return;
-                      setSelectedRequiredDelivery(newDate);
-                      setShowDeliveryConfirm(true);
-                    }}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1" />
-            )}
-
-            {/* Resolve Button */}
-            {viewModal.data?.expected_ready_date &&
-              canDoMarkAsResolved &&
-              canResolveRole &&
-              isApproved &&
-              isReady && (
-              <Button
-                variant="default"
-                size="default"
-                disabled={resolveMisc.isPending}
-                onClick={() =>
-                  resolveMisc.mutate(
-                    {
-                      vendorId,
-                      leadId,
-                      miscId: viewModal?.data?.id || 0,
-                      resolved_by: userId!,
-                    },
-                    {
-                      onSuccess: () => {
-                        queryClient.invalidateQueries({
-                          queryKey: ["miscellaneousEntries", vendorId, leadId],
-                        });
-
-                        setViewModal((prev) => ({
-                          ...prev,
-                          data: prev.data
-                            ? {
-                                ...prev.data,
-                                is_resolved: true, // immediate UI change
-                                resolved_by: userId, // optional
-                                resolved_at: new Date().toString(), // optional
-                              }
-                            : null,
-                        }));
-                      },
-                    },
-                  )
-                }
-                className="gap-2"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                {resolveMisc.isPending ? "Resolving..." : "Mark as Resolved"}
-              </Button>
-            )}
-
-            {/* Mark as Ready Button */}
-            {viewModal.data?.expected_ready_date && canMarkAsReady && isApproved && (
-              <Button
-                variant="default"
-                size="default"
-                disabled={markReadyMutation.isPending || isTaskReady}
-                onClick={() => !isTaskReady && setShowReadyConfirm(true)}
-                className="gap-2"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                {isTaskReady
-                  ? "Marked as Ready"
-                  : markReadyMutation.isPending
-                    ? "Marking..."
-                    : "Mark as Ready"}
-              </Button>
-            )}
-          </DialogFooter>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Problem Description */}
@@ -1210,26 +1044,43 @@ export default function InstallationMiscellaneous({
             </div>
 
             {/* Documents */}
-            {entry?.documents && entry.documents.length > 0 && (() => {
-              const completionDocs = entry.documents.filter(
-                (d) => d.doc_type_tag === "Type 37"
-              );
-              const miscDocs = entry.documents.filter(
-                (d) => d.doc_type_tag !== "Type 37"
-              );
+            {entry?.documents &&
+              entry.documents.length > 0 &&
+              (() => {
+                const completionDocs = entry.documents.filter(
+                  (d) => d.doc_type_tag === "Type 37",
+                );
+                const miscDocs = entry.documents.filter(
+                  (d) => d.doc_type_tag !== "Type 37",
+                );
 
-              const renderDocs = (docs: typeof entry.documents) => (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {docs.map((doc) => {
-                    const isImage = isImageFile(doc.original_name);
+                const renderDocs = (docs: typeof entry.documents) => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {docs.map((doc) => {
+                      const isImage = isImageFile(doc.original_name);
 
-                    if (isImage) {
+                      if (isImage) {
+                        return (
+                          <ImageComponent
+                            key={doc.document_id}
+                            doc={{
+                              id: doc.document_id,
+                              doc_og_name: doc.original_name,
+                              signedUrl: doc.signed_url,
+                              created_at: doc.uploaded_at,
+                            }}
+                            canDelete={canWork}
+                            onDelete={(id) => setConfirmDelete(Number(id))}
+                          />
+                        );
+                      }
+
                       return (
-                        <ImageComponent
+                        <DocumentCard
                           key={doc.document_id}
                           doc={{
                             id: doc.document_id,
-                            doc_og_name: doc.original_name,
+                            originalName: doc.original_name,
                             signedUrl: doc.signed_url,
                             created_at: doc.uploaded_at,
                           }}
@@ -1237,67 +1088,259 @@ export default function InstallationMiscellaneous({
                           onDelete={(id) => setConfirmDelete(Number(id))}
                         />
                       );
-                    }
+                    })}
+                  </div>
+                );
 
-                    return (
-                      <DocumentCard
-                        key={doc.document_id}
-                        doc={{
-                          id: doc.document_id,
-                          originalName: doc.original_name,
-                          signedUrl: doc.signed_url,
-                          created_at: doc.uploaded_at,
+                return (
+                  <div className="space-y-6">
+                    {miscDocs.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                            <div className="w-1 h-4 bg-primary rounded-full" />
+                            Supporting Documents
+                          </h4>
+                          <Badge
+                            variant="outline"
+                            className="text-xs px-2.5 py-0.5 bg-muted/30 dark:bg-neutral-900/50"
+                          >
+                            {miscDocs.length}{" "}
+                            {miscDocs.length === 1 ? "file" : "files"}
+                          </Badge>
+                        </div>
+                        {renderDocs(miscDocs)}
+                      </div>
+                    )}
+
+                    {completionDocs.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                            <div className="w-1 h-4 bg-green-500 rounded-full" />
+                            Completion Documents
+                          </h4>
+                          <Badge
+                            variant="outline"
+                            className="text-xs px-2.5 py-0.5 bg-muted/30 dark:bg-neutral-900/50"
+                          >
+                            {completionDocs.length}{" "}
+                            {completionDocs.length === 1 ? "file" : "files"}
+                          </Badge>
+                        </div>
+                        {renderDocs(completionDocs)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+            {/* -------- ACTIONS -------- */}
+            <div className="mt-2 rounded-xl border bg-muted/30 dark:bg-neutral-900/40 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-foreground">
+                  Actions & Scheduling
+                </h4>
+                <Badge variant="outline" className="text-xs">
+                  {isApproved
+                    ? "Approved"
+                    : isRejected
+                      ? "Rejected"
+                      : "Pending"}
+                </Badge>
+              </div>
+
+              <DialogFooter className="flex-row items-start justify-between gap-4">
+                {/* Approval Actions */}
+                {showApprovalActions && (
+                  <div className="flex items-center gap-3 flex-1">
+                    <Button
+                      variant="default"
+                      disabled={updateApprovalMutation.isPending}
+                      onClick={() => {
+                        if (!viewModal.data) return;
+                        updateApprovalMutation.mutate(
+                          {
+                            vendorId,
+                            miscId: viewModal.data.id,
+                            misc_approved: true,
+                            updated_by: userId!,
+                          },
+                          {
+                            onSuccess: () => {
+                              setViewModal((prev) => ({
+                                ...prev,
+                                data: prev.data
+                                  ? { ...prev.data, misc_approved: true }
+                                  : null,
+                              }));
+                            },
+                          },
+                        );
+                      }}
+                      className="gap-2 bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      {updateApprovalMutation.isPending
+                        ? "Approving..."
+                        : "Approve"}
+                    </Button>
+
+                    <Button
+                      variant="destructive"
+                      disabled={updateApprovalMutation.isPending}
+                      onClick={() => setShowRejectModal(true)}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                )}
+
+                {/* Scheduling */}
+                {!viewModal.data?.is_resolved && isApproved ? (
+                  <div className="flex-1 space-y-4">
+                    <div className="space-y-1">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Expected Ready Date (ERD)
+                          </span>
+                        </div>
+                        <CustomeDatePicker
+                          key={viewModal.data?.id}
+                          value={
+                            viewModal.data?.expected_ready_date || undefined
+                          }
+                          restriction="futureOnly"
+                          disabledReason={
+                            !canDoERDDate
+                              ? userType === "factory"
+                                ? "This lead has moved ahead."
+                                : "Only factory user can do this."
+                              : isTaskReady
+                                ? "Marked as ready. ERD cannot be updated."
+                                : undefined
+                          }
+                          onChange={(newDate) => {
+                            if (!canUpdateERD || !newDate) return;
+                            setSelectedERD(newDate);
+                            setShowConfirm(true);
+                          }}
+                        />
+                        {viewModal.data?.expected_ready_date &&
+                          canMarkAsReady &&
+                          isApproved && (
+                            <Button
+                              variant="default"
+                              size="default"
+                              disabled={
+                                markReadyMutation.isPending || isTaskReady
+                              }
+                              onClick={() =>
+                                !isTaskReady && setShowReadyConfirm(true)
+                              }
+                              className="gap-2"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                              {isTaskReady
+                                ? "Marked as Ready"
+                                : markReadyMutation.isPending
+                                  ? "Marking..."
+                                  : "Mark as Ready"}
+                            </Button>
+                          )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Required Delivery Date
+                        </span>
+                      </div>
+                      <CustomeDatePicker
+                        key={`${viewModal.data?.id}-delivery`}
+                        value={
+                          viewModal.data?.required_delivery_date || undefined
+                        }
+                        restriction="futureOnly"
+                        disabledReason={
+                          !isReady
+                            ? "Mark as ready to set delivery date."
+                            : !canUpdateRequiredDelivery
+                              ? "Only admin, super-admin or site supervisor can update."
+                              : undefined
+                        }
+                        onChange={(newDate) => {
+                          if (!canUpdateRequiredDelivery || !newDate) return;
+                          setSelectedRequiredDelivery(newDate);
+                          setShowDeliveryConfirm(true);
                         }}
-                        canDelete={canWork}
-                        onDelete={(id) => setConfirmDelete(Number(id))}
                       />
-                    );
-                  })}
-                </div>
-              );
-
-              return (
-                <div className="space-y-6">
-                  {miscDocs.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                          <div className="w-1 h-4 bg-primary rounded-full" />
-                          Supporting Documents
-                        </h4>
-                        <Badge
-                          variant="outline"
-                          className="text-xs px-2.5 py-0.5 bg-muted/30 dark:bg-neutral-900/50"
-                        >
-                          {miscDocs.length}{" "}
-                          {miscDocs.length === 1 ? "file" : "files"}
-                        </Badge>
-                      </div>
-                      {renderDocs(miscDocs)}
                     </div>
-                  )}
+                  </div>
+                ) : (
+                  <div className="flex-1" />
+                )}
 
-                  {completionDocs.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                          <div className="w-1 h-4 bg-green-500 rounded-full" />
-                          Completion Documents
-                        </h4>
-                        <Badge
-                          variant="outline"
-                          className="text-xs px-2.5 py-0.5 bg-muted/30 dark:bg-neutral-900/50"
-                        >
-                          {completionDocs.length}{" "}
-                          {completionDocs.length === 1 ? "file" : "files"}
-                        </Badge>
-                      </div>
-                      {renderDocs(completionDocs)}
-                    </div>
-                  )}
+                {/* Status Actions */}
+                <div className="flex items-end gap-2">
+                  {viewModal.data?.expected_ready_date &&
+                    canDoMarkAsResolved &&
+                    canResolveRole &&
+                    isApproved &&
+                    isReady &&
+                    hasCompletionDocs && (
+                      <Button
+                        variant="default"
+                        size="default"
+                        disabled={resolveMisc.isPending}
+                        onClick={() =>
+                          resolveMisc.mutate(
+                            {
+                              vendorId,
+                              leadId,
+                              miscId: viewModal?.data?.id || 0,
+                              resolved_by: userId!,
+                            },
+                            {
+                              onSuccess: () => {
+                                queryClient.invalidateQueries({
+                                  queryKey: [
+                                    "miscellaneousEntries",
+                                    vendorId,
+                                    leadId,
+                                  ],
+                                });
+
+                                setViewModal((prev) => ({
+                                  ...prev,
+                                  data: prev.data
+                                    ? {
+                                        ...prev.data,
+                                        is_resolved: true,
+                                        resolved_by: userId,
+                                        resolved_at: new Date().toString(),
+                                      }
+                                    : null,
+                                }));
+                              },
+                            },
+                          )
+                        }
+                        className="gap-2"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        {resolveMisc.isPending
+                          ? "Resolving..."
+                          : "Mark as Resolved"}
+                      </Button>
+                    )}
                 </div>
-              );
-            })()}
+              </DialogFooter>
+            </div>
           </div>
         </div>
       </BaseModal>
