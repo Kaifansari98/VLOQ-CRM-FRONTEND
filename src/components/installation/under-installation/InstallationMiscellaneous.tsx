@@ -1200,34 +1200,36 @@ export default function InstallationMiscellaneous({
                 {!viewModal.data?.is_resolved && isApproved ? (
                   <div className="flex-1 space-y-4">
                     <div className="space-y-1">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-xs font-medium text-muted-foreground">
-                            Expected Ready Date (ERD)
-                          </span>
+                      <div className="flex items-end justify-between gap-2">
+                        <div className="w-full">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Calendar className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-xs font-medium text-muted-foreground">
+                              Expected Ready Date (ERD)
+                            </span>
+                          </div>
+                          <CustomeDatePicker
+                            key={viewModal.data?.id}
+                            value={
+                              viewModal.data?.expected_ready_date || undefined
+                            }
+                            restriction="futureOnly"
+                            disabledReason={
+                              !canDoERDDate
+                                ? userType === "factory"
+                                  ? "This lead has moved ahead."
+                                  : "Only factory user can do this."
+                                : isTaskReady
+                                  ? "Marked as ready. ERD cannot be updated."
+                                  : undefined
+                            }
+                            onChange={(newDate) => {
+                              if (!canUpdateERD || !newDate) return;
+                              setSelectedERD(newDate);
+                              setShowConfirm(true);
+                            }}
+                          />
                         </div>
-                        <CustomeDatePicker
-                          key={viewModal.data?.id}
-                          value={
-                            viewModal.data?.expected_ready_date || undefined
-                          }
-                          restriction="futureOnly"
-                          disabledReason={
-                            !canDoERDDate
-                              ? userType === "factory"
-                                ? "This lead has moved ahead."
-                                : "Only factory user can do this."
-                              : isTaskReady
-                                ? "Marked as ready. ERD cannot be updated."
-                                : undefined
-                          }
-                          onChange={(newDate) => {
-                            if (!canUpdateERD || !newDate) return;
-                            setSelectedERD(newDate);
-                            setShowConfirm(true);
-                          }}
-                        />
                         {viewModal.data?.expected_ready_date &&
                           canMarkAsReady &&
                           isApproved && (
@@ -1254,31 +1256,87 @@ export default function InstallationMiscellaneous({
                     </div>
 
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mb-2">
                         <Calendar className="w-4 h-4 text-muted-foreground" />
                         <span className="text-xs font-medium text-muted-foreground">
                           Required Delivery Date
                         </span>
                       </div>
-                      <CustomeDatePicker
-                        key={`${viewModal.data?.id}-delivery`}
-                        value={
-                          viewModal.data?.required_delivery_date || undefined
-                        }
-                        restriction="futureOnly"
-                        disabledReason={
-                          !isReady
-                            ? "Mark as ready to set delivery date."
-                            : !canUpdateRequiredDelivery
-                              ? "Only admin, super-admin or site supervisor can update."
-                              : undefined
-                        }
-                        onChange={(newDate) => {
-                          if (!canUpdateRequiredDelivery || !newDate) return;
-                          setSelectedRequiredDelivery(newDate);
-                          setShowDeliveryConfirm(true);
-                        }}
-                      />
+                      <div className="flex items-end justify-between gap-2">
+                        <CustomeDatePicker
+                          key={`${viewModal.data?.id}-delivery`}
+                          value={
+                            viewModal.data?.required_delivery_date || undefined
+                          }
+                          restriction="futureOnly"
+                          disabledReason={
+                            !isReady
+                              ? "Mark as ready to set delivery date."
+                              : !canUpdateRequiredDelivery
+                                ? "Only admin, super-admin or site supervisor can update."
+                                : undefined
+                          }
+                          onChange={(newDate) => {
+                            if (!canUpdateRequiredDelivery || !newDate) return;
+                            setSelectedRequiredDelivery(newDate);
+                            setShowDeliveryConfirm(true);
+                          }}
+                        />
+                        {viewModal.data?.expected_ready_date &&
+                          canDoMarkAsResolved &&
+                          canResolveRole &&
+                          isApproved &&
+                          isReady &&
+                          hasCompletionDocs && (
+                            <div className="flex justify-end">
+                              <Button
+                                variant="default"
+                                size="default"
+                                disabled={resolveMisc.isPending}
+                                onClick={() =>
+                                  resolveMisc.mutate(
+                                    {
+                                      vendorId,
+                                      leadId,
+                                      miscId: viewModal?.data?.id || 0,
+                                      resolved_by: userId!,
+                                    },
+                                    {
+                                      onSuccess: () => {
+                                        queryClient.invalidateQueries({
+                                          queryKey: [
+                                            "miscellaneousEntries",
+                                            vendorId,
+                                            leadId,
+                                          ],
+                                        });
+
+                                        setViewModal((prev) => ({
+                                          ...prev,
+                                          data: prev.data
+                                            ? {
+                                                ...prev.data,
+                                                is_resolved: true,
+                                                resolved_by: userId,
+                                                resolved_at:
+                                                  new Date().toString(),
+                                              }
+                                            : null,
+                                        }));
+                                      },
+                                    },
+                                  )
+                                }
+                                className="gap-2"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                                {resolveMisc.isPending
+                                  ? "Resolving..."
+                                  : "Mark as Resolved"}
+                              </Button>
+                            </div>
+                          )}
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -1286,59 +1344,7 @@ export default function InstallationMiscellaneous({
                 )}
 
                 {/* Status Actions */}
-                <div className="flex items-end gap-2">
-                  {viewModal.data?.expected_ready_date &&
-                    canDoMarkAsResolved &&
-                    canResolveRole &&
-                    isApproved &&
-                    isReady &&
-                    hasCompletionDocs && (
-                      <Button
-                        variant="default"
-                        size="default"
-                        disabled={resolveMisc.isPending}
-                        onClick={() =>
-                          resolveMisc.mutate(
-                            {
-                              vendorId,
-                              leadId,
-                              miscId: viewModal?.data?.id || 0,
-                              resolved_by: userId!,
-                            },
-                            {
-                              onSuccess: () => {
-                                queryClient.invalidateQueries({
-                                  queryKey: [
-                                    "miscellaneousEntries",
-                                    vendorId,
-                                    leadId,
-                                  ],
-                                });
-
-                                setViewModal((prev) => ({
-                                  ...prev,
-                                  data: prev.data
-                                    ? {
-                                        ...prev.data,
-                                        is_resolved: true,
-                                        resolved_by: userId,
-                                        resolved_at: new Date().toString(),
-                                      }
-                                    : null,
-                                }));
-                              },
-                            },
-                          )
-                        }
-                        className="gap-2"
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                        {resolveMisc.isPending
-                          ? "Resolving..."
-                          : "Mark as Resolved"}
-                      </Button>
-                    )}
-                </div>
+                <div className="flex items-end gap-2"></div>
               </DialogFooter>
             </div>
           </div>
@@ -1555,6 +1561,25 @@ export default function InstallationMiscellaneous({
                   },
                   {
                     onSuccess: () => {
+                      queryClient.invalidateQueries({
+                        queryKey: ["miscellaneousEntries", vendorId, leadId],
+                      });
+
+                      setViewModal((prev) => ({
+                        ...prev,
+                        data: prev.data
+                          ? {
+                              ...prev.data,
+                              task: prev.data.task
+                                ? { ...prev.data.task, status: "completed" }
+                                : {
+                                    id: 0,
+                                    task_type: "Miscellaneous",
+                                    status: "completed",
+                                  },
+                            }
+                          : null,
+                      }));
                       setShowReadyConfirm(false);
                     },
                   },
