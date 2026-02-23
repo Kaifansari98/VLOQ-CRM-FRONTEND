@@ -73,6 +73,7 @@ import {
   useMiscellaneousEntries,
   useSetActualInstallationStartDate,
   useUnderInstallationDetails,
+  useMiscellaneousResolutionStatus,
 } from "@/api/installation/useUnderInstallationStageLeads";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
@@ -106,8 +107,10 @@ export default function UnderInstallationLeadDetails() {
   const setStartMutation = useSetActualInstallationStartDate();
 
   const { data: finalReady } = useFinalHandoverReady(vendorId!, leadIdNum);
-  const { data: miscEntries = [], isLoading: isLoadingMisc } =
-    useMiscellaneousEntries(vendorId, leadIdNum);
+
+
+    const { data: miscStatus, isLoading:isLoadingMisc } =
+  useMiscellaneousResolutionStatus(vendorId, leadIdNum);
 
   const [openStartModal, setOpenStartModal] = useState(false);
 
@@ -141,12 +144,13 @@ export default function UnderInstallationLeadDetails() {
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory = canViewSiteHistoryTab(userType);
 
-  const hasPendingMisc = miscEntries.some((entry) => {
-    const isRejected = entry.misc_approved === false;
-    const isResolved = entry.is_resolved === true;
-    return !(isRejected || isResolved);
-  });
-  const miscStatusReady = !isLoadingMisc && !hasPendingMisc;
+
+
+  const miscStatusReady = miscStatus?.all_resolved;
+
+  console.log("miscStatus: ",miscStatus?.all_resolved)
+
+
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {

@@ -1491,3 +1491,35 @@ export const useMarkMiscellaneousTaskReady = () => {
     },
   });
 };
+
+
+export interface MiscellaneousResolutionStatus {
+  vendor_id: number;
+  lead_id: number;
+  all_resolved: boolean;
+}
+
+// 🔹 API Call
+export const getMiscellaneousResolutionStatus = async (
+  vendorId: number,
+  leadId: number
+): Promise<MiscellaneousResolutionStatus> => {
+  const { data } = await apiClient.get(
+    `/leads/installation/under-installation/vendor/${vendorId}/lead/${leadId}/resolution-status`
+  );
+
+  return data?.data;
+};
+
+export const useMiscellaneousResolutionStatus = (
+  vendorId?: number,
+  leadId?: number
+) => {
+  return useQuery<MiscellaneousResolutionStatus>({
+    queryKey: ["miscellaneous-status", vendorId, leadId],
+    queryFn: () =>
+      getMiscellaneousResolutionStatus(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId, // prevents unwanted calls
+    staleTime: 5 * 60 * 1000, // cache for 5 minutes
+  });
+};

@@ -285,6 +285,9 @@ export default function InstallationMiscellaneous({
 
     createMutation.mutate(payload, {
       onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: ["miscellaneousEntries"],
+        });
         setIsAddModalOpen(false);
         resetForm();
         refetch();
@@ -1223,12 +1226,12 @@ export default function InstallationMiscellaneous({
                               viewModal.data?.is_resolved
                                 ? "Resolved. ERD cannot be updated."
                                 : !canDoERDDate
-                                ? userType === "factory"
-                                  ? "This lead has moved ahead."
-                                  : "Only factory user can do this."
-                                : isTaskReady
-                                  ? "Marked as ready. ERD cannot be updated."
-                                  : undefined
+                                  ? userType === "factory"
+                                    ? "This lead has moved ahead."
+                                    : "Only factory user can do this."
+                                  : isTaskReady
+                                    ? "Marked as ready. ERD cannot be updated."
+                                    : undefined
                             }
                             onChange={(newDate) => {
                               if (!canUpdateERD || !newDate) return;
@@ -1272,101 +1275,102 @@ export default function InstallationMiscellaneous({
                       </div>
                       <div className="flex items-end justify-between gap-2">
                         <div className="w-full">
-                        <CustomeDatePicker
-                          key={`${viewModal.data?.id}-delivery`}
-                          value={
-                            viewModal.data?.required_delivery_date || undefined
-                          }
-                          restriction="futureOnly"
-                          disabledReason={
-                            viewModal.data?.is_resolved
-                              ? "Resolved. Delivery date cannot be updated."
-                              : !isReady
-                              ? "Mark as ready to set delivery date."
-                              : !canUpdateRequiredDelivery
-                                ? "Only admin, super-admin or site supervisor can update."
-                                : undefined
-                          }
-                          onChange={(newDate) => {
-                            if (!canUpdateRequiredDelivery || !newDate) return;
-                            setSelectedRequiredDelivery(newDate);
-                            setShowDeliveryConfirm(true);
-                          }}
-                        />
+                          <CustomeDatePicker
+                            key={`${viewModal.data?.id}-delivery`}
+                            value={
+                              viewModal.data?.required_delivery_date ||
+                              undefined
+                            }
+                            restriction="futureOnly"
+                            disabledReason={
+                              viewModal.data?.is_resolved
+                                ? "Resolved. Delivery date cannot be updated."
+                                : !isReady
+                                  ? "Mark as ready to set delivery date."
+                                  : !canUpdateRequiredDelivery
+                                    ? "Only admin, super-admin or site supervisor can update."
+                                    : undefined
+                            }
+                            onChange={(newDate) => {
+                              if (!canUpdateRequiredDelivery || !newDate)
+                                return;
+                              setSelectedRequiredDelivery(newDate);
+                              setShowDeliveryConfirm(true);
+                            }}
+                          />
                         </div>
                         <div className="flex gap-2 ">
-                        {viewModal.data?.required_delivery_date &&
-                        viewModal.data?.delivery_task?.id &&
-                        !hasCompletionDocs &&
-                        canManageDeliveryTask && (
-                          <div className="flex justify-end pt-2">
-                            <Button
-                              variant="outline"
-                              size="md"
-                              onClick={() => setOpenDeliveryTaskModal(true)}
-                            >
-                              Manage Delivery Task
-                            </Button>
-                          </div>
-                        )}
-                        {viewModal.data?.expected_ready_date &&
-                          canDoMarkAsResolved &&
-                          canResolveRole &&
-                          isApproved &&
-                          isReady &&
-                          hasCompletionDocs &&
-                          !viewModal.data?.is_resolved && (
-                          <div className="flex justify-end">
-                            <Button
-                              variant="default"
-                              size="default"
-                              disabled={resolveMisc.isPending}
-                                onClick={() =>
-                                  resolveMisc.mutate(
-                                    {
-                                      vendorId,
-                                      leadId,
-                                      miscId: viewModal?.data?.id || 0,
-                                      resolved_by: userId!,
-                                    },
-                                    {
-                                      onSuccess: () => {
-                                        queryClient.invalidateQueries({
-                                          queryKey: [
-                                            "miscellaneousEntries",
-                                            vendorId,
-                                            leadId,
-                                          ],
-                                        });
-
-                                        setViewModal((prev) => ({
-                                          ...prev,
-                                          data: prev.data
-                                            ? {
-                                                ...prev.data,
-                                                is_resolved: true,
-                                                resolved_by: userId,
-                                                resolved_at:
-                                                  new Date().toString(),
-                                              }
-                                            : null,
-                                        }));
+                          {viewModal.data?.required_delivery_date &&
+                            viewModal.data?.delivery_task?.id &&
+                            !hasCompletionDocs &&
+                            canManageDeliveryTask && (
+                              <div className="flex justify-end pt-2">
+                                <Button
+                                  variant="outline"
+                                  size="md"
+                                  onClick={() => setOpenDeliveryTaskModal(true)}
+                                >
+                                  Manage Delivery Task
+                                </Button>
+                              </div>
+                            )}
+                          {viewModal.data?.expected_ready_date &&
+                            canDoMarkAsResolved &&
+                            canResolveRole &&
+                            isApproved &&
+                            isReady &&
+                            hasCompletionDocs &&
+                            !viewModal.data?.is_resolved && (
+                              <div className="flex justify-end">
+                                <Button
+                                  variant="default"
+                                  size="default"
+                                  disabled={resolveMisc.isPending}
+                                  onClick={() =>
+                                    resolveMisc.mutate(
+                                      {
+                                        vendorId,
+                                        leadId,
+                                        miscId: viewModal?.data?.id || 0,
+                                        resolved_by: userId!,
                                       },
-                                    },
-                                  )
-                                }
-                              className="gap-2"
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                              {resolveMisc.isPending
-                                ? "Resolving..."
-                                : "Mark as Resolved"}
-                            </Button>
-                          </div>
-                        )}
+                                      {
+                                        onSuccess: () => {
+                                          queryClient.invalidateQueries({
+                                            queryKey: [
+                                              "miscellaneousEntries",
+                                              vendorId,
+                                              leadId,
+                                            ],
+                                          });
+
+                                          setViewModal((prev) => ({
+                                            ...prev,
+                                            data: prev.data
+                                              ? {
+                                                  ...prev.data,
+                                                  is_resolved: true,
+                                                  resolved_by: userId,
+                                                  resolved_at:
+                                                    new Date().toString(),
+                                                }
+                                              : null,
+                                          }));
+                                        },
+                                      },
+                                    )
+                                  }
+                                  className="gap-2"
+                                >
+                                  <CheckCircle2 className="w-4 h-4" />
+                                  {resolveMisc.isPending
+                                    ? "Resolving..."
+                                    : "Mark as Resolved"}
+                                </Button>
+                              </div>
+                            )}
                         </div>
                       </div>
-      
                     </div>
                   </div>
                 ) : (
@@ -1546,10 +1550,18 @@ export default function InstallationMiscellaneous({
 
                       setViewModal((prev) => ({
                         ...prev,
-                        data: {
-                          ...prev.data!,
-                          required_delivery_date: selectedRequiredDelivery,
-                        },
+                        data: prev.data
+                          ? {
+                              ...prev.data,
+                              task: prev.data.task
+                                ? { ...prev.data.task, status: "completed" }
+                                : {
+                                    id: 0,
+                                    task_type: "Miscellaneous",
+                                    status: "completed",
+                                  },
+                            }
+                          : null,
                       }));
 
                       setShowDeliveryConfirm(false);
