@@ -395,12 +395,6 @@ export default function InstallationMiscellaneous({
               <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
                 ERD Date
               </TableHead>
-              <TableHead className="w-[100px] text-sm font-medium text-foreground/80">
-                Quantity
-              </TableHead>
-              <TableHead className="w-[120px] text-sm font-medium text-foreground/80">
-                Cost
-              </TableHead>
               <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
                 Responsible Teams
               </TableHead>
@@ -415,6 +409,12 @@ export default function InstallationMiscellaneous({
               </TableHead>
               <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
                 Problem Description
+              </TableHead>
+              <TableHead className="w-[100px] text-sm font-medium text-foreground/80">
+                Quantity
+              </TableHead>
+              <TableHead className="w-[120px] text-sm font-medium text-foreground/80">
+                Cost
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -481,28 +481,6 @@ export default function InstallationMiscellaneous({
                     {entry.expected_ready_date ? (
                       <span className="text-sm font-medium">
                         {formatDate(entry.expected_ready_date)}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-
-                  {/* QTY */}
-                  <TableCell className="py-3">
-                    {entry.quantity ? (
-                      <span className="text-sm font-medium">
-                        {entry.quantity}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-
-                  {/* COST */}
-                  <TableCell className="py-3">
-                    {entry.cost ? (
-                      <span className="text-sm font-medium">
-                        ₹{entry.cost.toLocaleString()}
                       </span>
                     ) : (
                       <span className="text-sm text-muted-foreground">-</span>
@@ -613,6 +591,28 @@ export default function InstallationMiscellaneous({
                       }
                       remarkFull={entry.problem_description || "-"}
                     />
+                  </TableCell>
+
+                  {/* QTY */}
+                  <TableCell className="py-3">
+                    {entry.quantity ? (
+                      <span className="text-sm font-medium">
+                        {entry.quantity}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+
+                  {/* COST */}
+                  <TableCell className="py-3">
+                    {entry.cost ? (
+                      <span className="text-sm font-medium">
+                        ₹{entry.cost.toLocaleString()}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -1197,7 +1197,7 @@ export default function InstallationMiscellaneous({
                 )}
 
                 {/* Scheduling */}
-                {!viewModal.data?.is_resolved && isApproved ? (
+                {isApproved ? (
                   <div className="flex-1 space-y-4">
                     <div className="space-y-1">
                       <div className="flex items-end justify-between gap-2">
@@ -1215,7 +1215,9 @@ export default function InstallationMiscellaneous({
                             }
                             restriction="futureOnly"
                             disabledReason={
-                              !canDoERDDate
+                              viewModal.data?.is_resolved
+                                ? "Resolved. ERD cannot be updated."
+                                : !canDoERDDate
                                 ? userType === "factory"
                                   ? "This lead has moved ahead."
                                   : "Only factory user can do this."
@@ -1232,7 +1234,8 @@ export default function InstallationMiscellaneous({
                         </div>
                         {viewModal.data?.expected_ready_date &&
                           canMarkAsReady &&
-                          isApproved && (
+                          isApproved &&
+                          !viewModal.data?.is_resolved && (
                             <Button
                               variant="default"
                               size="default"
@@ -1270,7 +1273,9 @@ export default function InstallationMiscellaneous({
                           }
                           restriction="futureOnly"
                           disabledReason={
-                            !isReady
+                            viewModal.data?.is_resolved
+                              ? "Resolved. Delivery date cannot be updated."
+                              : !isReady
                               ? "Mark as ready to set delivery date."
                               : !canUpdateRequiredDelivery
                                 ? "Only admin, super-admin or site supervisor can update."
@@ -1287,7 +1292,8 @@ export default function InstallationMiscellaneous({
                           canResolveRole &&
                           isApproved &&
                           isReady &&
-                          hasCompletionDocs && (
+                          hasCompletionDocs &&
+                          !viewModal.data?.is_resolved && (
                             <div className="flex justify-end">
                               <Button
                                 variant="default"
