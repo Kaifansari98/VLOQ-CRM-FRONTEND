@@ -277,11 +277,21 @@ const MyTaskTable = () => {
           `/dashboard/installation/site-readiness/details/${row.leadId}?accountId=${row.accountId}`,
         );
       } else if (row.taskType === "Miscellaneous") {
-        setRowAction({
-          row: { original: row } as any,
-          variant: "miscellaneous",
-        });
-        setOpenMiscTaskModal(true);
+        const isDeliveryTask = (row.remark || "")
+          .toLowerCase()
+          .includes("required delivery date");
+
+        if (isDeliveryTask) {
+          setRowAction({
+            row: { original: row } as any,
+            variant: "miscellaneous",
+          });
+          setOpenMiscTaskModal(true);
+        } else {
+          router.push(
+            `/dashboard/installation/under-installation/details/${row.leadId}?accountId=${row.accountId}&tab=misc&taskId=${row.id}`,
+          );
+        }
       } else if (row.taskType === "Production Ready") {
         const clearnRemark = extractTitleText(row.remark);
         setRowAction({
