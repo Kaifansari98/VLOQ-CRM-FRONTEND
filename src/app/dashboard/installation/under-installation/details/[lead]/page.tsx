@@ -70,6 +70,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useFinalHandoverReady,
   useMoveToFinalHandover,
+  useMiscellaneousEntries,
   useSetActualInstallationStartDate,
   useUnderInstallationDetails,
 } from "@/api/installation/useUnderInstallationStageLeads";
@@ -105,6 +106,8 @@ export default function UnderInstallationLeadDetails() {
   const setStartMutation = useSetActualInstallationStartDate();
 
   const { data: finalReady } = useFinalHandoverReady(vendorId!, leadIdNum);
+  const { data: miscEntries = [], isLoading: isLoadingMisc } =
+    useMiscellaneousEntries(vendorId, leadIdNum);
 
   const [openStartModal, setOpenStartModal] = useState(false);
 
@@ -137,6 +140,13 @@ export default function UnderInstallationLeadDetails() {
   const canAccessTodoTab = canAccessTodoTaskTabUnderInstallationStage(userType);
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory = canViewSiteHistoryTab(userType);
+
+  const hasPendingMisc = miscEntries.some((entry) => {
+    const isRejected = entry.misc_approved === false;
+    const isResolved = entry.is_resolved === true;
+    return !(isRejected || isResolved);
+  });
+  const miscStatusReady = !isLoadingMisc && !hasPendingMisc;
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -220,6 +230,40 @@ export default function UnderInstallationLeadDetails() {
               }
               value="Start Installation first to move this lead to Final Handover."
             />
+          ) : isLoadingMisc ? (
+            // 2️⃣ Checking misc status → block
+            <CustomeTooltip
+              truncateValue={
+                <div className="opacity-60 cursor-not-allowed">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    disabled
+                    className="pointer-events-none hidden sm:flex"
+                  >
+                    Move to Final Handover
+                  </Button>
+                </div>
+              }
+              value="Checking miscellaneous status..."
+            />
+          ) : !miscStatusReady ? (
+            // 3️⃣ Misc pending/awaiting → block
+            <CustomeTooltip
+              truncateValue={
+                <div className="opacity-60 cursor-not-allowed">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    disabled
+                    className="pointer-events-none hidden sm:flex"
+                  >
+                    Move to Final Handover
+                  </Button>
+                </div>
+              }
+              value="All miscellaneous items must be Resolved or Rejected before moving to Final Handover."
+            />
           ) : !finalReady?.isReady ? (
             // 2️⃣ Installation started but NOT eligible → show WHY
             <CustomeTooltip
@@ -281,10 +325,32 @@ export default function UnderInstallationLeadDetails() {
                   }
                   value="Start Installation first to move this lead to Final Handover."
                 />
-              ) : !finalReady?.isReady ? (
-                // 2️⃣ Installation started but NOT eligible → show WHY
-                <CustomeTooltip
-                  truncateValue={
+          ) : isLoadingMisc ? (
+            // 2️⃣ Checking misc status → block
+            <CustomeTooltip
+              truncateValue={
+                <DropdownMenuItem className="sm:hidden" disabled>
+                  <Handshake size={20} />
+                  Move to Final Handover
+                </DropdownMenuItem>
+              }
+              value="Checking miscellaneous status..."
+            />
+          ) : !miscStatusReady ? (
+            // 3️⃣ Misc pending/awaiting → block
+            <CustomeTooltip
+              truncateValue={
+                <DropdownMenuItem className="sm:hidden" disabled>
+                  <Handshake size={20} />
+                  Move to Final Handover
+                </DropdownMenuItem>
+              }
+              value="All miscellaneous items must be Resolved or Rejected before moving to Final Handover."
+            />
+          ) : !finalReady?.isReady ? (
+            // 2️⃣ Installation started but NOT eligible → show WHY
+            <CustomeTooltip
+              truncateValue={
                     <DropdownMenuItem className="sm:hidden" disabled>
                       <Handshake size={20} />
                       Move to Final Handover
