@@ -23,10 +23,11 @@ import {
   useUploadMultipleFileBreakupsByLead,
 } from "@/api/production/order-login";
 import { useAppSelector } from "@/redux/store";
-import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useInstanceStage, useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canAccessAddNewSectionButton } from "@/components/utils/privileges";
 import FileBreakUpField from "./FileBreakUpField";
 import AddSectionModal from "./AddSectionModal";
+import { useSearchParams } from "next/navigation";
 
 interface OrderLoginTabProps {
   leadId: number;
@@ -48,13 +49,19 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     (state) => state.auth.user?.user_type?.user_type,
   );
 
-  // API hooks - Using instance logic from auto-save version
+  // API hooks
   const { data: companyVendors } = useCompanyVendors(vendorId);
   const { data: orderLoginData } = useOrderLoginByLead(
     vendorId,
     leadId,
     userId,
     instanceId ?? undefined,
+  );
+
+  const { data: instanceStageData, isLoading: instanceLoading } = useInstanceStage(
+    vendorId,
+    leadId,
+    instanceId!,
   );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
@@ -86,20 +93,90 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     title: string;
   }>(null);
 
-  // Derived state
-  const leadStatus = leadData?.status;
+  // ─────────────────────────────────────────────────────────
+  // STAGE RESOLUTION
+  // Priority: instanceStageData (if instanceId present) → leadData → fallback
+  // ─────────────────────────────────────────────────────────
+  const leadStatus: string = instanceId
+    ? (instanceStageData?.derived_stage ?? leadData?.status ?? "")
+    : (leadData?.status ?? "");
 
-  console.log("Lead Status:", leadStatus);
+  console.log("Lead Status (resolved):", leadStatus);
+
+  // ─────────────────────────────────────────────────────────
+  // ROLE HELPERS
+  // ─────────────────────────────────────────────────────────
+  const role = userType?.toLowerCase() ?? "";
+  const isAdmin = role === "admin" || role === "super-admin";
+  const isBackend = role === "backend";
+
+  const normalizedStage = leadStatus.toLowerCase().replace(/_/g, "-");
+  const isOrderLoginStage = normalizedStage.includes("order-login-stage");
+  const isProductionStage = normalizedStage.includes("production-stage");
+
+  // ─────────────────────────────────────────────────────────
+  // SAVE BUTTON VISIBILITY
+  // Show for: admin, super-admin, backend — in order-login-stage OR production-stage
+  // ─────────────────────────────────────────────────────────
+  const canShowSaveButton = (): boolean => {
+    if (!isOrderLoginStage && !isProductionStage) return false;
+    return isAdmin || isBackend;
+  };
+
+  // ─────────────────────────────────────────────────────────
+  // ADD NEW SECTION BUTTON (existing canAccessButtons check retained)
+  // ─────────────────────────────────────────────────────────
   const canAccessButtons = canAccessAddNewSectionButton(userType, leadStatus);
 
-  const normalizedStage = (leadStatus || "").toLowerCase().replace(/_/g, "-");
-  const isOrderLoginStage = normalizedStage.includes("order-login");
-  const isProductionStage = normalizedStage.includes("production-stage");
-  const isBackendUser =
-    userType?.toLowerCase() === "backend" ||
-    userType?.toLowerCase() === "admin" ||
-    userType?.toLowerCase() === "super-admin";
-  const canManageCustomSections = isBackendUser && isOrderLoginStage;
+  // ─────────────────────────────────────────────────────────
+  // ADD SECTION MODAL visibility
+  // Backend: can add in BOTH order-login-stage AND production-stage
+  // Admin/Super-admin: always (covered by canAccessButtons)
+  // ─────────────────────────────────────────────────────────
+  const canAddCustomSection: boolean =
+    isAdmin || (isBackend && (isOrderLoginStage || isProductionStage));
+
+  // ─────────────────────────────────────────────────────────
+  // TITLE EDIT & DELETE on existing extra sections
+  // Admin/Super-admin: always
+  // Backend: ONLY in order-login-stage (not in production-stage)
+  // ─────────────────────────────────────────────────────────
+  const canEditOrDeleteCustomSection: boolean =
+    isAdmin || (isBackend && isOrderLoginStage);
+
+  // ─────────────────────────────────────────────────────────
+  // FILEBREAKUPFIELD EDIT PERMISSIONS
+  //
+  // Admin/Super-admin  → always editable in both stages
+  // Backend:
+  //   order-login-stage  → always editable (multiple times)
+  //   production-stage   → editable ONLY if item has NO data yet
+  //                        (once data added → disabled forever for backend)
+  // Others             → never editable
+  // ─────────────────────────────────────────────────────────
+  const getItemEditPermissions = (item: any) => {
+    // Admin/Super-admin — full control always
+    if (isAdmin) {
+      return { canEdit: true };
+    }
+
+    // Backend in order-login-stage — can edit multiple times
+    if (isBackend && isOrderLoginStage) {
+      return { canEdit: true };
+    }
+
+    // Backend in production-stage — ONE CHANCE only
+    // If item already has vendor assigned OR description filled → disabled
+    if (isBackend && isProductionStage) {
+      const hasVendorAssigned = !!item?.company_vendor_id;
+      const hasDescription = !!(item?.item_desc && item.item_desc !== "N/A");
+      const hasAnyData = hasVendorAssigned || hasDescription;
+      return { canEdit: !hasAnyData };
+    }
+
+    // All other roles → blocked
+    return { canEdit: false };
+  };
 
   // Formatted users list
   const users =
@@ -137,7 +214,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     [orderLoginData, defaultTitles],
   );
 
-  // Pre-fill breakups from API data - Reset when instance changes
+  // Pre-fill breakups from API data — reset when instance changes
   useEffect(() => {
     if (orderLoginData && orderLoginData.length > 0) {
       const prefilled = orderLoginData.reduce((acc: any, item: any) => {
@@ -150,11 +227,10 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       setBreakups(prefilled);
       setHasUnsavedChanges(false);
     } else {
-      // Reset breakups when no data (switching to new instance)
       setBreakups({});
       setHasUnsavedChanges(false);
     }
-  }, [orderLoginData, instanceId]); // Added instanceId dependency
+  }, [orderLoginData, instanceId]);
 
   // Handle local state changes
   const handleLocalChange = (
@@ -178,7 +254,6 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     selectedVendorId: number,
     existingData: any,
   ) => {
-    // Simply update local state - disable logic handled by getItemEditPermissions
     handleLocalChange(title, "company_vendor_id", selectedVendorId);
   };
 
@@ -192,7 +267,6 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
         );
 
         if (!existing?.id) {
-          // Create new record with instance_id
           const newRecord = {
             id: null,
             item_type: title,
@@ -204,7 +278,6 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
           };
           return uploadMultiple([newRecord]);
         } else {
-          // Update existing record
           return updateSingle({
             orderLoginId: existing.id,
             payload: {
@@ -213,7 +286,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
               item_desc: values.item_desc?.trim() || "N/A",
               company_vendor_id: values.company_vendor_id ?? null,
               updated_by: userId,
-              instance_id: instanceId ?? null, // ✅ REQUIRED
+              instance_id: instanceId ?? null,
             },
           });
         }
@@ -224,9 +297,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       toast.success("Order Login saved successfully!");
       setHasUnsavedChanges(false);
 
-      queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead"],
-      });
+      queryClient.invalidateQueries({ queryKey: ["orderLoginByLead"] });
       queryClient.invalidateQueries({
         queryKey: ["leadProductionReadiness", vendorId, leadId],
       });
@@ -245,19 +316,15 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       toast.error("Section name cannot be empty");
       return false;
     }
-
     if (defaultTitles.includes(trimmedTitle)) {
       toast.error("Section name cannot match a default section");
       return false;
     }
-
     if (trimmedTitle === item.item_type) return true;
-
     if (breakups[trimmedTitle]) {
       toast.error("Section name already exists");
       return false;
     }
-
     if (!item?.id) {
       toast.error("Unable to update section name");
       return false;
@@ -287,10 +354,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       });
 
       toast.success("Section name updated successfully");
-
-      queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead"],
-      });
+      queryClient.invalidateQueries({ queryKey: ["orderLoginByLead"] });
       return true;
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to update section");
@@ -326,53 +390,6 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     }
   };
 
-  const getItemEditPermissions = (item: any) => {
-    const role = userType?.toLowerCase();
-    const stage = leadStatus?.toLowerCase();
-
-    const isAdmin = role === "admin" || role === "super-admin";
-    const isBackend = role === "backend";
-
-    const isOrderLoginStageCheck = stage === "order-login-stage";
-    const isProductionStageCheck = stage === "production-stage";
-
-    const hasVendorAssigned = !!item?.company_vendor_id;
-    const hasDescription = !!(item?.item_desc && item?.item_desc !== "N/A");
-
-    // ✅ Admin/Super-Admin override — full control always in both stages
-    if (isAdmin) {
-      return {
-        canEdit: true,
-      };
-    }
-
-    // ✅ Backend in order-login-stage — can edit everything multiple times
-    if (isBackend && isOrderLoginStageCheck) {
-      return {
-        canEdit: true,
-      };
-    }
-
-    // ✅ Backend in production-stage — can edit only if BOTH vendor AND description are NOT filled
-    if (isBackend && isProductionStageCheck) {
-      return {
-        canEdit: !(hasVendorAssigned && hasDescription), // Disable only when BOTH are filled
-      };
-    }
-
-    // ❌ Everything else blocked
-    return {
-      canEdit: false,
-    };
-  };
-
-  const canShowSaveButton = () => {
-    const role = userType?.toLowerCase();
-    const isAdmin = role === "admin" || role === "super-admin";
-    const isBackend = role === "backend";
-    return isAdmin || isBackend;
-  };
-
   return (
     <div className="space-y-4 p-1 bg-[#fff] dark:bg-[#0a0a0a]">
       {/* Header */}
@@ -385,6 +402,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
           </p>
         </div>
 
+        {/* ✅ Save button: admin/super-admin/backend in order-login OR production stage */}
         {canShowSaveButton() && (
           <Button
             onClick={handleSaveAll}
@@ -456,8 +474,9 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
               }
               disabled={!perms.canEdit}
               isMandatory={false}
-              isTitleEditable={canManageCustomSections && !!item.id}
-              canDelete={canManageCustomSections && !!item.id}
+              // ✅ Title edit + delete: admin always / backend ONLY in order-login-stage
+              isTitleEditable={canEditOrDeleteCustomSection && !!item.id}
+              canDelete={canEditOrDeleteCustomSection && !!item.id}
               onTitleSave={(nextTitle) => handleTitleUpdate(item, nextTitle)}
               onDelete={() =>
                 setConfirmDelete({
@@ -474,12 +493,15 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
           );
         })}
 
-        {/* Add New Section Card */}
-        {canAccessButtons && (
+        {/* ✅ Add New Section Card
+            Shown when:
+            - canAccessButtons (existing privilege check) AND
+            - canAddCustomSection: backend in both stages / admin always */}
+        {canAccessButtons && canAddCustomSection && (
           <div
             className="rounded-xl border-2 border-dashed border-primary/30 p-5 bg-primary/5 
                        hover:bg-primary/10 transition-all cursor-pointer group 
-                       flex flex-col items-center justify-center gap-3 min-h-[190px]"
+                       flex flex-col items-center justify-center gap-3 min-h-47.5"
           >
             <div
               className="rounded-full bg-primary/10 p-3 

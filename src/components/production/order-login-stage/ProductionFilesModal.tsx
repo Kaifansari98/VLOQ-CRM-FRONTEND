@@ -24,10 +24,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import DocumentCard from "@/components/utils/documentCard";
-import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  useInstanceStage,
+  useLeadStatus,
+} from "@/hooks/designing-stage/designing-leads-hooks";
 import { canUploadOrDeleteOrderLogin } from "@/components/utils/privileges";
 import { Badge } from "@/components/ui/badge";
 import { ImageComponent } from "@/components/utils/ImageCard";
+import { useSearchParams } from "next/navigation";
 
 interface ProductionFilesSectionProps {
   leadId: number;
@@ -42,11 +46,21 @@ export default function ProductionFilesSection({
   readOnly = false,
   instanceId,
 }: ProductionFilesSectionProps) {
+  const searchParams = useSearchParams();
+
+  const instanceFromUrl = searchParams.get("instance_id");
+  const resolvedInstanceId =
+    instanceId ?? (instanceFromUrl ? Number(instanceFromUrl) : undefined);
+
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-  const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const { data, isLoading: instanceLoading } = useInstanceStage(
+    vendorId,
+    leadId,
+    resolvedInstanceId,
+  );
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
   const queryClient = useQueryClient();
@@ -54,15 +68,13 @@ export default function ProductionFilesSection({
   const { data: productionFiles, isLoading } = useProductionFiles(
     vendorId,
     leadId,
-    instanceId
+    instanceId,
   );
   const { mutateAsync: uploadFiles, isPending } = useUploadProductionFiles(
     vendorId,
     leadId,
-    instanceId
+    instanceId,
   );
-
-  const leadStatus = leadData?.status;
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const hasFiles = Array.isArray(productionFiles) && productionFiles.length > 0;
@@ -108,8 +120,9 @@ export default function ProductionFilesSection({
 
   // ✅ Permission logic for delete
   console.log("UserType: ", userType);
-  console.log("Lead Status", leadStatus);
-  const canDelete = !readOnly && canUploadOrDeleteOrderLogin(userType, leadStatus);
+  console.log("Lead Status data with istance id ", data);
+  const canDelete =
+    !readOnly && canUploadOrDeleteOrderLogin(userType, data?.derived_stage!);
 
   return (
     <div className="border rounded-lg bg-background shadow-sm">
@@ -128,7 +141,7 @@ export default function ProductionFilesSection({
         </div>
 
         {hasFiles && (
-          <Badge variant="secondary" >
+          <Badge variant="secondary">
             {productionFiles.length} File
             {productionFiles.length > 1 && "s"}
           </Badge>
@@ -194,7 +207,9 @@ export default function ProductionFilesSection({
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
             {productionFiles.map((doc: any) => {
-              const isImage = doc.doc_og_name?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+              const isImage = doc.doc_og_name?.match(
+                /\.(jpg|jpeg|png|gif|webp)$/i,
+              );
               if (isImage) {
                 return (
                   <ImageComponent
@@ -206,9 +221,9 @@ export default function ProductionFilesSection({
                       created_at: doc.created_at,
                     }}
                     canDelete={canDelete}
-                onDelete={(id) =>
-                  setConfirmDelete(typeof id === "string" ? Number(id) : id)
-                }
+                    onDelete={(id) =>
+                      setConfirmDelete(typeof id === "string" ? Number(id) : id)
+                    }
                   />
                 );
               } else {

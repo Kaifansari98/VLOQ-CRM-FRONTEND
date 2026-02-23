@@ -6,6 +6,7 @@ import {
   fetchDesigningStageLeads,
   getDesigningStageCounts,
   getDesignsDoc,
+  getInstanceStage,
   getLeadStatus,
   getQuotationDoc,
   getSelectionData,
@@ -168,5 +169,19 @@ export const useLeadStatus = (leadId?: number, vendorId?: number) => {
     queryFn: () => getLeadStatus(leadId!, vendorId!),
     enabled: !!leadId && !!vendorId,
     staleTime: 5 * 60 * 1000, // optional: cache for 5 min
+  });
+};
+
+export const useInstanceStage = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number
+) => {
+  return useQuery({
+    queryKey: ["instance-stage", vendorId, leadId, instanceId],
+    queryFn: () => getInstanceStage(vendorId!, leadId!, instanceId!),
+    enabled: !!vendorId && !!leadId && !!instanceId,
+    staleTime: 5 * 60 * 1000, // cache for 5 minutes
+    refetchOnWindowFocus: false,
   });
 };

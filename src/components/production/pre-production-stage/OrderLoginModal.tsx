@@ -21,11 +21,15 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 import DocumentCard from "@/components/utils/documentCard";
 import CustomeTooltip from "@/components/custom-tooltip";
-import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  useInstanceStage,
+  useLeadStatus,
+} from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 import { useAppSelector } from "@/redux/store";
 import BaseModal from "@/components/utils/baseModal";
 import { ImageComponent } from "@/components/utils/ImageCard";
+import { useSearchParams } from "next/navigation";
 
 interface OrderLoginModalProps {
   open: boolean;
@@ -61,19 +65,31 @@ export default function OrderLoginModal({
   markedAsCompletedDate,
 }: OrderLoginModalProps) {
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const searchParams = useSearchParams();
+
+  const instanceFromUrl = searchParams.get("instance_id");
+  const resolvedInstanceId = instanceFromUrl
+    ? Number(instanceFromUrl)
+    : undefined;
 
   const queryClient = useQueryClient();
   const { data: vendors } = useCompanyVendors(vendorId);
   const { data: poFileList = [] } = useOrderLoginPoFiles(
     vendorId,
     leadId,
-    orderLoginId
+    orderLoginId,
   );
   const { mutateAsync } = useHandleFactoryVendorSelection();
   const [selectedVendorId, setSelectedVendorId] = useState<number | null>(
-    currentCompanyVendorId || null
+    currentCompanyVendorId || null,
   );
   const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const { data, isLoading: instanceLoading } = useInstanceStage(
+    vendorId,
+    leadId,
+    resolvedInstanceId,
+  );
+  const leadStatusIns = data?.derived_stage;
   const leadStatus = leadData?.status;
   const [remarkModalOpen, setRemarkModalOpen] = useState(false);
   const [pendingVendorId, setPendingVendorId] = useState<number | null>(null);
@@ -222,7 +238,10 @@ export default function OrderLoginModal({
     }
   };
 
-  const canWorkAndView = canViewAndWorkProductionStage(userType, leadStatus);
+  const canWorkAndView = canViewAndWorkProductionStage(
+    userType,
+    leadStatusIns ?? leadStatus,
+  );
 
   return (
     <>
@@ -248,49 +267,50 @@ export default function OrderLoginModal({
               <div className="max-h-48 overflow-y-auto p-3 rounded-md border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                 {desc || "No description available."}
               </div>
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-900 dark:text-gray-300">
-                PO Files
-              </p>
-              {poFileList.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  No PO files uploaded yet.
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-900 dark:text-gray-300">
+                  PO Files
                 </p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-1 gap-3 max-h-[250px] overflow-y-scroll">
-                  {poFileList.map((doc: any) => {
-                    const isImage = doc.doc_og_name?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-                    if (isImage) {
-                      return (
-                        <ImageComponent
-                          key={doc.id}
-                          doc={{
-                            id: doc.id,
-                            doc_og_name: doc.doc_og_name,
-                            signedUrl: doc.signed_url,
-                            created_at: doc.created_at,
-                          }}
-                        />
+                {poFileList.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No PO files uploaded yet.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-1 gap-3 max-h-[250px] overflow-y-scroll">
+                    {poFileList.map((doc: any) => {
+                      const isImage = doc.doc_og_name?.match(
+                        /\.(jpg|jpeg|png|gif|webp)$/i,
                       );
-                    } else {
-                      return (
-                        <DocumentCard
-                          key={doc.id}
-                          doc={{
-                            id: doc.id,
-                            originalName: doc.doc_og_name,
-                            signedUrl: doc.signed_url,
-                            created_at: doc.created_at,
-                          }}
-                        />
-                      );
-                    }
-                  })}
-                </div>
-              )}
+                      if (isImage) {
+                        return (
+                          <ImageComponent
+                            key={doc.id}
+                            doc={{
+                              id: doc.id,
+                              doc_og_name: doc.doc_og_name,
+                              signedUrl: doc.signed_url,
+                              created_at: doc.created_at,
+                            }}
+                          />
+                        );
+                      } else {
+                        return (
+                          <DocumentCard
+                            key={doc.id}
+                            doc={{
+                              id: doc.id,
+                              originalName: doc.doc_og_name,
+                              signedUrl: doc.signed_url,
+                              created_at: doc.created_at,
+                            }}
+                          />
+                        );
+                      }
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
-            </div>
-
 
             {hasVendorInfo && (
               <div className="flex items-center gap-3 pt-2">
@@ -345,10 +365,10 @@ export default function OrderLoginModal({
                 !canWorkAndView && userType === "factory"
                   ? "This lead stage has progressed. Factory users cannot modify this section."
                   : !canWorkAndView
-                  ? "You do not have access to assign or change vendors."
-                  : isCompleted
-                  ? "You cannot change the vendor after this order-login is marked as ready."
-                  : "Select a factory vendor."
+                    ? "You do not have access to assign or change vendors."
+                    : isCompleted
+                      ? "You cannot change the vendor after this order-login is marked as ready."
+                      : "Select a factory vendor."
               }
             />
 
@@ -401,10 +421,10 @@ export default function OrderLoginModal({
                   !canWorkAndView && userType === "factory"
                     ? "This lead stage has progressed. Factory users cannot modify this section."
                     : !canWorkAndView
-                    ? "You do not have access to change or set production-ready dates."
-                    : isCompleted
-                    ? "You cannot change the date after this order-login is marked as ready."
-                    : "Select a production ready date."
+                      ? "You do not have access to change or set production-ready dates."
+                      : isCompleted
+                        ? "You cannot change the date after this order-login is marked as ready."
+                        : "Select a production ready date."
                 }
               />
 
@@ -449,14 +469,14 @@ export default function OrderLoginModal({
                   !canWorkAndView && userType === "factory"
                     ? "This lead stage has progressed. Factory users cannot modify this section."
                     : !canWorkAndView
-                    ? "You do not have access to mark this order-login as completed."
-                    : isCompleted
-                    ? "This order-login is already completed."
-                    : !productionReadyDate
-                    ? "Please set the Production Ready Date before marking as completed."
-                    : !isProductionDateReached
-                    ? "You can mark as completed only once the Production Ready Date has arrived."
-                    : "Mark this order-login as completed."
+                      ? "You do not have access to mark this order-login as completed."
+                      : isCompleted
+                        ? "This order-login is already completed."
+                        : !productionReadyDate
+                          ? "Please set the Production Ready Date before marking as completed."
+                          : !isProductionDateReached
+                            ? "You can mark as completed only once the Production Ready Date has arrived."
+                            : "Mark this order-login as completed."
                 }
               />
 

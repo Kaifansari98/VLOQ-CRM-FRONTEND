@@ -30,7 +30,10 @@ import { useDeleteDocument } from "@/api/leads";
 
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
-import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  useInstanceStage,
+  useLeadStatus,
+} from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 
 export default function HardwarePackingDetailsSection({
@@ -49,8 +52,8 @@ export default function HardwarePackingDetailsSection({
     typeof instanceId !== "undefined"
       ? instanceId
       : instanceIdFromUrl && !Number.isNaN(instanceIdFromUrl)
-      ? instanceIdFromUrl
-      : null;
+        ? instanceIdFromUrl
+        : null;
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
@@ -59,10 +62,16 @@ export default function HardwarePackingDetailsSection({
   const { data: packingDetails, isLoading } = useGetHardwarePackingDetails(
     vendorId,
     leadId,
-    effectiveInstanceId ?? undefined
+    effectiveInstanceId ?? undefined,
   );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const { data, isLoading: instanceLoading } = useInstanceStage(
+    vendorId,
+    leadId,
+    instanceId!,
+  );
+  const leadStatusIns = data?.derived_stage;
   const leadStatus = leadData?.status;
 
   const { mutate: deleteDocument, isPending: deleting } =
@@ -72,13 +81,13 @@ export default function HardwarePackingDetailsSection({
     useUploadHardwarePackingDetails(
       vendorId,
       leadId,
-      effectiveInstanceId ?? undefined
+      effectiveInstanceId ?? undefined,
     );
 
   const { refetch: refetchCompleteness } = usePostProductionCompleteness(
     vendorId,
     leadId,
-    effectiveInstanceId ?? undefined
+    effectiveInstanceId ?? undefined,
   );
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -89,11 +98,11 @@ export default function HardwarePackingDetailsSection({
   const [remark, setRemark] = useState(normalizedRemark);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
-  const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatus);
+  const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatusIns ?? leadStatus);
   const canDelete =
     userType === "admin" ||
     userType === "super-admin" ||
-    (userType === "factory" && leadStatus === "production-stage");
+    (userType === "factory" && (leadStatusIns ?? leadStatus) === "production-stage");
 
   useEffect(() => {
     if (normalizedRemark) setRemark(normalizedRemark);
@@ -106,12 +115,12 @@ export default function HardwarePackingDetailsSection({
 
   const images =
     normalizedDocs?.filter((file: any) =>
-      imageExt.includes(file.doc_og_name?.split(".").pop()?.toLowerCase())
+      imageExt.includes(file.doc_og_name?.split(".").pop()?.toLowerCase()),
     ) || [];
 
   const Documents =
     normalizedDocs?.filter((file: any) =>
-      docExt.includes(file.doc_og_name?.split(".").pop()?.toLowerCase())
+      docExt.includes(file.doc_og_name?.split(".").pop()?.toLowerCase()),
     ) || [];
 
   // Upload handler

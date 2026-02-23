@@ -334,3 +334,22 @@ export const getLeadStatus = async (leadId: number, vendorId: number) => {
   );
   return data?.data; // returns { lead_id, status_type_id, status, status_tag }
 };
+
+export interface InstanceStageResponse {
+  vendor_id: number;
+  lead_id: number;
+  instance_id: number;
+  derived_stage: "tech-check-stage" | "order-login-stage" | "production-stage";
+}
+
+export const getInstanceStage = async (
+  vendorId: number,
+  leadId: number,
+  instanceId: number
+): Promise<InstanceStageResponse> => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/instance/${instanceId}/stage`
+  );
+
+  return data?.data;
+};

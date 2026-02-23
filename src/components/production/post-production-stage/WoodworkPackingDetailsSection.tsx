@@ -33,7 +33,7 @@ import { useDeleteDocument } from "@/api/leads";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 
-import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useInstanceStage, useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 
 export default function WoodworkPackingDetailsSection({
@@ -67,6 +67,14 @@ export default function WoodworkPackingDetailsSection({
   );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
+
+    const { data, isLoading: instanceLoading } = useInstanceStage(
+      vendorId,
+      leadId,
+      instanceId!,
+    );
+    const leadStatusIns = data?.derived_stage;
+
   const leadStatus = leadData?.status;
 
   const { mutate: deleteDocument, isPending: deleting } =
@@ -93,11 +101,11 @@ export default function WoodworkPackingDetailsSection({
   const [remark, setRemark] = useState(normalizedRemark);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
-  const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatus);
+  const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatusIns ?? leadStatus);
   const canDelete =
     userType === "admin" ||
     userType === "super-admin" ||
-    (userType === "factory" && leadStatus === "production-stage");
+    (userType === "factory" && (leadStatusIns ?? leadStatus) === "production-stage");
 
   useEffect(() => {
     if (normalizedRemark) setRemark(normalizedRemark);

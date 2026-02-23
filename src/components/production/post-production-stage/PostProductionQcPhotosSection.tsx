@@ -27,7 +27,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
-import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  useInstanceStage,
+  useLeadStatus,
+} from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 
 interface PostProductionQcPhotosSectionProps {
@@ -48,8 +51,8 @@ export default function PostProductionQcPhotosSection({
     typeof instanceId !== "undefined"
       ? instanceId
       : instanceIdFromUrl && !Number.isNaN(instanceIdFromUrl)
-      ? instanceIdFromUrl
-      : null;
+        ? instanceIdFromUrl
+        : null;
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
@@ -59,15 +62,22 @@ export default function PostProductionQcPhotosSection({
   const { data: qcPhotos, isLoading } = useQcPhotos(
     vendorId,
     leadId,
-    effectiveInstanceId ?? undefined
+    effectiveInstanceId ?? undefined,
   );
   const { mutateAsync: uploadQcFiles, isPending } = useUploadQcPhotos(
     vendorId,
     leadId,
-    effectiveInstanceId ?? undefined
+    effectiveInstanceId ?? undefined,
   );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
+
+  const { data, isLoading: instanceLoading } = useInstanceStage(
+    vendorId,
+    leadId,
+    instanceId!,
+  );
+  const leadStatusIns = data?.derived_stage;
   const leadStatus = leadData?.status;
 
   const { mutate: deleteDocument, isPending: deleting } =
@@ -75,7 +85,7 @@ export default function PostProductionQcPhotosSection({
   const { refetch: refetchCompleteness } = usePostProductionCompleteness(
     vendorId,
     leadId,
-    effectiveInstanceId ?? undefined
+    effectiveInstanceId ?? undefined,
   );
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
@@ -88,12 +98,12 @@ export default function PostProductionQcPhotosSection({
 
   const images =
     qcPhotos?.filter((file: any) =>
-      imageTypes.includes(file.doc_og_name?.split(".").pop()?.toLowerCase())
+      imageTypes.includes(file.doc_og_name?.split(".").pop()?.toLowerCase()),
     ) || [];
 
   const documents =
     qcPhotos?.filter((file: any) =>
-      docTypes.includes(file.doc_og_name?.split(".").pop()?.toLowerCase())
+      docTypes.includes(file.doc_og_name?.split(".").pop()?.toLowerCase()),
     ) || [];
 
   const handleUpload = async () => {
@@ -113,12 +123,7 @@ export default function PostProductionQcPhotosSection({
       setSelectedFiles([]);
 
       queryClient.invalidateQueries({
-        queryKey: [
-          "qcPhotos",
-          vendorId,
-          leadId,
-          effectiveInstanceId ?? "all",
-        ],
+        queryKey: ["qcPhotos", vendorId, leadId, effectiveInstanceId ?? "all"],
       });
       queryClient.invalidateQueries({
         queryKey: [
@@ -132,7 +137,7 @@ export default function PostProductionQcPhotosSection({
       await refetchCompleteness();
     } catch (error: any) {
       toast.error(
-        error?.response?.data?.message || "Failed to upload QC photos."
+        error?.response?.data?.message || "Failed to upload QC photos.",
       );
     }
   };
@@ -140,9 +145,13 @@ export default function PostProductionQcPhotosSection({
   const canDelete =
     userType === "admin" ||
     userType === "super-admin" ||
-    (userType === "factory" && leadStatus === "production-stage");
+    (userType === "factory" &&
+      (leadStatusIns ?? leadStatus) === "production-stage");
 
-  const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatus);
+  const canViewAndWork = canViewAndWorkProductionStage(
+    userType,
+    leadStatusIns ?? leadStatus,
+  );
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {

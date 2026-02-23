@@ -35,7 +35,7 @@ import {
   useUpdateNoOfBoxes,
 } from "@/api/production/production-api";
 import { useClientRequiredCompletionDate } from "@/api/tech-check";
-import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useInstanceStage, useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 import WoodworkPackingDetailsSection from "../post-production-stage/WoodworkPackingDetailsSection";
 import HardwarePackingDetailsSection from "../post-production-stage/HardwarePackingDetailsSection";
@@ -72,6 +72,13 @@ export default function PostProductionDetails({
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
+    const { data, isLoading: instanceLoading } = useInstanceStage(
+    vendorId,
+    leadId,
+    instanceId!,
+  );
+  const leadStatusIns = data?.derived_stage;
+
   const { data: boxesData, isLoading } = useGetNoOfBoxes(
     vendorId,
     leadId,
@@ -98,7 +105,7 @@ export default function PostProductionDetails({
   const { data: clientRequiredCompletionDateData } =
     useClientRequiredCompletionDate(vendorId, leadId);
 
-  const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatus);
+  const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatusIns ?? leadStatus);
 
   // ✅ Submit handler (fully validated)
   const onSubmit = async (values: BoxFormValues) => {
