@@ -74,6 +74,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import BaseModal from "@/components/utils/baseModal";
 import { useDeleteDocument } from "@/api/leads";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import MiscTaskModal from "@/components/misc-task-modal";
 interface InstallationMiscellaneousProps {
   vendorId: number;
   leadId: number;
@@ -136,6 +137,7 @@ export default function InstallationMiscellaneous({
   const [showDeliveryConfirm, setShowDeliveryConfirm] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [openDeliveryTaskModal, setOpenDeliveryTaskModal] = useState(false);
   const canDoERDDate = canDoERDMiscellaneousDate(userType, leadStatus);
   const canDoMarkAsResolved = canMiscellaneousMarkAsResolved(
     userType,
@@ -1266,6 +1268,7 @@ export default function InstallationMiscellaneous({
                         </span>
                       </div>
                       <div className="flex items-end justify-between gap-2">
+                        <div className="w-full">
                         <CustomeDatePicker
                           key={`${viewModal.data?.id}-delivery`}
                           value={
@@ -1287,6 +1290,21 @@ export default function InstallationMiscellaneous({
                             setShowDeliveryConfirm(true);
                           }}
                         />
+                        </div>
+                        <div className="flex gap-2 ">
+                        {viewModal.data?.required_delivery_date &&
+                        viewModal.data?.delivery_task?.id &&
+                        !hasCompletionDocs && (
+                          <div className="flex justify-end pt-2">
+                            <Button
+                              variant="outline"
+                              size="md"
+                              onClick={() => setOpenDeliveryTaskModal(true)}
+                            >
+                              Manage Delivery Task
+                            </Button>
+                          </div>
+                        )}
                         {viewModal.data?.expected_ready_date &&
                           canDoMarkAsResolved &&
                           canResolveRole &&
@@ -1294,11 +1312,11 @@ export default function InstallationMiscellaneous({
                           isReady &&
                           hasCompletionDocs &&
                           !viewModal.data?.is_resolved && (
-                            <div className="flex justify-end">
-                              <Button
-                                variant="default"
-                                size="default"
-                                disabled={resolveMisc.isPending}
+                          <div className="flex justify-end">
+                            <Button
+                              variant="default"
+                              size="default"
+                              disabled={resolveMisc.isPending}
                                 onClick={() =>
                                   resolveMisc.mutate(
                                     {
@@ -1333,16 +1351,18 @@ export default function InstallationMiscellaneous({
                                     },
                                   )
                                 }
-                                className="gap-2"
-                              >
-                                <CheckCircle2 className="w-4 h-4" />
-                                {resolveMisc.isPending
-                                  ? "Resolving..."
-                                  : "Mark as Resolved"}
-                              </Button>
-                            </div>
-                          )}
+                              className="gap-2"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                              {resolveMisc.isPending
+                                ? "Resolving..."
+                                : "Mark as Resolved"}
+                            </Button>
+                          </div>
+                        )}
+                        </div>
                       </div>
+      
                     </div>
                   </div>
                 ) : (
@@ -1621,6 +1641,22 @@ export default function InstallationMiscellaneous({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <MiscTaskModal
+        open={openDeliveryTaskModal}
+        onOpenChange={setOpenDeliveryTaskModal}
+        data={
+          viewModal.data?.delivery_task?.id
+            ? {
+                leadId,
+                accountId,
+                taskId: viewModal.data.delivery_task.id,
+                dueDate: viewModal.data.delivery_task.due_date || undefined,
+                remark: viewModal.data.delivery_task.remark || undefined,
+              }
+            : undefined
+        }
+      />
     </div>
   );
 }

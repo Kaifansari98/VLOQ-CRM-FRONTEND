@@ -109,6 +109,9 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
                   queryClient.invalidateQueries({
                     queryKey: ["miscellaneousEntries"],
                   });
+                  queryClient.invalidateQueries({
+                    queryKey: ["miscellaneousEntries", vendorId, data.leadId],
+                  });
                 }
               },
               onError: (err: any) => {

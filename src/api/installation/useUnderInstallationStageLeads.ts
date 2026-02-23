@@ -56,6 +56,13 @@ export interface MiscellaneousEntry {
     remark?: string | null;
     status?: string;
   } | null;
+  delivery_task?: {
+    id: number;
+    task_type: string;
+    status?: string;
+    remark?: string | null;
+    due_date?: string | null;
+  } | null;
   teams: MiscellaneousTeam[];
   documents: MiscellaneousDocument[];
 }
