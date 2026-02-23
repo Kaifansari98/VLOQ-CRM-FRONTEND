@@ -364,6 +364,9 @@ export default function InstallationMiscellaneous({
     isApproved &&
     isReady &&
     !viewModal.data?.is_resolved;
+  const canManageDeliveryTask = ["factory", "admin", "super-admin"].includes(
+    userType || "",
+  );
 
   return (
     <div className="px-2 bg-white dark:bg-[#0a0a0a]">
@@ -1294,7 +1297,8 @@ export default function InstallationMiscellaneous({
                         <div className="flex gap-2 ">
                         {viewModal.data?.required_delivery_date &&
                         viewModal.data?.delivery_task?.id &&
-                        !hasCompletionDocs && (
+                        !hasCompletionDocs &&
+                        canManageDeliveryTask && (
                           <div className="flex justify-end pt-2">
                             <Button
                               variant="outline"
