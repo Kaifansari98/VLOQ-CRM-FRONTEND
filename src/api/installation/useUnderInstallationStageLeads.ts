@@ -56,6 +56,13 @@ export interface MiscellaneousEntry {
     remark?: string | null;
     status?: string;
   } | null;
+  delivery_task?: {
+    id: number;
+    task_type: string;
+    status?: string;
+    remark?: string | null;
+    due_date?: string | null;
+  } | null;
   teams: MiscellaneousTeam[];
   documents: MiscellaneousDocument[];
 }
@@ -1132,6 +1139,7 @@ export interface UsableHandoverData {
   pending_work_details: string | null;
   final_site_photos: LeadDocument[];
   handover_documents: LeadDocument[];
+  usable_handover_completed?: boolean;
 }
 
 export interface UpdateUsableHandoverPayload {
@@ -1261,6 +1269,34 @@ export const useUpdateRemarks = () => {
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(error?.response?.data?.message || "Failed to update remarks");
+    },
+  });
+};
+
+export const markUsableHandoverCompleted = async ({
+  vendorId,
+  leadId,
+  updated_by,
+}: {
+  vendorId: number;
+  leadId: number;
+  updated_by: number;
+}) => {
+  const { data } = await apiClient.put(
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/mark-usable-handover-completed`,
+    { updated_by }
+  );
+  return data?.data;
+};
+
+export const useMarkUsableHandoverCompleted = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: markUsableHandoverCompleted,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["usableHandover", variables.vendorId, variables.leadId],
+      });
     },
   });
 };

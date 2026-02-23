@@ -2,7 +2,7 @@
 
   import React, { useState, useEffect } from "react";
   import { motion } from "framer-motion";
-  import { Upload, FileText, ImageIcon, FolderOpen, Loader2 } from "lucide-react";
+  import { Upload, FileText, ImageIcon, FolderOpen, Loader2, CheckCircle2 } from "lucide-react";
   import { Button } from "@/components/ui/button";
   import { Card, CardContent } from "@/components/ui/card";
   import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@
   import {
     useGetUsableHandover,
     useUpdateUsableHandover,
+    useMarkUsableHandoverCompleted,
   } from "@/api/installation/useUnderInstallationStageLeads";
   import { useDeleteDocument } from "@/api/leads";
   import { useAppSelector } from "@/redux/store";
@@ -30,6 +31,7 @@
   import PendingWorkDetails from "../dispatch/PendingWorkDetails";
   import { canViewAndWorkUnderInstallationStage } from "@/components/utils/privileges";
   import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+  import CustomeTooltip from "@/components/custom-tooltip";
 
   import BaseModal from "@/components/utils/baseModal";
 
@@ -72,6 +74,7 @@
       leadId
     );
     const updateMutation = useUpdateUsableHandover();
+    const markCompletedMutation = useMarkUsableHandoverCompleted();
     
     const { mutate: deleteDocument, isPending: deleting } =
       useDeleteDocument(leadId);
@@ -81,6 +84,10 @@
 
     
     const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
+    const canMarkCompleted =
+      userType === "admin" ||
+      userType === "super-admin" ||
+      userType === "site-supervisor";
 
     useEffect(() => {
       if (handoverData?.pending_work_details) {
@@ -123,6 +130,11 @@
       }
       return [];
     };
+
+    const finalSiteCount = getDocumentsForSection("final_site_photos").length;
+    const handoverCount = getDocumentsForSection("handover_documents").length;
+    const canComplete = finalSiteCount > 0 && handoverCount > 0;
+    const isCompleted = Boolean(handoverData?.usable_handover_completed);
 
     const separateImageAndDocs = (docs: any[]) => {
       const imageExtensions = ["jpg", "jpeg", "png", "webp"];
@@ -199,13 +211,60 @@
     return (
       <div className="space-y-6 bg-[#fff] dark:bg-[#0a0a0a]">
         {/* Header */}
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">
-            Usable Handover
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Upload final site photos and handover documents for the installation
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">
+              Usable Handover
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Upload final site photos and handover documents for the installation
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isCompleted && (
+              <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                Marked as Completed
+              </Badge>
+            )}
+
+            {canMarkCompleted && !isCompleted && (
+              canComplete ? (
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    markCompletedMutation.mutate({
+                      vendorId,
+                      leadId,
+                      updated_by: userId,
+                    })
+                  }
+                  disabled={markCompletedMutation.isPending}
+                >
+                  {markCompletedMutation.isPending
+                    ? "Marking..."
+                    : "Mark as Completed"}
+                </Button>
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <Button size="sm" variant="outline" disabled>
+                      Mark as Completed
+                    </Button>
+                  }
+                  value={`Required: ${
+                    [
+                      finalSiteCount === 0 ? "Final Site Photos" : null,
+                      handoverCount === 0 ? "Handover Documents" : null,
+                    ]
+                      .filter(Boolean)
+                      .join(", ") || "All documents"
+                  }`}
+                />
+              )
+            )}
+          </div>
         </div>
 
         {/* Cards Grid – same pattern as FinalHandover */}

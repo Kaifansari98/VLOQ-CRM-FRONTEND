@@ -74,6 +74,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import BaseModal from "@/components/utils/baseModal";
 import { useDeleteDocument } from "@/api/leads";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import MiscTaskModal from "@/components/misc-task-modal";
 interface InstallationMiscellaneousProps {
   vendorId: number;
   leadId: number;
@@ -136,6 +137,7 @@ export default function InstallationMiscellaneous({
   const [showDeliveryConfirm, setShowDeliveryConfirm] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [openDeliveryTaskModal, setOpenDeliveryTaskModal] = useState(false);
   const canDoERDDate = canDoERDMiscellaneousDate(userType, leadStatus);
   const canDoMarkAsResolved = canMiscellaneousMarkAsResolved(
     userType,
@@ -362,6 +364,9 @@ export default function InstallationMiscellaneous({
     isApproved &&
     isReady &&
     !viewModal.data?.is_resolved;
+  const canManageDeliveryTask = ["factory", "admin", "super-admin"].includes(
+    userType || "",
+  );
 
   return (
     <div className="px-2 bg-white dark:bg-[#0a0a0a]">
@@ -395,12 +400,6 @@ export default function InstallationMiscellaneous({
               <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
                 ERD Date
               </TableHead>
-              <TableHead className="w-[100px] text-sm font-medium text-foreground/80">
-                Quantity
-              </TableHead>
-              <TableHead className="w-[120px] text-sm font-medium text-foreground/80">
-                Cost
-              </TableHead>
               <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
                 Responsible Teams
               </TableHead>
@@ -415,6 +414,12 @@ export default function InstallationMiscellaneous({
               </TableHead>
               <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
                 Problem Description
+              </TableHead>
+              <TableHead className="w-[100px] text-sm font-medium text-foreground/80">
+                Quantity
+              </TableHead>
+              <TableHead className="w-[120px] text-sm font-medium text-foreground/80">
+                Cost
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -481,28 +486,6 @@ export default function InstallationMiscellaneous({
                     {entry.expected_ready_date ? (
                       <span className="text-sm font-medium">
                         {formatDate(entry.expected_ready_date)}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-
-                  {/* QTY */}
-                  <TableCell className="py-3">
-                    {entry.quantity ? (
-                      <span className="text-sm font-medium">
-                        {entry.quantity}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-
-                  {/* COST */}
-                  <TableCell className="py-3">
-                    {entry.cost ? (
-                      <span className="text-sm font-medium">
-                        ₹{entry.cost.toLocaleString()}
                       </span>
                     ) : (
                       <span className="text-sm text-muted-foreground">-</span>
@@ -613,6 +596,28 @@ export default function InstallationMiscellaneous({
                       }
                       remarkFull={entry.problem_description || "-"}
                     />
+                  </TableCell>
+
+                  {/* QTY */}
+                  <TableCell className="py-3">
+                    {entry.quantity ? (
+                      <span className="text-sm font-medium">
+                        {entry.quantity}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+
+                  {/* COST */}
+                  <TableCell className="py-3">
+                    {entry.cost ? (
+                      <span className="text-sm font-medium">
+                        ₹{entry.cost.toLocaleString()}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -1197,40 +1202,45 @@ export default function InstallationMiscellaneous({
                 )}
 
                 {/* Scheduling */}
-                {!viewModal.data?.is_resolved && isApproved ? (
+                {isApproved ? (
                   <div className="flex-1 space-y-4">
                     <div className="space-y-1">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-xs font-medium text-muted-foreground">
-                            Expected Ready Date (ERD)
-                          </span>
+                      <div className="flex items-end justify-between gap-2">
+                        <div className="w-full">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Calendar className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-xs font-medium text-muted-foreground">
+                              Expected Ready Date (ERD)
+                            </span>
+                          </div>
+                          <CustomeDatePicker
+                            key={viewModal.data?.id}
+                            value={
+                              viewModal.data?.expected_ready_date || undefined
+                            }
+                            restriction="futureOnly"
+                            disabledReason={
+                              viewModal.data?.is_resolved
+                                ? "Resolved. ERD cannot be updated."
+                                : !canDoERDDate
+                                ? userType === "factory"
+                                  ? "This lead has moved ahead."
+                                  : "Only factory user can do this."
+                                : isTaskReady
+                                  ? "Marked as ready. ERD cannot be updated."
+                                  : undefined
+                            }
+                            onChange={(newDate) => {
+                              if (!canUpdateERD || !newDate) return;
+                              setSelectedERD(newDate);
+                              setShowConfirm(true);
+                            }}
+                          />
                         </div>
-                        <CustomeDatePicker
-                          key={viewModal.data?.id}
-                          value={
-                            viewModal.data?.expected_ready_date || undefined
-                          }
-                          restriction="futureOnly"
-                          disabledReason={
-                            !canDoERDDate
-                              ? userType === "factory"
-                                ? "This lead has moved ahead."
-                                : "Only factory user can do this."
-                              : isTaskReady
-                                ? "Marked as ready. ERD cannot be updated."
-                                : undefined
-                          }
-                          onChange={(newDate) => {
-                            if (!canUpdateERD || !newDate) return;
-                            setSelectedERD(newDate);
-                            setShowConfirm(true);
-                          }}
-                        />
                         {viewModal.data?.expected_ready_date &&
                           canMarkAsReady &&
-                          isApproved && (
+                          isApproved &&
+                          !viewModal.data?.is_resolved && (
                             <Button
                               variant="default"
                               size="default"
@@ -1254,31 +1264,109 @@ export default function InstallationMiscellaneous({
                     </div>
 
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mb-2">
                         <Calendar className="w-4 h-4 text-muted-foreground" />
                         <span className="text-xs font-medium text-muted-foreground">
                           Required Delivery Date
                         </span>
                       </div>
-                      <CustomeDatePicker
-                        key={`${viewModal.data?.id}-delivery`}
-                        value={
-                          viewModal.data?.required_delivery_date || undefined
-                        }
-                        restriction="futureOnly"
-                        disabledReason={
-                          !isReady
-                            ? "Mark as ready to set delivery date."
-                            : !canUpdateRequiredDelivery
-                              ? "Only admin, super-admin or site supervisor can update."
-                              : undefined
-                        }
-                        onChange={(newDate) => {
-                          if (!canUpdateRequiredDelivery || !newDate) return;
-                          setSelectedRequiredDelivery(newDate);
-                          setShowDeliveryConfirm(true);
-                        }}
-                      />
+                      <div className="flex items-end justify-between gap-2">
+                        <div className="w-full">
+                        <CustomeDatePicker
+                          key={`${viewModal.data?.id}-delivery`}
+                          value={
+                            viewModal.data?.required_delivery_date || undefined
+                          }
+                          restriction="futureOnly"
+                          disabledReason={
+                            viewModal.data?.is_resolved
+                              ? "Resolved. Delivery date cannot be updated."
+                              : !isReady
+                              ? "Mark as ready to set delivery date."
+                              : !canUpdateRequiredDelivery
+                                ? "Only admin, super-admin or site supervisor can update."
+                                : undefined
+                          }
+                          onChange={(newDate) => {
+                            if (!canUpdateRequiredDelivery || !newDate) return;
+                            setSelectedRequiredDelivery(newDate);
+                            setShowDeliveryConfirm(true);
+                          }}
+                        />
+                        </div>
+                        <div className="flex gap-2 ">
+                        {viewModal.data?.required_delivery_date &&
+                        viewModal.data?.delivery_task?.id &&
+                        !hasCompletionDocs &&
+                        canManageDeliveryTask && (
+                          <div className="flex justify-end pt-2">
+                            <Button
+                              variant="outline"
+                              size="md"
+                              onClick={() => setOpenDeliveryTaskModal(true)}
+                            >
+                              Manage Delivery Task
+                            </Button>
+                          </div>
+                        )}
+                        {viewModal.data?.expected_ready_date &&
+                          canDoMarkAsResolved &&
+                          canResolveRole &&
+                          isApproved &&
+                          isReady &&
+                          hasCompletionDocs &&
+                          !viewModal.data?.is_resolved && (
+                          <div className="flex justify-end">
+                            <Button
+                              variant="default"
+                              size="default"
+                              disabled={resolveMisc.isPending}
+                                onClick={() =>
+                                  resolveMisc.mutate(
+                                    {
+                                      vendorId,
+                                      leadId,
+                                      miscId: viewModal?.data?.id || 0,
+                                      resolved_by: userId!,
+                                    },
+                                    {
+                                      onSuccess: () => {
+                                        queryClient.invalidateQueries({
+                                          queryKey: [
+                                            "miscellaneousEntries",
+                                            vendorId,
+                                            leadId,
+                                          ],
+                                        });
+
+                                        setViewModal((prev) => ({
+                                          ...prev,
+                                          data: prev.data
+                                            ? {
+                                                ...prev.data,
+                                                is_resolved: true,
+                                                resolved_by: userId,
+                                                resolved_at:
+                                                  new Date().toString(),
+                                              }
+                                            : null,
+                                        }));
+                                      },
+                                    },
+                                  )
+                                }
+                              className="gap-2"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                              {resolveMisc.isPending
+                                ? "Resolving..."
+                                : "Mark as Resolved"}
+                            </Button>
+                          </div>
+                        )}
+                        </div>
+                      </div>
+      
                     </div>
                   </div>
                 ) : (
@@ -1286,59 +1374,7 @@ export default function InstallationMiscellaneous({
                 )}
 
                 {/* Status Actions */}
-                <div className="flex items-end gap-2">
-                  {viewModal.data?.expected_ready_date &&
-                    canDoMarkAsResolved &&
-                    canResolveRole &&
-                    isApproved &&
-                    isReady &&
-                    hasCompletionDocs && (
-                      <Button
-                        variant="default"
-                        size="default"
-                        disabled={resolveMisc.isPending}
-                        onClick={() =>
-                          resolveMisc.mutate(
-                            {
-                              vendorId,
-                              leadId,
-                              miscId: viewModal?.data?.id || 0,
-                              resolved_by: userId!,
-                            },
-                            {
-                              onSuccess: () => {
-                                queryClient.invalidateQueries({
-                                  queryKey: [
-                                    "miscellaneousEntries",
-                                    vendorId,
-                                    leadId,
-                                  ],
-                                });
-
-                                setViewModal((prev) => ({
-                                  ...prev,
-                                  data: prev.data
-                                    ? {
-                                        ...prev.data,
-                                        is_resolved: true,
-                                        resolved_by: userId,
-                                        resolved_at: new Date().toString(),
-                                      }
-                                    : null,
-                                }));
-                              },
-                            },
-                          )
-                        }
-                        className="gap-2"
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                        {resolveMisc.isPending
-                          ? "Resolving..."
-                          : "Mark as Resolved"}
-                      </Button>
-                    )}
-                </div>
+                <div className="flex items-end gap-2"></div>
               </DialogFooter>
             </div>
           </div>
@@ -1555,6 +1591,25 @@ export default function InstallationMiscellaneous({
                   },
                   {
                     onSuccess: () => {
+                      queryClient.invalidateQueries({
+                        queryKey: ["miscellaneousEntries", vendorId, leadId],
+                      });
+
+                      setViewModal((prev) => ({
+                        ...prev,
+                        data: prev.data
+                          ? {
+                              ...prev.data,
+                              task: prev.data.task
+                                ? { ...prev.data.task, status: "completed" }
+                                : {
+                                    id: 0,
+                                    task_type: "Miscellaneous",
+                                    status: "completed",
+                                  },
+                            }
+                          : null,
+                      }));
                       setShowReadyConfirm(false);
                     },
                   },
@@ -1590,6 +1645,22 @@ export default function InstallationMiscellaneous({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <MiscTaskModal
+        open={openDeliveryTaskModal}
+        onOpenChange={setOpenDeliveryTaskModal}
+        data={
+          viewModal.data?.delivery_task?.id
+            ? {
+                leadId,
+                accountId,
+                taskId: viewModal.data.delivery_task.id,
+                dueDate: viewModal.data.delivery_task.due_date || undefined,
+                remark: viewModal.data.delivery_task.remark || undefined,
+              }
+            : undefined
+        }
+      />
     </div>
   );
 }
