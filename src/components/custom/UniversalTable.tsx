@@ -74,6 +74,10 @@ export function UniversalTable({
 
   const router = useRouter();
   const isAdmin = userType === "admin" || userType === "super_admin";
+  const normalizedType = String(type || "").trim().toLowerCase();
+  const hideOverallToggle =
+    normalizedType === "type 8" &&
+    userType?.toLowerCase() === "sales-executive";
 
   // -------------------- LOCAL UI STATE --------------------
 
@@ -133,6 +137,14 @@ export function UniversalTable({
   const myPostPayload: UniversalStagePostPayload = useMemo(() => {
     const sortOrder: "asc" | "desc" = mySorting[0]?.desc ? "desc" : "asc";
     const mappedFilters = mapTableFiltersToPayload(myColumnFilters);
+    const normalizedType = String(type || "").trim().toLowerCase();
+    const enforceAssignedToForTechCheckSales =
+      normalizedType === "type 8" &&
+      userType?.toLowerCase() === "sales-executive";
+    const assignTo =
+      enforceAssignedToForTechCheckSales && userId
+        ? [userId]
+        : mappedFilters.assign_to ?? [];
 
     return {
       userId: userId!,
@@ -149,7 +161,7 @@ export function UniversalTable({
       email: mappedFilters.email,
       source: mappedFilters.source,
       status: mappedFilters.status,
-      assign_to: mappedFilters.assign_to,
+      assign_to: assignTo,
       siteType: mappedFilters.siteType,
       architectName: mappedFilters.architectName,
       created_at: sortOrder,
@@ -164,13 +176,29 @@ export function UniversalTable({
       site_map_link: mappedFilters.site_map_link,
       date_range: mappedFilters.date_range,
     };
-  }, [userId, type, myPagination, mySorting, myColumnFilters, myGlobalFilter]);
+  }, [
+    userId,
+    userType,
+    type,
+    myPagination,
+    mySorting,
+    myColumnFilters,
+    myGlobalFilter,
+  ]);
 
   // -------------------- OVERALL LEADS POST PAYLOAD --------------------
 
   const overallPostPayload: VendorLeadsByTagPostPayload = useMemo(() => {
     const sortOrder: "asc" | "desc" = overallSorting[0]?.desc ? "desc" : "asc";
     const mappedFilters = mapTableFiltersToPayload(overallColumnFilters);
+    const normalizedType = String(type || "").trim().toLowerCase();
+    const enforceAssignedToForTechCheckSales =
+      normalizedType === "type 8" &&
+      userType?.toLowerCase() === "sales-executive";
+    const assignTo =
+      enforceAssignedToForTechCheckSales && userId
+        ? [userId]
+        : mappedFilters.assign_to ?? [];
 
     return {
       userId: userId!,
@@ -189,7 +217,7 @@ export function UniversalTable({
       email: mappedFilters.email,
       source: mappedFilters.source,
 
-      assign_to: mappedFilters.assign_to,
+      assign_to: assignTo,
       site_address: mappedFilters.site_address,
       archetech_name: mappedFilters.archetech_name,
       designer_remark: mappedFilters.designer_remark,
@@ -205,6 +233,7 @@ export function UniversalTable({
     };
   }, [
     userId,
+    userType,
     type,
     overallPagination,
     overallSorting,
@@ -333,7 +362,6 @@ export function UniversalTable({
   // -------------------- TABLE DATA --------------------
 
   const tableData = useMemo<LeadColumn[]>(() => {
-    const normalizedType = String(type || "").trim().toLowerCase();
     const isType8 = normalizedType === "type 8";
     const isType9 = normalizedType === "type 9";
     const isType10 = normalizedType === "type 10";
@@ -428,13 +456,12 @@ export function UniversalTable({
     });
 
     return expanded;
-  }, [activeData, type]);
+  }, [activeData, normalizedType]);
   // -------------------- COLUMNS --------------------
 
   const showProductionStatusColumn = useMemo(() => {
-    const normalizedType = String(type || "").trim().toLowerCase();
     return normalizedType === "type 10";
-  }, [type]);
+  }, [normalizedType]);
 
   const columns = useMemo(
     () =>
@@ -522,7 +549,7 @@ export function UniversalTable({
           </div>
 
           {/* My Leads / Overall Leads Buttons */}
-          {enableAdminTabs && !isAdmin && (
+          {enableAdminTabs && !isAdmin && !hideOverallToggle && (
             <div className="flex gap-2 items-end">
               <Button
                 size="sm"
