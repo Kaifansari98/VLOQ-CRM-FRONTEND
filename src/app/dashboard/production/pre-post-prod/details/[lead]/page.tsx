@@ -10,7 +10,10 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
-import { useLeadById, useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import {
+  useLeadById,
+  useLeadProductStructureInstances,
+} from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import {
@@ -104,7 +107,7 @@ export default function ProductionLeadDetails() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth?.user?.user_type.user_type
+    (state) => state.auth?.user?.user_type.user_type,
   );
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
@@ -127,18 +130,20 @@ export default function ProductionLeadDetails() {
   const lead = data?.data?.lead;
   const { data: instancesResponse } = useLeadProductStructureInstances(
     leadIdNum,
-    vendorId
+    vendorId,
   );
 
   // 🔍 Check Post Prouction Readiness
   const { data: postProductionStatus } = useCheckPostProductionReady(
     vendorId,
-    leadIdNum
+    leadIdNum,
+    instanceIdNum
   );
 
   const { data: latestOrderLoginData } = useLatestOrderLoginByLead(
     vendorId,
-    Number(leadIdNum)
+    Number(leadIdNum),
+    instanceIdNum!,
   );
 
   const canMoveReadyToDispatchStage = canMoveToReadyToDispatch(userType);
@@ -147,8 +152,10 @@ export default function ProductionLeadDetails() {
 
   const canShowTodoTab = canAccessTodoTaskTabProductionStage(userType);
 
-  const latestOrderLoginDate =
-    latestOrderLoginData?.data?.estimated_completion_date;
+const latestOrderLoginDate =
+  latestOrderLoginData?.data?.estimated_completion_date ?? null;
+
+
 
   useEffect(() => {
     if (
@@ -221,13 +228,13 @@ export default function ProductionLeadDetails() {
 
   const { data: completeness } = usePostProductionCompleteness(
     vendorId,
-    leadIdNum
+    leadIdNum,
   );
 
   const { data: instanceCompleteness } = usePostProductionCompleteness(
     vendorId,
     leadIdNum,
-    validInstanceId ?? undefined
+    validInstanceId ?? undefined,
   );
 
   const instances = Array.isArray(instancesResponse?.data)
@@ -237,22 +244,26 @@ export default function ProductionLeadDetails() {
   const totalInstanceCount = instances.length;
   const instanceSuffix =
     validInstanceId && totalInstanceCount > 1
-      ? instances.find((instance: any) => Number(instance?.id) === validInstanceId)
-          ?.quantity_index
+      ? instances.find(
+          (instance: any) => Number(instance?.id) === validInstanceId,
+        )?.quantity_index
       : null;
   const displayLeadCode =
     leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
   const instanceName = validInstanceId
-    ? instances.find((instance: any) => Number(instance?.id) === validInstanceId)
-        ?.title ?? ""
+    ? (instances.find(
+        (instance: any) => Number(instance?.id) === validInstanceId,
+      )?.title ?? "")
     : "";
 
   const currentInstance = validInstanceId
-    ? instances.find((instance: any) => Number(instance?.id) === validInstanceId)
+    ? instances.find(
+        (instance: any) => Number(instance?.id) === validInstanceId,
+      )
     : null;
 
   const incompleteInstances = instances.filter(
-    (instance: any) => instance?.is_production_completed !== true
+    (instance: any) => instance?.is_production_completed !== true,
   );
 
   const hasInstances = instances.length > 0;
@@ -296,27 +307,26 @@ export default function ProductionLeadDetails() {
     missingDocsOrRemarks.length === 0 &&
     missingPrerequisites.length === 0;
 
-  const productionCompletedTooltip =
-    !validInstanceId
-      ? "instance_id is required to mark production completed."
-      : currentInstance?.is_production_completed
+  const productionCompletedTooltip = !validInstanceId
+    ? "instance_id is required to mark production completed."
+    : currentInstance?.is_production_completed
       ? `Production already completed for this instance.${
           incompleteTitles.length
             ? ` Pending Instances: ${incompleteTitles.join(", ")}`
             : ""
         }`
       : missingDocsOrRemarks.length || missingPrerequisites.length
-      ? `Pending: ${[...missingDocsOrRemarks, ...missingPrerequisites].join(
-          ", "
-        )}`
-      : incompleteTitles.length
-      ? `Other pending instances: ${incompleteTitles.join(", ")}`
-      : "Ready to mark production completed.";
+        ? `Pending: ${[...missingDocsOrRemarks, ...missingPrerequisites].join(
+            ", ",
+          )}`
+        : incompleteTitles.length
+          ? `Other pending instances: ${incompleteTitles.join(", ")}`
+          : "Ready to mark production completed.";
 
   const markProductionCompletedMutation = useMarkProductionCompleted(
     vendorId,
     leadIdNum,
-    validInstanceId
+    validInstanceId,
   );
 
   const handleExpectedDateChange = async (newDate?: string) => {
@@ -352,7 +362,7 @@ export default function ProductionLeadDetails() {
         onSuccess: () => toast.success("Lead deleted successfully!"),
         onError: (err: any) =>
           toast.error(err?.message || "Failed to delete lead"),
-      }
+      },
     );
 
     setOpenDelete(false);
@@ -365,10 +375,10 @@ export default function ProductionLeadDetails() {
   const disabledReason = !canUpdateExpectedDate
     ? "You do not have permission to update this date."
     : completeness?.any_exists
-    ? "Cannot change the date because lead is currently in post-production."
-    : !postProductionStatus?.all_order_login_dates_added
-    ? "Please ensure all Order Login expected completion dates are added before setting this."
-    : undefined;
+      ? "Cannot change the date because lead is currently in post-production."
+      : !postProductionStatus?.all_order_login_dates_added
+        ? "Please ensure all Order Login expected completion dates are added before setting this."
+        : undefined;
 
   return (
     <>
@@ -417,7 +427,9 @@ export default function ProductionLeadDetails() {
                         )}
                       </>
                     ) : (
-                      <span className="text-sm text-muted-foreground">Loading…</span>
+                      <span className="text-sm text-muted-foreground">
+                        Loading…
+                      </span>
                     )}
                   </div>
                 </BreadcrumbPage>
@@ -467,7 +479,7 @@ export default function ProductionLeadDetails() {
                           toast.error(
                             err?.response?.data?.message ||
                               err?.message ||
-                              "Failed to mark production completed"
+                              "Failed to mark production completed",
                           );
                         }
                       }}
@@ -519,46 +531,51 @@ export default function ProductionLeadDetails() {
                     Ready To Dispatch
                   </DropdownMenuItem>
                 ) : (
-                    <CustomeTooltip
-                      truncateValue={
-                        currentInstance?.is_production_completed ? (
-                          <DropdownMenuItem className="md:hidden" disabled>
-                            <CheckCircle2 size={18} className="text-emerald-600" />
-                            Completed
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem
-                            className="md:hidden"
-                            disabled={!canMarkProductionCompleted}
-                            onClick={async () => {
-                              if (!canMarkProductionCompleted) {
-                                return;
-                              }
-                              if (!vendorId || !leadIdNum || !userId) {
-                                toast.error("Missing vendor or user info!");
-                                return;
-                              }
-                              try {
-                                await markProductionCompletedMutation.mutateAsync({
+                  <CustomeTooltip
+                    truncateValue={
+                      currentInstance?.is_production_completed ? (
+                        <DropdownMenuItem className="md:hidden" disabled>
+                          <CheckCircle2
+                            size={18}
+                            className="text-emerald-600"
+                          />
+                          Completed
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem
+                          className="md:hidden"
+                          disabled={!canMarkProductionCompleted}
+                          onClick={async () => {
+                            if (!canMarkProductionCompleted) {
+                              return;
+                            }
+                            if (!vendorId || !leadIdNum || !userId) {
+                              toast.error("Missing vendor or user info!");
+                              return;
+                            }
+                            try {
+                              await markProductionCompletedMutation.mutateAsync(
+                                {
                                   updatedBy: userId,
-                                });
-                                toast.success("Production marked completed!");
-                              } catch (err: any) {
-                                toast.error(
-                                  err?.response?.data?.message ||
-                                    err?.message ||
-                                    "Failed to mark production completed"
-                                );
-                              }
-                            }}
-                          >
-                            <Truck size={20} />
-                            Mark Completed
-                          </DropdownMenuItem>
-                        )
-                      }
-                      value={productionCompletedTooltip}
-                    />
+                                },
+                              );
+                              toast.success("Production marked completed!");
+                            } catch (err: any) {
+                              toast.error(
+                                err?.response?.data?.message ||
+                                  err?.message ||
+                                  "Failed to mark production completed",
+                              );
+                            }
+                          }}
+                        >
+                          <Truck size={20} />
+                          Mark Completed
+                        </DropdownMenuItem>
+                      )
+                    }
+                    value={productionCompletedTooltip}
+                  />
                 ))}
 
               {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
@@ -796,7 +813,7 @@ export default function ProductionLeadDetails() {
                   });
 
                   toast.success(
-                    "Lead moved to Ready-To-Dispatch successfully!"
+                    "Lead moved to Ready-To-Dispatch successfully!",
                   );
                   setOpenReadyToDispatch(false);
 
@@ -819,7 +836,7 @@ export default function ProductionLeadDetails() {
                   }, 400);
                 } catch (err: any) {
                   toast.error(
-                    err?.message || "Failed to move lead to Ready-To-Dispatch"
+                    err?.message || "Failed to move lead to Ready-To-Dispatch",
                   );
                 }
               }}
@@ -866,7 +883,7 @@ export default function ProductionLeadDetails() {
               onError: (err: any) => {
                 toast.error(err?.message || "Failed to update lead status");
               },
-            }
+            },
           );
         }}
         loading={updateStatusMutation.isPending}

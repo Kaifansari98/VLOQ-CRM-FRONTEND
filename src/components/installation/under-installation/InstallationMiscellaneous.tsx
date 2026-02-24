@@ -75,6 +75,7 @@ import BaseModal from "@/components/utils/baseModal";
 import { useDeleteDocument } from "@/api/leads";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import MiscTaskModal from "@/components/misc-task-modal";
+
 interface InstallationMiscellaneousProps {
   vendorId: number;
   leadId: number;
@@ -114,10 +115,11 @@ export default function InstallationMiscellaneous({
 
   const resolveMisc = useResolveMiscellaneousEntry();
 
+  // ✅ Sirf id store karo — data entries se derive hoga (hamesha fresh)
   const [viewModal, setViewModal] = useState<{
     open: boolean;
-    data: MiscellaneousEntry | null;
-  }>({ open: false, data: null });
+    id: number | null;
+  }>({ open: false, id: null });
 
   const createMutation = useCreateMiscellaneousEntry();
   const { data: entries, refetch } = useMiscellaneousEntries(vendorId, leadId);
@@ -128,16 +130,23 @@ export default function InstallationMiscellaneous({
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
+  // ✅ Live derived data — entries update hote hi ye bhi update ho jaayega
+  const viewModalData = useMemo(
+    () => entries?.find((e) => e.id === viewModal.id) ?? null,
+    [entries, viewModal.id],
+  );
+
   const [selectedERD, setSelectedERD] = useState<string | undefined>(undefined);
   const [selectedRequiredDelivery, setSelectedRequiredDelivery] = useState<
     string | undefined
   >(undefined);
-  const [showConfirm, setShowConfirm] = useState(false); // confirmation modal toggle
+  const [showConfirm, setShowConfirm] = useState(false);
   const [showReadyConfirm, setShowReadyConfirm] = useState(false);
   const [showDeliveryConfirm, setShowDeliveryConfirm] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [openDeliveryTaskModal, setOpenDeliveryTaskModal] = useState(false);
+
   const canDoERDDate = canDoERDMiscellaneousDate(userType, leadStatus);
   const canDoMarkAsResolved = canMiscellaneousMarkAsResolved(
     userType,
@@ -147,7 +156,9 @@ export default function InstallationMiscellaneous({
     userType === "factory" ||
     userType === "admin" ||
     userType === "super-admin";
-  const isTaskReady = viewModal.data?.task?.status === "completed";
+
+  const isTaskReady = viewModalData?.task?.status === "completed";
+
   const { data: orderLoginSummary = [], isLoading: loadingSummary } =
     useOrderLoginSummary(vendorId, leadId);
   const { data: instancesResponse } = useLeadProductStructureInstances(
@@ -157,6 +168,7 @@ export default function InstallationMiscellaneous({
   const instances = Array.isArray(instancesResponse?.data)
     ? instancesResponse?.data
     : instancesResponse?.data?.data || [];
+
   const instanceTitleById = useMemo(() => {
     const map = new Map<number, string>();
     instances.forEach((instance: any) => {
@@ -190,6 +202,7 @@ export default function InstallationMiscellaneous({
       reorder_material_details: "",
     }));
   }, [formData.selected_instance_id]);
+
   const [initialModalHandled, setInitialModalHandled] = useState(false);
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
@@ -206,21 +219,10 @@ export default function InstallationMiscellaneous({
       },
       {
         onSuccess: () => {
-          // 🔥 REMOVE document from modal state
-          setViewModal((prev) => {
-            if (!prev.data) return prev;
-
-            return {
-              ...prev,
-              data: {
-                ...prev.data,
-                documents: prev.data.documents.filter(
-                  (doc) => doc.document_id !== confirmDelete,
-                ),
-              },
-            };
+          // ✅ Query invalidate karo — viewModalData automatically update ho jaayega
+          queryClient.invalidateQueries({
+            queryKey: ["miscellaneousEntries", vendorId, leadId],
           });
-
           setConfirmDelete(null);
         },
       },
@@ -235,7 +237,8 @@ export default function InstallationMiscellaneous({
     if (!initialTaskId || initialModalHandled || !entries?.length) return;
     const matched = entries.find((item) => item.task?.id === initialTaskId);
     if (matched) {
-      setViewModal({ open: true, data: matched });
+      // ✅ Sirf id set karo
+      setViewModal({ open: true, id: matched.id });
       setInitialModalHandled(true);
     }
   }, [initialTaskId, entries, initialModalHandled]);
@@ -345,13 +348,14 @@ export default function InstallationMiscellaneous({
 
   const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
 
-  const entry = viewModal.data;
-  const miscApproved = viewModal.data?.misc_approved;
+  // ✅ Saare derived values ab viewModalData se aayenge
+  const entry = viewModalData;
+  const miscApproved = viewModalData?.misc_approved;
   const isRejected = miscApproved === false;
   const isApproved = miscApproved === true;
-  const isReady = viewModal.data?.task?.status === "completed";
+  const isReady = viewModalData?.task?.status === "completed";
   const hasCompletionDocs = Boolean(
-    viewModal.data?.documents?.some((d) => d.doc_type_tag === "Type 37"),
+    viewModalData?.documents?.some((d) => d.doc_type_tag === "Type 37"),
   );
   const canResolveRole = ["admin", "super-admin", "site-supervisor"].includes(
     userType || "",
@@ -366,7 +370,7 @@ export default function InstallationMiscellaneous({
     ["admin", "super-admin", "site-supervisor"].includes(userType || "") &&
     isApproved &&
     isReady &&
-    !viewModal.data?.is_resolved;
+    !viewModalData?.is_resolved;
   const canManageDeliveryTask = ["factory", "admin", "super-admin"].includes(
     userType || "",
   );
@@ -454,7 +458,8 @@ export default function InstallationMiscellaneous({
               transition-all 
               border-b last:border-0
             "
-                  onClick={() => setViewModal({ open: true, data: entry })}
+                  // ✅ Sirf id set karo
+                  onClick={() => setViewModal({ open: true, id: entry.id })}
                 >
                   {/* TYPE */}
                   <TableCell className="py-3">
@@ -484,7 +489,7 @@ export default function InstallationMiscellaneous({
                     </div>
                   </TableCell>
 
-                  {/* ⭐ NEW ERD COLUMN */}
+                  {/* ERD COLUMN */}
                   <TableCell className="py-3">
                     {entry.expected_ready_date ? (
                       <span className="text-sm font-medium">
@@ -856,21 +861,24 @@ export default function InstallationMiscellaneous({
       {/* View Modal */}
       <BaseModal
         open={viewModal.open}
-        onOpenChange={(open) => setViewModal({ open, data: null })}
+        // ✅ Close pe id bhi null karo
+        onOpenChange={(open) =>
+          setViewModal({ open, id: open ? viewModal.id : null })
+        }
         size="lg"
-        title={viewModal.data?.type.name}
+        title={viewModalData?.type.name}
         icon={
           <div
             className={`
             p-2.5 rounded-lg border transition-colors
             ${
-              viewModal.data?.is_resolved
+              viewModalData?.is_resolved
                 ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
                 : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:red-blue-800"
             }
           `}
           >
-            {viewModal.data?.is_resolved ? (
+            {viewModalData?.is_resolved ? (
               <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
             ) : (
               <AlertCircle className="w-5 h-5 text-red-600 dark:red-blue-400" />
@@ -883,13 +891,13 @@ export default function InstallationMiscellaneous({
         <div className="p-5">
           <div className="flex-1 overflow-y-auto py-2 space-y-6 px-1">
             {/* Quick Stats Row */}
-            {(viewModal.data?.quantity ||
-              viewModal.data?.cost ||
-              viewModal.data?.expected_ready_date ||
-              viewModal.data?.created_user?.user_name ||
-              viewModal.data?.created_at) && (
+            {(viewModalData?.quantity ||
+              viewModalData?.cost ||
+              viewModalData?.expected_ready_date ||
+              viewModalData?.created_user?.user_name ||
+              viewModalData?.created_at) && (
               <div className="grid grid-cols-2 gap-3">
-                {viewModal.data?.created_at && (
+                {viewModalData?.created_at && (
                   <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
                     <CardContent className="px-4">
                       <div className="flex items-start gap-3">
@@ -898,11 +906,10 @@ export default function InstallationMiscellaneous({
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">
-                            {viewModal.data?.created_user?.user_name}
+                            {viewModalData?.created_user?.user_name}
                           </p>
                           <p className="text-base font-semibold text-foreground">
-                            {viewModal.data &&
-                              formatDate(viewModal.data.created_at)}
+                            {viewModalData && formatDate(viewModalData.created_at)}
                           </p>
                         </div>
                       </div>
@@ -910,7 +917,7 @@ export default function InstallationMiscellaneous({
                   </Card>
                 )}
 
-                {viewModal.data?.quantity && (
+                {viewModalData?.quantity && (
                   <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
                     <CardContent className="px-4">
                       <div className="flex items-start gap-3">
@@ -922,7 +929,7 @@ export default function InstallationMiscellaneous({
                             Quantity
                           </p>
                           <p className="text-base font-semibold text-foreground">
-                            {viewModal.data.quantity}
+                            {viewModalData.quantity}
                           </p>
                         </div>
                       </div>
@@ -930,7 +937,7 @@ export default function InstallationMiscellaneous({
                   </Card>
                 )}
 
-                {viewModal.data?.cost && (
+                {viewModalData?.cost && (
                   <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
                     <CardContent className="px-4">
                       <div className="flex items-start gap-3">
@@ -940,7 +947,7 @@ export default function InstallationMiscellaneous({
                         <div>
                           <p className="text-xs text-muted-foreground">Cost</p>
                           <p className="text-base font-semibold text-foreground">
-                            ₹{viewModal.data.cost.toLocaleString()}
+                            ₹{viewModalData.cost.toLocaleString()}
                           </p>
                         </div>
                       </div>
@@ -948,7 +955,7 @@ export default function InstallationMiscellaneous({
                   </Card>
                 )}
 
-                {viewModal.data?.expected_ready_date && (
+                {viewModalData?.expected_ready_date && (
                   <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
                     <CardContent className="px-4">
                       <div className="flex items-start gap-3">
@@ -960,7 +967,7 @@ export default function InstallationMiscellaneous({
                             Expected Ready
                           </p>
                           <p className="text-sm font-semibold text-foreground">
-                            {formatDate(viewModal.data.expected_ready_date)}
+                            {formatDate(viewModalData.expected_ready_date)}
                           </p>
                         </div>
                       </div>
@@ -979,7 +986,7 @@ export default function InstallationMiscellaneous({
                 </p>
                 <div className="border border-border rounded-lg bg-red-50/60 dark:bg-red-950/20 px-4 py-2">
                   <p className="text-xs leading-relaxed text-red-600">
-                    {viewModal.data?.exp_of_rejection || "-"}
+                    {viewModalData?.exp_of_rejection || "-"}
                   </p>
                 </div>
               </div>
@@ -987,56 +994,56 @@ export default function InstallationMiscellaneous({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Problem Description */}
-              {viewModal.data?.problem_description && (
+              {viewModalData?.problem_description && (
                 <div className="space-y-1.5">
                   <p className="text-[13px] font-medium text-muted-foreground">
                     Problem Description
                   </p>
                   <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
                     <p className="text-sm text-foreground leading-relaxed">
-                      {viewModal.data.problem_description}
+                      {viewModalData.problem_description}
                     </p>
                   </div>
                 </div>
               )}
 
               {/* Reorder Material Details */}
-              {viewModal.data?.reorder_material_details && (
+              {viewModalData?.reorder_material_details && (
                 <div className="space-y-1.5">
                   <p className="text-[13px] font-medium text-muted-foreground">
                     Reorder Material Details
                   </p>
                   <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
                     <p className="text-sm text-foreground leading-relaxed">
-                      {viewModal.data.reorder_material_details}
+                      {viewModalData.reorder_material_details}
                     </p>
                   </div>
                 </div>
               )}
 
               {/* Supervisor Remark */}
-              {viewModal.data?.supervisor_remark && (
+              {viewModalData?.supervisor_remark && (
                 <div className="space-y-1.5">
                   <p className="text-[13px] font-medium text-muted-foreground">
                     Supervisor Remark
                   </p>
                   <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
                     <p className="text-sm text-foreground leading-relaxed">
-                      {viewModal.data.supervisor_remark}
+                      {viewModalData.supervisor_remark}
                     </p>
                   </div>
                 </div>
               )}
 
               {/* Teams */}
-              {viewModal.data?.teams && viewModal.data.teams.length > 0 && (
+              {viewModalData?.teams && viewModalData.teams.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-[13px] font-medium text-muted-foreground">
                     Team Responsible
                   </p>
                   <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
                     <div className="flex flex-wrap gap-2">
-                      {viewModal.data.teams.map((team) => (
+                      {viewModalData.teams.map((team) => (
                         <Badge
                           key={team.team_id}
                           variant="outline"
@@ -1166,22 +1173,24 @@ export default function InstallationMiscellaneous({
                       variant="default"
                       disabled={updateApprovalMutation.isPending}
                       onClick={() => {
-                        if (!viewModal.data) return;
+                        if (!viewModalData) return;
                         updateApprovalMutation.mutate(
                           {
                             vendorId,
-                            miscId: viewModal.data.id,
+                            miscId: viewModalData.id,
                             misc_approved: true,
                             updated_by: userId!,
                           },
                           {
                             onSuccess: () => {
-                              setViewModal((prev) => ({
-                                ...prev,
-                                data: prev.data
-                                  ? { ...prev.data, misc_approved: true }
-                                  : null,
-                              }));
+                              // ✅ Sirf invalidate — viewModalData khud update ho jaayega
+                              queryClient.invalidateQueries({
+                                queryKey: [
+                                  "miscellaneousEntries",
+                                  vendorId,
+                                  leadId,
+                                ],
+                              });
                             },
                           },
                         );
@@ -1217,13 +1226,13 @@ export default function InstallationMiscellaneous({
                             </span>
                           </div>
                           <CustomeDatePicker
-                            key={viewModal.data?.id}
+                            key={viewModalData?.id}
                             value={
-                              viewModal.data?.expected_ready_date || undefined
+                              viewModalData?.expected_ready_date || undefined
                             }
                             restriction="futureOnly"
                             disabledReason={
-                              viewModal.data?.is_resolved
+                              viewModalData?.is_resolved
                                 ? "Resolved. ERD cannot be updated."
                                 : !canDoERDDate
                                   ? userType === "factory"
@@ -1240,10 +1249,10 @@ export default function InstallationMiscellaneous({
                             }}
                           />
                         </div>
-                        {viewModal.data?.expected_ready_date &&
+                        {viewModalData?.expected_ready_date &&
                           canMarkAsReady &&
                           isApproved &&
-                          !viewModal.data?.is_resolved && (
+                          !viewModalData?.is_resolved && (
                             <Button
                               variant="default"
                               size="default"
@@ -1276,14 +1285,13 @@ export default function InstallationMiscellaneous({
                       <div className="flex items-end justify-between gap-2">
                         <div className="w-full">
                           <CustomeDatePicker
-                            key={`${viewModal.data?.id}-delivery`}
+                            key={`${viewModalData?.id}-delivery`}
                             value={
-                              viewModal.data?.required_delivery_date ||
-                              undefined
+                              viewModalData?.required_delivery_date || undefined
                             }
                             restriction="futureOnly"
                             disabledReason={
-                              viewModal.data?.is_resolved
+                              viewModalData?.is_resolved
                                 ? "Resolved. Delivery date cannot be updated."
                                 : !isReady
                                   ? "Mark as ready to set delivery date."
@@ -1300,8 +1308,8 @@ export default function InstallationMiscellaneous({
                           />
                         </div>
                         <div className="flex gap-2 ">
-                          {viewModal.data?.required_delivery_date &&
-                            viewModal.data?.delivery_task?.id &&
+                          {viewModalData?.required_delivery_date &&
+                            viewModalData?.delivery_task?.id &&
                             !hasCompletionDocs &&
                             canManageDeliveryTask && (
                               <div className="flex justify-end pt-2">
@@ -1314,13 +1322,13 @@ export default function InstallationMiscellaneous({
                                 </Button>
                               </div>
                             )}
-                          {viewModal.data?.expected_ready_date &&
+                          {viewModalData?.expected_ready_date &&
                             canDoMarkAsResolved &&
                             canResolveRole &&
                             isApproved &&
                             isReady &&
                             hasCompletionDocs &&
-                            !viewModal.data?.is_resolved && (
+                            !viewModalData?.is_resolved && (
                               <div className="flex justify-end">
                                 <Button
                                   variant="default"
@@ -1331,11 +1339,12 @@ export default function InstallationMiscellaneous({
                                       {
                                         vendorId,
                                         leadId,
-                                        miscId: viewModal?.data?.id || 0,
+                                        miscId: viewModalData?.id || 0,
                                         resolved_by: userId!,
                                       },
                                       {
                                         onSuccess: () => {
+                                          // ✅ Sirf invalidate — viewModalData khud update ho jaayega
                                           queryClient.invalidateQueries({
                                             queryKey: [
                                               "miscellaneousEntries",
@@ -1343,19 +1352,6 @@ export default function InstallationMiscellaneous({
                                               leadId,
                                             ],
                                           });
-
-                                          setViewModal((prev) => ({
-                                            ...prev,
-                                            data: prev.data
-                                              ? {
-                                                  ...prev.data,
-                                                  is_resolved: true,
-                                                  resolved_by: userId,
-                                                  resolved_at:
-                                                    new Date().toString(),
-                                                }
-                                              : null,
-                                          }));
                                         },
                                       },
                                     )
@@ -1422,7 +1418,7 @@ export default function InstallationMiscellaneous({
             <Button
               variant="destructive"
               onClick={() => {
-                if (!viewModal.data) return;
+                if (!viewModalData) return;
                 if (!rejectReason.trim()) {
                   toast.error("Please enter a rejection reason");
                   return;
@@ -1431,23 +1427,21 @@ export default function InstallationMiscellaneous({
                 updateApprovalMutation.mutate(
                   {
                     vendorId,
-                    miscId: viewModal.data.id,
+                    miscId: viewModalData.id,
                     misc_approved: false,
                     exp_of_rejection: rejectReason.trim(),
                     updated_by: userId!,
                   },
                   {
                     onSuccess: () => {
-                      setViewModal((prev) => ({
-                        ...prev,
-                        data: prev.data
-                          ? {
-                              ...prev.data,
-                              misc_approved: false,
-                              exp_of_rejection: rejectReason.trim(),
-                            }
-                          : null,
-                      }));
+                      // ✅ Sirf invalidate — viewModalData khud update ho jaayega
+                      queryClient.invalidateQueries({
+                        queryKey: [
+                          "miscellaneousEntries",
+                          vendorId,
+                          leadId,
+                        ],
+                      });
                       setShowRejectModal(false);
                       setRejectReason("");
                     },
@@ -1478,30 +1472,21 @@ export default function InstallationMiscellaneous({
 
             <AlertDialogAction
               onClick={() => {
-                if (!viewModal.data || !selectedERD) return;
+                if (!viewModalData || !selectedERD) return;
 
                 updateERDMutation.mutate(
                   {
                     vendorId,
-                    miscId: viewModal.data.id,
+                    miscId: viewModalData.id,
                     expected_ready_date: selectedERD,
                     updated_by: userId!,
                   },
                   {
                     onSuccess: () => {
+                      // ✅ Sirf invalidate — viewModalData khud update ho jaayega
                       queryClient.invalidateQueries({
                         queryKey: ["miscellaneousEntries", vendorId, leadId],
                       });
-
-                      // 🔥 Update modal instantly
-                      setViewModal((prev) => ({
-                        ...prev,
-                        data: {
-                          ...prev.data!,
-                          expected_ready_date: selectedERD,
-                        },
-                      }));
-
                       setShowConfirm(false);
                     },
                   },
@@ -1533,37 +1518,21 @@ export default function InstallationMiscellaneous({
 
             <AlertDialogAction
               onClick={() => {
-                if (!viewModal.data || !selectedRequiredDelivery) return;
+                if (!viewModalData || !selectedRequiredDelivery) return;
 
                 updateRequiredDeliveryMutation.mutate(
                   {
                     vendorId,
-                    miscId: viewModal.data.id,
+                    miscId: viewModalData.id,
                     required_delivery_date: selectedRequiredDelivery,
                     updated_by: userId!,
                   },
                   {
                     onSuccess: () => {
+                      // ✅ Sirf invalidate — viewModalData khud update ho jaayega
                       queryClient.invalidateQueries({
                         queryKey: ["miscellaneousEntries", vendorId, leadId],
                       });
-
-                      setViewModal((prev) => ({
-                        ...prev,
-                        data: prev.data
-                          ? {
-                              ...prev.data,
-                              task: prev.data.task
-                                ? { ...prev.data.task, status: "completed" }
-                                : {
-                                    id: 0,
-                                    task_type: "Miscellaneous",
-                                    status: "completed",
-                                  },
-                            }
-                          : null,
-                      }));
-
                       setShowDeliveryConfirm(false);
                     },
                   },
@@ -1592,36 +1561,21 @@ export default function InstallationMiscellaneous({
 
             <AlertDialogAction
               onClick={() => {
-                if (!viewModal.data) return;
+                if (!viewModalData) return;
 
                 markReadyMutation.mutate(
                   {
                     vendorId,
                     leadId,
-                    miscId: viewModal.data.id,
+                    miscId: viewModalData.id,
                     ready_by: userId!,
                   },
                   {
                     onSuccess: () => {
+                      // ✅ Sirf invalidate — viewModalData khud update ho jaayega
                       queryClient.invalidateQueries({
                         queryKey: ["miscellaneousEntries", vendorId, leadId],
                       });
-
-                      setViewModal((prev) => ({
-                        ...prev,
-                        data: prev.data
-                          ? {
-                              ...prev.data,
-                              task: prev.data.task
-                                ? { ...prev.data.task, status: "completed" }
-                                : {
-                                    id: 0,
-                                    task_type: "Miscellaneous",
-                                    status: "completed",
-                                  },
-                            }
-                          : null,
-                      }));
                       setShowReadyConfirm(false);
                     },
                   },
@@ -1662,13 +1616,13 @@ export default function InstallationMiscellaneous({
         open={openDeliveryTaskModal}
         onOpenChange={setOpenDeliveryTaskModal}
         data={
-          viewModal.data?.delivery_task?.id
+          viewModalData?.delivery_task?.id
             ? {
                 leadId,
                 accountId,
-                taskId: viewModal.data.delivery_task.id,
-                dueDate: viewModal.data.delivery_task.due_date || undefined,
-                remark: viewModal.data.delivery_task.remark || undefined,
+                taskId: viewModalData.delivery_task.id,
+                dueDate: viewModalData.delivery_task.due_date || undefined,
+                remark: viewModalData.delivery_task.remark || undefined,
               }
             : undefined
         }
