@@ -13,6 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import {
+  useDeleteOrderLoginPoFile,
   useOrderLoginPoFiles,
   useUploadOrderLoginPoFiles,
 } from "@/api/production/order-login";
@@ -24,6 +25,16 @@ import { Button } from "@/components/ui/button";
 import DocumentCard from "@/components/utils/documentCard";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import CustomeTooltip from "@/components/custom-tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export interface FileBreakUpFieldProps {
   title: string;
@@ -69,10 +80,17 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
+  const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [poFiles, setPoFiles] = useState<File[]>([]);
   const [poModalOpen, setPoModalOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { mutateAsync: deleteFile } = useDeleteOrderLoginPoFile(
+    vendorId,
+    leadId,
+    orderLoginId,
+  );
 
+  const [deleting, setDeleting] = useState(false);
   const inHouseVendors = users.filter((user) => user.in_house);
   const companyVendors = users.filter((user) => !user.in_house);
   const vendorGroups = [
@@ -165,6 +183,27 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
       toast.error(
         error?.response?.data?.message || "Failed to upload PO files.",
       );
+    }
+  };
+
+  const handleRequestDelete = (mappingId: number) => {
+    setConfirmDelete(mappingId);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDelete) return;
+
+    setDeleting(true);
+    try {
+      await deleteFile(confirmDelete);
+
+      toast.success("Document deleted successfully");
+
+      setConfirmDelete(null);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to delete document");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -378,18 +417,22 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                           signedUrl: doc.signed_url,
                           created_at: doc.created_at,
                         }}
+                        canDelete={true}
+                        onDelete={() => handleRequestDelete(doc.mapping_id)}
                       />
                     );
                   } else {
                     return (
                       <DocumentCard
                         key={doc.id}
+                        canDelete={true}
                         doc={{
                           id: doc.id,
                           originalName: doc.doc_og_name,
                           signedUrl: doc.signed_url,
                           created_at: doc.created_at,
                         }}
+                        onDelete={() => handleRequestDelete(doc.mapping_id)}
                       />
                     );
                   }
@@ -399,6 +442,32 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
           </div>
         </BaseModal>
       )}
+
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={() => setConfirmDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The selected document will be
+              permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
