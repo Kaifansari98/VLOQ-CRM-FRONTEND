@@ -120,6 +120,10 @@ export function NavMain({ items }: { items: NavItem[] }) {
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data: leadStats, isLoading } = useLeadStats(vendorId, userId);
   const { isMobile, setOpenMobile } = useSidebar();
+  const environment = (
+    process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION"
+  ).toUpperCase();
+  const showTrackTrace = environment === "STAGING";
 
   const pathname = usePathname();
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
@@ -317,7 +321,9 @@ export function NavMain({ items }: { items: NavItem[] }) {
           );
         })}
       </SidebarMenu>
-      <SidebarGroupLabel>Track & Trace</SidebarGroupLabel>
+      {showTrackTrace ? (
+        <SidebarGroupLabel>Track &amp; Trace</SidebarGroupLabel>
+      ) : null}
       
     </SidebarGroup>
   );
