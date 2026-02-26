@@ -16,6 +16,15 @@ import {
   LayoutDashboard,
   MonitorCheck,
   Monitor,
+  ClipboardList,
+  NotebookPen,
+  HardHat,
+  Forklift,
+  Handshake,
+  Drill,
+  Magnet,
+  ScrollText,
+  PenTool
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -63,7 +72,7 @@ const data = {
     {
       title: "My Task",
       url: "/dashboard/my-tasks",
-      icon: CalendarCheck2,
+      icon: ClipboardList,
       showCount: "total_my_tasks" as const,
     },
     {
@@ -75,13 +84,13 @@ const data = {
     {
       title: "Delivered Projects",
       url: "/dashboard/delivered-projects",
-      icon: ListTodo,
+      icon: Handshake,
       showCount: "total_project_completed_stage_leads" as const,
     },
     {
       title: "Leads",
       url: "#",
-      icon: BookOpenCheck,
+      icon: NotebookPen,
       showCount: "total_leads_group" as const,
       items: [
         {
@@ -109,7 +118,7 @@ const data = {
     {
       title: "Project",
       url: "#",
-      icon: Bot,
+      icon: HardHat,
       showCount: "total_project_group" as const,
       items: [
         {
@@ -132,7 +141,7 @@ const data = {
     {
       title: "Production",
       url: "#",
-      icon: BookOpen,
+      icon: Forklift,
       showCount: "total_production_group" as const,
       items: [
         {
@@ -160,7 +169,7 @@ const data = {
     {
       title: "Installation",
       url: "#",
-      icon: Settings2,
+      icon: Drill,
       showCount: "total_installation_group" as const,
       items: [
         {
