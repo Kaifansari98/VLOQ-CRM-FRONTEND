@@ -16,14 +16,15 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 
 import { UniversalTable } from "@/components/custom/UniversalTable";
+import MiscellaneousTable from "@/components/custom/miscellaneous-table";
 
 type Row = {
   id: number;
-  accountId: number;
+  account_id: number;
 };
 
 const navigateUnderInstallation = (row: Row) =>
-  `/dashboard/installation/under-installation/details/${row.id}?accountId=${row.accountId}&tab=misc`;
+  `/dashboard/installation/under-installation/details/${row.id}?accountId=${row.account_id}&tab=misc`;
 
 export default function MiscellaneousLeadsPage() {
   return (
@@ -59,13 +60,9 @@ export default function MiscellaneousLeadsPage() {
         <Suspense
           fallback={<DataTableSkeleton columnCount={10} rowCount={8} />}
         >
-          <UniversalTable
+          <MiscellaneousTable
             title="Miscellaneous Leads"
             description="Leads that have pending miscellaneous items awaiting resolution."
-            type="Type 15"
-            enableAdminTabs={false}
-            enableOverallData={false}
-            dataMode="misc"
             onRowNavigate={navigateUnderInstallation}
           />
         </Suspense>
