@@ -105,19 +105,6 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
     setProgress(0);
 
     try {
-      // If cross-origin, avoid fetch (likely blocked by CORS) and open directly.
-      if (typeof window !== "undefined" && doc.signedUrl) {
-        try {
-          const url = new URL(doc.signedUrl);
-          if (url.origin !== window.location.origin) {
-            window.open(doc.signedUrl, "_blank", "noopener,noreferrer");
-            return;
-          }
-        } catch {
-          // fall through to fetch if URL parsing fails
-        }
-      }
-
       const response = await fetch(doc.signedUrl);
 
       if (!response.ok || !response.body) {
@@ -125,6 +112,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
       }
 
       const contentLength = Number(response.headers.get("content-length")) || 0;
+      const disposition = response.headers.get("content-disposition") || "";
 
       const reader = response.body.getReader();
       const chunks: Uint8Array[] = [];
@@ -148,9 +136,16 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
       const blob = new Blob(chunks as BlobPart[]);
       const url = window.URL.createObjectURL(blob);
 
+      const filenameFromHeader = (() => {
+        const match =
+          disposition.match(/filename\*=UTF-8''([^;]+)/i) ||
+          disposition.match(/filename="?([^"]+)"?/i);
+        return match ? decodeURIComponent(match[1]) : "";
+      })();
+
       const a = document.createElement("a");
       a.href = url;
-      a.download = doc.originalName;
+      a.download = filenameFromHeader || doc.originalName;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -158,9 +153,16 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Download error:", err);
-      // Fallback for cross-origin or unexpected download failures
+      // Fallback: attempt direct download without opening a new tab
       if (typeof window !== "undefined" && doc.signedUrl) {
-        window.open(doc.signedUrl, "_blank", "noopener,noreferrer");
+        const a = document.createElement("a");
+        a.href = doc.signedUrl;
+        a.download = doc.originalName;
+        a.rel = "noopener noreferrer";
+        a.target = "_self";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
       }
     } finally {
       setIsDownloading(false);
