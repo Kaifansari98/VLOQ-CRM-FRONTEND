@@ -592,7 +592,7 @@ export default function ClientApprovalLeadDetails() {
         </div>
       </header>
       {/* Tabs */}
-      <PencilLine
+      <Tabs
         value={activeTab}
         onValueChange={(val) => {
           if (val === "todo") {
