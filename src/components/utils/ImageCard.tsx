@@ -6,6 +6,7 @@ import ImageViewerModal from "./ImageViewerModal";
 
 import { useState } from "react";
 import Image from "next/image";
+import { apiClient } from "@/lib/apiClient";
 
 interface DocumentCardProps {
   doc: {
@@ -72,8 +73,29 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerUrl, setViewerUrl] = useState("");
 
+  const normalizeImageSrc = (src: string) => {
+    if (!src) return "";
+    const trimmed = src.trim();
+    if (
+      trimmed.startsWith("http://") ||
+      trimmed.startsWith("https://") ||
+      trimmed.startsWith("blob:") ||
+      trimmed.startsWith("data:")
+    ) {
+      return trimmed;
+    }
+    const apiBase = apiClient.defaults.baseURL ?? "";
+    const assetBase = apiBase.replace(/\/api\/?$/, "");
+    if (assetBase) {
+      return `${assetBase.replace(/\/+$/, "")}/${trimmed.replace(/^\/+/, "")}`;
+    }
+    return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  };
+
+  const imageSrc = normalizeImageSrc(doc.signedUrl);
+
   const handleView = () => {
-    setViewerUrl(doc.signedUrl);
+    setViewerUrl(imageSrc);
     setViewerOpen(true);
   };
 
@@ -97,9 +119,9 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
 
 
   const formatStatus = (status?: string) => {
-  if (!status) return "";
-  return status.toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
-};
+    if (!status) return "";
+    return status.toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+  };
 
 
   return (
@@ -129,12 +151,18 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
         {/* Thumbnail */}
         <div className="flex-shrink-0">
           <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-border bg-muted dark:bg-neutral-800">
-            <Image
-              src={doc.signedUrl}
-              alt={doc.doc_og_name}
-              fill
-              className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
-            />
+            {imageSrc ? (
+              <Image
+                src={imageSrc}
+                alt={doc.doc_og_name}
+                fill
+                className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                No Preview
+              </div>
+            )}
           </div>
         </div>
 

@@ -105,6 +105,19 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
     setProgress(0);
 
     try {
+      // If cross-origin, avoid fetch (likely blocked by CORS) and open directly.
+      if (typeof window !== "undefined" && doc.signedUrl) {
+        try {
+          const url = new URL(doc.signedUrl);
+          if (url.origin !== window.location.origin) {
+            window.open(doc.signedUrl, "_blank", "noopener,noreferrer");
+            return;
+          }
+        } catch {
+          // fall through to fetch if URL parsing fails
+        }
+      }
+
       const response = await fetch(doc.signedUrl);
 
       if (!response.ok || !response.body) {
@@ -145,6 +158,10 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Download error:", err);
+      // Fallback for cross-origin or unexpected download failures
+      if (typeof window !== "undefined" && doc.signedUrl) {
+        window.open(doc.signedUrl, "_blank", "noopener,noreferrer");
+      }
     } finally {
       setIsDownloading(false);
     }
