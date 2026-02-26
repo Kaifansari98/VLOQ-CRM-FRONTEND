@@ -381,7 +381,7 @@ export default function ReadyToDispatchLeadDetails() {
         </ScrollArea>
 
         <TabsContent value="details">
-          <PencilLine
+          <LeadDetailsGrouped
             status="siteReadiness"
             defaultTab="siteReadiness"
             leadId={leadIdNum}
