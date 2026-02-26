@@ -41,6 +41,9 @@ import {
   MessageSquare,
   User2,
   Layers3,
+  PencilLine,
+  History,
+  IndianRupee,
 } from "lucide-react";
 import CustomeTooltip from "@/components/custom-tooltip";
 
@@ -535,7 +538,7 @@ export default function ClientApprovalLeadDetails() {
         </div>
       </header>
       {/* Tabs */}
-      <Tabs
+      <PencilLine
         value={activeTab}
         onValueChange={(val) => {
           if (val === "todo") {
@@ -562,14 +565,14 @@ export default function ClientApprovalLeadDetails() {
 
               {canTechCheck(userType) ? (
                 <TabsTrigger value="todo">
-                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                  <PencilLine size={16} className="mr-1 opacity-60" />
                   To-Do Task
                 </TabsTrigger>
               ) : (
                 <CustomeTooltip
                   truncateValue={
                     <TabsTrigger value="" disabled>
-                      <PanelsTopLeftIcon size={16} />
+                      <PencilLine size={16} />
                       To-Do Task
                     </TabsTrigger>
                   }
@@ -579,14 +582,14 @@ export default function ClientApprovalLeadDetails() {
 
               {canViewSiteHistory && (
                 <TabsTrigger value="history">
-                  <BoxIcon size={16} className="mr-1 opacity-60" />
+                  <History size={16} className="mr-1 opacity-60" />
                   Site History
                 </TabsTrigger>
               )}
 
               {canViewPayment && (
                 <TabsTrigger value="payment">
-                  <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                  <IndianRupee size={16} className="mr-1 opacity-60" />
                   Payment Information
                 </TabsTrigger>
               )}

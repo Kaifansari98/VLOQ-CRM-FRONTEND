@@ -6,7 +6,7 @@ import { useLeadStats } from "@/hooks/useLeadStats";
 import { useAppSelector } from "@/redux/store";
 import { Badge } from "./ui/badge";
 import { usePathname } from "next/navigation";
-import { SidebarSeparator, useSidebar } from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar";
 
 import {
   Collapsible,
@@ -107,7 +107,7 @@ function findGroupForPath(items: NavItem[], pathname: string): string | null {
   for (const item of items) {
     if (item.items && item.items.length > 0) {
       const hasActiveChild = item.items.some((sub) =>
-        pathname.startsWith(sub.url)
+        pathname.startsWith(sub.url),
       );
       if (hasActiveChild) return item.title;
     }
@@ -182,7 +182,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
           if (!isSingle) {
             const isOpen = openGroups.has(item.title);
             const isGroupActive = item.items!.some((sub) =>
-              pathname.startsWith(sub.url)
+              pathname.startsWith(sub.url),
             );
 
             return (
@@ -211,7 +211,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                           className={cn(
                             "flex items-center gap-2 w-full justify-between transition-all duration-200",
                             isGroupActive &&
-                              "font-semibold text-primary rounded-md"
+                              "font-semibold text-primary rounded-md",
                           )}
                         >
                           <div className="flex items-center gap-2">
@@ -251,16 +251,18 @@ export function NavMain({ items }: { items: NavItem[] }) {
                                   className={cn(
                                     "flex items-center justify-between w-full transition-all duration-200",
                                     isSubActive &&
-                                      "font-bold text-primary rounded-md"
+                                      "font-bold text-primary rounded-md",
                                   )}
                                 >
                                   <span>{subItem.title}</span>
 
                                   {(() => {
                                     const hasShowCount = !!subItem.showCount;
-                                    const hasCustomCount = subItem.customCount !== undefined;
+                                    const hasCustomCount =
+                                      subItem.customCount !== undefined;
 
-                                    if (!hasShowCount && !hasCustomCount) return null;
+                                    if (!hasShowCount && !hasCustomCount)
+                                      return null;
 
                                     const count = hasCustomCount
                                       ? subItem.customCount
@@ -270,7 +272,12 @@ export function NavMain({ items }: { items: NavItem[] }) {
                                     if (!count) return null;
 
                                     return (
-                                      <Badge className={cn("ml-2 rounded-full", subItem.badgeClassName)}>
+                                      <Badge
+                                        className={cn(
+                                          "ml-2 rounded-full",
+                                          subItem.badgeClassName,
+                                        )}
+                                      >
                                         {isLoading || subItem.customCountLoading
                                           ? "…"
                                           : count}
@@ -300,7 +307,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                     "flex items-center justify-between w-full gap-2 transition-all duration-200",
                     isSingleActive &&
                       "font-bold text-primary bg-muted/50 rounded-md",
-                    item.className
+                    item.className,
                   )}
                 >
                   <div className="flex items-center gap-2">
@@ -309,10 +316,13 @@ export function NavMain({ items }: { items: NavItem[] }) {
                   </div>
 
                   {(item.showCount || item.customCount !== undefined) && (
-                    <Badge className={cn("ml-2 rounded-full", item.badgeClassName)}>
+                    <Badge
+                      className={cn("ml-2 rounded-full", item.badgeClassName)}
+                    >
                       {isLoading || item.customCountLoading
                         ? "…"
-                        : item.customCount ?? getCountForItem(item.showCount!)}
+                        : (item.customCount ??
+                          getCountForItem(item.showCount!))}
                     </Badge>
                   )}
                 </Link>
@@ -324,7 +334,6 @@ export function NavMain({ items }: { items: NavItem[] }) {
       {showTrackTrace ? (
         <SidebarGroupLabel>Track &amp; Trace</SidebarGroupLabel>
       ) : null}
-      
     </SidebarGroup>
   );
 }

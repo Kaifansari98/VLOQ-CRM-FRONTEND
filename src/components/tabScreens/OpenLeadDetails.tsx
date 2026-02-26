@@ -14,6 +14,7 @@ import {
   Pencil,
   Trash2,
   Plus,
+  Magnet,
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
 import {
@@ -820,7 +821,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 label="Site Type"
                 value={lead.siteType?.type}
               />
-              <InfoRow icon={MapPin} label="Source" value={lead.source?.type} />
+              <InfoRow icon={Magnet} label="Source" value={lead.source?.type} />
             </div>
           </SectionCard>
 

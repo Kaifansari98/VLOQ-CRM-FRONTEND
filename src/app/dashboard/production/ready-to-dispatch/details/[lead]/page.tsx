@@ -35,6 +35,9 @@ import {
   CalendarOffIcon,
   UserPlus,
   MessageSquare,
+  PencilLine,
+  History,
+  IndianRupee,
 } from "lucide-react";
 
 import {
@@ -292,21 +295,21 @@ export default function ReadyToDispatchLeadDetails() {
             <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
               {/* ✅ Ready To Dispatch Details */}
               <TabsTrigger value="details">
-                <Truck size={16} className="mr-1 opacity-60" />
+                <PencilLine size={16} className="mr-1 opacity-60" />
                 Ready To Dispatch Details
               </TabsTrigger>
 
               {/* ✅ To-Do Task (Conditional Access) */}
               {canAssignSR(userType) ? (
                 <TabsTrigger value="todo" onClick={() => setAssignOpen(true)}>
-                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                  <PencilLine size={16} className="mr-1 opacity-60" />
                   To-Do Task
                 </TabsTrigger>
               ) : (
                 <CustomeTooltip
                   truncateValue={
                     <TabsTrigger value="todo" disabled>
-                      <PanelsTopLeftIcon
+                      <PencilLine
                         size={16}
                         className="mr-1 opacity-60"
                       />
@@ -320,7 +323,7 @@ export default function ReadyToDispatchLeadDetails() {
               {/* ✅ Site History */}
               {canViewSiteHistory && (
                 <TabsTrigger value="history">
-                  <BoxIcon size={16} className="mr-1 opacity-60" />
+                  <History size={16} className="mr-1 opacity-60" />
                   Site History
                 </TabsTrigger>
               )}
@@ -328,7 +331,7 @@ export default function ReadyToDispatchLeadDetails() {
               {/* ✅ Payment Info */}
               {canViewPayment && (
                 <TabsTrigger value="payment">
-                  <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                  <IndianRupee size={16} className="mr-1 opacity-60" />
                   Payment Information
                 </TabsTrigger>
               )}

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useDetails } from "./details-context";
 import { useAppSelector } from "@/redux/store";
-import { Palette, Images, RefreshCcw } from "lucide-react";
+import { Palette, Images, RefreshCcw, PenTool } from "lucide-react";
 import {
   useLeadStatus,
   useDesignsDoc,
@@ -122,7 +122,7 @@ const DesigningTab = () => {
     "
         >
           <div className="flex items-center gap-2">
-            <Images size={20} />
+            <PenTool size={20} />
             <h1 className="text-lg font-semibold tracking-tight flex items-center gap-1">
               Designs
               <span className="text-xs font-medium text-muted-foreground">
