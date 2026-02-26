@@ -29,7 +29,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { useAppSelector } from "@/redux/store";
-import { useUnderInstallationLeadsWithMiscellaneous } from "@/hooks/booking-stage/use-booking";
+import { usePendingMiscellaneousCount } from "@/api/installation/useUnderInstallationStageLeads";
 
 const data = {
   user: {
@@ -202,9 +202,9 @@ const data = {
         {
           title: "Machine",
           url: "/dashboard/track-trace/master",
-        }
+        },
       ],
-    },  
+    },
     {
       title: "Track Trace",
       url: "#",
@@ -216,14 +216,14 @@ const data = {
         },
         {
           title: "Manage Projects",
-          url: "/dashboard/track-trace/manage-project",          
+          url: "/dashboard/track-trace/manage-project",
         },
         {
           title: "Configure",
           url: "/dashboard/track-trace/configure",
         },
       ],
-    },    
+    },
   ],
 };
 
@@ -242,19 +242,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const vendorId = user?.vendor_id;
   const userId = user?.id;
 
-  const miscPayload = React.useMemo(
-    () => ({
-      userId: canSeeMiscLeads ? (userId ?? 0) : 0,
-      page: 1,
-      limit: 1,
-    }),
-    [canSeeMiscLeads, userId],
-  );
+  const { data: miscCountData, isLoading: isMiscLeadLoading } =
+    usePendingMiscellaneousCount(vendorId ?? 0);
 
-  const { data: miscLeadData, isLoading: isMiscLeadLoading } =
-    useUnderInstallationLeadsWithMiscellaneous(vendorId ?? 0, miscPayload);
-  const miscLeadsCount = miscLeadData?.count ?? 0;
-
+  const miscLeadsCount = miscCountData?.pending_miscellaneous_leads ?? 0;
   const userData = user
     ? {
         name: user?.user_name || "username",
@@ -281,7 +272,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       ? withoutOverall.filter(
           (item) =>
             item.title !== "Leads" &&
-            (userType === "site-supervisor" ? true : item.title !== "Project")
+            (userType === "site-supervisor" ? true : item.title !== "Project"),
         )
       : withoutOverall;
 
@@ -313,10 +304,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           )
         : environmentItems;
 
-    if (!mounted || !canSeeMiscLeads || miscLeadsCount <= 0) {
-      return filteredItems;
-    }
-
     const miscItem = {
       title: "Miscellaneous",
       url: "/dashboard/installation/under-installation/miscellaneous-leads",
@@ -328,7 +315,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return filteredItems.map((item) => {
       if (item.title === "Installation" && item.items) {
         const underInstallationIndex = item.items.findIndex(
-          (subItem) => subItem.title === "Under Installation"
+          (subItem) => subItem.title === "Under Installation",
         );
         if (underInstallationIndex !== -1) {
           const updatedItems = [
@@ -342,13 +329,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return item;
     });
   }, [
-    canSeeMiscLeads,
-    mounted,
-    canSeeOverallLeads,
-    miscLeadsCount,
-    isMiscLeadLoading,
-    userType,
-  ]);
+  mounted,
+  canSeeOverallLeads,
+  miscLeadsCount,
+  isMiscLeadLoading,
+  userType,
+]);
 
   return (
     <Sidebar collapsible="icon" {...props}>

@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/apiClient";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
 // ✅ --- Fetch Order-Login Leads (paginated) ---
@@ -77,9 +77,8 @@ export const useUploadFileBreakup = (vendorId: number | undefined) =>
 
 // ✅ --- Fetch order login details by lead ---
 export const getOrderLoginByLead = async (
-  
   vendorId: number,
- 
+
   leadId: number,
   senderUserId: number,
   instanceId?: number | null,
@@ -89,7 +88,8 @@ export const getOrderLoginByLead = async (
       `/leads/production/order-login/vendorId/${vendorId}/get-order-login-details`,
       {
         params: {
-          lead_id: leadId, senderUserId: senderUserId,
+          lead_id: leadId,
+          senderUserId: senderUserId,
           ...(typeof instanceId !== "undefined"
             ? { instance_id: instanceId }
             : {}),
@@ -111,7 +111,13 @@ export const useOrderLoginByLead = (
   instanceId?: number | null,
 ) =>
   useQuery({
-    queryKey: ["orderLoginByLead", vendorId, leadId, senderUserId, instanceId ?? "all"],
+    queryKey: [
+      "orderLoginByLead",
+      vendorId,
+      leadId,
+      senderUserId,
+      instanceId ?? "all",
+    ],
     queryFn: async () => {
       if (!vendorId || !leadId || !senderUserId) return [];
       return getOrderLoginByLead(vendorId, leadId, senderUserId, instanceId);
@@ -142,7 +148,6 @@ export const updateOrderLogin = async (
 
   return data;
 };
-
 
 export const useUpdateOrderLogin = (
   vendorId: number | undefined,
@@ -278,12 +283,23 @@ export const useUploadOrderLoginPoFiles = (
   vendorId: number | undefined,
   leadId: number | undefined,
   orderLoginId: number | undefined,
-) =>
-  useMutation({
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
     mutationFn: (formData: FormData) =>
       uploadOrderLoginPoFiles(vendorId!, leadId!, orderLoginId!, formData),
-  });
 
+    onSuccess: () => {
+      /**
+       * 🔁 Refresh GET API Automatically
+       */
+      queryClient.invalidateQueries({
+        queryKey: ["orderLoginPoFiles", vendorId, leadId, orderLoginId],
+      });
+    },
+  });
+};
 // ✅ --- Fetch Order Login PO Files ---
 export const getOrderLoginPoFiles = async (
   vendorId: number,
@@ -293,6 +309,7 @@ export const getOrderLoginPoFiles = async (
   const { data } = await apiClient.get(
     `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/order-login-id/${orderLoginId}/po-files`,
   );
+
   return data?.data || [];
 };
 
@@ -306,6 +323,48 @@ export const useOrderLoginPoFiles = (
     queryFn: () => getOrderLoginPoFiles(vendorId!, leadId!, orderLoginId!),
     enabled: !!vendorId && !!leadId && !!orderLoginId,
   });
+
+export const deleteOrderLoginPoFile = async (
+  vendorId: number,
+  leadId: number,
+  orderLoginId: number,
+  mappingId: number,
+  userId: number,
+) => {
+  const { data } = await apiClient.delete(
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/order-login-id/${orderLoginId}/po-files/${mappingId}`,
+    {
+      data: { deleted_by: userId },
+    },
+  );
+
+  return data;
+};
+
+export const useDeleteOrderLoginPoFile = (
+  vendorId?: number,
+  leadId?: number,
+  orderLoginId?: number,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (mappingId: number) =>
+      deleteOrderLoginPoFile(
+        vendorId!,
+        leadId!,
+        orderLoginId!,
+        mappingId,
+        1, // pass logged-in user id
+      ),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["orderLoginPoFiles", vendorId, leadId, orderLoginId],
+      });
+    },
+  });
+};
 
 // ✅ --- Move Lead to Production Stage ---
 export const moveLeadToProductionStage = async (
@@ -343,7 +402,9 @@ export const getLeadProductionReadiness = async (
     `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/move-to-production-readiness-check`,
     {
       params:
-        typeof instanceId !== "undefined" ? { instance_id: instanceId } : undefined,
+        typeof instanceId !== "undefined"
+          ? { instance_id: instanceId }
+          : undefined,
     },
   );
   return data?.data;
@@ -355,7 +416,12 @@ export const useLeadProductionReadiness = (
   instanceId?: number | null,
 ) =>
   useQuery({
-    queryKey: ["leadProductionReadiness", vendorId, leadId, instanceId ?? "all"],
+    queryKey: [
+      "leadProductionReadiness",
+      vendorId,
+      leadId,
+      instanceId ?? "all",
+    ],
     queryFn: () => getLeadProductionReadiness(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
@@ -388,7 +454,8 @@ export const useUploadMultipleFileBreakupsByLead = (
         accountId!,
         breakups.map((item) => ({
           ...item,
-          instance_id: typeof instanceId !== "undefined" ? instanceId : item.instance_id,
+          instance_id:
+            typeof instanceId !== "undefined" ? instanceId : item.instance_id,
         })),
       ),
   });

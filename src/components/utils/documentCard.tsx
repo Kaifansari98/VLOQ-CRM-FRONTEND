@@ -23,7 +23,7 @@ interface DocumentData {
 interface DocumentCardProps {
   doc: DocumentData;
   canDelete?: boolean;
-  onDelete?: (id: number) => void;
+    onDelete?: (id: number) => void;
   status?: "APPROVED" | "REJECTED" | "PENDING" | string;
 }
 

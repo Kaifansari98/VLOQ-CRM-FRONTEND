@@ -168,11 +168,11 @@ export interface UpdateIssueLogPayload {
 export const moveLeadToUnderInstallation = async (
   vendorId: number,
   leadId: number,
-  updated_by: number
+  updated_by: number,
 ) => {
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/move-to-under-installation`,
-    { updated_by }
+    { updated_by },
   );
   return data?.data;
 };
@@ -195,8 +195,6 @@ export const useMoveLeadToUnderInstallation = () => {
     }) => moveLeadToUnderInstallation(vendorId, leadId, updated_by),
 
     onSuccess: () => {
-      
-     
       queryClient.invalidateQueries({
         queryKey: ["leadStats"],
       });
@@ -205,7 +203,7 @@ export const useMoveLeadToUnderInstallation = () => {
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(
         error?.response?.data?.message ||
-          "Failed to move lead to Under Installation stage"
+          "Failed to move lead to Under Installation stage",
       );
     },
   });
@@ -219,13 +217,13 @@ export const getUnderInstallationStageLeads = async (
   vendorId: number,
   userId: number,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ) => {
   const { data } = await apiClient.get(
     `/leads/installation/under-installation/vendorId/${vendorId}/userId/${userId}`,
     {
       params: { page, limit },
-    }
+    },
   );
 
   return data?.data;
@@ -238,7 +236,7 @@ export const useUnderInstallationStageLeads = (
   vendorId?: number,
   userId?: number,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ) => {
   return useQuery({
     queryKey: ["underInstallationStageLeads", vendorId, userId, page, limit],
@@ -254,10 +252,10 @@ export const useUnderInstallationStageLeads = (
    ========================================================== */
 export const getUnderInstallationDetails = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   const { data } = await apiClient.get(
-    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/some_under_installation_details`
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/some_under_installation_details`,
   );
   return data?.data;
 };
@@ -267,7 +265,7 @@ export const getUnderInstallationDetails = async (
  */
 export const useUnderInstallationDetails = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
 ) => {
   return useQuery({
     queryKey: ["underInstallationDetails", vendorId, leadId],
@@ -298,7 +296,7 @@ export const setActualInstallationStartDate = async ({
     {
       updated_by,
       actual_installation_start_date,
-    }
+    },
   );
 
   return data;
@@ -334,7 +332,7 @@ export const useSetActualInstallationStartDate = () => {
 /** GET mapped installers */
 export const getMappedInstallers = async (vendorId: number, leadId: number) => {
   const { data } = await apiClient.get(
-    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/installers`
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/installers`,
   );
   return data.data;
 };
@@ -363,7 +361,7 @@ export const addInstallersAndEndDate = async ({
 }) => {
   const res = await apiClient.post(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/add-installers`,
-    payload
+    payload,
   );
   return res.data;
 };
@@ -395,7 +393,7 @@ export const updateInstallationDetailsAPI = async ({
 }) => {
   const res = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/update-installation-details`,
-    payload
+    payload,
   );
   return res.data;
 };
@@ -413,7 +411,7 @@ export const useUpdateInstallationDetails = () => {
 
 export const getAllInstallersAPI = async (vendorId: number) => {
   const res = await apiClient.get(
-    `/installer-users/vendorId/${vendorId}/get-all-installers`
+    `/installer-users/vendorId/${vendorId}/get-all-installers`,
   );
   return res.data;
 };
@@ -446,7 +444,7 @@ export const setInstallationCompletionAPI = async ({
       updated_by,
       is_carcass_installation_completed,
       is_shutter_installation_completed,
-    }
+    },
   );
   return res.data;
 };
@@ -471,7 +469,7 @@ export const updateInstallationCompletionAPI = async ({
       updated_by,
       is_carcass_installation_completed,
       is_shutter_installation_completed,
-    }
+    },
   );
   return res.data;
 };
@@ -535,7 +533,7 @@ export const uploadInstallationDayWise = async ({
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
 
   return response.data;
@@ -550,7 +548,7 @@ export const fetchInstallationUpdates = async ({
   leadId: number;
 }) => {
   const response = await apiClient.get(
-    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/installation-updates-day-wise`
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/installation-updates-day-wise`,
   );
 
   return response.data.data;
@@ -574,7 +572,7 @@ export const useInstallationUpdates = (vendorId: number, leadId: number) => {
    @route POST /leads/installation/under-installation/vendorId/:vendorId/leadId/:leadId/create
    ========================================================== */
 export const createMiscellaneousEntry = async (
-  payload: CreateMiscellaneousPayload
+  payload: CreateMiscellaneousPayload,
 ) => {
   const formData = new FormData();
 
@@ -591,7 +589,7 @@ export const createMiscellaneousEntry = async (
   if (payload.reorder_material_details) {
     formData.append(
       "reorder_material_details",
-      payload.reorder_material_details
+      payload.reorder_material_details,
     );
   }
   if (payload.quantity !== undefined) {
@@ -624,7 +622,7 @@ export const createMiscellaneousEntry = async (
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
 
   return data?.data;
@@ -654,7 +652,7 @@ export const useCreateMiscellaneousEntry = () => {
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(
-        error?.response?.data?.error || "Failed to create miscellaneous entry"
+        error?.response?.data?.error || "Failed to create miscellaneous entry",
       );
     },
   });
@@ -666,10 +664,10 @@ export const useCreateMiscellaneousEntry = () => {
    ========================================================== */
 export const getMiscellaneousEntries = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ): Promise<MiscellaneousEntry[]> => {
   const { data } = await apiClient.get(
-    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/get-all`
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/get-all`,
   );
 
   return data?.data || [];
@@ -692,7 +690,7 @@ export const useMiscellaneousEntries = (vendorId?: number, leadId?: number) => {
    ========================================================== */
 export const getMiscTypes = async (vendorId: number): Promise<MiscType[]> => {
   const { data } = await apiClient.get(
-    `/miscellaneous-master/type/vendor/${vendorId}`
+    `/miscellaneous-master/type/vendor/${vendorId}`,
   );
 
   return data?.data || [];
@@ -715,7 +713,7 @@ export const useMiscTypes = (vendorId?: number) => {
      ========================================================== */
 export const getMiscTeams = async (vendorId: number): Promise<MiscTeam[]> => {
   const { data } = await apiClient.get(
-    `/miscellaneous-master/team/vendor/${vendorId}`
+    `/miscellaneous-master/team/vendor/${vendorId}`,
   );
 
   return data?.data || [];
@@ -748,7 +746,7 @@ export const updateMiscExpectedReadyDate = async ({
     {
       expected_ready_date,
       updated_by,
-    }
+    },
   );
 
   return response.data.data;
@@ -773,7 +771,7 @@ export const updateMiscApproval = async ({
       misc_approved,
       exp_of_rejection,
       updated_by,
-    }
+    },
   );
 
   return response.data.data;
@@ -814,7 +812,7 @@ export const updateMiscRequiredDeliveryDate = async ({
     {
       required_delivery_date,
       updated_by,
-    }
+    },
   );
 
   return response.data.data;
@@ -855,7 +853,7 @@ export const updateMiscRequiredDeliveryDateByTaskId = async ({
     {
       required_delivery_date,
       updated_by,
-    }
+    },
   );
 
   return response.data.data;
@@ -896,7 +894,7 @@ export const uploadMiscCompletionDocumentsByTaskId = async ({
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
 
   return response.data.data;
@@ -943,7 +941,7 @@ export const useUpdateMiscApproval = () => {
  */
 export const getIssueTypes = async (vendorId: number): Promise<IssueType[]> => {
   const { data } = await apiClient.get(
-    `/issue-logs/issue-type/vendor/${vendorId}`
+    `/issue-logs/issue-type/vendor/${vendorId}`,
   );
   return data?.data || [];
 };
@@ -954,10 +952,10 @@ export const getIssueTypes = async (vendorId: number): Promise<IssueType[]> => {
  */
 export const getInstallationIssueLogs = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ): Promise<InstallationIssueLog[]> => {
   const { data } = await apiClient.get(
-    `/leads/installation/under-installation/issue-log/vendor/${vendorId}/lead/${leadId}`
+    `/leads/installation/under-installation/issue-log/vendor/${vendorId}/lead/${leadId}`,
   );
   return data?.data || [];
 };
@@ -967,10 +965,10 @@ export const getInstallationIssueLogs = async (
  * @route GET /leads/installation/under-installation/issue-log/:id
  */
 export const getInstallationIssueLogById = async (
-  id: number
+  id: number,
 ): Promise<InstallationIssueLog> => {
   const { data } = await apiClient.get(
-    `/leads/installation/under-installation/issue-log/${id}`
+    `/leads/installation/under-installation/issue-log/${id}`,
   );
   return data?.data;
 };
@@ -980,11 +978,11 @@ export const getInstallationIssueLogById = async (
  * @route POST /leads/installation/under-installation/issue-log/create
  */
 export const createInstallationIssueLog = async (
-  payload: CreateIssueLogPayload
+  payload: CreateIssueLogPayload,
 ): Promise<InstallationIssueLog> => {
   const { data } = await apiClient.post(
     `/leads/installation/under-installation/issue-log/create`,
-    payload
+    payload,
   );
   return data?.data;
 };
@@ -995,11 +993,11 @@ export const createInstallationIssueLog = async (
  */
 export const updateInstallationIssueLog = async (
   id: number,
-  payload: UpdateIssueLogPayload
+  payload: UpdateIssueLogPayload,
 ): Promise<InstallationIssueLog> => {
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/issue-log/${id}/update`,
-    payload
+    payload,
   );
   return data?.data;
 };
@@ -1025,7 +1023,7 @@ export const useGetIssueTypes = (vendorId: number) => {
  */
 export const useGetInstallationIssueLogs = (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   return useQuery({
     queryKey: ["installationIssueLogs", vendorId, leadId],
@@ -1075,7 +1073,7 @@ export const useCreateInstallationIssueLog = () => {
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(
-        error?.response?.data?.message || "Failed to create issue log"
+        error?.response?.data?.message || "Failed to create issue log",
       );
     },
   });
@@ -1112,7 +1110,7 @@ export const useUpdateInstallationIssueLog = () => {
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(
-        error?.response?.data?.message || "Failed to update issue log"
+        error?.response?.data?.message || "Failed to update issue log",
       );
     },
   });
@@ -1167,10 +1165,10 @@ export interface UpdateRemarksPayload {
  */
 export const getUsableHandover = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ): Promise<UsableHandoverData> => {
   const { data } = await apiClient.get(
-    `/leads/installation/under-installation/${vendorId}/${leadId}`
+    `/leads/installation/under-installation/${vendorId}/${leadId}`,
   );
   return data?.data;
 };
@@ -1187,7 +1185,7 @@ export const updateUsableHandover = async (formData: FormData) => {
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
 
   return data.data;
@@ -1200,7 +1198,7 @@ export const updateUsableHandover = async (formData: FormData) => {
 export const updateRemarks = async (payload: UpdateRemarksPayload) => {
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/update-remarks`,
-    payload
+    payload,
   );
   return data?.data;
 };
@@ -1284,7 +1282,7 @@ export const markUsableHandoverCompleted = async ({
 }) => {
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/mark-usable-handover-completed`,
-    { updated_by }
+    { updated_by },
   );
   return data?.data;
 };
@@ -1305,11 +1303,11 @@ export const useMarkUsableHandoverCompleted = () => {
 export async function moveToFinalHandoverApi(
   vendorId: number,
   leadId: number,
-  updated_by: number
+  updated_by: number,
 ) {
   const response = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/move-to-final-handover`,
-    { updated_by }
+    { updated_by },
   );
 
   return response.data;
@@ -1335,7 +1333,7 @@ export function useMoveToFinalHandover() {
       queryClient.invalidateQueries({ queryKey: ["leadStats"] });
       queryClient.invalidateQueries({
         queryKey: ["universal-stage-leads"],
-          exact: false,
+        exact: false,
       });
       queryClient.invalidateQueries({
         queryKey: ["vendorOverallLeads"],
@@ -1351,10 +1349,10 @@ export function useMoveToFinalHandover() {
 
 export const fetchUsableHandoverReady = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   const res = await apiClient.get(
-    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/check-ready-flag`
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/check-ready-flag`,
   );
   return res.data.data;
 };
@@ -1370,10 +1368,10 @@ export const useUsableHandoverReady = (vendorId: number, leadId: number) => {
 // 🔥 NEW — Check Lead Ready for Final Handover
 export const fetchFinalHandoverReady = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   const res = await apiClient.get(
-    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/check-final-handover-ready`
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/check-final-handover-ready`,
   );
 
   return res.data.data; // contains { success, isReady, message, step }
@@ -1404,7 +1402,7 @@ export const resolveMiscellaneousEntry = async (payload: {
 
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${payload.vendorId}/leadId/${payload.leadId}/misc/${payload.miscId}/resolve`,
-    bodyData
+    bodyData,
   );
 
   return data?.data;
@@ -1434,7 +1432,7 @@ export const useResolveMiscellaneousEntry = () => {
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(
-        error?.response?.data?.error || "Failed to resolve miscellaneous entry"
+        error?.response?.data?.error || "Failed to resolve miscellaneous entry",
       );
     },
   });
@@ -1457,7 +1455,7 @@ export const markMiscellaneousTaskReady = async (payload: {
 
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${payload.vendorId}/leadId/${payload.leadId}/misc/${payload.miscId}/mark-ready`,
-    bodyData
+    bodyData,
   );
 
   return data?.data;
@@ -1486,12 +1484,11 @@ export const useMarkMiscellaneousTaskReady = () => {
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(
-        error?.response?.data?.error || "Failed to mark task as ready"
+        error?.response?.data?.error || "Failed to mark task as ready",
       );
     },
   });
 };
-
 
 export interface MiscellaneousResolutionStatus {
   vendor_id: number;
@@ -1502,10 +1499,10 @@ export interface MiscellaneousResolutionStatus {
 // 🔹 API Call
 export const getMiscellaneousResolutionStatus = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ): Promise<MiscellaneousResolutionStatus> => {
   const { data } = await apiClient.get(
-    `/leads/installation/under-installation/vendor/${vendorId}/lead/${leadId}/resolution-status`
+    `/leads/installation/under-installation/vendor/${vendorId}/lead/${leadId}/resolution-status`,
   );
 
   return data?.data;
@@ -1513,13 +1510,140 @@ export const getMiscellaneousResolutionStatus = async (
 
 export const useMiscellaneousResolutionStatus = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
 ) => {
   return useQuery<MiscellaneousResolutionStatus>({
     queryKey: ["miscellaneous-status", vendorId, leadId],
-    queryFn: () =>
-      getMiscellaneousResolutionStatus(vendorId!, leadId!),
+    queryFn: () => getMiscellaneousResolutionStatus(vendorId!, leadId!),
     enabled: !!vendorId && !!leadId, // prevents unwanted calls
     staleTime: 5 * 60 * 1000, // cache for 5 minutes
+  });
+};
+
+// ===============================
+// Request Payload
+// ===============================
+export interface PendingMiscellaneousPayload {
+  page?: number;
+  limit?: number;
+
+  global_search?: string;
+  filter_lead_code?: string;
+  filter_name?: string;
+  contact?: string;
+
+  furniture_type?: Array<number | string>;
+  furniture_structure?: Array<number | string>;
+  site_map_link?: boolean;
+  site_type?: Array<number | string>;
+  assign_to?: Array<number | string>;
+
+  site_address?: string;
+  archetech_name?: string;
+  source?: Array<number | string>;
+
+  date_range?: {
+    from: string;
+    to: string;
+  };
+}
+
+// ===============================
+// Lead Row Returned
+// ===============================
+export interface PendingMiscLead {
+  id: number;
+  lead_code: string;
+  firstname: string;
+  lastname: string;
+
+  contact_no: string;
+  alt_contact_no?: string | null;
+  email?: string | null;
+
+  site_address?: string | null;
+  site_map_link?: string | null;
+  archetech_name?: string | null;
+
+  assign_to?: number | null;
+  source_id?: number | null;
+  site_type_id?: number | null;
+
+  created_at: string;
+
+  productMappings: {
+    product_type_id: number;
+  }[];
+
+  leadProductStructureMapping: {
+    product_structure_id: number;
+  }[];
+}
+
+export interface PendingMiscellaneousResponse {
+  success: boolean;
+  message: string;
+  count: number;
+  data: PendingMiscLead[];
+
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalRecords: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+export const postPendingMiscellaneousLeads = async (
+  vendorId: number,
+  payload: PendingMiscellaneousPayload,
+): Promise<PendingMiscellaneousResponse> => {
+  const { data } = await apiClient.post(
+    `/miscellaneous-master/vendor/${vendorId}/pending-miscellaneous`,
+    payload,
+  );
+
+  return data;
+};
+
+export const usePendingMiscellaneousLeads = (
+  vendorId: number,
+  payload: PendingMiscellaneousPayload,
+) => {
+  return useQuery<PendingMiscellaneousResponse>({
+    queryKey: ["pendingMiscellaneousLeads", vendorId, payload],
+    queryFn: () => postPendingMiscellaneousLeads(vendorId, payload),
+    enabled: !!vendorId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export interface PendingMiscellaneousCountResponse {
+  success: boolean;
+  pending_miscellaneous_leads: number;
+}
+
+export const getPendingMiscellaneousLeadCount = async (
+  vendorId: number,
+): Promise<PendingMiscellaneousCountResponse> => {
+  const { data } = await apiClient.get(
+    `/miscellaneous-master/vendor/${vendorId}/pending-miscellaneous/count`,
+  );
+
+  return data;
+};
+
+export const usePendingMiscellaneousCount = (vendorId: number) => {
+  return useQuery<PendingMiscellaneousCountResponse>({
+    queryKey: ["pendingMiscellaneousCount", vendorId],
+
+    queryFn: () => getPendingMiscellaneousLeadCount(vendorId),
+
+    enabled: !!vendorId,
+
+    staleTime: 2 * 60 * 1000, // count should refresh more frequently
+    refetchOnWindowFocus: true,
   });
 };
