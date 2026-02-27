@@ -457,6 +457,7 @@ export default function DispatchPlanningDetails({
                 onChange={(value) =>
                   setValueDispatch("onsite_contact_person_number", value || "")
                 }
+                validateIndianNumber={true}
               />
               {errorsDispatch.onsite_contact_person_number && (
                 <p className="text-xs text-red-500">
@@ -495,6 +496,7 @@ export default function DispatchPlanningDetails({
                     value || ""
                   )
                 }
+                validateIndianNumber={true}
               />
             </div>
 

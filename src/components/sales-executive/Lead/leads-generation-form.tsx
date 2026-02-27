@@ -697,7 +697,7 @@ export default function LeadsGenerationForm({
                     onBlur={() => {
                       field.onBlur();
                       handleDuplicateCheck("contact_no");
-                    }}
+                    }}validateIndianNumber={true}
                   />
                 </FormControl>
                 {/* <FormDescription className="text-xs">
@@ -732,6 +732,7 @@ export default function LeadsGenerationForm({
                       field.onBlur();
                       handleDuplicateCheck("alt_contact_no");
                     }}
+                    validateIndianNumber={true}
                   />
                 </FormControl>
                 {/* <FormDescription className="text-xs">

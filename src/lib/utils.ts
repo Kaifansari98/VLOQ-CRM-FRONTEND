@@ -71,17 +71,15 @@ export function getInitials(name: string) {
 export function extractTitleText(input: string = ""): string {
   if (!input) return "";
 
-  const index = input.indexOf("-");
-
-  // extract left side
-  const leftText = index !== -1 ? input.slice(0, index).trim() : input.trim();
-
-  // replace spaces between words with hyphens
-  return leftText.replace(/\s+/g, "-");
+  const match = input.match(/\(([^)]+)\)/);
+  return match ? match[1].trim() : "";
 }
 
-export function normalize(val: string) {
-  return val.trim().replace(/\s+/g, "-").toLowerCase();
+export function sanitizeRemark(input: string = ""): string {
+  if (!input) return "";
+
+  // remove patterns like ||OL:37|| , ||ANYTHING||
+  return input.replace(/\|\|.*?\|\|/g, "").trim();
 }
 
 export const tableMultiValueFilter: FilterFn<any> = (

@@ -538,3 +538,69 @@ export const useFactoryUsers = (vendorId: number) => {
     enabled: !!vendorId,
   });
 };
+
+
+
+
+export interface MarkOrderLoginFilledPayload {
+  updated_by: number;
+}
+
+export interface MarkOrderLoginFilledResponse {
+  success: boolean;
+  message: string;
+  data: {
+    id: number;
+    is_order_login_filled: boolean;
+    updated_by: number;
+    updated_at: string;
+  };
+}
+
+
+export const markOrderLoginFilled = async (
+  vendorId: number,
+  leadId: number,
+  instanceId: number,
+  payload: MarkOrderLoginFilledPayload
+): Promise<MarkOrderLoginFilledResponse> => {
+  const { data } = await apiClient.patch(
+    `/leads/production/order-login/${vendorId}/${leadId}/${instanceId}/mark-filled`,
+    payload
+  );
+
+  return data;
+};
+
+
+export const useMarkOrderLoginFilled = (
+  vendorId: number,
+  leadId: number,
+  instanceId: number
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: MarkOrderLoginFilledPayload) =>
+      markOrderLoginFilled(vendorId, leadId, instanceId, payload),
+
+    onSuccess: () => {
+      // ✅ Show success feedback
+      toast.success("Order login details saved successfully.");
+
+      // 🔁 Refetch relevant data
+      queryClient.invalidateQueries({
+        queryKey: ["vendorOverallLeads"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["universalLeads"],
+      });
+    },
+
+    onError: (error: any) => {
+      // (Recommended) Error visibility for better UX
+      toast.error(error?.message || "Failed to update order login.");
+    },
+  });
+};

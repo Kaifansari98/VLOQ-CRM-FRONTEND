@@ -657,6 +657,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                               value={field.value}
                               onChange={field.onChange}
                               defaultCountry="IN"
+                              validateIndianNumber={true}
                             />
                           </FormControl>
                         </div>
