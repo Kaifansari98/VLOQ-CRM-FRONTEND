@@ -102,7 +102,6 @@ interface NavItem {
 
 // --------------- HELPERS ------------------
 
-// find which group contains the current path (for auto-open on refresh)
 function findGroupForPath(items: NavItem[], pathname: string): string | null {
   for (const item of items) {
     if (item.items && item.items.length > 0) {
@@ -128,23 +127,15 @@ export function NavMain({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
     const initial = new Set<string>();
-
     const activeGroup = findGroupForPath(items, pathname);
-
     if (activeGroup) {
-      // If route belongs to a group → only that group open
       initial.add(activeGroup);
     } else {
-      // If no group matches → Leads open as default
       initial.add("Leads");
     }
-
     return initial;
   });
 
-  // When pathname changes (navigation / refresh),
-  // automatically open the group for the new route,
-  // but DO NOT close any previously opened groups.
   useEffect(() => {
     const activeGroup = findGroupForPath(items, pathname);
     if (!activeGroup) return;
@@ -163,6 +154,26 @@ export function NavMain({ items }: { items: NavItem[] }) {
     return data[showCount as keyof typeof data];
   };
 
+  // ✅ Visible sub-items ke counts ka sum — role-filtered items pe kaam karta hai
+  const getGroupCount = (item: NavItem) => {
+    if (!item.items || item.items.length === 0) return undefined;
+
+    const hasAnyCount = item.items.some(
+      (sub) => sub.showCount || sub.customCount !== undefined
+    );
+    if (!hasAnyCount) return undefined;
+
+    const total = item.items.reduce((sum, sub) => {
+      const count =
+        sub.customCount !== undefined
+          ? sub.customCount
+          : getCountForItem(sub.showCount);
+      return sum + (Number(count) || 0);
+    }, 0);
+
+    return total > 0 ? total : undefined;
+  };
+
   const handleMobileNavigate = () => {
     if (isMobile) {
       setOpenMobile(false);
@@ -178,7 +189,6 @@ export function NavMain({ items }: { items: NavItem[] }) {
           const isSingleActive =
             isSingle && pathname.startsWith(item.url ?? "");
 
-          // For grouped items (Leads / Project / Production / Installation)
           if (!isSingle) {
             const isOpen = openGroups.has(item.title);
             const isGroupActive = item.items!.some((sub) =>
@@ -194,9 +204,9 @@ export function NavMain({ items }: { items: NavItem[] }) {
                     setOpenGroups((prev) => {
                       const next = new Set(prev);
                       if (isNowOpen) {
-                        next.add(item.title); // open this group
+                        next.add(item.title);
                       } else {
-                        next.delete(item.title); // close this group
+                        next.delete(item.title);
                       }
                       return next;
                     });
@@ -222,9 +232,9 @@ export function NavMain({ items }: { items: NavItem[] }) {
                           {(() => {
                             if (!item.showCount || isOpen) return null;
 
-                            const count = getCountForItem(item.showCount);
+                            // ✅ Backend sum ki jagah visible stages ka dynamic sum
+                            const count = getGroupCount(item);
 
-                            // hide when 0 or undefined
                             if (!count) return null;
 
                             return (
@@ -258,20 +268,27 @@ export function NavMain({ items }: { items: NavItem[] }) {
 
                                   {(() => {
                                     const hasShowCount = !!subItem.showCount;
-                                    const hasCustomCount = subItem.customCount !== undefined;
+                                    const hasCustomCount =
+                                      subItem.customCount !== undefined;
 
-                                    if (!hasShowCount && !hasCustomCount) return null;
+                                    if (!hasShowCount && !hasCustomCount)
+                                      return null;
 
                                     const count = hasCustomCount
                                       ? subItem.customCount
                                       : getCountForItem(subItem.showCount!);
 
-                                    // Hide when 0, undefined, null
                                     if (!count) return null;
 
                                     return (
-                                      <Badge className={cn("ml-2 rounded-full", subItem.badgeClassName)}>
-                                        {isLoading || subItem.customCountLoading
+                                      <Badge
+                                        className={cn(
+                                          "ml-2 rounded-full",
+                                          subItem.badgeClassName
+                                        )}
+                                      >
+                                        {isLoading ||
+                                        subItem.customCountLoading
                                           ? "…"
                                           : count}
                                       </Badge>
@@ -290,7 +307,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
             );
           }
 
-          // ---------- SINGLE ITEMS (Dashboard, My Task, etc.) ----------
+          // ---------- SINGLE ITEMS ----------
           return (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild tooltip={item.title}>
@@ -304,15 +321,20 @@ export function NavMain({ items }: { items: NavItem[] }) {
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    {item.icon && <item.icon className={item.iconClassName} />}
+                    {item.icon && (
+                      <item.icon className={item.iconClassName} />
+                    )}
                     <span>{item.title}</span>
                   </div>
 
                   {(item.showCount || item.customCount !== undefined) && (
-                    <Badge className={cn("ml-2 rounded-full", item.badgeClassName)}>
+                    <Badge
+                      className={cn("ml-2 rounded-full", item.badgeClassName)}
+                    >
                       {isLoading || item.customCountLoading
                         ? "…"
-                        : item.customCount ?? getCountForItem(item.showCount!)}
+                        : item.customCount ??
+                          getCountForItem(item.showCount!)}
                     </Badge>
                   )}
                 </Link>
@@ -324,7 +346,6 @@ export function NavMain({ items }: { items: NavItem[] }) {
       {showTrackTrace ? (
         <SidebarGroupLabel>Track &amp; Trace</SidebarGroupLabel>
       ) : null}
-      
     </SidebarGroup>
   );
 }
