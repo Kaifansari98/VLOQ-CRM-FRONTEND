@@ -546,6 +546,8 @@ export default function DispatchPlanningDetails({
               </Label>
 
               {/* Available */}
+              <div className="flex items-center gap-4">
+
               <div className="flex items-center gap-2">
                 <Checkbox
                   disabled={!canViewAndWork}
@@ -575,6 +577,7 @@ export default function DispatchPlanningDetails({
                   }}
                 />
                 <label className="text-sm">Not Available</label>
+              </div>
               </div>
 
               {errorsDispatch.material_lift_availability && (
