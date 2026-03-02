@@ -6,7 +6,7 @@ import { useLeadStats } from "@/hooks/useLeadStats";
 import { useAppSelector } from "@/redux/store";
 import { Badge } from "./ui/badge";
 import { usePathname } from "next/navigation";
-import { SidebarSeparator, useSidebar } from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar";
 
 import {
   Collapsible,
@@ -114,20 +114,24 @@ function findGroupForPath(items: NavItem[], pathname: string): string | null {
   return null;
 }
 
-export function NavMain({ items }: { items: NavItem[] }) {
+export function NavMain({
+  items,
+  trackTraceItems,
+}: {
+  items: NavItem[];
+  trackTraceItems?: NavItem[];
+}) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data: leadStats, isLoading } = useLeadStats(vendorId, userId);
   const { isMobile, setOpenMobile } = useSidebar();
-  const environment = (
-    process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION"
-  ).toUpperCase();
-  const showTrackTrace = environment === "STAGING";
 
   const pathname = usePathname();
+  const allItems = [...items, ...(trackTraceItems ?? [])];
+
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
     const initial = new Set<string>();
-    const activeGroup = findGroupForPath(items, pathname);
+    const activeGroup = findGroupForPath(allItems, pathname);
     if (activeGroup) {
       initial.add(activeGroup);
     } else {
@@ -137,16 +141,15 @@ export function NavMain({ items }: { items: NavItem[] }) {
   });
 
   useEffect(() => {
-    const activeGroup = findGroupForPath(items, pathname);
+    const activeGroup = findGroupForPath(allItems, pathname);
     if (!activeGroup) return;
-
     setOpenGroups((prev) => {
       if (prev.has(activeGroup)) return prev;
       const next = new Set(prev);
       next.add(activeGroup);
       return next;
     });
-  }, [items, pathname]);
+  }, [items, trackTraceItems, pathname]);
 
   const getCountForItem = (showCount?: string) => {
     if (!leadStats?.data || !showCount) return undefined;
@@ -154,15 +157,12 @@ export function NavMain({ items }: { items: NavItem[] }) {
     return data[showCount as keyof typeof data];
   };
 
-  // ✅ Visible sub-items ke counts ka sum — role-filtered items pe kaam karta hai
   const getGroupCount = (item: NavItem) => {
     if (!item.items || item.items.length === 0) return undefined;
-
     const hasAnyCount = item.items.some(
       (sub) => sub.showCount || sub.customCount !== undefined
     );
     if (!hasAnyCount) return undefined;
-
     const total = item.items.reduce((sum, sub) => {
       const count =
         sub.customCount !== undefined
@@ -170,182 +170,161 @@ export function NavMain({ items }: { items: NavItem[] }) {
           : getCountForItem(sub.showCount);
       return sum + (Number(count) || 0);
     }, 0);
-
     return total > 0 ? total : undefined;
   };
 
   const handleMobileNavigate = () => {
-    if (isMobile) {
-      setOpenMobile(false);
+    if (isMobile) setOpenMobile(false);
+  };
+
+  const renderItem = (item: NavItem) => {
+    const isSingle = !item.items || item.items.length === 0;
+    const isSingleActive = isSingle && pathname.startsWith(item.url ?? "");
+
+    if (!isSingle) {
+      const isOpen = openGroups.has(item.title);
+      const isGroupActive = item.items!.some((sub) =>
+        pathname.startsWith(sub.url)
+      );
+
+      return (
+        <SidebarMenuItem key={item.title}>
+          <Collapsible
+            asChild
+            open={isOpen}
+            onOpenChange={(isNowOpen) => {
+              setOpenGroups((prev) => {
+                const next = new Set(prev);
+                isNowOpen ? next.add(item.title) : next.delete(item.title);
+                return next;
+              });
+            }}
+            className="group/collapsible"
+          >
+            <div>
+              <CollapsibleTrigger asChild>
+                <SidebarMenuButton asChild tooltip={item.title}>
+                  <Link
+                    href={item.url}
+                    className={cn(
+                      "flex items-center gap-2 w-full justify-between transition-all duration-200",
+                      isGroupActive && "font-semibold text-primary rounded-md"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      {item.icon && <item.icon />}
+                      <span>{item.title}</span>
+                    </div>
+                    {(() => {
+                      if (!item.showCount || isOpen) return null;
+                      const count = getGroupCount(item);
+                      if (!count) return null;
+                      return (
+                        <Badge className="ml-2 rounded-full">
+                          {isLoading ? "…" : count}
+                        </Badge>
+                      );
+                    })()}
+                  </Link>
+                </SidebarMenuButton>
+              </CollapsibleTrigger>
+
+              <CollapsibleContent>
+                <SidebarMenuSub>
+                  {item.items!.map((subItem) => {
+                    const isSubActive = pathname.startsWith(subItem.url);
+                    return (
+                      <SidebarMenuSubItem key={subItem.title}>
+                        <SidebarMenuSubButton asChild>
+                          <Link
+                            href={subItem.url}
+                            onClick={handleMobileNavigate}
+                            className={cn(
+                              "flex items-center justify-between w-full transition-all duration-200",
+                              isSubActive && "font-bold text-primary rounded-md"
+                            )}
+                          >
+                            <span>{subItem.title}</span>
+                            {(() => {
+                              const hasShowCount = !!subItem.showCount;
+                              const hasCustomCount =
+                                subItem.customCount !== undefined;
+                              if (!hasShowCount && !hasCustomCount) return null;
+                              const count = hasCustomCount
+                                ? subItem.customCount
+                                : getCountForItem(subItem.showCount!);
+                              if (!count) return null;
+                              return (
+                                <Badge
+                                  className={cn(
+                                    "ml-2 rounded-full",
+                                    subItem.badgeClassName
+                                  )}
+                                >
+                                  {isLoading || subItem.customCountLoading
+                                    ? "…"
+                                    : count}
+                                </Badge>
+                              );
+                            })()}
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    );
+                  })}
+                </SidebarMenuSub>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+        </SidebarMenuItem>
+      );
     }
+
+    return (
+      <SidebarMenuItem key={item.title}>
+        <SidebarMenuButton asChild tooltip={item.title}>
+          <Link
+            href={item.url}
+            className={cn(
+              "flex items-center justify-between w-full gap-2 transition-all duration-200",
+              isSingleActive && "font-bold text-primary bg-muted/50 rounded-md",
+              item.className
+            )}
+          >
+            <div className="flex items-center gap-2">
+              {item.icon && <item.icon className={item.iconClassName} />}
+              <span>{item.title}</span>
+            </div>
+            {(item.showCount || item.customCount !== undefined) && (
+              <Badge className={cn("ml-2 rounded-full", item.badgeClassName)}>
+                {isLoading || item.customCountLoading
+                  ? "…"
+                  : item.customCount ?? getCountForItem(item.showCount!)}
+              </Badge>
+            )}
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
   };
 
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>CRM Platform</SidebarGroupLabel>
-      <SidebarMenu>
-        {items.map((item) => {
-          const isSingle = !item.items || item.items.length === 0;
-          const isSingleActive =
-            isSingle && pathname.startsWith(item.url ?? "");
+    <>
+      {/* ── CRM Platform Group ── */}
+      <SidebarGroup>
+        <SidebarGroupLabel>CRM Platform</SidebarGroupLabel>
+        <SidebarMenu>{items.map((item) => renderItem(item))}</SidebarMenu>
+      </SidebarGroup>
 
-          if (!isSingle) {
-            const isOpen = openGroups.has(item.title);
-            const isGroupActive = item.items!.some((sub) =>
-              pathname.startsWith(sub.url)
-            );
-
-            return (
-              <SidebarMenuItem key={item.title}>
-                <Collapsible
-                  asChild
-                  open={isOpen}
-                  onOpenChange={(isNowOpen) => {
-                    setOpenGroups((prev) => {
-                      const next = new Set(prev);
-                      if (isNowOpen) {
-                        next.add(item.title);
-                      } else {
-                        next.delete(item.title);
-                      }
-                      return next;
-                    });
-                  }}
-                  className="group/collapsible"
-                >
-                  <div>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton asChild tooltip={item.title}>
-                        <Link
-                          href={item.url}
-                          className={cn(
-                            "flex items-center gap-2 w-full justify-between transition-all duration-200",
-                            isGroupActive &&
-                              "font-semibold text-primary rounded-md"
-                          )}
-                        >
-                          <div className="flex items-center gap-2">
-                            {item.icon && <item.icon />}
-                            <span>{item.title}</span>
-                          </div>
-
-                          {(() => {
-                            if (!item.showCount || isOpen) return null;
-
-                            // ✅ Backend sum ki jagah visible stages ka dynamic sum
-                            const count = getGroupCount(item);
-
-                            if (!count) return null;
-
-                            return (
-                              <Badge className="ml-2 rounded-full">
-                                {isLoading ? "…" : count}
-                              </Badge>
-                            );
-                          })()}
-                        </Link>
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {item.items!.map((subItem) => {
-                          const isSubActive = pathname.startsWith(subItem.url);
-
-                          return (
-                            <SidebarMenuSubItem key={subItem.title}>
-                              <SidebarMenuSubButton asChild>
-                                <Link
-                                  href={subItem.url}
-                                  onClick={handleMobileNavigate}
-                                  className={cn(
-                                    "flex items-center justify-between w-full transition-all duration-200",
-                                    isSubActive &&
-                                      "font-bold text-primary rounded-md"
-                                  )}
-                                >
-                                  <span>{subItem.title}</span>
-
-                                  {(() => {
-                                    const hasShowCount = !!subItem.showCount;
-                                    const hasCustomCount =
-                                      subItem.customCount !== undefined;
-
-                                    if (!hasShowCount && !hasCustomCount)
-                                      return null;
-
-                                    const count = hasCustomCount
-                                      ? subItem.customCount
-                                      : getCountForItem(subItem.showCount!);
-
-                                    if (!count) return null;
-
-                                    return (
-                                      <Badge
-                                        className={cn(
-                                          "ml-2 rounded-full",
-                                          subItem.badgeClassName
-                                        )}
-                                      >
-                                        {isLoading ||
-                                        subItem.customCountLoading
-                                          ? "…"
-                                          : count}
-                                      </Badge>
-                                    );
-                                  })()}
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          );
-                        })}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </div>
-                </Collapsible>
-              </SidebarMenuItem>
-            );
-          }
-
-          // ---------- SINGLE ITEMS ----------
-          return (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild tooltip={item.title}>
-                <Link
-                  href={item.url}
-                  className={cn(
-                    "flex items-center justify-between w-full gap-2 transition-all duration-200",
-                    isSingleActive &&
-                      "font-bold text-primary bg-muted/50 rounded-md",
-                    item.className
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    {item.icon && (
-                      <item.icon className={item.iconClassName} />
-                    )}
-                    <span>{item.title}</span>
-                  </div>
-
-                  {(item.showCount || item.customCount !== undefined) && (
-                    <Badge
-                      className={cn("ml-2 rounded-full", item.badgeClassName)}
-                    >
-                      {isLoading || item.customCountLoading
-                        ? "…"
-                        : item.customCount ??
-                          getCountForItem(item.showCount!)}
-                    </Badge>
-                  )}
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          );
-        })}
-      </SidebarMenu>
-      {showTrackTrace ? (
-        <SidebarGroupLabel>Track &amp; Trace</SidebarGroupLabel>
-      ) : null}
-    </SidebarGroup>
+      {/* ── Track & Trace Group — sirf jab trackTraceItems ho ── */}
+      {trackTraceItems && trackTraceItems.length > 0 && (
+        <SidebarGroup>
+          <SidebarGroupLabel>Track &amp; Trace</SidebarGroupLabel>
+          <SidebarMenu>
+            {trackTraceItems.map((item) => renderItem(item))}
+          </SidebarMenu>
+        </SidebarGroup>
+      )}
+    </>
   );
 }

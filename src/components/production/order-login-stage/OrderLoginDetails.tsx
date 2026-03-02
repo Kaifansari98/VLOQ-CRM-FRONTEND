@@ -13,6 +13,7 @@ import {
 } from "@/api/tech-check";
 import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface OrderLoginDetailsProps {
   leadId: number;
@@ -31,18 +32,25 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
   const instanceFromUrlRaw = searchParams.get("instance_id");
-  const instanceFromUrl = instanceFromUrlRaw ? Number(instanceFromUrlRaw) : null;
+  const instanceFromUrl = instanceFromUrlRaw
+    ? Number(instanceFromUrlRaw)
+    : null;
   const lockInstanceFromUrl =
     Number.isFinite(instanceFromUrl) && !!instanceFromUrl;
   const resolvedInstanceId =
     Number.isFinite(instanceFromUrl) && instanceFromUrl
       ? instanceFromUrl
-      : instanceId ?? null;
+      : (instanceId ?? null);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
-  const userId = useAppSelector((state) => state.auth.user?.id)
+  const userId = useAppSelector((state) => state.auth.user?.id);
 
   const { data } = useClientRequiredCompletionDate(vendorId, leadId);
-  const { data: clientDocs } = useClientDocumentationDetails(vendorId, leadId, userId!, instanceFromUrl!);
+  const { data: clientDocs } = useClientDocumentationDetails(
+    vendorId,
+    leadId,
+    userId!,
+    instanceFromUrl!,
+  );
   const instances = clientDocs?.product_structure_instances ?? [];
   const hasMultipleInstances = (clientDocs?.instance_count ?? 0) > 1;
   const [activeInstanceId, setActiveInstanceId] = useState<number | null>(
@@ -61,12 +69,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     if (!activeInstanceId && instances.length > 0) {
       setActiveInstanceId(instances[0]?.id ?? null);
     }
-  }, [
-    hasMultipleInstances,
-    resolvedInstanceId,
-    instances,
-    activeInstanceId,
-  ]);
+  }, [hasMultipleInstances, resolvedInstanceId, instances, activeInstanceId]);
 
   const scopedInstanceId = hasMultipleInstances
     ? activeInstanceId
@@ -74,7 +77,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const { data: techCheckInstanceStatus } = useTechCheckInstanceStatus(
     vendorId,
     leadId,
-    scopedInstanceId
+    scopedInstanceId,
   );
 
   const containerVariants = {
@@ -163,41 +166,52 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         techCheckInstanceStatus?.is_order_login_completed === true &&
         techCheckInstanceStatus?.is_production_completed === true &&
         !lockInstanceFromUrl && (
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="w-full"
-        >
-          <motion.div variants={containerVariants}>
-            <div className="flex flex-wrap items-end gap-2 border-b border-border">
-              {instances.map((instance: any) => {
-                const isActive = scopedInstanceId === instance.id;
-                return (
-                  <div
-                    key={instance.id}
-                    className={`cursor-pointer transition px-3 py-2 rounded-t-lg border border-b-0 ${
-                      isActive
-                        ? "bg-background text-foreground border-border"
-                        : "bg-muted/40 text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/60"
-                    }`}
-                    onClick={() => setActiveInstanceId(instance.id)}
-                  >
-                    <div className="flex flex-col items-start">
-                      <span className="text-xs font-semibold leading-none">
-                        {instance.title}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground mt-1">
-                        {instance.productStructure?.type || "Product Structure"}
-                      </span>
-                    </div>
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="w-full"
+          >
+            <motion.div variants={containerVariants}>
+              <div className="border-b border-border">
+                <ScrollArea className="w-full whitespace-nowrap">
+                  <div className="flex items-end gap-2 sm:flex-wrap">
+                    {instances.map((instance: any) => {
+                      const isActive = scopedInstanceId === instance.id;
+                      return (
+                        <div
+                          key={instance.id}
+                          onClick={() => setActiveInstanceId(instance.id)}
+                          className={`
+                cursor-pointer transition-all shrink-0
+                px-3 py-2 rounded-t-lg border border-b-0
+                min-w-[100px] max-w-[160px]
+                ${
+                  isActive
+                    ? "bg-background text-foreground border-border"
+                    : "bg-muted/40 text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/60"
+                }
+              `}
+                        >
+                          <div className="flex flex-col items-start">
+                            <span className="text-xs font-semibold leading-none truncate w-full">
+                              {instance.title}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground mt-1 truncate w-full">
+                              {instance.productStructure?.type ||
+                                "Product Structure"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
+                  <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+              </div>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      )}
+        )}
 
       <SmoothTab
         defaultTabId={activeTab}
