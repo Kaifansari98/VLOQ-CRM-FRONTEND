@@ -43,7 +43,7 @@ export default function PreProductionDetails({
   const userId = useAppSelector((s) => s.auth.user?.id)
   const { data, isLoading, isError } = useOrderLoginByLead(
     vendorId,
-    leadId, userId!,
+    leadId,
     instanceId ?? undefined
   );
   console.log("Under production Data: ", data);

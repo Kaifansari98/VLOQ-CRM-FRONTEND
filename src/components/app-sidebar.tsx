@@ -240,7 +240,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     userType === "factory" ||
     userType === "site-supervisor";
   const vendorId = user?.vendor_id;
-  const userId = user?.id;
 
   const { data: miscCountData, isLoading: isMiscLeadLoading } =
     usePendingMiscellaneousCount(vendorId ?? 0);
@@ -318,23 +317,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           (subItem) => subItem.title === "Under Installation",
         );
         if (underInstallationIndex !== -1) {
-          const updatedItems = [
-            ...item.items.slice(0, underInstallationIndex + 1),
-            miscItem,
-            ...item.items.slice(underInstallationIndex + 1),
-          ];
+          // ✅ Only add miscItem if user can see it AND count > 0
+          const shouldShowMisc = canSeeMiscLeads && miscLeadsCount > 0;
+
+          const updatedItems = shouldShowMisc
+            ? [
+                ...item.items.slice(0, underInstallationIndex + 1),
+                miscItem,
+                ...item.items.slice(underInstallationIndex + 1),
+              ]
+            : item.items;
+
           return { ...item, items: updatedItems };
         }
       }
       return item;
     });
   }, [
-  mounted,
-  canSeeOverallLeads,
-  miscLeadsCount,
-  isMiscLeadLoading,
-  userType,
-]);
+    mounted,
+    canSeeOverallLeads,
+    miscLeadsCount,
+    isMiscLeadLoading,
+    userType,
+  ]);
 
   return (
     <Sidebar collapsible="icon" {...props}>

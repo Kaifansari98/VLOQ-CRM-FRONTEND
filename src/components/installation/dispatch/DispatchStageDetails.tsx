@@ -66,11 +66,8 @@ import { z } from "zod";
 import PendingMaterialDetails from "./PendingMaterialDetails";
 import VehicleNumberInput from "@/components/custom/VehicleNumberInput";
 import { useDeleteDocument } from "@/api/leads";
-import DocumentCard from "@/components/utils/documentCard";
-import { ImageComponent } from "@/components/utils/ImageCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkDispatchStage } from "@/components/utils/privileges";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 

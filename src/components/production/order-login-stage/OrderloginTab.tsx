@@ -57,7 +57,6 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   const { data: orderLoginData } = useOrderLoginByLead(
     vendorId,
     leadId,
-    userId,
     instanceId ?? undefined,
   );
   const { data: instanceStageData } = useInstanceStage(
