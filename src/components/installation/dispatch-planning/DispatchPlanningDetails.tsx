@@ -67,7 +67,7 @@ const dispatchSchema = z.object({
   material_lift_availability: z
     .boolean()
     .optional()
-    .refine((val) => val !== undefined, {
+    .refine((val) => val === true || val === false, {
       message: "Please select material lift availability",
     }),
   alt_onsite_contact_person_name: z.string().optional(),
@@ -166,7 +166,7 @@ export default function DispatchPlanningDetails({
       onsite_contact_person_number: "",
       alt_onsite_contact_person_name: "",
       alt_onsite_contact_person_number: "",
-      material_lift_availability: undefined,
+      material_lift_availability: undefined as any,
       dispatch_planning_remark: "",
     },
   });
@@ -266,8 +266,9 @@ export default function DispatchPlanningDetails({
     try {
       const payload = {
         ...values,
-        material_lift_availability:
-          values.material_lift_availability ? "true" : "false",
+        material_lift_availability: values.material_lift_availability
+          ? "true"
+          : "false",
         created_by: userId,
       };
 
@@ -285,7 +286,7 @@ export default function DispatchPlanningDetails({
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ||
-          "Failed to save dispatch planning info"
+          "Failed to save dispatch planning info",
       );
     }
   });
@@ -305,7 +306,7 @@ export default function DispatchPlanningDetails({
         pendingAmt > project_pending_amount
       ) {
         toast.error(
-          `Entered amount ₹${pendingAmt} cannot exceed pending project amount ₹${project_pending_amount}`
+          `Entered amount ₹${pendingAmt} cannot exceed pending project amount ₹${project_pending_amount}`,
         );
         return;
       }
@@ -314,7 +315,7 @@ export default function DispatchPlanningDetails({
       formData.append("pending_payment", data.pending_payment || "0");
       formData.append(
         "pending_payment_details",
-        data.pending_payment_details || ""
+        data.pending_payment_details || "",
       );
       formData.append("account_id", accountId.toString());
       formData.append("created_by", userId.toString());
@@ -336,7 +337,7 @@ export default function DispatchPlanningDetails({
       refetchPaymentInfo();
     } catch (error: any) {
       toast.error(
-        error?.response?.data?.message || "Failed to save payment info"
+        error?.response?.data?.message || "Failed to save payment info",
       );
       setShowConfirmDialog(false);
     }
@@ -394,7 +395,7 @@ export default function DispatchPlanningDetails({
 
   const canViewAndWork = canViewAndWorkDispatchPlanningStage(
     userType,
-    leadStatus
+    leadStatus,
   );
 
   const pendingPayment = watchPayment("pending_payment");
@@ -493,7 +494,7 @@ export default function DispatchPlanningDetails({
                 onChange={(value) =>
                   setValueDispatch(
                     "alt_onsite_contact_person_number",
-                    value || ""
+                    value || "",
                   )
                 }
                 validateIndianNumber={true}
@@ -522,7 +523,7 @@ export default function DispatchPlanningDetails({
                       : (value) =>
                           setValueDispatch(
                             "required_date_for_dispatch",
-                            value || ""
+                            value || "",
                           )
                   }
                   restriction="futureAfterTwoDays"
@@ -544,40 +545,36 @@ export default function DispatchPlanningDetails({
                 <span className="text-red-500">*</span>
               </Label>
 
-              <div className="flex gap-6 items-center">
-                {/* Available */}
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    defaultChecked={false}
-                    disabled={!canViewAndWork}
-                    checked={watchLiftAvailability === true}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        setValueDispatch("material_lift_availability", true, {
-                          shouldValidate: true,
-                        });
-                      }
-                    }}
-                  />
-                  <label className="text-sm">Available</label>
-                </div>
+              {/* Available */}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  disabled={!canViewAndWork}
+                  checked={watchLiftAvailability === true}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setValueDispatch("material_lift_availability", true, {
+                        shouldValidate: true,
+                      });
+                    }
+                  }}
+                />
+                <label className="text-sm">Available</label>
+              </div>
 
-                {/* Not Available */}
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    defaultChecked={false}
-                    disabled={!canViewAndWork}
-                    checked={watchLiftAvailability === false}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        setValueDispatch("material_lift_availability", false, {
-                          shouldValidate: true,
-                        });
-                      }
-                    }}
-                  />
-                  <label className="text-sm">Not Available</label>
-                </div>
+              {/* Not Available */}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  disabled={!canViewAndWork}
+                  checked={watchLiftAvailability === false}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setValueDispatch("material_lift_availability", false, {
+                        shouldValidate: true,
+                      });
+                    }
+                  }}
+                />
+                <label className="text-sm">Not Available</label>
               </div>
 
               {errorsDispatch.material_lift_availability && (
