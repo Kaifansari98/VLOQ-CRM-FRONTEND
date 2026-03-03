@@ -8,6 +8,7 @@ import {
   getDesignsDoc,
   getInstanceStage,
   getLeadStatus,
+  getLeadStatusNotification,
   getQuotationDoc,
   getSelectionData,
   submitQuotation,
@@ -25,7 +26,7 @@ export const useDesigningStageLeads = (
   vendorId: number,
   userId: number,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ) => {
   return useQuery<GetDesigningStageResponse>({
     queryKey: ["designing-stage-leads", vendorId, userId, page, limit],
@@ -86,7 +87,7 @@ export const useSubmitSelection = () => {
 export const useSelectionData = (
   vendorId: number,
   leadId: number,
-  productStructureInstanceId?: number
+  productStructureInstanceId?: number,
 ) => {
   return useQuery<DesignSelectionsResponse>({
     queryKey: [
@@ -95,7 +96,8 @@ export const useSelectionData = (
       leadId,
       productStructureInstanceId ?? "all",
     ],
-    queryFn: () => getSelectionData(vendorId, leadId, productStructureInstanceId),
+    queryFn: () =>
+      getSelectionData(vendorId, leadId, productStructureInstanceId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -137,7 +139,7 @@ export function useQuotationDoc(vendorId?: number, leadId?: number) {
 
 export function useDesigningStageCounts(
   vendorId: number | undefined,
-  leadId: number | undefined
+  leadId: number | undefined,
 ) {
   return useQuery({
     queryKey: ["designingStageCounts", vendorId, leadId],
@@ -146,7 +148,6 @@ export function useDesigningStageCounts(
     staleTime: 5 * 60 * 1000, // optional: cache for 5 minutes
   });
 }
-
 
 export const useAddMeetingDocs = () => {
   const queryClient = useQueryClient();
@@ -172,10 +173,23 @@ export const useLeadStatus = (leadId?: number, vendorId?: number) => {
   });
 };
 
+export const useLeadStatusNotification = (
+  leadId: number,
+  vendorId: number,
+  instanceId?: number,
+) => {
+  return useQuery({
+    queryKey: ["lead-status-notification", leadId, vendorId, instanceId],
+    queryFn: () => getLeadStatusNotification(leadId!, vendorId!, instanceId),
+    enabled: !!leadId && !!vendorId,
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
 export const useInstanceStage = (
   vendorId?: number,
   leadId?: number,
-  instanceId?: number
+  instanceId?: number,
 ) => {
   return useQuery({
     queryKey: ["instance-stage", vendorId, leadId, instanceId],

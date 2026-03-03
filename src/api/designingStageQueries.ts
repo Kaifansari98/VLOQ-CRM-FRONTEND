@@ -33,11 +33,11 @@ export interface MoveToDesigningStageResponse {
 
 // ✅ API function
 const moveToDesigningStage = async (
-  payload: MoveToDesigningStagePayload
+  payload: MoveToDesigningStagePayload,
 ): Promise<MoveToDesigningStageResponse> => {
   const { data } = await apiClient.post<MoveToDesigningStageResponse>(
     "/leads/designing-stage/update-status",
-    payload
+    payload,
   );
   return data;
 };
@@ -58,17 +58,17 @@ export const fetchDesigningStageLeads = async (
   vendorId: number,
   userId: number,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ): Promise<GetDesigningStageResponse> => {
   const { data } = await apiClient.get<GetDesigningStageResponse>(
-    `/leads/designing-stage/get-all-leads/vendor/${vendorId}?userId=${userId}&page=${page}&limit=${limit}`
+    `/leads/designing-stage/get-all-leads/vendor/${vendorId}?userId=${userId}&page=${page}&limit=${limit}`,
   );
   return data;
 };
 
 export const getQuotationDoc = async (vendorId: number, leadId: number) => {
   const { data } = await apiClient.get(
-    `/leads/designing-stage/${vendorId}/${leadId}/design-quotation-documents`
+    `/leads/designing-stage/${vendorId}/${leadId}/design-quotation-documents`,
   );
   return data; // This should return the API response payload
 };
@@ -89,7 +89,7 @@ export const submitQuotation = async (
   const response = await apiClient.post(
     "/leads/designing-stage/upload-quotation",
     formData,
-    { headers: { "Content-Type": "multipart/form-data" } }
+    { headers: { "Content-Type": "multipart/form-data" } },
   );
 
   return response.data;
@@ -127,7 +127,7 @@ export const submitMeeting = async (payload: SubmitMeetingPayload) => {
   const { data } = await apiClient.post(
     "/leads/designing-stage/design-meeting",
     formData,
-    { headers: { "Content-Type": "multipart/form-data" } }
+    { headers: { "Content-Type": "multipart/form-data" } },
   );
 
   return data;
@@ -135,10 +135,10 @@ export const submitMeeting = async (payload: SubmitMeetingPayload) => {
 
 export const getMeetings = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ): Promise<GetMeetingsResponse> => {
   const { data } = await apiClient.get<GetMeetingsResponse>(
-    `/leads/designing-stage/${vendorId}/${leadId}/design-meetings`
+    `/leads/designing-stage/${vendorId}/${leadId}/design-meetings`,
   );
   return data;
 };
@@ -157,7 +157,7 @@ export const submitDesigns = async (payload: SubmitDesignPayload) => {
   const { data } = await apiClient.post(
     "/leads/designing-stage/upload-designs",
     formData,
-    { headers: { "Content-Type": "multipart/form-data" } }
+    { headers: { "Content-Type": "multipart/form-data" } },
   );
 
   return data;
@@ -192,7 +192,7 @@ export const submitSelection = async (payload: SubmitSelectionPayload) => {
   if (payload.product_structure_instance_id) {
     formData.append(
       "product_structure_instance_id",
-      String(payload.product_structure_instance_id)
+      String(payload.product_structure_instance_id),
     );
   }
 
@@ -203,7 +203,7 @@ export const submitSelection = async (payload: SubmitSelectionPayload) => {
       headers: {
         "Content-Type": "multipart/form-data", // ✅ important
       },
-    }
+    },
   );
 
   return response.data;
@@ -211,10 +211,10 @@ export const submitSelection = async (payload: SubmitSelectionPayload) => {
 
 export const getDesignsDoc = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ): Promise<GetDesignsResponse> => {
   const { data } = await apiClient.get<GetDesignsResponse>(
-    `/leads/designing-stage/${vendorId}/${leadId}/design-stage1-documents`
+    `/leads/designing-stage/${vendorId}/${leadId}/design-stage1-documents`,
   );
   return data;
 };
@@ -222,20 +222,20 @@ export const getDesignsDoc = async (
 export const getSelectionData = async (
   vendorId: number,
   leadId: number,
-  productStructureInstanceId?: number
+  productStructureInstanceId?: number,
 ): Promise<DesignSelectionsResponse> => {
   const params = new URLSearchParams();
   if (productStructureInstanceId) {
     params.set(
       "product_structure_instance_id",
-      String(productStructureInstanceId)
+      String(productStructureInstanceId),
     );
   }
   params.set("page", "1");
   params.set("limit", "1000");
   const query = params.toString() ? `?${params.toString()}` : "";
   const { data } = await apiClient.get<DesignSelectionsResponse>(
-    `/leads/designing-stage/${vendorId}/${leadId}/design-selections${query}`
+    `/leads/designing-stage/${vendorId}/${leadId}/design-selections${query}`,
   );
   return data;
 };
@@ -249,7 +249,7 @@ export interface EditSelectionPayload {
 
 export const editSelection = async (
   selectionId: number,
-  payload: EditSelectionPayload
+  payload: EditSelectionPayload,
 ) => {
   const formData = new FormData();
   formData.append("desc", payload.desc);
@@ -260,7 +260,7 @@ export const editSelection = async (
       "product_structure_instance_id",
       payload.product_structure_instance_id
         ? String(payload.product_structure_instance_id)
-        : ""
+        : "",
     );
   }
   const response = await apiClient.put(
@@ -270,7 +270,7 @@ export const editSelection = async (
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
 
   return response.data;
@@ -278,20 +278,20 @@ export const editSelection = async (
 
 export const getDesigningStageCounts = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   const { data } = await apiClient.get(
-    `/leads/designing-stage/${vendorId}/${leadId}/design-stage-counts`
+    `/leads/designing-stage/${vendorId}/${leadId}/design-stage-counts`,
   );
   return data.data;
 };
 
 export const getInitialSiteMeasurementTask = async (
   userId: number,
-  leadId: number
+  leadId: number,
 ) => {
   const { data } = await apiClient.get(
-    `/leads/tasks/user/${userId}/lead/${leadId}/initial-site-measurement`
+    `/leads/tasks/user/${userId}/lead/${leadId}/initial-site-measurement`,
   );
   return data;
 };
@@ -321,20 +321,34 @@ export const addMeetingDocs = async (payload: AddMeetingDocsPayload) => {
     formData,
     {
       headers: { "Content-Type": "multipart/form-data" },
-    }
+    },
   );
 
   return data;
 };
 
-// ✅ Get Lead Status (Designing Stage)
 export const getLeadStatus = async (leadId: number, vendorId: number) => {
   const { data } = await apiClient.get(
-    `/leads/designing-stage/status/leadId/${leadId}/vendorId/${vendorId}`
+    `/leads/designing-stage/status/leadId/${leadId}/vendorId/${vendorId}`,
   );
   return data?.data; // returns { lead_id, status_type_id, status, status_tag }
 };
 
+
+export const getLeadStatusNotification = async (
+  leadId: number,
+  vendorId: number,
+  instanceId?: number,
+) => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/statusfornotification/leadId/${leadId}/vendorId/${vendorId}`,
+    {
+      params: instanceId ? { instance_id: instanceId } : {},
+    },
+  );
+
+  return data?.data;
+};
 export interface InstanceStageResponse {
   vendor_id: number;
   lead_id: number;
@@ -345,10 +359,10 @@ export interface InstanceStageResponse {
 export const getInstanceStage = async (
   vendorId: number,
   leadId: number,
-  instanceId: number
+  instanceId: number,
 ): Promise<InstanceStageResponse> => {
   const { data } = await apiClient.get(
-    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/instance/${instanceId}/stage`
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/instance/${instanceId}/stage`,
   );
 
   return data?.data;

@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
-import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useLeadStatusNotification } from "@/hooks/designing-stage/designing-leads-hooks";
 import { Loader2 } from "lucide-react";
 
 const STAGE_ROUTE_BY_TYPE: Record<string, string> = {
@@ -25,6 +25,12 @@ const STAGE_ROUTE_BY_TYPE: Record<string, string> = {
   "Type 16": "/dashboard/installation/final-handover/details",
 };
 
+const WORKFLOW_STAGE_ROUTE: Record<string, string> = {
+  "tech-check-stage": "/dashboard/production/tech-check/details",
+  "order-login-stage": "/dashboard/production/order-login/details",
+  "production-stage": "/dashboard/production/pre-post-prod/details",
+};
+
 const buildQueryString = (searchParams: URLSearchParams) => {
   const query = searchParams.toString();
   return query.length > 0 ? `?${query}` : "";
@@ -34,24 +40,41 @@ export default function LeadDetailsRedirectPage() {
   const router = useRouter();
   const { leadId } = useParams();
   const searchParams = useSearchParams();
+
   const accountId = searchParams.get("accountId");
+  const instanceId = searchParams.get("instance_id");
+  const instanceIdNum = instanceId ? Number(instanceId) : undefined;
+
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const leadIdNum = Number(leadId);
 
-  const { data: leadStatus, isLoading } = useLeadStatus(
-    Number.isFinite(leadIdNum) ? leadIdNum : undefined,
-    vendorId
+  const { data: leadStatus, isLoading } = useLeadStatusNotification(
+    leadIdNum!,
+    vendorId!,
+    instanceIdNum,
   );
 
   const targetUrl = useMemo(() => {
-    if (!Number.isFinite(leadIdNum)) return null;
+    if (!Number.isFinite(leadIdNum) || !leadStatus) return null;
 
-    const routeBase =
-      (leadStatus?.status_tag && STAGE_ROUTE_BY_TYPE[leadStatus.status_tag]) ||
-      STAGE_ROUTE_BY_TYPE["Type 1"];
+    let routeBase: string | undefined;
+
+    // 🔑 If production-related → use workflow_stage
+    if (leadStatus.workflow_stage) {
+      routeBase = WORKFLOW_STAGE_ROUTE[leadStatus.workflow_stage];
+    }
+
+    // 🔁 Fallback to lead status tag
+    if (!routeBase && leadStatus.lead_status_tag) {
+      routeBase = STAGE_ROUTE_BY_TYPE[leadStatus.lead_status_tag];
+    }
+
+    if (!routeBase) {
+      routeBase = STAGE_ROUTE_BY_TYPE["Type 1"];
+    }
 
     return `${routeBase}/${leadIdNum}${buildQueryString(searchParams)}`;
-  }, [accountId, leadIdNum, leadStatus?.status_tag, searchParams]);
+  }, [leadIdNum, leadStatus, searchParams]);
 
   useEffect(() => {
     if (!vendorId || isLoading) return;
