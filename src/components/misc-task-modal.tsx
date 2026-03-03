@@ -101,7 +101,7 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
                 onOpenChange(false);
                 if (vendorId) {
                   queryClient.invalidateQueries({
-                    queryKey: ["vendorUserTasks", vendorId, userId],
+                    queryKey: ["vendorUserTasks"],
                   });
                   queryClient.invalidateQueries({
                     queryKey: ["vendorAllTasks"],
@@ -110,7 +110,7 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
                     queryKey: ["miscellaneousEntries"],
                   });
                   queryClient.invalidateQueries({
-                    queryKey: ["miscellaneousEntries", vendorId, data.leadId],
+                    queryKey: ["miscellaneousEntries"],
                   });
                 }
               },

@@ -501,3 +501,16 @@ export function canUpdateDessingStageSelectionInputs(
     (role === "sales-executive" && stage === "client-documentation-stage")
   );
 }
+
+
+export function canDeletePODocument(
+  role: string,
+  stage: string,
+): boolean {
+
+  return (
+    role === "admin" ||
+    role === "super-admin" ||
+    (role === "backend" && (stage === "order-login-stage" || stage === "production-stage"))
+  );
+}

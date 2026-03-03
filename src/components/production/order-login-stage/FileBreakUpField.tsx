@@ -35,6 +35,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useInstanceStage } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useSearchParams } from "next/navigation";
+import { canDeletePODocument } from "@/components/utils/privileges";
+import { useAppSelector } from "@/redux/store";
 
 export interface FileBreakUpFieldProps {
   title: string;
@@ -78,19 +82,28 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   userId,
   showPoUpload = false,
 }) => {
+  const searchParams = useSearchParams();
+  const instanceFromUrlRaw = searchParams.get("instance_id");
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
+  const instanceId = Number(instanceFromUrlRaw);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [poFiles, setPoFiles] = useState<File[]>([]);
   const [poModalOpen, setPoModalOpen] = useState(false);
   const queryClient = useQueryClient();
-  const { mutateAsync: deleteFile } = useDeleteOrderLoginPoFile(
+  const { data: instanceStageData } = useInstanceStage(
     vendorId,
-    leadId,
-    orderLoginId,
+    leadId!,
+    instanceId!,
   );
 
-  
+  const { mutateAsync: deleteFile } = useDeleteOrderLoginPoFile(
+    vendorId!,
+    userId!,
+  );
 
   const [deleting, setDeleting] = useState(false);
   const inHouseVendors = users.filter((user) => user.in_house);
@@ -104,6 +117,10 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
       : []),
   ];
   const shouldGroupVendors = inHouseVendors.length > 0;
+
+  const leadStatus = instanceStageData?.derived_stage;
+
+  const canDeletePO = canDeletePODocument(userType, leadStatus!);
 
   useEffect(() => {
     setTitleDraft(title);
@@ -357,39 +374,41 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
           icon={<FolderOpen className="w-4 h-4 text-primary" />}
         >
           <div className="p-6 space-y-4">
-            <div className="space-y-3">
-              <FileUploadField
-                value={poFiles}
-                onChange={setPoFiles}
-                accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
-                multiple
-                disabled={!canUsePoUpload}
-                maxFiles={10}
-              />
+            {canDeletePO && (
+              <div className="space-y-3">
+                <FileUploadField
+                  value={poFiles}
+                  onChange={setPoFiles}
+                  accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
+                  multiple
+                  disabled={!canUsePoUpload}
+                  maxFiles={10}
+                />
 
-              <div className="flex justify-end">
-                <Button
-                  size="sm"
-                  onClick={handlePoUpload}
-                  disabled={
-                    !canUsePoUpload || isUploadingPo || poFiles.length === 0
-                  }
-                  className="flex items-center gap-2"
-                >
-                  {isUploadingPo ? (
-                    <>
-                      <Loader2 className="animate-spin size-4" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload size={16} />
-                      Upload Files
-                    </>
-                  )}
-                </Button>
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    onClick={handlePoUpload}
+                    disabled={
+                      !canUsePoUpload || isUploadingPo || poFiles.length === 0
+                    }
+                    className="flex items-center gap-2"
+                  >
+                    {isUploadingPo ? (
+                      <>
+                        <Loader2 className="animate-spin size-4" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={16} />
+                        Upload Files
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
 
             {poFileList.length === 0 ? (
               <div className="p-10 border border-dashed rounded-xl flex flex-col items-center justify-center text-center bg-muted/40">
@@ -419,22 +438,22 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                           signedUrl: doc.signed_url,
                           created_at: doc.created_at,
                         }}
-                        canDelete={true}
-                        onDelete={() => handleRequestDelete(doc.mapping_id)}
+                        canDelete={canDeletePO}
+                        onDelete={() => handleRequestDelete(doc.id)}
                       />
                     );
                   } else {
                     return (
                       <DocumentCard
                         key={doc.id}
-                        canDelete={true}
+                        canDelete={canDeletePO}
                         doc={{
                           id: doc.id,
                           originalName: doc.doc_og_name,
                           signedUrl: doc.signed_url,
                           created_at: doc.created_at,
                         }}
-                        onDelete={() => handleRequestDelete(doc.mapping_id)}
+                        onDelete={() => handleRequestDelete(doc.id)}
                       />
                     );
                   }

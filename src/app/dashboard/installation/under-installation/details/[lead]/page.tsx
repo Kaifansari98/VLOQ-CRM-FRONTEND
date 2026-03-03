@@ -148,8 +148,6 @@ export default function UnderInstallationLeadDetails() {
 
   const miscStatusReady = miscStatus?.all_resolved;
 
-  console.log("miscStatus: ",miscStatus?.all_resolved)
-
 
 
   const handleDeleteLead = () => {
@@ -213,9 +211,6 @@ export default function UnderInstallationLeadDetails() {
 
         {/* 🔹 Header Actions */}
         <div className="flex items-center space-x-2">
-          {/* ───────────────────────────────────────────── */}
-          {/*  MOVE TO FINAL HANDOVER BUTTON WITH CONDITIONS */}
-          {/* ───────────────────────────────────────────── */}
 
           {!underDetails?.actual_installation_start_date ? (
             // 1️⃣ Installation NOT started → block

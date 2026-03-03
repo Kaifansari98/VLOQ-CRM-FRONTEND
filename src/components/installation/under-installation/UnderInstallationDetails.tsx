@@ -93,7 +93,7 @@ export default function UnderInstallationDetails({
         mappedInstallers.map((i: any) => ({
           value: String(i.installer_id),
           label: i.installer_name,
-        }))
+        })),
       );
     }
 
@@ -103,7 +103,7 @@ export default function UnderInstallationDetails({
     if (details?.actual_installation_start_date) {
       console.log(
         "Installation start date",
-        details?.actual_installation_start_date
+        details?.actual_installation_start_date,
       );
     }
   }, [mappedInstallers, details]);
@@ -136,12 +136,15 @@ export default function UnderInstallationDetails({
         },
         {
           onSuccess: () => {
-            toast.success("Installation details updated."),
+            (toast.success("Installation details updated."),
               queryClient.invalidateQueries({
                 queryKey: ["usableHandoverReady"],
-              });
+              }));
+            queryClient.invalidateQueries({
+              queryKey: ["finalHandoverReady"],
+            });
           },
-        }
+        },
       );
     } else {
       postMutation.mutate(
@@ -157,7 +160,7 @@ export default function UnderInstallationDetails({
               queryKey: ["usableHandoverReady"],
             });
           },
-        }
+        },
       );
     }
   };
@@ -257,7 +260,7 @@ export default function UnderInstallationDetails({
     label: string,
     isChecked: boolean,
     completionDate: string | null,
-    type: "carcass" | "shutter"
+    type: "carcass" | "shutter",
   ) => {
     // Check if THIS specific checkbox has data (completion date exists)
     const hasCompletionData = !!completionDate;
@@ -387,19 +390,18 @@ export default function UnderInstallationDetails({
       )}
 
       {/* Day-wise Reports */}
-      {installationStarted && (
+      {installationStarted &&
         renderInstallationLockedSection(
           <InstallationDayWiseReports
             vendorId={vendorId}
             leadId={leadId}
             accountId={accountId}
             accessBtn={canWork}
-          />
-        )
-      )}
+          />,
+        )}
 
       {/* Installation Completion */}
-      {installationStarted && (
+      {installationStarted &&
         renderInstallationLockedSection(
           <div className="mt-10 border-t pt-6 pb-20">
             <h3 className="text-lg font-semibold">Installation Completion</h3>
@@ -414,7 +416,7 @@ export default function UnderInstallationDetails({
                 "Carcass Installation Completed",
                 details?.is_carcass_installation_completed || false,
                 details?.carcass_installation_completion_date || null,
-                "carcass"
+                "carcass",
               )}
 
               {/* Shutter Checkbox */}
@@ -423,12 +425,11 @@ export default function UnderInstallationDetails({
                 "Shutter Installation Completed",
                 details?.is_shutter_installation_completed || false,
                 details?.shutter_installation_completion_date || null,
-                "shutter"
+                "shutter",
               )}
             </div>
-          </div>
-        )
-      )}
+          </div>,
+        )}
 
       {/* Confirmation Dialog */}
       <AlertDialog

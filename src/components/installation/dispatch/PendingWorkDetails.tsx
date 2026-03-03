@@ -75,7 +75,7 @@ export default function PendingWorkDetails({
   const [selectedInstanceLabel, setSelectedInstanceLabel] = useState("");
   const [pendingWorkAnswer, setPendingWorkAnswer] = useState<
     "yes" | "no" | null
-  >("no");
+  >(null);
   const [openTaskModal, setOpenTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
 

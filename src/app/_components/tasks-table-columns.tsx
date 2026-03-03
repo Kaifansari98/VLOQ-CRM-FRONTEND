@@ -221,7 +221,7 @@ export function getVendorLeadsTableColumns({
             value={remark}
             side="top"
             align="center"
-            contentClassName=" break-words"
+            contentClassName="w-100 break-words"
           />
         );
       },

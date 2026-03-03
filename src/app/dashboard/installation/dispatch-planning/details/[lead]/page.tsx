@@ -92,7 +92,6 @@ export default function DispatchPlanningLeadDetails() {
     (state) => state.auth?.user?.user_type.user_type
   );
 
-  console.log("user tyoeeeeeeeeee",userType);
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);

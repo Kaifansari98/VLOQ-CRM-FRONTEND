@@ -107,14 +107,9 @@ export const useOrderLoginByLead = (
   instanceId?: number | null,
 ) =>
   useQuery({
-    queryKey: [
-      "orderLoginByLead",
-      vendorId,
-      leadId,
-      instanceId ?? "all",
-    ],
+    queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
     queryFn: async () => {
-      if (!vendorId || !leadId ) return [];
+      if (!vendorId || !leadId) return [];
       return getOrderLoginByLead(vendorId, leadId, instanceId);
     },
     enabled: Boolean(vendorId && leadId),
@@ -321,41 +316,29 @@ export const useOrderLoginPoFiles = (
 
 export const deleteOrderLoginPoFile = async (
   vendorId: number,
-  leadId: number,
-  orderLoginId: number,
-  mappingId: number,
+  documentId: number,
   userId: number,
 ) => {
   const { data } = await apiClient.delete(
-    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/order-login-id/${orderLoginId}/po-files/${mappingId}`,
+    `/leads/production/order-login/vendorId/${vendorId}/po-files-delete`,
     {
-      data: { deleted_by: userId },
+      data: { deleted_by: userId, documentId: documentId },
     },
   );
 
   return data;
 };
 
-export const useDeleteOrderLoginPoFile = (
-  vendorId?: number,
-  leadId?: number,
-  orderLoginId?: number,
-) => {
+export const useDeleteOrderLoginPoFile = (vendorId: number, userId: number) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (mappingId: number) =>
-      deleteOrderLoginPoFile(
-        vendorId!,
-        leadId!,
-        orderLoginId!,
-        mappingId,
-        1, // pass logged-in user id
-      ),
+    mutationFn: (documentId: number) =>
+      deleteOrderLoginPoFile(vendorId, documentId, userId),
 
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginPoFiles", vendorId, leadId, orderLoginId],
+        queryKey: ["orderLoginPoFiles", vendorId], // ✅ invalidate all queries for this vendor
       });
     },
   });
@@ -534,9 +517,6 @@ export const useFactoryUsers = (vendorId: number) => {
   });
 };
 
-
-
-
 export interface MarkOrderLoginFilledPayload {
   updated_by: number;
 }
@@ -552,26 +532,24 @@ export interface MarkOrderLoginFilledResponse {
   };
 }
 
-
 export const markOrderLoginFilled = async (
   vendorId: number,
   leadId: number,
   instanceId: number,
-  payload: MarkOrderLoginFilledPayload
+  payload: MarkOrderLoginFilledPayload,
 ): Promise<MarkOrderLoginFilledResponse> => {
   const { data } = await apiClient.patch(
     `/leads/production/order-login/${vendorId}/${leadId}/${instanceId}/mark-filled`,
-    payload
+    payload,
   );
 
   return data;
 };
 
-
 export const useMarkOrderLoginFilled = (
   vendorId: number,
   leadId: number,
-  instanceId: number
+  instanceId: number,
 ) => {
   const queryClient = useQueryClient();
 
