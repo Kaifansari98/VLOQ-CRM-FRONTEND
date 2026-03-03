@@ -78,9 +78,7 @@ export const useUploadFileBreakup = (vendorId: number | undefined) =>
 // ✅ --- Fetch order login details by lead ---
 export const getOrderLoginByLead = async (
   vendorId: number,
-
   leadId: number,
-  senderUserId: number,
   instanceId?: number | null,
 ) => {
   try {
@@ -89,7 +87,6 @@ export const getOrderLoginByLead = async (
       {
         params: {
           lead_id: leadId,
-          senderUserId: senderUserId,
           ...(typeof instanceId !== "undefined"
             ? { instance_id: instanceId }
             : {}),
@@ -107,7 +104,6 @@ export const getOrderLoginByLead = async (
 export const useOrderLoginByLead = (
   vendorId: number | undefined,
   leadId: number | undefined,
-  senderUserId: number | undefined,
   instanceId?: number | null,
 ) =>
   useQuery({
@@ -115,12 +111,11 @@ export const useOrderLoginByLead = (
       "orderLoginByLead",
       vendorId,
       leadId,
-      senderUserId,
       instanceId ?? "all",
     ],
     queryFn: async () => {
-      if (!vendorId || !leadId || !senderUserId) return [];
-      return getOrderLoginByLead(vendorId, leadId, senderUserId, instanceId);
+      if (!vendorId || !leadId ) return [];
+      return getOrderLoginByLead(vendorId, leadId, instanceId);
     },
     enabled: Boolean(vendorId && leadId),
     staleTime: 60 * 1000, // 1 minute cache freshness
@@ -536,5 +531,71 @@ export const useFactoryUsers = (vendorId: number) => {
       return data?.data?.factory_users || [];
     },
     enabled: !!vendorId,
+  });
+};
+
+
+
+
+export interface MarkOrderLoginFilledPayload {
+  updated_by: number;
+}
+
+export interface MarkOrderLoginFilledResponse {
+  success: boolean;
+  message: string;
+  data: {
+    id: number;
+    is_order_login_filled: boolean;
+    updated_by: number;
+    updated_at: string;
+  };
+}
+
+
+export const markOrderLoginFilled = async (
+  vendorId: number,
+  leadId: number,
+  instanceId: number,
+  payload: MarkOrderLoginFilledPayload
+): Promise<MarkOrderLoginFilledResponse> => {
+  const { data } = await apiClient.patch(
+    `/leads/production/order-login/${vendorId}/${leadId}/${instanceId}/mark-filled`,
+    payload
+  );
+
+  return data;
+};
+
+
+export const useMarkOrderLoginFilled = (
+  vendorId: number,
+  leadId: number,
+  instanceId: number
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: MarkOrderLoginFilledPayload) =>
+      markOrderLoginFilled(vendorId, leadId, instanceId, payload),
+
+    onSuccess: () => {
+      // ✅ Show success feedback
+      toast.success("Order login details saved successfully.");
+
+      // 🔁 Refetch relevant data
+      queryClient.invalidateQueries({
+        queryKey: ["vendorOverallLeads"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["universalLeads"],
+      });
+    },
+
+    onError: (error: any) => {
+      // (Recommended) Error visibility for better UX
+      toast.error(error?.message || "Failed to update order login.");
+    },
   });
 };

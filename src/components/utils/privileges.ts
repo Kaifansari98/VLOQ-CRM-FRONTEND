@@ -374,6 +374,17 @@ export function canViewAndWorkDispatchStage(
   );
 }
 
+export function canUploadDispatchDocument(
+  role: string,
+  stage: string,
+): boolean {
+  return (
+    role === "admin" ||
+    role === "super_admin" ||
+    (role === "factory" &&
+      (stage === "dispatch-stage" || stage === "under-installation-stage"))
+  );
+}
 export function canDoMoveToUnderInstallation(role: string): boolean {
   return role === "admin" || role === "super_admin" || role === "factory";
 }

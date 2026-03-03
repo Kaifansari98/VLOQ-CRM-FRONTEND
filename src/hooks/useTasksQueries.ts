@@ -15,6 +15,7 @@ export type ActiveLeadTasksResponse = ActiveLeadTask[];
 
 export interface VendorUserTask {
   userLeadTask: {
+    instance_id: any;
     id: number;
     status: string;
     due_date: string;

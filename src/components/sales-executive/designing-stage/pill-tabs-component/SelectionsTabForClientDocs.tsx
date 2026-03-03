@@ -719,7 +719,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
               onSubmit={uploadForm.handleSubmit(handleUploadForInstance)}
               className="flex w-full items-end gap-4 flex-col-reverse"
             >
-              <div className="flex w-full justify-between items-start gap-4">
+              <div className="grid md:grid-cols-2 w-full gap-4">
                 <div className="w-full">
                   <FormField
                     control={uploadForm.control}

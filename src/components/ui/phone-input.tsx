@@ -27,32 +27,74 @@ type PhoneInputProps = Omit<
 > &
   Omit<RPNInput.Props<typeof RPNInput.default>, "onChange"> & {
     onChange?: (value: RPNInput.Value) => void;
+    validateIndianNumber?: boolean; // ✅ NEW PROP
+    onValidationChange?: (isValid: boolean) => void;
   };
 
 const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
   React.forwardRef<React.ElementRef<typeof RPNInput.default>, PhoneInputProps>(
-    ({ className, onChange, value, ...props }, ref) => {
+    (
+      {
+        className,
+        onChange,
+        value,
+        validateIndianNumber = false,
+        onValidationChange,
+        ...props
+      },
+      ref,
+    ) => {
+      const [error, setError] = React.useState<string>("");
+
+   const handleChange = (val: RPNInput.Value | undefined) => {
+  const finalVal = val || ("" as RPNInput.Value);
+
+  if (validateIndianNumber && finalVal) {
+    const digitsOnly = finalVal.replace(/\D/g, "");
+    const number = digitsOnly.slice(-10); // last 10 digits
+    const fullNumber = digitsOnly.slice(-(digitsOnly.length)); // pure digits
+    const nationalNumber = digitsOnly.slice(-10); // last 10
+    const totalDigits = digitsOnly.replace(/^91/, "").length; // country code hata ke
+    const firstDigit = nationalNumber.charAt(0);
+
+    if (totalDigits > 0) {
+      if (!/^[6-9]$/.test(firstDigit)) {
+        // ❌ Pehla digit galat
+        setError("Mobile number must start with 6, 7, 8 or 9");
+      } else if (totalDigits !== 10) {
+        // ✅ Pehla digit sahi but 10 se kam ya zyada
+        setError("Enter a 10 digit mobile number");
+      } else {
+        // ✅ Bilkul sahi
+        setError("");
+      }
+    } else {
+      setError("");
+    }
+
+    const isValid = /^[6-9]\d{9}$/.test(nationalNumber);
+    onValidationChange?.(isValid);
+  }
+
+  onChange?.(finalVal);
+};
+
       return (
-        <RPNInput.default
-          ref={ref}
-          className={cn("flex", className)}
-          flagComponent={FlagComponent}
-          countrySelectComponent={CountrySelect}
-          inputComponent={InputComponent}
-          smartCaret={false}
-          value={value || undefined}
-          /**
-           * Handles the onChange event.
-           *
-           * react-phone-number-input might trigger the onChange event as undefined
-           * when a valid phone number is not entered. To prevent this,
-           * the value is coerced to an empty string.
-           *
-           * @param {E164Number | undefined} value - The entered value
-           */
-          onChange={(value) => onChange?.(value || ("" as RPNInput.Value))}
-          {...props}
-        />
+        <div className="flex flex-col gap-1">
+          <RPNInput.default
+            ref={ref}
+            className={cn("flex", className)}
+            flagComponent={FlagComponent}
+            countrySelectComponent={CountrySelect}
+            inputComponent={InputComponent}
+            smartCaret={true}
+            value={value || undefined}
+            onChange={handleChange}
+            {...props}
+          />
+          {/* ✅ Error message yahan dikhega */}
+          {error && <p className="text-xs text-red-500">{error}</p>}
+        </div>
       );
     },
   );

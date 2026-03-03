@@ -1,4 +1,3 @@
-// AppSidebar.tsx
 "use client";
 
 import * as React from "react";
@@ -14,7 +13,6 @@ import {
   Users,
   ListTodo,
   LayoutDashboard,
-  MonitorCheck,
   Monitor,
   ClipboardList,
   NotebookPen,
@@ -46,23 +44,6 @@ const data = {
     email: "support@vlog.com",
     avatar: "/avatars/shadcn.jpg",
   },
-  teams: [
-    {
-      name: "Vloq PVT LTD.",
-      logo: GalleryVerticalEnd,
-      plan: "Enterprise",
-    },
-    {
-      name: "Acme Corp.",
-      logo: AudioWaveform,
-      plan: "Startup",
-    },
-    {
-      name: "Evil Corp.",
-      logo: Command,
-      plan: "Free",
-    },
-  ],
   navMain: [
     {
       title: "Dashboard",
@@ -203,34 +184,24 @@ const data = {
         },
       ],
     },
-    {
-      title: "Master",
-      url: "#",
-      icon: Monitor,
-      items: [
-        {
-          title: "Machine",
-          url: "/dashboard/track-trace/master",
-        },
-      ],
-    },
+  ],
+  trackTraceNav: [
     {
       title: "Track Trace",
       url: "#",
       icon: Monitor,
       items: [
-        {
-          title: "Dashboard",
-          url: "/dashboard/track-trace",
-        },
-        {
-          title: "Manage Projects",
-          url: "/dashboard/track-trace/manage-project",
-        },
-        {
-          title: "Configure",
-          url: "/dashboard/track-trace/configure",
-        },
+        { title: "Dashboard", url: "/dashboard/track-trace" },
+        { title: "Manage Projects", url: "/dashboard/track-trace/manage-project" },
+        { title: "Configure", url: "/dashboard/track-trace/configure" },
+      ],
+    },
+    {
+      title: "Master",
+      url: "#",
+      icon: Monitor,
+      items: [
+        { title: "Machine", url: "/dashboard/track-trace/master" },
       ],
     },
   ],
@@ -249,12 +220,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     userType === "factory" ||
     userType === "site-supervisor";
   const vendorId = user?.vendor_id;
-  const userId = user?.id;
 
   const { data: miscCountData, isLoading: isMiscLeadLoading } =
     usePendingMiscellaneousCount(vendorId ?? 0);
 
   const miscLeadsCount = miscCountData?.pending_miscellaneous_leads ?? 0;
+
   const userData = user
     ? {
         name: user?.user_name || "username",
@@ -263,7 +234,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }
     : data.user;
 
-  const navItems = React.useMemo(() => {
+  const { navItems, trackTraceItems } = React.useMemo(() => {
     const environment = (
       process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION"
     ).toUpperCase();
@@ -272,16 +243,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const withoutOverall = canSeeOverallLeads
       ? data.navMain
       : data.navMain.filter((item) => item.title !== "Overall Leads");
+
     const hideSectionsForRole =
       userType === "site-supervisor" ||
       userType === "tech-check" ||
       userType === "backend" ||
       userType === "factory";
+
     const baseItems = hideSectionsForRole
       ? withoutOverall.filter(
           (item) =>
             item.title !== "Leads" &&
-            (userType === "site-supervisor" ? true : item.title !== "Project"),
+            (userType === "site-supervisor" ? true : item.title !== "Project")
         )
       : withoutOverall;
 
@@ -290,15 +263,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ? baseItems
         : baseItems.filter((item) => item.title !== "Delivered Projects");
 
-    const environmentItems = showTrackTrace
-      ? adminOnlyItems
-      : adminOnlyItems.filter(
-          (item) => item.title !== "Master" && item.title !== "Track Trace",
-        );
-
     const filteredItems =
       userType === "backend" || userType === "factory"
-        ? environmentItems.map((item) =>
+        ? adminOnlyItems.map((item) =>
             item.title === "Production"
               ? {
                   ...item,
@@ -306,12 +273,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     userType === "backend"
                       ? subItem.title !== "Tech Check"
                       : subItem.title !== "Tech Check" &&
-                        subItem.title !== "Order Login",
+                        subItem.title !== "Order Login"
                   ),
                 }
-              : item,
+              : item
           )
-        : environmentItems;
+        : adminOnlyItems;
 
     const miscItem = {
       title: "Miscellaneous",
@@ -321,29 +288,31 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       badgeClassName: "bg-red-500 text-white",
     };
 
-    return filteredItems.map((item) => {
+    const finalNavItems = filteredItems.map((item) => {
       if (item.title === "Installation" && item.items) {
         const underInstallationIndex = item.items.findIndex(
-          (subItem) => subItem.title === "Under Installation",
+          (subItem) => subItem.title === "Under Installation"
         );
         if (underInstallationIndex !== -1) {
-          const updatedItems = [
-            ...item.items.slice(0, underInstallationIndex + 1),
-            miscItem,
-            ...item.items.slice(underInstallationIndex + 1),
-          ];
+          const shouldShowMisc = canSeeMiscLeads && miscLeadsCount > 0;
+          const updatedItems = shouldShowMisc
+            ? [
+                ...item.items.slice(0, underInstallationIndex + 1),
+                miscItem,
+                ...item.items.slice(underInstallationIndex + 1),
+              ]
+            : item.items;
           return { ...item, items: updatedItems };
         }
       }
       return item;
     });
-  }, [
-  mounted,
-  canSeeOverallLeads,
-  miscLeadsCount,
-  isMiscLeadLoading,
-  userType,
-]);
+
+    // Track & Trace sirf STAGING mein dikhega
+    const finalTrackTraceItems = showTrackTrace ? data.trackTraceNav : [];
+
+    return { navItems: finalNavItems, trackTraceItems: finalTrackTraceItems };
+  }, [mounted, canSeeOverallLeads, miscLeadsCount, isMiscLeadLoading, userType]);
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -362,7 +331,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        <NavMain items={navItems} />
+        <NavMain items={navItems} trackTraceItems={trackTraceItems} />
       </SidebarContent>
 
       <SidebarFooter>

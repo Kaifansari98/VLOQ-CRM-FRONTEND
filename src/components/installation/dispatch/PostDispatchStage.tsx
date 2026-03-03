@@ -27,7 +27,7 @@ import { useDeleteDocument } from "@/api/leads";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
-import { canViewAndWorkDispatchStage } from "@/components/utils/privileges";
+import { canUploadDispatchDocument, canViewAndWorkDispatchStage } from "@/components/utils/privileges";
 interface PostDispatchStageProps {
   leadId: number;
   accountId: number | null;
@@ -127,6 +127,7 @@ export default function PostDispatchStage({
     (userType === "factory" && leadStatus === "dispatch-stage");
 
   const canViewAndWork = canViewAndWorkDispatchStage(userType, leadStatus);
+  const uploadDispatchDocument = canUploadDispatchDocument(userType, leadStatus);
   return (
     <div className="border rounded-lg  bg-background">
       {/* Header */}
@@ -142,7 +143,7 @@ export default function PostDispatchStage({
 
       {/* Upload Section */}
 
-      {canViewAndWork && (
+      {uploadDispatchDocument && (
         <div className="p-6 border-b space-y-4">
           <FileUploadField
             value={selectedFiles}

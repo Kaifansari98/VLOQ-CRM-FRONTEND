@@ -299,7 +299,7 @@ const MyTaskTable = () => {
           variant: "productionready",
         });
         router.push(
-          `/dashboard/production/pre-post-prod/details/${row.leadId}?accountId=${row.accountId}&remark=${clearnRemark}`,
+          `/dashboard/production/pre-post-prod/details/${row.leadId}?accountId=${row.accountId}&instance_id=${row.instance_id}&remark=${clearnRemark}`,
         );
       } else if (row.taskType === "Order Login") {
         const stage = (row.leadStage || "").toLowerCase();
@@ -361,6 +361,7 @@ const MyTaskTable = () => {
       assignedToName: task.userLeadTask.assigned_to_name || null,
       assignedAt: task.userLeadTask.created_at,
       remark: task.userLeadTask?.remark || "",
+      instance_id: task.userLeadTask?.instance_id  
     }));
   }, [vendorAllData?.data, vendorUserData?.data, viewScope]);
 

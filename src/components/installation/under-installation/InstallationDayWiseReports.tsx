@@ -399,9 +399,7 @@ export default function InstallationDayWiseReports({
             <CustomeDatePicker
               value={selectedDate}
               onChange={setSelectedDate}
-              restriction="installationInterval"
-              intervalStartDate={underDetails?.actual_installation_start_date}
-              intervalEndDate={underDetails?.expected_installation_end_date}
+              restriction="lastThreeDays"
               disabledDates={Array.from(usedDates)}
               disabledDatesReason="A report has already been uploaded for this date."
             />

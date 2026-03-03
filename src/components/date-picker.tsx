@@ -22,7 +22,8 @@ interface CustomeDatePickerProps {
     | "futureAfterTwoDays"
     | "pastWeekOnly"
     | "pastMonthOnly"
-    | "installationInterval";
+    | "installationInterval"
+    | "lastThreeDays";
   minDate?: string; // ✅ new
   disabledReason?: string; // ✅ new
   intervalStartDate?: string;
@@ -151,6 +152,17 @@ export default function CustomeDatePicker({
       return date < monthAgo || date > today;
     }
 
+
+    if (restriction === "lastThreeDays") {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const twoDaysAgo = new Date(today);
+  twoDaysAgo.setDate(today.getDate() - 2);
+
+  // Allow only: today, yesterday, day before yesterday
+  return date < twoDaysAgo || date > today;
+}
     return false;
   };
 

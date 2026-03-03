@@ -68,9 +68,7 @@ export default function OrderLoginModal({
   const searchParams = useSearchParams();
 
   const instanceFromUrl = searchParams.get("instance_id");
-  const resolvedInstanceId = instanceFromUrl
-    ? Number(instanceFromUrl)
-    : undefined;
+  const instanceId = instanceFromUrl ? Number(instanceFromUrl) : undefined;
 
   const queryClient = useQueryClient();
   const { data: vendors } = useCompanyVendors(vendorId);
@@ -87,7 +85,7 @@ export default function OrderLoginModal({
   const { data, isLoading: instanceLoading } = useInstanceStage(
     vendorId,
     leadId,
-    resolvedInstanceId,
+    instanceId,
   );
   const leadStatusIns = data?.derived_stage;
   const leadStatus = leadData?.status;
@@ -144,7 +142,7 @@ export default function OrderLoginModal({
       toast.success("Vendor updated successfully!");
       setSelectedVendorId(pendingVendorId);
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId, userId],
+        queryKey: ["orderLoginByLead", vendorId, leadId, instanceId],
       });
     } catch (err: any) {
       toast.error(err?.message || "Failed to update vendor");
@@ -159,6 +157,7 @@ export default function OrderLoginModal({
         updates: [
           {
             id: orderLoginId,
+            instance_id: instanceId,
             is_completed: true,
             updated_by: userId,
           },
@@ -176,7 +175,7 @@ export default function OrderLoginModal({
       setIsCompleted(true);
 
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId, userId],
+        queryKey: ["orderLoginByLead", vendorId, leadId, instanceId],
       });
       queryClient.invalidateQueries({
         queryKey: ["postProductionReady", vendorId, leadId],
@@ -218,6 +217,7 @@ export default function OrderLoginModal({
         updates: [
           {
             id: orderLoginId,
+            instance_id: instanceId,
             estimated_completion_date: newDate,
             updated_by: userId,
           },
@@ -225,7 +225,7 @@ export default function OrderLoginModal({
       });
       toast.success("Production ready date updated successfully!");
       queryClient.invalidateQueries({
-        queryKey: ["orderLoginByLead", vendorId, leadId, userId],
+        queryKey: ["orderLoginByLead", vendorId, leadId, instanceId],
       });
       queryClient.invalidateQueries({
         queryKey: ["latestOrderLogin", vendorId, leadId],
@@ -237,6 +237,8 @@ export default function OrderLoginModal({
       toast.error(err?.message || "Failed to update production ready date");
     }
   };
+
+  console.log("instance id from orderlogin modal : ", instanceId);
 
   const canWorkAndView = canViewAndWorkProductionStage(
     userType,
