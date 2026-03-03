@@ -29,15 +29,22 @@ export default function LeadDetailsProductionUtil({
   const userId = useAppSelector((s) => s.auth.user?.id);
   const searchParams = useSearchParams();
   const instanceFromUrlRaw = searchParams.get("instance_id");
-  const instanceFromUrl = instanceFromUrlRaw ? Number(instanceFromUrlRaw) : null;
+  const instanceFromUrl = instanceFromUrlRaw
+    ? Number(instanceFromUrlRaw)
+    : null;
   const lockInstanceFromUrl =
     Number.isFinite(instanceFromUrl) && !!instanceFromUrl;
   const resolvedInstanceId =
     Number.isFinite(instanceFromUrl) && instanceFromUrl
       ? instanceFromUrl
-      : instanceId ?? null;
+      : (instanceId ?? null);
 
-  const { data: clientDocs } = useClientDocumentationDetails(vendorId!, leadId, userId!, instanceFromUrl!);
+  const { data: clientDocs } = useClientDocumentationDetails(
+    vendorId!,
+    leadId,
+    userId!,
+    instanceFromUrl!,
+  );
   const instances = clientDocs?.product_structure_instances ?? [];
   const hasMultipleInstances = (clientDocs?.instance_count ?? 0) > 1;
   const [activeInstanceId, setActiveInstanceId] = useState<number | null>(
@@ -56,12 +63,7 @@ export default function LeadDetailsProductionUtil({
     if (!activeInstanceId && instances.length > 0) {
       setActiveInstanceId(instances[0]?.id ?? null);
     }
-  }, [
-    hasMultipleInstances,
-    resolvedInstanceId,
-    instances,
-    activeInstanceId,
-  ]);
+  }, [hasMultipleInstances, resolvedInstanceId, instances, activeInstanceId]);
 
   const scopedInstanceId = hasMultipleInstances
     ? activeInstanceId
@@ -70,13 +72,13 @@ export default function LeadDetailsProductionUtil({
   const { data: techCheckInstanceStatus } = useTechCheckInstanceStatus(
     vendorId,
     leadId,
-    scopedInstanceId
+    scopedInstanceId,
   );
 
   const { data } = useCheckPostProductionReady(
     vendorId,
     leadId,
-    scopedInstanceId ?? undefined
+    scopedInstanceId ?? undefined,
   );
 
   const readyForPostProduction = data?.readyForPostProduction ?? false;
@@ -141,18 +143,18 @@ export default function LeadDetailsProductionUtil({
 
   return (
     <div className="h-full">
-     {showInstanceTabs && (
-  <div className="mb-4">
-    <div className="border-b border-border">
-      <ScrollArea className="w-full whitespace-nowrap">
-        <div className="flex items-end gap-2 sm:flex-wrap">
-          {instances.map((instance: any) => {
-            const isActive = scopedInstanceId === instance.id;
-            return (
-              <div
-                key={instance.id}
-                onClick={() => setActiveInstanceId(instance.id)}
-                className={`
+      {showInstanceTabs && (
+        <div className="mb-4">
+          <div className="border-b border-border">
+            <ScrollArea className="w-full whitespace-nowrap">
+              <div className="flex items-end gap-2 sm:flex-wrap">
+                {instances.map((instance: any) => {
+                  const isActive = scopedInstanceId === instance.id;
+                  return (
+                    <div
+                      key={instance.id}
+                      onClick={() => setActiveInstanceId(instance.id)}
+                      className={`
                   cursor-pointer transition-all shrink-0
                   px-3 py-2 rounded-t-lg border border-b-0
                   min-w-[100px] max-w-[160px]
@@ -162,24 +164,25 @@ export default function LeadDetailsProductionUtil({
                       : "bg-muted/40 text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/60"
                   }
                 `}
-              >
-                <div className="flex flex-col items-start">
-                  <span className="text-xs font-semibold leading-none truncate w-full">
-                    {instance.title}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground mt-1 truncate w-full">
-                    {instance.productStructure?.type || "Product Structure"}
-                  </span>
-                </div>
+                    >
+                      <div className="flex flex-col items-start">
+                        <span className="text-xs font-semibold leading-none truncate w-full">
+                          {instance.title}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground mt-1 truncate w-full">
+                          {instance.productStructure?.type ||
+                            "Product Structure"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </div>
         </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
-    </div>
-  </div>
-)}
+      )}
       <SmoothTab
         items={allTabs}
         defaultTabId={defaultTab ? "preProduction" : "postProduction"}

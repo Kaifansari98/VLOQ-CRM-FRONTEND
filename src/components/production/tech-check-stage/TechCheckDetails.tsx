@@ -22,7 +22,7 @@ import {
   useClientRequiredCompletionDate,
   useTechCheckInstanceStatus,
 } from "@/api/tech-check";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+
 import { useDeleteDocument } from "@/api/leads";
 import {
   AlertDialog,
@@ -40,6 +40,7 @@ import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { useSelectionData } from "@/hooks/designing-stage/designing-leads-hooks";
 import SectionHeader from "@/utils/sectionHeader";
 import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 type Props = {
   leadId: number;
@@ -67,14 +68,20 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
   const instanceIdFromUrl = instanceIdFromUrlRaw
     ? Number(instanceIdFromUrlRaw)
     : null;
-  const lockInstanceFromUrl = Number.isFinite(instanceIdFromUrl) && !!instanceIdFromUrl;
+  const lockInstanceFromUrl =
+    Number.isFinite(instanceIdFromUrl) && !!instanceIdFromUrl;
   const resolvedInstanceId =
     Number.isFinite(instanceIdFromUrl) && instanceIdFromUrl
       ? instanceIdFromUrl
-      : instanceId ?? null;
+      : (instanceId ?? null);
 
   // ✅ Hooks
-  const { data: clientDocs } = useClientDocumentationDetails(vendorId, leadId, userId!, instanceIdFromUrl!);
+  const { data: clientDocs } = useClientDocumentationDetails(
+    vendorId,
+    leadId,
+    userId!,
+    instanceIdFromUrl!,
+  );
   const { data: siteMeasurement } = useSiteMeasurementLeadById(leadId);
   const { data: finalMeasurement } = useFinalMeasurementLeadById(
     vendorId,
@@ -126,12 +133,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
     if (!activeInstanceId && instances.length > 0) {
       setActiveInstanceId(instances[0]?.id ?? null);
     }
-  }, [
-    hasMultipleInstances,
-    resolvedInstanceId,
-    instances,
-    activeInstanceId,
-  ]);
+  }, [hasMultipleInstances, resolvedInstanceId, instances, activeInstanceId]);
 
   const scopedInstanceId = hasMultipleInstances
     ? activeInstanceId
@@ -156,8 +158,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
     techCheckInstanceStatus?.is_production_completed === true &&
     !lockInstanceFromUrl;
 
-
-    console.log("showInstanceTabs" , showInstanceTabs)
+  console.log("showInstanceTabs", showInstanceTabs);
   const { data: selectionsData } = useSelectionData(
     vendorId!,
     leadId,
@@ -306,18 +307,18 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
         animate="visible"
         className="w-full space-y-4"
       >
-      {showInstanceTabs && (
-  <motion.div>
-    <div className="border-b border-border">
-      <ScrollArea className="w-full whitespace-nowrap">
-        <div className="flex items-end gap-2 sm:flex-wrap">
-          {instances.map((instance: any) => {
-            const isActive = scopedInstanceId === instance.id;
-            return (
-              <div
-                key={instance.id}
-                onClick={() => setActiveInstanceId(instance.id)}
-                className={`
+        {showInstanceTabs && (
+          <motion.div>
+            <div className="border-b border-border">
+              <ScrollArea className="w-full whitespace-nowrap">
+                <div className="flex items-end gap-2 sm:flex-wrap">
+                  {instances.map((instance: any) => {
+                    const isActive = scopedInstanceId === instance.id;
+                    return (
+                      <div
+                        key={instance.id}
+                        onClick={() => setActiveInstanceId(instance.id)}
+                        className={`
                   cursor-pointer transition-all shrink-0
                   px-3 py-2 rounded-t-lg border border-b-0
                   min-w-[100px] max-w-[160px]
@@ -327,24 +328,25 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                       : "bg-muted/40 text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/60"
                   }
                 `}
-              >
-                <div className="flex flex-col items-start">
-                  <span className="text-xs font-semibold leading-none truncate w-full">
-                    {instance.title}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground mt-1 truncate w-full">
-                    {instance.productStructure?.type || "Product Structure"}
-                  </span>
+                      >
+                        <div className="flex flex-col items-start">
+                          <span className="text-xs font-semibold leading-none truncate w-full">
+                            {instance.title}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground mt-1 truncate w-full">
+                            {instance.productStructure?.type ||
+                              "Product Structure"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-            );
-          })}
-        </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
-    </div>
-  </motion.div>
-)}
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+            </div>
+          </motion.div>
+        )}
         {/* -------- Client Required Completion Section -------- */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -928,8 +930,8 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                       doc={{
                         id: doc.id,
                         originalName: doc.doc_og_name,
-                        signedUrl: doc.signed_url,
                         created_at: doc.created_at,
+                        signedUrl: doc.signedUrl,
                       }}
                       canDelete={canDelete}
                       status={doc.tech_check_status}

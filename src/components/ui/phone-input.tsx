@@ -46,38 +46,31 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
     ) => {
       const [error, setError] = React.useState<string>("");
 
-   const handleChange = (val: RPNInput.Value | undefined) => {
-  const finalVal = val || ("" as RPNInput.Value);
+      const handleChange = (val: RPNInput.Value | undefined) => {
+        const finalVal = val || ("" as RPNInput.Value);
 
-  if (validateIndianNumber && finalVal) {
-    const digitsOnly = finalVal.replace(/\D/g, "");
-    const number = digitsOnly.slice(-10); // last 10 digits
-    const fullNumber = digitsOnly.slice(-(digitsOnly.length)); // pure digits
-    const nationalNumber = digitsOnly.slice(-10); // last 10
-    const totalDigits = digitsOnly.replace(/^91/, "").length; // country code hata ke
-    const firstDigit = nationalNumber.charAt(0);
+        if (validateIndianNumber) {
+          const digitsOnly = finalVal.replace(/\D/g, "");
+          const nationalNumber = digitsOnly.replace(/^91/, "");
+          const totalDigits = nationalNumber.length;
 
-    if (totalDigits > 0) {
-      if (!/^[6-9]$/.test(firstDigit)) {
-        // ❌ Pehla digit galat
-        setError("Mobile number must start with 6, 7, 8 or 9");
-      } else if (totalDigits !== 10) {
-        // ✅ Pehla digit sahi but 10 se kam ya zyada
-        setError("Enter a 10 digit mobile number");
-      } else {
-        // ✅ Bilkul sahi
-        setError("");
-      }
-    } else {
-      setError("");
-    }
+          if (totalDigits === 0) {
+            setError("");
+            onValidationChange?.(false);
+          } else if (totalDigits < 10) {
+            setError("Enter a 10 digit mobile number");
+            onValidationChange?.(false);
+          } else if (!/^[6-9]\d{9}$/.test(nationalNumber)) {
+            setError("Mobile number must start with 6, 7, 8 or 9");
+            onValidationChange?.(false);
+          } else {
+            setError("");
+            onValidationChange?.(true);
+          }
+        }
 
-    const isValid = /^[6-9]\d{9}$/.test(nationalNumber);
-    onValidationChange?.(isValid);
-  }
-
-  onChange?.(finalVal);
-};
+        onChange?.(finalVal);
+      };
 
       return (
         <div className="flex flex-col gap-1">
@@ -103,13 +96,56 @@ PhoneInput.displayName = "PhoneInput";
 const InputComponent = React.forwardRef<
   HTMLInputElement,
   React.ComponentProps<"input">
->(({ className, ...props }, ref) => (
-  <Input
-    className={cn("rounded-e-lg rounded-s-none", className)}
-    {...props}
-    ref={ref}
-  />
-));
+>(({ className, onKeyDown, onPaste, ...props }, ref) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
+
+    // Count only digits (ignore spaces)
+    const digitsOnly = input.value.replace(/\D/g, "");
+
+    const allowedKeys = [
+      "Backspace",
+      "Delete",
+      "ArrowLeft",
+      "ArrowRight",
+      "Tab",
+    ];
+
+    if (allowedKeys.includes(e.key)) {
+      return;
+    }
+
+    // Block typing if already 10 digits
+    if (digitsOnly.length >= 10) {
+      e.preventDefault();
+    }
+
+    onKeyDown?.(e);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasted = e.clipboardData.getData("Text");
+    const digitsOnly = pasted.replace(/\D/g, "");
+
+    if (digitsOnly.length > 10) {
+      e.preventDefault();
+    }
+
+    onPaste?.(e);
+  };
+
+  return (
+    <Input
+      type="tel"
+      inputMode="numeric"
+      className={cn("rounded-e-lg rounded-s-none", className)}
+      onKeyDown={handleKeyDown}
+      onPaste={handlePaste}
+      {...props}
+      ref={ref}
+    />
+  );
+});
 InputComponent.displayName = "InputComponent";
 
 type CountryEntry = { label: string; value: RPNInput.Country | undefined };
@@ -145,7 +181,7 @@ const CountrySelect = ({
           type="button"
           variant="outline"
           className="flex gap-1 rounded-e-none rounded-s-lg border-r-0 px-3 focus:z-10"
-          disabled={disabled}
+          disabled={true}
         >
           <FlagComponent
             country={selectedCountry}

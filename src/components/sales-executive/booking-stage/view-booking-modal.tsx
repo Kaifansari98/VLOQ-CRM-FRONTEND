@@ -1031,7 +1031,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                             Measurement Documents (
                             {initialMeasurementDocs.length})
                           </p>
-                          <div className="space-y-3 w-fit">
+                          <div className="space-y-3 ">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+
                             {initialMeasurementDocs.map((doc: any) => (
                               <DocumentCard
                                 key={doc.id}
@@ -1045,6 +1047,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                 onDelete={(id) => setConfirmDelete(Number(id))}
                               />
                             ))}
+                          </div>
                             {canEditBookingValues && (
                               <button
                                 type="button"
