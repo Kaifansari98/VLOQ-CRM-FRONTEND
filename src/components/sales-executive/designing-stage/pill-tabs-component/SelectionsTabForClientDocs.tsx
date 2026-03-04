@@ -66,12 +66,11 @@ interface Props {
   onInstanceChange?: (instance: LeadProductStructureInstance | null) => void;
 }
 
-const formSchema = z
-  .object({
-    carcas: z.string().optional(),
-    shutter: z.string().optional(),
-    handles: z.string().optional(),
-  });
+const formSchema = z.object({
+  carcas: z.string().optional(),
+  shutter: z.string().optional(),
+  handles: z.string().optional(),
+});
 
 const instanceUploadSchema = z.object({
   pptDocuments: z
@@ -110,12 +109,12 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const { data: structureInstancesData } = useLeadProductStructureInstances(
     leadId,
-    vendorId
+    vendorId,
   );
   const { data: docsDetails } = useClientDocumentationDetails(
     vendorId!,
     leadId,
-    userId ?? undefined
+    userId ?? undefined,
   );
   const { mutateAsync: uploadClientDocs, isPending: isUploadingDocs } =
     useUploadClientDocumentation();
@@ -125,7 +124,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     useDeleteDocument(leadId);
 
   const leadStatus = String(leadData?.status || "").toLowerCase();
-  const leadStatusTag = String((leadData as any)?.status_tag || "").toLowerCase();
+  const leadStatusTag = String(
+    (leadData as any)?.status_tag || "",
+  ).toLowerCase();
   const isClientDocumentationStage =
     leadStatus === "client-documentation-stage" ||
     leadStatus === "client-documentation" ||
@@ -133,12 +134,11 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     leadStatusTag === "type 6";
   const canUpdateInput = canUpdateDessingStageSelectionInputs(
     userType,
-    leadStatus
+    leadStatus,
   );
 
-
   const structureInstances: LeadProductStructureInstance[] = Array.isArray(
-    structureInstancesData?.data
+    structureInstancesData?.data,
   )
     ? structureInstancesData.data
     : [];
@@ -188,14 +188,14 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
     // First, get instance-specific selections
     let scoped = rows.filter(
-      (row) => (row.product_structure_instance_id ?? null) === activeInstanceId
+      (row) => (row.product_structure_instance_id ?? null) === activeInstanceId,
     );
 
     // If no instance-specific selections found, fall back to lead-level selections
     // This handles cases where selections were created before instances existed
     if (scoped.length === 0 && activeInstanceId !== null) {
       const leadLevelSelections = rows.filter(
-        (row) => (row.product_structure_instance_id ?? null) === null
+        (row) => (row.product_structure_instance_id ?? null) === null,
       );
       scoped = leadLevelSelections;
     }
@@ -203,7 +203,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     // For leads with no instances, use lead-level selections
     if (structureInstances.length === 0 && scoped.length === 0) {
       scoped = rows.filter(
-        (row) => (row.product_structure_instance_id ?? null) === null
+        (row) => (row.product_structure_instance_id ?? null) === null,
       );
     }
 
@@ -260,18 +260,20 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
   const upsertSelection = async (
     type: "Carcas" | "Shutter" | "Handles",
-    descRaw?: string
+    descRaw?: string,
   ) => {
     const desc = normalizeValue(descRaw);
     const currentInstanceId = activeInstance?.id ?? null;
 
     // Get selections for the current instance to find the correct one
     const instanceSelections = getSelectionsByInstanceId(currentInstanceId);
-    const existing = instanceSelections[type.toLowerCase() as keyof typeof instanceSelections];
+    const existing =
+      instanceSelections[type.toLowerCase() as keyof typeof instanceSelections];
 
     // Check if the existing selection is actually for THIS specific instance
     // (not a lead-level fallback)
-    const isInstanceSpecific = existing &&
+    const isInstanceSpecific =
+      existing &&
       (existing.product_structure_instance_id ?? null) === currentInstanceId;
 
     if (existing && isInstanceSpecific) {
@@ -285,14 +287,15 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
               desc,
               updated_by: userId!,
               // Don't change the instance_id when updating
-              product_structure_instance_id: existing.product_structure_instance_id ?? null,
+              product_structure_instance_id:
+                existing.product_structure_instance_id ?? null,
             },
           },
           {
             onSuccess: () => resolve(),
             onError: (e: any) => reject(e),
-          }
-        )
+          },
+        ),
       );
     }
 
@@ -312,8 +315,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         {
           onSuccess: () => resolve(),
           onError: (e: any) => reject(e),
-        }
-      )
+        },
+      ),
     );
   };
 
@@ -372,7 +375,11 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   }, [docsDetails?.documents_by_instance]);
 
   const getCounts = (instanceId?: number | null) => {
-    if (instanceId !== null && instanceId !== undefined && docsByInstance.has(instanceId)) {
+    if (
+      instanceId !== null &&
+      instanceId !== undefined &&
+      docsByInstance.has(instanceId)
+    ) {
       const data = docsByInstance.get(instanceId)!;
       return { ppt: data.pptCount, pytha: data.pythaCount };
     }
@@ -386,7 +393,11 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   };
 
   const getDocs = (instanceId?: number | null) => {
-    if (instanceId !== null && instanceId !== undefined && docsByInstance.has(instanceId)) {
+    if (
+      instanceId !== null &&
+      instanceId !== undefined &&
+      docsByInstance.has(instanceId)
+    ) {
       const data = docsByInstance.get(instanceId)!;
       return data;
     }
@@ -426,7 +437,11 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       if (!value) continue;
       const upper = value.toUpperCase();
       if (upper === "NULL" || upper === "N/A") continue;
-      if (row.type === "Carcas" || row.type === "Shutter" || row.type === "Handles") {
+      if (
+        row.type === "Carcas" ||
+        row.type === "Shutter" ||
+        row.type === "Handles"
+      ) {
         tracker[row.type] = true;
       }
     }
@@ -434,27 +449,32 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     return grouped;
   }, [selectionsData?.data]);
 
-  const allInstancesSelectionsReady = structureInstances.length > 1
-    ? structureInstances.every((instance) => {
-        const tracker = selectionsByInstance.get(instance.id);
-        return Boolean(tracker?.Carcas && tracker?.Shutter && tracker?.Handles);
-      })
-    : (() => {
-        // No instances -> validate at lead level (null bucket)
-        if (structureInstances.length === 0) {
-          const nullBucket = selectionsByInstance.get(null);
+  const allInstancesSelectionsReady =
+    structureInstances.length > 1
+      ? structureInstances.every((instance) => {
+          const tracker = selectionsByInstance.get(instance.id);
           return Boolean(
-            nullBucket?.Carcas && nullBucket?.Shutter && nullBucket?.Handles
+            tracker?.Carcas && tracker?.Shutter && tracker?.Handles,
           );
-        }
-        // Single instance -> allow either null bucket or the instance bucket
-        const nullBucket = selectionsByInstance.get(null);
-        const firstInstanceBucket = activeInstance
-          ? selectionsByInstance.get(activeInstance.id)
-          : undefined;
-        const tracker = nullBucket || firstInstanceBucket;
-        return Boolean(tracker?.Carcas && tracker?.Shutter && tracker?.Handles);
-      })();
+        })
+      : (() => {
+          // No instances -> validate at lead level (null bucket)
+          if (structureInstances.length === 0) {
+            const nullBucket = selectionsByInstance.get(null);
+            return Boolean(
+              nullBucket?.Carcas && nullBucket?.Shutter && nullBucket?.Handles,
+            );
+          }
+          // Single instance -> allow either null bucket or the instance bucket
+          const nullBucket = selectionsByInstance.get(null);
+          const firstInstanceBucket = activeInstance
+            ? selectionsByInstance.get(activeInstance.id)
+            : undefined;
+          const tracker = nullBucket || firstInstanceBucket;
+          return Boolean(
+            tracker?.Carcas && tracker?.Shutter && tracker?.Handles,
+          );
+        })();
 
   const canMoveStage =
     allInstancesDocsReady &&
@@ -493,7 +513,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       toast.success(
         activeInstance
           ? `Files uploaded for ${activeInstance.title}`
-          : "Files uploaded"
+          : "Files uploaded",
       );
       setUploadModalOpen(false);
       uploadForm.reset({ pptDocuments: [], pythaDocuments: [] });
@@ -512,7 +532,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     if (!vendorId || !userId) return;
     if (selectionForm.formState.isDirty) {
       toast.error(
-        "Please save Carcas, Shutter and Handles before moving stage"
+        "Please save Carcas, Shutter and Handles before moving stage",
       );
       return;
     }
@@ -525,9 +545,12 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       {
         onSuccess: () => {
           router.push("/dashboard/project/client-approval");
-          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads", "leadStats"] });
+          queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+          queryClient.invalidateQueries({
+            queryKey: ["universal-stage-leads"],
+          });
         },
-      }
+      },
     );
   };
 
@@ -563,14 +586,14 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
     // Filter by instance_id
     let scoped = rows.filter(
-      (row) => (row.product_structure_instance_id ?? null) === instance_id
+      (row) => (row.product_structure_instance_id ?? null) === instance_id,
     );
 
     // If no instance-specific selections found and instance_id is not null,
     // fall back to lead-level selections
     if (scoped.length === 0 && instance_id !== null) {
       const leadLevelSelections = rows.filter(
-        (row) => (row.product_structure_instance_id ?? null) === null
+        (row) => (row.product_structure_instance_id ?? null) === null,
       );
       scoped = leadLevelSelections;
     }
@@ -578,7 +601,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     // For leads with no instances, use lead-level selections
     if (structureInstances.length === 0 && scoped.length === 0) {
       scoped = rows.filter(
-        (row) => (row.product_structure_instance_id ?? null) === null
+        (row) => (row.product_structure_instance_id ?? null) === null,
       );
     }
 
@@ -604,7 +627,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
     // Get the current instance object (if exists)
     const currentInstance = instance_id
-      ? structureInstances.find(inst => inst.id === instance_id)
+      ? structureInstances.find((inst) => inst.id === instance_id)
       : null;
 
     // Sanitize selection values for display
@@ -926,7 +949,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             Design Selections & Instance Documents
           </h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Open each product instance card to upload docs and save design selections
+            Open each product instance card to upload docs and save design
+            selections
           </p>
         </div>
       </div>
@@ -958,8 +982,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                       {/* Top Row */}
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-xl flex items-center justify-center 
-                            border bg-neutral-50 dark:bg-neutral-800 text-primary">
+                          <div
+                            className="w-12 h-12 rounded-xl flex items-center justify-center 
+                            border bg-neutral-50 dark:bg-neutral-800 text-primary"
+                          >
                             <FolderOpen className="size-6" />
                           </div>
 
@@ -1016,7 +1042,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                               >
                                 <FileText className="w-4 h-4 text-muted-foreground" />
                               </div>
-                            )
+                            ),
                           )}
 
                           {totalDocs > 4 && (
@@ -1070,12 +1096,14 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           </Button>
           {!allInstancesDocsReady && (
             <p className="text-xs text-muted-foreground mt-2">
-              Upload both Project Files and Pytha Files for all product instances.
+              Upload both Project Files and Pytha Files for all product
+              instances.
             </p>
           )}
           {!allInstancesSelectionsReady && (
             <p className="text-xs text-muted-foreground mt-1">
-              Carcas, Shutter and Handles are required for each product instance.
+              Carcas, Shutter and Handles are required for each product
+              instance.
             </p>
           )}
           {selectionForm.formState.isDirty && (

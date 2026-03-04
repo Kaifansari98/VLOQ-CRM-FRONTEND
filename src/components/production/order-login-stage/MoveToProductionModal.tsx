@@ -39,6 +39,7 @@ import {
   useFactoryUsers,
 } from "@/api/production/order-login";
 import AssignToPicker from "@/components/assign-to-picker";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 const schema = z.object({
   assign_to_user_id: z.number().min(1, "Please select a Factory user"),
@@ -75,6 +76,8 @@ export default function MoveToProductionModal({
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
+  const { data: leadDetails } = useLeadById(data?.id, vendorId, userId);
+
   const mappedUsers =
     factoryUsers?.map((user: any) => ({
       id: user.id,
@@ -107,7 +110,11 @@ export default function MoveToProductionModal({
       return;
     }
 
-    if (!client_required_order_login_complition_date) {
+     const requiredDate =
+      client_required_order_login_complition_date ??
+      leadDetails?.data?.lead?.client_required_order_login_complition_date;
+
+    if (!requiredDate) {
       toast.error("Client required completion date missing!");
       return;
     }
@@ -119,31 +126,26 @@ export default function MoveToProductionModal({
         accountId: data.accountId,
         assign_to_user_id,
         created_by: userId,
-        client_required_order_login_complition_date,
+        client_required_order_login_complition_date: requiredDate,
         instanceId: data.instanceId ?? undefined,
       },
       {
         onSuccess: (response: any) => {
           const movedToProduction = Boolean(
-            response?.data?.moved_to_production || response?.moved_to_production
+            response?.data?.moved_to_production ||
+            response?.moved_to_production,
           );
           toast.success(
             movedToProduction
               ? "All instances completed. Lead moved to Production successfully!"
               : data.instanceId
-              ? "Order Login marked complete for this instance."
-              : "Lead moved to Production stage successfully!"
+                ? "Order Login marked complete for this instance."
+                : "Lead moved to Production stage successfully!",
           );
-          router.push(
-            movedToProduction
-              ? "/dashboard/production/pre-post-prod"
-              : data.instanceId
-              ? "/dashboard/production/order-login"
-              : "/dashboard/production/pre-post-prod"
-          );
+          router.push("/dashboard/production/pre-post-prod");
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
-          queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
-          queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
+          queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
           setConfirmOpen(false);
           onOpenChange(false);
         },

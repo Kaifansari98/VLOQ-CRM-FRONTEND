@@ -71,6 +71,7 @@ export default function MoveToOrderLoginModal({
   const { data: backendUsers, isLoading } = useBackendUsers(vendorId!);
   const { mutate: approveTechCheck, isPending } = useApproveTechCheck();
 
+  
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
@@ -131,11 +132,9 @@ export default function MoveToOrderLoginModal({
               : "Lead moved to Order Login successfully!"
           );
           router.push(
-            movedToOrderLogin
-              ? "/dashboard/production/order-login"
-              : data.instanceId
-              ? "/dashboard/production/tech-check"
-              : "/dashboard/production/order-login"
+         
+              "/dashboard/production/order-login"
+              
           );
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
           queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });

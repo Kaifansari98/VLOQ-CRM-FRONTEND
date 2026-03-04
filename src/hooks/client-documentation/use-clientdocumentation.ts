@@ -123,14 +123,18 @@ export const useMoveLeadToClientApproval = () => {
       toast.success("Lead moved to Client Approval");
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["clientDocumentationDetails", variables.vendorId, variables.leadId],
+          queryKey: ["clientDocumentationDetails"],
         }),
         queryClient.invalidateQueries({
           queryKey: ["clientDocumentationLeads"],
           exact: false,
         }),
+         queryClient.invalidateQueries({
+          queryKey: ["getSelectionData"],
+          exact: false,
+        }),
         queryClient.invalidateQueries({
-          queryKey: ["leadStatus", variables.leadId, variables.vendorId],
+          queryKey: ["leadStatus"],
         }),
       ]);
     },
