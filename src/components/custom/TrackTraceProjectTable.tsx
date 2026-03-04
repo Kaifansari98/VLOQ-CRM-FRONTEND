@@ -11,12 +11,15 @@ import {
 import { DataTable } from "@/components/data-table/data-table";
 import { getTrackTraceProjectColumns } from "./track-trace-project-columns";
 import { TrackTraceProject } from "@/types/track-trace/track-trace.types";
+import { useAppSelector } from "@/redux/store";
 
 interface Props {
   table: TrackTraceProject[] | null;
   onRowDoubleClick?: (row: TrackTraceProject) => void;
   className?: string;
 }
+
+
 
 export default function TrackTraceProjectTable({
   table,
@@ -27,7 +30,8 @@ export default function TrackTraceProjectTable({
 
   const tableData = useMemo(() => table ?? [], [table]);
 
-  const columns = useMemo(() => getTrackTraceProjectColumns(), []);
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const columns = useMemo(() => getTrackTraceProjectColumns(Number(vendorId)), []);
 
   const reactTable = useReactTable({
     data: tableData,

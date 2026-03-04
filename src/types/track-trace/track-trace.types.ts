@@ -40,6 +40,14 @@ export interface TrackTraceProject {
   track_trace_status : string;
   details: any[];
   items: any[];
+  lead: TrackTraceLead;
+}
+
+export interface TrackTraceLead{
+  id: number;
+  firstname:string;
+  lastname:string;
+  lead_code:string;
 }
 
 export interface ProjectFilterItem {
