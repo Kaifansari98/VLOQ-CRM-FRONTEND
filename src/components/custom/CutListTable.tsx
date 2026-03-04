@@ -14,9 +14,17 @@ import {
 import { DataTable } from "@/components/data-table/data-table";
 import { getCutListColumns } from "./cutlist-columns";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { MachineAssignmentDialog } from "./machine-assignment-dialog";
 import { toast } from "react-toastify";
-import { Download, Printer, Maximize2, Minimize2 } from "lucide-react";
+import { Download, Printer, Maximize2, Minimize2, ChevronDown, FileSpreadsheet } from "lucide-react";
 
 export type CutListRow = Record<string, any>;
 
@@ -27,6 +35,7 @@ interface Props {
   onMachineAssign?: (cutListIds: number[], machineId: number, machineName: string, assigned: boolean) => Promise<void>;
   onDownloadLabels?: (cutListIds?: number[]) => Promise<string>;
   onDownloadExcel?: (cutListIds?: number[]) => Promise<string>;
+  onDownloadBasicExcel?: (cutListIds?: number[]) => Promise<string>; // ✅ New prop
 }
 
 export default function CutListTable({ 
@@ -35,13 +44,14 @@ export default function CutListTable({
   className,
   onMachineAssign,
   onDownloadLabels,
-  onDownloadExcel
+  onDownloadExcel,
+  onDownloadBasicExcel, // ✅ New prop
 }: Props) {
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false); // ✅ Add fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState<{
     name: string;
     id: number;
@@ -64,7 +74,6 @@ export default function CutListTable({
       }
 
       window.open(pdfUrl, '_blank');
-
       toast.success("Labels downloaded successfully");
     } catch (error) {
       console.error("Error downloading labels:", error);
@@ -74,7 +83,8 @@ export default function CutListTable({
     }
   };
 
-  const handleDownloadExcel = async () => {
+  // ✅ Advanced Excel download
+  const handleDownloadAdvancedExcel = async () => {
     if (!onDownloadExcel) return;
 
     try {
@@ -84,18 +94,44 @@ export default function CutListTable({
         ? selectedRows.map(row => row.original.id)
         : undefined;
 
-      const pdfUrl = await onDownloadExcel(selectedRowIds);
+      const fileUrl = await onDownloadExcel(selectedRowIds);
       
-      if (!pdfUrl) {
-        throw new Error("No PDF URL received");
+      if (!fileUrl) {
+        throw new Error("No file URL received");
       }
 
-      window.open(pdfUrl, '_blank');
-
-      toast.success("Excel downloaded successfully");
+      window.open(fileUrl, '_blank');
+      toast.success("Advanced cut list downloaded successfully");
     } catch (error) {
-      console.error("Error downloading excel:", error);
-      toast.error("Failed to download excel");
+      console.error("Error downloading advanced excel:", error);
+      toast.error("Failed to download advanced cut list");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // ✅ Basic Excel download
+  const handleDownloadBasicExcel = async () => {
+    if (!onDownloadBasicExcel) return;
+
+    try {
+      setIsDownloading(true);
+      
+      const selectedRowIds = selectedRows.length > 0 
+        ? selectedRows.map(row => row.original.id)
+        : undefined;
+
+      const fileUrl = await onDownloadBasicExcel(selectedRowIds);
+      
+      if (!fileUrl) {
+        throw new Error("No file URL received");
+      }
+
+      window.open(fileUrl, '_blank');
+      toast.success("Basic cut list downloaded successfully");
+    } catch (error) {
+      console.error("Error downloading basic excel:", error);
+      toast.error("Failed to download basic cut list");
     } finally {
       setIsDownloading(false);
     }
@@ -197,21 +233,109 @@ export default function CutListTable({
     }
   };
 
-  // ✅ Toggle fullscreen
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
   };
 
+  // ✅ Reusable toolbar — rendered in both normal and fullscreen views
+  const ToolbarButtons = () => (
+    <div className="flex gap-2">
+      {/* ✅ Download Cut List split button with Basic / Advanced options */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="default"
+            size="sm"
+            disabled={isDownloading}
+            className="gap-2"
+          >
+            {isDownloading ? (
+              <>
+                <span className="animate-spin">⏳</span>
+                Generating...
+              </>
+            ) : (
+              <>
+                <FileSpreadsheet className="h-4 w-4" />
+                Download Cut List
+                <ChevronDown className="h-3 w-3 opacity-70" />
+              </>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+            Choose format
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={handleDownloadBasicExcel}
+            disabled={isDownloading || !onDownloadBasicExcel}
+            className="gap-2 cursor-pointer"
+          >
+            <Download className="h-4 w-4" />
+            <div>
+              <div className="font-medium">Basic</div>
+              <div className="text-xs text-muted-foreground">Standard cut list format</div>
+            </div>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={handleDownloadAdvancedExcel}
+            disabled={isDownloading || !onDownloadExcel}
+            className="gap-2 cursor-pointer"
+          >
+            <Download className="h-4 w-4" />
+            <div>
+              <div className="font-medium">Advanced</div>
+              <div className="text-xs text-muted-foreground">Full details with machine data</div>
+            </div>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Download Labels button */}
+      <Button 
+        variant="default" 
+        size="sm"
+        onClick={handleDownloadLabels}
+        disabled={isDownloading}
+        className="gap-2"
+      >
+        {isDownloading ? (
+          <>
+            <span className="animate-spin">⏳</span>
+            Generating...
+          </>
+        ) : (
+          <>
+            <Download className="h-4 w-4" />
+            Download Labels
+            {selectedRows.length > 0 && ` (${selectedRows.length})`}
+          </>
+        )}
+      </Button>
+      
+      {selectedRows.length > 0 && (
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => setRowSelection({})}
+        >
+          Clear Selection ({selectedRows.length})
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <>
-      {/* ✅ Fullscreen overlay */}
+      {/* Fullscreen overlay */}
       {isFullscreen && (
         <div 
           className="fixed inset-0 z-50 bg-background"
           style={{ padding: '1rem' }}
         >
           <div className="h-full flex flex-col">
-            {/* Fullscreen header */}
             <div className="flex justify-between items-center mb-3">
               <div className="text-sm text-muted-foreground">
                 {columnFilters.length > 0 && (
@@ -230,58 +354,7 @@ export default function CutListTable({
               </div>
 
               <div className="flex gap-2">
-                <Button 
-                  variant="default" 
-                  size="sm"
-                  onClick={handleDownloadExcel}
-                  disabled={isDownloading}
-                  className="gap-2"
-                >
-                  {isDownloading ? (
-                    <>
-                      <span className="animate-spin">⏳</span>
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="h-4 w-4" />
-                      Download Cut List
-                    </>
-                  )}
-                </Button>
-              
-                <Button 
-                  variant="default" 
-                  size="sm"
-                  onClick={handleDownloadLabels}
-                  disabled={isDownloading}
-                  className="gap-2"
-                >
-                  {isDownloading ? (
-                    <>
-                      <span className="animate-spin">⏳</span>
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="h-4 w-4" />
-                      Download Labels
-                      {selectedRows.length > 0 && ` (${selectedRows.length})`}
-                    </>
-                  )}
-                </Button>
-                
-                {selectedRows.length > 0 && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setRowSelection({})}
-                  >
-                    Clear Selection ({selectedRows.length})
-                  </Button>
-                )}
-
-                {/* ✅ Exit fullscreen button */}
+                <ToolbarButtons />
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -294,8 +367,6 @@ export default function CutListTable({
               </div>
             </div>
 
-
-            {/* ✅ Fullscreen table */}
             <div className="cutlist-table-container-fullscreen flex-1">
               <DataTable 
                 table={table} 
@@ -315,7 +386,7 @@ export default function CutListTable({
         </div>
       )}
 
-      {/* ✅ Normal view */}
+      {/* Normal view */}
       <div className={className}>
         <div className="flex justify-between items-center mb-3">
           <div className="text-sm text-muted-foreground">
@@ -335,58 +406,7 @@ export default function CutListTable({
           </div>
 
           <div className="flex gap-2">
-            <Button 
-              variant="default" 
-              size="sm"
-              onClick={handleDownloadExcel}
-              disabled={isDownloading}
-              className="gap-2"
-            >
-              {isDownloading ? (
-                <>
-                  <span className="animate-spin">⏳</span>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4" />
-                  Download Cut List
-                </>
-              )}
-            </Button>
-          
-            <Button 
-              variant="default" 
-              size="sm"
-              onClick={handleDownloadLabels}
-              disabled={isDownloading}
-              className="gap-2"
-            >
-              {isDownloading ? (
-                <>
-                  <span className="animate-spin">⏳</span>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4" />
-                  Download Labels
-                  {selectedRows.length > 0 && ` (${selectedRows.length})`}
-                </>
-              )}
-            </Button>
-            
-            {selectedRows.length > 0 && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setRowSelection({})}
-              >
-                Clear Selection ({selectedRows.length})
-              </Button>
-            )}
-
-            {/* ✅ Fullscreen button */}
+            <ToolbarButtons />
             <Button 
               variant="outline" 
               size="sm"

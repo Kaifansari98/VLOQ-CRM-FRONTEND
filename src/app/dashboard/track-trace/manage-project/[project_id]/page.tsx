@@ -25,22 +25,25 @@ import { Button } from "@/components/ui/button";
 import { toast } from "react-toastify";
 import { apiClient } from "@/lib/apiClient";
 import { updateLeadActivityStatus } from "@/api/activityStatus";
-import { CutListSavePayload, generateQRLabels, downloadCutListExcel } from "@/api/track-trace/track-trace-cutlist.api";
+import {
+    CutListSavePayload,
+    generateQRLabels,
+    downloadCutListExcel,
+    downloadCutListBasicExcel,
+} from "@/api/track-trace/track-trace-cutlist.api";
 
 
 export type CutListRow = Record<string, any>;
 
 // In your page component
 export default function CutListPage() {
-    // alert(1)
     const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
     const { project_id } = useParams();
-    // alert(project_id);
     const {
         data: response,
         isLoading,
         isError,
-        refetch, // ✅ Add refetch to refresh data after assignment
+        refetch,
     } = useProjectCutList(Number(vendorId), String(project_id));
 
     const data = response?.data ?? [];
@@ -66,14 +69,7 @@ export default function CutListPage() {
 
             console.log("reponse", reponse);
 
-            // if (!response.ok) {
-            //     throw new Error(result.message || 'Failed to assign machine');
-            // }
-
-            // ✅ Refresh data after successful assignment
             await refetch();
-
-            // toast.success(result.message);
         } catch (error) {
             console.error("Error assigning machine:", error);
             toast.error("Failed to update machine assignment");
@@ -98,16 +94,33 @@ export default function CutListPage() {
     };
 
 
+    // ✅ Advanced Excel download (existing API)
     const handleDownloadExcel = async (cutListIds?: number[]) => {
         try {
-            const pdfUrl = await downloadCutListExcel(
+            const fileUrl = await downloadCutListExcel(
                 Number(vendorId),
-                String(project_id),                
+                String(project_id),
             );
 
-            return pdfUrl;
+            return fileUrl;
         } catch (error) {
-            console.error('Error generating labels:', error);
+            console.error('Error generating advanced excel:', error);
+            throw error;
+        }
+    };
+
+
+    // ✅ Basic Excel download (new API)
+    const handleDownloadBasicExcel = async (cutListIds?: number[]) => {
+        try {
+            const fileUrl = await downloadCutListBasicExcel(
+                Number(vendorId),
+                String(project_id),
+            );
+
+            return fileUrl;
+        } catch (error) {
+            console.error('Error generating basic excel:', error);
             throw error;
         }
     };
@@ -158,12 +171,12 @@ export default function CutListPage() {
                         machineColumns={machineColumns}
                         className="pt-3 px-4"
                         onMachineAssign={handleMachineAssign}
-                        onDownloadLabels={handleDownloadLabels} // ✅ Pass the handler
+                        onDownloadLabels={handleDownloadLabels}
                         onDownloadExcel={handleDownloadExcel}
+                        onDownloadBasicExcel={handleDownloadBasicExcel} // ✅ New prop
                     />
                 )}
             </main>
         </>
     );
 }
-

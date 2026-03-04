@@ -36,7 +36,7 @@ export const generateQRLabels = async (vendorId: number, projectId: string, cutL
     {
       vendorId,
       projectId,
-      cutListIds 
+      cutListIds
     }
   );
   return data.data; // Returns the PDF URL
@@ -49,11 +49,54 @@ export const downloadCutListExcel = async (vendorId: number, unique_project_id: 
     `/track-trace/download-cut-list-excel`,
     {
       vendorId,
-      unique_project_id,       
+      unique_project_id,
     }
   );
   return data.data; // Returns the PDF URL
 };
 
+export const downloadCutListBasicExcel = async (vendorId: number, unique_project_id: string) => {
+  const { data } = await apiClient.post(
+    `/track-trace/download-cut-list-basic-excel`,
+    {
+      vendorId,
+      unique_project_id,
+    }
+  );
+  return data.data; // Returns the file URL
+};
 
+
+export interface Lead {
+  id: number;
+  lead_code: string;
+  lead_name?: string;
+  firstname:string;
+  lastname:string;
+  [key: string]: unknown;
+}
+
+// Search leads by query string
+export const searchLeads = async (query: string, vendorId: Number): Promise<Lead[]> => {
+  const { data } = await apiClient.get(`/track-trace/leads/search/${vendorId}/${query}`, {    
+  });
+  console.log(data.data)
+  return data.data.leads; // ✏️ adjust to match your actual response shape
+};
+
+
+export interface LinkLeadPayload {
+  project_id: number;
+  lead_id: number;
+  vendor_id:number;
+}
+
+// Link a lead to a project
+export const linkLeadToProject = async (payload: LinkLeadPayload) => {
+  const { data } = await apiClient.post(
+    `/track-trace/link-lead/${payload.project_id}/lead`,
+    { lead_id: payload.lead_id,vendor_id:payload.vendor_id }
+  );
+  return data.data; // ✏️ adjust to match your actual response shape
+};
 
