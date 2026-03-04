@@ -9,7 +9,7 @@ import {
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 
@@ -93,24 +93,23 @@ export default function UnderInstallationLeadDetails() {
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
   const queryClient = useQueryClient();
-
+  const router = useRouter();
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type
+    (state) => state.auth.user?.user_type.user_type,
   );
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   const { data: underDetails } = useUnderInstallationDetails(
     vendorId,
-    leadIdNum
+    leadIdNum,
   );
   const setStartMutation = useSetActualInstallationStartDate();
 
   const { data: finalReady } = useFinalHandoverReady(vendorId!, leadIdNum);
 
-
-    const { data: miscStatus, isLoading:isLoadingMisc } =
-  useMiscellaneousResolutionStatus(vendorId, leadIdNum);
+  const { data: miscStatus, isLoading: isLoadingMisc } =
+    useMiscellaneousResolutionStatus(vendorId, leadIdNum);
 
   const [openStartModal, setOpenStartModal] = useState(false);
 
@@ -125,7 +124,7 @@ export default function UnderInstallationLeadDetails() {
   const updateStatusMutation = useUpdateActivityStatus();
 
   const [activeTab, setActiveTab] = useState(
-    userType === "site-supervisor" ? "todo" : "details"
+    userType === "site-supervisor" ? "todo" : "details",
   );
   useChatTabFromUrl(setActiveTab);
 
@@ -144,11 +143,7 @@ export default function UnderInstallationLeadDetails() {
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory = canViewSiteHistoryTab(userType);
 
-
-
   const miscStatusReady = miscStatus?.all_resolved;
-
-
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -162,7 +157,7 @@ export default function UnderInstallationLeadDetails() {
         onSuccess: () => toast.success("Lead deleted successfully!"),
         onError: (err: any) =>
           toast.error(err?.message || "Failed to delete lead"),
-      }
+      },
     );
 
     setOpenDelete(false);
@@ -211,7 +206,6 @@ export default function UnderInstallationLeadDetails() {
 
         {/* 🔹 Header Actions */}
         <div className="flex items-center space-x-2">
-
           {!underDetails?.actual_installation_start_date ? (
             // 1️⃣ Installation NOT started → block
             <CustomeTooltip
@@ -303,8 +297,8 @@ export default function UnderInstallationLeadDetails() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button 
-              size="icon"
+              <Button
+                size="icon"
                 variant="ghost"
                 className="relative bg-accent p-1.5 rounded-sm"
               >
@@ -324,32 +318,32 @@ export default function UnderInstallationLeadDetails() {
                   }
                   value="Start Installation first to move this lead to Final Handover."
                 />
-          ) : isLoadingMisc ? (
-            // 2️⃣ Checking misc status → block
-            <CustomeTooltip
-              truncateValue={
-                <DropdownMenuItem className="sm:hidden" disabled>
-                  <Handshake size={20} />
-                  Move to Final Handover
-                </DropdownMenuItem>
-              }
-              value="Checking miscellaneous status..."
-            />
-          ) : !miscStatusReady ? (
-            // 3️⃣ Misc pending/awaiting → block
-            <CustomeTooltip
-              truncateValue={
-                <DropdownMenuItem className="sm:hidden" disabled>
-                  <Handshake size={20} />
-                  Move to Final Handover
-                </DropdownMenuItem>
-              }
-              value="All miscellaneous items must be Resolved or Rejected before moving to Final Handover."
-            />
-          ) : !finalReady?.isReady ? (
-            // 2️⃣ Installation started but NOT eligible → show WHY
-            <CustomeTooltip
-              truncateValue={
+              ) : isLoadingMisc ? (
+                // 2️⃣ Checking misc status → block
+                <CustomeTooltip
+                  truncateValue={
+                    <DropdownMenuItem className="sm:hidden" disabled>
+                      <Handshake size={20} />
+                      Move to Final Handover
+                    </DropdownMenuItem>
+                  }
+                  value="Checking miscellaneous status..."
+                />
+              ) : !miscStatusReady ? (
+                // 3️⃣ Misc pending/awaiting → block
+                <CustomeTooltip
+                  truncateValue={
+                    <DropdownMenuItem className="sm:hidden" disabled>
+                      <Handshake size={20} />
+                      Move to Final Handover
+                    </DropdownMenuItem>
+                  }
+                  value="All miscellaneous items must be Resolved or Rejected before moving to Final Handover."
+                />
+              ) : !finalReady?.isReady ? (
+                // 2️⃣ Installation started but NOT eligible → show WHY
+                <CustomeTooltip
+                  truncateValue={
                     <DropdownMenuItem className="sm:hidden" disabled>
                       <Handshake size={20} />
                       Move to Final Handover
@@ -433,7 +427,7 @@ export default function UnderInstallationLeadDetails() {
               ) : (
                 <CustomeTooltip
                   truncateValue={
-                    <TabsTrigger disabled value="todo" >
+                    <TabsTrigger disabled value="todo">
                       <PanelsTopLeftIcon
                         size={16}
                         className="mr-1 opacity-60"
@@ -498,7 +492,7 @@ export default function UnderInstallationLeadDetails() {
                 <div className="flex justify-between gap-2 items-center bg-muted py-2 px-3 rounded-md ">
                   <p className="text-sm">
                     {formatInstallationDate(
-                      underDetails.actual_installation_start_date
+                      underDetails.actual_installation_start_date,
                     )}
                   </p>
                   <CalendarOff size={16} />
@@ -556,7 +550,7 @@ export default function UnderInstallationLeadDetails() {
         </TabsContent>
       </Tabs>
 
-      {/* 🔹 Modals */}
+      {/* 🔹 ldals */}
       <AssignLeadModal
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}
@@ -636,12 +630,38 @@ export default function UnderInstallationLeadDetails() {
 
             <AlertDialogAction
               onClick={() => {
-                moveMutation.mutate({
-                  vendorId: lead.vendor_id,
-                  leadId: lead.id,
-                  updated_by: userId!,
-                });
-                setShowMoveModal(false);
+                if (!lead?.vendor_id || !userId) {
+                  toast.error("Missing vendor or user information!");
+                  return;
+                }
+
+                moveMutation.mutate(
+                  {
+                    vendorId: lead.vendor_id,
+                    leadId: lead.id,
+                    updated_by: userId,
+                  },
+                  {
+                    onSuccess: () => {
+                      toast.success("Lead moved to Final Handover stage!");
+
+                      setShowMoveModal(false);
+
+                      // 🔁 Invalidate required queries
+                      queryClient.invalidateQueries({
+                        queryKey: ["leadStats"],
+                        exact: false,
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: ["universal-stage-leads"],
+                        exact: false,
+                      });
+
+                      // 🚀 Redirect
+                      router.push("/dashboard/installation/final-handover");
+                    },
+                  },
+                );
               }}
             >
               Confirm
@@ -680,13 +700,13 @@ export default function UnderInstallationLeadDetails() {
 
                 // Invalidate related queries to refresh UI
                 queryClient.invalidateQueries({
-                  queryKey: ["leadById", leadIdNum],
+                  queryKey: ["leadById"],
                 });
               },
               onError: (err: any) => {
                 toast.error(err?.message || "Failed to update lead status");
               },
-            }
+            },
           );
         }}
         loading={updateStatusMutation.isPending}

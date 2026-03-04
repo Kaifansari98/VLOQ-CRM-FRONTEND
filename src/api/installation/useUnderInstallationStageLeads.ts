@@ -1314,8 +1314,8 @@ export async function moveToFinalHandoverApi(
 }
 
 export function useMoveToFinalHandover() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
+  
+
 
   return useMutation({
     mutationFn: ({
@@ -1327,19 +1327,6 @@ export function useMoveToFinalHandover() {
       leadId: number;
       updated_by: number;
     }) => moveToFinalHandoverApi(vendorId, leadId, updated_by),
-
-    onSuccess: () => {
-      toast.success("Lead moved to Final Handover stage");
-      queryClient.invalidateQueries({ queryKey: ["leadStats"] });
-      queryClient.invalidateQueries({
-        queryKey: ["universal-stage-leads"],
-        exact: false,
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["vendorOverallLeads"],
-      });
-      router.push("/dashboard/installation/final-handover");
-    },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(error?.response?.data?.error || "Failed to move lead");
