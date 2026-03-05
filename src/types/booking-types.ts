@@ -119,6 +119,7 @@ export interface ProductStructure {
 
 export interface SiteSuperVisor {
   id: number;
+  userId?: number;
   user_name: string;
   userName: string;
 }
