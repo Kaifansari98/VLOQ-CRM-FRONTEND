@@ -100,3 +100,28 @@ export const linkLeadToProject = async (payload: LinkLeadPayload) => {
   return data.data; // ✏️ adjust to match your actual response shape
 };
 
+
+
+export const uploadMachineAssignApi = async (
+  vendorId: number,
+  projectToken: string,
+  file: File,
+  userId: number
+) => {
+  const formData = new FormData();
+
+  formData.append("file", file);
+  formData.append("user_id", String(userId));
+
+  const response = await apiClient.post(
+    `/track-trace/upload-machine-excel/${vendorId}/${projectToken}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return response.data;
+};

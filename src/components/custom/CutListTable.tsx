@@ -24,7 +24,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MachineAssignmentDialog } from "./machine-assignment-dialog";
 import { toast } from "react-toastify";
-import { Download, Printer, Maximize2, Minimize2, ChevronDown, FileSpreadsheet } from "lucide-react";
+import {
+  Download,
+  Printer,
+  Maximize2,
+  Minimize2,
+  ChevronDown,
+  FileSpreadsheet,
+  UploadCloudIcon,
+} from "lucide-react";
+import { useUploadMachineExcel } from "@/hooks/track-trace/useProjectCutList";
+import { useParams } from "next/navigation";
+import { useAppSelector } from "@/redux/store";
 
 export type CutListRow = Record<string, any>;
 
@@ -32,21 +43,30 @@ interface Props {
   data: CutListRow[];
   machineColumns: string[];
   className?: string;
-  onMachineAssign?: (cutListIds: number[], machineId: number, machineName: string, assigned: boolean) => Promise<void>;
+  onMachineAssign?: (
+    cutListIds: number[],
+    machineId: number,
+    machineName: string,
+    assigned: boolean,
+  ) => Promise<void>;
   onDownloadLabels?: (cutListIds?: number[]) => Promise<string>;
   onDownloadExcel?: (cutListIds?: number[]) => Promise<string>;
   onDownloadBasicExcel?: (cutListIds?: number[]) => Promise<string>; // ✅ New prop
 }
 
-export default function CutListTable({ 
-  data, 
-  machineColumns, 
+export default function CutListTable({
+  data,
+  machineColumns,
   className,
   onMachineAssign,
   onDownloadLabels,
   onDownloadExcel,
   onDownloadBasicExcel, // ✅ New prop
 }: Props) {
+  const { project_id } = useParams();
+  const projectId = String(project_id);
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -57,23 +77,26 @@ export default function CutListTable({
     id: number;
   } | null>(null);
 
+  const uploadMachineExcelMutation = useUploadMachineExcel(projectId);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const handleDownloadLabels = async () => {
     if (!onDownloadLabels) return;
 
     try {
       setIsDownloading(true);
-      
-      const selectedRowIds = selectedRows.length > 0 
-        ? selectedRows.map(row => row.original.id)
-        : undefined;
+
+      const selectedRowIds =
+        selectedRows.length > 0
+          ? selectedRows.map((row) => row.original.id)
+          : undefined;
 
       const pdfUrl = await onDownloadLabels(selectedRowIds);
-      
+
       if (!pdfUrl) {
         throw new Error("No PDF URL received");
       }
 
-      window.open(pdfUrl, '_blank');
+      window.open(pdfUrl, "_blank");
       toast.success("Labels downloaded successfully");
     } catch (error) {
       console.error("Error downloading labels:", error);
@@ -89,18 +112,19 @@ export default function CutListTable({
 
     try {
       setIsDownloading(true);
-      
-      const selectedRowIds = selectedRows.length > 0 
-        ? selectedRows.map(row => row.original.id)
-        : undefined;
+
+      const selectedRowIds =
+        selectedRows.length > 0
+          ? selectedRows.map((row) => row.original.id)
+          : undefined;
 
       const fileUrl = await onDownloadExcel(selectedRowIds);
-      
+
       if (!fileUrl) {
         throw new Error("No file URL received");
       }
 
-      window.open(fileUrl, '_blank');
+      window.open(fileUrl, "_blank");
       toast.success("Advanced cut list downloaded successfully");
     } catch (error) {
       console.error("Error downloading advanced excel:", error);
@@ -116,18 +140,19 @@ export default function CutListTable({
 
     try {
       setIsDownloading(true);
-      
-      const selectedRowIds = selectedRows.length > 0 
-        ? selectedRows.map(row => row.original.id)
-        : undefined;
+
+      const selectedRowIds =
+        selectedRows.length > 0
+          ? selectedRows.map((row) => row.original.id)
+          : undefined;
 
       const fileUrl = await onDownloadBasicExcel(selectedRowIds);
-      
+
       if (!fileUrl) {
         throw new Error("No file URL received");
       }
 
-      window.open(fileUrl, '_blank');
+      window.open(fileUrl, "_blank");
       toast.success("Basic cut list downloaded successfully");
     } catch (error) {
       console.error("Error downloading basic excel:", error);
@@ -141,15 +166,20 @@ export default function CutListTable({
     cutListId: number,
     machineId: number,
     machineName: string,
-    currentlyAssigned: boolean
+    currentlyAssigned: boolean,
   ) => {
     if (!onMachineAssign) return;
 
     try {
-      await onMachineAssign([cutListId], machineId, machineName, !currentlyAssigned);
-      
+      await onMachineAssign(
+        [cutListId],
+        machineId,
+        machineName,
+        !currentlyAssigned,
+      );
+
       toast.success(
-        `${machineName} ${!currentlyAssigned ? 'assigned to' : 'unassigned from'} item`
+        `${machineName} ${!currentlyAssigned ? "assigned to" : "unassigned from"} item`,
       );
     } catch (error) {
       toast.error("Failed to update machine assignment");
@@ -159,14 +189,14 @@ export default function CutListTable({
 
   function handleMachineHeaderClick(machineName: string) {
     const currentSelectedRows = table.getFilteredSelectedRowModel().rows;
-    
+
     if (currentSelectedRows.length === 0) {
       toast.error("Please select at least one row before assigning machines");
       return;
     }
 
     let machineId: number | null = null;
-    
+
     for (const row of data) {
       const machineData = row[machineName];
       if (machineData?.machineId) {
@@ -180,21 +210,22 @@ export default function CutListTable({
       console.error(`Machine ID not found for: ${machineName}`);
       return;
     }
-    
+
     setSelectedMachine({
       name: machineName,
-      id: machineId
+      id: machineId,
     });
     setDialogOpen(true);
   }
 
   const columns = useMemo(
-    () => getCutListColumns(
-      machineColumns, 
-      handleMachineHeaderClick,
-      handleMachineCellClick
-    ),
-    [machineColumns, data, onMachineAssign]
+    () =>
+      getCutListColumns(
+        machineColumns,
+        handleMachineHeaderClick,
+        handleMachineCellClick,
+      ),
+    [machineColumns, data, onMachineAssign],
   );
 
   const table = useReactTable({
@@ -210,7 +241,7 @@ export default function CutListTable({
       rowSelection,
       columnFilters,
       columnPinning: {
-        left: ['select', 'id', 'description'],
+        left: ["select", "id", "description"],
       },
     },
     enableRowSelection: true,
@@ -219,13 +250,19 @@ export default function CutListTable({
 
   const selectedRows = table.getFilteredSelectedRowModel().rows;
 
-  const handleAssign = async (machineId: number, machineName: string, assigned: boolean) => {
-    const rowsToUpdate = selectedRows.map(row => row.original.id);
+  const handleAssign = async (
+    machineId: number,
+    machineName: string,
+    assigned: boolean,
+  ) => {
+    const rowsToUpdate = selectedRows.map((row) => row.original.id);
 
     if (onMachineAssign) {
       try {
         await onMachineAssign(rowsToUpdate, machineId, machineName, assigned);
-        toast.success(`Machine ${assigned ? 'assigned' : 'unassigned'} successfully`);
+        toast.success(
+          `Machine ${assigned ? "assigned" : "unassigned"} successfully`,
+        );
       } catch (error) {
         toast.error("Failed to update machine assignment");
         console.error(error);
@@ -240,6 +277,36 @@ export default function CutListTable({
   // ✅ Reusable toolbar — rendered in both normal and fullscreen views
   const ToolbarButtons = () => (
     <div className="flex gap-2">
+      {/* Download Labels button */}
+      <>
+        <input
+          type="file"
+          accept=".xlsx,.xls"
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          onChange={handleMachineExcelUpload}
+        />
+
+        <Button
+          variant="default"
+          size="sm"
+          className="gap-2"
+          disabled={uploadMachineExcelMutation.isPending}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {uploadMachineExcelMutation.isPending ? (
+            <>
+              <span className="animate-spin">⏳</span>
+              Uploading...
+            </>
+          ) : (
+            <>
+              <UploadCloudIcon className="h-4 w-4" />
+              Upload Cutlist
+            </>
+          )}
+        </Button>
+      </>
       {/* ✅ Download Cut List split button with Basic / Advanced options */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -276,7 +343,9 @@ export default function CutListTable({
             <Download className="h-4 w-4" />
             <div>
               <div className="font-medium">Basic</div>
-              <div className="text-xs text-muted-foreground">Standard cut list format</div>
+              <div className="text-xs text-muted-foreground">
+                Standard cut list format
+              </div>
             </div>
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -287,15 +356,17 @@ export default function CutListTable({
             <Download className="h-4 w-4" />
             <div>
               <div className="font-medium">Advanced</div>
-              <div className="text-xs text-muted-foreground">Full details with machine data</div>
+              <div className="text-xs text-muted-foreground">
+                Full details with machine data
+              </div>
             </div>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
       {/* Download Labels button */}
-      <Button 
-        variant="default" 
+      <Button
+        variant="default"
         size="sm"
         onClick={handleDownloadLabels}
         disabled={isDownloading}
@@ -314,33 +385,49 @@ export default function CutListTable({
           </>
         )}
       </Button>
-      
+
       {selectedRows.length > 0 && (
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => setRowSelection({})}
-        >
+        <Button variant="outline" size="sm" onClick={() => setRowSelection({})}>
           Clear Selection ({selectedRows.length})
         </Button>
       )}
     </div>
   );
 
+  const handleMachineExcelUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    try {
+      await uploadMachineExcelMutation.mutateAsync({
+        vendorId: vendorId!,
+        projectToken: projectId,
+        file,
+        userId: userId!,
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   return (
     <>
       {/* Fullscreen overlay */}
       {isFullscreen && (
-        <div 
+        <div
           className="fixed inset-0 z-50 bg-background"
-          style={{ padding: '1rem' }}
+          style={{ padding: "1rem" }}
         >
           <div className="h-full flex flex-col">
             <div className="flex justify-between items-center mb-3">
               <div className="text-sm text-muted-foreground">
                 {columnFilters.length > 0 && (
                   <span>
-                    {columnFilters.length} filter{columnFilters.length > 1 ? 's' : ''} active
+                    {columnFilters.length} filter
+                    {columnFilters.length > 1 ? "s" : ""} active
                     <Button
                       variant="link"
                       size="sm"
@@ -355,8 +442,8 @@ export default function CutListTable({
 
               <div className="flex gap-2">
                 <ToolbarButtons />
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={toggleFullscreen}
                   className="gap-2"
@@ -368,8 +455,8 @@ export default function CutListTable({
             </div>
 
             <div className="cutlist-table-container-fullscreen flex-1">
-              <DataTable 
-                table={table} 
+              <DataTable
+                table={table}
                 showPagination={false}
                 actionBar={
                   selectedRows.length > 0 ? (
@@ -392,7 +479,8 @@ export default function CutListTable({
           <div className="text-sm text-muted-foreground">
             {columnFilters.length > 0 && (
               <span>
-                {columnFilters.length} filter{columnFilters.length > 1 ? 's' : ''} active
+                {columnFilters.length} filter
+                {columnFilters.length > 1 ? "s" : ""} active
                 <Button
                   variant="link"
                   size="sm"
@@ -407,8 +495,8 @@ export default function CutListTable({
 
           <div className="flex gap-2">
             <ToolbarButtons />
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={toggleFullscreen}
               className="gap-2"
@@ -420,8 +508,8 @@ export default function CutListTable({
         </div>
 
         <div className="cutlist-table-container">
-          <DataTable 
-            table={table} 
+          <DataTable
+            table={table}
             showPagination={false}
             actionBar={
               selectedRows.length > 0 ? (
@@ -441,7 +529,7 @@ export default function CutListTable({
             onOpenChange={setDialogOpen}
             machineName={selectedMachine.name}
             machineId={selectedMachine.id}
-            selectedRows={selectedRows.map(r => r.original)}
+            selectedRows={selectedRows.map((r) => r.original)}
             onAssign={handleAssign}
           />
         )}

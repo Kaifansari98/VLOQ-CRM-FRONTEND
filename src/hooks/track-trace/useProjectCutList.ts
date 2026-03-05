@@ -8,7 +8,11 @@ import {
   LinkLeadPayload,
   linkLeadToProject,
   searchLeads,
+  uploadMachineAssignApi,
 } from "@/api/track-trace/track-trace-cutlist.api";
+import { apiClient } from "@/lib/apiClient";
+import { toast } from "react-toastify";
+import { ValidationError } from "next/dist/compiled/amphtml-validator";
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 // Centralised so invalidation always targets the right cache entry
@@ -55,7 +59,7 @@ export function useLeadSearch(vendorId: number) {
         setIsSearching(false);
       }
     },
-    [vendorId]
+    [vendorId],
   );
 
   useEffect(() => {
@@ -80,7 +84,11 @@ interface UseLinkLeadOptions {
   onError?: () => void;
 }
 
-export function useLinkLeadToProject({ vendorId, onSuccess, onError }: UseLinkLeadOptions) {
+export function useLinkLeadToProject({
+  vendorId,
+  onSuccess,
+  onError,
+}: UseLinkLeadOptions) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -95,3 +103,37 @@ export function useLinkLeadToProject({ vendorId, onSuccess, onError }: UseLinkLe
     onError,
   });
 }
+
+interface UploadMachineExcelPayload {
+  vendorId: number;
+  projectToken: string;
+  file: File;
+  userId: number;
+}
+
+export const useUploadMachineExcel = (projectToken: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UploadMachineExcelPayload) =>
+      uploadMachineAssignApi(
+        payload.vendorId,
+        payload.projectToken,
+        payload.file,
+        payload.userId,
+      ),
+
+    onSuccess: () => {
+      toast.success("Machine assigned successfully");
+
+      queryClient.invalidateQueries({
+        queryKey: TRACK_TRACE_KEYS.cutlist(projectToken),
+      });
+    },
+
+    onError: (error: any) => {
+      const data = error?.response?.data;
+      toast.error(data?.message ?? "Excel processing failed");
+    },
+  });
+};
