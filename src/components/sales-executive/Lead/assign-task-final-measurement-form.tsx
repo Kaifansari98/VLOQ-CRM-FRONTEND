@@ -105,6 +105,13 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const uploadCSPMutation = useUploadCSPBooking();
   const { data: leadData } = useLeadById(leadId, vendorId, userId);
   const lead = leadData?.data?.lead;
+  const assignedSiteSupervisorFromMapping =
+    leadData?.data?.lead?.assigned_site_supervisor_from_mapping ?? null;
+  const assignedSiteSupervisorId =
+    assignedSiteSupervisorFromMapping?.user_id ??
+    leadData?.data?.lead?.siteSupervisors?.[0]?.supervisor?.id ??
+    leadData?.data?.lead?.siteSupervisors?.[0]?.user_id ??
+    undefined;
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -129,13 +136,35 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     }
 
     // Default → Site Supervisors
+    if (taskType === "Final Measurements" && assignedSiteSupervisorId) {
+      const assigned = siteSupervisors?.data?.site_supervisors?.find(
+        (user: any) => user.id === assignedSiteSupervisorId
+      );
+      return assigned
+        ? [
+            {
+              id: assigned.id,
+              label: assigned.user_name,
+            },
+          ]
+        : [];
+    }
+
     return (
       siteSupervisors?.data?.site_supervisors?.map((user: any) => ({
         id: user.id,
         label: user.user_name,
       })) ?? []
     );
-  }, [taskType, siteSupervisors, salesExecutives]);
+  }, [taskType, siteSupervisors, salesExecutives, assignedSiteSupervisorId]);
+
+  React.useEffect(() => {
+    if (taskType === "Final Measurements" && assignedSiteSupervisorId) {
+      form.setValue("assign_lead_to", assignedSiteSupervisorId, {
+        shouldValidate: true,
+      });
+    }
+  }, [taskType, assignedSiteSupervisorId, form]);
 
   console.log("[AssignFM] site_map_link", {
     value: lead?.site_map_link ?? null,
@@ -294,6 +323,10 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                         data={mappedData}
                         value={field.value}
                         onChange={field.onChange}
+                        disabled={
+                          taskType === "Final Measurements" &&
+                          !!assignedSiteSupervisorId
+                        }
                       />
                     </FormControl>
                     <FormMessage />
