@@ -1523,11 +1523,11 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Reassign</AlertDialogTitle>
+            <AlertDialogTitle>Confirm Assign</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedSupervisor
-                ? `Reassign to ${selectedSupervisor.user_name}?`
-                : "Reassign this lead to the selected supervisor?"}
+                ? `Assign to ${selectedSupervisor.user_name}?`
+                : "Assign this lead to the selected supervisor?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
