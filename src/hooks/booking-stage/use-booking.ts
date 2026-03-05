@@ -3,6 +3,7 @@ import {
   EditBookingForm,
   EditBookingPayload,
   getAllSiteSuperVisors,
+  getAllHeadSiteSupervisors,
   getBookingLeadById,
   getBookingLeads,
   getPaymentLogs,
@@ -52,6 +53,15 @@ export const useSiteSupervisors = (vendorId: number) => {
     queryFn: () => getAllSiteSuperVisors(vendorId),
     enabled: !!vendorId, // ✅ only run when vendorId exists
     staleTime: 5 * 60 * 1000, // cache data for 5 minutes
+  });
+};
+
+export const useHeadSiteSupervisors = (vendorId: number) => {
+  return useQuery({
+    queryKey: ["head-site-supervisors", vendorId],
+    queryFn: () => getAllHeadSiteSupervisors(vendorId),
+    enabled: !!vendorId,
+    staleTime: 5 * 60 * 1000,
   });
 };
 

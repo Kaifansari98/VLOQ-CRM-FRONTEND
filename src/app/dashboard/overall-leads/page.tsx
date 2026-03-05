@@ -108,7 +108,7 @@ export default function OverallLeadsPage() {
             enableAdminTabs={false}
             enableOverallData={false}
             showStageColumn
-            defaultViewType="my"
+            defaultViewType="overall"
             onRowNavigate={navigateOverallLeads}
           />
         </Suspense>

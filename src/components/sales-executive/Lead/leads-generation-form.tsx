@@ -59,7 +59,7 @@ import StructureQuantityCards from "@/components/sales-executive/Lead/structure-
 // Schema for Create Lead - all fields required as per business logic
 const createFormSchema = (userType: string | undefined) => {
   const isAdminOrSuperAdmin =
-    userType === "admin" || userType === "super_admin";
+    userType === "admin" || userType === "super-admin";
 
   return z.object({
     firstname: z.string().min(1, "First name is required").max(300),
@@ -94,7 +94,7 @@ const createFormSchema = (userType: string | undefined) => {
 // Schema for Draft - only name, contact, and assign_to (for admin) required
 const draftFormSchema = (userType: string | undefined) => {
   const isAdminOrSuperAdmin =
-    userType === "admin" || userType === "super_admin";
+    userType === "admin" || userType === "super-admin";
 
   return z.object({
     firstname: z.string().min(1, "First name is required").max(300),
@@ -345,7 +345,7 @@ export default function LeadsGenerationForm({
 
   // fetch data once at top of component (after form etc.)
   const { data: vendorUsers, isLoading: isVendorUsersLoading } =
-    useVendorSalesExecutiveUsers(vendorId);
+    useVendorSalesExecutiveUsers(vendorId, franchiseId);
   const router = useRouter();
 
   const vendorUserss = vendorUsers?.data?.sales_executives ?? [];

@@ -59,6 +59,13 @@ export const getAllSiteSuperVisors = async (vendorId: number) => {
   return data;
 };
 
+export const getAllHeadSiteSupervisors = async (vendorId: number) => {
+  const { data } = await apiClient.get(
+    `/leads/head-site-supervisor/vendor/${vendorId}`
+  );
+  return data;
+};
+
 export const reassignSiteSupervisor = async (
   vendorId: number,
   leadId: number,

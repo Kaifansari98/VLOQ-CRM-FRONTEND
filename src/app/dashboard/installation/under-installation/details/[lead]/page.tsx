@@ -31,9 +31,6 @@ import {
   XCircle,
   Hammer,
   // Under Installation icon,
-  PanelsTopLeftIcon,
-  BoxIcon,
-  UsersRoundIcon,
   Clock,
   Handshake,
   CalendarOff,
@@ -74,7 +71,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useFinalHandoverReady,
   useMoveToFinalHandover,
-  useMiscellaneousEntries,
   useSetActualInstallationStartDate,
   useUnderInstallationDetails,
   useMiscellaneousResolutionStatus,
@@ -97,27 +93,21 @@ export default function UnderInstallationLeadDetails() {
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
   const queryClient = useQueryClient();
-
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type
   );
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-
   const { data: underDetails } = useUnderInstallationDetails(
     vendorId,
     leadIdNum
   );
   const setStartMutation = useSetActualInstallationStartDate();
-
   const { data: finalReady } = useFinalHandoverReady(vendorId!, leadIdNum);
-
-
-    const { data: miscStatus, isLoading:isLoadingMisc } =
+  const { data: miscStatus, isLoading:isLoadingMisc } =
   useMiscellaneousResolutionStatus(vendorId, leadIdNum);
 
   const [openStartModal, setOpenStartModal] = useState(false);
-
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
@@ -135,11 +125,9 @@ export default function UnderInstallationLeadDetails() {
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
-
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = lead?.account_id;
-
   const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadButton(userType);
@@ -147,14 +135,9 @@ export default function UnderInstallationLeadDetails() {
   const canAccessTodoTab = canAccessTodoTaskTabUnderInstallationStage(userType);
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory = canViewSiteHistoryTab(userType);
-
-
-
   const miscStatusReady = miscStatus?.all_resolved;
 
   console.log("miscStatus: ",miscStatus?.all_resolved)
-
-
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -183,7 +166,6 @@ export default function UnderInstallationLeadDetails() {
     });
 
     const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
-
     const fullDate = date.toLocaleDateString("en-US", {
       day: "numeric",
       month: "long",
@@ -200,7 +182,6 @@ export default function UnderInstallationLeadDetails() {
         <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
-
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -220,7 +201,6 @@ export default function UnderInstallationLeadDetails() {
           {/* ───────────────────────────────────────────── */}
           {/*  MOVE TO FINAL HANDOVER BUTTON WITH CONDITIONS */}
           {/* ───────────────────────────────────────────── */}
-
           {!underDetails?.actual_installation_start_date ? (
             // 1️⃣ Installation NOT started → block
             <CustomeTooltip

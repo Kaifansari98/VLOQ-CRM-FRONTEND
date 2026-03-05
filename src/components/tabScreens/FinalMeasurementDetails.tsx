@@ -84,10 +84,10 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   const [sitePhotosToUpload, setSitePhotosToUpload] = useState<File[]>([]);
 
   // 🧩 --- Permissions ---
-  const canDelete = userType === "admin" || userType === "super_admin";
+  const canDelete = userType === "admin" || userType === "super-admin";
   const canUpload =
     userType === "admin" ||
-    userType === "super_admin";
+    userType === "super-admin";
 
   // 🧩 --- Delete Handler ---
   const handleConfirmDelete = () => {

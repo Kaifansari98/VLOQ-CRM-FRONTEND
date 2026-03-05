@@ -343,9 +343,13 @@ export const deleteLead = async (leadId: number, userId: number) => {
   return response.data;
 };
 
-export const getVendorSalesExecutiveUsers = async (vendorId: number) => {
+export const getVendorSalesExecutiveUsers = async (
+  vendorId: number,
+  franchiseId?: number,
+) => {
   const response = await apiClient.get(
     `/leads/sales-executives/vendor/${vendorId}`,
+    franchiseId ? { params: { franchise_id: franchiseId } } : undefined,
   );
   return response.data;
 };

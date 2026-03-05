@@ -62,8 +62,27 @@ const authSlice = createSlice({
         }
       }
     },
+    setFranchiseId: (state, action: PayloadAction<number | null>) => {
+      state.franchise_id = action.payload
+      if (state.user) {
+        state.user.franchise_id = action.payload
+      }
+      if (typeof window !== "undefined") {
+        const user = localStorage.getItem("user")
+        if (user) {
+          try {
+            const parsed = JSON.parse(user)
+            parsed.franchise_id = action.payload
+            localStorage.setItem("user", JSON.stringify(parsed))
+          } catch {
+            // ignore storage parse failures
+          }
+        }
+      }
+    },
   },
 })
 
-export const { setCredentials, logout, loadSession } = authSlice.actions
+export const { setCredentials, logout, loadSession, setFranchiseId } =
+  authSlice.actions
 export default authSlice.reducer

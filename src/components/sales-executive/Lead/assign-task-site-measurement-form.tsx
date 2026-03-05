@@ -74,11 +74,14 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   onlyFollowUp,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const franchiseId = useAppSelector(
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id
+  );
   const {
     data: vendorUsers,
     isLoading: loadingUsers,
     error,
-  } = useVendorSalesExecutiveUsers(vendorId!);
+  } = useVendorSalesExecutiveUsers(vendorId!, franchiseId!);
   const router = useRouter();
   const leadId = data?.id!;
   const userId = useAppSelector((state) => state.auth.user?.id);

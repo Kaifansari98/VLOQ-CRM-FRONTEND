@@ -39,6 +39,7 @@ import {
   useFactoryUsers,
 } from "@/api/production/order-login";
 import AssignToPicker from "@/components/assign-to-picker";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 const schema = z.object({
   assign_to_user_id: z.number().min(1, "Please select a Factory user"),
@@ -70,6 +71,7 @@ export default function MoveToProductionModal({
 
   const { data: factoryUsers, isLoading } = useFactoryUsers(vendorId!);
   const { mutate, isPending } = useRequestToProduction();
+  const { data: leadDetails } = useLeadById(data?.id, vendorId, userId);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
@@ -107,7 +109,11 @@ export default function MoveToProductionModal({
       return;
     }
 
-    if (!client_required_order_login_complition_date) {
+    const requiredDate =
+      client_required_order_login_complition_date ??
+      leadDetails?.data?.lead?.client_required_order_login_complition_date;
+
+    if (!requiredDate) {
       toast.error("Client required completion date missing!");
       return;
     }
@@ -119,7 +125,7 @@ export default function MoveToProductionModal({
         accountId: data.accountId,
         assign_to_user_id,
         created_by: userId,
-        client_required_order_login_complition_date,
+        client_required_order_login_complition_date: requiredDate,
         instanceId: data.instanceId ?? undefined,
       },
       {

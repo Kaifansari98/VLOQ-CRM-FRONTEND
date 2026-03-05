@@ -176,7 +176,7 @@ export const useUniversalStageLeads = (
 
 export interface UniversalStagePostPayload {
   userId: number;
-  franchise_id: number;
+  franchise_id?: number;
   tag?: string;
   page: number;
   limit: number;
@@ -205,6 +205,7 @@ export const postUniversalStageLeads = async (
   vendorId: number,
   payload: UniversalStagePostPayload,
 ): Promise<UniversalStageLeadResponse> => {
+  console.log("[API] postUniversalStageLeads", { vendorId, payload });
   const { data } = await apiClient.post(
     `/leads/bookingStage/universal-table-data-2/vendorId/${vendorId}`,
     payload,
@@ -234,7 +235,7 @@ export const useUnderInstallationLeadsWithMiscellaneous = (
     queryKey: ["under-installation-misc-leads", vendorId, payload],
     queryFn: () =>
       getUnderInstallationLeadsWithMiscellaneous(vendorId, payload),
-    enabled: !!vendorId && !!payload?.userId && !!payload?.franchise_id,
+    enabled: !!vendorId && !!payload?.userId,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,
   });
@@ -249,7 +250,7 @@ export const useUniversalStageLeadsPost = (
     queryKey: ["universal-stage-leads", vendorId, payload],
     queryFn: () => postUniversalStageLeads(vendorId, payload),
 
-    enabled: !!vendorId && !!payload?.userId && !!payload?.franchise_id,
+    enabled: !!vendorId && !!payload?.userId,
 
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -259,7 +260,7 @@ export const useUniversalStageLeadsPost = (
 // hooks/postVendorLeadsByTag.ts
 export interface VendorLeadsByTagPostPayload {
   userId?: number | null; // optional (for exclusion logic)
-  franchise_id: number;
+  franchise_id?: number;
   tag: string;
 
   page: number;
@@ -296,6 +297,7 @@ export const postVendorLeadsByTag = async (
   vendorId: number,
   payload: VendorLeadsByTagPostPayload,
 ): Promise<UniversalStageLeadResponse> => {
+  console.log("[API] postVendorLeadsByTag", { vendorId, payload });
   const { data } = await apiClient.post(
     `/leads/bookingStage/vendorId/${vendorId}/vendor-leads-by-tag/all-leads`,
     payload,
@@ -313,7 +315,7 @@ export const useVendorLeadsByTagPost = (
 
     queryFn: () => postVendorLeadsByTag(vendorId, payload),
 
-    enabled: !!vendorId && !!payload?.tag && !!payload?.franchise_id,
+    enabled: !!vendorId && !!payload?.tag,
 
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,

@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import {
   useMoveToBookingStage,
-  useSiteSupervisors,
+  useHeadSiteSupervisors,
 } from "@/hooks/booking-stage/use-booking";
 import { BookingPayload } from "@/api/booking";
 import { toast } from "react-toastify";
@@ -154,8 +154,10 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   console.log("PaymentInfo :- ", ismPaymentInfo);
   console.log("Amount :- ", ismPaymentInfo?.amount);
 
-  const { data: siteSupervisors, isLoading } = useSiteSupervisors(vendorId!);
-  const vendorUser = siteSupervisors?.data?.site_supervisors || [];
+  const { data: headSiteSupervisors, isLoading } =
+    useHeadSiteSupervisors(vendorId!);
+  const vendorUser = headSiteSupervisors?.data?.head_site_supervisors || [];
+  const shouldShowAssigneePicker = vendorUser.length > 1;
   const { mutate, isPending } = useMoveToBookingStage();
   const form = useForm<BookingFormValues>({
     resolver: bookingResolver,
@@ -170,6 +172,14 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     },
     mode: "onChange",
   });
+
+  React.useEffect(() => {
+    if (vendorUser.length === 1) {
+      form.setValue("assign_to", String(vendorUser[0].id), {
+        shouldValidate: true,
+      });
+    }
+  }, [form, vendorUser]);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -356,36 +366,38 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="assign_to"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm">
-                      Assign Lead To Site Supervisor *
-                    </FormLabel>
-                    <Select
-                      value={field.value || ""}
-                      onValueChange={field.onChange}
-                      disabled={isLoading}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="text-sm w-full">
-                          <SelectValue placeholder="Select assignee" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {vendorUser.map((user: any) => (
-                          <SelectItem key={user.id} value={String(user.id)}>
-                            {user.user_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {shouldShowAssigneePicker ? (
+                <FormField
+                  control={form.control}
+                  name="assign_to"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">
+                        Assign Lead To Site Supervisor *
+                      </FormLabel>
+                      <Select
+                        value={field.value || ""}
+                        onValueChange={field.onChange}
+                        disabled={isLoading}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="text-sm w-full">
+                            <SelectValue placeholder="Select assignee" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {vendorUser.map((user: any) => (
+                            <SelectItem key={user.id} value={String(user.id)}>
+                              {user.user_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
             </div>
 
             {ismPaymentInfo?.amount && (

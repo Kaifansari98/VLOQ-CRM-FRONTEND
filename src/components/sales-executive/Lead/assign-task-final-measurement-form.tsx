@@ -100,20 +100,11 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     return null;
   }
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type
-  );
   const mutation = useAssignToFinalMeasurement(leadId);
   const queryClient = useQueryClient();
   const uploadCSPMutation = useUploadCSPBooking();
   const { data: leadData } = useLeadById(leadId, vendorId, userId);
   const lead = leadData?.data?.lead;
-  const normalizedUserType = String(userType).toLowerCase();
-  const isSalesExecutive = normalizedUserType === "sales-executive";
-  const isAdminUser =
-    normalizedUserType === "admin" || normalizedUserType === "super-admin";
-  const leadStatusTag = lead?.statusType?.tag;
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -146,16 +137,23 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     );
   }, [taskType, siteSupervisors, salesExecutives]);
 
+  console.log("[AssignFM] site_map_link", {
+    value: lead?.site_map_link ?? null,
+    hasValue: Boolean(lead?.site_map_link?.trim()),
+  });
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
+      console.log("[AssignFM] site_map_link", {
+        value: lead?.site_map_link ?? null,
+        hasValue: Boolean(lead?.site_map_link?.trim()),
+      });
       if (
         values.task_type === "Final Measurements" &&
-        (isSalesExecutive || isAdminUser) &&
-        leadStatusTag === "Type 4" &&
-        !lead?.site_map_link
+        !lead?.site_map_link?.trim()
       ) {
         toast.error(
-          "Site Map Link is compulsory before assigning lead to Final Measurement"
+          "Site Map Link is compulsory before assigning lead to Final Measurement",
         );
         return;
       }
@@ -201,7 +199,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         },
         onError: (error: any) => {
           toast.error(
-            error?.response?.data?.message || "Failed to assign task"
+            error?.response?.data?.message || "Failed to assign task",
           );
         },
       });

@@ -29,7 +29,7 @@ export function LeadStatusTabs({
   const isAdmin = useMemo(
     () =>
       userType?.toLowerCase() === "admin" ||
-      userType?.toLowerCase() === "super_admin",
+      userType?.toLowerCase() === "super-admin",
     [userType]
   );
 

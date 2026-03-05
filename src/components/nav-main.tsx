@@ -123,7 +123,12 @@ export function NavMain({
 }) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const { data: leadStats, isLoading } = useLeadStats(vendorId, userId);
+  const franchiseId = useAppSelector((state) => state.auth.franchise_id);
+  const { data: leadStats, isLoading } = useLeadStats(
+    vendorId,
+    userId,
+    franchiseId
+  );
   const { isMobile, setOpenMobile } = useSidebar();
 
   const pathname = usePathname();

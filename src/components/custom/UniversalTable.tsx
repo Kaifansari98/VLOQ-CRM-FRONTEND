@@ -69,12 +69,20 @@ export function UniversalTable({
   // -------------------- GLOBAL STATE --------------------
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
-  const franchiseId = useAppSelector((s) => s.auth.user?.franchise_id);
+  const franchiseId = useAppSelector(
+    (s) => s.auth.franchise_id ?? s.auth.user?.franchise_id
+  );
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
 
   const router = useRouter();
-  const isAdmin = userType === "admin" || userType === "super_admin";
+  const normalizedUserType = userType?.toLowerCase();
+  const isAdmin =
+    normalizedUserType === "admin" || normalizedUserType === "super-admin";
+  const shouldIncludeFranchise =
+    normalizedUserType === "admin" ||
+    normalizedUserType === "super-admin" ||
+    normalizedUserType === "sales-executive";
   const normalizedType = String(type || "").trim().toLowerCase();
   const hideOverallToggle =
     normalizedType === "type 8" &&
@@ -83,6 +91,19 @@ export function UniversalTable({
   // -------------------- LOCAL UI STATE --------------------
 
   const [viewType, setViewType] = useState<"my" | "overall">(defaultViewType);
+  const effectiveViewType = isAdmin ? "overall" : viewType;
+  
+  React.useEffect(() => {
+    console.log("[UniversalTable] ids", {
+      vendorId,
+      franchiseId,
+      userId,
+      userType,
+      effectiveViewType,
+      type,
+      dataMode,
+    });
+  }, [vendorId, franchiseId, userId, userType, effectiveViewType, type, dataMode]);
 
   // ✅ SEPARATE PAGINATION FOR BOTH VIEWS
   const [myPagination, setMyPagination] = useState({
@@ -126,12 +147,14 @@ export function UniversalTable({
   });
 
   // ✅ DETERMINE ACTIVE STATE BASED ON VIEW TYPE
-  const activePagination = viewType === "my" ? myPagination : overallPagination;
+  const activePagination =
+    effectiveViewType === "my" ? myPagination : overallPagination;
   const activeGlobalFilter =
-    viewType === "my" ? myGlobalFilter : overallGlobalFilter;
-  const activeSorting = viewType === "my" ? mySorting : overallSorting;
+    effectiveViewType === "my" ? myGlobalFilter : overallGlobalFilter;
+  const activeSorting =
+    effectiveViewType === "my" ? mySorting : overallSorting;
   const activeColumnFilters =
-    viewType === "my" ? myColumnFilters : overallColumnFilters;
+    effectiveViewType === "my" ? myColumnFilters : overallColumnFilters;
 
   // -------------------- MY LEADS POST PAYLOAD --------------------
 
@@ -146,10 +169,11 @@ export function UniversalTable({
       enforceAssignedToForTechCheckSales && userId
         ? [userId]
         : mappedFilters.assign_to ?? [];
+    const assignToFilter = assignTo.length > 0 ? assignTo : [];
 
     return {
       userId: userId!,
-      franchise_id: franchiseId!,
+      franchise_id: shouldIncludeFranchise ? franchiseId! : undefined,
       tag: type,
       page: myPagination.pageIndex + 1,
       limit: myPagination.pageSize,
@@ -163,7 +187,7 @@ export function UniversalTable({
       email: mappedFilters.email,
       source: mappedFilters.source,
       status: mappedFilters.status,
-      assign_to: assignTo,
+      assign_to: assignToFilter,
       siteType: mappedFilters.siteType,
       architectName: mappedFilters.architectName,
       created_at: sortOrder,
@@ -181,7 +205,9 @@ export function UniversalTable({
   }, [
     userId,
     userType,
+    shouldIncludeFranchise,
     type,
+    franchiseId,
     myPagination,
     mySorting,
     myColumnFilters,
@@ -201,10 +227,12 @@ export function UniversalTable({
       enforceAssignedToForTechCheckSales && userId
         ? [userId]
         : mappedFilters.assign_to ?? [];
+    const assignToFilter = assignTo.length > 0 ? assignTo : undefined;
+    const overallUserId = isAdmin ? undefined : userId;
 
     return {
-      userId: userId!,
-      franchise_id: franchiseId!,
+      userId: overallUserId,
+      franchise_id: shouldIncludeFranchise ? franchiseId! : undefined,
       tag: type,
 
       page: overallPagination.pageIndex + 1,
@@ -220,7 +248,7 @@ export function UniversalTable({
       email: mappedFilters.email,
       source: mappedFilters.source,
 
-      assign_to: assignTo,
+      assign_to: assignToFilter,
       site_address: mappedFilters.site_address,
       archetech_name: mappedFilters.archetech_name,
       designer_remark: mappedFilters.designer_remark,
@@ -237,7 +265,10 @@ export function UniversalTable({
   }, [
     userId,
     userType,
+    isAdmin,
+    shouldIncludeFranchise,
     type,
+    franchiseId,
     overallPagination,
     overallSorting,
     overallColumnFilters,
@@ -262,7 +293,7 @@ export function UniversalTable({
 
     return {
       userId: userId!,
-      franchise_id: franchiseId!,
+      franchise_id: shouldIncludeFranchise ? franchiseId! : undefined,
       page: myPagination.pageIndex + 1,
       limit: myPagination.pageSize,
 
@@ -276,7 +307,9 @@ export function UniversalTable({
       email: mappedFilters.email,
       source: mappedFilters.source,
 
-      assign_to: mappedFilters.assign_to,
+      assign_to: Array.isArray(mappedFilters.assign_to)
+        ? mappedFilters.assign_to
+        : [],
       site_address: mappedFilters.site_address,
       archetech_name: mappedFilters.archetech_name,
       designer_remark: mappedFilters.designer_remark,
@@ -290,10 +323,70 @@ export function UniversalTable({
       date_range: mappedFilters.date_range,
       created_at: sortOrder,
     };
-  }, [userId, myPagination, mySorting, myColumnFilters, myGlobalFilter]);
+  }, [
+    userId,
+    shouldIncludeFranchise,
+    franchiseId,
+    myPagination,
+    mySorting,
+    myColumnFilters,
+    myGlobalFilter,
+  ]);
 
   const { data: miscData, isLoading: isMiscLoading } =
     useUnderInstallationLeadsWithMiscellaneous(vendorId!, miscPayload);
+
+  React.useEffect(() => {
+    console.log("[UniversalTable] admin view debug", {
+      isAdmin,
+      normalizedUserType,
+      effectiveViewType,
+      dataMode,
+      type,
+      vendorId,
+      franchiseId,
+      userId,
+      isMyLoading,
+      isOverallLoading,
+      isMiscLoading,
+      myPayload: myPostPayload,
+      overallPayload: overallPostPayload,
+      miscPayload,
+      myData: {
+        count: myData?.count,
+        dataLen: myData?.data?.length,
+        totalPages: myData?.pagination?.totalPages,
+      },
+      overallData: {
+        count: overallData?.count,
+        dataLen: overallData?.data?.length,
+        totalPages: overallData?.pagination?.totalPages,
+      },
+      miscData: {
+        count: miscData?.count,
+        dataLen: miscData?.data?.length,
+        totalPages: miscData?.pagination?.totalPages,
+      },
+    });
+  }, [
+    isAdmin,
+    normalizedUserType,
+    effectiveViewType,
+    dataMode,
+    type,
+    vendorId,
+    franchiseId,
+    userId,
+    isMyLoading,
+    isOverallLoading,
+    isMiscLoading,
+    myPostPayload,
+    overallPostPayload,
+    miscPayload,
+    myData,
+    overallData,
+    miscData,
+  ]);
 
   //
   // 🔵 Active Dataset
@@ -301,14 +394,14 @@ export function UniversalTable({
   const activeData =
     dataMode === "misc"
       ? (miscData?.data ?? [])
-      : viewType === "overall"
+      : effectiveViewType === "overall"
         ? (overallData?.data ?? [])
         : (myData?.data ?? []);
 
   const totalPages =
     dataMode === "misc"
       ? (miscData?.pagination?.totalPages ?? 1)
-      : viewType === "overall"
+      : effectiveViewType === "overall"
         ? (overallData?.pagination?.totalPages ?? 1)
         : (myData?.pagination?.totalPages ?? 1);
 
@@ -461,6 +554,24 @@ export function UniversalTable({
 
     return expanded;
   }, [activeData, normalizedType]);
+
+  React.useEffect(() => {
+    console.log("[UniversalTable] data pipeline", {
+      isAdmin,
+      effectiveViewType,
+      dataMode,
+      activeDataLen: activeData?.length ?? 0,
+      tableDataLen: tableData?.length ?? 0,
+      normalizedType,
+    });
+  }, [
+    isAdmin,
+    effectiveViewType,
+    dataMode,
+    activeData,
+    tableData,
+    normalizedType,
+  ]);
   // -------------------- COLUMNS --------------------
 
   const showProductionStatusColumn = useMemo(() => {
@@ -496,14 +607,15 @@ export function UniversalTable({
     },
 
     onPaginationChange:
-      viewType === "my" ? setMyPagination : setOverallPagination,
-    onSortingChange: viewType === "my" ? setMySorting : setOverallSorting,
+      effectiveViewType === "my" ? setMyPagination : setOverallPagination,
+    onSortingChange:
+      effectiveViewType === "my" ? setMySorting : setOverallSorting,
     onColumnFiltersChange:
-      viewType === "my" ? setMyColumnFilters : setOverallColumnFilters,
+      effectiveViewType === "my" ? setMyColumnFilters : setOverallColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange:
-      viewType === "my" ? setMyGlobalFilter : setOverallGlobalFilter,
+      effectiveViewType === "my" ? setMyGlobalFilter : setOverallGlobalFilter,
 
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -530,6 +642,7 @@ export function UniversalTable({
 
   // ✅ HANDLE VIEW SWITCH
   const handleViewSwitch = (newView: "my" | "overall") => {
+    if (isAdmin) return;
     setViewType(newView);
     // Reset pagination when switching views
     if (newView === "my") {
@@ -557,7 +670,7 @@ export function UniversalTable({
             <div className="flex gap-2 items-end">
               <Button
                 size="sm"
-                variant={viewType === "my" ? "default" : "secondary"}
+                variant={effectiveViewType === "my" ? "default" : "secondary"}
                 onClick={() => handleViewSwitch("my")}
                 className="flex-1 md:flex-none"
               >
@@ -566,7 +679,9 @@ export function UniversalTable({
 
               <Button
                 size="sm"
-                variant={viewType === "overall" ? "default" : "secondary"}
+                variant={
+                  effectiveViewType === "overall" ? "default" : "secondary"
+                }
                 onClick={() => handleViewSwitch("overall")}
                 className="flex-1 md:flex-none"
               >
@@ -593,7 +708,7 @@ export function UniversalTable({
           <ClearInput
             value={activeGlobalFilter}
             onChange={(e) => {
-              if (viewType === "my") {
+              if (effectiveViewType === "my") {
                 setMyGlobalFilter(e.target.value);
                 setMyPagination({ ...myPagination, pageIndex: 0 });
               } else {
@@ -618,7 +733,7 @@ export function UniversalTable({
             <ClearInput
               value={activeGlobalFilter}
               onChange={(e) => {
-                if (viewType === "my") {
+                if (effectiveViewType === "my") {
                   setMyGlobalFilter(e.target.value);
                   setMyPagination({ ...myPagination, pageIndex: 0 });
                 } else {
