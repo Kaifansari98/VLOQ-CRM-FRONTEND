@@ -126,6 +126,7 @@ export interface UniversalStageLeadResponse {
 export const getUniversalStageLeads = async (
   vendorId: number,
   userId: number,
+  franchiseId: number,
   tag: string,
   page: number,
   limit: number,
@@ -133,7 +134,7 @@ export const getUniversalStageLeads = async (
   const { data } = await apiClient.get(
     `/leads/bookingStage/universal-table-data/vendorId/${vendorId}`,
     {
-      params: { userId, tag, page, limit },
+      params: { userId, franchise_id: franchiseId, tag, page, limit },
     },
   );
 
@@ -143,15 +144,31 @@ export const getUniversalStageLeads = async (
 export const useUniversalStageLeads = (
   vendorId: number,
   userId: number,
+  franchiseId: number,
   tag: string,
   page: number,
   pageSize: number,
 ) => {
   return useQuery<UniversalStageLeadResponse>({
-    queryKey: ["universal-stage-leads", vendorId, userId, tag, page, pageSize],
+    queryKey: [
+      "universal-stage-leads",
+      vendorId,
+      userId,
+      franchiseId,
+      tag,
+      page,
+      pageSize,
+    ],
     queryFn: () =>
-      getUniversalStageLeads(vendorId, userId, tag, page, pageSize),
-    enabled: !!vendorId && !!userId,
+      getUniversalStageLeads(
+        vendorId,
+        userId,
+        franchiseId,
+        tag,
+        page,
+        pageSize
+      ),
+    enabled: !!vendorId && !!userId && !!franchiseId,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,
   });
@@ -159,6 +176,7 @@ export const useUniversalStageLeads = (
 
 export interface UniversalStagePostPayload {
   userId: number;
+  franchise_id: number;
   tag?: string;
   page: number;
   limit: number;
@@ -216,7 +234,7 @@ export const useUnderInstallationLeadsWithMiscellaneous = (
     queryKey: ["under-installation-misc-leads", vendorId, payload],
     queryFn: () =>
       getUnderInstallationLeadsWithMiscellaneous(vendorId, payload),
-    enabled: !!vendorId && !!payload?.userId,
+    enabled: !!vendorId && !!payload?.userId && !!payload?.franchise_id,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,
   });
@@ -231,7 +249,7 @@ export const useUniversalStageLeadsPost = (
     queryKey: ["universal-stage-leads", vendorId, payload],
     queryFn: () => postUniversalStageLeads(vendorId, payload),
 
-    enabled: !!vendorId && !!payload?.userId,
+    enabled: !!vendorId && !!payload?.userId && !!payload?.franchise_id,
 
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -241,6 +259,7 @@ export const useUniversalStageLeadsPost = (
 // hooks/postVendorLeadsByTag.ts
 export interface VendorLeadsByTagPostPayload {
   userId?: number | null; // optional (for exclusion logic)
+  franchise_id: number;
   tag: string;
 
   page: number;
@@ -294,7 +313,7 @@ export const useVendorLeadsByTagPost = (
 
     queryFn: () => postVendorLeadsByTag(vendorId, payload),
 
-    enabled: !!vendorId && !!payload?.tag,
+    enabled: !!vendorId && !!payload?.tag && !!payload?.franchise_id,
 
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,

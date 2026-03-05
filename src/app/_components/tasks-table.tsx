@@ -50,6 +50,7 @@ import TaskTypeFilter from "@/components/data-table/data-table-task-filter";
 
 const MyTaskTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const franchiseId = useAppSelector((state) => state.auth.user?.franchise_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined,
@@ -133,6 +134,7 @@ const MyTaskTable = () => {
       limit: myPagination.pageSize,
       created_at: sortOrder,
       global_search: myGlobalFilter || "",
+      franchise_id: franchiseId!,
 
       // ✅ FIX: Add task_type from state
       task_type: mappedFilters.task_type,
@@ -153,6 +155,7 @@ const MyTaskTable = () => {
     myGlobalFilter,
     myColumnFilters,
     myTaskTypeFilter, // ✅ ADD DEPENDENCY
+    franchiseId,
   ]);
 
   // ✅ OVERALL TASKS PAYLOAD - FIXED
@@ -165,6 +168,7 @@ const MyTaskTable = () => {
       limit: overallPagination.pageSize,
       created_at: sortOrder,
       global_search: overallGlobalFilter || "",
+      franchise_id: franchiseId!,
 
       // ✅ FIX: Add task_type from state
       task_type: mappedFilters.task_type,
@@ -185,6 +189,7 @@ const MyTaskTable = () => {
     overallGlobalFilter,
     overallColumnFilters,
     overallTaskTypeFilter, // ✅ ADD DEPENDENCY
+    franchiseId,
   ]);
 
   console.log("My Task Payload:", myTaskPayload);

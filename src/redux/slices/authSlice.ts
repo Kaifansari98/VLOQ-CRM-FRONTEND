@@ -3,6 +3,7 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit"
 export interface User {
   id: number
   vendor_id: number
+  franchise_id?: number | null
   user_name: string
   user_contact: string
   user_email: string
@@ -16,11 +17,13 @@ export interface User {
 interface AuthState {
   user: User | null
   token: string | null
+  franchise_id: number | null
 }
 
 const initialState: AuthState = {
   user: null,
   token: null,
+  franchise_id: null,
 }
 
 const authSlice = createSlice({
@@ -33,6 +36,7 @@ const authSlice = createSlice({
     ) => {
       state.user = action.payload.user
       state.token = action.payload.token
+      state.franchise_id = action.payload.user.franchise_id ?? null
       if (typeof window !== "undefined") {
         localStorage.setItem("token", action.payload.token)
         localStorage.setItem("user", JSON.stringify(action.payload.user))
@@ -41,6 +45,7 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null
       state.token = null
+      state.franchise_id = null
       if (typeof window !== "undefined") {
         localStorage.removeItem("token")
         localStorage.removeItem("user")
@@ -53,6 +58,7 @@ const authSlice = createSlice({
         if (token && user) {
           state.token = token
           state.user = JSON.parse(user)
+          state.franchise_id = state.user?.franchise_id ?? null
         }
       }
     },

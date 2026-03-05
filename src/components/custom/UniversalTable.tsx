@@ -69,6 +69,7 @@ export function UniversalTable({
   // -------------------- GLOBAL STATE --------------------
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const franchiseId = useAppSelector((s) => s.auth.user?.franchise_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
 
@@ -148,6 +149,7 @@ export function UniversalTable({
 
     return {
       userId: userId!,
+      franchise_id: franchiseId!,
       tag: type,
       page: myPagination.pageIndex + 1,
       limit: myPagination.pageSize,
@@ -202,6 +204,7 @@ export function UniversalTable({
 
     return {
       userId: userId!,
+      franchise_id: franchiseId!,
       tag: type,
 
       page: overallPagination.pageIndex + 1,
@@ -259,6 +262,7 @@ export function UniversalTable({
 
     return {
       userId: userId!,
+      franchise_id: franchiseId!,
       page: myPagination.pageIndex + 1,
       limit: myPagination.pageSize,
 

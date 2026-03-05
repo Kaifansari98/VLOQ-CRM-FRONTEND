@@ -128,6 +128,7 @@ export default function LeadsGenerationForm({
 }: LeadsGenerationFormProps) {
   const [files, setFiles] = useState<File[]>([]);
   const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
+  const franchiseId = useAppSelector((state: any) => state.auth.user?.franchise_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const createdBy = useAppSelector((state: any) => state.auth.user?.id);
   const [mapOpen, setMapOpen] = useState(false);
@@ -479,7 +480,7 @@ export default function LeadsGenerationForm({
   };
 
   function onSubmit(values: FormValues) {
-    if (!vendorId || !createdBy) {
+    if (!vendorId || !createdBy || !franchiseId) {
       toast.error("User authentication required");
       return;
     }
@@ -507,6 +508,7 @@ export default function LeadsGenerationForm({
       archetech_name: values.archetech_name || undefined,
       designer_remark: values.designer_remark || undefined,
       vendor_id: vendorId,
+      franchise_id: franchiseId,
       created_by: createdBy,
       // ✅ new field
       site_map_link: savedMapLocation
@@ -575,7 +577,7 @@ export default function LeadsGenerationForm({
       return;
     }
 
-    if (!vendorId || !createdBy) {
+    if (!vendorId || !createdBy || !franchiseId) {
       toast.error("User authentication required");
       return;
     }
@@ -600,6 +602,7 @@ export default function LeadsGenerationForm({
       archetech_name: values.archetech_name || undefined,
       designer_remark: values.designer_remark || undefined,
       vendor_id: vendorId,
+      franchise_id: franchiseId,
       created_by: createdBy,
       site_map_link: savedMapLocation
         ? `https://www.google.com/maps?q=${savedMapLocation.lat},${savedMapLocation.lng}`

@@ -31,6 +31,7 @@ export interface CreateLeadPayload {
   archetech_name?: string;
   designer_remark?: string;
   vendor_id: number;
+  franchise_id: number;
   created_by: number;
   product_types: string[];
   product_structures: string[];

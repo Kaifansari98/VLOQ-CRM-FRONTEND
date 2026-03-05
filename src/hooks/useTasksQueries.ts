@@ -73,6 +73,7 @@ export interface TaskFilterPayload {
   page: number;
   limit: number;
   created_at: "asc" | "desc";
+  franchise_id: number;
 
   global_search?: string;
 
@@ -176,6 +177,7 @@ export const useVendorUserTasksFilter = (
     queryKey: [
       "vendorUserTasks",
       vendorId,
+      payload.franchise_id,
       userId,
       payload.page,
       payload.limit,
@@ -196,7 +198,7 @@ export const useVendorUserTasksFilter = (
       payload.product_structure,
     ],
     queryFn: () => postVendorUserTasks(vendorId, userId, payload),
-    enabled: !!vendorId && !!userId,
+    enabled: !!vendorId && !!userId && !!payload.franchise_id,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -210,6 +212,7 @@ export const useVendorAllTasksFilter = (
     queryKey: [
       "vendorAllTasks",
       vendorId,
+      payload.franchise_id,
       payload.page,
       payload.limit,
       payload.created_at,
@@ -229,7 +232,7 @@ export const useVendorAllTasksFilter = (
       payload.product_structure,
     ],
     queryFn: () => postVendorAllTasksFilter(vendorId, payload),
-    enabled: !!vendorId,
+    enabled: !!vendorId && !!payload.franchise_id,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
