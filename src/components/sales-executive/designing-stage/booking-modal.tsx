@@ -36,6 +36,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatCurrencyINR } from "@/utils/formatCurrency";
 import CurrencyInput from "@/components/custom/CurrencyInput";
 import BaseModal from "@/components/utils/baseModal";
+import {
+  useHeadSiteSupervisorFranchiseMapping,
+  useFranchisesByVendorId,
+} from "@/api/franchise";
 
 // ✅ Enhanced Zod schema with proper file validation
 const bookingSchema = z
@@ -141,6 +145,9 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   data,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const franchiseId = useAppSelector(
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id
+  );
   const userId = useAppSelector((state) => state.auth.user?.id);
   const [openSelectDocModal, setOpenSelectDocModal] = useState(false);
   const leadId = data?.id;
@@ -157,7 +164,21 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   const { data: headSiteSupervisors, isLoading } =
     useHeadSiteSupervisors(vendorId!);
   const vendorUser = headSiteSupervisors?.data?.head_site_supervisors || [];
-  const shouldShowAssigneePicker = vendorUser.length > 1;
+  const hasMultipleSupervisors = vendorUser.length > 1;
+  const { data: headSupervisorMapping } =
+    useHeadSiteSupervisorFranchiseMapping(
+      vendorId,
+      franchiseId ?? undefined,
+      hasMultipleSupervisors
+    );
+  const { data: franchises = [] } = useFranchisesByVendorId(
+    vendorId ?? 0,
+    !!vendorId
+  );
+  const headOfficeFranchiseId = React.useMemo(
+    () => franchises.find((f) => f.is_head_office)?.id,
+    [franchises]
+  );
   const { mutate, isPending } = useMoveToBookingStage();
   const form = useForm<BookingFormValues>({
     resolver: bookingResolver,
@@ -174,12 +195,55 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   });
 
   React.useEffect(() => {
-    if (vendorUser.length === 1) {
-      form.setValue("assign_to", String(vendorUser[0].id), {
-        shouldValidate: true,
-      });
+    if (!open) return;
+    if (!vendorUser.length) {
+      // console.log(
+      //   "[BookingModal] auto-select failed: no head site supervisors available"
+      // );
+      return;
     }
-  }, [form, vendorUser]);
+
+    let selected = vendorUser.length === 1 ? vendorUser[0] : undefined;
+
+    if (!selected && hasMultipleSupervisors) {
+      const mappedUserId = headSupervisorMapping?.user_id;
+      if (mappedUserId) {
+        selected = vendorUser.find((user: any) => user.id === mappedUserId);
+      }
+    }
+
+    if (!selected && hasMultipleSupervisors && headOfficeFranchiseId) {
+      selected = vendorUser.find(
+        (user: any) => user.franchise_id === headOfficeFranchiseId
+      );
+    }
+
+    if (!selected) {
+      selected = vendorUser[0];
+    }
+
+    if (!selected) {
+      // console.log(
+      //   "[BookingModal] auto-select failed: no matching head site supervisor"
+      // );
+      return;
+    }
+
+    form.setValue("assign_to", String(selected.id), {
+      shouldValidate: true,
+    });
+    // console.log(
+    //   "[BookingModal] auto-selected head site supervisor",
+    //   selected.user_name
+    // );
+  }, [
+    open,
+    form,
+    vendorUser,
+    hasMultipleSupervisors,
+    headSupervisorMapping,
+    headOfficeFranchiseId,
+  ]);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -366,38 +430,6 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                 )}
               />
 
-              {shouldShowAssigneePicker ? (
-                <FormField
-                  control={form.control}
-                  name="assign_to"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">
-                        Assign Lead To Site Supervisor *
-                      </FormLabel>
-                      <Select
-                        value={field.value || ""}
-                        onValueChange={field.onChange}
-                        disabled={isLoading}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="text-sm w-full">
-                            <SelectValue placeholder="Select assignee" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {vendorUser.map((user: any) => (
-                            <SelectItem key={user.id} value={String(user.id)}>
-                              {user.user_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              ) : null}
             </div>
 
             {ismPaymentInfo?.amount && (

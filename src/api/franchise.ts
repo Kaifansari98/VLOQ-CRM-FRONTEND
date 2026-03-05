@@ -15,6 +15,17 @@ export const fetchFranchisesByVendorId = async (vendorId: number) => {
   return (data?.data ?? []) as FranchiseSummary[];
 };
 
+export const fetchHeadSiteSupervisorFranchiseMapping = async (
+  vendorId: number,
+  franchiseId: number
+) => {
+  const { data } = await apiClient.get(
+    `/franchises/head-site-supervisor-mapping`,
+    { params: { vendor_id: vendorId, franchise_id: franchiseId } }
+  );
+  return data?.data ?? null;
+};
+
 export const useFranchisesByVendorId = (
   vendorId?: number,
   enabled = true
@@ -23,5 +34,18 @@ export const useFranchisesByVendorId = (
     queryKey: ["franchises", vendorId],
     queryFn: () => fetchFranchisesByVendorId(vendorId!),
     enabled: !!vendorId && enabled,
+  });
+};
+
+export const useHeadSiteSupervisorFranchiseMapping = (
+  vendorId?: number,
+  franchiseId?: number,
+  enabled = true
+) => {
+  return useQuery({
+    queryKey: ["head-site-supervisor-mapping", vendorId, franchiseId],
+    queryFn: () =>
+      fetchHeadSiteSupervisorFranchiseMapping(vendorId!, franchiseId!),
+    enabled: !!vendorId && !!franchiseId && enabled,
   });
 };
