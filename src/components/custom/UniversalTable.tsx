@@ -84,9 +84,11 @@ export function UniversalTable({
     normalizedUserType === "super-admin" ||
     normalizedUserType === "sales-executive";
   const normalizedType = String(type || "").trim().toLowerCase();
+  const isHeadSiteSupervisor = normalizedUserType === "head-site-supervisor";
   const hideOverallToggle =
-    normalizedType === "type 8" &&
-    userType?.toLowerCase() === "sales-executive";
+    isHeadSiteSupervisor ||
+    (normalizedType === "type 8" &&
+      userType?.toLowerCase() === "sales-executive");
 
   // -------------------- LOCAL UI STATE --------------------
 
