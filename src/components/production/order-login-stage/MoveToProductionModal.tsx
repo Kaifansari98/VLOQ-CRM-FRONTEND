@@ -71,7 +71,7 @@ export default function MoveToProductionModal({
 
   const { data: factoryUsers, isLoading } = useFactoryUsers(vendorId!);
   const { mutate, isPending } = useRequestToProduction();
-  const { data: leadDetails } = useLeadById(data?.id, vendorId, userId);
+//  const { data: leadDetails } = useLeadById(data?.id, vendorId, userId);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
