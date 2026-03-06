@@ -36,6 +36,7 @@ import {
 import { useUploadMachineExcel } from "@/hooks/track-trace/useProjectCutList";
 import { useParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
+import { apiClient } from "@/lib/apiClient";
 
 export type CutListRow = Record<string, any>;
 
@@ -79,6 +80,14 @@ export default function CutListTable({
 
   const uploadMachineExcelMutation = useUploadMachineExcel(projectId);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const resolveFileUrl = (url?: string) => {
+    if (!url) return "";
+    if (/^https?:\/\//i.test(url)) return url;
+    const base = apiClient.defaults.baseURL ?? "";
+    const origin = base.replace(/\/api\/?$/i, "");
+    if (!origin) return url;
+    return url.startsWith("/") ? `${origin}${url}` : `${origin}/${url}`;
+  };
   const handleDownloadLabels = async () => {
     if (!onDownloadLabels) return;
 
@@ -90,7 +99,7 @@ export default function CutListTable({
           ? selectedRows.map((row) => row.original.id)
           : undefined;
 
-      const pdfUrl = await onDownloadLabels(selectedRowIds);
+      const pdfUrl = resolveFileUrl(await onDownloadLabels(selectedRowIds));
 
       if (!pdfUrl) {
         throw new Error("No PDF URL received");
@@ -118,7 +127,7 @@ export default function CutListTable({
           ? selectedRows.map((row) => row.original.id)
           : undefined;
 
-      const fileUrl = await onDownloadExcel(selectedRowIds);
+      const fileUrl = resolveFileUrl(await onDownloadExcel(selectedRowIds));
 
       if (!fileUrl) {
         throw new Error("No file URL received");
@@ -146,7 +155,7 @@ export default function CutListTable({
           ? selectedRows.map((row) => row.original.id)
           : undefined;
 
-      const fileUrl = await onDownloadBasicExcel(selectedRowIds);
+      const fileUrl = resolveFileUrl(await onDownloadBasicExcel(selectedRowIds));
 
       if (!fileUrl) {
         throw new Error("No file URL received");
