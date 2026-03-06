@@ -548,8 +548,6 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     );
   };
 
-
-
   // 🧩 Error Handling
   if (isError || error) {
     return (
