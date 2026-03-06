@@ -99,7 +99,10 @@ export default function CutListTable({
           ? selectedRows.map((row) => row.original.id)
           : undefined;
 
-      const pdfUrl = resolveFileUrl(await onDownloadLabels(selectedRowIds));
+      const rawPdfUrl = await onDownloadLabels(selectedRowIds);
+      console.log("[CutList] labels download raw url", rawPdfUrl);
+      const pdfUrl = resolveFileUrl(rawPdfUrl);
+      console.log("[CutList] labels download resolved url", pdfUrl);
 
       if (!pdfUrl) {
         throw new Error("No PDF URL received");
@@ -127,7 +130,10 @@ export default function CutListTable({
           ? selectedRows.map((row) => row.original.id)
           : undefined;
 
-      const fileUrl = resolveFileUrl(await onDownloadExcel(selectedRowIds));
+      const rawFileUrl = await onDownloadExcel(selectedRowIds);
+      console.log("[CutList] advanced excel raw url", rawFileUrl);
+      const fileUrl = resolveFileUrl(rawFileUrl);
+      console.log("[CutList] advanced excel resolved url", fileUrl);
 
       if (!fileUrl) {
         throw new Error("No file URL received");
@@ -155,7 +161,10 @@ export default function CutListTable({
           ? selectedRows.map((row) => row.original.id)
           : undefined;
 
-      const fileUrl = resolveFileUrl(await onDownloadBasicExcel(selectedRowIds));
+      const rawFileUrl = await onDownloadBasicExcel(selectedRowIds);
+      console.log("[CutList] basic excel raw url", rawFileUrl);
+      const fileUrl = resolveFileUrl(rawFileUrl);
+      console.log("[CutList] basic excel resolved url", fileUrl);
 
       if (!fileUrl) {
         throw new Error("No file URL received");
