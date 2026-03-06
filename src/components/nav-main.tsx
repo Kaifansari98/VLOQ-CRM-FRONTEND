@@ -123,7 +123,8 @@ export function NavMain({
 }) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const franchiseId = useAppSelector((state) => state.auth.franchise_id);
+  const franchiseId =
+    useAppSelector((state) => state.auth.franchise_id) ?? undefined;
   const { data: leadStats, isLoading } = useLeadStats(
     vendorId,
     userId,
