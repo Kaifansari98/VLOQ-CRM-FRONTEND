@@ -1,9 +1,16 @@
 import axios from "axios";
 
+const environment = (process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION").toUpperCase();
+
+const baseURL =
+  environment === "STAGING"
+    ? "https://staging-api.furnixcrm.com/api"
+    : environment === "LOCAL"
+      ? "http://localhost:7777/api"
+      : "https://api.furnixcrm.com/api";
+
 export const apiClient = axios.create({
-  // baseURL: "https://api.furnixcrm.com/api",
-  //  baseURL: "https://staging-api.furnixcrm.com/api",
-  baseURL: "http://localhost:7777/api",
+  baseURL,
   headers: {
     "Content-Type": "application/json",
   },
