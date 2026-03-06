@@ -108,7 +108,12 @@ export default function CutListTable({
         throw new Error("No PDF URL received");
       }
 
-      window.open(pdfUrl, "_blank");
+      const link = document.createElement("a");
+      link.href = pdfUrl;
+      link.download = "";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
       toast.success("Labels downloaded successfully");
     } catch (error) {
       console.error("Error downloading labels:", error);
@@ -139,7 +144,12 @@ export default function CutListTable({
         throw new Error("No file URL received");
       }
 
-      window.open(fileUrl, "_blank");
+      const link = document.createElement("a");
+      link.href = fileUrl;
+      link.download = "";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
       toast.success("Advanced cut list downloaded successfully");
     } catch (error) {
       console.error("Error downloading advanced excel:", error);
@@ -170,7 +180,12 @@ export default function CutListTable({
         throw new Error("No file URL received");
       }
 
-      window.open(fileUrl, "_blank");
+      const link = document.createElement("a");
+      link.href = fileUrl;
+      link.download = "";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
       toast.success("Basic cut list downloaded successfully");
     } catch (error) {
       console.error("Error downloading basic excel:", error);
