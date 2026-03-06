@@ -485,6 +485,7 @@ export const fetchLeadLogs = async ({
 export interface VendorUserItem {
   id: number;
   user_name: string;
+  user_email: string;
 }
 
 export interface VendorUsersResponse {
