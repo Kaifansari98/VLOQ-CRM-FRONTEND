@@ -112,6 +112,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
       }
 
       const contentLength = Number(response.headers.get("content-length")) || 0;
+      const disposition = response.headers.get("content-disposition") || "";
 
       const reader = response.body.getReader();
       const chunks: Uint8Array[] = [];
@@ -135,9 +136,16 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
       const blob = new Blob(chunks as BlobPart[]);
       const url = window.URL.createObjectURL(blob);
 
+      const filenameFromHeader = (() => {
+        const match =
+          disposition.match(/filename\*=UTF-8''([^;]+)/i) ||
+          disposition.match(/filename="?([^"]+)"?/i);
+        return match ? decodeURIComponent(match[1]) : "";
+      })();
+
       const a = document.createElement("a");
       a.href = url;
-      a.download = doc.originalName;
+      a.download = filenameFromHeader || doc.originalName;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -145,6 +153,17 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Download error:", err);
+      // Fallback: attempt direct download without opening a new tab
+      if (typeof window !== "undefined" && doc.signedUrl) {
+        const a = document.createElement("a");
+        a.href = doc.signedUrl;
+        a.download = doc.originalName;
+        a.rel = "noopener noreferrer";
+        a.target = "_self";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
     } finally {
       setIsDownloading(false);
     }

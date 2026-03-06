@@ -28,6 +28,9 @@ import {
   UserPlus,
   MessageSquare,
   ClipboardCheck,
+  PencilLine,
+  History,
+  IndianRupee,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -327,18 +330,18 @@ export default function SiteMeasurementLead() {
               Lead Details
             </TabsTrigger>
             <TabsTrigger value="tasks">
-              <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+              <PencilLine size={16} className="mr-1 opacity-60" />
               To-Do Task
             </TabsTrigger>
             {canViewSiteHistory && (
               <TabsTrigger value="history">
-                <BoxIcon size={16} className="mr-1 opacity-60" />
+                <History size={16} className="mr-1 opacity-60" />
                 Site History
               </TabsTrigger>
             )}
             {canViewPayment && (
               <TabsTrigger value="payments">
-                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                <IndianRupee size={16} className="mr-1 opacity-60" />
                 Payment Information
               </TabsTrigger>
             )}

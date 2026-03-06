@@ -15,6 +15,16 @@ export default function DashboardWrapper({
   );
   const normalizedUserType = userType?.toLowerCase().replace("_", "-");
 
+  const userId = useAppSelector((state) => state.auth.user?.id);
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const franchiseId = useAppSelector((state) => state.auth.franchise_id);
+
+  console.log("[AdminDashboard] ids", {
+    user_id: userId,
+    franchise_id: franchiseId,
+    vendor_id: vendorId,
+  });
+
   // Conditionally render special dashboard
   if (normalizedUserType === "sales-executive") {
     return (

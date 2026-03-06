@@ -36,6 +36,9 @@ import {
   MessageSquare,
   User2,
   Layers3,
+  PencilLine,
+  History,
+  IndianRupee,
 } from "lucide-react";
 
 import {
@@ -393,7 +396,7 @@ export default function OrderLoginLeadDetails() {
                 {canViewTodoTask ? (
                   // Actual Tab
                   <TabsTrigger value="todo">
-                    <PanelsTopLeftIcon size={16} className="mr-1" />
+                    <PencilLine size={16} className="mr-1" />
                     To-Do Task
                   </TabsTrigger>
                 ) : (
@@ -402,7 +405,7 @@ export default function OrderLoginLeadDetails() {
                     value="Only Backend access to this tab."
                     truncateValue={
                       <TabsTrigger value="todo" disabled>
-                        <PanelsTopLeftIcon
+                        <PencilLine
                           size={16}
                           className="mr-1 opacity-60"
                         />
@@ -414,14 +417,14 @@ export default function OrderLoginLeadDetails() {
 
                 {canViewSiteHistory && (
                   <TabsTrigger value="history">
-                    <BoxIcon size={16} className="mr-1 opacity-60" />
+                    <History size={16} className="mr-1 opacity-60" />
                     Site History
                   </TabsTrigger>
                 )}
 
                 {canViewPayment && (
                   <TabsTrigger value="payment">
-                    <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                    <IndianRupee size={16} className="mr-1 opacity-60" />
                     Payment Information
                   </TabsTrigger>
                 )}

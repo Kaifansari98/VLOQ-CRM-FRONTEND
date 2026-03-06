@@ -2,18 +2,16 @@
 
 import * as React from "react";
 import {
-  AudioWaveform,
-  BookOpen,
-  Bot,
-  Command,
   GalleryVerticalEnd,
-  Settings2,
-  CalendarCheck2,
-  BookOpenCheck,
   Users,
-  ListTodo,
   LayoutDashboard,
   Monitor,
+  ClipboardList,
+  NotebookPen,
+  HardHat,
+  Forklift,
+  Handshake,
+  Drill,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -26,8 +24,10 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { useAppSelector } from "@/redux/store";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import { setFranchiseId } from "@/redux/slices/authSlice";
 import { usePendingMiscellaneousCount } from "@/api/installation/useUnderInstallationStageLeads";
+import { useFranchisesByVendorId } from "@/api/franchise";
 
 const data = {
   user: {
@@ -44,7 +44,7 @@ const data = {
     {
       title: "My Task",
       url: "/dashboard/my-tasks",
-      icon: CalendarCheck2,
+      icon: ClipboardList,
       showCount: "total_my_tasks" as const,
     },
     {
@@ -56,13 +56,13 @@ const data = {
     {
       title: "Delivered Projects",
       url: "/dashboard/delivered-projects",
-      icon: ListTodo,
+      icon: Handshake,
       showCount: "total_project_completed_stage_leads" as const,
     },
     {
       title: "Leads",
       url: "#",
-      icon: BookOpenCheck,
+      icon: NotebookPen,
       showCount: "total_leads_group" as const,
       items: [
         {
@@ -90,7 +90,7 @@ const data = {
     {
       title: "Project",
       url: "#",
-      icon: Bot,
+      icon: HardHat,
       showCount: "total_project_group" as const,
       items: [
         {
@@ -113,7 +113,7 @@ const data = {
     {
       title: "Production",
       url: "#",
-      icon: BookOpen,
+      icon: Forklift,
       showCount: "total_production_group" as const,
       items: [
         {
@@ -141,7 +141,7 @@ const data = {
     {
       title: "Installation",
       url: "#",
-      icon: Settings2,
+      icon: Drill,
       showCount: "total_installation_group" as const,
       items: [
         {
@@ -203,17 +203,34 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   React.useEffect(() => setMounted(true), []);
 
   const user = useAppSelector((state) => state.auth.user);
+  const selectedFranchiseId = useAppSelector((state) => state.auth.franchise_id);
   const userType = user?.user_type?.user_type?.toLowerCase();
   const canSeeOverallLeads = userType === "admin" || userType === "super-admin";
+  const isSuperAdmin = userType === "super-admin";
+  const shouldBootstrapFranchise =
+    userType === "admin" || userType === "super-admin";
   const canSeeMiscLeads =
     userType === "admin" ||
     userType === "super-admin" ||
     userType === "factory" ||
     userType === "site-supervisor";
   const vendorId = user?.vendor_id;
+  const franchiseId = selectedFranchiseId ?? user?.franchise_id ?? null;
+  const dispatch = useAppDispatch();
 
   const { data: miscCountData, isLoading: isMiscLeadLoading } =
-    usePendingMiscellaneousCount(vendorId ?? 0);
+    usePendingMiscellaneousCount(vendorId ?? 0, franchiseId ?? 0);
+  const { data: franchises = [] } = useFranchisesByVendorId(
+    vendorId ?? 0,
+    !!vendorId
+  );
+
+  React.useEffect(() => {
+    if (!shouldBootstrapFranchise) return;
+    if (franchiseId) return;
+    if (!franchises.length) return;
+    dispatch(setFranchiseId(franchises[0].id));
+  }, [dispatch, shouldBootstrapFranchise, franchiseId, franchises]);
 
   const miscLeadsCount = miscCountData?.pending_miscellaneous_leads ?? 0;
 
@@ -305,18 +322,46 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return { navItems: finalNavItems, trackTraceItems: finalTrackTraceItems };
   }, [mounted, canSeeOverallLeads, miscLeadsCount, isMiscLeadLoading, userType]);
 
+  const teams = React.useMemo(() => {
+    if (!user) return [];
+
+    const activeFranchise = franchises.find(
+      (franchise) => franchise.id === franchiseId
+    );
+
+    const fallbackTeam = {
+      id: user.franchise_id ?? user.vendor_id,
+      name:
+        activeFranchise?.franchise_name ||
+        user.vendor?.vendor_name ||
+        "Default Vendor",
+      logo: GalleryVerticalEnd,
+      plan: user?.user_type?.user_type || "",
+    };
+
+    if (!isSuperAdmin) {
+      return [fallbackTeam];
+    }
+
+    if (franchises.length === 0) {
+      return [fallbackTeam];
+    }
+
+    return franchises.map((franchise) => ({
+      id: franchise.id,
+      name: franchise.franchise_name,
+      logo: GalleryVerticalEnd,
+      plan: (franchise.franchise_code ?? user?.user_type?.user_type) || "",
+    }));
+  }, [user, isSuperAdmin, franchises, franchiseId]);
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         {user ? (
           <TeamSwitcher
-            teams={[
-              {
-                name: user.vendor?.vendor_name || "Default Vendor",
-                logo: GalleryVerticalEnd,
-                plan: user?.user_type?.user_type || "",
-              },
-            ]}
+            teams={teams}
+            activeTeamId={franchiseId}
           />
         ) : null}
       </SidebarHeader>

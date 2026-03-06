@@ -106,7 +106,7 @@ function findGroupForPath(items: NavItem[], pathname: string): string | null {
   for (const item of items) {
     if (item.items && item.items.length > 0) {
       const hasActiveChild = item.items.some((sub) =>
-        pathname.startsWith(sub.url)
+        pathname.startsWith(sub.url),
       );
       if (hasActiveChild) return item.title;
     }
@@ -123,7 +123,13 @@ export function NavMain({
 }) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const { data: leadStats, isLoading } = useLeadStats(vendorId, userId);
+  const franchiseId =
+    useAppSelector((state) => state.auth.franchise_id) ?? undefined;
+  const { data: leadStats, isLoading } = useLeadStats(
+    vendorId,
+    userId,
+    franchiseId
+  );
   const { isMobile, setOpenMobile } = useSidebar();
 
   const pathname = usePathname();

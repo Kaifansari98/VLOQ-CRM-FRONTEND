@@ -56,6 +56,7 @@ export function MiscellaneousTable({
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const franchiseId = useAppSelector((s) => s.auth.franchise_id);
 
   const router = useRouter();
 
@@ -91,6 +92,7 @@ export function MiscellaneousTable({
     const mappedFilters = mapTableFiltersToPayload(columnFilters);
 
     return {
+      franchise_id: franchiseId!,
       page: pagination.pageIndex + 1,
       limit: pagination.pageSize,
       global_search: globalFilter || "",
@@ -114,7 +116,7 @@ export function MiscellaneousTable({
       site_map_link: mappedFilters.site_map_link,
       date_range: mappedFilters.date_range,
     };
-  }, [userId, pagination, sorting, columnFilters, globalFilter]);
+  }, [userId, franchiseId, pagination, sorting, columnFilters, globalFilter]);
 
   // -------------------- API CALL (SINGLE HOOK) --------------------
 

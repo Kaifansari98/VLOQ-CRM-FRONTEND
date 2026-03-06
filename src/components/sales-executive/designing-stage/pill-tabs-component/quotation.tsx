@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useDetails } from "./details-context";
 import { useAppSelector } from "@/redux/store";
-import { Ban, Images, RefreshCcw } from "lucide-react";
+import { Ban, Images, RefreshCcw, ScrollText, ScrollTextIcon } from "lucide-react";
 import {
   useLeadStatus,
   useQuotationDoc,
@@ -112,7 +112,7 @@ const QuotationTab = () => {
     "
         >
           <div className="flex items-center gap-2">
-            <Images size={20} />
+            <ScrollText size={20} />
             <h1 className="text-lg font-semibold tracking-tight flex items-center gap-1">
               Quotation
               <span className="text-xs font-medium text-muted-foreground">

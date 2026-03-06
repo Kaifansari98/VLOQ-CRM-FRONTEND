@@ -18,74 +18,175 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { useAppDispatch } from "@/redux/store"
+import { setFranchiseId } from "@/redux/slices/authSlice"
 
 export function TeamSwitcher({
   teams,
+  activeTeamId,
 }: {
   teams: {
+    id: number
     name: string
     logo: React.ElementType
     plan: string
   }[]
+  activeTeamId?: number | null
 }) {
   const { isMobile } = useSidebar()
+  const dispatch = useAppDispatch()
   const [activeTeam, setActiveTeam] = React.useState(teams[0])
+  const [confirmOpen, setConfirmOpen] = React.useState(false)
+  const [pendingTeam, setPendingTeam] = React.useState<
+    { id: number; name: string } | undefined
+  >(undefined)
+
+  React.useEffect(() => {
+    if (!teams.length) return
+    setActiveTeam((prev) => {
+      const preferred =
+        activeTeamId != null
+          ? teams.find((team) => team.id === activeTeamId)
+          : undefined
+      if (preferred) return preferred
+      if (prev) {
+        const stillExists = teams.find((team) => team.id === prev.id)
+        if (stillExists) return stillExists
+      }
+      return teams[0]
+    })
+  }, [teams, activeTeamId])
 
   if (!activeTeam) {
     return null
   }
 
+  const handleTeamClick = (team: { id: number; name: string }) => {
+    if (team.id === activeTeam.id) return
+    setPendingTeam(team)
+    setConfirmOpen(true)
+  }
+
+  const handleConfirmSwitch = () => {
+    if (!pendingTeam) return
+    const nextTeam = teams.find((team) => team.id === pendingTeam.id)
+    if (nextTeam) {
+      setActiveTeam(nextTeam)
+      dispatch(setFranchiseId(nextTeam.id))
+    }
+    setConfirmOpen(false)
+    setPendingTeam(undefined)
+  }
+
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                <activeTeam.logo className="size-4" />
-              </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{activeTeam.name}</span>
-                <span className="truncate text-xs">{activeTeam.plan}</span>
-              </div>
-              <ChevronsUpDown className="ml-auto" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            align="start"
-            side={isMobile ? "bottom" : "right"}
-            sideOffset={4}
-          >
-            <DropdownMenuLabel className="text-muted-foreground text-xs">
-              Teams
-            </DropdownMenuLabel>
-            {teams.map((team, index) => (
-              <DropdownMenuItem
-                key={team.name}
-                onClick={() => setActiveTeam(team)}
-                className="gap-2 p-2"
+    <>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuButton
+                size="lg"
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
-                <div className="flex size-6 items-center justify-center rounded-md border">
-                  <team.logo className="size-3.5 shrink-0" />
+                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                  <activeTeam.logo className="size-4" />
                 </div>
-                {team.name}
-                <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-medium">{activeTeam.name}</span>
+                  <span className="truncate text-xs">{activeTeam.plan}</span>
+                </div>
+                <ChevronsUpDown className="ml-auto" />
+              </SidebarMenuButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+              align="start"
+              side={isMobile ? "bottom" : "right"}
+              sideOffset={4}
+            >
+              <DropdownMenuLabel className="text-muted-foreground text-xs">
+                Teams
+              </DropdownMenuLabel>
+              {teams.map((team, index) => (
+                <DropdownMenuItem
+                  key={team.id}
+                  onClick={() => handleTeamClick(team)}
+                  className={
+                    team.id === activeTeam.id
+                      ? "gap-2 p-2 bg-muted/50"
+                      : "gap-2 p-2"
+                  }
+                >
+                  <div className="flex size-6 items-center justify-center rounded-md border">
+                    <team.logo className="size-3.5 shrink-0" />
+                  </div>
+                  {team.name}
+                  <DropdownMenuShortcut>
+                    {team.id === activeTeam.id ? (
+                      <span className="inline-flex items-center justify-end w-6">
+                        <span className="size-2 rounded-full bg-green-500 mr-1.5" />
+                      </span>
+                    ) : (
+                      `⌘${index + 1}`
+                    )}
+                  </DropdownMenuShortcut>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="gap-2 p-2">
+                <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                  <Plus className="size-4" />
+                </div>
+                <div className="text-muted-foreground font-medium">Add team</div>
               </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 p-2">
-              <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                <Plus className="size-4" />
-              </div>
-              <div className="text-muted-foreground font-medium">Add team</div>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarMenuItem>
+      </SidebarMenu>
+
+      <AlertDialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          setConfirmOpen(open)
+          if (!open) setPendingTeam(undefined)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Switch franchise?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to switch to{" "}
+              <span className="font-medium text-foreground">
+                {pendingTeam?.name ?? "this franchise"}
+              </span>
+              . Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setPendingTeam(undefined)
+                setConfirmOpen(false)
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmSwitch}>
+              Switch
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

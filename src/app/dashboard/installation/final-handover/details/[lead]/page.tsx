@@ -27,12 +27,16 @@ import {
   SquarePen,
   Users,
   XCircle,
-  CheckCircle2, // Final Handover Icon
+  CheckCircle2,
+  // Final Handover Icon,
   PanelsTopLeftIcon,
   BoxIcon,
   UsersRoundIcon,
   Clock,
   MessageSquare,
+  PencilLine,
+  History,
+  IndianRupee,
 } from "lucide-react";
 
 import {
@@ -348,7 +352,7 @@ export default function FinalHandoverLeadDetails() {
 
                   {canAccessTodoTab ? (
                     <TabsTrigger value="todo">
-                      <PanelsTopLeftIcon
+                      <PencilLine
                         size={16}
                         className="mr-1 opacity-60"
                       />
@@ -358,7 +362,7 @@ export default function FinalHandoverLeadDetails() {
                     <CustomeTooltip
                       truncateValue={
                         <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
-                          <PanelsTopLeftIcon
+                          <PencilLine
                             size={16}
                             className="mr-1 opacity-60"
                           />
@@ -372,7 +376,7 @@ export default function FinalHandoverLeadDetails() {
                   {/* Site History */}
                   {canViewSiteHistory && (
                     <TabsTrigger value="history">
-                      <BoxIcon size={16} className="mr-1 opacity-60" />
+                      <History size={16} className="mr-1 opacity-60" />
                       Site History
                     </TabsTrigger>
                   )}
@@ -380,7 +384,7 @@ export default function FinalHandoverLeadDetails() {
                   {/* Payment */}
                   {canViewPayment && (
                     <TabsTrigger value="payment">
-                      <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                      <IndianRupee size={16} className="mr-1 opacity-60" />
                       Payment Information
                     </TabsTrigger>
                   )}

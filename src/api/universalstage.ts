@@ -126,6 +126,7 @@ export interface UniversalStageLeadResponse {
 export const getUniversalStageLeads = async (
   vendorId: number,
   userId: number,
+  franchiseId: number,
   tag: string,
   page: number,
   limit: number,
@@ -133,7 +134,7 @@ export const getUniversalStageLeads = async (
   const { data } = await apiClient.get(
     `/leads/bookingStage/universal-table-data/vendorId/${vendorId}`,
     {
-      params: { userId, tag, page, limit },
+      params: { userId, franchise_id: franchiseId, tag, page, limit },
     },
   );
 
@@ -143,15 +144,31 @@ export const getUniversalStageLeads = async (
 export const useUniversalStageLeads = (
   vendorId: number,
   userId: number,
+  franchiseId: number,
   tag: string,
   page: number,
   pageSize: number,
 ) => {
   return useQuery<UniversalStageLeadResponse>({
-    queryKey: ["universal-stage-leads", vendorId, userId, tag, page, pageSize],
+    queryKey: [
+      "universal-stage-leads",
+      vendorId,
+      userId,
+      franchiseId,
+      tag,
+      page,
+      pageSize,
+    ],
     queryFn: () =>
-      getUniversalStageLeads(vendorId, userId, tag, page, pageSize),
-    enabled: !!vendorId && !!userId,
+      getUniversalStageLeads(
+        vendorId,
+        userId,
+        franchiseId,
+        tag,
+        page,
+        pageSize
+      ),
+    enabled: !!vendorId && !!userId && !!franchiseId,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,
   });
@@ -159,6 +176,7 @@ export const useUniversalStageLeads = (
 
 export interface UniversalStagePostPayload {
   userId: number;
+  franchise_id?: number;
   tag?: string;
   page: number;
   limit: number;
@@ -187,6 +205,7 @@ export const postUniversalStageLeads = async (
   vendorId: number,
   payload: UniversalStagePostPayload,
 ): Promise<UniversalStageLeadResponse> => {
+  console.log("[API] postUniversalStageLeads", { vendorId, payload });
   const { data } = await apiClient.post(
     `/leads/bookingStage/universal-table-data-2/vendorId/${vendorId}`,
     payload,
@@ -241,6 +260,7 @@ export const useUniversalStageLeadsPost = (
 // hooks/postVendorLeadsByTag.ts
 export interface VendorLeadsByTagPostPayload {
   userId?: number | null; // optional (for exclusion logic)
+  franchise_id?: number;
   tag: string;
 
   page: number;
@@ -277,6 +297,7 @@ export const postVendorLeadsByTag = async (
   vendorId: number,
   payload: VendorLeadsByTagPostPayload,
 ): Promise<UniversalStageLeadResponse> => {
+  console.log("[API] postVendorLeadsByTag", { vendorId, payload });
   const { data } = await apiClient.post(
     `/leads/bookingStage/vendorId/${vendorId}/vendor-leads-by-tag/all-leads`,
     payload,

@@ -71,6 +71,7 @@ export default function MoveToProductionModal({
 
   const { data: factoryUsers, isLoading } = useFactoryUsers(vendorId!);
   const { mutate, isPending } = useRequestToProduction();
+  const { data: leadDetails } = useLeadById(data?.id, vendorId, userId);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
@@ -110,7 +111,7 @@ export default function MoveToProductionModal({
       return;
     }
 
-     const requiredDate =
+    const requiredDate =
       client_required_order_login_complition_date ??
       leadDetails?.data?.lead?.client_required_order_login_complition_date;
 

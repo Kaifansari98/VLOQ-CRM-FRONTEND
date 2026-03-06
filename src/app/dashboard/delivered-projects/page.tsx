@@ -58,7 +58,7 @@ export default function DeliveredProjectsPage() {
         <Suspense fallback={<DataTableSkeleton columnCount={10} rowCount={8} />}>
           <UniversalTable
             title="Delivered Projects"
-            description="Delivered projects (Type 17) for quick tracking and handover review."
+            description="Delivered projects for quick tracking and handover review."
             type="Type 17"
             enableAdminTabs={true}
             onRowNavigate={navigateDeliveredProjects}

@@ -29,14 +29,15 @@ import {
   SquarePen,
   Users,
   XCircle,
-  Hammer, // Under Installation icon
-  PanelsTopLeftIcon,
-  BoxIcon,
-  UsersRoundIcon,
+  Hammer,
+  // Under Installation icon,
   Clock,
   Handshake,
   CalendarOff,
   MessageSquare,
+  PencilLine,
+  History,
+  IndianRupee,
 } from "lucide-react";
 
 import {
@@ -70,7 +71,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useFinalHandoverReady,
   useMoveToFinalHandover,
-  useMiscellaneousEntries,
   useSetActualInstallationStartDate,
   useUnderInstallationDetails,
   useMiscellaneousResolutionStatus,
@@ -93,26 +93,27 @@ export default function UnderInstallationLeadDetails() {
   const { lead: leadId } = useParams();
   const leadIdNum = Number(leadId);
   const queryClient = useQueryClient();
+
   const router = useRouter();
+
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-
   const { data: underDetails } = useUnderInstallationDetails(
     vendorId,
     leadIdNum,
   );
   const setStartMutation = useSetActualInstallationStartDate();
-
   const { data: finalReady } = useFinalHandoverReady(vendorId!, leadIdNum);
 
   const { data: miscStatus, isLoading: isLoadingMisc } =
     useMiscellaneousResolutionStatus(vendorId, leadIdNum);
+  
+
 
   const [openStartModal, setOpenStartModal] = useState(false);
-
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
@@ -130,11 +131,9 @@ export default function UnderInstallationLeadDetails() {
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
-
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = lead?.account_id;
-
   const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadButton(userType);
@@ -144,6 +143,9 @@ export default function UnderInstallationLeadDetails() {
   const canViewSiteHistory = canViewSiteHistoryTab(userType);
 
   const miscStatusReady = miscStatus?.all_resolved;
+
+  console.log("miscStatus: ",miscStatus?.all_resolved)
+
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -172,7 +174,6 @@ export default function UnderInstallationLeadDetails() {
     });
 
     const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
-
     const fullDate = date.toLocaleDateString("en-US", {
       day: "numeric",
       month: "long",
@@ -189,7 +190,6 @@ export default function UnderInstallationLeadDetails() {
         <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
-
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -206,6 +206,10 @@ export default function UnderInstallationLeadDetails() {
 
         {/* 🔹 Header Actions */}
         <div className="flex items-center space-x-2">
+
+          {/* ───────────────────────────────────────────── */}
+          {/*  MOVE TO FINAL HANDOVER BUTTON WITH CONDITIONS */}
+          {/* ───────────────────────────────────────────── */}
           {!underDetails?.actual_installation_start_date ? (
             // 1️⃣ Installation NOT started → block
             <CustomeTooltip
@@ -421,14 +425,15 @@ export default function UnderInstallationLeadDetails() {
               {/* To-Do Tab — Disabled */}
               {canAccessTodoTab ? (
                 <TabsTrigger value="todo">
-                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                  <PencilLine size={16} className="mr-1 opacity-60" />
                   To-Do Task
                 </TabsTrigger>
               ) : (
                 <CustomeTooltip
                   truncateValue={
-                    <TabsTrigger disabled value="todo">
-                      <PanelsTopLeftIcon
+
+                    <TabsTrigger disabled value="todo" >
+                      <PencilLine
                         size={16}
                         className="mr-1 opacity-60"
                       />
@@ -442,7 +447,7 @@ export default function UnderInstallationLeadDetails() {
               {/* Site History */}
               {canViewSiteHistory && (
                 <TabsTrigger value="history">
-                  <BoxIcon size={16} className="mr-1 opacity-60" />
+                  <History size={16} className="mr-1 opacity-60" />
                   Site History
                 </TabsTrigger>
               )}
@@ -450,7 +455,7 @@ export default function UnderInstallationLeadDetails() {
               {/* Payment */}
               {canViewPayment && (
                 <TabsTrigger value="payment">
-                  <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                  <IndianRupee size={16} className="mr-1 opacity-60" />
                   Payment Information
                 </TabsTrigger>
               )}

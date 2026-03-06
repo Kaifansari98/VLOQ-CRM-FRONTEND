@@ -32,6 +32,9 @@ import {
   Clock,
   UserPlus,
   MessageSquare,
+  PencilLine,
+  History,
+  IndianRupee,
 } from "lucide-react";
 
 import {
@@ -331,21 +334,21 @@ export default function ReadyToDispatchLeadDetails() {
           <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
             {/* ✅ Site Readiness Details */}
             <TabsTrigger value="details">
-              <Truck size={16} className="mr-1 opacity-60" />
+              <PencilLine size={16} className="mr-1 opacity-60" />
               Site Readiness Details
             </TabsTrigger>
 
             {/* ✅ To-Do Task (Conditional Access) */}
             {canDoSR(userType) ? (
               <TabsTrigger value="todo">
-                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                <PencilLine size={16} className="mr-1 opacity-60" />
                 To-Do Task
               </TabsTrigger>
             ) : (
               <CustomeTooltip
                 truncateValue={
                   <TabsTrigger value="todo" disabled>
-                    <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                    <PencilLine size={16} className="mr-1 opacity-60" />
                     To-Do Task
                   </TabsTrigger>
                 }
@@ -356,7 +359,7 @@ export default function ReadyToDispatchLeadDetails() {
             {/* ✅ Site History */}
             {canViewSiteHistory && (
               <TabsTrigger value="history">
-                <BoxIcon size={16} className="mr-1 opacity-60" />
+                <History size={16} className="mr-1 opacity-60" />
                 Site History
               </TabsTrigger>
             )}
@@ -364,7 +367,7 @@ export default function ReadyToDispatchLeadDetails() {
             {/* ✅ Payment Info */}
             {canViewPayment && (
               <TabsTrigger value="payment">
-                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                <IndianRupee size={16} className="mr-1 opacity-60" />
                 Payment Information
               </TabsTrigger>
             )}

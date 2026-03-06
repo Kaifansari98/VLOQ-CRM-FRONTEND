@@ -267,6 +267,16 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     bookingDoneIsmDetails?.payment_images || [];
   const designDocs = designDocsData?.data?.documents || [];
   const siteSupervisors = siteSupervisorsData?.data?.site_supervisors || [];
+  const currentSupervisor = leadData?.supervisors?.[0] || null;
+  const isCurrentSupervisorSiteSupervisor = currentSupervisor
+    ? siteSupervisors.some(
+        (supervisor: any) => supervisor.id === currentSupervisor.userId,
+      )
+    : false;
+  const canAssignSiteSupervisor =
+    userType === "head-site-supervisor" || userType === "super-admin";
+  const shouldShowAssignSupervisorButton =
+    !isCurrentSupervisorSiteSupervisor && canAssignSiteSupervisor;
 
   const lead = data?.data?.lead;
   const accountId = Number(lead?.account_id);
@@ -587,16 +597,27 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
 
               {/* Text */}
               <div className="flex-1">
-                <p className="text-sm text-muted-foreground font-medium">
+                <p className="text-sm text-muted-foreground font-medium mb-1">
                   Site Supervisor
                 </p>
 
-                <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
-                  {leadData?.supervisors?.[0]?.userName || "Not Assigned"}
-                </p>
+                {shouldShowAssignSupervisorButton ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setReassignOpen(true)}
+                  >
+                    Assign Site Supervisor
+                  </Button>
+                ) : (
+                  <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
+                    {currentSupervisor?.userName || "Not Assigned"}
+                  </p>
+                )}
               </div>
 
-              {canEditBookingValues && (
+              {!shouldShowAssignSupervisorButton && canEditBookingValues && (
                 <Button
                   type="button"
                   variant="outline"
@@ -1455,13 +1476,13 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       <Dialog open={reassignOpen} onOpenChange={setReassignOpen}>
         <DialogContent className="sm:max-w-md">
           <div className="space-y-0">
-            <h3 className="text-lg font-semibold">Reassign Site Supervisor</h3>
+            <h3 className="text-lg font-semibold">Assign Site Supervisor</h3>
             <p className="text-sm text-muted-foreground">
-              Select a site supervisor to reassign this lead.
+              Select a site supervisor to assign this lead.
             </p>
           </div>
 
-          <Command>
+          <Command className="rounded-lg border">
             <CommandInput placeholder="Search supervisors..." />
             <CommandList>
               <CommandEmpty>
@@ -1505,11 +1526,11 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Reassign</AlertDialogTitle>
+            <AlertDialogTitle>Confirm Assign</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedSupervisor
-                ? `Reassign to ${selectedSupervisor.user_name}?`
-                : "Reassign this lead to the selected supervisor?"}
+                ? `Assign to ${selectedSupervisor.user_name}?`
+                : "Assign this lead to the selected supervisor?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -41,6 +41,11 @@ import {
   MessageSquare,
   User2,
   Layers3,
+  PencilLine,
+  History,
+  IndianRupee,
+  Download,
+  Loader2,
 } from "lucide-react";
 import CustomeTooltip from "@/components/custom-tooltip";
 
@@ -159,9 +164,61 @@ export default function ClientApprovalLeadDetails() {
   const [remark, setRemark] = useState("");
   const [openFinalRejectConfirm, setOpenFinalRejectConfirm] = useState(false);
   const [openApproveConfirmModal, setOpenApproveConfirmModal] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   const { mutate: approveMultipleDocsMutate, isPending: approvingDocs } =
     useApproveMultipleDocuments();
+
+  const handleDocDownload = async (e: React.MouseEvent, doc: any) => {
+    e.stopPropagation();
+    if (downloadingId === doc?.id) return;
+
+    const docUrl = doc?.signed_url ?? doc?.signedUrl;
+    const originalName = doc?.doc_og_name || "download";
+
+    if (!docUrl) {
+      toast.error("No download URL available for this document.");
+      return;
+    }
+
+    setDownloadingId(doc.id);
+    try {
+      const response = await fetch(docUrl);
+      if (!response.ok) throw new Error("Download failed");
+
+      const disposition = response.headers.get("content-disposition") || "";
+      const filenameFromHeader = (() => {
+        const match =
+          disposition.match(/filename\*=UTF-8''([^;]+)/i) ||
+          disposition.match(/filename="?([^"]+)"?/i);
+        return match ? decodeURIComponent(match[1]) : "";
+      })();
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filenameFromHeader || originalName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download error:", err);
+      // Fallback: try direct download without opening a new tab
+      const a = document.createElement("a");
+      a.href = docUrl;
+      a.download = originalName;
+      a.rel = "noopener noreferrer";
+      a.target = "_self";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   const { data: clientDocsData } = useClientDocumentationDetails(
     vendorId!,
@@ -562,14 +619,14 @@ export default function ClientApprovalLeadDetails() {
 
               {canTechCheck(userType) ? (
                 <TabsTrigger value="todo">
-                  <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                  <PencilLine size={16} className="mr-1 opacity-60" />
                   To-Do Task
                 </TabsTrigger>
               ) : (
                 <CustomeTooltip
                   truncateValue={
                     <TabsTrigger value="" disabled>
-                      <PanelsTopLeftIcon size={16} />
+                      <PencilLine size={16} />
                       To-Do Task
                     </TabsTrigger>
                   }
@@ -579,14 +636,14 @@ export default function ClientApprovalLeadDetails() {
 
               {canViewSiteHistory && (
                 <TabsTrigger value="history">
-                  <BoxIcon size={16} className="mr-1 opacity-60" />
+                  <History size={16} className="mr-1 opacity-60" />
                   Site History
                 </TabsTrigger>
               )}
 
               {canViewPayment && (
                 <TabsTrigger value="payment">
-                  <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                  <IndianRupee size={16} className="mr-1 opacity-60" />
                   Payment Information
                 </TabsTrigger>
               )}
@@ -1085,6 +1142,27 @@ export default function ClientApprovalLeadDetails() {
 
                           {/* Status Badge */}
                           <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => handleDocDownload(e, doc)}
+                              disabled={downloadingId === doc.id}
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition",
+                                "bg-muted/40 text-gray-700 hover:bg-muted",
+                                "dark:bg-neutral-800/40 dark:text-gray-200 dark:hover:bg-neutral-700",
+                                "disabled:opacity-60 disabled:cursor-not-allowed",
+                              )}
+                            >
+                              {downloadingId === doc.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Download className="h-3.5 w-3.5" />
+                              )}
+                              {downloadingId === doc.id
+                                ? "Downloading..."
+                                : "Download"}
+                            </button>
+
                             {isApproved && (
                               <span className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">
                                 <CheckCircle2 size={14} />

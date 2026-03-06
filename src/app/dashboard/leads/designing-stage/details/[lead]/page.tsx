@@ -39,6 +39,9 @@ import {
   CircleArrowOutUpRight,
   UserIcon,
   MessageSquare,
+  PencilLine,
+  History,
+  IndianRupee,
 } from "lucide-react";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import {
@@ -377,14 +380,14 @@ export default function DesigningStageLead() {
 
                 {canAccessTodoTab ? (
                   <TabsTrigger value="todo">
-                    <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
+                    <PencilLine size={16} className="mr-1 opacity-60" />
                     To-Do Task
                   </TabsTrigger>
                 ) : (
                   <CustomeTooltip
                     truncateValue={
                       <TabsTrigger value="todo" disabled>
-                        <PanelsTopLeftIcon
+                        <PencilLine
                           size={16}
                           className="mr-1 opacity-60"
                         />
@@ -396,13 +399,13 @@ export default function DesigningStageLead() {
                 )}
                 {canViewSiteHistory && (
                   <TabsTrigger value="history">
-                    <BoxIcon size={16} className="mr-1 opacity-60" />
+                    <History size={16} className="mr-1 opacity-60" />
                     Site History
                   </TabsTrigger>
                 )}
                 {canViewPayment && (
                   <TabsTrigger value="team">
-                    <UsersRoundIcon size={16} className="mr-1 opacity-60" />
+                    <IndianRupee size={16} className="mr-1 opacity-60" />
                     Payment Information
                   </TabsTrigger>
                 )}

@@ -31,6 +31,7 @@ export interface CreateLeadPayload {
   archetech_name?: string;
   designer_remark?: string;
   vendor_id: number;
+  franchise_id: number;
   created_by: number;
   product_types: string[];
   product_structures: string[];
@@ -342,9 +343,13 @@ export const deleteLead = async (leadId: number, userId: number) => {
   return response.data;
 };
 
-export const getVendorSalesExecutiveUsers = async (vendorId: number) => {
+export const getVendorSalesExecutiveUsers = async (
+  vendorId: number,
+  franchiseId?: number,
+) => {
   const response = await apiClient.get(
     `/leads/sales-executives/vendor/${vendorId}`,
+    franchiseId ? { params: { franchise_id: franchiseId } } : undefined,
   );
   return response.data;
 };

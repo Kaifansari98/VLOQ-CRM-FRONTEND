@@ -1,48 +1,48 @@
 export const canReassingLead = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowRoles = ["super_admin", "admin"];
+  const allowRoles = ["super-admin", "admin"];
   return allowRoles.includes(userType);
 };
 
 export const canDeleteLead = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowDeleteRoles = ["super_admin", "admin"];
+  const allowDeleteRoles = ["super-admin", "admin"];
   return allowDeleteRoles.includes(userType);
 };
 
 export const canCreateLead = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  const allowCreateRoles = ["super-admin", "admin", "sales-executive"];
   return allowCreateRoles.includes(userType.toLowerCase());
 };
 
 export const canAssignISM = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  const allowCreateRoles = ["super-admin", "admin", "sales-executive"];
   return allowCreateRoles.includes(userType.toLowerCase());
 };
 
 export const canAssignFM = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  const allowCreateRoles = ["super-admin", "admin", "sales-executive"];
   return allowCreateRoles.includes(userType.toLowerCase());
 };
 
 export const canUploadISM = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  const allowCreateRoles = ["super-admin", "admin", "sales-executive"];
   return allowCreateRoles.includes(userType.toLowerCase());
 };
 
 export const canAccessDessingTodoTab = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  const allowCreateRoles = ["super-admin", "admin", "sales-executive"];
   return allowCreateRoles.includes(userType.toLowerCase());
 };
 
 export const canMoveToBookingStage = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowCreateRoles = ["super_admin", "admin", "sales-executive"];
+  const allowCreateRoles = ["super-admin", "admin", "sales-executive"];
   return allowCreateRoles.includes(userType.toLowerCase());
 };
 
@@ -60,7 +60,7 @@ export const formatDateTime = (dateString?: string) => {
 
 export const canTechCheck = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "tech-check"];
+  const allowedRoles = ["super-admin", "admin", "tech-check"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -73,13 +73,13 @@ export const canMoveToOrderLogin = (userType: string | undefined) => {
 
 export const canUploadFinalMeasurements = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "site-supervisor"];
+  const allowedRoles = ["super-admin", "admin", "site-supervisor"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
 export const canUploadClientDocumentation = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -87,7 +87,7 @@ export const canUploadMoreClientDocumentationFiles = (
   userType: string | undefined,
 ) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin"];
+  const allowedRoles = ["super-admin", "admin"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -95,19 +95,19 @@ export const canUploadRevisedClientDocumentationFiles = (
   userType: string | undefined,
 ) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
 export const canUploadClientApproval = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
 export const canRequestToTeckCheck = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -115,14 +115,14 @@ export const canViewThreeVerticalDocsOptionInTechCheck = (
   userType: string | undefined,
 ) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
 export const canOrderLogin = (userType: string | undefined) => {
   if (!userType) return false;
   const allowedRoles = [
-    "super_admin",
+    "super-admin",
     "admin",
     "backend",
     "tech-check",
@@ -133,13 +133,13 @@ export const canOrderLogin = (userType: string | undefined) => {
 
 export const canAssignSR = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
 export const canDoSR = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "site-supervisor"];
+  const allowedRoles = ["super-admin", "admin", "site-supervisor"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -150,7 +150,7 @@ export function canUploadOrDeleteBookingDone(
 ): boolean {
   return (
     role === "admin" ||
-    role === "super_admin" ||
+    role === "super-admin" ||
     (role === "sales-executive" && stage === "booking-stage")
   );
 }
@@ -168,20 +168,20 @@ export function canUploadOrDeleteOrderLogin(
 
 export const canDoDispatchPlanning = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
 export const canMoveToProduction = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "backend"];
+  const allowedRoles = ["super-admin", "admin", "backend"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
 export const canViewToOrderLoginDetails = (userType: string | undefined) => {
   if (!userType) return false;
   const allowedRoles = [
-    "super_admin",
+    "super-admin",
     "admin",
     "backend",
     "tech-check",
@@ -207,7 +207,7 @@ export const canViewAndWorkProductionDetails = (
 ) => {
   if (!userType) return false;
   const allowedRoles = [
-    "super_admin",
+    "super-admin",
     "admin",
     "backend",
     "tech-check",
@@ -221,7 +221,7 @@ export const canViewAndWorkProductionDetails = (
 export const handledproductionDefaultTab = (userType: string | undefined) => {
   if (!userType) return false;
   const allowedRoles = [
-    "super_admin",
+    "super-admin",
     "admin",
     "backend",
     "tech-check",
@@ -234,7 +234,7 @@ export const handledproductionDefaultTab = (userType: string | undefined) => {
 
 export const canMoveToReadyToDispatch = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "factory"];
+  const allowedRoles = ["super-admin", "admin", "factory"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -242,7 +242,7 @@ export const canUploadReadyToDispatchDocuments = (
   userType: string | undefined,
 ) => {
   if (!userType) return false;
-  const allowedRoles = ["super_admin", "admin", "sales-executive"];
+  const allowedRoles = ["super-admin", "admin", "sales-executive"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -250,7 +250,7 @@ export function canAccessAddNewSectionButton(
   role: string,
   stage: string,
 ): boolean {
-  const allowedRoles = ["super_admin", "admin", "backend"];
+  const allowedRoles = ["super-admin", "admin", "backend"];
   return (
     stage === "production-stage" ||
     (stage === "order-login-stage" && allowedRoles.includes(role))
@@ -347,7 +347,7 @@ export function canViewAndWorkSiteRedinessStage(
 ): boolean {
   return (
     role === "admin" ||
-    role === "super_admin" ||
+    role === "super-admin" ||
     (role === "site-supervisor" && stage === "site-readiness-stage")
   );
 }
@@ -358,7 +358,7 @@ export function canViewAndWorkDispatchPlanningStage(
 ): boolean {
   return (
     role === "admin" ||
-    role === "super_admin" ||
+    role === "super-admin" ||
     (role === "sales-executive" && stage === "dispatch-planning-stage")
   );
 }
@@ -369,7 +369,7 @@ export function canViewAndWorkDispatchStage(
 ): boolean {
   return (
     role === "admin" ||
-    role === "super_admin" ||
+    role === "super-admin" ||
     (role === "factory" && stage === "dispatch-stage")
   );
 }
@@ -380,36 +380,36 @@ export function canUploadDispatchDocument(
 ): boolean {
   return (
     role === "admin" ||
-    role === "super_admin" ||
+    role === "super-admin" ||
     (role === "factory" &&
       (stage === "dispatch-stage" || stage === "under-installation-stage"))
   );
 }
 export function canDoMoveToUnderInstallation(role: string): boolean {
-  return role === "admin" || role === "super_admin" || role === "factory";
+  return role === "admin" || role === "super-admin" || role === "factory";
 }
 export function canEditLeadForSalesExecutiveButton(role: string): boolean {
   return (
-    role === "admin" || role === "super_admin" || role === "sales-executive"
+    role === "admin" || role === "super-admin" || role === "sales-executive"
   );
 }
 
 export function canDeleteLedForSalesExecutiveButton(role: string): boolean {
   return (
-    role === "admin" || role === "super_admin" || role === "sales-executive"
+    role === "admin" || role === "super-admin" || role === "sales-executive"
   );
 }
 
 export function canEditLeadButton(role: string): boolean {
-  return role === "admin" || role === "super_admin";
+  return role === "admin" || role === "super-admin";
 }
 
 export function canDeleteLeadButton(role: string): boolean {
-  return role === "admin" || role === "super_admin";
+  return role === "admin" || role === "super-admin";
 }
 
 export function canReassignLeadButton(role: string): boolean {
-  return role === "admin" || role === "super_admin";
+  return role === "admin" || role === "super-admin";
 }
 
 export function canViewAndWorkUnderInstallationStage(
