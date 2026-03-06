@@ -82,11 +82,20 @@ export default function CutListTable({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const resolveFileUrl = (url?: string) => {
     if (!url) return "";
-    if (/^https?:\/\//i.test(url)) return url;
+    if (/^https?:\/\//i.test(url)) {
+      if (typeof window !== "undefined" && window.location.protocol === "https:") {
+        return url.replace(/^http:\/\//i, "https://");
+      }
+      return url;
+    }
     const base = apiClient.defaults.baseURL ?? "";
     const origin = base.replace(/\/api\/?$/i, "");
     if (!origin) return url;
-    return url.startsWith("/") ? `${origin}${url}` : `${origin}/${url}`;
+    const resolved = url.startsWith("/") ? `${origin}${url}` : `${origin}/${url}`;
+    if (typeof window !== "undefined" && window.location.protocol === "https:") {
+      return resolved.replace(/^http:\/\//i, "https://");
+    }
+    return resolved;
   };
   const handleDownloadLabels = async () => {
     if (!onDownloadLabels) return;
@@ -108,12 +117,7 @@ export default function CutListTable({
         throw new Error("No PDF URL received");
       }
 
-      const link = document.createElement("a");
-      link.href = pdfUrl;
-      link.download = "";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      window.open(pdfUrl, "_blank", "noopener,noreferrer");
       toast.success("Labels downloaded successfully");
     } catch (error) {
       console.error("Error downloading labels:", error);
@@ -144,12 +148,7 @@ export default function CutListTable({
         throw new Error("No file URL received");
       }
 
-      const link = document.createElement("a");
-      link.href = fileUrl;
-      link.download = "";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      window.open(fileUrl, "_blank", "noopener,noreferrer");
       toast.success("Advanced cut list downloaded successfully");
     } catch (error) {
       console.error("Error downloading advanced excel:", error);
@@ -180,12 +179,7 @@ export default function CutListTable({
         throw new Error("No file URL received");
       }
 
-      const link = document.createElement("a");
-      link.href = fileUrl;
-      link.download = "";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      window.open(fileUrl, "_blank", "noopener,noreferrer");
       toast.success("Basic cut list downloaded successfully");
     } catch (error) {
       console.error("Error downloading basic excel:", error);
