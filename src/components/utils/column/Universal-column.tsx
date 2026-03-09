@@ -154,6 +154,9 @@ export function getUniversalTableColumns(
 
       cell: ({ row }) => {
         const structures: string[] = row.original.furnitueStructures ?? [];
+        const instanceTitle = row.original.instanceTitle;
+        const instanceDescription = row.original.instanceDescription;
+        const hasInstanceInfo = instanceTitle || instanceDescription;
 
         if (!structures.length) return "—";
 
@@ -162,20 +165,41 @@ export function getUniversalTableColumns(
 
         return (
           <div className="space-x-1">
-            {visible.map((name: string, index: number) => (
-              <Badge key={index} variant="secondary" className="text-xs px-2">
-                {name}
-              </Badge>
-            ))}
+            {visible.map((name: string, index: number) =>
+              hasInstanceInfo ? (
+                <TooltipProvider key={index} delayDuration={100}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="secondary" className="text-xs px-2 cursor-default">
+                        {name}
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="bottom"
+                      align="start"
+                      className="max-w-[260px] p-2 space-y-1"
+                    >
+                      {instanceTitle && (
+                        <p className="text-xs font-semibold">{instanceTitle}</p>
+                      )}
+                      {instanceDescription && (
+                        <p className="text-xs opacity-75">{instanceDescription}</p>
+                      )}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <Badge key={index} variant="secondary" className="text-xs px-2">
+                  {name}
+                </Badge>
+              ),
+            )}
 
             {remaining.length > 0 && (
               <TooltipProvider delayDuration={100}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Badge
-                      
-                      variant="secondary" className="text-xs px-2"
-                    >
+                    <Badge variant="secondary" className="text-xs px-2">
                       +{remaining.length}
                     </Badge>
                   </TooltipTrigger>
@@ -185,7 +209,7 @@ export function getUniversalTableColumns(
                     className="max-w-[220px] p-2 space-y-1"
                   >
                     {remaining.map((name: string, index: number) => (
-                      <p key={index} className="text-xs ">
+                      <p key={index} className="text-xs">
                         • {name}
                       </p>
                     ))}

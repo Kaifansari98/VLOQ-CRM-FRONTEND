@@ -421,6 +421,8 @@ export function UniversalTable({
       leadCodeSuffix?: string;
       furnitureStructureOverride?: string;
       productionStatus?: string;
+      instanceTitle?: string;
+      instanceDescription?: string;
     },
   ): LeadColumn => ({
     rowKey: options?.rowKey,
@@ -445,6 +447,8 @@ export function UniversalTable({
         (p: any) => p.productStructure?.type
       ) ?? [],
     productionStatus: options?.productionStatus,
+    instanceTitle: options?.instanceTitle,
+    instanceDescription: options?.instanceDescription,
     source: lead.source?.type ?? "",
     siteType: lead.siteType?.type ?? "",
     createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",
@@ -521,6 +525,8 @@ export function UniversalTable({
                 ? "Completed"
                 : "Pending"
               : undefined,
+            instanceTitle: onlyInstance?.title ?? undefined,
+            instanceDescription: onlyInstance?.description ?? undefined,
           }),
         );
         return;
@@ -548,6 +554,8 @@ export function UniversalTable({
                 ? "Completed"
                 : "Pending"
               : undefined,
+            instanceTitle: instance?.title ?? undefined,
+            instanceDescription: instance?.description ?? undefined,
           }),
         );
       });

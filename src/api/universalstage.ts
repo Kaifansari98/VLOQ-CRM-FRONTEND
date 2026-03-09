@@ -31,6 +31,7 @@ export interface ProductStructureMapping {
 export interface ProductStructureInstance {
   id: number;
   title: string;
+  description?: string | null;
   quantity_index: number;
   product_structure_id: number;
   is_tech_check_completed?: boolean | null;
