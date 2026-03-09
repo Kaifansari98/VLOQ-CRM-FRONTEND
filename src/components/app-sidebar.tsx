@@ -132,7 +132,7 @@ const data = {
           showCount: "total_production_stage_leads" as const,
         },
         {
-          title: "Ready To Dispatch",
+          title: "RTD Sites",
           url: "/dashboard/production/ready-to-dispatch",
           showCount: "total_ready_to_dispatch_leads" as const,
         },

@@ -4,12 +4,9 @@ import { useAppSelector } from "@/redux/store";
 import SalesExecutiveDashboard from "./SalesExecutiveDashboard";
 import { FadeInProvider } from "../framer-motion/FadeInProvider";
 import AdminDashboard from "./AdminDashboard";
+import ComingSoon from "../generics/ComingSoon";
 
-export default function DashboardWrapper({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardWrapper() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type
   );
@@ -42,6 +39,15 @@ export default function DashboardWrapper({
     );
   }
 
-  // Default dashboard (fallback: existing layout)
-  return <FadeInProvider>{children}</FadeInProvider>;
+  // Default dashboard (fallback: under development)
+  return (
+    <FadeInProvider>
+      <div className="flex items-center justify-center min-h-screen">
+        <ComingSoon
+          heading="Dashboard is under development"
+          description="We're working on building your dashboard. Check back soon!"
+        />
+      </div>
+    </FadeInProvider>
+  );
 }
