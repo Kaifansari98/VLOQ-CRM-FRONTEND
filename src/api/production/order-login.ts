@@ -546,6 +546,57 @@ export const markOrderLoginFilled = async (
   return data;
 };
 
+// ✅ --- Get Production Files Remark ---
+export const getProductionFilesRemark = async (
+  vendorId: number,
+  leadId: number,
+) => {
+  const { data } = await apiClient.get(
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/prod-files-remark`,
+  );
+  return (data?.data?.remark as string) ?? "N/A";
+};
+
+export const useProductionFilesRemark = (
+  vendorId: number | undefined,
+  leadId: number | undefined,
+) =>
+  useQuery({
+    queryKey: ["productionFilesRemark", vendorId, leadId],
+    queryFn: () => getProductionFilesRemark(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
+
+// ✅ --- Upsert Production Files Remark ---
+export const upsertProductionFilesRemark = async (
+  vendorId: number,
+  leadId: number,
+  remark: string,
+  updated_by: number,
+) => {
+  const { data } = await apiClient.put(
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/prod-files-remark`,
+    { remark, updated_by },
+  );
+  return data;
+};
+
+export const useUpsertProductionFilesRemark = (
+  vendorId: number | undefined,
+  leadId: number | undefined,
+) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { remark: string; updated_by: number }) =>
+      upsertProductionFilesRemark(vendorId!, leadId!, vars.remark, vars.updated_by),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["productionFilesRemark", vendorId, leadId],
+      });
+    },
+  });
+};
+
 export const useMarkOrderLoginFilled = (
   vendorId: number,
   leadId: number,

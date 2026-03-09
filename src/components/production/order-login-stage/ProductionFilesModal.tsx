@@ -1,13 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   useProductionFiles,
   useUploadProductionFiles,
+  useProductionFilesRemark,
+  useUpsertProductionFilesRemark,
 } from "@/api/production/order-login";
 import { useAppSelector } from "@/redux/store";
-import { FolderOpen, Upload, Loader2 } from "lucide-react";
+import { FolderOpen, Upload, Loader2, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { toast } from "react-toastify";
@@ -29,6 +31,7 @@ import {
   useLeadStatus,
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canUploadOrDeleteOrderLogin } from "@/components/utils/privileges";
+import TextAreaInput from "@/components/origin-text-area";
 import { Badge } from "@/components/ui/badge";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import { useSearchParams } from "next/navigation";
@@ -78,6 +81,28 @@ export default function ProductionFilesSection({
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const hasFiles = Array.isArray(productionFiles) && productionFiles.length > 0;
+
+  const { data: savedRemark } = useProductionFilesRemark(vendorId, leadId);
+  const { mutateAsync: saveRemark, isPending: savingRemark } =
+    useUpsertProductionFilesRemark(vendorId, leadId);
+  const [remark, setRemark] = useState("");
+
+  useEffect(() => {
+    if (savedRemark && savedRemark !== "N/A") setRemark(savedRemark);
+  }, [savedRemark]);
+
+  const handleRemarkSave = async () => {
+    if (!remark.trim()) {
+      toast.error("Remark cannot be empty.");
+      return;
+    }
+    try {
+      await saveRemark({ remark, updated_by: userId! });
+      toast.success("Remark saved successfully.");
+    } catch {
+      toast.error("Failed to save remark.");
+    }
+  };
 
   // ✅ Handle Upload
   const handleUpload = async () => {
@@ -180,6 +205,39 @@ export default function ProductionFilesSection({
           </div>
         </div>
       )}
+
+      {/* -------------------------------- REMARK SECTION -------------------------------- */}
+      <div className="p-6 border-b space-y-2">
+        <p className="text-sm font-semibold tracking-tight">Remark</p>
+        <TextAreaInput
+          value={remark}
+          onChange={setRemark}
+          maxLength={500}
+          placeholder="Add any notes related to production files..."
+          className="h-[130px] bg-muted/20 rounded-lg"
+          disabled={!canDelete}
+        />
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            onClick={handleRemarkSave}
+            disabled={!remark.trim() || !canDelete || savingRemark}
+            className="flex items-center gap-2"
+          >
+            {savingRemark ? (
+              <>
+                <Loader2 className="animate-spin size-4" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Paperclip size={16} />
+                {savedRemark && savedRemark !== "N/A" ? "Update Remark" : "Add Remark"}
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
 
       {/* -------------------------------- FILE LIST SECTION -------------------------------- */}
       <div className="p-6 space-y-4">
