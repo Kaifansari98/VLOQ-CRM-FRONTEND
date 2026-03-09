@@ -339,37 +339,37 @@ export function UniversalTable({
     useUnderInstallationLeadsWithMiscellaneous(vendorId!, miscPayload);
 
   React.useEffect(() => {
-    console.log("[UniversalTable] admin view debug", {
-      isAdmin,
-      normalizedUserType,
-      effectiveViewType,
-      dataMode,
-      type,
-      vendorId,
-      franchiseId,
-      userId,
-      isMyLoading,
-      isOverallLoading,
-      isMiscLoading,
-      myPayload: myPostPayload,
-      overallPayload: overallPostPayload,
-      miscPayload,
-      myData: {
-        count: myData?.count,
-        dataLen: myData?.data?.length,
-        totalPages: myData?.pagination?.totalPages,
-      },
-      overallData: {
-        count: overallData?.count,
-        dataLen: overallData?.data?.length,
-        totalPages: overallData?.pagination?.totalPages,
-      },
-      miscData: {
-        count: miscData?.count,
-        dataLen: miscData?.data?.length,
-        totalPages: miscData?.pagination?.totalPages,
-      },
-    });
+    // console.log("[UniversalTable] admin view debug", {
+    //   isAdmin,
+    //   normalizedUserType,
+    //   effectiveViewType,
+    //   dataMode,
+    //   type,
+    //   vendorId,
+    //   franchiseId,
+    //   userId,
+    //   isMyLoading,
+    //   isOverallLoading,
+    //   isMiscLoading,
+    //   myPayload: myPostPayload,
+    //   overallPayload: overallPostPayload,
+    //   miscPayload,
+    //   myData: {
+    //     count: myData?.count,
+    //     dataLen: myData?.data?.length,
+    //     totalPages: myData?.pagination?.totalPages,
+    //   },
+    //   overallData: {
+    //     count: overallData?.count,
+    //     dataLen: overallData?.data?.length,
+    //     totalPages: overallData?.pagination?.totalPages,
+    //   },
+    //   miscData: {
+    //     count: miscData?.count,
+    //     dataLen: miscData?.data?.length,
+    //     totalPages: miscData?.pagination?.totalPages,
+    //   },
+    // });
   }, [
     isAdmin,
     normalizedUserType,
@@ -558,14 +558,14 @@ export function UniversalTable({
   }, [activeData, normalizedType]);
 
   React.useEffect(() => {
-    console.log("[UniversalTable] data pipeline", {
-      isAdmin,
-      effectiveViewType,
-      dataMode,
-      activeDataLen: activeData?.length ?? 0,
-      tableDataLen: tableData?.length ?? 0,
-      normalizedType,
-    });
+    // console.log("[UniversalTable] data pipeline", {
+    //   isAdmin,
+    //   effectiveViewType,
+    //   dataMode,
+    //   activeDataLen: activeData?.length ?? 0,
+    //   tableDataLen: tableData?.length ?? 0,
+    //   normalizedType,
+    // });
   }, [
     isAdmin,
     effectiveViewType,
