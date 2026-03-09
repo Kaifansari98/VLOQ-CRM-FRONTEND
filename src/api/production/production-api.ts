@@ -445,6 +445,73 @@ export const usePostProductionCompleteness = (
   });
 };
 
+// ✅ Pre-Production Files (Type 37)
+export const usePreProductionFiles = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null
+) => {
+  return useQuery({
+    queryKey: ["preProductionFiles", vendorId, leadId, instanceId ?? "all"],
+    queryFn: async () => {
+      if (!vendorId || !leadId) return [];
+      const { data } = await apiClient.get(
+        `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/get-pre-production-files`,
+        {
+          params: instanceId != null ? { instance_id: instanceId } : undefined,
+        }
+      );
+      return data?.data || [];
+    },
+    enabled: !!vendorId && !!leadId,
+  });
+};
+
+export const useUploadPreProductionFiles = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null
+) => {
+  return useMutation({
+    mutationFn: async (formData: FormData) => {
+      if (!vendorId || !leadId) throw new Error("Missing vendorId or leadId");
+      if (instanceId != null) {
+        formData.append("instance_id", String(instanceId));
+      }
+      const { data } = await apiClient.post(
+        `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/upload-pre-production-files`,
+        formData,
+        {
+          params: instanceId != null ? { instance_id: instanceId } : undefined,
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+      return data;
+    },
+  });
+};
+
+export const useCheckPreProductionFilesReady = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null
+) => {
+  return useQuery({
+    queryKey: ["preProductionFilesReady", vendorId, leadId, instanceId ?? "all"],
+    queryFn: async () => {
+      if (!vendorId || !leadId) return { readyForUnderProduction: false };
+      const { data } = await apiClient.get(
+        `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/check-pre-production-files-ready`,
+        {
+          params: instanceId != null ? { instance_id: instanceId } : undefined,
+        }
+      );
+      return data;
+    },
+    enabled: !!vendorId && !!leadId,
+  });
+};
+
 export const markProductionCompleted = async (
   vendorId: number,
   leadId: number,

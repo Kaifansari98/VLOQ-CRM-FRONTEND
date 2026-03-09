@@ -3,12 +3,13 @@
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import PreProductionDetails from "./PreProductionDetails";
 import PostProductionDetails from "./PostProductionDetails";
-import { useCheckPostProductionReady } from "@/api/production/production-api";
+import { useCheckPostProductionReady, useCheckPreProductionFilesReady } from "@/api/production/production-api";
 import { useAppSelector } from "@/redux/store";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { canViewDefaultSubTabProductionStage } from "@/components/utils/privileges";
 import ProductionFilesSection from "../order-login-stage/ProductionFilesModal";
+import PreProductionFilesSection from "./PreProductionFilesSection";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
 import { useTechCheckInstanceStatus } from "@/api/tech-check";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -81,7 +82,15 @@ export default function LeadDetailsProductionUtil({
     scopedInstanceId ?? undefined,
   );
 
+  const { data: preProductionReadyData } = useCheckPreProductionFilesReady(
+    vendorId,
+    leadId,
+    scopedInstanceId ?? undefined,
+  );
+
   const readyForPostProduction = data?.readyForPostProduction ?? false;
+  const readyForUnderProduction =
+    preProductionReadyData?.readyForUnderProduction ?? false;
 
   const defaultTab = canViewDefaultSubTabProductionStage(userType);
 
@@ -100,14 +109,25 @@ export default function LeadDetailsProductionUtil({
       ),
     },
     {
+      id: "preProductionFiles",
+      title: "Pre Production",
+      color: "bg-zinc-900 hover:bg-zinc-900",
+      cardContent: (
+        <PreProductionFilesSection
+          leadId={leadId}
+          accountId={accountId ?? null}
+          instanceId={scopedInstanceId}
+        />
+      ),
+    },
+    {
       id: "preProduction",
       title: "Under Production",
       color: "bg-zinc-900 hover:bg-zinc-900",
-      disabled: !defaultTab,
-      disabledReason: readyForPostProduction
+      disabled: !defaultTab || !readyForUnderProduction,
+      disabledReason: !defaultTab
         ? "You do not have permission to view this record."
-        : "This lead is work on under production",
-
+        : "Upload pre-production files first to enable Under Production.",
       cardContent: (
         <PreProductionDetails
           leadId={leadId}
@@ -185,7 +205,7 @@ export default function LeadDetailsProductionUtil({
       )}
       <SmoothTab
         items={allTabs}
-        defaultTabId={defaultTab ? "preProduction" : "postProduction"}
+        defaultTabId={defaultTab ? "preProductionFiles" : "postProduction"}
       />
     </div>
   );
