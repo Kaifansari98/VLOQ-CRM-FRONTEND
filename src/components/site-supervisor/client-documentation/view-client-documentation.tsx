@@ -108,12 +108,8 @@ export default function ClientDocumentationDetails({
     DOC_EXTENSIONS.includes(getFileExtension(doc.doc_sys_name))
   );
 
-  // 🧩 Permissions
+  // 🧩 Permissions (kept for future use)
   const canDelete =
-    userType === "admin" ||
-    userType === "super-admin" ||
-    userType === "super admin";
-  const canEditSelections =
     userType === "admin" ||
     userType === "super-admin" ||
     userType === "super admin";
@@ -169,51 +165,15 @@ export default function ClientDocumentationDetails({
   "
       >
 
-        {canEditSelections ? (
-          <div className="p-0 bg-[#fff] dark:bg-[#0a0a0a]">
-            <SelectionsTabForClientDocs
-              leadId={leadId}
-              accountId={accountId}
-              onInstanceChange={(instance) =>
-                setSelectedInstanceId(instance?.id ?? null)
-              }
-            />
-          </div>
-        ) : (
-          <div className="p-6 bg-[#fff] dark:bg-[#0a0a0a]">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Carcas */}
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Carcas</p>
-                <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
-                  {selections.carcas && selections.carcas !== "NULL"
-                    ? selections.carcas
-                    : "—"}
-                </div>
-              </div>
-
-              {/* Shutter */}
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Shutter</p>
-                <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
-                  {selections.shutter && selections.shutter !== "NULL"
-                    ? selections.shutter
-                    : "—"}
-                </div>
-              </div>
-
-              {/* Handles */}
-              <div className="md:col-span-2">
-                <p className="text-sm text-muted-foreground mb-1">Handles</p>
-                <div className="p-3 rounded-lg border bg-mutedBg/40 dark:bg-neutral-800/40 text-sm">
-                  {selections.handles && selections.handles !== "NULL"
-                    ? selections.handles
-                    : "—"}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <div className="p-0 bg-[#fff] dark:bg-[#0a0a0a]">
+          <SelectionsTabForClientDocs
+            leadId={leadId}
+            accountId={accountId}
+            onInstanceChange={(instance) =>
+              setSelectedInstanceId(instance?.id ?? null)
+            }
+          />
+        </div>
       </motion.section>
 
       {/* -------- Modals -------- */}

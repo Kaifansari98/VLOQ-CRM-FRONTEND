@@ -732,104 +732,106 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           </Form>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
-        >
-          <Form {...uploadForm}>
-            <form
-              onSubmit={uploadForm.handleSubmit(handleUploadForInstance)}
-              className="flex w-full items-end gap-4 flex-col-reverse"
-            >
-              <div className="grid md:grid-cols-2 w-full gap-4">
-                <div className="w-full">
-                  <FormField
-                    control={uploadForm.control}
-                    name="pptDocuments"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm">
-                          Client Documentation - Project Files *
-                        </FormLabel>
-                        <FormControl>
-                          <FileUploadField
-                            value={field.value}
-                            onChange={field.onChange}
-                            accept=".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+        {canUpdateInput && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
+            <Form {...uploadForm}>
+              <form
+                onSubmit={uploadForm.handleSubmit(handleUploadForInstance)}
+                className="flex w-full items-end gap-4 flex-col-reverse"
+              >
+                <div className="grid md:grid-cols-2 w-full gap-4">
+                  <div className="w-full">
+                    <FormField
+                      control={uploadForm.control}
+                      name="pptDocuments"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">
+                            Client Documentation - Project Files *
+                          </FormLabel>
+                          <FormControl>
+                            <FileUploadField
+                              value={field.value}
+                              onChange={field.onChange}
+                              accept=".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="w-full">
+                    <FormField
+                      control={uploadForm.control}
+                      name="pythaDocuments"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">
+                            Client Documentation - Pytha Design Files *
+                          </FormLabel>
+                          <FormControl>
+                            <FileUploadField
+                              value={field.value}
+                              onChange={field.onChange}
+                              accept=".pdf,.zip,.pytha,.pyo"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
 
-                <div className="w-full">
-                  <FormField
-                    control={uploadForm.control}
-                    name="pythaDocuments"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm">
-                          Client Documentation - Pytha Design Files *
-                        </FormLabel>
-                        <FormControl>
-                          <FileUploadField
-                            value={field.value}
-                            onChange={field.onChange}
-                            accept=".pdf,.zip,.pytha,.pyo"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                <div className="w-full flex items-center justify-between">
+                  <div className="flex items-center justify-between">
+                    {(uploadForm.watch("pptDocuments").length > 0 ||
+                      uploadForm.watch("pythaDocuments").length > 0) && (
+                      <Badge variant="secondary">
+                        {uploadForm.watch("pptDocuments").length +
+                          uploadForm.watch("pythaDocuments").length}{" "}
+                        selected
+                      </Badge>
                     )}
-                  />
-                </div>
-              </div>
+                  </div>
 
-              <div className="w-full flex items-center justify-between">
-                <div className="flex items-center justify-between">
                   {(uploadForm.watch("pptDocuments").length > 0 ||
                     uploadForm.watch("pythaDocuments").length > 0) && (
-                    <Badge variant="secondary">
-                      {uploadForm.watch("pptDocuments").length +
-                        uploadForm.watch("pythaDocuments").length}{" "}
-                      selected
-                    </Badge>
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      className="flex justify-end"
+                    >
+                      <Button
+                        type="submit"
+                        disabled={isUploadingDocs}
+                        className="gap-2"
+                      >
+                        {isUploadingDocs ? (
+                          <>
+                            <Loader2 className="animate-spin w-4 h-4" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4" />
+                            Click Here To Upload Files
+                          </>
+                        )}
+                      </Button>
+                    </motion.div>
                   )}
                 </div>
-
-                {(uploadForm.watch("pptDocuments").length > 0 ||
-                  uploadForm.watch("pythaDocuments").length > 0) && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    className="flex justify-end"
-                  >
-                    <Button
-                      type="submit"
-                      disabled={isUploadingDocs}
-                      className="gap-2"
-                    >
-                      {isUploadingDocs ? (
-                        <>
-                          <Loader2 className="animate-spin w-4 h-4" />
-                          Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="w-4 h-4" />
-                          Click Here To Upload Files
-                        </>
-                      )}
-                    </Button>
-                  </motion.div>
-                )}
-              </div>
-            </form>
-          </Form>
-        </motion.div>
+              </form>
+            </Form>
+          </motion.div>
+        )}
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
