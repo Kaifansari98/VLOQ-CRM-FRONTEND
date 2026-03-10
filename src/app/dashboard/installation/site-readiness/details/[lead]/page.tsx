@@ -73,6 +73,8 @@ import {
   useMoveLeadToDispatchPlanning,
 } from "@/api/installation/useSiteReadinessLeads";
 import { useQueryClient } from "@tanstack/react-query";
+import { getActiveLeadTasks } from "@/hooks/useTasksQueries";
+import { CompletedUpdateTheTaskIsmAndFollowUp } from "@/api/measurment-leads";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
@@ -147,6 +149,27 @@ export default function ReadyToDispatchLeadDetails() {
         leadId: leadIdNum,
         updated_by: userId!,
       });
+
+      // Auto-complete any open or in_progress tasks for this lead
+      try {
+        const tasks = await getActiveLeadTasks(vendorId!, leadIdNum);
+        const pendingTasks = (tasks as any[]).filter(
+          (t) => t.status === "open" || t.status === "in_progress"
+        );
+        await Promise.all(
+          pendingTasks.map((t) =>
+            CompletedUpdateTheTaskIsmAndFollowUp(leadIdNum, t.id, {
+              status: "completed",
+              updated_by: userId!,
+              closed_at: new Date().toISOString(),
+              closed_by: userId!,
+            })
+          )
+        );
+      } catch {
+        // silently ignore — task completion is best-effort
+      }
+
       toast.success("Lead moved to Dispatch Planning successfully!");
       router.push("/dashboard/installation/dispatch-planning/");
       queryClient.invalidateQueries({
