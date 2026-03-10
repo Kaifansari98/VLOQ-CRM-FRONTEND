@@ -1,23 +1,7 @@
 "use client";
 import { apiClient } from "@/lib/apiClient";
-import { useCallback, useEffect, useState } from "react";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-    useAdminProjectsOverview,
-    useAdminStageCounts,
-    useAdminTotalRevenue,
-} from "@/api/dashboard/useDashboard";
 import { useAppSelector } from "@/redux/store";
-import { Area, AreaChart, ResponsiveContainer, Tooltip } from "recharts";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuRadioGroup,
-    DropdownMenuRadioItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ArrowRight, ArrowUpRight, ClipboardList, Clock, Monitor, Users } from "lucide-react";
+import { ClipboardList, Monitor, Users } from "lucide-react";
 import Header from "../track-trace/Header";
 import Filters from "../track-trace/Filters";
 import KPICard from "../ui/KPICard";
@@ -27,281 +11,183 @@ import ProductionChart from "../track-trace/ProductionChart";
 import TopOperators from "../track-trace/TopOperators";
 import ProjectProgress from "../track-trace/ProjectProgress";
 import BottleneckAnalysis from "../track-trace/BottleneckAnalysis";
-import Alerts from "../track-trace/Alerts";
-import ActivityLogTable from "../track-trace/ActivityLogTable";
-import { Footer } from "react-day-picker";
-
-
-
 import { FilterOptions } from "@/types/track-trace";
 import KPICardSQFT from "../ui/KPICardSQFT";
 import { useQuery } from "@tanstack/react-query";
-
-
-
-
+import { useState, useEffect } from "react";
 
 export default function TraceTraceDashboard() {
+  const [filters, setFilters] = useState<FilterOptions>({
+    project: "all",
+    machine: "all",
+    operator: "all",
+    status: "all",
+    dateRange: "today",
+    startDate: undefined,
+    endDate: undefined,
+  });
 
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
-    // const [kpis, setKpis] = useState<any>(null);
-    // const [items, setItems] = useState<any[]>([]);
-    // const [machines, setMachines] = useState<any[]>([]);
+  const fetchTrackTraceData = async () => {
+    if (!vendorId) return null;
 
-    // const [hourlyProductionData, setHourlyProductionData] = useState<any>(null);
-    // const [machineUtilizationData, setMachineUtilizationData] = useState<any>(null);
-    // const [operators, setOperators] = useState<any[]>([]);
-    // const [projects, setProjects] = useState<any[]>([]);
-    // const [bottlenecks, setBottlenecks] = useState<any[]>([]);
+    const projectMachineOperator = new URLSearchParams();
+    if (filters.project !== "all") projectMachineOperator.append("project_id", filters.project);
+    if (filters.machine !== "all") projectMachineOperator.append("machine_id", filters.machine);
+    if (filters.operator !== "all") projectMachineOperator.append("created_by", filters.operator);
 
-    // const [loading, setLoading] = useState(true);
-    const [filters, setFilters] = useState<FilterOptions>({
-        project: 'all',
-        machine: 'all',
-        operator: 'all',
-        dateRange: 'today',
-        status: 'all',
-    });
-    const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+    const machineOnly = new URLSearchParams();
+    if (filters.machine !== "all") machineOnly.append("machine_id", filters.machine);
 
+    const dateParams = new URLSearchParams();
+    if (filters.dateRange) dateParams.append("date_range", filters.dateRange);
+    if (filters.dateRange === "custom" && filters.startDate && filters.endDate) {
+      dateParams.append("start_date", filters.startDate);
+      dateParams.append("end_date", filters.endDate);
+    }
 
+    const machineOperatorDate = new URLSearchParams([
+      ...machineOnly.entries(),
+      ...(filters.operator !== "all" ? [["created_by", filters.operator]] : []),
+      ...dateParams.entries(),
+    ]);
 
-    const fetchTrackTraceData = async () => {
-        if (!vendorId) return null;
-        
-        const params = new URLSearchParams();
-        if (filters.project !== "all") params.append("project_id", filters.project);
-        if (filters.machine !== "all") params.append("machine_id", filters.machine);
-        if (filters.operator !== "all") params.append("operator_id", filters.operator);
-        if (filters.status !== "all") params.append("status", filters.status);
+    const machineDate = new URLSearchParams([
+      ...machineOnly.entries(),
+      ...dateParams.entries(),
+    ]);
 
-        const [
-            kpisRes,
-            itemsRes,
-            machinesRes,
-            hourlyProductionDataRes,
-            machineUtilizationDataRes,
-            operatorsRes,
-            projectsRes,
-            bottlenecksRes,
-        ] = await Promise.all([
-            apiClient.get(`/track-trace/kpis/${vendorId}`, { params }),
-            apiClient.get(`/track-trace/items/${vendorId}`, { params }),
-            apiClient.get(`/track-trace/machine-status/${vendorId}`, { params }),
-            apiClient.get(`/track-trace/hourly-production/${vendorId}`, { params }),
-            apiClient.get(`/track-trace/machine-utilization/${vendorId}`, { params }),
-            apiClient.get(`/track-trace/top-performer/${vendorId}`, { params }),
-            apiClient.get(`/track-trace/project-progress/${vendorId}`, { params }),
-            apiClient.get(`/track-trace/bottle-neck/${vendorId}`, { params }),
-        ]);
+    const projectOperatorDate = new URLSearchParams([
+      ...(filters.project !== "all" ? [["project_id", filters.project]] : []),
+      ...(filters.operator !== "all" ? [["created_by", filters.operator]] : []),
+      ...dateParams.entries(),
+    ]);
 
-        return {
-            kpis: kpisRes.data.data,
-            items: itemsRes.data.data,
-            machines: machinesRes.data.data,
-            hourlyProductionData: hourlyProductionDataRes.data.data,
-            machineUtilizationData: machineUtilizationDataRes.data.data,
-            operators: operatorsRes.data.data,
-            projects: projectsRes.data.data,
-            bottlenecks: bottlenecksRes.data.data,
-        };
+    const [
+      kpisRes, itemsRes, machinesRes,
+      hourlyProductionRes, machineUtilizationRes,
+      operatorsRes, projectsRes, bottlenecksRes,
+    ] = await Promise.all([
+      apiClient.get(`/track-trace/kpis/${vendorId}`,                { params: dateParams             }),
+      apiClient.get(`/track-trace/items/${vendorId}`,               { params: projectMachineOperator }),
+      apiClient.get(`/track-trace/machine-status/${vendorId}`,      { params: machineOperatorDate    }),
+      apiClient.get(`/track-trace/hourly-production/${vendorId}`,   { params: projectMachineOperator }),
+      apiClient.get(`/track-trace/machine-utilization/${vendorId}`, { params: machineDate            }),
+      apiClient.get(`/track-trace/top-performer/${vendorId}`,       { params: machineDate            }),
+      apiClient.get(`/track-trace/project-progress/${vendorId}`,    { params: projectOperatorDate    }),
+      apiClient.get(`/track-trace/bottle-neck/${vendorId}`,         { params: machineOnly            }),
+    ]);
+
+    return {
+      kpis:                 kpisRes.data.data,
+      items:                itemsRes.data.data,
+      machines:             machinesRes.data.data,
+      hourlyProductionData: hourlyProductionRes.data.data,
+      machineUtilizationData: machineUtilizationRes.data.data,
+      operators:            operatorsRes.data.data,
+      projects:             projectsRes.data.data,
+      bottlenecks:          bottlenecksRes.data.data,
     };
+  };
 
-    const {
-        data,
-        isLoading,
-        isFetching,
-        isError,
-    } = useQuery({
-        queryKey: ["track-trace", vendorId, filters],
-        queryFn: fetchTrackTraceData,
-        enabled: !!vendorId,
-        refetchInterval: 500000,
-        placeholderData: (previousData) => previousData,
-    });
+  const { data, isLoading } = useQuery({
+    queryKey: ["track-trace", vendorId, filters],
+    queryFn: fetchTrackTraceData,
+    enabled: !!vendorId,
+    refetchInterval: 500000,
+    placeholderData: (previousData) => previousData,
+  });
 
-    const {
-  kpis,
-  items,
-  machines,
-  hourlyProductionData,
-  machineUtilizationData,
-  operators,
-  projects,
-  bottlenecks,
-} = data ?? {};
+  const {
+    kpis, items, machines,
+    hourlyProductionData, machineUtilizationData,
+    operators, projects, bottlenecks,
+  } = data ?? {};
 
+  useEffect(() => {
+    console.log("Current Filters:", filters);
+  }, [filters]);
 
+  return (
+    <div className="min-h-screen">
+      <Header />
+      <Filters onFilterChange={setFilters} />
 
+      <main className="w-full max-w-400 px-5">
 
-    // const fetchData = useCallback(async () => {
-    //     if (!vendorId) return;
+        {/* ── KPI Cards ─────────────────────────────────────────────── */}
+        {kpis && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-5">
+            <KPICardSQFT
+              title="Total Items Processed"
+              value={kpis.totalItemsProcessed.value}
+              change={kpis.totalItemsProcessed.change}
+              subtitle={kpis.totalItemsProcessed.subtitle}
+              trend={kpis.totalItemsProcessed.trend}
+              icon={<ClipboardList className="w-6 h-6" />}
+              sqft={kpis.totalItemsProcessed.sqft}
+            />
+            <KPICard
+              title="Active Machines"
+              value={kpis.activeMachines.value}
+              change={kpis.activeMachines.change}
+              subtitle={kpis.activeMachines.subtitle}
+              trend={kpis.activeMachines.trend}
+              icon={<Monitor className="w-6 h-6 text-muted-foreground" />}
+            />
+            <KPICard
+              title="Active Operators"
+              value={kpis.activeOperators.value}
+              change={kpis.activeOperators.change}
+              subtitle={kpis.activeOperators.subtitle}
+              trend={kpis.activeOperators.trend}
+              icon={<Users className="w-6 h-6 text-muted-foreground" />}
+            />
+          </div>
+        )}
 
-    //     try {
-    //         // setLoading(true);
-
-    //         const params = new URLSearchParams();
-    //         if (filters.project !== "all") params.append("project", filters.project);
-    //         if (filters.machine !== "all") params.append("machine", filters.machine);
-    //         if (filters.operator !== "all") params.append("operator", filters.operator);
-    //         if (filters.status !== "all") params.append("status", filters.status);
-
-    //         const [kpisRes, itemsRes, machinesRes, hourlyProductionDataRes, machineUtilizationDataRes, operatorsRes, projectsRes, bottlenecksRes] = await Promise.all([
-    //             apiClient.get(`/track-trace/kpis/${vendorId}`, { params }),
-    //             apiClient.get(`/track-trace/items/${vendorId}`, { params }),
-    //             apiClient.get(`/track-trace/machine-status/${vendorId}`, { params }),
-    //             apiClient.get(`/track-trace/hourly-production/${vendorId}`, { params }),
-    //             apiClient.get(`/track-trace/machine-utilization/${vendorId}`, { params }),
-    //             apiClient.get(`/track-trace/top-performer/${vendorId}`, { params }),
-    //             apiClient.get(`/track-trace/project-progress/${vendorId}`, { params }),
-    //             apiClient.get(`/track-trace/bottle-neck/${vendorId}`, { params }),
-
-    //         ]);
-
-
-    //         setKpis(kpisRes.data.data);
-    //         setItems(itemsRes.data.data);
-    //         setMachines(machinesRes.data.data);
-    //         setHourlyProductionData(hourlyProductionDataRes.data.data);
-    //         setMachineUtilizationData(machineUtilizationDataRes.data.data);
-    //         setOperators(operatorsRes.data.data);
-    //         setProjects(projectsRes.data.data);
-    //         setBottlenecks(bottlenecksRes.data.data);
-    //         // alert(bottlenecksRes.data.data)
-
-
-    //     } catch (err) {
-    //         console.error("Fetch error:", err);
-    //     } finally {
-    //         //setLoading(false);
-    //     }
-    // }, [vendorId, filters]);
-
-
-    // useEffect(() => {
-    //     fetchData();
-
-    //     const interval = setInterval(fetchData, 5000);
-    //     return () => clearInterval(interval);
-    // }, [fetchData]);
-
-
-
-    return (
-        <div className="min-h-screen bg-gray-50">
-            <Header />
-            <Filters onFilterChange={setFilters} />
-
-            <main className="max-w-[1600px] mx-auto px-6 py-6">
-                {/* KPI Metrics */}
-
-                { kpis && (
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                        <KPICardSQFT
-                            title="Total Items Processed"
-                            value={kpis.totalItemsProcessed.value}
-                            change={kpis.totalItemsProcessed.change}
-                            subtitle={kpis.totalItemsProcessed.subtitle}
-                            trend={kpis.totalItemsProcessed.trend}
-                            icon={<ClipboardList className="w-6 h-6 text-gray-700" />}
-                            sqft={kpis.totalItemsProcessed.sqft}
-                        />
-                        <KPICard
-                            title="Active Machines"
-                            value={kpis.activeMachines.value}
-                            change={kpis.activeMachines.change}
-                            subtitle={kpis.activeMachines.subtitle}
-                            trend={kpis.activeMachines.trend}
-                            icon={<Monitor className="w-6 h-6 text-gray-700" />}
-                        />
-                        <KPICard
-                            title="Active Operators"
-                            value={kpis.activeOperators.value}
-                            change={kpis.activeOperators.change}
-                            subtitle={kpis.activeOperators.subtitle}
-                            trend={kpis.activeOperators.trend}
-                            icon={<Users className="w-6 h-6 text-gray-700" />}
-                        />
-                        {/* <KPICard
-                            title="Avg Processing Time"
-                            value="8.2m"
-                            change="-5% vs target"
-                            subtitle="↓ 0.4m"
-                            trend="down"
-                            icon={<Clock className="w-6 h-6 text-gray-700" />}
-                        /> */}
-
-                    </div>
-                )}
-
-                {/* Real-Time Tracking & Machine Status */}
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                    <div className="lg:col-span-2">
-                        {!isLoading && items && (
-                            <RealTimeTracking items={items} />
-                        )}
-                    </div>
-                    <div>
-                        <div className="lg:col-span-2">
-                            {!isLoading && machines && (
-                                <MachineStatus machines={machines} />
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-
-                {/* Charts */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    {!isLoading && hourlyProductionData && (
-                        <ProductionChart
-                            data={hourlyProductionData}
-                            type="line"
-                            title="Hourly Production Rate"
-                            subtitle="Items processed per hour"
-                        />
-                    )}
-                    {!isLoading && machineUtilizationData && (
-                        <ProductionChart
-                            data={machineUtilizationData}
-                            type="bar"
-                            title="Machine Utilization Rate"
-                            subtitle="Average utilization by machine type"
-                        />
-                    )}
-                </div>
-
-                {/* Performance Tables */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    {!isLoading && operators && (
-                        <TopOperators operators={operators} />
-                    )}
-                    {!isLoading && projects && (
-
-                        <ProjectProgress projects={projects} />
-                    )}
-                </div>
-
-                {/* Bottleneck & Alerts */}
-                {!isLoading && bottlenecks && (
-
-                    <div className="grid grid-cols-1  gap-6 mb-6">
-                        <div className="lg:col-span-2">
-                            <BottleneckAnalysis bottlenecks={bottlenecks} />
-                        </div>
-                        {/* <div>
-                        <Alerts alerts={mockAlerts} />
-                    </div> */}
-                    </div>
-                )}
-
-                {/* Activity Log */}
-                {/* <ActivityLogTable logs={mockActivityLog} /> */}
-            </main>
-
-            <Footer />
+        {/* ── Real-Time Tracking + Machine Status ───────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 mb-5">
+          {!isLoading && items    && <RealTimeTracking items={items} />}
+          {!isLoading && machines && <MachineStatus machines={machines} />}
         </div>
-    );
+
+
+
+        {/* ── Top Operators + Project Progress ─────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-5 mb-5">
+          {!isLoading && operators && <TopOperators operators={operators} />}
+          {!isLoading && projects  && <ProjectProgress projects={projects} />}
+        </div>
+
+        {/* ── Bottleneck Analysis ───────────────────────────────────── */}
+        {!isLoading && bottlenecks && (
+          <div className="mb-5">
+            <BottleneckAnalysis bottlenecks={bottlenecks} />
+          </div>
+        )}
+
+        {/* ── Charts ───────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+          {!isLoading && hourlyProductionData && (
+            <ProductionChart
+              data={hourlyProductionData}
+              type="line"
+              title="Hourly Production Rate"
+              subtitle="Items processed per hour"
+            />
+          )}
+          {!isLoading && machineUtilizationData && (
+            <ProductionChart
+              data={machineUtilizationData}
+              type="bar"
+              title="Machine Utilization Rate"
+              subtitle="Average utilization by machine type"
+            />
+          )}
+        </div>
+      </main>
+    </div>
+  );
 }
