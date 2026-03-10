@@ -88,6 +88,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   data,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userRole = useAppSelector((state) => state.auth.user?.user_role);
+  const canAccessRestrictedTasks = ["super-admin", "admin", "sales-executive"].includes(userRole ?? "");
   const {
     data: siteSupervisors,
     isLoading: loadingSupervisors,
@@ -125,7 +127,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       assign_lead_to: undefined,
-      task_type: "Final Measurements",
+      task_type: canAccessRestrictedTasks ? "Final Measurements" : "Follow Up",
       due_date: "",
       remark: "N/A",
       current_site_photos: [],
@@ -316,29 +318,33 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              <SelectItem
-                                value="Final Measurements"
-                                disabled={!isSiteSupervisorAssigned}
-                              >
-                                Final Measurements
-                              </SelectItem>
-                            </span>
-                          </TooltipTrigger>
-                          {!isSiteSupervisorAssigned && (
-                            <TooltipContent>
-                              Site supervisor is not assigned yet
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
-                      </TooltipProvider>
+                      {canAccessRestrictedTasks && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <SelectItem
+                                  value="Final Measurements"
+                                  disabled={!isSiteSupervisorAssigned}
+                                >
+                                  Final Measurements
+                                </SelectItem>
+                              </span>
+                            </TooltipTrigger>
+                            {!isSiteSupervisorAssigned && (
+                              <TooltipContent>
+                                Site supervisor is not assigned yet
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                       <SelectItem value="Follow Up">Follow Up</SelectItem>
-                      <SelectItem value="BookingDone - ISM">
-                        BookingDone - ISM
-                      </SelectItem>
+                      {canAccessRestrictedTasks && (
+                        <SelectItem value="BookingDone - ISM">
+                          BookingDone - ISM
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
