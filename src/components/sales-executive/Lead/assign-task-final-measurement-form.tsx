@@ -88,7 +88,9 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   data,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const userRole = useAppSelector((state) => state.auth.user?.user_role);
+  const userRole = useAppSelector(
+    (state) => state.auth?.user?.user_type.user_type
+  );
   const canAccessRestrictedTasks = ["super-admin", "admin", "sales-executive"].includes(userRole ?? "");
   const {
     data: siteSupervisors,
@@ -318,33 +320,55 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {canAccessRestrictedTasks && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span>
-                                <SelectItem
-                                  value="Final Measurements"
-                                  disabled={!isSiteSupervisorAssigned}
-                                >
-                                  Final Measurements
-                                </SelectItem>
-                              </span>
-                            </TooltipTrigger>
-                            {!isSiteSupervisorAssigned && (
-                              <TooltipContent>
-                                Site supervisor is not assigned yet
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                      <SelectItem value="Follow Up">Follow Up</SelectItem>
-                      {canAccessRestrictedTasks && (
-                        <SelectItem value="BookingDone - ISM">
-                          BookingDone - ISM
-                        </SelectItem>
-                      )}
+                      <TooltipProvider>
+                        {/* Final Measurements */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <SelectItem
+                                value="Final Measurements"
+                                disabled={
+                                  !canAccessRestrictedTasks ||
+                                  !isSiteSupervisorAssigned
+                                }
+                              >
+                                Final Measurements
+                              </SelectItem>
+                            </span>
+                          </TooltipTrigger>
+                          {!canAccessRestrictedTasks ? (
+                            <TooltipContent>
+                              You don&apos;t have permission to select this
+                            </TooltipContent>
+                          ) : !isSiteSupervisorAssigned ? (
+                            <TooltipContent>
+                              Site supervisor is not assigned yet
+                            </TooltipContent>
+                          ) : null}
+                        </Tooltip>
+
+                        {/* Follow Up */}
+                        <SelectItem value="Follow Up">Follow Up</SelectItem>
+
+                        {/* BookingDone - ISM */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <SelectItem
+                                value="BookingDone - ISM"
+                                disabled={!canAccessRestrictedTasks}
+                              >
+                                BookingDone - ISM
+                              </SelectItem>
+                            </span>
+                          </TooltipTrigger>
+                          {!canAccessRestrictedTasks && (
+                            <TooltipContent>
+                              You don&apos;t have permission to select this
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
                     </SelectContent>
                   </Select>
                   <FormMessage />
