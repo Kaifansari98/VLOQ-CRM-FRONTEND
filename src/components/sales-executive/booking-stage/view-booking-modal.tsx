@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { DocumentBooking } from "@/types/booking-types";
 import UploadFinalDoc from "./add-final-doc";
-import { useLeadById } from "@/hooks/useLeadsQueries";
+import { useLeadById, useCheckSiteSupervisorAssigned } from "@/hooks/useLeadsQueries";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import DocumentCard from "@/components/utils/documentCard";
 import { Button } from "@/components/ui/button";
@@ -268,15 +268,11 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const designDocs = designDocsData?.data?.documents || [];
   const siteSupervisors = siteSupervisorsData?.data?.site_supervisors || [];
   const currentSupervisor = leadData?.supervisors?.[0] || null;
-  const isCurrentSupervisorSiteSupervisor = currentSupervisor
-    ? siteSupervisors.some(
-        (supervisor: any) => supervisor.id === currentSupervisor.userId,
-      )
-    : false;
+  console.log("super visor :- ", currentSupervisor)
+  const { data: siteSupervisorCheck } = useCheckSiteSupervisorAssigned(vendorId, leadId);
   const canAssignSiteSupervisor =
     userType === "head-site-supervisor" || userType === "super-admin";
-  const shouldShowAssignSupervisorButton =
-    !isCurrentSupervisorSiteSupervisor && canAssignSiteSupervisor;
+  const isSupervisorAssigned = siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
 
   const lead = data?.data?.lead;
   const accountId = Number(lead?.account_id);
@@ -599,7 +595,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                   Site Supervisor
                 </p>
 
-                {shouldShowAssignSupervisorButton ? (
+                {!isSupervisorAssigned && canAssignSiteSupervisor ? (
                   <Button
                     type="button"
                     variant="secondary"
@@ -610,12 +606,12 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                   </Button>
                 ) : (
                   <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
-                    {currentSupervisor?.userName || "Not Assigned"}
+                    {currentSupervisor?.userName || "Not Assigned Yet"}
                   </p>
                 )}
               </div>
 
-              {!shouldShowAssignSupervisorButton && canEditBookingValues && (
+              {isSupervisorAssigned && canAssignSiteSupervisor && (
                 <Button
                   type="button"
                   variant="outline"

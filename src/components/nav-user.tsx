@@ -85,8 +85,8 @@ export function NavUser({
       localStorage.removeItem("pushDeviceId");
       if (tokenKey) localStorage.removeItem(tokenKey);
 
-      // Refresh app
-      window.location.reload();
+      // Redirect to login
+      window.location.href = '/login';
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {

@@ -23,7 +23,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
 import z from "zod";
-import { useAssignToFinalMeasurement } from "@/hooks/useLeadsQueries";
+import { useAssignToFinalMeasurement, useCheckSiteSupervisorAssigned } from "@/hooks/useLeadsQueries";
 import { AssignToFinalMeasurementPayload } from "@/api/final-measurement";
 import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
@@ -33,6 +33,12 @@ import { FileUploadField } from "@/components/custom/file-upload";
 import { useUploadCSPBooking } from "@/hooks/useUploadCSPBooking";
 import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 import { useLeadById } from "@/hooks/useLeadsQueries";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Props {
   open: boolean;
@@ -100,6 +106,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     return null;
   }
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const { data: siteSupervisorCheck } = useCheckSiteSupervisorAssigned(vendorId, leadId);
+  const isSiteSupervisorAssigned = siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
   const mutation = useAssignToFinalMeasurement(leadId);
   const queryClient = useQueryClient();
   const uploadCSPMutation = useUploadCSPBooking();
@@ -166,6 +174,12 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       });
     }
   }, [taskType, assignedSiteSupervisorId, form]);
+
+  React.useEffect(() => {
+    if (siteSupervisorCheck !== undefined && !isSiteSupervisorAssigned) {
+      form.setValue("task_type", "Follow Up");
+    }
+  }, [siteSupervisorCheck, isSiteSupervisorAssigned, form]);
 
   console.log("[AssignFM] site_map_link", {
     value: lead?.site_map_link ?? null,
@@ -302,9 +316,25 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Final Measurements">
-                        Final Measurements
-                      </SelectItem>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <SelectItem
+                                value="Final Measurements"
+                                disabled={!isSiteSupervisorAssigned}
+                              >
+                                Final Measurements
+                              </SelectItem>
+                            </span>
+                          </TooltipTrigger>
+                          {!isSiteSupervisorAssigned && (
+                            <TooltipContent>
+                              Site supervisor is not assigned yet
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
                       <SelectItem value="Follow Up">Follow Up</SelectItem>
                       <SelectItem value="BookingDone - ISM">
                         BookingDone - ISM

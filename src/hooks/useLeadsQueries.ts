@@ -190,6 +190,23 @@ export const useLeadLogs = ({
   });
 };
 
+export const useCheckSiteSupervisorAssigned = (
+  vendorId?: number,
+  leadId?: number
+) => {
+  return useQuery({
+    queryKey: ["siteSupervisorAssigned", vendorId, leadId],
+    queryFn: async () => {
+      const { data } = await apiClient.get(
+        `/leads/vendorId/${vendorId}/leadId/${leadId}/check-site-supervisor-assigned`
+      );
+      return data?.data as { isSiteSupervisorAssigned: boolean };
+    },
+    enabled: !!vendorId && !!leadId,
+    staleTime: 1000 * 30,
+  });
+};
+
 export const useCheckContactOrEmailExists = () => {
   return useMutation<
     ContactOrEmailCheckResult,
