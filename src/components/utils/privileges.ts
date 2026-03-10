@@ -139,7 +139,7 @@ export const canAssignSR = (userType: string | undefined) => {
 
 export const canDoSR = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super-admin", "admin", "site-supervisor"];
+  const allowedRoles = ["super-admin", "admin", "site-supervisor", "head-site-supervisor"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -214,6 +214,7 @@ export const canViewAndWorkProductionDetails = (
     "factory",
     "sales-executive",
     "site-supervisor",
+    "head-site-supervisor",
   ];
   return allowedRoles.includes(userType.toLowerCase());
 };
@@ -228,6 +229,7 @@ export const handledproductionDefaultTab = (userType: string | undefined) => {
     "factory",
     "sales-executive",
     "site-supervisor",
+    "head-site-supervisor",
   ];
   return allowedRoles.includes(userType.toLowerCase());
 };
@@ -337,7 +339,7 @@ export function canViewAndWorkEditProcutionExpectedDate(role: string): boolean {
 }
 
 export const canViewDefaultSubTabProductionStage = (role: string) => {
-  if (role === "sales-executive" || role === "site-supervisor") return false;
+  if (role === "sales-executive" || role === "site-supervisor" || role === "head-site-supervisor") return false;
   return true;
 };
 
@@ -348,7 +350,7 @@ export function canViewAndWorkSiteRedinessStage(
   return (
     role === "admin" ||
     role === "super-admin" ||
-    (role === "site-supervisor" && stage === "site-readiness-stage")
+    ((role === "site-supervisor" || role === "head-site-supervisor") && stage === "site-readiness-stage")
   );
 }
 
@@ -420,7 +422,7 @@ export function canViewAndWorkUnderInstallationStage(
   return (
     role === "admin" ||
     role === "super-admin" ||
-    (role === "site-supervisor" && stage === "under-installation-stage")
+    ((role === "site-supervisor" || role === "head-site-supervisor") && stage === "under-installation-stage")
   );
 }
 
@@ -452,7 +454,7 @@ export function canViewAndWorkFinalHandoverStage(
   return (
     role === "admin" ||
     role === "super-admin" ||
-    (role === "site-supervisor" && stage === "final-handover-stage")
+    ((role === "site-supervisor" || role === "head-site-supervisor") && stage === "final-handover-stage")
   );
 }
 
@@ -476,7 +478,7 @@ export function canMiscellaneousMarkAsResolved(
   return (
     role === "admin" ||
     role === "super-admin" ||
-    (role === "site-supervisor" && stage === "under-installation-stage")
+    ((role === "site-supervisor" || role === "head-site-supervisor") && stage === "under-installation-stage")
   );
 }
 
