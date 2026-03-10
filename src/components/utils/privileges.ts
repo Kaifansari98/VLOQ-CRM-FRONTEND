@@ -73,7 +73,7 @@ export const canMoveToOrderLogin = (userType: string | undefined) => {
 
 export const canUploadFinalMeasurements = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super-admin", "admin", "site-supervisor"];
+  const allowedRoles = ["super-admin", "admin", "site-supervisor", "head-site-supervisor"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -428,7 +428,7 @@ export function canAccessTodoTaskTabUnderInstallationStage(
   role: string,
 ): boolean {
   // 1. Admins always have access
-  if (role === "admin" || role === "super-admin" || role === "site-supervisor")
+  if (role === "admin" || role === "super-admin" || role === "site-supervisor" || role === "head-site-supervisor")
     return true;
 
   return false;
@@ -438,7 +438,7 @@ export function canAccessTodoTaskTabUnderFinalHandoverStage(
   role: string,
 ): boolean {
   // 1. Admins always have access
-  if (role === "admin" || role === "super-admin" || role === "site-supervisor")
+  if (role === "admin" || role === "super-admin" || role === "site-supervisor" || role === "head-site-supervisor")
     return true;
 
   return false;
