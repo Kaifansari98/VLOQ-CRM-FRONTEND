@@ -1,46 +1,76 @@
 'use client';
 
 import { ReactNode } from 'react';
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+
+interface SQFT {
+  value:    number;
+  change:   string;
+  subtitle: string;
+  trend:    string;
+}
 
 interface KPICardProps {
-  title: string;
-  value: string | number;
-  change?: string;
-  trend?: 'up' | 'down' | 'neutral';
-  icon: ReactNode;
+  title:     string;
+  value:     string | number;
+  change?:   string;
+  trend?:    'up' | 'down' | 'neutral';
+  icon:      ReactNode;
   subtitle?: string;
-  sqft?: SQFT
+  sqft?:     SQFT;
 }
 
-interface SQFT{
-    value : number,
-    change: string,
-    subtitle: string,
-    trend:string
-
-}
-
-export default function KPICardSQFT({ title, value, change, trend, icon, subtitle,sqft }: KPICardProps) {
-  const getTrendColor = () => {
-    if (!sqft?.trend) return 'text-gray-600';
-    return sqft?.trend === 'up' ? 'text-green-600' : sqft?.trend === 'down' ? 'text-red-600' : 'text-gray-600';
+export default function KPICardSQFT({ title, value, icon, sqft }: KPICardProps) {
+  const trendConfig = {
+    up:      { icon: TrendingUp,   color: 'text-green-600', bg: 'bg-green-50 border-green-200'  },
+    down:    { icon: TrendingDown, color: 'text-red-600',   bg: 'bg-red-50 border-red-200'      },
+    neutral: { icon: Minus,        color: 'text-muted-foreground', bg: 'bg-muted border-border' },
   };
 
+  const sqftTrend = (sqft?.trend as 'up' | 'down' | 'neutral') ?? 'neutral';
+  const st = trendConfig[sqftTrend];
+  const SqftIcon = st.icon;
+
   return (
-    <div className="stat-card bg-white border border-gray-200 rounded-lg p-6">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">{value}<small className='text-xs font-medium'>  ({sqft?.value} sqft)</small></p>
-          <div className="flex items-center gap-2 mt-3">
-            {sqft?.change && <span className="text-xs text-gray-600">{sqft?.change}</span>}
-            {sqft?.subtitle && <span className={`text-xs font-medium ${getTrendColor()}`}>{sqft?.subtitle}</span>}
-          </div>
-        </div>
-        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+    <div className="bg-card border border-border rounded-xl p-5">
+
+      {/* Row 1: icon + title */}
+      <div className="flex items-center gap-2.5 mb-2">
+        <div className="shrink-0 w-12 h-12 rounded-lg bg-muted border border-border flex items-center justify-center">
           {icon}
         </div>
+        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest leading-none">
+          {title}
+        </p>
       </div>
+
+      {/* Row 2: value + sqft */}
+      <div className="flex items-baseline gap-2.5 mb-2">
+        <p className="text-[28px] font-bold text-foreground tabular-nums leading-none">
+          {value}
+        </p>
+        {sqft?.value !== undefined && (
+          <p className="text-sm text-muted-foreground tabular-nums leading-none">
+            {sqft.value} <span className="text-[11px]">sqft</span>
+          </p>
+        )}
+      </div>
+
+      {/* Row 3: trend + subtitle */}
+      <div className="flex items-center gap-2 pt-3 ">
+        {sqft?.trend && sqft?.change && (
+          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[10px] font-semibold ${st.bg} ${st.color}`}>
+            <SqftIcon className="w-3 h-3 shrink-0" />
+            {sqft.change}
+          </span>
+        )}
+        {sqft?.subtitle && (
+          <p className="text-[11px] text-muted-foreground leading-none truncate">
+            {sqft.subtitle}
+          </p>
+        )}
+      </div>
+
     </div>
   );
 }

@@ -100,13 +100,22 @@ export interface KPIMetric {
   icon: string;
 }
 
-export interface FilterOptions {
+// ✅ Updated FilterOptions type — supports custom date range
+export type FilterOptions = {
   project: string;
   machine: string;
   operator: string;
-  dateRange: string;
   status: string;
-}
+  dateRange:
+    | "today"
+    | "yesterday"
+    | "last7days"
+    | "thisMonth"
+    | "lastMonth"
+    | "custom";
+  startDate?: string; // format: "YYYY-MM-DD", only used when dateRange === "custom"
+  endDate?: string;   // format: "YYYY-MM-DD", only used when dateRange === "custom"
+};
 
 export type MachineStatus = "ACTIVE" | "MAINTENANCE" | "INACTIVE" | "RETIRED";
 export type MachineScanType = "IN" | "OUT" | "BOTH" | "PASS";

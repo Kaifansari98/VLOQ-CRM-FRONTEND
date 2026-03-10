@@ -1,78 +1,121 @@
 'use client';
 
 import { BottleneckData } from '@/types/track-trace';
-import { AlertCircle } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 interface BottleneckAnalysisProps {
   bottlenecks: BottleneckData[];
 }
 
+const SEVERITY_CONFIG = {
+  high:   { bar: 'bg-red-500',   pill: 'bg-red-50 text-red-700 border-red-200',       dot: 'bg-red-500',   label: 'Critical' },
+  medium: { bar: 'bg-amber-400', pill: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-400', label: 'Warning'  },
+  low:    { bar: 'bg-green-500', pill: 'bg-green-50 text-green-700 border-green-200', dot: 'bg-green-500', label: 'Normal'   },
+} as const;
+
 export default function BottleneckAnalysis({ bottlenecks }: BottleneckAnalysisProps) {
-  const getSeverityColor = (severity: BottleneckData['severity']) => {
-    switch (severity) {
-      case 'high':
-        return { bar: 'bg-red-500', text: 'text-red-600' };
-      case 'medium':
-        return { bar: 'bg-yellow-500', text: 'text-yellow-600' };
-      case 'low':
-        return { bar: 'bg-green-500', text: 'text-green-600' };
-      default:
-        return { bar: 'bg-gray-500', text: 'text-gray-600' };
-    }
-  };
+  const sorted = [...bottlenecks].sort((a, b) => {
+    const rank = { high: 3, medium: 2, low: 1 };
+    return (rank[b.severity as keyof typeof rank] ?? 0) - (rank[a.severity as keyof typeof rank] ?? 0);
+  });
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg">
-      <div className="border-b border-gray-200 p-6 pb-4">
-        <h2 className="text-lg font-bold text-gray-900">Bottleneck Analysis</h2>
-        <p className="text-sm text-gray-500 mt-1">Machines with highest queue times</p>
+    <div className="bg-card border border-border rounded-xl flex flex-col">
+
+      {/* ── Header ─────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-4 px-5 py-4 shrink-0">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-foreground tracking-tight leading-none">
+            Bottleneck Analysis
+          </h2>
+          <p className="text-[11px] text-muted-foreground mt-1 leading-none">
+            Ranked by severity · queue load
+          </p>
+        </div>
+        <span className="text-[10px] font-semibold tabular-nums px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border shrink-0">
+          {bottlenecks.length} machines
+        </span>
       </div>
-      <div className="p-6">
-        <div className="space-y-4">
-          {bottlenecks.map((bottleneck, index) => {
-            const colors = getSeverityColor(bottleneck.severity);
+
+      <Separator />
+
+      {/* ── Rows ───────────────────────────────────────────────────── */}
+      <div
+        className="divide-y divide-border overflow-y-auto max-h-95 min-h-40
+          [&::-webkit-scrollbar]:w-1.5
+          [&::-webkit-scrollbar-track]:bg-transparent
+          [&::-webkit-scrollbar-thumb]:bg-border
+          [&::-webkit-scrollbar-thumb]:rounded-full"
+      >
+        {sorted.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
+              <span className="text-muted-foreground text-lg">⊘</span>
+            </div>
+            <p className="text-sm font-medium text-foreground">No bottlenecks detected</p>
+            <p className="text-xs text-muted-foreground mt-1">All machines are running smoothly</p>
+          </div>
+        ) : (
+          sorted.map((bottleneck, index) => {
+            const cfg = SEVERITY_CONFIG[bottleneck.severity as keyof typeof SEVERITY_CONFIG] ?? SEVERITY_CONFIG.low;
+
             return (
-              <div key={index} className="flex items-center gap-4">
-                <div className="flex-shrink-0 w-32">
-                  <p className="text-sm font-medium text-gray-900">{bottleneck.machine}</p>
-                  <p className="text-xs text-gray-500">{bottleneck.operator || 'Unassigned'}</p>
+              <div
+                key={index}
+                className="flex items-center gap-3 px-5 py-3 hover:bg-muted/30 transition-colors duration-150"
+              >
+                {/* Rank */}
+                <div className="w-5 h-5 rounded bg-muted flex items-center justify-center text-[9px] font-bold text-muted-foreground shrink-0">
+                  {index + 1}
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-gray-600">Queue: {bottleneck.queueCount} items</span>
-                    <span className="text-xs font-medium text-gray-900">
-                      Avg Wait: {bottleneck.avgWait}
+
+                {/* Machine + bar */}
+                <div className="flex-1 min-w-0">
+
+                  {/* Row 1: machine + operator + queue + avg */}
+                  <div className="flex items-center gap-2 mb-1.5 min-w-0">
+                    <div className="min-w-0 shrink-0 max-w-30">
+                      <p className="text-xs font-semibold text-foreground leading-none truncate">
+                        {bottleneck.machine}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-none truncate">
+                        {bottleneck.operator || 'Unassigned'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-border text-[9px]">·</span>
+                      <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest leading-none">Queue</span>
+                      <span className="text-[10px] font-semibold text-foreground tabular-nums leading-none">{bottleneck.queueCount}</span>
+                      <span className="text-border text-[9px]">·</span>
+                      <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest leading-none">Avg</span>
+                      <span className="text-[10px] font-semibold text-foreground tabular-nums leading-none">{bottleneck.avgWait}</span>
+                    </div>
+                  </div>
+
+                  {/* Row 2: load bar + % */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${cfg.bar}`}
+                        style={{ width: `${Math.min(bottleneck.percentage, 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-medium text-muted-foreground tabular-nums shrink-0 w-7 text-right">
+                      {bottleneck.percentage}%
                     </span>
                   </div>
-                  <div className="bg-gray-200 rounded-full h-3">
-                    <div
-                      className={`${colors.bar} h-3 rounded-full`}
-                      style={{ width: `${bottleneck.percentage}%` }}
-                    ></div>
-                  </div>
+
                 </div>
-                <div className="flex-shrink-0 w-20 text-right">
-                  <span className={`text-sm font-bold ${colors.text} capitalize`}>
-                    {bottleneck.severity}
-                  </span>
-                </div>
+
+                {/* Severity pill */}
+                <span className={`shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[9px] font-semibold ${cfg.pill}`}>
+                  <span className={`w-1 h-1 rounded-full shrink-0 ${cfg.dot}`} />
+                  {cfg.label}
+                </span>
               </div>
             );
-          })}
-        </div>
-{/* 
-        <div className="mt-6 p-4 bg-gray-50 rounded border border-gray-200">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-gray-900">Recommendation</p>
-              <p className="text-sm text-gray-600 mt-1">
-                Consider redistributing CNC Router workload to available machines or scheduling
-                additional operators during peak hours.
-              </p>
-            </div>
-          </div>
-        </div> */}
+          })
+        )}
       </div>
     </div>
   );
