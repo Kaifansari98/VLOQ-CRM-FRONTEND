@@ -268,6 +268,29 @@ export interface UniversalTablePayload {
   designer_remark?: string;
 }
 
+/* ==========================================================
+   Assign Task for Booking Stage (Head Site Supervisor)
+   @route POST /leads/bookingStage/leadId/:leadId/tasks/assign-booking
+   ========================================================== */
+export interface AssignTaskBookingPayload {
+  task_type: string;
+  due_date: string;
+  remark?: string;
+  user_id: number;
+  created_by: number;
+}
+
+export const assignTaskBooking = async (
+  leadId: number,
+  payload: AssignTaskBookingPayload
+) => {
+  const { data } = await apiClient.post(
+    `/leads/bookingStage/leadId/${leadId}/tasks/assign-booking`,
+    payload
+  );
+  return data;
+};
+
 export const getUnderInstallationLeadsWithMiscellaneous = async (
   vendorId: number,
   payload: UniversalTablePayload

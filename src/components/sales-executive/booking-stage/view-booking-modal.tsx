@@ -167,6 +167,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   // 🧩 Redux state
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userName = useAppSelector((state) => state.auth.user?.user_name);
+  const userEmail = useAppSelector((state) => state.auth.user?.user_email);
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
@@ -528,8 +530,47 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       {
         onSuccess: () => {
           toast.success("Site supervisor reassigned successfully.");
+          const createdAt = new Date().toISOString();
+          queryClient.setQueryData(
+            ["leadLogs", leadId, vendorId],
+            (oldData: any) => {
+              if (!oldData?.pages?.length) return oldData;
+
+              const newLogEntry = {
+                id: -Date.now(),
+                action: "Assign Site Supervisor",
+                action_type: "UPDATE",
+                created_at: createdAt,
+                created_by: {
+                  id: userId,
+                  name: userName ?? "User",
+                  email: userEmail ?? null,
+                },
+                docs: [],
+              };
+
+              const [firstPage, ...restPages] = oldData.pages;
+              return {
+                ...oldData,
+                pages: [
+                  {
+                    ...firstPage,
+                    data: [newLogEntry, ...(firstPage.data ?? [])],
+                    meta: {
+                      ...firstPage.meta,
+                      count: (firstPage.meta?.count ?? 0) + 1,
+                    },
+                  },
+                  ...restPages,
+                ],
+              };
+            },
+          );
           queryClient.invalidateQueries({
             queryKey: ["bookingLead", leadId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["siteSupervisorAssigned", vendorId, leadId],
           });
           setReassignConfirmOpen(false);
           setReassignOpen(false);

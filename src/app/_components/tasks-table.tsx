@@ -273,6 +273,10 @@ const MyTaskTable = () => {
           variant: "Pending Work",
         });
         setOpenFollowUp(true);
+      } else if (row.taskType === "Assign a Site Supervisor") {
+        router.push(
+          `/dashboard/leads/booking-stage/details/${row.leadId}?accountId=${row.accountId}`,
+        );
       } else if (row.taskType === "Site Readiness") {
         setRowAction({
           row: { original: row } as any,

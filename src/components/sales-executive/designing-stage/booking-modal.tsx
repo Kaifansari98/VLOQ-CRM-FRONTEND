@@ -27,7 +27,7 @@ import {
   useMoveToBookingStage,
   useHeadSiteSupervisors,
 } from "@/hooks/booking-stage/use-booking";
-import { BookingPayload } from "@/api/booking";
+import { BookingPayload, assignTaskBooking } from "@/api/booking";
 import { toast } from "react-toastify";
 import { useISMPaymentInfo } from "@/hooks/booking-stage/use-booking";
 import SelectDocumentModal from "@/components/modal/select-doc-modal";
@@ -297,6 +297,17 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     mutate(payload, {
       onSuccess: () => {
         toast.success("Booking saved successfully!");
+
+        // Auto-create task for head site supervisor
+        const today = new Date().toISOString().split("T")[0];
+        assignTaskBooking(leadId, {
+          task_type: "Assign a Site Supervisor",
+          due_date: today,
+          user_id: Number(values.assign_to),
+          created_by: userId!,
+        }).catch(() => {
+          // best-effort — don't block on task creation failure
+        });
 
         queryClient.invalidateQueries({
           queryKey: ["leadStats", vendorId, userId],
