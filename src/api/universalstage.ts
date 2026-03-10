@@ -292,6 +292,7 @@ export interface VendorLeadsByTagPostPayload {
     from: string;
     to: string;
   };
+  activity_status?: string;
 }
 
 export const postVendorLeadsByTag = async (

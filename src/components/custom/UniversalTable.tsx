@@ -48,6 +48,7 @@ export interface UniversalTableProps {
   showStageColumn?: boolean;
   defaultViewType?: "my" | "overall";
   dataMode?: "universal" | "misc";
+  activityStatus?: string;
 }
 
 // -------------------------------------------------------
@@ -65,6 +66,7 @@ export function UniversalTable({
   defaultViewType = "my",
   type,
   dataMode = "universal",
+  activityStatus,
 }: UniversalTableProps) {
   // -------------------- GLOBAL STATE --------------------
 
@@ -82,7 +84,8 @@ export function UniversalTable({
   const shouldIncludeFranchise =
     normalizedUserType === "admin" ||
     normalizedUserType === "super-admin" ||
-    normalizedUserType === "sales-executive";
+    normalizedUserType === "sales-executive" ||
+    normalizedUserType === "head-site-supervisor";
   const normalizedType = String(type || "").trim().toLowerCase();
   const canSeeMyOverallTabs = normalizedUserType === "sales-executive";
   const hideOverallToggle =
@@ -94,17 +97,6 @@ export function UniversalTable({
   const [viewType, setViewType] = useState<"my" | "overall">(defaultViewType);
   const effectiveViewType = isAdmin ? "overall" : viewType;
   
-  React.useEffect(() => {
-    console.log("[UniversalTable] ids", {
-      vendorId,
-      franchiseId,
-      userId,
-      userType,
-      effectiveViewType,
-      type,
-      dataMode,
-    });
-  }, [vendorId, franchiseId, userId, userType, effectiveViewType, type, dataMode]);
 
   // ✅ SEPARATE PAGINATION FOR BOTH VIEWS
   const [myPagination, setMyPagination] = useState({
@@ -262,6 +254,7 @@ export function UniversalTable({
       site_map_link: mappedFilters.site_map_link,
       date_range: mappedFilters.date_range,
       created_at: sortOrder,
+      // activity_status: activityStatus, // TODO: enable once backend supports this filter
     };
   }, [
     userId,

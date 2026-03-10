@@ -110,6 +110,7 @@ export default function OverallLeadsPage() {
             showStageColumn
             defaultViewType="overall"
             onRowNavigate={navigateOverallLeads}
+            activityStatus="onGoing"
           />
         </Suspense>
       </main>
