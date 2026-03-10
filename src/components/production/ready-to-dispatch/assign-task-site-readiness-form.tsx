@@ -36,6 +36,7 @@ import {
 import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUsers"; // ✅ now using supervisors
 import { canAssignSR } from "@/components/utils/privileges";
 import CustomeTooltip from "@/components/custom-tooltip";
+import { useAssignedSiteSupervisor } from "@/api/installation/useSiteReadinessLeads";
 
 // ✅ Validation schema
 const formSchema = z
@@ -90,6 +91,11 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const queryClient = useQueryClient();
   const isAllowedToAssignSR = canAssignSR(userType);
 
+  const { data: assignedSiteSupervisor } = useAssignedSiteSupervisor(
+    vendorId,
+    leadId
+  );
+
   const {
     data: currentSitePhotosCount,
     isLoading: isLoadingCurrentSitePhotosCount,
@@ -120,6 +126,16 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     },
   });
 
+  const assignedSupervisorId =
+    assignedSiteSupervisor?.supervisor?.id ??
+    assignedSiteSupervisor?.user_id ??
+    undefined;
+  const matchedSupervisorId = mappedData.find(
+    (user: { id: number; label: string }) => user.id === assignedSupervisorId
+  )?.id;
+  const isSiteReadinessTask = form.watch("task_type") === "Site Readiness";
+  const shouldLockAssignee = isSiteReadinessTask && !!matchedSupervisorId;
+
   // ✅ Auto-select "Follow Up" if Site Readiness is disabled
   React.useEffect(() => {
     if (isLoadingCurrentSitePhotosCount || !isAllowedToAssignSR) return;
@@ -134,6 +150,16 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     isLoadingCurrentSitePhotosCount,
     form,
   ]);
+
+  React.useEffect(() => {
+    if (
+      isSiteReadinessTask &&
+      shouldLockAssignee &&
+      form.getValues("assign_lead_to") !== matchedSupervisorId
+    ) {
+      form.setValue("assign_lead_to", matchedSupervisorId);
+    }
+  }, [isSiteReadinessTask, shouldLockAssignee, matchedSupervisorId, form]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const payload: AssignToSiteReadinessPayload = {
@@ -282,6 +308,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                         data={mappedData}
                         value={field.value}
                         onChange={field.onChange}
+                        disabled={shouldLockAssignee}
                       />
                     </FormControl>
                     <FormMessage />

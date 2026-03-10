@@ -291,3 +291,47 @@ export const useMoveLeadToDispatchPlanning = () => {
     }) => moveLeadToDispatchPlanning(vendorId, leadId, updated_by),
   });
 };
+
+/* ==========================================================
+   🔹 9️⃣ Get Assigned Site Supervisor for a Lead
+   @route GET /leads/installation/site-readiness/vendorId/:vendorId/leadId/:leadId/site-supervisor
+   ========================================================== */
+export interface AssignedSiteSupervisor {
+  id: number;
+  lead_id: number;
+  account_id: number;
+  vendor_id: number;
+  user_id: number;
+  status: string;
+  created_by: number;
+  created_at: string;
+  supervisor: {
+    id: number;
+    user_name: string | null;
+    user_contact: string | null;
+    user_email: string | null;
+    user_timezone: string | null;
+    status: string;
+  };
+}
+
+export const getAssignedSiteSupervisor = async (
+  vendorId: number,
+  leadId: number
+): Promise<AssignedSiteSupervisor | null> => {
+  const { data } = await apiClient.get(
+    `/leads/installation/site-readiness/vendorId/${vendorId}/leadId/${leadId}/site-supervisor`
+  );
+  return data?.data ?? null;
+};
+
+export const useAssignedSiteSupervisor = (
+  vendorId?: number,
+  leadId?: number
+) => {
+  return useQuery({
+    queryKey: ["assignedSiteSupervisor", vendorId, leadId],
+    queryFn: () => getAssignedSiteSupervisor(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
+};
