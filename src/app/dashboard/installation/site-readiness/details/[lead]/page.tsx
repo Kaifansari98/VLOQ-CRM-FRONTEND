@@ -95,6 +95,9 @@ export default function ReadyToDispatchLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type
   );
+  const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
+  const effectiveUserType =
+    userType === "admin" && !isHoUser ? "sales-executive" : userType;
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -136,11 +139,11 @@ export default function ReadyToDispatchLeadDetails() {
 
   const isCompleted = readinessStatus?.is_site_readiness_completed ?? false;
 
-  const canReassign = canReassignLeadButton(userType);
-  const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadButton(userType);
-  const canViewPayment = canViewPaymentTab(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canReassign = canReassignLeadButton(effectiveUserType ?? "");
+  const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
+  const canEdit = canEditLeadButton(effectiveUserType ?? "");
+  const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
+  const canViewSiteHistory = canViewSiteHistoryTab(effectiveUserType ?? "");
 
   const handleMoveToDispatch = async () => {
     try {
@@ -362,7 +365,7 @@ export default function ReadyToDispatchLeadDetails() {
             </TabsTrigger>
 
             {/* ✅ To-Do Task (Conditional Access) */}
-            {canDoSR(userType) ? (
+            {canDoSR(effectiveUserType ?? "") ? (
               <TabsTrigger value="todo">
                 <PencilLine size={16} className="mr-1 opacity-60" />
                 To-Do Task
@@ -414,7 +417,7 @@ export default function ReadyToDispatchLeadDetails() {
         </TabsContent>
 
         {/* ✅ To-Do Task (Same as Site Readiness Details, but only for canAssignSR) */}
-        {canDoSR(userType) && (
+        {canDoSR(effectiveUserType ?? "") && (
           <TabsContent value="todo">
             <LeadDetailsGrouped
               status="siteReadiness"

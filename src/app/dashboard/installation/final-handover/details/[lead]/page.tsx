@@ -98,6 +98,9 @@ export default function FinalHandoverLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type
   );
+  const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
+  const effectiveUserType =
+    userType === "admin" && !isHoUser ? "sales-executive" : userType;
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -113,14 +116,15 @@ export default function FinalHandoverLeadDetails() {
 
   const updateStatusMutation = useUpdateActivityStatus();
 
-  const canReassign = canReassignLeadButton(userType);
-  const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadButton(userType);
-  const canViewPayment = canViewPaymentTab(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canReassign = canReassignLeadButton(effectiveUserType ?? "");
+  const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
+  const canEdit = canEditLeadButton(effectiveUserType ?? "");
+  const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
+  const canViewSiteHistory = canViewSiteHistoryTab(effectiveUserType ?? "");
   const canAccessTodoTab =
-    canAccessTodoTaskTabUnderFinalHandoverStage(userType);
+    canAccessTodoTaskTabUnderFinalHandoverStage(effectiveUserType ?? "");
   const normalizedUserType = userType?.toLowerCase() ?? "";
+  const normalizedEffectiveUserType = effectiveUserType?.toLowerCase() ?? "";
   const isSiteSupervisor = normalizedUserType === "site-supervisor";
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
@@ -131,7 +135,7 @@ export default function FinalHandoverLeadDetails() {
   const accountId = lead?.account_id;
   const leadStatusTag = lead?.statusType?.tag;
   const canShowMarkCompleted =
-    ["admin", "super-admin", "site-supervisor"].includes(normalizedUserType) &&
+    ["admin", "super-admin", "site-supervisor"].includes(normalizedEffectiveUserType) &&
     leadStatusTag !== "Type 17";
 
   const { data: readiness, isLoading: readinessLoading } =

@@ -90,6 +90,9 @@ export default function DispatchPlanningLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type
   );
+  const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
+  const effectiveUserType =
+    userType === "admin" && !isHoUser ? "sales-executive" : userType;
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -109,7 +112,7 @@ export default function DispatchPlanningLeadDetails() {
   const updateStatusMutation = useUpdateActivityStatus();
 
   const { data: readiness } = useCheckReadyForPostDispatch(vendorId, leadIdNum);
-  const canAccessButton = canDoMoveToUnderInstallation(userType);
+  const canAccessButton = canDoMoveToUnderInstallation(effectiveUserType ?? "");
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -119,11 +122,11 @@ export default function DispatchPlanningLeadDetails() {
   const accountId = lead?.account_id;
   console.log("Parent 1: ", accountId);
 
-  const canReassign = canReassignLeadButton(userType);
-  const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadButton(userType);
-  const canViewPayment = canViewPaymentTab(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canReassign = canReassignLeadButton(effectiveUserType ?? "");
+  const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
+  const canEdit = canEditLeadButton(effectiveUserType ?? "");
+  const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
+  const canViewSiteHistory = canViewSiteHistoryTab(effectiveUserType ?? "");
   const deleteLeadMutation = useDeleteLead();
 
   // 🔥 Auto-open To-Do modal for Sales Executive
@@ -320,7 +323,7 @@ export default function DispatchPlanningLeadDetails() {
                 </TabsTrigger>
 
                 {/* ✅ To-Do Task (Conditional Access) */}
-                {canAccessTodoTaskTabDispatchStage(userType) ? (
+                {canAccessTodoTaskTabDispatchStage(effectiveUserType ?? "") ? (
                   <TabsTrigger value="todo">
                     <PencilLine size={16} className="mr-1 opacity-60" />
                     To-Do Task

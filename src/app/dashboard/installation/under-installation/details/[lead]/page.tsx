@@ -99,6 +99,9 @@ export default function UnderInstallationLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
+  const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
+  const effectiveUserType =
+    userType === "admin" && !isHoUser ? "sales-executive" : userType;
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data: underDetails } = useUnderInstallationDetails(
@@ -134,13 +137,13 @@ export default function UnderInstallationLeadDetails() {
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = lead?.account_id;
-  const canReassign = canReassignLeadButton(userType);
-  const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadButton(userType);
+  const canReassign = canReassignLeadButton(effectiveUserType ?? "");
+  const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
+  const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const deleteLeadMutation = useDeleteLead();
-  const canAccessTodoTab = canAccessTodoTaskTabUnderInstallationStage(userType);
-  const canViewPayment = canViewPaymentTab(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canAccessTodoTab = canAccessTodoTaskTabUnderInstallationStage(effectiveUserType ?? "");
+  const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
+  const canViewSiteHistory = canViewSiteHistoryTab(effectiveUserType ?? "");
 
   const miscStatusReady = miscStatus?.all_resolved;
 

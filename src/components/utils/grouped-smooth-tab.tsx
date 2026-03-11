@@ -48,6 +48,9 @@ export default function GroupedSmoothTab({
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type as string | undefined
   );
+  const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
+  const effectiveUserType =
+    userType === "admin" && !isHoUser ? "sales-executive" : userType;
 
   // ✅ Limit visible items by maxVisibleStage
   const visibleGroups = React.useMemo(() => {
@@ -168,9 +171,9 @@ export default function GroupedSmoothTab({
                         {items.map((item) => {
                           // 🔍 Role-based permission checks
                           const canViewOrderLogin =
-                            canViewToOrderLoginDetails(userType);
+                            canViewToOrderLoginDetails(effectiveUserType ?? "");
                           const canViewProduction =
-                            canViewAndWorkProductionDetails(userType);
+                            canViewAndWorkProductionDetails(effectiveUserType ?? "");
 
                           // 👇 Compute disabled state and tooltip dynamically
                           const isDisabled =

@@ -66,6 +66,9 @@ export default function FinalHandover({
 }: FinalHandoverProps) {
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const isHoUser = useAppSelector((s) => s.auth.is_ho_user);
+  const effectiveUserType =
+    userType === "admin" && !isHoUser ? "sales-executive" : userType;
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const queryClient = useQueryClient();
 
@@ -86,7 +89,7 @@ export default function FinalHandover({
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
-  const canWork = canViewAndWorkFinalHandoverStage(userType, leadStatus);
+  const canWork = canViewAndWorkFinalHandoverStage(effectiveUserType ?? "", leadStatus);
   const [localDocuments, setLocalDocuments] = useState<any[]>([]);
   const sections: DocumentSection[] = [
     {

@@ -98,6 +98,9 @@ export default function FinalMeasurementLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type
   );
+  const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
+  const effectiveUserType =
+    userType === "admin" && !isHoUser ? "sales-executive" : userType;
 
   // UI STATES
   const [assignOpenLead, setAssignOpenLead] = useState(false);
@@ -163,11 +166,11 @@ export default function FinalMeasurementLeadDetails() {
     return <p className="p-6">Loading final measurement lead details...</p>;
   }
 
-  const canReassign = canReassignLeadButton(userType);
-  const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadButton(userType);
-  const canViewPayment = canViewPaymentTab(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canReassign = canReassignLeadButton(effectiveUserType ?? "");
+  const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
+  const canEdit = canEditLeadButton(effectiveUserType ?? "");
+  const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
+  const canViewSiteHistory = canViewSiteHistoryTab(effectiveUserType ?? "");
 
   return (
     <>
@@ -243,7 +246,7 @@ export default function FinalMeasurementLeadDetails() {
               )}
 
               {/* Final Documentation */}
-              {canUploadFinalMeasurements(userType) ? (
+              {canUploadFinalMeasurements(effectiveUserType ?? "") ? (
                 <DropdownMenuItem onClick={() => setOpenFinalDocModal(true)}>
                   <FileText size={20} />
                   Final Documentation
@@ -295,7 +298,7 @@ export default function FinalMeasurementLeadDetails() {
               Lead Details
             </TabsTrigger>
 
-            {canUploadFinalMeasurements(userType) ? (
+            {canUploadFinalMeasurements(effectiveUserType ?? "") ? (
               <TabsTrigger value="todo">
                 <PencilLine size={16} className="mr-1 opacity-60" />
                 To-Do Task
@@ -372,7 +375,7 @@ export default function FinalMeasurementLeadDetails() {
         leadData={{ id: leadIdNum }}
       />
 
-      {canUploadFinalMeasurements(userType) && (
+      {canUploadFinalMeasurements(effectiveUserType ?? "") && (
         <FinalMeasurementModal
           open={openFinalDocModal}
           onOpenChange={(open) => {
