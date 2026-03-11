@@ -15,6 +15,10 @@ import { FilterOptions } from "@/types/track-trace";
 import KPICardSQFT from "../ui/KPICardSQFT";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
+import MachineUtilizationChart from "./MachineUtilizationChart";
+import HourlyProductionChart from "./HourlyProductionChart";
+
+
 
 export default function TraceTraceDashboard() {
   const [filters, setFilters] = useState<FilterOptions>({
@@ -33,16 +37,24 @@ export default function TraceTraceDashboard() {
     if (!vendorId) return null;
 
     const projectMachineOperator = new URLSearchParams();
-    if (filters.project !== "all") projectMachineOperator.append("project_id", filters.project);
-    if (filters.machine !== "all") projectMachineOperator.append("machine_id", filters.machine);
-    if (filters.operator !== "all") projectMachineOperator.append("created_by", filters.operator);
+    if (filters.project !== "all")
+      projectMachineOperator.append("project_id", filters.project);
+    if (filters.machine !== "all")
+      projectMachineOperator.append("machine_id", filters.machine);
+    if (filters.operator !== "all")
+      projectMachineOperator.append("created_by", filters.operator);
 
     const machineOnly = new URLSearchParams();
-    if (filters.machine !== "all") machineOnly.append("machine_id", filters.machine);
+    if (filters.machine !== "all")
+      machineOnly.append("machine_id", filters.machine);
 
     const dateParams = new URLSearchParams();
     if (filters.dateRange) dateParams.append("date_range", filters.dateRange);
-    if (filters.dateRange === "custom" && filters.startDate && filters.endDate) {
+    if (
+      filters.dateRange === "custom" &&
+      filters.startDate &&
+      filters.endDate
+    ) {
       dateParams.append("start_date", filters.startDate);
       dateParams.append("end_date", filters.endDate);
     }
@@ -65,29 +77,48 @@ export default function TraceTraceDashboard() {
     ]);
 
     const [
-      kpisRes, itemsRes, machinesRes,
-      hourlyProductionRes, machineUtilizationRes,
-      operatorsRes, projectsRes, bottlenecksRes,
+      kpisRes,
+      itemsRes,
+      machinesRes,
+      hourlyProductionRes,
+      machineUtilizationRes,
+      operatorsRes,
+      projectsRes,
+      bottlenecksRes,
     ] = await Promise.all([
-      apiClient.get(`/track-trace/kpis/${vendorId}`,                { params: dateParams             }),
-      apiClient.get(`/track-trace/items/${vendorId}`,               { params: projectMachineOperator }),
-      apiClient.get(`/track-trace/machine-status/${vendorId}`,      { params: machineOperatorDate    }),
-      apiClient.get(`/track-trace/hourly-production/${vendorId}`,   { params: projectMachineOperator }),
-      apiClient.get(`/track-trace/machine-utilization/${vendorId}`, { params: machineDate            }),
-      apiClient.get(`/track-trace/top-performer/${vendorId}`,       { params: machineDate            }),
-      apiClient.get(`/track-trace/project-progress/${vendorId}`,    { params: projectOperatorDate    }),
-      apiClient.get(`/track-trace/bottle-neck/${vendorId}`,         { params: machineOnly            }),
+      apiClient.get(`/track-trace/kpis/${vendorId}`, { params: dateParams }),
+      apiClient.get(`/track-trace/items/${vendorId}`, {
+        params: projectMachineOperator,
+      }),
+      apiClient.get(`/track-trace/machine-status/${vendorId}`, {
+        params: machineOperatorDate,
+      }),
+      apiClient.get(`/track-trace/hourly-production/${vendorId}`, {
+        params: projectMachineOperator,
+      }),
+      apiClient.get(`/track-trace/machine-utilization/${vendorId}`, {
+        params: machineDate,
+      }),
+      apiClient.get(`/track-trace/top-performer/${vendorId}`, {
+        params: machineDate,
+      }),
+      apiClient.get(`/track-trace/project-progress/${vendorId}`, {
+        params: projectOperatorDate,
+      }),
+      apiClient.get(`/track-trace/bottle-neck/${vendorId}`, {
+        params: machineOnly,
+      }),
     ]);
 
     return {
-      kpis:                 kpisRes.data.data,
-      items:                itemsRes.data.data,
-      machines:             machinesRes.data.data,
+      kpis: kpisRes.data.data,
+      items: itemsRes.data.data,
+      machines: machinesRes.data.data,
       hourlyProductionData: hourlyProductionRes.data.data,
       machineUtilizationData: machineUtilizationRes.data.data,
-      operators:            operatorsRes.data.data,
-      projects:             projectsRes.data.data,
-      bottlenecks:          bottlenecksRes.data.data,
+      operators: operatorsRes.data.data,
+      projects: projectsRes.data.data,
+      bottlenecks: bottlenecksRes.data.data,
     };
   };
 
@@ -100,9 +131,14 @@ export default function TraceTraceDashboard() {
   });
 
   const {
-    kpis, items, machines,
-    hourlyProductionData, machineUtilizationData,
-    operators, projects, bottlenecks,
+    kpis,
+    items,
+    machines,
+    hourlyProductionData,
+    machineUtilizationData,
+    operators,
+    projects,
+    bottlenecks,
   } = data ?? {};
 
   useEffect(() => {
@@ -115,7 +151,6 @@ export default function TraceTraceDashboard() {
       <Filters onFilterChange={setFilters} />
 
       <main className="w-full max-w-400 px-5">
-
         {/* ── KPI Cards ─────────────────────────────────────────────── */}
         {kpis && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-5">
@@ -149,16 +184,14 @@ export default function TraceTraceDashboard() {
 
         {/* ── Real-Time Tracking + Machine Status ───────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 mb-5">
-          {!isLoading && items    && <RealTimeTracking items={items} />}
+          {!isLoading && items && <RealTimeTracking items={items} />}
           {!isLoading && machines && <MachineStatus machines={machines} />}
         </div>
-
-
 
         {/* ── Top Operators + Project Progress ─────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-5 mb-5">
           {!isLoading && operators && <TopOperators operators={operators} />}
-          {!isLoading && projects  && <ProjectProgress projects={projects} />}
+          {!isLoading && projects && <ProjectProgress projects={projects} />}
         </div>
 
         {/* ── Bottleneck Analysis ───────────────────────────────────── */}
@@ -171,20 +204,10 @@ export default function TraceTraceDashboard() {
         {/* ── Charts ───────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
           {!isLoading && hourlyProductionData && (
-            <ProductionChart
-              data={hourlyProductionData}
-              type="line"
-              title="Hourly Production Rate"
-              subtitle="Items processed per hour"
-            />
+            <HourlyProductionChart data={hourlyProductionData} />
           )}
           {!isLoading && machineUtilizationData && (
-            <ProductionChart
-              data={machineUtilizationData}
-              type="bar"
-              title="Machine Utilization Rate"
-              subtitle="Average utilization by machine type"
-            />
+            <MachineUtilizationChart data={machineUtilizationData} />
           )}
         </div>
       </main>
