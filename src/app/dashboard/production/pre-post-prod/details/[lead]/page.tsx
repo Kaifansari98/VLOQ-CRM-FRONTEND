@@ -112,6 +112,9 @@ export default function ProductionLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
   );
+  const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
+  const effectiveUserType =
+    userType === "admin" && !isHoUser ? "sales-executive" : userType;
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -149,11 +152,11 @@ export default function ProductionLeadDetails() {
     instanceIdNum!,
   );
 
-  const canMoveReadyToDispatchStage = canMoveToReadyToDispatch(userType);
+  const canMoveReadyToDispatchStage = canMoveToReadyToDispatch(effectiveUserType);
   const canUpdateExpectedDate =
-    canViewAndWorkEditProcutionExpectedDate(userType);
+    canViewAndWorkEditProcutionExpectedDate(effectiveUserType);
 
-  const canShowTodoTab = canAccessTodoTaskTabProductionStage(userType);
+  const canShowTodoTab = canAccessTodoTaskTabProductionStage(effectiveUserType);
 
 const latestOrderLoginDate =
   latestOrderLoginData?.data?.estimated_completion_date ?? null;
@@ -216,13 +219,13 @@ const latestOrderLoginDate =
 
   const noOfBoxes = lead?.no_of_boxes;
 
-  const canReassign = canReassignLeadButton(userType);
-  const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadButton(userType);
-  const canViewPayment = canViewPaymentTab(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canReassign = canReassignLeadButton(effectiveUserType ?? "");
+  const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
+  const canEdit = canEditLeadButton(effectiveUserType ?? "");
+  const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
+  const canViewSiteHistory = canViewSiteHistoryTab(effectiveUserType ?? "");
 
-  const productionDefaultTab = handledproductionDefaultTab(userType);
+  const productionDefaultTab = handledproductionDefaultTab(effectiveUserType ?? "");
 
   const deleteLeadMutation = useDeleteLead();
 
