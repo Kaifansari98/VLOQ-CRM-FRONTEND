@@ -98,6 +98,9 @@ export default function OrderLoginLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
   );
+  const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
+  const effectiveUserType =
+    userType === "admin" && !isHoUser ? "sales-executive" : userType;
 
   const { data: readiness, isLoading: readinessLoading } =
     useLeadProductionReadiness(vendorId, leadIdNum, validInstanceId ?? undefined);
@@ -105,9 +108,9 @@ export default function OrderLoginLeadDetails() {
   // derive convenience flags & message
   const lacksProdFiles = readiness ? !readiness.productionFiles?.hasAny : false;
   const canMove = readiness?.readyForProduction === true;
-  const canMoveToProductionStage = canMoveToProduction(userType);
-  const canViewTodoTask = canWorkTodoTaskOrderLoginStage(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canMoveToProductionStage = canMoveToProduction(effectiveUserType);
+  const canViewTodoTask = canWorkTodoTaskOrderLoginStage(effectiveUserType);
+  const canViewSiteHistory = canViewSiteHistoryTab(effectiveUserType);
 
   const disabledReason = readinessLoading
     ? "Checking production prerequisites..."
@@ -192,10 +195,10 @@ export default function OrderLoginLeadDetails() {
     return <p className="p-6">Loading order login lead details...</p>;
   }
 
-  const canReassign = canReassignLeadButton(userType);
-  const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadButton(userType);
-  const canViewPayment = canViewPaymentTab(userType);
+  const canReassign = canReassignLeadButton(effectiveUserType ?? "");
+  const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
+  const canEdit = canEditLeadButton(effectiveUserType ?? "");
+  const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
   return (
     <>
       {/* Header */}
@@ -441,7 +444,7 @@ export default function OrderLoginLeadDetails() {
         <TabsContent value="details">
           <LeadDetailsGrouped
             status="orderLogin"
-            defaultTab={canOrderLogin(userType) ? "orderLogin" : "techcheck"}
+            defaultTab={canOrderLogin(effectiveUserType) ? "orderLogin" : "techcheck"}
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
@@ -456,7 +459,7 @@ export default function OrderLoginLeadDetails() {
         <TabsContent value="todo">
           <LeadDetailsGrouped
             status="orderLogin"
-            defaultTab={canOrderLogin(userType) ? "orderLogin" : "techcheck"}
+            defaultTab={canOrderLogin(effectiveUserType) ? "orderLogin" : "techcheck"}
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"

@@ -63,6 +63,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
     (state) => state.auth.user?.user_type.user_type,
   );
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
   const searchParams = useSearchParams();
   const instanceIdFromUrlRaw = searchParams.get("instance_id");
   const instanceIdFromUrl = instanceIdFromUrlRaw
@@ -279,7 +280,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
 
   // ✅ Permissions
   const canDelete =
-    userType === "admin" ||
+    (userType === "admin" && isHoUser) ||
     userType === "super-admin" ||
     (userType === "tech-check" && leadStatus === "tech-check-stage");
 

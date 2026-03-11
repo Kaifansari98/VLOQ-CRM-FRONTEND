@@ -116,6 +116,9 @@ export default function ClientApprovalLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
   );
+  const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
+  const effectiveUserType =
+    userType === "admin" && !isHoUser ? "sales-executive" : userType;
 
   const { mutate: approveTechCheckMutate, isPending: approving } =
     useApproveTechCheck();
@@ -151,13 +154,13 @@ export default function ClientApprovalLeadDetails() {
   useEffect(() => {
     if (isChatNotification) return;
     if (
-      canTechCheck(userType) &&
-      userType?.toLowerCase() !== "admin" &&
-      userType?.toLowerCase() !== "super-admin"
+      canTechCheck(effectiveUserType) &&
+      effectiveUserType?.toLowerCase() !== "admin" &&
+      effectiveUserType?.toLowerCase() !== "super-admin"
     ) {
       setOpenRejectDocsModal(true);
     }
-  }, [isChatNotification, userType]);
+  }, [isChatNotification, effectiveUserType]);
 
   const [selectedDocs, setSelectedDocs] = useState<number[]>([]);
   const [openRemarkModal, setOpenRemarkModal] = useState(false);
@@ -319,11 +322,11 @@ export default function ClientApprovalLeadDetails() {
     return <p className="p-6">Loading client approval lead details...</p>;
   }
 
-  const canReassign = canReassignLeadButton(userType);
-  const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadButton(userType);
-  const canViewPayment = canViewPaymentTab(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canReassign = canReassignLeadButton(effectiveUserType ?? "");
+  const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
+  const canEdit = canEditLeadButton(effectiveUserType ?? "");
+  const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
+  const canViewSiteHistory = canViewSiteHistoryTab(effectiveUserType ?? "");
 
   const moveScope = validInstanceId
     ? {
@@ -429,7 +432,7 @@ export default function ClientApprovalLeadDetails() {
 
           {/* ✅ Move To Order Login Button (Role & Status Based) */}
           <div className="hidden lg:flex">
-            {canMoveToOrderLogin(userType) &&
+            {canMoveToOrderLogin(effectiveUserType) &&
               (() => {
                 if (isMoveToOrderLoginDisabled) {
                   let tooltipMsg = "";
@@ -439,7 +442,7 @@ export default function ClientApprovalLeadDetails() {
                     approvedCount < requiredApprovalCount
                   ) {
                     tooltipMsg =
-                      userType === "sales-executive"
+                      effectiveUserType === "sales-executive"
                         ? `Once Tech Check is completed, then only lead can be move to Order Login.`
                         : `You must approve all required client documents (${requiredApprovalCount}) before moving to Order Login.`;
                   } else if (approvedPPTCount === 0) {
@@ -513,7 +516,7 @@ export default function ClientApprovalLeadDetails() {
                 </DropdownMenuItem>
               )}
 
-              {canMoveToOrderLogin(userType) &&
+              {canMoveToOrderLogin(effectiveUserType) &&
                 (() => {
                   if (isMoveToOrderLoginDisabled) {
                     let tooltipMsg = "";
@@ -559,7 +562,7 @@ export default function ClientApprovalLeadDetails() {
                 })()}
 
               {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
-              {canViewThreeVerticalDocsOptionInTechCheck(userType) && (
+              {canViewThreeVerticalDocsOptionInTechCheck(effectiveUserType) && (
                 <DropdownMenuItem
                   onSelect={() => {
                     setActivityType("onHold");
@@ -596,7 +599,7 @@ export default function ClientApprovalLeadDetails() {
         value={activeTab}
         onValueChange={(val) => {
           if (val === "todo") {
-            if (!canTechCheck(userType)) {
+            if (!canTechCheck(effectiveUserType)) {
               toast.error("You don’t have permission to access To-Do Tasks");
               return; // 🚫 block unauthorized users
             }
@@ -617,7 +620,7 @@ export default function ClientApprovalLeadDetails() {
                 Lead Details
               </TabsTrigger>
 
-              {canTechCheck(userType) ? (
+              {canTechCheck(effectiveUserType) ? (
                 <TabsTrigger value="todo">
                   <PencilLine size={16} className="mr-1 opacity-60" />
                   To-Do Task
@@ -659,7 +662,7 @@ export default function ClientApprovalLeadDetails() {
 
           {/* ---------------- Actions ---------------- */}
           <div className="flex sm:flex-row gap-2">
-            {canTechCheck(userType) && (
+            {canTechCheck(effectiveUserType) && (
               <Button
                 variant="outline"
                 onClick={() => setOpenRejectDocsModal(true)}
@@ -672,7 +675,7 @@ export default function ClientApprovalLeadDetails() {
 
             {(() => {
               const canUpload =
-                canUploadRevisedClientDocumentationFiles(userType);
+                canUploadRevisedClientDocumentationFiles(effectiveUserType);
 
               if (!canUpload || !hasRejectedDocs) {
                 return (

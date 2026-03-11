@@ -12,18 +12,21 @@ export interface User {
   status: string
   vendor: Record<string, any>
   user_type: Record<string, any>
+  is_ho_user: boolean
 }
 
 interface AuthState {
   user: User | null
   token: string | null
   franchise_id: number | null
+  is_ho_user: boolean
 }
 
 const initialState: AuthState = {
   user: null,
   token: null,
   franchise_id: null,
+  is_ho_user: false,
 }
 
 const authSlice = createSlice({
@@ -37,6 +40,7 @@ const authSlice = createSlice({
       state.user = action.payload.user
       state.token = action.payload.token
       state.franchise_id = action.payload.user.franchise_id ?? null
+      state.is_ho_user = action.payload.user.is_ho_user ?? false
       if (typeof window !== "undefined") {
         localStorage.setItem("token", action.payload.token)
         localStorage.setItem("user", JSON.stringify(action.payload.user))
@@ -46,6 +50,7 @@ const authSlice = createSlice({
       state.user = null
       state.token = null
       state.franchise_id = null
+      state.is_ho_user = false
       if (typeof window !== "undefined") {
         localStorage.removeItem("token")
         localStorage.removeItem("user")
@@ -59,6 +64,7 @@ const authSlice = createSlice({
           state.token = token
           state.user = JSON.parse(user)
           state.franchise_id = state.user?.franchise_id ?? null
+          state.is_ho_user = state.user?.is_ho_user ?? false
         }
       }
     },
