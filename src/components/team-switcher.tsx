@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronsUpDown, Plus } from "lucide-react"
+import { ChevronsUpDown } from "lucide-react"
 
 import {
   DropdownMenu,
@@ -18,18 +18,9 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { useAppDispatch, useAppSelector } from "@/redux/store"
 import { setFranchiseId } from "@/redux/slices/authSlice"
+import TimeLoaderComponent from "@/components/utils/TimeLoaderComponent"
 
 export function TeamSwitcher({
   teams,
@@ -48,10 +39,11 @@ export function TeamSwitcher({
   const userType = useAppSelector((state) => state.auth.user?.user_type?.user_type)
   const isSuperAdmin = userType?.toLowerCase() === "super-admin"
   const [activeTeam, setActiveTeam] = React.useState(teams[0])
-  const [confirmOpen, setConfirmOpen] = React.useState(false)
+  const [isSwitching, setIsSwitching] = React.useState(false)
   const [pendingTeam, setPendingTeam] = React.useState<
     { id: number; name: string } | undefined
   >(undefined)
+  const switchTimeoutRef = React.useRef<number | null>(null)
 
   React.useEffect(() => {
     if (!teams.length) return
@@ -76,19 +68,31 @@ export function TeamSwitcher({
   const handleTeamClick = (team: { id: number; name: string }) => {
     if (team.id === activeTeam.id) return
     setPendingTeam(team)
-    setConfirmOpen(true)
+    setIsSwitching(true)
+
+    if (switchTimeoutRef.current) {
+      window.clearTimeout(switchTimeoutRef.current)
+    }
+
+    switchTimeoutRef.current = window.setTimeout(() => {
+      const nextTeam = teams.find((t) => t.id === team.id)
+      if (nextTeam) {
+        setActiveTeam(nextTeam)
+        dispatch(setFranchiseId(nextTeam.id))
+      }
+      setIsSwitching(false)
+      setPendingTeam(undefined)
+      switchTimeoutRef.current = null
+    }, 3000)
   }
 
-  const handleConfirmSwitch = () => {
-    if (!pendingTeam) return
-    const nextTeam = teams.find((team) => team.id === pendingTeam.id)
-    if (nextTeam) {
-      setActiveTeam(nextTeam)
-      dispatch(setFranchiseId(nextTeam.id))
+  React.useEffect(() => {
+    return () => {
+      if (switchTimeoutRef.current) {
+        window.clearTimeout(switchTimeoutRef.current)
+      }
     }
-    setConfirmOpen(false)
-    setPendingTeam(undefined)
-  }
+  }, [])
 
   return (
     <>
@@ -158,39 +162,14 @@ export function TeamSwitcher({
         </SidebarMenuItem>
       </SidebarMenu>
 
-      <AlertDialog
-        open={confirmOpen}
-        onOpenChange={(open) => {
-          setConfirmOpen(open)
-          if (!open) setPendingTeam(undefined)
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Switch franchise?</AlertDialogTitle>
-            <AlertDialogDescription>
-              You are about to switch to{" "}
-              <span className="font-medium text-foreground">
-                {pendingTeam?.name ?? "this franchise"}
-              </span>
-              . Continue?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setPendingTeam(undefined)
-                setConfirmOpen(false)
-              }}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmSwitch}>
-              Switch
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <TimeLoaderComponent
+        open={isSwitching}
+        message={
+          pendingTeam?.name
+            ? `Switching to ${pendingTeam.name}...`
+            : "Switching franchise..."
+        }
+      />
     </>
   )
 }
