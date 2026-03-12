@@ -54,7 +54,7 @@ import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda"
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -185,14 +185,14 @@ export default function FinalHandoverLeadDetails() {
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toast.error("Missing vendor or user info!");
+      toastManager.add({ title: "Missing vendor or user info!", type: "error" });
       return;
     }
 
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toast.success("Lead deleted successfully!"),
+        onSuccess: () => toastManager.add({ title: "Lead deleted successfully!", type: "success" }),
         onError: (err: unknown) => toastError(err),
       }
     );
@@ -489,7 +489,7 @@ export default function FinalHandoverLeadDetails() {
         statusType={activityType}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toast.error("Vendor or User info is missing!");
+            toastManager.add({ title: "Vendor or User info is missing!", type: "error" });
             return;
           }
           updateStatusMutation.mutate(
@@ -507,7 +507,7 @@ export default function FinalHandoverLeadDetails() {
             },
             {
               onSuccess: () => {
-                toast.success("Lead marked as On Hold!");
+                toastManager.add({ title: "Lead marked as On Hold!", type: "success" });
 
                 setActivityModalOpen(false);
 
@@ -517,7 +517,7 @@ export default function FinalHandoverLeadDetails() {
                 });
               },
               onError: (err: any) => {
-                toast.error(err?.message || "Failed to update lead status");
+                toastManager.add({ title: err?.message || "Failed to update lead status", type: "error" });
               },
             }
           );
@@ -553,13 +553,11 @@ export default function FinalHandoverLeadDetails() {
                       payment?.pending_amount !== undefined
                         ? payment.pending_amount
                         : 0;
-                    toast.error(
-                      payment
+                    toastManager.add({ title: payment
                         ? isSiteSupervisor
                           ? "Payment pending. Please contact admin."
                           : `Pending amount remaining: ${pending.toLocaleString()}`
-                        : "Unable to verify payment status."
-                    );
+                        : "Unable to verify payment status.", type: "error" });
                     setValidatingPayment(false);
                     setOpenProjectCompleteConfirm(false);
                     return;
@@ -573,22 +571,18 @@ export default function FinalHandoverLeadDetails() {
                     },
                     {
                       onSuccess: () => {
-                        toast.success("Project marked as Completed!");
+                        toastManager.add({ title: "Project marked as Completed!", type: "success" });
                         setOpenProjectCompleteConfirm(false);
                         queryClient.invalidateQueries();
                         router.push("/dashboard/installation/final-handover");
                       },
                       onError: (err: any) =>
-                        toast.error(
-                          err?.message || "Failed to mark project completed"
-                        ),
+                        toastManager.add({ title: err?.message || "Failed to mark project completed", type: "error" }),
                       onSettled: () => setValidatingPayment(false),
                     }
                   );
                 } catch (err: any) {
-                  toast.error(
-                    err?.message || "Unable to validate payment status"
-                  );
+                  toastManager.add({ title: err?.message || "Unable to validate payment status", type: "error" });
                   setValidatingPayment(false);
                   setOpenProjectCompleteConfirm(false);
                 }

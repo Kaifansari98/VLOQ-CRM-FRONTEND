@@ -25,7 +25,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
 import z from "zod";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAssignToSiteReadiness } from "@/api/production/useReadyToDispatchLeads";
@@ -172,7 +172,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
 
     mutation.mutate(payload, {
       onSuccess: () => {
-        toast.success("Task assigned successfully!");
+        toastManager.add({ title: "Task assigned successfully!", type: "success" });
         queryClient.invalidateQueries({
           queryKey: ["leadStats"],
         });
@@ -195,7 +195,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
           error?.response?.data?.message ||
           error.message ||
           "Something went wrong";
-        toast.error(backendMessage);
+        toastManager.add({ title: backendMessage, type: "error" });
       },
     });
   };

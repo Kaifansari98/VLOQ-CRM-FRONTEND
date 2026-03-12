@@ -28,7 +28,7 @@ import BaseModal from "@/components/utils/baseModal";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 type Props = {
   leadId: number;
@@ -109,10 +109,10 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
     );
     const rejectedCount = files.length - validFiles.length;
     if (rejectedCount > 0) {
-      toast.error("Only PDF or image files are allowed.");
+      toastManager.add({ title: "Only PDF or image files are allowed.", type: "error" });
     }
     if (files.length > 10) {
-      toast.error("You can upload up to 10 files.");
+      toastManager.add({ title: "You can upload up to 10 files.", type: "error" });
       setFilesToUpload(validFiles.slice(0, 10));
       return;
     }
@@ -125,10 +125,10 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
     );
     const rejectedCount = files.length - validFiles.length;
     if (rejectedCount > 0) {
-      toast.error("Only image files are allowed.");
+      toastManager.add({ title: "Only image files are allowed.", type: "error" });
     }
     if (files.length > 10) {
-      toast.error("You can upload up to 10 files.");
+      toastManager.add({ title: "You can upload up to 10 files.", type: "error" });
       setSitePhotosToUpload(validFiles.slice(0, 10));
       return;
     }
@@ -137,11 +137,11 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
 
   const handleAddMoreFiles = async () => {
     if (!vendorId || !userId) {
-      toast.error("Missing vendor, user information.");
+      toastManager.add({ title: "Missing vendor, user information.", type: "error" });
       return;
     }
     if (filesToUpload.length === 0) {
-      toast.error("Please select at least one file to upload.");
+      toastManager.add({ title: "Please select at least one file to upload.", type: "error" });
       return;
     }
 
@@ -152,26 +152,24 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
         createdBy: userId,
         sitePhotos: filesToUpload,
       });
-      toast.success("Additional files uploaded successfully.");
+      toastManager.add({ title: "Additional files uploaded successfully.", type: "success" });
       setFilesToUpload([]);
       setAddFilesOpen(false);
       queryClient.invalidateQueries({
         queryKey: ["finalMeasurementLead", vendorId, leadId],
       });
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message || "Failed to upload files."
-      );
+      toastManager.add({ title: error?.response?.data?.message || "Failed to upload files.", type: "error" });
     }
   };
 
   const handleAddMoreSitePhotos = async () => {
     if (!vendorId || !userId) {
-      toast.error("Missing vendor, user information.");
+      toastManager.add({ title: "Missing vendor, user information.", type: "error" });
       return;
     }
     if (sitePhotosToUpload.length === 0) {
-      toast.error("Please select at least one site photo to upload.");
+      toastManager.add({ title: "Please select at least one site photo to upload.", type: "error" });
       return;
     }
 
@@ -182,16 +180,14 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
         createdBy: userId,
         sitePhotos: sitePhotosToUpload,
       });
-      toast.success("Additional site photos uploaded successfully.");
+      toastManager.add({ title: "Additional site photos uploaded successfully.", type: "success" });
       setSitePhotosToUpload([]);
       setAddSitePhotosOpen(false);
       queryClient.invalidateQueries({
         queryKey: ["finalMeasurementLead", vendorId, leadId],
       });
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message || "Failed to upload site photos."
-      );
+      toastManager.add({ title: error?.response?.data?.message || "Failed to upload site photos.", type: "error" });
     }
   };
 

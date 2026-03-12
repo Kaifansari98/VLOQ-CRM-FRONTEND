@@ -30,7 +30,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { z } from "zod";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -107,7 +107,7 @@ export default function MoveToProductionModal({
     const assign_to_user_id =
       selectedUserId || form.getValues("assign_to_user_id");
     if (!vendorId || !userId || !assign_to_user_id) {
-      toast.error("Missing information!");
+      toastManager.add({ title: "Missing information!", type: "error" });
       return;
     }
 
@@ -116,7 +116,7 @@ export default function MoveToProductionModal({
       leadDetails?.data?.lead?.client_required_order_login_complition_date;
 
     if (!requiredDate) {
-      toast.error("Client required completion date missing!");
+      toastManager.add({ title: "Client required completion date missing!", type: "error" });
       return;
     }
 
@@ -136,13 +136,11 @@ export default function MoveToProductionModal({
             response?.data?.moved_to_production ||
             response?.moved_to_production,
           );
-          toast.success(
-            movedToProduction
+          toastManager.add({ title: movedToProduction
               ? "All instances completed. Lead moved to Production successfully!"
               : data.instanceId
                 ? "Order Login marked complete for this instance."
-                : "Lead moved to Production stage successfully!",
-          );
+                : "Lead moved to Production stage successfully!", type: "success" });
           router.push("/dashboard/production/pre-post-prod");
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });

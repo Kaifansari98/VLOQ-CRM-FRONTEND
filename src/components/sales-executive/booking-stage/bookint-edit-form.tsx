@@ -33,7 +33,7 @@ import {
   useEditBooking,
   useSiteSupervisors,
 } from "@/hooks/booking-stage/use-booking";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 
 // ✅ Zod schema
@@ -121,14 +121,14 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
       },
       {
         onSuccess: () => {
-          toast.success("Booking updated successfully");
+          toastManager.add({ title: "Booking updated successfully", type: "success" });
           queryClient.invalidateQueries({
             queryKey: ["bookingLeads", vendorId],
           });
           form.reset();
         },
         onError: (error: any) => {
-          toast.error(error?.response?.data?.message || "Something went wrong");
+          toastManager.add({ title: error?.response?.data?.message || "Something went wrong", type: "error" });
           console.log("Error updating booking:", error);
         },
       }

@@ -50,7 +50,7 @@ import {
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
@@ -139,15 +139,15 @@ export default function DispatchPlanningLeadDetails() {
   }, [isChatNotification, userType]);
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toast.error("Missing vendor or user info!");
+      toastManager.add({ title: "Missing vendor or user info!", type: "error" });
       return;
     }
 
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: (err: unknown) => toast.error(getErrorMessage(err)),
+        onSuccess: () => toastManager.add({ title: "Lead deleted successfully!", type: "success" }),
+        onError: (err: unknown) => toastManager.add({ title: getErrorMessage(err), type: "error" }),
       }
     );
 
@@ -466,7 +466,7 @@ export default function DispatchPlanningLeadDetails() {
             <AlertDialogAction
               onClick={() => {
                 if (!vendorId || !userId) {
-                  toast.error("Missing vendor or user information!");
+                  toastManager.add({ title: "Missing vendor or user information!", type: "error" });
                   return;
                 }
 
@@ -474,9 +474,7 @@ export default function DispatchPlanningLeadDetails() {
                   { vendorId, leadId: leadIdNum, updated_by: userId },
                   {
                     onSuccess: () => {
-                      toast.success(
-                        "Lead successfully moved to Under Installation stage!"
-                      );
+                      toastManager.add({ title: "Lead successfully moved to Under Installation stage!", type: "success" });
                       setOpenMoveConfirm(false);
                       queryClient.invalidateQueries({
                         queryKey: ["universal-stage-leads"],
@@ -489,7 +487,7 @@ export default function DispatchPlanningLeadDetails() {
                       router.push("/dashboard/installation/under-installation");
                     },
                     onError: (err: unknown) => {
-                      toast.error(getErrorMessage(err));
+                      toastManager.add({ title: getErrorMessage(err), type: "error" });
                     },
                   }
                 );
@@ -507,7 +505,7 @@ export default function DispatchPlanningLeadDetails() {
         statusType={activityType}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toast.error("Vendor or User info is missing!");
+            toastManager.add({ title: "Vendor or User info is missing!", type: "error" });
             return;
           }
           updateStatusMutation.mutate(
@@ -525,7 +523,7 @@ export default function DispatchPlanningLeadDetails() {
             },
             {
               onSuccess: () => {
-                toast.success("Lead marked as On Hold!");
+                toastManager.add({ title: "Lead marked as On Hold!", type: "success" });
 
                 setActivityModalOpen(false);
 
@@ -535,7 +533,7 @@ export default function DispatchPlanningLeadDetails() {
                 });
               },
               onError: (err: any) => {
-                toast.error(err?.message || "Failed to update lead status");
+                toastManager.add({ title: err?.message || "Failed to update lead status", type: "error" });
               },
             }
           );

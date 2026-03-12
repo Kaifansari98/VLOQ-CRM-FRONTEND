@@ -27,7 +27,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import CustomeDatePicker from "@/components/date-picker";
 import { FileUploadField } from "@/components/custom/file-upload";
 import AssignToPicker from "@/components/assign-to-picker";
@@ -245,16 +245,16 @@ export default function InstallationMiscellaneous({
 
   const handleCreateEntry = () => {
     if (!formData.misc_type_id) {
-      toast.error("Please select an issue type");
+      toastManager.add({ title: "Please select an issue type", type: "error" });
       return;
     }
     if (!formData.selected_instance_id) {
-      toast.error("Please select an instance");
+      toastManager.add({ title: "Please select an instance", type: "error" });
       return;
     }
 
     if (files.length === 0) {
-      toast.error("Please upload at least one document");
+      toastManager.add({ title: "Please upload at least one document", type: "error" });
       return;
     }
 
@@ -1420,7 +1420,7 @@ export default function InstallationMiscellaneous({
               onClick={() => {
                 if (!viewModalData) return;
                 if (!rejectReason.trim()) {
-                  toast.error("Please enter a rejection reason");
+                  toastManager.add({ title: "Please enter a rejection reason", type: "error" });
                   return;
                 }
 

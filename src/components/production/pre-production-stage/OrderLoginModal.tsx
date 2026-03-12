@@ -14,7 +14,7 @@ import {
 import AssignToPicker from "@/components/assign-to-picker";
 import VendorChangeRemarkModal from "./vendorChangeRemarkModal";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import CustomeDatePicker from "@/components/date-picker";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -139,13 +139,13 @@ export default function OrderLoginModal({
         ],
       });
 
-      toast.success("Vendor updated successfully!");
+      toastManager.add({ title: "Vendor updated successfully!", type: "success" });
       setSelectedVendorId(pendingVendorId);
       queryClient.invalidateQueries({
         queryKey: ["orderLoginByLead", vendorId, leadId, instanceId],
       });
     } catch (err: any) {
-      toast.error(err?.message || "Failed to update vendor");
+      toastManager.add({ title: err?.message || "Failed to update vendor", type: "error" });
     }
   };
 
@@ -171,7 +171,7 @@ export default function OrderLoginModal({
         hour12: true,
       });
 
-      toast.success(`Marked as ready at ${formattedTime}`);
+      toastManager.add({ title: `Marked as ready at ${formattedTime}`, type: "success" });
       setIsCompleted(true);
 
       queryClient.invalidateQueries({
@@ -181,7 +181,7 @@ export default function OrderLoginModal({
         queryKey: ["postProductionReady", vendorId, leadId],
       });
     } catch (err: any) {
-      toast.error(err?.message || "Failed to mark as completed");
+      toastManager.add({ title: err?.message || "Failed to mark as completed", type: "error" });
     }
   };
 
@@ -223,7 +223,7 @@ export default function OrderLoginModal({
           },
         ],
       });
-      toast.success("Production ready date updated successfully!");
+      toastManager.add({ title: "Production ready date updated successfully!", type: "success" });
       queryClient.invalidateQueries({
         queryKey: ["orderLoginByLead", vendorId, leadId, instanceId],
       });
@@ -234,7 +234,7 @@ export default function OrderLoginModal({
         queryKey: ["postProductionReady", vendorId, leadId],
       });
     } catch (err: any) {
-      toast.error(err?.message || "Failed to update production ready date");
+      toastManager.add({ title: err?.message || "Failed to update production ready date", type: "error" });
     }
   };
 

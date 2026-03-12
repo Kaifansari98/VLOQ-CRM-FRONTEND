@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useAppSelector } from "@/redux/store";
 import BaseModal from "./utils/baseModal";
 import { Button } from "@/components/ui/button"; // ⬅️ shadcn button
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,7 +71,7 @@ const FollowUpModal: React.FC<Props> = ({
       },
       {
         onSuccess: () => {
-          toast.success("Lead marked as completed!");
+          toastManager.add({ title: "Lead marked as completed!", type: "success" });
           setOpenCompletedModal(false);
 
           // Invalidate query to refresh data
@@ -98,7 +98,7 @@ const FollowUpModal: React.FC<Props> = ({
           }
         },
         onError: (err) => {
-          toast.error(err?.message || "❌ Failed to update lead");
+          toastManager.add({ title: err?.message || "❌ Failed to update lead", type: "error" });
         },
       },
     );
@@ -120,7 +120,7 @@ const FollowUpModal: React.FC<Props> = ({
       },
       {
         onSuccess: () => {
-          toast.success("Lead cancelled successfully!");
+          toastManager.add({ title: "Lead cancelled successfully!", type: "success" });
           setOpenCancelModal(false);
 
           // Invalidate query to refresh data
@@ -136,7 +136,7 @@ const FollowUpModal: React.FC<Props> = ({
           }
         },
         onError: (err) => {
-          toast.error(err?.message || "Failed to cancel lead");
+          toastManager.add({ title: err?.message || "Failed to cancel lead", type: "error" });
         },
       },
     );

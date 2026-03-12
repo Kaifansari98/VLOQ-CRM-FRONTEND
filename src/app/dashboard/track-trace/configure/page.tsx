@@ -48,7 +48,7 @@ import {
 } from "@/app/_components/configure-columns";
 import { useAppSelector } from "@/redux/store";
 
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { VendorLeadsPostPayload } from "@/types/track-trace";
 
 const VENDOR_TOKEN = "7e7a9dda-cc59-4ec4-b153-cfdc0ddd6b01";
@@ -247,10 +247,10 @@ export default function MachineMasterPage() {
         leadId: confirmDialog.row.id,
       });
 
-      toast.success("Configuration applied successfully!");
+      toastManager.add({ title: "Configuration applied successfully!", type: "success" });
       setConfirmDialog({ open: false, row: null });
     } catch (error) {
-      toast.error("Failed to apply configuration");
+      toastManager.add({ title: "Failed to apply configuration", type: "error" });
       console.error("❌ Configuration error:", error);
     }
   };

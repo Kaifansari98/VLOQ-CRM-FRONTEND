@@ -58,7 +58,7 @@ import {
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
@@ -346,28 +346,28 @@ const latestOrderLoginDate =
         updated_by: userId,
       });
 
-      toast.success("Expected Order Login Ready Date updated successfully!");
+      toastManager.add({ title: "Expected Order Login Ready Date updated successfully!", type: "success" });
       queryClient.invalidateQueries({ queryKey: ["leadById", leadIdNum] });
       queryClient.invalidateQueries({
         queryKey: ["postProductionReady", vendorId, leadIdNum],
       });
     } catch (err: any) {
-      toast.error(err?.message || "Failed to update expected order login date");
+      toastManager.add({ title: err?.message || "Failed to update expected order login date", type: "error" });
     }
   };
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toast.error("Missing vendor or user info!");
+      toastManager.add({ title: "Missing vendor or user info!", type: "error" });
       return;
     }
 
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toast.success("Lead deleted successfully!"),
+        onSuccess: () => toastManager.add({ title: "Lead deleted successfully!", type: "success" }),
         onError: (err: any) =>
-          toast.error(err?.message || "Failed to delete lead"),
+          toastManager.add({ title: err?.message || "Failed to delete lead", type: "error" }),
       },
     );
 
@@ -473,20 +473,18 @@ const latestOrderLoginDate =
                           return;
                         }
                         if (!vendorId || !leadIdNum || !userId) {
-                          toast.error("Missing vendor or user info!");
+                          toastManager.add({ title: "Missing vendor or user info!", type: "error" });
                           return;
                         }
                         try {
                           await markProductionCompletedMutation.mutateAsync({
                             updatedBy: userId,
                           });
-                          toast.success("Production marked completed!");
+                          toastManager.add({ title: "Production marked completed!", type: "success" });
                         } catch (err: any) {
-                          toast.error(
-                            err?.response?.data?.message ||
+                          toastManager.add({ title: err?.response?.data?.message ||
                               err?.message ||
-                              "Failed to mark production completed",
-                          );
+                              "Failed to mark production completed", type: "error" });
                         }
                       }}
                     >
@@ -556,7 +554,7 @@ const latestOrderLoginDate =
                               return;
                             }
                             if (!vendorId || !leadIdNum || !userId) {
-                              toast.error("Missing vendor or user info!");
+                              toastManager.add({ title: "Missing vendor or user info!", type: "error" });
                               return;
                             }
                             try {
@@ -565,13 +563,11 @@ const latestOrderLoginDate =
                                   updatedBy: userId,
                                 },
                               );
-                              toast.success("Production marked completed!");
+                              toastManager.add({ title: "Production marked completed!", type: "success" });
                             } catch (err: any) {
-                              toast.error(
-                                err?.response?.data?.message ||
+                              toastManager.add({ title: err?.response?.data?.message ||
                                   err?.message ||
-                                  "Failed to mark production completed",
-                              );
+                                  "Failed to mark production completed", type: "error" });
                             }
                           }}
                         >
@@ -807,7 +803,7 @@ const latestOrderLoginDate =
             <AlertDialogAction
               onClick={async () => {
                 if (!vendorId || !userId || !leadIdNum) {
-                  toast.error("Missing vendor or user information!");
+                  toastManager.add({ title: "Missing vendor or user information!", type: "error" });
                   return;
                 }
 
@@ -818,9 +814,7 @@ const latestOrderLoginDate =
                     updated_by: userId,
                   });
 
-                  toast.success(
-                    "Lead moved to Ready-To-Dispatch successfully!",
-                  );
+                  toastManager.add({ title: "Lead moved to Ready-To-Dispatch successfully!", type: "success" });
                   setOpenReadyToDispatch(false);
 
                   // ✅ Refetch relevant queries
@@ -841,9 +835,7 @@ const latestOrderLoginDate =
                     router.push("/dashboard/production/ready-to-dispatch");
                   }, 400);
                 } catch (err: any) {
-                  toast.error(
-                    err?.message || "Failed to move lead to Ready-To-Dispatch",
-                  );
+                  toastManager.add({ title: err?.message || "Failed to move lead to Ready-To-Dispatch", type: "error" });
                 }
               }}
             >
@@ -859,7 +851,7 @@ const latestOrderLoginDate =
         statusType={activityType}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toast.error("Vendor or User info is missing!");
+            toastManager.add({ title: "Vendor or User info is missing!", type: "error" });
             return;
           }
           updateStatusMutation.mutate(
@@ -877,7 +869,7 @@ const latestOrderLoginDate =
             },
             {
               onSuccess: () => {
-                toast.success("Lead marked as On Hold!");
+                toastManager.add({ title: "Lead marked as On Hold!", type: "success" });
 
                 setActivityModalOpen(false);
 
@@ -887,7 +879,7 @@ const latestOrderLoginDate =
                 });
               },
               onError: (err: any) => {
-                toast.error(err?.message || "Failed to update lead status");
+                toastManager.add({ title: err?.message || "Failed to update lead status", type: "error" });
               },
             },
           );

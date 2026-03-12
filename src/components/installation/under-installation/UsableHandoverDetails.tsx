@@ -22,7 +22,7 @@ import {
 import { useDeleteDocument } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -157,7 +157,7 @@ export default function UsableHandover({
 
   const handleUpload = async () => {
     if (!activeSection || selectedFiles.length === 0) {
-      toast.error("Please select at least one file to upload.");
+      toastManager.add({ title: "Please select at least one file to upload.", type: "error" });
       return;
     }
 
@@ -176,9 +176,9 @@ export default function UsableHandover({
       await updateMutation.mutateAsync(formData);
 
       if (activeSection.id === "final_site_photos") {
-        toast.success("Final site photos uploaded successfully!");
+        toastManager.add({ title: "Final site photos uploaded successfully!", type: "success" });
       } else {
-        toast.success("Handover documents uploaded successfully!");
+        toastManager.add({ title: "Handover documents uploaded successfully!", type: "success" });
       }
 
       setSelectedFiles([]);
@@ -192,7 +192,7 @@ export default function UsableHandover({
       });
     } catch (error) {
       console.error("Error uploading files:", error);
-      toast.error("Failed to upload files.");
+      toastManager.add({ title: "Failed to upload files.", type: "error" });
     }
   };
 

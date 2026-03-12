@@ -5,7 +5,7 @@ import BaseModal from "./utils/baseModal";
 import { Button } from "@/components/ui/button";
 import CustomeDatePicker from "@/components/date-picker";
 import TextAreaInput from "@/components/origin-text-area";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -42,7 +42,7 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
   const uploadCompletionDocsMutation = useMutation({
     mutationFn: uploadMiscCompletionDocumentsByTaskId,
     onError: (error: any) => {
-      toast.error(error?.message || "Failed to upload documents");
+      toastManager.add({ title: error?.message || "Failed to upload documents", type: "error" });
     },
   });
 
@@ -66,7 +66,7 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
   const handleMarkCompleted = () => {
     if (!data) return;
     if (completionFiles.length === 0) {
-      toast.error("Please upload completion documents");
+      toastManager.add({ title: "Please upload completion documents", type: "error" });
       return;
     }
 
@@ -95,7 +95,7 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
             },
             {
               onSuccess: () => {
-                toast.success("Task marked as completed!");
+                toastManager.add({ title: "Task marked as completed!", type: "success" });
                 setCompletionFiles([]);
                 setOpenCompletedModal(false);
                 onOpenChange(false);
@@ -115,7 +115,7 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
                 }
               },
               onError: (err: any) => {
-                toast.error(err?.message || "Failed to update task");
+                toastManager.add({ title: err?.message || "Failed to update task", type: "error" });
               },
             },
           );
@@ -127,11 +127,11 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
   const handleReschedule = () => {
     if (!data) return;
     if (!rescheduleDate) {
-      toast.error("Please select a date");
+      toastManager.add({ title: "Please select a date", type: "error" });
       return;
     }
     if (!rescheduleRemark.trim()) {
-      toast.error("Please enter a remark");
+      toastManager.add({ title: "Please enter a remark", type: "error" });
       return;
     }
 
@@ -158,7 +158,7 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
             },
             {
               onSuccess: () => {
-                toast.success("Task rescheduled successfully!");
+                toastManager.add({ title: "Task rescheduled successfully!", type: "success" });
                 setOpenRescheduleModal(false);
                 onOpenChange(false);
                 if (vendorId) {
@@ -177,7 +177,7 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
           );
         },
         onError: (err: any) => {
-          toast.error(err?.message || "Failed to reschedule task");
+          toastManager.add({ title: err?.message || "Failed to reschedule task", type: "error" });
         },
       },
     );

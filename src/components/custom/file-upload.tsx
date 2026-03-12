@@ -15,7 +15,7 @@ import {
   FileUploadTrigger,
 } from "@/components/ui/file-upload";
 import { Upload, X } from "lucide-react";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 interface FileUploadFieldProps {
   value: File[];
@@ -78,7 +78,7 @@ export function FileUploadField({
   const handleValueChange = React.useCallback(
     (files: File[]) => {
       if (!multiple && files.length > 1) {
-        toast.error("Only 1 file is allowed");
+        toastManager.add({ title: "Only 1 file is allowed", type: "error" });
         onChange([files[files.length - 1]]);
       } else {
         onChange(files);
@@ -92,14 +92,14 @@ export function FileUploadField({
       console.log("Reject reason:", message);
 
       if (!multiple && message.toLowerCase().includes("max")) {
-        toast.error("Only 1 file is allowed");
+        toastManager.add({ title: "Only 1 file is allowed", type: "error" });
       } else if (
         message.toLowerCase().includes("type") &&
         finalAccept !== "*/*"
       ) {
-        toast.error("This file type is not allowed");
+        toastManager.add({ title: "This file type is not allowed", type: "error" });
       } else if (message) {
-        toast.error(message); // fallback
+        toastManager.add({ title: message, type: "error" }); // fallback
       }
     },
     [multiple, finalAccept]

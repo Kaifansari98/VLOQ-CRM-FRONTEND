@@ -30,7 +30,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { z } from "zod";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
 import {
   useTechCheckUsers,
@@ -106,14 +106,14 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
   // Handle single user confirmation with date
   const handleSingleUserSubmit = () => {
     if (!singleUserDate) {
-      toast.error("Please select a completion date");
+      toastManager.add({ title: "Please select a completion date", type: "error" });
       return;
     }
 
     const assign_to_user_id = form.getValues("assign_to_user_id");
 
     if (!vendorId || !userId || !assign_to_user_id) {
-      toast.error("Missing required information");
+      toastManager.add({ title: "Missing required information", type: "error" });
       return;
     }
 
@@ -128,7 +128,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
       },
       {
         onSuccess: () => {
-          toast.success("Lead moved to Tech Check stage successfully!");
+          toastManager.add({ title: "Lead moved to Tech Check stage successfully!", type: "success" });
           router.push("/dashboard/production/tech-check");
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
           queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
@@ -144,7 +144,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
   // Handle multiple users flow
   const onSubmit: SubmitHandler<FormValues> = (values) => {
     if (!vendorId || !userId) {
-      toast.error("Missing required information");
+      toastManager.add({ title: "Missing required information", type: "error" });
       return;
     }
 
@@ -160,7 +160,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
       },
       {
         onSuccess: () => {
-          toast.success("Lead moved to Tech Check stage successfully!");
+          toastManager.add({ title: "Lead moved to Tech Check stage successfully!", type: "success" });
           router.push("/dashboard/production/tech-check");
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
           queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });

@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../ui/alert-dialog";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
 const avatarColors = [
@@ -128,7 +128,7 @@ const AssignLeadModal = ({
     mutationFn: (payload: AssignToPayload) =>
       assignLeadToAnotherSalesExecutive(vendorId!, leadData!.id, payload),
     onSuccess: () => {
-      toast.success("Assign Lead Successfully.");
+      toastManager.add({ title: "Assign Lead Successfully.", type: "success" });
       queryClient.invalidateQueries({
         queryKey: ["vendorUserLeads", vendorId, userId],
       });
@@ -136,7 +136,7 @@ const AssignLeadModal = ({
     },
     onError: (error: any) => {
       console.error("Failed to assign lead", error.response?.data || error);
-      toast.error("Something went wrong!");
+      toastManager.add({ title: "Something went wrong!", type: "error" });
     },
   });
 
@@ -157,7 +157,7 @@ const AssignLeadModal = ({
   // 2) onSelect: block clicking the already-assigned user
   const handleAssignLead = (salesExecutiveId: number) => {
     if (salesExecutiveId === currentAssignedId) {
-      toast.info("This lead is already assigned to this user.");
+      toastManager.add({ title: "This lead is already assigned to this user.", type: "info" });
       return; // do nothing
     }
     setSelectedId(salesExecutiveId);

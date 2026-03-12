@@ -58,7 +58,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import InitialSiteMeasuresMent from "@/components/sales-executive/Lead/initial-site-measurement-form";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -139,7 +139,7 @@ export default function SiteMeasurementLead() {
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toast.error("Vendor or User information is missing!");
+      toastManager.add({ title: "Vendor or User information is missing!", type: "error" });
       return;
     }
 
@@ -147,7 +147,7 @@ export default function SiteMeasurementLead() {
       { leadId: leadIdNum, vendorId, userId },
       {
         onSuccess: () => {
-          toast.success("Lead deleted successfully!");
+          toastManager.add({ title: "Lead deleted successfully!", type: "success" });
           setOpenDelete(false);
 
           queryClient.invalidateQueries({
@@ -160,7 +160,7 @@ export default function SiteMeasurementLead() {
           router.push("/dashboard/leads/initial-site-measurement");
         },
         onError: () => {
-          toast.error("Failed to delete lead!");
+          toastManager.add({ title: "Failed to delete lead!", type: "error" });
         },
       }
     );
@@ -415,7 +415,7 @@ export default function SiteMeasurementLead() {
             },
             {
               onSuccess: () => {
-                toast.success("Lead status updated successfully!");
+                toastManager.add({ title: "Lead status updated successfully!", type: "success" });
                 queryClient.invalidateQueries({
                   queryKey: ["universal-stage-leads"],
                 });

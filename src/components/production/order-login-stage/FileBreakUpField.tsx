@@ -18,7 +18,7 @@ import {
   useUploadOrderLoginPoFiles,
 } from "@/api/production/order-login";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import BaseModal from "@/components/utils/baseModal";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { Button } from "@/components/ui/button";
@@ -182,7 +182,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   const handlePoUpload = async () => {
     if (!canUsePoUpload) return;
     if (!poFiles || poFiles.length === 0) {
-      toast.error("Please select at least one file.");
+      toastManager.add({ title: "Please select at least one file.", type: "error" });
       return;
     }
 
@@ -192,16 +192,14 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
       formData.append("created_by", String(userId || 0));
 
       await uploadPoFiles(formData);
-      toast.success("PO files uploaded successfully!");
+      toastManager.add({ title: "PO files uploaded successfully!", type: "success" });
       setPoFiles([]);
       setPoModalOpen(false);
       queryClient.invalidateQueries({
         queryKey: ["orderLoginPoFiles", vendorId, leadId, orderLoginId],
       });
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message || "Failed to upload PO files.",
-      );
+      toastManager.add({ title: error?.response?.data?.message || "Failed to upload PO files.", type: "error" });
     }
   };
 
@@ -216,11 +214,11 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
     try {
       await deleteFile(confirmDelete);
 
-      toast.success("Document deleted successfully");
+      toastManager.add({ title: "Document deleted successfully", type: "success" });
 
       setConfirmDelete(null);
     } catch (err: any) {
-      toast.error(err?.message || "Failed to delete document");
+      toastManager.add({ title: err?.message || "Failed to delete document", type: "error" });
     } finally {
       setDeleting(false);
     }

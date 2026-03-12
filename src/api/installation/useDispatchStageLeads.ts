@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 import type { AxiosError } from "axios";
 
@@ -130,12 +130,12 @@ export const useAddDispatchDetails = () => {
       return data?.data;
     },
     onSuccess: () => {
-      toast.success("Dispatch details saved successfully!");
+      toastManager.add({ title: "Dispatch details saved successfully!", type: "success" });
       queryClient.invalidateQueries({ queryKey: ["dispatchDetails"] });
       queryClient.invalidateQueries({ queryKey: ["readyForPostDispatch"] });
     },
     onError: (err: AxiosError<ApiErrorResponse>) => {
-      toast.error(err?.message || "Failed to save dispatch details");
+      toastManager.add({ title: err?.message || "Failed to save dispatch details", type: "error" });
     },
   });
 };
@@ -223,13 +223,13 @@ export const useUploadDispatchDocuments = () => {
     }) => uploadDispatchDocuments(vendorId, leadId, payload),
 
     onSuccess: () => {
-      toast.success("Dispatch Photos & Documents uploaded successfully!");
+      toastManager.add({ title: "Dispatch Photos & Documents uploaded successfully!", type: "success" });
       queryClient.invalidateQueries({ queryKey: ["dispatchDocuments"] }); // refresh doc list
       queryClient.invalidateQueries({ queryKey: ["readyForPostDispatch"] });
     },
 
     onError: (err: AxiosError<ApiErrorResponse>) => {
-      toast.error(err?.message || "Failed to upload Dispatch Documents");
+      toastManager.add({ title: err?.message || "Failed to upload Dispatch Documents", type: "error" });
     },
   });
 };
@@ -346,12 +346,12 @@ export const useUploadPostDispatchDocuments = () => {
     }) => uploadPostDispatchDocuments(vendorId, leadId, payload),
 
     onSuccess: () => {
-      toast.success("Post Dispatch Photos & Documents uploaded successfully!");
+      toastManager.add({ title: "Post Dispatch Photos & Documents uploaded successfully!", type: "success" });
       queryClient.invalidateQueries({ queryKey: ["postDispatchDocuments"] }); // ✅ auto-refresh document list
     },
 
     onError: (err: AxiosError<ApiErrorResponse>) => {
-      toast.error(err?.message || "Failed to upload Post Dispatch Documents");
+      toastManager.add({ title: err?.message || "Failed to upload Post Dispatch Documents", type: "error" });
     },
   });
 };
@@ -397,16 +397,14 @@ export const useCreatePendingMaterialTask = () => {
     }) => createPendingMaterialTask(vendorId, leadId, payload),
 
     onSuccess: () => {
-      toast.success("Pending Material task created successfully!");
+      toastManager.add({ title: "Pending Material task created successfully!", type: "success" });
       // Optionally invalidate related queries
       queryClient.invalidateQueries({ queryKey: ["leadTasks"] });
     },
 
     onError: (err: AxiosError<ApiErrorResponse>) => {
-      toast.error(
-        err?.response?.data?.message ||
-          "Failed to create Pending Material task."
-      );
+      toastManager.add({ title: err?.response?.data?.message ||
+          "Failed to create Pending Material task.", type: "error" });
     },
   });
 };
@@ -476,14 +474,12 @@ export const useCreatePendingWorkTask = () => {
     }) => createPendingWorkTask(vendorId, leadId, payload),
 
     onSuccess: () => {
-      toast.success("Pending Work task created successfully!");
+      toastManager.add({ title: "Pending Work task created successfully!", type: "success" });
       queryClient.invalidateQueries({ queryKey: ["pendingWorkTasks"] });
     },
 
     onError: (err: AxiosError<ApiErrorResponse>) => {
-      toast.error(
-        err?.response?.data?.message || "Failed to create Pending Work task."
-      );
+      toastManager.add({ title: err?.response?.data?.message || "Failed to create Pending Work task.", type: "error" });
     },
   });
 };

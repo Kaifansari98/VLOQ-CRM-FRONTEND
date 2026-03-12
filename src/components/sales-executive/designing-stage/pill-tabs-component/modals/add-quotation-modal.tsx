@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { DocumentsUploader } from "@/components/document-upload";
 import { useAppSelector } from "@/redux/store";
 import { useSubmitQuotation } from "@/hooks/designing-stage/designing-leads-hooks";
@@ -60,7 +60,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
 
   const onSubmit = (data: QuotationFormValues) => {
     if (!data.upload_pdf?.length) {
-      toast.error("Please upload at least one quotation file.");
+      toastManager.add({ title: "Please upload at least one quotation file.", type: "error" });
       return;
     }
 
@@ -68,16 +68,14 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
       { files: data.upload_pdf, vendorId, leadId, userId },
       {
         onSuccess: () => {
-          toast.success(
-            `${data.upload_pdf.length} quotation${
+          toastManager.add({ title: `${data.upload_pdf.length} quotation${
               data.upload_pdf.length > 1 ? "s" : ""
-            } uploaded successfully!`
-          );
+            } uploaded successfully!`, type: "success" });
           queryClient.invalidateQueries({
             queryKey: ["designingStageCounts", vendorId, leadId],
           });
         },
-        onError: (err: any) => toast.error(err?.message || "Upload failed"),
+        onError: (err: any) => toastManager.add({ title: err?.message || "Upload failed", type: "error" }),
       }
     );
 

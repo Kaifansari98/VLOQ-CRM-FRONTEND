@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { FolderOpen, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 import {
   useCurrentSitePhotosAtSiteReadiness,
@@ -80,12 +80,12 @@ export default function CurrentSitePhotosReadinessSection({
   // 🔹 Handle Upload
   const handleUpload = async () => {
     if (!vendorId || !userId || !leadId) {
-      toast.error("Missing required IDs.");
+      toastManager.add({ title: "Missing required IDs.", type: "error" });
       return;
     }
 
     if (selectedFiles.length === 0) {
-      toast.error("Please select at least one photo to upload.");
+      toastManager.add({ title: "Please select at least one photo to upload.", type: "error" });
       return;
     }
 
@@ -98,7 +98,7 @@ export default function CurrentSitePhotosReadinessSection({
         files: selectedFiles,
       });
 
-      toast.success("Current Site Photos uploaded successfully!");
+      toastManager.add({ title: "Current Site Photos uploaded successfully!", type: "success" });
       setSelectedFiles([]);
 
       // Refresh data
@@ -109,10 +109,8 @@ export default function CurrentSitePhotosReadinessSection({
         queryKey: ["checkSiteReadinessCompletion", vendorId, leadId],
       });
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message ||
-          "Failed to upload Current Site Photos."
-      );
+      toastManager.add({ title: error?.response?.data?.message ||
+          "Failed to upload Current Site Photos.", type: "error" });
     }
   };
 

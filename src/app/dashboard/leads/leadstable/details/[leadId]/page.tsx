@@ -37,7 +37,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
@@ -128,7 +128,7 @@ export default function LeadDetails() {
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toast.error("Vendor or User information is missing!");
+      toastManager.add({ title: "Vendor or User information is missing!", type: "error" });
       return;
     }
 
@@ -136,7 +136,7 @@ export default function LeadDetails() {
       { leadId: leadIdNum, vendorId, userId },
       {
         onSuccess: () => {
-          toast.success("Lead deleted successfully!");
+          toastManager.add({ title: "Lead deleted successfully!", type: "success" });
           setOpenDelete(false);
 
           // ✅ Invalidate both queries so they refetch
@@ -151,7 +151,7 @@ export default function LeadDetails() {
           router.push("/dashboard/leads/leadstable");
         },
         onError: (error: any) => {
-          toast.error(error?.message || "Failed to delete lead!");
+          toastManager.add({ title: error?.message || "Failed to delete lead!", type: "error" });
         },
       }
     );
@@ -421,7 +421,7 @@ export default function LeadDetails() {
         statusType={activityType}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toast.error("Missing vendor/user info");
+            toastManager.add({ title: "Missing vendor/user info", type: "error" });
             return;
           }
           const status = activityType === "onHold" ? "onHold" : "lostApproval";
@@ -440,11 +440,9 @@ export default function LeadDetails() {
             },
             {
               onSuccess: () => {
-                toast.success(
-                  status === "onHold"
+                toastManager.add({ title: status === "onHold"
                     ? "Lead marked as On Hold!"
-                    : "Lead sent for Lost Approval!"
-                );
+                    : "Lead sent for Lost Approval!", type: "success" });
                 setActivityModalOpen(false);
               },
             }

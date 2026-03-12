@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { FolderOpen, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   usePostDispatchDocuments,
   useUploadPostDispatchDocuments,
@@ -81,7 +81,7 @@ export default function PostDispatchStage({
   // ✅ Upload Handler
   const handleUpload = async () => {
     if (selectedFiles.length === 0) {
-      toast.error("Please select at least one file to upload.");
+      toastManager.add({ title: "Please select at least one file to upload.", type: "error" });
       return;
     }
 
@@ -103,10 +103,8 @@ export default function PostDispatchStage({
         queryKey: ["postDispatchDocuments", vendorId, leadId],
       });
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message ||
-          "Failed to upload Post Dispatch documents."
-      );
+      toastManager.add({ title: error?.response?.data?.message ||
+          "Failed to upload Post Dispatch documents.", type: "error" });
     }
   };
 

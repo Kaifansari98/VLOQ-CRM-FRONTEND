@@ -5,7 +5,7 @@ import { useLogin } from "@/hooks/useLogin";
 import { useDispatch, useSelector } from "react-redux";
 import { setCredentials } from "@/redux/slices/authSlice";
 import { useRouter } from "next/navigation";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { RootState } from "@/redux/store";
 import { PhoneInput } from "@/components/ui/phone-input";
 import PasswordInput from "@/components/password-input";
@@ -40,7 +40,7 @@ export function LoginForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier || !password) {
-      toast.error("Please enter your credentials");
+      toastManager.add({ title: "Please enter your credentials", type: "error" });
       return;
     }
     loginMutation.mutate({ identifier, password });
@@ -54,7 +54,7 @@ export function LoginForm({
           token: loginMutation.data.token,
         })
       );
-      toast.success("Login successful 🎉");
+      toastManager.add({ title: "Login successful!", type: "success" });
       router.push("/dashboard");
     }
   }, [loginMutation.isSuccess, loginMutation.data, dispatch, router]);

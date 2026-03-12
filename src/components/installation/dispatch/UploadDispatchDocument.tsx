@@ -17,7 +17,7 @@ import {
 import { useDeleteDocument } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 import {
   AlertDialog,
@@ -88,7 +88,7 @@ export default function UploadDispatchDocument({
   ------------------------------------------------------------ */
   const handleUpload = async () => {
     if (selectedFiles.length === 0) {
-      toast.error("Please select at least one file.");
+      toastManager.add({ title: "Please select at least one file.", type: "error" });
       return;
     }
 
@@ -109,7 +109,7 @@ export default function UploadDispatchDocument({
         queryKey: ["dispatchDocuments", vendorId, leadId],
       });
     } catch (error) {
-      toast.error("Failed to upload files.");
+      toastManager.add({ title: "Failed to upload files.", type: "error" });
     }
   };
 

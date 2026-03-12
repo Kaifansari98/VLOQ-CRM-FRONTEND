@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 // ✅ --- Fetch Order-Login Leads (paginated) ---
 export const getOrderLoginLeads = async (
@@ -495,10 +495,10 @@ export const useRequestToProduction = () => {
       return data;
     },
     onSuccess: () => {
-      toast.success("Lead successfully moved to Production Stage!");
+      toastManager.add({ title: "Lead successfully moved to Production Stage!", type: "success" });
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Failed to move lead.");
+      toastManager.add({ title: err?.response?.data?.message || "Failed to move lead.", type: "error" });
     },
   });
 };
@@ -610,7 +610,7 @@ export const useMarkOrderLoginFilled = (
 
     onSuccess: () => {
       // ✅ Show success feedback
-      toast.success("Order login details saved successfully.");
+      toastManager.add({ title: "Order login details saved successfully.", type: "success" });
 
       // 🔁 Refetch relevant data
       queryClient.invalidateQueries({
@@ -624,7 +624,7 @@ export const useMarkOrderLoginFilled = (
 
     onError: (error: any) => {
       // (Recommended) Error visibility for better UX
-      toast.error(error?.message || "Failed to update order login.");
+      toastManager.add({ title: error?.message || "Failed to update order login.", type: "error" });
     },
   });
 };

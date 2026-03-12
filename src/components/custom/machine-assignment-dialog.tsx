@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 interface MachineAssignmentDialogProps {
   open: boolean;
@@ -36,7 +36,7 @@ export function MachineAssignmentDialog({
   const handleAssign = () => {
     // ✅ Validation: Check if user selected an option
     if (assigned === null) {
-      toast.error("Please select either Assign or Unassign option");
+      toastManager.add({ title: "Please select either Assign or Unassign option", type: "error" });
       return;
     }
 

@@ -15,7 +15,7 @@ import {
   useOrderLoginSummary,
   usePendingWorkTasks,
 } from "@/api/installation/useDispatchStageLeads";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
@@ -46,11 +46,11 @@ export default function PendingWorkDetails({
   const leadStatus = leadData?.status;
 
   if (!vendorId) {
-    toast.error("Vendor information is missing.");
+    toastManager.add({ title: "Vendor information is missing.", type: "error" });
     return null;
   }
   if (!userId) {
-    toast.error("User information is missing.");
+    toastManager.add({ title: "User information is missing.", type: "error" });
     return null;
   }
 
@@ -121,7 +121,7 @@ export default function PendingWorkDetails({
     e.preventDefault();
 
     if (!title.trim() || !dueDate) {
-      toast.error("Please fill all required fields.");
+      toastManager.add({ title: "Please fill all required fields.", type: "error" });
       return;
     }
 
@@ -142,7 +142,7 @@ export default function PendingWorkDetails({
         },
       });
 
-      toast.success("Pending Work added successfully!");
+      toastManager.add({ title: "Pending Work added successfully!", type: "success" });
 
       queryClient.invalidateQueries({
         queryKey: ["pendingWorkTasks", vendorId, leadId],
@@ -152,7 +152,7 @@ export default function PendingWorkDetails({
       setRemark("");
       setDueDate(null);
     } catch (err) {
-      toast.error("Failed to add Pending Work.");
+      toastManager.add({ title: "Failed to add Pending Work.", type: "error" });
     }
   };
 

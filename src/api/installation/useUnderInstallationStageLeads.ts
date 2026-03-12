@@ -1,7 +1,7 @@
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { AxiosError } from "axios";
 
 export interface ApiErrorResponse<T = unknown> {
@@ -201,10 +201,8 @@ export const useMoveLeadToUnderInstallation = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(
-        error?.response?.data?.message ||
-          "Failed to move lead to Under Installation stage",
-      );
+      toastManager.add({ title: error?.response?.data?.message ||
+          "Failed to move lead to Under Installation stage", type: "error" });
     },
   });
 };
@@ -312,7 +310,7 @@ export const useSetActualInstallationStartDate = () => {
     mutationFn: setActualInstallationStartDate,
 
     onSuccess: () => {
-      toast.success("Installation start date updated!");
+      toastManager.add({ title: "Installation start date updated!", type: "success" });
 
       // 🔄 Refetch relevant queries
       queryClient.invalidateQueries({
@@ -324,7 +322,7 @@ export const useSetActualInstallationStartDate = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(error?.message || "Failed to update installation start date");
+      toastManager.add({ title: error?.message || "Failed to update installation start date", type: "error" });
     },
   });
 };
@@ -638,7 +636,7 @@ export const useCreateMiscellaneousEntry = () => {
     mutationFn: createMiscellaneousEntry,
 
     onSuccess: (data, variables) => {
-      toast.success("Miscellaneous entry created successfully");
+      toastManager.add({ title: "Miscellaneous entry created successfully", type: "success" });
 
       // Invalidate and refetch the list
       queryClient.invalidateQueries({
@@ -651,9 +649,7 @@ export const useCreateMiscellaneousEntry = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(
-        error?.response?.data?.error || "Failed to create miscellaneous entry",
-      );
+      toastManager.add({ title: error?.response?.data?.error || "Failed to create miscellaneous entry", type: "error" });
     },
   });
 };
@@ -784,14 +780,14 @@ export const useUpdateMiscERD = () => {
     mutationFn: updateMiscExpectedReadyDate,
 
     onSuccess: () => {
-      toast.success("Expected ready date updated!");
+      toastManager.add({ title: "Expected ready date updated!", type: "success" });
 
       client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
       client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(error?.message || "Failed to update date");
+      toastManager.add({ title: error?.message || "Failed to update date", type: "error" });
     },
   });
 };
@@ -825,14 +821,14 @@ export const useUpdateMiscRequiredDeliveryDate = () => {
     mutationFn: updateMiscRequiredDeliveryDate,
 
     onSuccess: () => {
-      toast.success("Required delivery date updated!");
+      toastManager.add({ title: "Required delivery date updated!", type: "success" });
 
       client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
       client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(error?.message || "Failed to update delivery date");
+      toastManager.add({ title: error?.message || "Failed to update delivery date", type: "error" });
     },
   });
 };
@@ -866,14 +862,14 @@ export const useUpdateMiscRequiredDeliveryDateByTaskId = () => {
     mutationFn: updateMiscRequiredDeliveryDateByTaskId,
 
     onSuccess: () => {
-      toast.success("Required delivery date updated!");
+      toastManager.add({ title: "Required delivery date updated!", type: "success" });
 
       client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
       client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(error?.message || "Failed to update delivery date");
+      toastManager.add({ title: error?.message || "Failed to update delivery date", type: "error" });
     },
   });
 };
@@ -911,7 +907,7 @@ export const useUploadMiscCompletionDocumentsByTaskId = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(error?.message || "Failed to upload documents");
+      toastManager.add({ title: error?.message || "Failed to upload documents", type: "error" });
     },
   });
 };
@@ -923,14 +919,14 @@ export const useUpdateMiscApproval = () => {
     mutationFn: updateMiscApproval,
 
     onSuccess: () => {
-      toast.success("Miscellaneous updated!");
+      toastManager.add({ title: "Miscellaneous updated!", type: "success" });
 
       client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
       client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(error?.message || "Failed to update miscellaneous");
+      toastManager.add({ title: error?.message || "Failed to update miscellaneous", type: "error" });
     },
   });
 };
@@ -1054,7 +1050,7 @@ export const useCreateInstallationIssueLog = () => {
       createInstallationIssueLog(payload),
 
     onSuccess: (data, variables) => {
-      toast.success("Issue log created successfully");
+      toastManager.add({ title: "Issue log created successfully", type: "success" });
 
       // Invalidate and refetch issue logs for this lead
       queryClient.invalidateQueries({
@@ -1072,9 +1068,7 @@ export const useCreateInstallationIssueLog = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(
-        error?.response?.data?.message || "Failed to create issue log",
-      );
+      toastManager.add({ title: error?.response?.data?.message || "Failed to create issue log", type: "error" });
     },
   });
 };
@@ -1095,7 +1089,7 @@ export const useUpdateInstallationIssueLog = () => {
     }) => updateInstallationIssueLog(id, payload),
 
     onSuccess: (data) => {
-      toast.success("Issue log updated successfully");
+      toastManager.add({ title: "Issue log updated successfully", type: "success" });
 
       // Invalidate the specific issue log
       queryClient.invalidateQueries({
@@ -1109,9 +1103,7 @@ export const useUpdateInstallationIssueLog = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(
-        error?.response?.data?.message || "Failed to update issue log",
-      );
+      toastManager.add({ title: error?.response?.data?.message || "Failed to update issue log", type: "error" });
     },
   });
 };
@@ -1229,7 +1221,7 @@ export const useUpdateUsableHandover = () => {
     mutationFn: (formData: FormData) => updateUsableHandover(formData),
 
     onSuccess: (data, variables) => {
-      toast.success("Files uploaded successfully");
+      toastManager.add({ title: "Files uploaded successfully", type: "success" });
 
       // Extract vendor_id and lead_id from FormData
       const vendorId = variables.get("vendor_id");
@@ -1242,7 +1234,7 @@ export const useUpdateUsableHandover = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(error?.response?.data?.message || "Failed to upload files");
+      toastManager.add({ title: error?.response?.data?.message || "Failed to upload files", type: "error" });
     },
   });
 };
@@ -1257,7 +1249,7 @@ export const useUpdateRemarks = () => {
     mutationFn: (payload: UpdateRemarksPayload) => updateRemarks(payload),
 
     onSuccess: (data, variables) => {
-      toast.success("Remarks updated successfully");
+      toastManager.add({ title: "Remarks updated successfully", type: "success" });
 
       // Invalidate and refetch usable handover data
       queryClient.invalidateQueries({
@@ -1266,7 +1258,7 @@ export const useUpdateRemarks = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(error?.response?.data?.message || "Failed to update remarks");
+      toastManager.add({ title: error?.response?.data?.message || "Failed to update remarks", type: "error" });
     },
   });
 };
@@ -1329,7 +1321,7 @@ export function useMoveToFinalHandover() {
     }) => moveToFinalHandoverApi(vendorId, leadId, updated_by),
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(error?.response?.data?.error || "Failed to move lead");
+      toastManager.add({ title: error?.response?.data?.error || "Failed to move lead", type: "error" });
     },
   });
 }
@@ -1405,7 +1397,7 @@ export const useResolveMiscellaneousEntry = () => {
     mutationFn: resolveMiscellaneousEntry,
 
     onSuccess: (data, variables) => {
-      toast.success("Marked as resolved");
+      toastManager.add({ title: "Marked as resolved", type: "success" });
 
       // Refetch miscellaneous list
       queryClient.invalidateQueries({
@@ -1418,9 +1410,7 @@ export const useResolveMiscellaneousEntry = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(
-        error?.response?.data?.error || "Failed to resolve miscellaneous entry",
-      );
+      toastManager.add({ title: error?.response?.data?.error || "Failed to resolve miscellaneous entry", type: "error" });
     },
   });
 };
@@ -1458,7 +1448,7 @@ export const useMarkMiscellaneousTaskReady = () => {
     mutationFn: markMiscellaneousTaskReady,
 
     onSuccess: (data, variables) => {
-      toast.success("Marked as ready");
+      toastManager.add({ title: "Marked as ready", type: "success" });
 
       queryClient.invalidateQueries({
         queryKey: [
@@ -1470,9 +1460,7 @@ export const useMarkMiscellaneousTaskReady = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(
-        error?.response?.data?.error || "Failed to mark task as ready",
-      );
+      toastManager.add({ title: error?.response?.data?.error || "Failed to mark task as ready", type: "error" });
     },
   });
 };

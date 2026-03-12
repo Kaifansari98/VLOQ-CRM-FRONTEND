@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import FileBreakUpField from "./FileBreakUpField";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useUploadFileBreakup } from "@/api/production/order-login";
 import { useAppSelector } from "@/redux/store";
 
@@ -69,17 +69,17 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
 
   const handleSectionCreated = async () => {
     if (!newTitle.trim()) {
-      toast.error("Please enter a section name");
+      toastManager.add({ title: "Please enter a section name", type: "error" });
       return;
     }
 
     if (!sectionData.company_vendor_id) {
-      toast.error("Please select a vendor");
+      toastManager.add({ title: "Please select a vendor", type: "error" });
       return;
     }
 
     if (!sectionData.item_desc?.trim()) {
-      toast.error("Please add a description before saving");
+      toastManager.add({ title: "Please add a description before saving", type: "error" });
       return;
     }
 
@@ -97,7 +97,7 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
       // 🚀 Call the API
       await uploadFileBreakup(payload);
 
-      toast.success(`${newTitle} section added successfully ✅`);
+      toastManager.add({ title: `${newTitle} section added successfully ✅`, type: "success" });
 
       // 🔁 Notify parent to refresh sections
       onSectionAdded({ title: newTitle });
@@ -108,9 +108,7 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
       setSectionData({ company_vendor_id: null, item_desc: "" });
     } catch (err: any) {
       console.error("❌ Error uploading file breakup:", err);
-      toast.error(
-        err?.response?.data?.message || "Failed to add file breakup section",
-      );
+      toastManager.add({ title: err?.response?.data?.message || "Failed to add file breakup section", type: "error" });
     }
   };
 

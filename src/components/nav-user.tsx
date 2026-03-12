@@ -31,7 +31,7 @@ import {
 
 import { useState } from "react";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { logout } from "@/redux/slices/authSlice";
 import { useAppSelector } from "@/redux/store";
 import { deactiveToken } from "@/api/notifications";
@@ -82,7 +82,7 @@ export function NavUser({
       // 🔴 Log logout activity
       await logoutActivityApi();
 
-      toast.success("You have been logged out 👋");
+      toastManager.add({ title: "You have been logged out", type: "success" });
 
       // Now destroy frontend session
       dispatch(logout());

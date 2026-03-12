@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { FolderOpen, Upload, Loader2, Paperclip } from "lucide-react";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
 
@@ -131,7 +131,7 @@ export default function WoodworkPackingDetailsSection({
   // ---------------- UPLOAD HANDLER ----------------
   const handleUpload = async () => {
     if (selectedFiles.length === 0 && remark.trim() === "") {
-      toast.error("Add a remark or upload a file.");
+      toastManager.add({ title: "Add a remark or upload a file.", type: "error" });
       return;
     }
 
@@ -143,7 +143,7 @@ export default function WoodworkPackingDetailsSection({
       if (accountId) formData.append("account_id", String(accountId));
 
       await uploadPackingDetails(formData);
-      toast.success("Woodwork packing details updated!");
+      toastManager.add({ title: "Woodwork packing details updated!", type: "success" });
 
       setSelectedFiles([]);
 
@@ -158,13 +158,13 @@ export default function WoodworkPackingDetailsSection({
 
       await refetchCompleteness();
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Upload failed.");
+      toastManager.add({ title: error?.response?.data?.message || "Upload failed.", type: "error" });
     }
   };
 
   const handleRemarkUpdate = async () => {
     if (!remark.trim()) {
-      toast.error("Remark cannot be empty.");
+      toastManager.add({ title: "Remark cannot be empty.", type: "error" });
       return;
     }
 
@@ -175,7 +175,7 @@ export default function WoodworkPackingDetailsSection({
       if (accountId) formData.append("account_id", String(accountId));
 
       await uploadPackingDetails(formData);
-      toast.success("Remark updated!");
+      toastManager.add({ title: "Remark updated!", type: "success" });
 
       queryClient.invalidateQueries({
         queryKey: [
@@ -186,7 +186,7 @@ export default function WoodworkPackingDetailsSection({
         ],
       });
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to update remark.");
+      toastManager.add({ title: error?.response?.data?.message || "Failed to update remark.", type: "error" });
     }
   };
 

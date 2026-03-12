@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { toast } from "react-toastify"
+import { toastManager } from "@/components/ui/toast";
 import { fetchNotifications } from "@/api/notifications"
 import { useAppSelector } from "@/redux/store"
 import { useDispatch } from "react-redux"
@@ -65,7 +65,7 @@ export const useNotifications = () => {
                   !item.is_read && !previousUnreadRef.current.has(item.id)
               )
               .forEach((item) => {
-                toast.info(item.title || "New notification")
+                toastManager.add({ title: item.title || "New notification", type: "info" })
               })
           }
 
@@ -74,7 +74,7 @@ export const useNotifications = () => {
         }
       } catch (error) {
         if (!options.silent) {
-          toast.error("Failed to load notifications")
+          toastManager.add({ title: "Failed to load notifications", type: "error" })
         }
         console.error(error)
       } finally {
@@ -139,7 +139,7 @@ export const useNotifications = () => {
           if (exists) return
 
           dispatch(addNotification(nextItem))
-          toast.info(nextItem.title || "New notification")
+          toastManager.add({ title: nextItem.title || "New notification", type: "info" })
 
           if (
             "Notification" in window &&

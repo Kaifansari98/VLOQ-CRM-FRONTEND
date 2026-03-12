@@ -7,7 +7,7 @@
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 /* ==========================================================
       🔹 TYPES & INTERFACES
@@ -171,7 +171,7 @@ export const useUploadFinalHandoverDocuments = () => {
     },
 
     onError: (err: AxiosError<ApiErrorResponse>) => {
-      toast.error(err?.response?.data?.message || "Failed to upload documents");
+      toastManager.add({ title: err?.response?.data?.message || "Failed to upload documents", type: "error" });
     },
   });
 };

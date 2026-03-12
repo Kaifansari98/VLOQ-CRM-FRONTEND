@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { DocumentsUploader } from "@/components/document-upload";
 import { useDetails } from "../details-context";
 import { useAppSelector } from "@/redux/store";
@@ -83,7 +83,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
         userId,
       });
 
-      toast.success("Design files uploaded successfully!");
+      toastManager.add({ title: "Design files uploaded successfully!", type: "success" });
 
       queryClient.invalidateQueries({
         queryKey: ["getDesignsDoc", vendorId, leadId],
@@ -96,7 +96,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
       form.reset();
       onOpenChange(false);
     } catch (error: any) {
-      toast.error(error?.message || "Failed to upload design files.");
+      toastManager.add({ title: error?.message || "Failed to upload design files.", type: "error" });
     }
   };
 

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Loader2, Link } from "lucide-react";
 import { useLeadSearch, useLinkLeadToProject } from "@/hooks/track-trace/useProjectCutList";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 // ─── Lead Search Popup ────────────────────────────────────────────────────────
 
@@ -37,11 +37,11 @@ function LeadSearchPopup({
   const { mutate: linkLead, isPending: isLinking, variables } = useLinkLeadToProject({
     vendorId,
     onSuccess: () => {
-      toast.success("Lead linked successfully");
+      toastManager.add({ title: "Lead linked successfully", type: "success" });
       handleClose();
     },
     onError: () => {
-      toast.error("Failed to link lead. Please try again.");
+      toastManager.add({ title: "Failed to link lead. Please try again.", type: "error" });
     },
   });
 

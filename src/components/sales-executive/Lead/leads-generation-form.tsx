@@ -22,7 +22,7 @@ import {
   useProductTypes,
 } from "@/hooks/useTypesMaster";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createLead } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
@@ -354,7 +354,7 @@ export default function LeadsGenerationForm({
     mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
       createLead(payload, files),
     onSuccess: () => {
-      toast.success("Lead created successfully!");
+      toastManager.add({ title: "Lead created successfully!", type: "success" });
       queryClient.invalidateQueries({
         queryKey: ["leadStats", vendorId, userId],
       });
@@ -375,7 +375,7 @@ export default function LeadsGenerationForm({
         error?.response?.data?.details ||
         error?.response?.data?.error ||
         "Failed to create lead";
-      toast.error(errorMessage);
+      toastManager.add({ title: errorMessage, type: "error" });
     },
   });
 
@@ -383,7 +383,7 @@ export default function LeadsGenerationForm({
     mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
       createLead(payload, files),
     onSuccess: () => {
-      toast.success("Lead saved as draft!");
+      toastManager.add({ title: "Lead saved as draft!", type: "success" });
       queryClient.invalidateQueries({
         queryKey: ["leadStats", vendorId, userId],
       });
@@ -404,7 +404,7 @@ export default function LeadsGenerationForm({
         error?.response?.data?.details ||
         error?.response?.data?.error ||
         "Failed to save draft";
-      toast.error(errorMessage);
+      toastManager.add({ title: errorMessage, type: "error" });
     },
   });
 
@@ -459,9 +459,7 @@ export default function LeadsGenerationForm({
           }
         },
         onError: (err: any) => {
-          toast.error(
-            err?.message || "Could not verify contact/email uniqueness"
-          );
+          toastManager.add({ title: err?.message || "Could not verify contact/email uniqueness", type: "error" });
         },
       }
     );
@@ -481,7 +479,7 @@ export default function LeadsGenerationForm({
 
   function onSubmit(values: FormValues) {
     if (!vendorId || !createdBy || !franchiseId) {
-      toast.error("User authentication required");
+      toastManager.add({ title: "User authentication required", type: "error" });
       return;
     }
 
@@ -573,12 +571,12 @@ export default function LeadsGenerationForm({
           message: messages?.[0] || "Invalid value",
         });
       });
-      toast.error("Please fill required fields for draft");
+      toastManager.add({ title: "Please fill required fields for draft", type: "error" });
       return;
     }
 
     if (!vendorId || !createdBy || !franchiseId) {
-      toast.error("User authentication required");
+      toastManager.add({ title: "User authentication required", type: "error" });
       return;
     }
 

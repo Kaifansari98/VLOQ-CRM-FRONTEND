@@ -18,7 +18,7 @@ import { FileUploadField } from "@/components/custom/file-upload";
 import TextAreaInput from "@/components/origin-text-area";
 import { useAppSelector } from "@/redux/store";
 import { useSubmitClientApproval } from "@/api/client-approval";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import CustomeDatePicker from "@/components/date-picker";
 import { usePaymentLogs } from "@/hooks/booking-stage/use-booking";
 import { formatCurrencyINR } from "@/utils/formatCurrency";
@@ -147,7 +147,7 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
 
   const onSubmit: SubmitHandler<FormValues> = (values) => {
     if (!vendorId || !userId || !data?.id || !data?.accountId) {
-      toast.error("Missing required IDs");
+      toastManager.add({ title: "Missing required IDs", type: "error" });
       return;
     }
 

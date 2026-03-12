@@ -26,7 +26,7 @@ import {
 import { useDeleteDocument } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -174,7 +174,7 @@ export default function FinalHandover({
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0 || !activeSection) {
-      toast.error("Please select at least one file to upload.");
+      toastManager.add({ title: "Please select at least one file to upload.", type: "error" });
       return;
     }
 

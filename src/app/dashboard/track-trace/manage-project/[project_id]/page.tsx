@@ -22,7 +22,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "react-aria-components";
 import CutListTable from "@/components/custom/CutListTable";
 import { Button } from "@/components/ui/button";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { apiClient } from "@/lib/apiClient";
 import { updateLeadActivityStatus } from "@/api/activityStatus";
 import {
@@ -72,7 +72,7 @@ export default function CutListPage() {
             await refetch();
         } catch (error) {
             console.error("Error assigning machine:", error);
-            toast.error("Failed to update machine assignment");
+            toastManager.add({ title: "Failed to update machine assignment", type: "error" });
             throw error;
         }
     };

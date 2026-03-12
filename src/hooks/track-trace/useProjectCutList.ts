@@ -11,7 +11,7 @@ import {
   uploadMachineAssignApi,
 } from "@/api/track-trace/track-trace-cutlist.api";
 import { apiClient } from "@/lib/apiClient";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { ValidationError } from "next/dist/compiled/amphtml-validator";
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
@@ -124,7 +124,7 @@ export const useUploadMachineExcel = (projectToken: string) => {
       ),
 
     onSuccess: () => {
-      toast.success("Machine assigned successfully");
+      toastManager.add({ title: "Machine assigned successfully", type: "success" });
 
       queryClient.invalidateQueries({
         queryKey: TRACK_TRACE_KEYS.cutlist(projectToken),
@@ -133,7 +133,7 @@ export const useUploadMachineExcel = (projectToken: string) => {
 
     onError: (error: any) => {
       const data = error?.response?.data;
-      toast.error(data?.message ?? "Excel processing failed");
+      toastManager.add({ title: data?.message ?? "Excel processing failed", type: "error" });
     },
   });
 };

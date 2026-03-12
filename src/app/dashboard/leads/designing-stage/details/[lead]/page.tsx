@@ -56,7 +56,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
@@ -158,7 +158,7 @@ export default function DesigningStageLead() {
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toast.error("Vendor or User information is missing!");
+      toastManager.add({ title: "Vendor or User information is missing!", type: "error" });
       return;
     }
 
@@ -166,7 +166,7 @@ export default function DesigningStageLead() {
       { leadId: leadIdNum, vendorId, userId },
       {
         onSuccess: () => {
-          toast.success("Lead deleted successfully!");
+          toastManager.add({ title: "Lead deleted successfully!", type: "success" });
           setOpenDelete(false);
 
           // ✅ Invalidate related queries
@@ -181,7 +181,7 @@ export default function DesigningStageLead() {
           router.push("/dashboard/leads/designing-stage");
         },
         onError: (error: any) => {
-          toast.error(error?.message || "Failed to delete lead!");
+          toastManager.add({ title: error?.message || "Failed to delete lead!", type: "error" });
         },
       }
     );
@@ -489,7 +489,7 @@ export default function DesigningStageLead() {
         statusType={activityType}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toast.error("Vendor or User info is missing!");
+            toastManager.add({ title: "Vendor or User info is missing!", type: "error" });
             return;
           }
           updateStatusMutation.mutate(
@@ -507,11 +507,9 @@ export default function DesigningStageLead() {
             },
             {
               onSuccess: () => {
-                toast.success(
-                  activityType === "onHold"
+                toastManager.add({ title: activityType === "onHold"
                     ? "Lead marked as On Hold!"
-                    : "Lead sent for Lost Approval!"
-                );
+                    : "Lead sent for Lost Approval!", type: "success" });
                 setActivityModalOpen(false);
               },
             }

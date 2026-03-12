@@ -11,7 +11,7 @@ import {
   useCreatePendingMaterialTask,
   useOrderLoginSummary,
 } from "@/api/installation/useDispatchStageLeads";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import TextSelectPicker from "@/components/TextSelectPicker";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -99,7 +99,7 @@ export default function PendingMaterialDetails({
     e.preventDefault();
 
     if (!title.trim() || !dueDate) {
-      toast.error("Please fill all required fields.");
+      toastManager.add({ title: "Please fill all required fields.", type: "error" });
       return;
     }
 
@@ -120,7 +120,7 @@ export default function PendingMaterialDetails({
         },
       });
 
-      toast.success("Pending Material added successfully!");
+      toastManager.add({ title: "Pending Material added successfully!", type: "success" });
       queryClient.invalidateQueries({
         queryKey: ["pendingMaterialTasks", vendorId, leadId],
       });
@@ -129,7 +129,7 @@ export default function PendingMaterialDetails({
       setRemark("");
       setDueDate(null);
     } catch (err) {
-      toast.error("Failed to add Pending Material.");
+      toastManager.add({ title: "Failed to add Pending Material.", type: "error" });
     }
   };
 

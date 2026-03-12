@@ -16,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { useForm } from "react-hook-form";
 import z from "zod";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useFinalMeasurement } from "@/hooks/final-measurement/use-final-measurement";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
@@ -100,7 +100,7 @@ const FinalMeasurementModal = ({
       },
       {
         onSuccess: () => {
-          toast.success("Final measurement uploaded successfully!");
+          toastManager.add({ title: "Final measurement uploaded successfully!", type: "success" });
           queryClient.invalidateQueries({
             queryKey: ["leadStats", vendorId, userId],
           });
@@ -115,7 +115,7 @@ const FinalMeasurementModal = ({
           router.push("/dashboard/project/client-documentation");
         },
         onError: (error: any) => {
-          toast.error(error?.message || "Upload failed. Try again.");
+          toastManager.add({ title: error?.message || "Upload failed. Try again.", type: "error" });
         },
       }
     );

@@ -9,7 +9,7 @@ import {
   getLostApprovalLeads,
   getActivityStatusCounts,
 } from "@/api/activityStatus";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 export const useUpdateActivityStatus = () => {
   const queryClient = useQueryClient();
@@ -28,9 +28,7 @@ export const useUpdateActivityStatus = () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message || "❌ Failed to update status"
-      );
+      toastManager.add({ title: error?.response?.data?.message || "❌ Failed to update status", type: "error" });
     },
   });
 };
@@ -71,14 +69,14 @@ export const useRevertActivityStatus = () => {
       payload: RevertActivityStatusPayload;
     }) => revertLeadToOnGoing(leadId, payload),
     onSuccess: () => {
-      toast.success("Lead reverted to OnGoing!");
+      toastManager.add({ title: "Lead reverted to OnGoing!", type: "success" });
       // refresh onHold & lost lists + any generic leads cache
       queryClient.invalidateQueries({ queryKey: ["onHoldLeads"] });
       queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
       queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Failed to revert lead");
+      toastManager.add({ title: error?.response?.data?.message || "Failed to revert lead", type: "error" });
     },
   });
 };

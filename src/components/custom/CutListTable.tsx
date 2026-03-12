@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MachineAssignmentDialog } from "./machine-assignment-dialog";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   Download,
   Printer,
@@ -118,10 +118,10 @@ export default function CutListTable({
       }
 
       window.open(pdfUrl, "_blank", "noopener,noreferrer");
-      toast.success("Labels downloaded successfully");
+      toastManager.add({ title: "Labels downloaded successfully", type: "success" });
     } catch (error) {
       console.error("Error downloading labels:", error);
-      toast.error("Failed to download labels");
+      toastManager.add({ title: "Failed to download labels", type: "error" });
     } finally {
       setIsDownloading(false);
     }
@@ -149,10 +149,10 @@ export default function CutListTable({
       }
 
       window.open(fileUrl, "_blank", "noopener,noreferrer");
-      toast.success("Advanced cut list downloaded successfully");
+      toastManager.add({ title: "Advanced cut list downloaded successfully", type: "success" });
     } catch (error) {
       console.error("Error downloading advanced excel:", error);
-      toast.error("Failed to download advanced cut list");
+      toastManager.add({ title: "Failed to download advanced cut list", type: "error" });
     } finally {
       setIsDownloading(false);
     }
@@ -180,10 +180,10 @@ export default function CutListTable({
       }
 
       window.open(fileUrl, "_blank", "noopener,noreferrer");
-      toast.success("Basic cut list downloaded successfully");
+      toastManager.add({ title: "Basic cut list downloaded successfully", type: "success" });
     } catch (error) {
       console.error("Error downloading basic excel:", error);
-      toast.error("Failed to download basic cut list");
+      toastManager.add({ title: "Failed to download basic cut list", type: "error" });
     } finally {
       setIsDownloading(false);
     }
@@ -205,11 +205,9 @@ export default function CutListTable({
         !currentlyAssigned,
       );
 
-      toast.success(
-        `${machineName} ${!currentlyAssigned ? "assigned to" : "unassigned from"} item`,
-      );
+      toastManager.add({ title: `${machineName} ${!currentlyAssigned ? "assigned to" : "unassigned from"} item`, type: "success" });
     } catch (error) {
-      toast.error("Failed to update machine assignment");
+      toastManager.add({ title: "Failed to update machine assignment", type: "error" });
       console.error(error);
     }
   };
@@ -218,7 +216,7 @@ export default function CutListTable({
     const currentSelectedRows = table.getFilteredSelectedRowModel().rows;
 
     if (currentSelectedRows.length === 0) {
-      toast.error("Please select at least one row before assigning machines");
+      toastManager.add({ title: "Please select at least one row before assigning machines", type: "error" });
       return;
     }
 
@@ -233,7 +231,7 @@ export default function CutListTable({
     }
 
     if (!machineId) {
-      toast.error("Machine ID not found. Please contact support.");
+      toastManager.add({ title: "Machine ID not found. Please contact support.", type: "error" });
       console.error(`Machine ID not found for: ${machineName}`);
       return;
     }
@@ -287,11 +285,9 @@ export default function CutListTable({
     if (onMachineAssign) {
       try {
         await onMachineAssign(rowsToUpdate, machineId, machineName, assigned);
-        toast.success(
-          `Machine ${assigned ? "assigned" : "unassigned"} successfully`,
-        );
+        toastManager.add({ title: `Machine ${assigned ? "assigned" : "unassigned"} successfully`, type: "success" });
       } catch (error) {
-        toast.error("Failed to update machine assignment");
+        toastManager.add({ title: "Failed to update machine assignment", type: "error" });
         console.error(error);
       }
     }

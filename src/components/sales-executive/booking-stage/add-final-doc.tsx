@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { useUploadBookingDoc } from "@/hooks/booking-stage/use-booking";
@@ -65,12 +65,12 @@ const UploadFinalDoc: React.FC<LeadViewModalProps> = ({
       },
       {
         onSuccess: () => {
-          toast.success("Documents uploaded successfully ✅");
+          toastManager.add({ title: "Documents uploaded successfully ✅", type: "success" });
           onOpenChange(false);
           form.reset();
         },
         onError: (error: any) => {
-          toast.error(error?.response?.data?.message || "Upload failed ❌");
+          toastManager.add({ title: error?.response?.data?.message || "Upload failed ❌", type: "error" });
         },
       }
     );

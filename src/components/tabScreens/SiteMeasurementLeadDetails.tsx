@@ -32,7 +32,7 @@ import Loader from "@/components/utils/loader";
 import BaseModal from "@/components/utils/baseModal";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 type Props = {
   leadId: number;
@@ -131,7 +131,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const handleReplaceFilesChange = (files: File[]) => {
     if (files.length > 1) {
       setReplaceFiles([files[0]]);
-      toast.error("Only one file can be uploaded.");
+      toastManager.add({ title: "Only one file can be uploaded.", type: "error" });
       return;
     }
     setReplaceFiles(files);
@@ -140,13 +140,13 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const handleReplacePdf = async () => {
     if (!replaceDocId || !vendorId || !userId) return;
     if (replaceFiles.length === 0) {
-      toast.error("Please select a file to upload.");
+      toastManager.add({ title: "Please select a file to upload.", type: "error" });
       return;
     }
 
     const pdfFile = replaceFiles[0];
     if (!documentMimeTypes.includes(pdfFile.type)) {
-      toast.error("Only PDF or image files are allowed.");
+      toastManager.add({ title: "Only PDF or image files are allowed.", type: "error" });
       return;
     }
 
@@ -157,16 +157,14 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
         userId,
         pdfFile,
       });
-      toast.success("Document updated successfully.");
+      toastManager.add({ title: "Document updated successfully.", type: "success" });
       setReplaceFiles([]);
       setReplaceDocId(null);
       queryClient.invalidateQueries({
         queryKey: ["siteMeasurementLeadDetails", leadId],
       });
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message || "Failed to replace document."
-      );
+      toastManager.add({ title: error?.response?.data?.message || "Failed to replace document.", type: "error" });
     }
   };
 

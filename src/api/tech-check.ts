@@ -1,7 +1,7 @@
 import { apiClient } from "@/lib/apiClient";
 import { toastError } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 // ✅ --- Fetch Tech-Check Leads (paginated) ---
 export const getTechCheckLeads = async (
@@ -113,7 +113,7 @@ export const useApproveTechCheck = () => {
   return useMutation({
     mutationFn: approveTechCheck,
     onSuccess: async () => {
-      toast.success("Tech Check approved successfully!");
+      toastManager.add({ title: "Tech Check approved successfully!", type: "success" });
       await queryClient.invalidateQueries({ queryKey: ["techCheckLeads"] });
       await queryClient.invalidateQueries({ queryKey: ["leadStats"] });
     },
@@ -128,7 +128,7 @@ export const useRejectTechCheck = () => {
   return useMutation({
     mutationFn: rejectTechCheck,
     onSuccess: async () => {
-      toast.success("Tech Check rejected successfully!");
+      toastManager.add({ title: "Tech Check rejected successfully!", type: "success" });
       await queryClient.invalidateQueries({ queryKey: ["techCheckLeads"] });
       await queryClient.invalidateQueries({
         queryKey: ["clientDocumentationDetails"],
@@ -167,7 +167,7 @@ export const useApproveMultipleDocuments = () => {
   return useMutation({
     mutationFn: approveMultipleDocuments,
     onSuccess: async () => {
-      toast.success("Selected documents approved successfully!");
+      toastManager.add({ title: "Selected documents approved successfully!", type: "success" });
       // Refresh the tech-check leads and client-doc details
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["techCheckLeads"] }),

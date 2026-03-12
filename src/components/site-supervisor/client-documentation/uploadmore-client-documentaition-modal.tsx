@@ -27,7 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 interface Props {
   open: boolean;
@@ -221,11 +221,11 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       selectedInstanceId ??
       (hasMultipleInstances ? displayInstances[0]?.id : undefined);
     if (hasMultipleInstances && !resolvedInstanceId) {
-      toast.error("Please select an instance before upload");
+      toastManager.add({ title: "Please select an instance before upload", type: "error" });
       return;
     }
     if (selectedFiles.length === 0) {
-      toast.error("Please select at least one file to upload");
+      toastManager.add({ title: "Please select at least one file to upload", type: "error" });
       return;
     }
 

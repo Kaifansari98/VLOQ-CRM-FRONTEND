@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { FolderOpen, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   usePreProductionFiles,
   useUploadPreProductionFiles,
@@ -108,7 +108,7 @@ export default function PreProductionFilesSection({
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) {
-      toast.error("Please select at least one file to upload.");
+      toastManager.add({ title: "Please select at least one file to upload.", type: "error" });
       return;
     }
 
@@ -119,7 +119,7 @@ export default function PreProductionFilesSection({
       if (accountId) formData.append("account_id", String(accountId));
 
       await uploadFiles(formData);
-      toast.success("Pre-production files uploaded successfully!");
+      toastManager.add({ title: "Pre-production files uploaded successfully!", type: "success" });
       setSelectedFiles([]);
 
       queryClient.invalidateQueries({
@@ -139,10 +139,8 @@ export default function PreProductionFilesSection({
         ],
       });
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message ||
-          "Failed to upload pre-production files.",
-      );
+      toastManager.add({ title: error?.response?.data?.message ||
+          "Failed to upload pre-production files.", type: "error" });
     }
   };
 

@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRescheduleTask } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import { useAppSelector } from "@/redux/store";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { ReschedulePayload } from "@/api/measurment-leads";
 import { toastError } from "@/lib/utils";
 
@@ -92,7 +92,7 @@ const RescheduleModal: React.FC<Props> = ({
       },
       {
         onSuccess: () => {
-          toast.success("Lead rescheduled successfully!");
+          toastManager.add({ title: "Lead rescheduled successfully!", type: "success" });
           if (vendorId) {
             queryClient.invalidateQueries({
               queryKey: ["siteMeasurementLeads", vendorId],

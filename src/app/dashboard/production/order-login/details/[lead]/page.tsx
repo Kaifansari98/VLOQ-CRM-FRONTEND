@@ -54,7 +54,7 @@ import {
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
@@ -176,15 +176,15 @@ export default function OrderLoginLeadDetails() {
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toast.error("Missing vendor or user info!");
+      toastManager.add({ title: "Missing vendor or user info!", type: "error" });
       return;
     }
 
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: (err) => toast.error(err?.message || "Failed to delete lead"),
+        onSuccess: () => toastManager.add({ title: "Lead deleted successfully!", type: "success" }),
+        onError: (err) => toastManager.add({ title: err?.message || "Failed to delete lead", type: "error" }),
       },
     );
 
@@ -495,7 +495,7 @@ export default function OrderLoginLeadDetails() {
         statusType={activityType}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toast.error("Vendor or User info is missing!");
+            toastManager.add({ title: "Vendor or User info is missing!", type: "error" });
             return;
           }
           updateStatusMutation.mutate(
@@ -513,7 +513,7 @@ export default function OrderLoginLeadDetails() {
             },
             {
               onSuccess: () => {
-                toast.success("Lead marked as On Hold!");
+                toastManager.add({ title: "Lead marked as On Hold!", type: "success" });
 
                 setActivityModalOpen(false);
 
@@ -523,7 +523,7 @@ export default function OrderLoginLeadDetails() {
                 });
               },
               onError: (err) => {
-                toast.error(err?.message || "Failed to update lead status");
+                toastManager.add({ title: err?.message || "Failed to update lead status", type: "error" });
               },
             },
           );

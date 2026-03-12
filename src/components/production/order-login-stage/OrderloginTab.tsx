@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle, Plus } from "lucide-react";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertDialog,
@@ -271,7 +271,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
         });
       }
 
-      if (successMessage) toast.success(successMessage);
+      if (successMessage) toastManager.add({ title: successMessage, type: "success" });
 
       queryClient.invalidateQueries({ queryKey: ["orderLoginByLead"] });
       queryClient.invalidateQueries({
@@ -279,7 +279,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       });
     } catch (err: any) {
       console.error("Auto-save failed:", err);
-      toast.error(err?.response?.data?.message || "Failed to save changes");
+      toastManager.add({ title: err?.response?.data?.message || "Failed to save changes", type: "error" });
     }
   };
 
@@ -338,11 +338,11 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   const handleTitleUpdate = async (item: any, nextTitle: string) => {
     const trimmedTitle = nextTitle.trim();
 
-    if (!trimmedTitle) { toast.error("Section name cannot be empty"); return false; }
-    if (defaultTitles.includes(trimmedTitle)) { toast.error("Section name cannot match a default section"); return false; }
+    if (!trimmedTitle) { toastManager.add({ title: "Section name cannot be empty", type: "error" }); return false; }
+    if (defaultTitles.includes(trimmedTitle)) { toastManager.add({ title: "Section name cannot match a default section", type: "error" }); return false; }
     if (trimmedTitle === item.item_type) return true;
-    if (breakups[trimmedTitle]) { toast.error("Section name already exists"); return false; }
-    if (!item?.id) { toast.error("Unable to update section name"); return false; }
+    if (breakups[trimmedTitle]) { toastManager.add({ title: "Section name already exists", type: "error" }); return false; }
+    if (!item?.id) { toastManager.add({ title: "Unable to update section name", type: "error" }); return false; }
 
     try {
       await updateSingle({
@@ -364,11 +364,11 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
         return next;
       });
 
-      toast.success("Section name updated successfully");
+      toastManager.add({ title: "Section name updated successfully", type: "success" });
       queryClient.invalidateQueries({ queryKey: ["orderLoginByLead"] });
       return true;
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to update section");
+      toastManager.add({ title: err?.response?.data?.message || "Failed to update section", type: "error" });
       return false;
     }
   };
@@ -390,7 +390,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
         return next;
       });
 
-      toast.success("Section deleted successfully");
+      toastManager.add({ title: "Section deleted successfully", type: "success" });
       setConfirmDelete(null);
 
       queryClient.invalidateQueries({
@@ -400,7 +400,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
         queryKey: ["leadProductionReadiness", vendorId, leadId],
       });
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to delete section");
+      toastManager.add({ title: err?.response?.data?.message || "Failed to delete section", type: "error" });
     }
   };
 

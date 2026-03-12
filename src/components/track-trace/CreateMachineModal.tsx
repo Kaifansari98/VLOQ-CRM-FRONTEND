@@ -27,7 +27,7 @@ import { FileUploadField } from "../custom/file-upload";
 import { useCreateMachine } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
 import { useMachineTypes } from "@/hooks/track-trace/useTrackTraceProjects";
 import { useAppSelector } from "@/redux/store";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { Loader2, Cog } from "lucide-react";
 import type { MachineStatus, MachineScanType, CreateMachinePayload } from "@/types/track-trace";
 import AssignToPicker from "../assign-to-picker";
@@ -101,23 +101,23 @@ export function CreateMachineModal({
 
   const onSubmit = (data: CreateMachineFormData) => {
     if (!vendorId || !userId) {
-      toast.error("User information not found");
+      toastManager.add({ title: "User information not found", type: "error" });
       return;
     }
 
     // Validate that status and scan_type are selected
     if (!data.status) {
-      toast.error("Please select a status");
+      toastManager.add({ title: "Please select a status", type: "error" });
       return;
     }
 
     if (!data.scan_type) {
-      toast.error("Please select a scan type");
+      toastManager.add({ title: "Please select a scan type", type: "error" });
       return;
     }
 
     if (!data.machine_image || data.machine_image.length === 0) {
-      toast.error("Please upload a machine image");
+      toastManager.add({ title: "Please upload a machine image", type: "error" });
       return;
     }
 
@@ -141,7 +141,7 @@ export function CreateMachineModal({
     createMachine(payload, {
       onSuccess: (response) => {
         console.log("Machine created successfully:", response);
-        toast.success("Machine created successfully");
+        toastManager.add({ title: "Machine created successfully", type: "success" });
         form.reset();
         onOpenChange(false);
       },
@@ -151,7 +151,7 @@ export function CreateMachineModal({
           error?.response?.data?.message ||
           error?.message ||
           "Failed to create machine";
-        toast.error(errorMessage);
+        toastManager.add({ title: errorMessage, type: "error" });
       },
     });
   };

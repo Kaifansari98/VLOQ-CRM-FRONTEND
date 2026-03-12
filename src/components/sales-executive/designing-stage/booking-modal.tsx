@@ -28,7 +28,7 @@ import {
   useHeadSiteSupervisors,
 } from "@/hooks/booking-stage/use-booking";
 import { BookingPayload, assignTaskBooking } from "@/api/booking";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useISMPaymentInfo } from "@/hooks/booking-stage/use-booking";
 import SelectDocumentModal from "@/components/modal/select-doc-modal";
 import { useRouter } from "next/navigation";
@@ -251,9 +251,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
 
   const onSubmit: SubmitHandler<BookingFormValues> = (values) => {
     if (values.amount_received > values.final_booking_amount) {
-      toast.error(
-        "Booking Advance Received should not be greater than Total Booking Value"
-      );
+      toastManager.add({ title: "Booking Advance Received should not be greater than Total Booking Value", type: "error" });
       return;
     }
 
@@ -268,12 +266,12 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       values.final_documents?.some((f: any) => f.error);
 
     if (hasFileError) {
-      toast.error("Please fix file upload errors before submitting.");
+      toastManager.add({ title: "Please fix file upload errors before submitting.", type: "error" });
       return;
     }
 
     if (values.final_booking_amount > values.mrp_value) {
-      toast.error("Total Booking Value cannot be greater than MRP Value");
+      toastManager.add({ title: "Total Booking Value cannot be greater than MRP Value", type: "error" });
       return;
     }
 
@@ -296,7 +294,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
 
     mutate(payload, {
       onSuccess: () => {
-        toast.success("Booking saved successfully!");
+        toastManager.add({ title: "Booking saved successfully!", type: "success" });
 
         // Auto-create task for head site supervisor
         const today = new Date().toISOString().split("T")[0];
@@ -324,7 +322,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
         router.push("/dashboard/leads/booking-stage");
       },
       onError: (err: any) => {
-        toast.error(err?.response?.data?.message || "Failed to save booking");
+        toastManager.add({ title: err?.response?.data?.message || "Failed to save booking", type: "error" });
         console.error("❌ Booking error:", err);
       },
     });

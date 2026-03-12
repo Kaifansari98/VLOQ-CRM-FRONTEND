@@ -12,7 +12,7 @@ import {
 } from "@/types/comman-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 interface ApiErrorResponse {
   message?: string;
@@ -575,7 +575,7 @@ export const useDeleteDocument = (leadId?: number) => {
       return data;
     },
     onSuccess: () => {
-      toast.success("Document deleted successfully!");
+      toastManager.add({ title: "Document deleted successfully!", type: "success" });
 
       // ✅ Invalidate both queries safely
       queryClient.invalidateQueries({ queryKey: ["lead"] });
@@ -673,9 +673,7 @@ export const useDeleteDocument = (leadId?: number) => {
       }
     },
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(
-        error?.response?.data?.message || "Failed to delete document",
-      );
+      toastManager.add({ title: error?.response?.data?.message || "Failed to delete document", type: "error" });
     },
   });
 };

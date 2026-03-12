@@ -49,7 +49,7 @@ import { Input } from "@/components/ui/input";
 import TextAreaInput from "@/components/origin-text-area";
 import AssignToPicker from "@/components/assign-to-picker";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   useProductStructureTypes,
   useProductTypes,
@@ -171,16 +171,14 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         instanceId: number;
       }) => deleteLeadProductStructureInstance(vendorId, leadId, instanceId),
       onSuccess: () => {
-        toast.success("Product structure instance deleted.");
+        toastManager.add({ title: "Product structure instance deleted.", type: "success" });
         queryClient.invalidateQueries({
           queryKey: ["lead-product-structure-instances", leadId, vendorId],
         });
         setConfirmStructureDelete(null);
       },
       onError: (error: any) => {
-        toast.error(
-          error?.response?.data?.message || "Failed to delete instance.",
-        );
+        toastManager.add({ title: error?.response?.data?.message || "Failed to delete instance.", type: "error" });
       },
     });
   const { mutate: createStructureInstance, isPending: creatingStructure } =
@@ -200,16 +198,14 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         };
       }) => createLeadProductStructureInstance(vendorId, leadId, payload),
       onSuccess: () => {
-        toast.success("Product structure instance added.");
+        toastManager.add({ title: "Product structure instance added.", type: "success" });
         queryClient.invalidateQueries({
           queryKey: ["lead-product-structure-instances", leadId, vendorId],
         });
         setAddStructure(null);
       },
       onError: (error: any) => {
-        toast.error(
-          error?.response?.data?.message || "Failed to add instance.",
-        );
+        toastManager.add({ title: error?.response?.data?.message || "Failed to add instance.", type: "error" });
       },
     });
   const { mutate: updateStructureInstance, isPending: updatingStructure } =
@@ -237,16 +233,14 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           payload,
         ),
       onSuccess: () => {
-        toast.success("Product instance updated.");
+        toastManager.add({ title: "Product instance updated.", type: "success" });
         queryClient.invalidateQueries({
           queryKey: ["lead-product-structure-instances", leadId, vendorId],
         });
         setEditStructure(null);
       },
       onError: (error: any) => {
-        toast.error(
-          error?.response?.data?.message || "Failed to update instance.",
-        );
+        toastManager.add({ title: error?.response?.data?.message || "Failed to update instance.", type: "error" });
       },
     });
   const { mutate: updateLeadProductTypeMutation, isPending: updatingLeadType } =
@@ -263,16 +257,14 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         });
       },
       onSuccess: async () => {
-        toast.success("Product type updated successfully.");
+        toastManager.add({ title: "Product type updated successfully.", type: "success" });
         setEditProductTypeOpen(false);
         await queryClient.invalidateQueries({
           queryKey: ["lead", leadId, vendorId, userId],
         });
       },
       onError: (error: any) => {
-        toast.error(
-          error?.response?.data?.message || "Failed to update product type.",
-        );
+        toastManager.add({ title: error?.response?.data?.message || "Failed to update product type.", type: "error" });
       },
     });
   const { mutateAsync: uploadMoreSitePhotos, isPending: uploading } =
@@ -423,11 +415,11 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
   const handleSaveProductType = () => {
     if (!selectedProductTypeId) {
-      toast.error("Please select a product type.");
+      toastManager.add({ title: "Please select a product type.", type: "error" });
       return;
     }
     if (selectedProductTypeId === currentProductTypeId) {
-      toast.info("No changes to update.");
+      toastManager.add({ title: "No changes to update.", type: "info" });
       setEditProductTypeOpen(false);
       return;
     }
@@ -541,7 +533,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
   const handleUploadFilesChange = (files: File[]) => {
     if (files.length > 10) {
-      toast.error("You can upload up to 10 site photos.");
+      toastManager.add({ title: "You can upload up to 10 site photos.", type: "error" });
       setUploadFiles(files.slice(0, 10));
       return;
     }
@@ -550,11 +542,11 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
   const handleUploadMoreSitePhotos = async () => {
     if (!vendorId || !userId) {
-      toast.error("Vendor or user information is missing.");
+      toastManager.add({ title: "Vendor or user information is missing.", type: "error" });
       return;
     }
     if (uploadFiles.length === 0) {
-      toast.error("Please select at least one photo to upload.");
+      toastManager.add({ title: "Please select at least one photo to upload.", type: "error" });
       return;
     }
     try {
@@ -564,16 +556,14 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         createdBy: userId,
         files: uploadFiles,
       });
-      toast.success("Site photos uploaded successfully!");
+      toastManager.add({ title: "Site photos uploaded successfully!", type: "success" });
       setUploadFiles([]);
       setUploadOpen(false);
       queryClient.invalidateQueries({
         queryKey: ["lead", leadId, vendorId, userId],
       });
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message || "Failed to upload site photos.",
-      );
+      toastManager.add({ title: error?.response?.data?.message || "Failed to upload site photos.", type: "error" });
     }
   };
 

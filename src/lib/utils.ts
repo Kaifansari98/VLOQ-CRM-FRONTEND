@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { ColumnFiltersState, FilterFn, SortingFn } from "@tanstack/react-table";
 
 export function cn(...inputs: ClassValue[]) {
@@ -35,7 +35,7 @@ export function logError(context: string, err: unknown) {
 }
 
 export function toastError(err: unknown) {
-  toast.error(getErrorMessage(err));
+  toastManager.add({ title: getErrorMessage(err), type: "error" });
 }
 
 export function getCssVariable(name: string) {

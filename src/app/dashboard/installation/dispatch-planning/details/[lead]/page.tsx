@@ -50,7 +50,7 @@ import {
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
@@ -136,15 +136,15 @@ export default function DispatchPlanningLeadDetails() {
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toast.error("Missing vendor or user info!");
+      toastManager.add({ title: "Missing vendor or user info!", type: "error" });
       return;
     }
 
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: () => toast.error("Failed to delete lead"),
+        onSuccess: () => toastManager.add({ title: "Lead deleted successfully!", type: "success" }),
+        onError: () => toastManager.add({ title: "Failed to delete lead", type: "error" }),
       }
     );
 
@@ -470,7 +470,7 @@ export default function DispatchPlanningLeadDetails() {
                     leadId: leadIdNum,
                     payload: { updated_by: userId! },
                   });
-                  toast.success("Lead successfully moved to Dispatch stage 🚚");
+                  toastManager.add({ title: "Lead successfully moved to Dispatch stage 🚚", type: "success" });
                   queryClient.invalidateQueries({ queryKey: ["leadStats"] });
                   queryClient.invalidateQueries({
                     queryKey: ["universal-stage-leads"],
@@ -498,7 +498,7 @@ export default function DispatchPlanningLeadDetails() {
         statusType={activityType}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toast.error("Vendor or User info is missing!");
+            toastManager.add({ title: "Vendor or User info is missing!", type: "error" });
             return;
           }
           updateStatusMutation.mutate(
@@ -516,7 +516,7 @@ export default function DispatchPlanningLeadDetails() {
             },
             {
               onSuccess: () => {
-                toast.success("Lead marked as On Hold!");
+                toastManager.add({ title: "Lead marked as On Hold!", type: "success" });
 
                 setActivityModalOpen(false);
 
@@ -526,7 +526,7 @@ export default function DispatchPlanningLeadDetails() {
                 });
               },
               onError: (err) => {
-                toast.error(err || "Failed to update lead status");
+                toastManager.add({ title: err || "Failed to update lead status", type: "error" });
               },
             }
           );

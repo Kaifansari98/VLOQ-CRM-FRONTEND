@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useGetMeetings } from "@/hooks/designing-stage/use-meetings";
 import { useDetails } from "./details-context";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
 import { Meeting } from "@/types/designing-stage-types";
 import {
@@ -118,7 +118,7 @@ const MeetingsTab = () => {
 
   // Error state
   if (isError) {
-    toast.error("Failed to load meetings");
+    toastManager.add({ title: "Failed to load meetings", type: "error" });
     return (
       <div className="flex flex-col items-center justify-center py-16 space-y-4">
         <div className="text-center">

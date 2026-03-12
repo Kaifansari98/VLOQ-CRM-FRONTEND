@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import CustomeDatePicker from "@/components/date-picker";
 import { FileUploadField } from "@/components/custom/file-upload";
 import TextAreaInput from "@/components/origin-text-area";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   useAddPayment,
   usePaymentLogs,
@@ -128,12 +128,12 @@ export default function ProjectFinanceSummary({
       },
       {
         onSuccess: () => {
-          toast.success("Payment added successfully!");
+          toastManager.add({ title: "Payment added successfully!", type: "success" });
           reset();
           refetch(); // refresh finance after adding payment
         },
         onError: () => {
-          toast.error("Failed to add payment");
+          toastManager.add({ title: "Failed to add payment", type: "error" });
         },
       }
     );

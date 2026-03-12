@@ -17,7 +17,7 @@ import { FileUploadField } from "../../custom/file-upload";
 import { Button } from "../../ui/button";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import CustomeDatePicker from "@/components/date-picker";
 import TextAreaInput from "@/components/origin-text-area";
 import { SinglePdfUploadField } from "@/components/utils/single-pdf-uploader";
@@ -145,7 +145,7 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
   };
 
   const handleSuccess = () => {
-    toast.success("Booking Done ISM Upload Successfully!");
+    toastManager.add({ title: "Booking Done ISM Upload Successfully!", type: "success" });
     queryClient.invalidateQueries({
       queryKey: ["leadStats", vendorId, userId],
     });
@@ -163,7 +163,7 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!leadId || !accountId) {
-      toast.error("Lead or account data is missing!");
+      toastManager.add({ title: "Lead or account data is missing!", type: "error" });
       return;
     }
 

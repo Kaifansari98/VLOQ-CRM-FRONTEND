@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAppSelector } from "@/redux/store";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PhoneInput } from "@/components/ui/phone-input";
 import {
@@ -130,7 +130,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     },
     onSuccess: (data) => {
       console.log("✅ Mutation onSuccess:", data);
-      toast.success("Lead updated successfully!");
+      toastManager.add({ title: "Lead updated successfully!", type: "success" });
 
       queryClient.invalidateQueries({
         queryKey: ["lead", leadData.id, vendorId, createdBy],
@@ -147,7 +147,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       onClose();
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Failed to update lead");
+      toastManager.add({ title: error?.response?.data?.message || "Failed to update lead", type: "error" });
     },
   });
 
@@ -236,7 +236,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         }
       } catch (error) {
         console.error("Error fetching lead data:", error);
-        toast.error("Failed to load lead data");
+        toastManager.add({ title: "Failed to load lead data", type: "error" });
       } finally {
         setIsLoadingLead(false);
       }
@@ -259,7 +259,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     console.log("🧩 Dirty fields:", dirtyFields);
 
     if (!vendorId || !createdBy) {
-      toast.error("User authentication required");
+      toastManager.add({ title: "User authentication required", type: "error" });
       return;
     }
 
@@ -323,7 +323,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
 
     // If no changes detected
     if (Object.keys(payload).length <= 1) {
-      toast.info("No changes made");
+      toastManager.add({ title: "No changes made", type: "info" });
       return;
     }
 
@@ -337,7 +337,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       console.log("✅ Update successful:", result);
     } catch (error: any) {
       console.error("❌ Update failed:", error);
-      toast.error(error?.response?.data?.message || "Failed to update lead");
+      toastManager.add({ title: error?.response?.data?.message || "Failed to update lead", type: "error" });
     }
   };
 

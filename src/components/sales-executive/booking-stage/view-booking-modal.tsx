@@ -61,7 +61,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -330,11 +330,11 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
 
   const handleCspUpload = async () => {
     if (!vendorId || !userId || !leadId || !accountId) {
-      toast.error("Missing required identifiers");
+      toastManager.add({ title: "Missing required identifiers", type: "error" });
       return;
     }
     if (cspFiles.length === 0) {
-      toast.error("Please select at least one photo");
+      toastManager.add({ title: "Please select at least one photo", type: "error" });
       return;
     }
 
@@ -348,16 +348,14 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         site_photos: cspFiles,
       });
 
-      toast.success("Current site photos uploaded successfully");
+      toastManager.add({ title: "Current site photos uploaded successfully", type: "success" });
       setCspFiles([]);
       setCspUploadOpen(false);
       queryClient.invalidateQueries({
         queryKey: ["csp-booking-photos", vendorId, leadId],
       });
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message || "Failed to upload site photos"
-      );
+      toastManager.add({ title: error?.response?.data?.message || "Failed to upload site photos", type: "error" });
     }
   };
 
@@ -387,13 +385,11 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       },
       {
         onSuccess: () => {
-          toast.success("MRP value updated successfully.");
+          toastManager.add({ title: "MRP value updated successfully.", type: "success" });
           setMrpModalOpen(false);
         },
         onError: (error: any) => {
-          toast.error(
-            error?.response?.data?.message || "Failed to update MRP value.",
-          );
+          toastManager.add({ title: error?.response?.data?.message || "Failed to update MRP value.", type: "error" });
         },
       },
     );
@@ -411,14 +407,12 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       },
       {
         onSuccess: () => {
-          toast.success("Total project amount updated successfully.");
+          toastManager.add({ title: "Total project amount updated successfully.", type: "success" });
           setTotalProjectModalOpen(false);
         },
         onError: (error: any) => {
-          toast.error(
-            error?.response?.data?.message ||
-              "Failed to update total project amount.",
-          );
+          toastManager.add({ title: error?.response?.data?.message ||
+              "Failed to update total project amount.", type: "error" });
         },
       },
     );
@@ -436,14 +430,12 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       },
       {
         onSuccess: () => {
-          toast.success("Booking amount updated successfully.");
+          toastManager.add({ title: "Booking amount updated successfully.", type: "success" });
           setBookingAmountModalOpen(false);
         },
         onError: (error: any) => {
-          toast.error(
-            error?.response?.data?.message ||
-              "Failed to update booking amount.",
-          );
+          toastManager.add({ title: error?.response?.data?.message ||
+              "Failed to update booking amount.", type: "error" });
         },
       },
     );
@@ -452,7 +444,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const handleReplaceInitialFilesChange = (files: File[]) => {
     if (files.length > 1) {
       setReplaceInitialFiles([files[0]]);
-      toast.error("Only one file can be uploaded.");
+      toastManager.add({ title: "Only one file can be uploaded.", type: "error" });
       return;
     }
     setReplaceInitialFiles(files);
@@ -461,13 +453,13 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const handleReplaceInitialPdf = async () => {
     if (!replaceInitialDocId || !vendorId || !userId) return;
     if (replaceInitialFiles.length === 0) {
-      toast.error("Please select a file to upload.");
+      toastManager.add({ title: "Please select a file to upload.", type: "error" });
       return;
     }
 
     const pdfFile = replaceInitialFiles[0];
     if (!documentMimeTypes.includes(pdfFile.type)) {
-      toast.error("Only PDF or image files are allowed.");
+      toastManager.add({ title: "Only PDF or image files are allowed.", type: "error" });
       return;
     }
 
@@ -478,16 +470,14 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         userId,
         pdfFile,
       });
-      toast.success("Document updated successfully.");
+      toastManager.add({ title: "Document updated successfully.", type: "success" });
       setReplaceInitialFiles([]);
       setReplaceInitialDocId(null);
       queryClient.invalidateQueries({
         queryKey: ["siteMeasurementLeadDetails", leadId],
       });
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message || "Failed to replace document.",
-      );
+      toastManager.add({ title: error?.response?.data?.message || "Failed to replace document.", type: "error" });
     }
   };
 
@@ -502,7 +492,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         userId,
       });
 
-      toast.success("Design files uploaded successfully!");
+      toastManager.add({ title: "Design files uploaded successfully!", type: "success" });
       queryClient.invalidateQueries({
         queryKey: ["getDesignsDoc", vendorId, leadId],
       });
@@ -513,7 +503,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       designsForm.reset();
       setDesignsModalOpen(false);
     } catch (error: any) {
-      toast.error(error?.message || "Failed to upload design files.");
+      toastManager.add({ title: error?.message || "Failed to upload design files.", type: "error" });
     }
   };
 
@@ -529,7 +519,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       },
       {
         onSuccess: () => {
-          toast.success("Site supervisor reassigned successfully.");
+          toastManager.add({ title: "Site supervisor reassigned successfully.", type: "success" });
           const createdAt = new Date().toISOString();
           queryClient.setQueryData(
             ["leadLogs", leadId, vendorId],
@@ -577,9 +567,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
           setSelectedSupervisor(null);
         },
         onError: (error: any) => {
-          toast.error(
-            error?.response?.data?.message || "Failed to reassign supervisor.",
-          );
+          toastManager.add({ title: error?.response?.data?.message || "Failed to reassign supervisor.", type: "error" });
         },
       },
     );
@@ -1109,9 +1097,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                 type="button"
                                 onClick={() => {
                                   if (!initialMeasurementDocs.length) {
-                                    toast.error(
-                                      "No document available to replace.",
-                                    );
+                                    toastManager.add({ title: "No document available to replace.", type: "error" });
                                     return;
                                   }
                                   setReplaceInitialDocId(

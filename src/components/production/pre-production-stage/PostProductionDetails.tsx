@@ -19,7 +19,7 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/form";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -123,14 +123,12 @@ export default function PostProductionDetails({
 
       await updateNoBoxes(formData);
 
-      toast.success("No. of Boxes updated successfully!");
+      toastManager.add({ title: "No. of Boxes updated successfully!", type: "success" });
       queryClient.invalidateQueries({ queryKey: ["noOfBoxes"] });
       form.reset();
       setOpen(false);
     } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message || "Failed to update No. of Boxes"
-      );
+      toastManager.add({ title: err?.response?.data?.message || "Failed to update No. of Boxes", type: "error" });
     }
   };
 

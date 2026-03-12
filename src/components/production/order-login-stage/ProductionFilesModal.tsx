@@ -12,7 +12,7 @@ import { useAppSelector } from "@/redux/store";
 import { FolderOpen, Upload, Loader2, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDeleteDocument } from "@/api/leads";
 import {
@@ -93,21 +93,21 @@ export default function ProductionFilesSection({
 
   const handleRemarkSave = async () => {
     if (!remark.trim()) {
-      toast.error("Remark cannot be empty.");
+      toastManager.add({ title: "Remark cannot be empty.", type: "error" });
       return;
     }
     try {
       await saveRemark({ remark, updated_by: userId! });
-      toast.success("Remark saved successfully.");
+      toastManager.add({ title: "Remark saved successfully.", type: "success" });
     } catch {
-      toast.error("Failed to save remark.");
+      toastManager.add({ title: "Failed to save remark.", type: "error" });
     }
   };
 
   // ✅ Handle Upload
   const handleUpload = async () => {
     if (selectedFiles.length === 0) {
-      toast.error("Please select at least one file to upload.");
+      toastManager.add({ title: "Please select at least one file to upload.", type: "error" });
       return;
     }
 
@@ -118,7 +118,7 @@ export default function ProductionFilesSection({
       if (accountId) formData.append("account_id", String(accountId));
 
       await uploadFiles(formData);
-      toast.success("Production files uploaded successfully!");
+      toastManager.add({ title: "Production files uploaded successfully!", type: "success" });
       setSelectedFiles([]);
 
       queryClient.invalidateQueries({
@@ -128,7 +128,7 @@ export default function ProductionFilesSection({
         queryKey: ["leadProductionReadiness", vendorId, leadId],
       });
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to upload files.");
+      toastManager.add({ title: error?.response?.data?.message || "Failed to upload files.", type: "error" });
     }
   };
 

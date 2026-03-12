@@ -26,7 +26,7 @@ import {
   Loader2,
   CheckCircle2,
 } from "lucide-react";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useDispatchPlanningInfo,
@@ -278,16 +278,14 @@ export default function DispatchPlanningDetails({
         payload,
       });
 
-      toast.success("Dispatch planning info saved successfully");
+      toastManager.add({ title: "Dispatch planning info saved successfully", type: "success" });
       queryClient.invalidateQueries({ queryKey: ["dispatchReadinessStatus"] });
       setInfoSaved(true);
       queryClient.invalidateQueries({ queryKey: ["dispatchPlanningLeads"] });
       refetchDispatchInfo();
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message ||
-          "Failed to save dispatch planning info",
-      );
+      toastManager.add({ title: error?.response?.data?.message ||
+          "Failed to save dispatch planning info", type: "error" });
     }
   });
 
@@ -295,7 +293,7 @@ export default function DispatchPlanningDetails({
   const handleSavePayment = handleSubmitPayment(async (data) => {
     try {
       if (!infoSaved) {
-        toast.error("Please save dispatch planning info first");
+        toastManager.add({ title: "Please save dispatch planning info first", type: "error" });
         return;
       }
 
@@ -305,9 +303,7 @@ export default function DispatchPlanningDetails({
         project_pending_amount !== undefined &&
         pendingAmt > project_pending_amount
       ) {
-        toast.error(
-          `Entered amount ₹${pendingAmt} cannot exceed pending project amount ₹${project_pending_amount}`,
-        );
+        toastManager.add({ title: `Entered amount ₹${pendingAmt} cannot exceed pending project amount ₹${project_pending_amount}`, type: "error" });
         return;
       }
 
@@ -330,15 +326,13 @@ export default function DispatchPlanningDetails({
         formData,
       });
 
-      toast.success("Payment info saved successfully");
+      toastManager.add({ title: "Payment info saved successfully", type: "success" });
       setPaymentSaved(true);
       setShowConfirmDialog(false);
       queryClient.invalidateQueries({ queryKey: ["dispatchPlanningLeads"] });
       refetchPaymentInfo();
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message || "Failed to save payment info",
-      );
+      toastManager.add({ title: error?.response?.data?.message || "Failed to save payment info", type: "error" });
       setShowConfirmDialog(false);
     }
   });
@@ -346,7 +340,7 @@ export default function DispatchPlanningDetails({
   // Handle payment save button click (show confirmation)
   const handlePaymentSaveClick = handleSubmitPayment(() => {
     if (!infoSaved) {
-      toast.error("Please save dispatch planning info first");
+      toastManager.add({ title: "Please save dispatch planning info first", type: "error" });
       return;
     }
     setShowConfirmDialog(true);

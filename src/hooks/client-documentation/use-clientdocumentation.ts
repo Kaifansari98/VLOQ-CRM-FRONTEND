@@ -11,7 +11,7 @@ import {
   uploadMoreClientDocumentation,
   UploadMoreDocPayload,
 } from "@/api/client-documentation";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 export interface ClientDoc {
   id: number;
@@ -94,7 +94,7 @@ export const useUploadMoreClientDocumentation = () => {
     mutationFn: (payload: UploadMoreDocPayload) =>
       uploadMoreClientDocumentation(payload),
     onSuccess: async (data, variables) => {
-      toast.success("Documents uploaded successfully!");
+      toastManager.add({ title: "Documents uploaded successfully!", type: "success" });
       await queryClient.refetchQueries({
         queryKey: [
           "clientDocumentationDetails",
@@ -106,7 +106,7 @@ export const useUploadMoreClientDocumentation = () => {
     onError: (error: any) => {
       const message =
         error?.response?.data?.message || error?.message || "Upload failed";
-      toast.error(message);
+      toastManager.add({ title: message, type: "error" });
     },
   });
 };
@@ -120,7 +120,7 @@ export const useMoveLeadToClientApproval = () => {
       updatedBy: number;
     }) => moveLeadToClientApproval(payload),
     onSuccess: async (_data, variables) => {
-      toast.success("Lead moved to Client Approval");
+      toastManager.add({ title: "Lead moved to Client Approval", type: "success" });
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["clientDocumentationDetails"],
@@ -141,7 +141,7 @@ export const useMoveLeadToClientApproval = () => {
     onError: (error: any) => {
       const message =
         error?.response?.data?.message || error?.message || "Failed to move lead";
-      toast.error(message);
+      toastManager.add({ title: message, type: "error" });
     },
   });
 };

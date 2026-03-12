@@ -41,6 +41,7 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --color-destructive-foreground: var(--destructive-foreground);
 }
 
 :root {
@@ -92,6 +93,8 @@
   --chart-active-dot: hsl(var(--primary));
 
   --tooltip-text: #000;
+
+  --destructive-foreground: var(--color-red-700);
 }
 
 .dark {
@@ -143,6 +146,8 @@
 
   --tooltip-text: #000;
 
+  --destructive-foreground: var(--color-red-400);
+
 }
 
 @layer base {
@@ -168,9 +173,6 @@
   -ms-user-select: none;
 }
 
-
-
-
 /* Sticky table header for cutlist */
 .cutlist-table-container {
   max-height: calc(100vh - 250px);
@@ -180,7 +182,6 @@
 .cutlist-table-container [data-slot="table-container"] {
   overflow: visible !important;
 }
-
 
 /* Remove overflow from DataTable's flex container */
 .cutlist-table-container > div {
@@ -236,8 +237,6 @@
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
-
-
 /* Fullscreen table container */
 .cutlist-table-container-fullscreen {
   max-height: calc(100vh - 100px) !important;
@@ -285,6 +284,4 @@
   /* background: hsl(var(--background)) !important; */
   z-index: 10 !important;
 }
-
-
 

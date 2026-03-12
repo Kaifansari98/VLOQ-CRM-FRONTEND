@@ -15,7 +15,7 @@ import { useAddMeetingDocs } from "@/hooks/designing-stage/designing-leads-hooks
 import { useAppSelector } from "@/redux/store";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 
 const uploadSchema = z.object({
@@ -53,7 +53,7 @@ const AddMeetingFilesModal = ({
         accountId,
         files: values.files,
       });
-      toast.success("Files added successfully!");
+      toastManager.add({ title: "Files added successfully!", type: "success" });
 
       queryClient.invalidateQueries({
         queryKey: ["getDesignsDoc", vendorId, leadId],
@@ -66,7 +66,7 @@ const AddMeetingFilesModal = ({
       form.reset();
       onOpenChange(false);
     } catch (error: any) {
-      toast.error(error.message || "Failed to upload files");
+      toastManager.add({ title: error.message || "Failed to upload files", type: "error" });
     }
   };
 

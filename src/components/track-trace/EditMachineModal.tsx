@@ -26,7 +26,7 @@ import {
 import { FileUploadField } from "../custom/file-upload";
 import { useUpdateMachine } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
 import { useAppSelector } from "@/redux/store";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { Loader2, Pencil } from "lucide-react";
 import type { MachineStatus, MachineScanType, MachineData, CreateMachinePayload, UpdateMachinePayload } from "@/types/track-trace";
 import Image from "next/image";
@@ -119,17 +119,17 @@ export function EditMachineModal({
 
   const onSubmit = (data: EditMachineFormData) => {
     if (!vendorId || !userId || !machine) {
-      toast.error("Required information not found");
+      toastManager.add({ title: "Required information not found", type: "error" });
       return;
     }
 
     if (!data.status) {
-      toast.error("Please select a status");
+      toastManager.add({ title: "Please select a status", type: "error" });
       return;
     }
 
     if (!data.scan_type) {
-      toast.error("Please select a scan type");
+      toastManager.add({ title: "Please select a scan type", type: "error" });
       return;
     }
 
@@ -160,7 +160,7 @@ export function EditMachineModal({
     updateMachine(updateParams, {
       onSuccess: (response) => {
         console.log("Machine updated successfully:", response);
-        toast.success("Machine updated successfully");
+        toastManager.add({ title: "Machine updated successfully", type: "success" });
         form.reset();
         onOpenChange(false);
       },
@@ -170,7 +170,7 @@ export function EditMachineModal({
           error?.response?.data?.message ||
           error?.message ||
           "Failed to update machine";
-        toast.error(errorMessage);
+        toastManager.add({ title: errorMessage, type: "error" });
       },
     });
   };

@@ -20,7 +20,7 @@ import {
 } from "@/api/booking";
 import { BookingLeadResponse } from "@/types/booking-types";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
 import { apiClient } from "@/lib/apiClient";
@@ -41,7 +41,7 @@ export const useMoveToBookingStage = () => {
       console.log("Lead moved to Booking Stage:", data);
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message);
+      toastManager.add({ title: error?.response?.data?.message, type: "error" });
       console.log("Error moving lead to Booking Stage:", error);
     },
   });

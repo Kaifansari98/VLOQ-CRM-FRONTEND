@@ -25,7 +25,7 @@ import { Controller, useForm } from "react-hook-form";
 import z from "zod";
 import { useAssignToFinalMeasurement, useCheckSiteSupervisorAssigned } from "@/hooks/useLeadsQueries";
 import { AssignToFinalMeasurementPayload } from "@/api/final-measurement";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUsers";
 import { useRouter } from "next/navigation";
@@ -106,7 +106,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const leadId = data?.id!;
   const accountId = data?.accountId!;
   if (!leadId || !accountId) {
-    toast.error("Lead or Account information is missing");
+    toastManager.add({ title: "Lead or Account information is missing", type: "error" });
     return null;
   }
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -205,9 +205,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         values.task_type === "Final Measurements" &&
         !lead?.site_map_link?.trim()
       ) {
-        toast.error(
-          "Site Map Link is compulsory before assigning lead to Final Measurement",
-        );
+        toastManager.add({ title: "Site Map Link is compulsory before assigning lead to Final Measurement", type: "error" });
         return;
       }
 
@@ -234,7 +232,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
       mutation.mutate(payload, {
         onSuccess: () => {
-          toast.success("Final Measurement assigned successfully!");
+          toastManager.add({ title: "Final Measurement assigned successfully!", type: "success" });
 
           queryClient.invalidateQueries({
             queryKey: ["leadStats", vendorId, userId],
@@ -251,13 +249,11 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
           }
         },
         onError: (error: any) => {
-          toast.error(
-            error?.response?.data?.message || "Failed to assign task",
-          );
+          toastManager.add({ title: error?.response?.data?.message || "Failed to assign task", type: "error" });
         },
       });
     } catch (error: any) {
-      toast.error(error?.message || "Failed to upload site photos");
+      toastManager.add({ title: error?.message || "Failed to upload site photos", type: "error" });
     }
   };
 

@@ -26,7 +26,7 @@ import { Controller, useForm } from "react-hook-form";
 import z from "zod";
 import { useAssignToSiteMeasurement } from "@/hooks/useLeadsQueries";
 import { AssignToSiteMeasurementPayload } from "@/api/leads";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
@@ -116,7 +116,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     mutation.mutate(payload, {
       onSuccess: (data) => {
         console.log("API Response:", data);
-        toast.success("Task assigned successfully!");
+        toastManager.add({ title: "Task assigned successfully!", type: "success" });
 
         queryClient.invalidateQueries({
           queryKey: ["universal-stage-leads"],
@@ -139,7 +139,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
           error?.response?.data?.message ||
           error.message ||
           "Something went wrong";
-        toast.error(backendMessage);
+        toastManager.add({ title: backendMessage, type: "error" });
       },
     });
   };

@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { FileUploadField } from "../custom/file-upload";
 import { useAppSelector } from "@/redux/store";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   Loader2,
   FolderPlus,
@@ -86,25 +86,25 @@ export function CreateProjectModal({
       link.click();
       document.body.removeChild(link);
 
-      toast.success("Template downloaded successfully");
+      toastManager.add({ title: "Template downloaded successfully", type: "success" });
     } catch (error) {
-      toast.error("Failed to download template");
+      toastManager.add({ title: "Failed to download template", type: "error" });
     }
   };
 
   const onSubmit = (data: CreateProjectFormData) => {
     if (!vendorId) {
-      toast.error("Vendor information not found");
+      toastManager.add({ title: "Vendor information not found", type: "error" });
       return;
     }
 
     if (!vendorToken) {
-      toast.error("Vendor token not found");
+      toastManager.add({ title: "Vendor token not found", type: "error" });
       return;
     }
 
     if (!data.file || data.file.length === 0) {
-      toast.error("Please upload an Excel file");
+      toastManager.add({ title: "Please upload an Excel file", type: "error" });
       return;
     }
 
@@ -123,7 +123,7 @@ export function CreateProjectModal({
     createProject(payload, {
       onSuccess: (response) => {
         console.log("Project created successfully:", response);
-        toast.success(response.message || "Project created successfully");
+        toastManager.add({ title: response.message || "Project created successfully", type: "success" });
         form.reset();
         onOpenChange(false);
       },
@@ -133,7 +133,7 @@ export function CreateProjectModal({
           error?.response?.data?.message ||
           error?.message ||
           "Failed to create project";
-        toast.error(errorMessage);
+        toastManager.add({ title: errorMessage, type: "error" });
       },
     });
   };

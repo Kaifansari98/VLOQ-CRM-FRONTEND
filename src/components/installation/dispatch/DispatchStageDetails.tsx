@@ -61,7 +61,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { z } from "zod";
 import PendingMaterialDetails from "./PendingMaterialDetails";
 import VehicleNumberInput from "@/components/custom/VehicleNumberInput";
@@ -963,7 +963,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                 try {
                   if (useLeadLevelBoxes) {
                     if (!noOfBoxesInput || Number(noOfBoxesInput) <= 0) {
-                      toast.error("Please enter a valid positive number");
+                      toastManager.add({ title: "Please enter a valid positive number", type: "error" });
                       return;
                     }
                     const formData = new FormData();
@@ -977,7 +977,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                       (item) => !item.value || Number(item.value) <= 0,
                     );
                     if (invalid) {
-                      toast.error("Please enter boxes for all instances");
+                      toastManager.add({ title: "Please enter boxes for all instances", type: "error" });
                       return;
                     }
 
@@ -995,7 +995,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     }
                   }
 
-                  toast.success("No. of Boxes updated successfully!");
+                  toastManager.add({ title: "No. of Boxes updated successfully!", type: "success" });
                   queryClient.invalidateQueries({
                     queryKey: ["requiredDateForDispatch"],
                   });
@@ -1008,10 +1008,8 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                   });
                   setOpenBoxesModal(false);
                 } catch (err: any) {
-                  toast.error(
-                    err?.response?.data?.message ||
-                      "Failed to update No. of Boxes",
-                  );
+                  toastManager.add({ title: err?.response?.data?.message ||
+                      "Failed to update No. of Boxes", type: "error" });
                 }
               }}
               disabled={updatingBoxes}

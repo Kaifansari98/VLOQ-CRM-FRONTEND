@@ -15,7 +15,7 @@ import {
   FileUploadTrigger,
 } from "@/components/ui/file-upload";
 import { Upload, X } from "lucide-react";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 interface FileUploaderProps {
   value: File[];
@@ -57,7 +57,7 @@ export function FilesUploader({ value, onChange }: FileUploaderProps) {
     (file: File, message: string) => {
       const fileName =
         file.name.length > 20 ? file.name.slice(0, 20) + "..." : file.name;
-      toast.error(`${message}: "${fileName}" has been rejected`);
+      toastManager.add({ title: `${message}: "${fileName}" has been rejected`, type: "error" });
     },
     []
   );

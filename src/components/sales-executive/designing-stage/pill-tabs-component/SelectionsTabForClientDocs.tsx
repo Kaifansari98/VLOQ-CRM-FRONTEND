@@ -12,7 +12,7 @@ import { useAppSelector } from "@/redux/store";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   Form,
   FormControl,
@@ -325,7 +325,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     const promises: Promise<void>[] = [];
 
     if (!canUpdateInput) {
-      toast.error("You do not have permission to update selections.");
+      toastManager.add({ title: "You do not have permission to update selections.", type: "error" });
       return;
     }
 
@@ -337,13 +337,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       promises.push(upsertSelection("Handles", values.handles));
 
     if (!promises.length) {
-      toast.info("No changes detected");
+      toastManager.add({ title: "No changes detected", type: "info" });
       return;
     }
 
     try {
       await Promise.all(promises);
-      toast.success("Selections saved");
+      toastManager.add({ title: "Selections saved", type: "success" });
       await refetch();
       queryClient.invalidateQueries({
         queryKey: ["designingStageCounts", vendorId, leadId],
@@ -352,7 +352,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         queryKey: ["getSelectionData", vendorId, leadId],
       });
     } catch (e: any) {
-      toast.error(e?.message || "Some selections failed to update");
+      toastManager.add({ title: e?.message || "Some selections failed to update", type: "error" });
     }
   };
 
@@ -492,11 +492,11 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
   const handleUploadForInstance = async (values: InstanceUploadValues) => {
     if (!vendorId || !userId) {
-      toast.error("Missing vendorId or userId for upload");
+      toastManager.add({ title: "Missing vendorId or userId for upload", type: "error" });
       return;
     }
     if (!activeInstance && structureInstances.length > 0) {
-      toast.error("Please select product instance");
+      toastManager.add({ title: "Please select product instance", type: "error" });
       return;
     }
 
@@ -510,11 +510,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         pptDocuments: values.pptDocuments,
         pythaDocuments: values.pythaDocuments,
       });
-      toast.success(
-        activeInstance
+      toastManager.add({ title: activeInstance
           ? `Files uploaded for ${activeInstance.title}`
-          : "Files uploaded",
-      );
+          : "Files uploaded", type: "success" });
       setUploadModalOpen(false);
       uploadForm.reset({ pptDocuments: [], pythaDocuments: [] });
       await queryClient.invalidateQueries({
@@ -524,16 +522,14 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         queryKey: ["getSelectionData", vendorId, leadId],
       });
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || "Failed to upload files");
+      toastManager.add({ title: e?.response?.data?.message || "Failed to upload files", type: "error" });
     }
   };
 
   const handleMoveStage = () => {
     if (!vendorId || !userId) return;
     if (selectionForm.formState.isDirty) {
-      toast.error(
-        "Please save Carcas, Shutter and Handles before moving stage",
-      );
+      toastManager.add({ title: "Please save Carcas, Shutter and Handles before moving stage", type: "error" });
       return;
     }
     moveToClientApproval(

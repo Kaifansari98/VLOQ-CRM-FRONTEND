@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EllipsisVertical, CircleCheck, CircleX, XCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   useRevertActivityStatus,
   useUpdateActivityStatus,
@@ -278,7 +278,7 @@ export default function PendingLeadDetails() {
         statusType="lost"
         onSubmitRemark={(remark) => {
           if (!vendorId || !userId) {
-            toast.error("Missing vendor/user info");
+            toastManager.add({ title: "Missing vendor/user info", type: "error" });
             return;
           }
 
@@ -297,7 +297,7 @@ export default function PendingLeadDetails() {
             },
             {
               onSuccess: () => {
-                toast.success("Lead Approved!");
+                toastManager.add({ title: "Lead Approved!", type: "success" });
                 setOpenApproveModal(false);
 
                 // ✅ Invalidate both queries
@@ -310,7 +310,7 @@ export default function PendingLeadDetails() {
                 router.push("/dashboard/leads/leadstable");
               },
               onError: (err) => {
-                toast.error(err || "Failed to approve lead!");
+                toastManager.add({ title: err || "Failed to approve lead!", type: "error" });
               },
             }
           );
@@ -324,7 +324,7 @@ export default function PendingLeadDetails() {
         statusType="lostApproval"
         onSubmitRemark={(remark) => {
           if (!vendorId || !userId) {
-            toast.error("Missing vendor/user info");
+            toastManager.add({ title: "Missing vendor/user info", type: "error" });
             return;
           }
 
@@ -342,7 +342,7 @@ export default function PendingLeadDetails() {
             },
             {
               onSuccess: () => {
-                toast.success("Lead marked as Lost Approval!");
+                toastManager.add({ title: "Lead marked as Lost Approval!", type: "success" });
                 setOpenMarkLost(false);
 
                 // ✅ Refresh related data
@@ -353,7 +353,7 @@ export default function PendingLeadDetails() {
                 router.push("/dashboard/leads/leadstable");
               },
               onError: (err) => {
-                toast.error(err || "Failed to mark as Lost!");
+                toastManager.add({ title: err || "Failed to mark as Lost!", type: "error" });
               },
             }
           );
@@ -367,7 +367,7 @@ export default function PendingLeadDetails() {
         onOpenChange={setOpenRemark}
         onSubmitRemark={(remark) => {
           if (!vendorId || !userId || !remarkLeadId) {
-            toast.error("Missing vendor/user/lead info");
+            toastManager.add({ title: "Missing vendor/user/lead info", type: "error" });
             return;
           }
 
@@ -395,7 +395,7 @@ export default function PendingLeadDetails() {
                 router.push("/dashboard/leads/leadstable");
               },
               onError: (err) => {
-                toast.error(err?.message || "Failed to mark as active!");
+                toastManager.add({ title: err?.message || "Failed to mark as active!", type: "error" });
               },
             }
           );

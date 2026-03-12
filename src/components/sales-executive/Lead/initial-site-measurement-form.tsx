@@ -18,7 +18,7 @@ import { Button } from "../../ui/button";
 import { useAppSelector } from "@/redux/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { uploadInitialSiteMeasurement } from "@/api/leads";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import CustomeDatePicker from "@/components/date-picker";
 import TextAreaInput from "@/components/origin-text-area";
 import { SinglePdfUploadField } from "@/components/utils/single-pdf-uploader";
@@ -139,7 +139,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   const mutation = useMutation({
     mutationFn: uploadInitialSiteMeasurement,
     onSuccess: () => {
-      toast.success("Initial Site Measurement Upload Successfully!");
+      toastManager.add({ title: "Initial Site Measurement Upload Successfully!", type: "success" });
       queryClient.invalidateQueries({
         queryKey: ["leadStats", vendorId, userId],
       });
@@ -162,7 +162,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!leadId || !accountId) {
-      toast.error("Lead or account data is missing!");
+      toastManager.add({ title: "Lead or account data is missing!", type: "error" });
       return;
     }
 

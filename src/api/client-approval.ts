@@ -1,7 +1,7 @@
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import type { AxiosError } from "axios";
 
 interface ApiErrorResponse {
@@ -103,12 +103,12 @@ export const useSubmitClientApproval = () => {
     },
 
     onSuccess: () => {
-      toast.success("Client Approval submitted successfully!");
+      toastManager.add({ title: "Client Approval submitted successfully!", type: "success" });
       queryClient.invalidateQueries({ queryKey: ["clientApprovalDetails"] });
     },
 
     onError: (err: AxiosError<ApiErrorResponse>) => {
-      toast.error(extractAxiosError(err));
+      toastManager.add({ title: extractAxiosError(err), type: "error" });
     },
   });
 };
@@ -143,10 +143,10 @@ export const useRequestToTechCheck = () => {
     },
 
     onSuccess: () =>
-      toast.success("Request to Tech Check submitted successfully!"),
+      toastManager.add({ title: "Request to Tech Check submitted successfully!", type: "success" }),
 
     onError: (err: AxiosError<ApiErrorResponse>) => {
-      toast.error(extractAxiosError(err));
+      toastManager.add({ title: extractAxiosError(err), type: "error" });
     },
   });
 };

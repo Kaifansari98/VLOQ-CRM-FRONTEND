@@ -2,7 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import { apiClient } from "@/lib/apiClient"
 import { useDispatch } from "react-redux"
 import { setCredentials } from "@/redux/slices/authSlice"
-import { toast } from "react-toastify"
+import { toastManager } from "@/components/ui/toast";
 
 interface LoginPayload {
   identifier: string,
@@ -20,7 +20,7 @@ export function useLogin() {
         return res.data;
       } catch (error: any) {
         // ✅ Throw actual backend error message
-        toast.error(error.response?.data?.message || "Login failed")
+        toastManager.add({ title: error.response?.data?.message || "Login failed", type: "error" })
         throw new Error(error.response?.data?.message || "Login failed");
       }
     },

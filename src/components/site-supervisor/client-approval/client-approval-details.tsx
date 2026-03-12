@@ -27,7 +27,7 @@ import { useLeadById } from "@/hooks/useLeadsQueries";
 import { useMutation } from "@tanstack/react-query";
 import BaseModal from "@/components/utils/baseModal";
 import { FileUploadField } from "@/components/custom/file-upload";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { canUploadClientApproval } from "@/components/utils/privileges";
 
 interface Props {
@@ -114,25 +114,23 @@ export default function ClientApprovalDetails({ leadId }: Props) {
         documents: uploadFiles,
       }),
     onSuccess: () => {
-      toast.success("Screenshots uploaded successfully");
+      toastManager.add({ title: "Screenshots uploaded successfully", type: "success" });
       setUploadFiles([]);
       setOpenUploadMore(false);
       refetch();
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message || "Failed to upload screenshots"
-      );
+      toastManager.add({ title: error?.response?.data?.message || "Failed to upload screenshots", type: "error" });
     },
   });
 
   const handleUploadMore = () => {
     if (!vendorId || !userId || !accountId) {
-      toast.error("Missing required identifiers");
+      toastManager.add({ title: "Missing required identifiers", type: "error" });
       return;
     }
     if (uploadFiles.length === 0) {
-      toast.error("Please select at least one file");
+      toastManager.add({ title: "Please select at least one file", type: "error" });
       return;
     }
     uploadMoreMutation.mutate();

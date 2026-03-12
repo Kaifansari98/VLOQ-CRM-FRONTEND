@@ -15,7 +15,7 @@ import {
 import CustomeDatePicker from "@/components/date-picker";
 import MultipleSelector, { Option } from "@/components/ui/multiselect";
 import { Button } from "@/components/ui/button";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
@@ -111,11 +111,11 @@ export default function UnderInstallationDetails({
   // 🔹 Save handler
   const onSave = () => {
     if (!endDate) {
-      toast.error("Please select expected end date");
+      toastManager.add({ title: "Please select expected end date", type: "error" });
       return;
     }
     if (installerSelections.length === 0) {
-      toast.error("Please select at least one installer");
+      toastManager.add({ title: "Please select at least one installer", type: "error" });
       return;
     }
 
@@ -136,7 +136,7 @@ export default function UnderInstallationDetails({
         },
         {
           onSuccess: () => {
-            (toast.success("Installation details updated."),
+            (toastManager.add({ title: "Installation details updated.", type: "success" }),
               queryClient.invalidateQueries({
                 queryKey: ["usableHandoverReady"],
               }));
@@ -155,7 +155,7 @@ export default function UnderInstallationDetails({
         },
         {
           onSuccess: () => {
-            toast.success("Installers added successfully.");
+            toastManager.add({ title: "Installers added successfully.", type: "success" });
             queryClient.invalidateQueries({
               queryKey: ["usableHandoverReady"],
             });

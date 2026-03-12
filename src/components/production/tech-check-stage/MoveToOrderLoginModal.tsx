@@ -32,7 +32,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { z } from "zod";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -105,7 +105,7 @@ export default function MoveToOrderLoginModal({
     const assignUserId = selectedUserId ?? form.getValues("assign_to_user_id");
 
     if (!vendorId || !userId || !assignUserId) {
-      toast.error("Missing required details!");
+      toastManager.add({ title: "Missing required details!", type: "error" });
       return;
     }
 
@@ -124,13 +124,11 @@ export default function MoveToOrderLoginModal({
             response?.data?.moved_to_order_login ||
               response?.moved_to_order_login
           );
-          toast.success(
-            movedToOrderLogin
+          toastManager.add({ title: movedToOrderLogin
               ? "All instances completed. Lead moved to Order Login successfully!"
               : data.instanceId
               ? "Tech Check marked complete for this instance."
-              : "Lead moved to Order Login successfully!"
-          );
+              : "Lead moved to Order Login successfully!", type: "success" });
           router.push(
          
               "/dashboard/production/order-login"

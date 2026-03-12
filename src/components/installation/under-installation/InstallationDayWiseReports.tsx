@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import CustomeDatePicker from "@/components/date-picker";
 import { FileUploadField } from "@/components/custom/file-upload";
 import {
@@ -108,19 +108,17 @@ export default function InstallationDayWiseReports({
 
   const handleAddReport = () => {
     if (!selectedDate) {
-      toast.error("Please select a date");
+      toastManager.add({ title: "Please select a date", type: "error" });
       return;
     }
 
     // duplicate check
     if (usedDates.has(selectedDate)) {
-      toast.error(
-        "An update for this date already exists. Choose another date.",
-      );
+      toastManager.add({ title: "An update for this date already exists. Choose another date.", type: "error" });
       return;
     }
     if (files.length === 0) {
-      toast.error("Please upload at least one document");
+      toastManager.add({ title: "Please upload at least one document", type: "error" });
       return;
     }
 
@@ -136,7 +134,7 @@ export default function InstallationDayWiseReports({
       },
       {
         onSuccess: () => {
-          toast.success("Day-wise report uploaded successfully");
+          toastManager.add({ title: "Day-wise report uploaded successfully", type: "success" });
           setIsAddModalOpen(false);
           setSelectedDate(undefined);
           setRemark("");
@@ -144,7 +142,7 @@ export default function InstallationDayWiseReports({
           refetch();
         },
         onError: (error) => {
-          toast.error(error?.message || "Failed to upload report");
+          toastManager.add({ title: error?.message || "Failed to upload report", type: "error" });
         },
       },
     );

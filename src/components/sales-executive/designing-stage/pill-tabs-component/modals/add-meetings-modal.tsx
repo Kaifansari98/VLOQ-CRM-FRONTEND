@@ -21,7 +21,7 @@ import CustomeDatePicker from "@/components/date-picker";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { submitMeeting } from "@/api/designingStageQueries";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import BaseModal from "@/components/utils/baseModal";
 
 export const meetingSchema = z.object({
@@ -67,7 +67,7 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
         userId,
       }),
     onSuccess: () => {
-      toast.success("Meeting added successfully!");
+      toastManager.add({ title: "Meeting added successfully!", type: "success" });
       form.reset();
       onOpenChange(false);
 
@@ -80,7 +80,7 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
       });
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Failed to add meeting!");
+      toastManager.add({ title: err?.response?.data?.message || "Failed to add meeting!", type: "error" });
     },
   });
 

@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import RevertRemarkModal from "@/components/generics/RevertRemarkModal";
 import { useRevertActivityStatus } from "@/hooks/useActivityStatus";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useRouter } from "next/navigation";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useQueryClient } from "@tanstack/react-query";
@@ -401,7 +401,7 @@ export default function PendingLeadsTable({
 
   const onSubmitRemark = (remark: string) => {
     if (!activeLead || !vendorId || !userId) {
-      toast.error("Missing vendor/user/lead info");
+      toastManager.add({ title: "Missing vendor/user/lead info", type: "error" });
       return;
     }
 
@@ -619,7 +619,7 @@ export default function PendingLeadsTable({
             },
             {
               onSuccess: () => {
-                toast.success("Lead marked as Lost!");
+                toastManager.add({ title: "Lead marked as Lost!", type: "success" });
                 setOpenActivityStatus(false);
                 setActiveLead(null);
                 queryClient.invalidateQueries({

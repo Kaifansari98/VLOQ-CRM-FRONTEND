@@ -8,7 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { FolderOpen, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   usePostProductionCompleteness,
   useQcPhotos,
@@ -108,7 +108,7 @@ export default function PostProductionQcPhotosSection({
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) {
-      toast.error("Please select at least one photo to upload.");
+      toastManager.add({ title: "Please select at least one photo to upload.", type: "error" });
       return;
     }
 
@@ -119,7 +119,7 @@ export default function PostProductionQcPhotosSection({
       if (accountId) formData.append("account_id", String(accountId));
 
       await uploadQcFiles(formData);
-      toast.success("QC photos uploaded successfully!");
+      toastManager.add({ title: "QC photos uploaded successfully!", type: "success" });
       setSelectedFiles([]);
 
       queryClient.invalidateQueries({
@@ -136,9 +136,7 @@ export default function PostProductionQcPhotosSection({
 
       await refetchCompleteness();
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message || "Failed to upload QC photos.",
-      );
+      toastManager.add({ title: error?.response?.data?.message || "Failed to upload QC photos.", type: "error" });
     }
   };
 
