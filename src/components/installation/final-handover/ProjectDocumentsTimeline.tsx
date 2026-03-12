@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   Ruler,
   BookOpen,
@@ -224,16 +224,59 @@ function filterDocsForStage(
   });
 }
 
+// ─── Animation variants ───────────────────────────────────────────────────────
+
+const listVariants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.045, delayChildren: 0.05 },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, x: -10 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.28 },
+  },
+};
+
+const iconVariants = {
+  hidden: { scale: 0.6, opacity: 0 },
+  visible: {
+    scale: 1,
+    opacity: 1,
+    transition: { type: "spring" as const, stiffness: 350, damping: 22 },
+  },
+};
+
+const gridVariants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.06, delayChildren: 0.05 },
+  },
+};
+
+const gridItemVariants: Variants = {
+  hidden: { opacity: 0, y: 8, scale: 0.97 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.22 },
+  },
+};
+
 // ─── Stage Item ───────────────────────────────────────────────────────────────
 
 interface StageItemProps {
   stage: StageConfig;
   docs: LeadDocument[];
   isLast: boolean;
-  index: number;
 }
 
-function StageItem({ stage, docs, isLast, index }: StageItemProps) {
+function StageItem({ stage, docs, isLast }: StageItemProps) {
   const [open, setOpen] = useState(false);
 
   const images = docs.filter((d) => isImageFile(d.doc_og_name));
@@ -244,15 +287,11 @@ function StageItem({ stage, docs, isLast, index }: StageItemProps) {
   const Icon = stage.icon;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, delay: index * 0.03 }}
-      className="relative flex gap-4"
-    >
+    <motion.div variants={itemVariants} className="relative flex gap-4">
       {/* Spine */}
       <div className="flex flex-col items-center shrink-0">
-        <div
+        <motion.div
+          variants={iconVariants}
           className={cn(
             "flex h-8 w-8 items-center justify-center rounded-lg shrink-0 z-10 transition-opacity",
             stage.iconBg,
@@ -260,7 +299,7 @@ function StageItem({ stage, docs, isLast, index }: StageItemProps) {
           )}
         >
           <Icon size={14} className={cn(stage.iconColor, !hasFiles && "opacity-60")} />
-        </div>
+        </motion.div>
         {!isLast && (
           <div className="w-px flex-1 min-h-[16px] mt-1 bg-border" />
         )}
@@ -283,25 +322,28 @@ function StageItem({ stage, docs, isLast, index }: StageItemProps) {
               {stage.label}
             </span>
             {hasFiles && (
-              <span
+              <motion.span
+                initial={{ scale: 0.7, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 20, delay: 0.1 }}
                 className={cn(
                   "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium shrink-0",
                   stage.badgeColor
                 )}
               >
                 {total} {total === 1 ? "file" : "files"}
-              </span>
+              </motion.span>
             )}
           </div>
 
           {hasFiles && (
-            <ChevronRight
-              size={14}
-              className={cn(
-                "shrink-0 text-muted-foreground transition-transform duration-200",
-                open && "rotate-90"
-              )}
-            />
+            <motion.span
+              animate={{ rotate: open ? 90 : 0 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className="inline-flex shrink-0"
+            >
+              <ChevronRight size={14} className="text-muted-foreground" />
+            </motion.span>
           )}
         </button>
 
@@ -311,55 +353,77 @@ function StageItem({ stage, docs, isLast, index }: StageItemProps) {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
+              transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
               className="overflow-hidden"
             >
               <div className="pt-3 space-y-4">
                 {images.length > 0 && (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-1.5 px-1">
+                    <motion.div
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.18 }}
+                      className="flex items-center gap-1.5 px-1"
+                    >
                       <Images size={11} className="text-muted-foreground" />
                       <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
                         Photos ({images.length})
                       </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    </motion.div>
+                    <motion.div
+                      variants={gridVariants}
+                      initial="hidden"
+                      animate="visible"
+                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+                    >
                       {images.map((doc) => (
-                        <ImageComponent
-                          key={doc.id}
-                          doc={{
-                            id: doc.id,
-                            doc_og_name: doc.doc_og_name,
-                            signedUrl: doc.signed_url,
-                            created_at: doc.created_at,
-                          }}
-                        />
+                        <motion.div key={doc.id} variants={gridItemVariants}>
+                          <ImageComponent
+                            doc={{
+                              id: doc.id,
+                              doc_og_name: doc.doc_og_name,
+                              signedUrl: doc.signed_url,
+                              created_at: doc.created_at,
+                            }}
+                          />
+                        </motion.div>
                       ))}
-                    </div>
+                    </motion.div>
                   </div>
                 )}
 
                 {fileDocs.length > 0 && (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-1.5 px-1">
+                    <motion.div
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.18 }}
+                      className="flex items-center gap-1.5 px-1"
+                    >
                       <FileText size={11} className="text-muted-foreground" />
                       <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
                         Documents ({fileDocs.length})
                       </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    </motion.div>
+                    <motion.div
+                      variants={gridVariants}
+                      initial="hidden"
+                      animate="visible"
+                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+                    >
                       {fileDocs.map((doc) => (
-                        <DocumentCard
-                          key={doc.id}
-                          doc={{
-                            id: doc.id,
-                            originalName: doc.doc_og_name,
-                            signedUrl: doc.signed_url,
-                            created_at: doc.created_at,
-                          }}
-                        />
+                        <motion.div key={doc.id} variants={gridItemVariants}>
+                          <DocumentCard
+                            doc={{
+                              id: doc.id,
+                              originalName: doc.doc_og_name,
+                              signedUrl: doc.signed_url,
+                              created_at: doc.created_at,
+                            }}
+                          />
+                        </motion.div>
                       ))}
-                    </div>
+                    </motion.div>
                   </div>
                 )}
               </div>
@@ -395,7 +459,12 @@ export default function ProjectDocumentsTimeline({ leadId, vendorId }: Props) {
   return (
     <div className="pb-6 px-1">
       {/* Header */}
-      <div className="mb-5 flex items-center justify-between">
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="mb-5 flex items-center justify-between"
+      >
         <div className="flex items-center gap-4">
           <FolderOpen size={25} className="text-muted-foreground" />
           <div>
@@ -406,11 +475,16 @@ export default function ProjectDocumentsTimeline({ leadId, vendorId }: Props) {
           </div>
         </div>
         {!isLoading && totalFiles > 0 && (
-          <span className="text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full shrink-0">
-            {stagesWithFiles} stages · {totalFiles} {totalFiles === 1 ? "file" : "files"}
-          </span>
+          <motion.span
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.25, delay: 0.15 }}
+            className="text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full shrink-0"
+          >
+            {totalFiles} {totalFiles === 1 ? "file" : "files"}
+          </motion.span>
         )}
-      </div>
+      </motion.div>
 
       {/* Loading skeleton */}
       {isLoading ? (
@@ -423,17 +497,20 @@ export default function ProjectDocumentsTimeline({ leadId, vendorId }: Props) {
           ))}
         </div>
       ) : (
-        <div>
+        <motion.div
+          variants={listVariants}
+          initial="hidden"
+          animate="visible"
+        >
           {STAGES.map((stage, idx) => (
             <StageItem
               key={stage.id}
               stage={stage}
               docs={stageDocMap[stage.id]}
               isLast={idx === STAGES.length - 1}
-              index={idx}
             />
           ))}
-        </div>
+        </motion.div>
       )}
     </div>
   );
