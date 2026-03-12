@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronsUpDown, LogOut } from "lucide-react";
+import { ChevronsUpDown, Eye, KeyRound, LogOut } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -35,6 +35,8 @@ import { toast } from "react-toastify";
 import { logout } from "@/redux/slices/authSlice";
 import { useAppSelector } from "@/redux/store";
 import { deactiveToken } from "@/api/notifications";
+import ChangePasswordModal from "@/components/auth/ChangePasswordModal";
+import { logoutActivityApi } from "@/api/auth";
 export function NavUser({
   user,
 }: {
@@ -49,6 +51,7 @@ export function NavUser({
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
 
@@ -75,6 +78,9 @@ export function NavUser({
           token: token ?? "",
         });
       }
+
+      // 🔴 Log logout activity
+      await logoutActivityApi();
 
       toast.success("You have been logged out 👋");
 
@@ -163,9 +169,19 @@ export function NavUser({
                 </DropdownMenuItem> */}
               {/* </DropdownMenuGroup> */}
 
-              {/* <DropdownMenuSeparator /> */}
 
               {/* 🔹 Open logout confirmation */}
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onSelect={() => {
+                  setMenuOpen(false);
+                  setTimeout(() => setChangePasswordOpen(true), 0);
+                }}
+              >
+                <KeyRound />
+                Change Password
+              </DropdownMenuItem>
+                <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={(e) => {
                   e.preventDefault();
@@ -181,6 +197,11 @@ export function NavUser({
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
+
+      <ChangePasswordModal
+        open={changePasswordOpen}
+        onOpenChange={setChangePasswordOpen}
+      />
 
       {/* 🔹 Logout confirmation dialog */}
       <AlertDialog open={open} onOpenChange={setOpen}>
