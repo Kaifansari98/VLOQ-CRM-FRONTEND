@@ -27,6 +27,9 @@ export default function LeadDetailsProductionUtil({
 }: LeadDetailsProductionUtilProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const isHoUser = useAppSelector((s) => s.auth.is_ho_user);
+  const effectiveUserType =
+    userType === "admin" && !isHoUser ? "sales-executive" : userType;
   const userId = useAppSelector((s) => s.auth.user?.id);
   const searchParams = useSearchParams();
   const instanceFromUrlRaw = searchParams.get("instance_id");
@@ -92,7 +95,7 @@ export default function LeadDetailsProductionUtil({
   const readyForUnderProduction =
     preProductionReadyData?.readyForUnderProduction ?? false;
 
-  const defaultTab = canViewDefaultSubTabProductionStage(userType);
+  const defaultTab = canViewDefaultSubTabProductionStage(effectiveUserType ?? "");
 
   const allTabs = [
     {
