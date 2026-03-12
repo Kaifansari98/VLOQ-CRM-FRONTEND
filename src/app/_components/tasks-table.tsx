@@ -332,7 +332,14 @@ const MyTaskTable = () => {
                           ? `/dashboard/installation/final-handover/details/${row.leadId}`
                           : `/dashboard/production/order-login/details/${row.leadId}`;
 
-        router.push(`${basePath}?accountId=${row.accountId}&tab=orderLogin`);
+        const params = new URLSearchParams({
+          accountId: String(row.accountId),
+          tab: "orderLogin",
+        });
+        if (row.instance_id) {
+          params.set("instance_id", String(row.instance_id));
+        }
+        router.push(`${basePath}?${params.toString()}`);
       } else {
         console.log("follow up is under development");
       }
