@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { useAppDispatch } from "@/redux/store"
+import { useAppDispatch, useAppSelector } from "@/redux/store"
 import { setFranchiseId } from "@/redux/slices/authSlice"
 
 export function TeamSwitcher({
@@ -45,6 +45,8 @@ export function TeamSwitcher({
 }) {
   const { isMobile } = useSidebar()
   const dispatch = useAppDispatch()
+  const userType = useAppSelector((state) => state.auth.user?.user_type?.user_type)
+  const isSuperAdmin = userType?.toLowerCase() === "super-admin"
   const [activeTeam, setActiveTeam] = React.useState(teams[0])
   const [confirmOpen, setConfirmOpen] = React.useState(false)
   const [pendingTeam, setPendingTeam] = React.useState<
@@ -108,48 +110,50 @@ export function TeamSwitcher({
                 <ChevronsUpDown className="ml-auto" />
               </SidebarMenuButton>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-              align="start"
-              side={isMobile ? "bottom" : "right"}
-              sideOffset={4}
-            >
-              <DropdownMenuLabel className="text-muted-foreground text-xs">
-                Teams
-              </DropdownMenuLabel>
-              {teams.map((team, index) => (
-                <DropdownMenuItem
-                  key={team.id}
-                  onClick={() => handleTeamClick(team)}
-                  className={
-                    team.id === activeTeam.id
-                      ? "gap-2 p-2 bg-muted/50"
-                      : "gap-2 p-2"
-                  }
-                >
-                  <div className="flex size-6 items-center justify-center rounded-md border">
-                    <team.logo className="size-3.5 shrink-0" />
+            {isSuperAdmin && (
+              <DropdownMenuContent
+                className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+                align="start"
+                side={isMobile ? "bottom" : "right"}
+                sideOffset={4}
+              >
+                <DropdownMenuLabel className="text-muted-foreground text-xs">
+                  Teams
+                </DropdownMenuLabel>
+                {teams.map((team, index) => (
+                  <DropdownMenuItem
+                    key={team.id}
+                    onClick={() => handleTeamClick(team)}
+                    className={
+                      team.id === activeTeam.id
+                        ? "gap-2 p-2 bg-muted/50"
+                        : "gap-2 p-2"
+                    }
+                  >
+                    <div className="flex size-6 items-center justify-center rounded-md border">
+                      <team.logo className="size-3.5 shrink-0" />
+                    </div>
+                    {team.name}
+                    <DropdownMenuShortcut>
+                      {team.id === activeTeam.id ? (
+                        <span className="inline-flex items-center justify-end w-6">
+                          <span className="size-2 rounded-full bg-green-500 mr-1.5" />
+                        </span>
+                      ) : (
+                        `⌘${index + 1}`
+                      )}
+                    </DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                ))}
+                {/* <DropdownMenuSeparator /> */}
+                {/* <DropdownMenuItem className="gap-2 p-2">
+                  <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                    <Plus className="size-4" />
                   </div>
-                  {team.name}
-                  <DropdownMenuShortcut>
-                    {team.id === activeTeam.id ? (
-                      <span className="inline-flex items-center justify-end w-6">
-                        <span className="size-2 rounded-full bg-green-500 mr-1.5" />
-                      </span>
-                    ) : (
-                      `⌘${index + 1}`
-                    )}
-                  </DropdownMenuShortcut>
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="gap-2 p-2">
-                <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                  <Plus className="size-4" />
-                </div>
-                <div className="text-muted-foreground font-medium">Add team</div>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
+                  <div className="text-muted-foreground font-medium">Add team</div>
+                </DropdownMenuItem> */}
+              </DropdownMenuContent>
+            )}
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
