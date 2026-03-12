@@ -20,7 +20,6 @@ import { logoutActivityApi } from "@/api/auth";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
@@ -147,15 +146,13 @@ export default function ChangePasswordModal({
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
             <KeyRound size={18} className="text-primary" />
           </div>
-          <div>
-            <DialogHeader>
-              <DialogTitle className="text-base font-semibold leading-tight">
-                Change Password
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Update your password to keep your account secure.
-              </DialogDescription>
-            </DialogHeader>
+          <div className="flex flex-col">
+            <DialogTitle className="text-base font-semibold leading-tight">
+              Change Password
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground leading-tight mt-0.5">
+              Update your password to keep your account secure.
+            </DialogDescription>
           </div>
         </div>
 
