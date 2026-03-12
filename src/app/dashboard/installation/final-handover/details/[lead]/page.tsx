@@ -37,6 +37,7 @@ import {
   PencilLine,
   History,
   IndianRupee,
+  FolderOpen,
 } from "lucide-react";
 
 import {
@@ -61,6 +62,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
 import SiteHistoryTab from "@/components/tabScreens/SiteHistoryTab";
+import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 import CustomeTooltip from "@/components/custom-tooltip";
 
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
@@ -396,6 +398,10 @@ export default function FinalHandoverLeadDetails() {
                     <MessageSquare size={16} className="mr-1 opacity-60" />
                     Chats
                   </TabsTrigger>
+                  <TabsTrigger value="documents">
+                    <FolderOpen size={16} className="mr-1 opacity-60" />
+                    Documents
+                  </TabsTrigger>
                 </TabsList>
               </div>
               <ScrollBar orientation="horizontal" />
@@ -447,6 +453,13 @@ export default function FinalHandoverLeadDetails() {
 
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />
+        </TabsContent>
+
+        <TabsContent value="documents">
+          <ProjectDocumentsTimeline
+            leadId={leadIdNum}
+            vendorId={vendorId ?? 0}
+          />
         </TabsContent>
       </Tabs>
 

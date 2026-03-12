@@ -11,18 +11,14 @@ import ClientApprovalDetails from "@/components/site-supervisor/client-approval/
 import TechCheckDetails from "@/components/production/tech-check-stage/TechCheckDetails";
 import OrderLoginDetails from "@/components/production/order-login-stage/OrderLoginDetails";
 import LeadDetailsProductionUtil from "@/components/production/pre-production-stage/lead-details-production-tabs";
-
 import ReadyToDispatchDetails from "../production/ready-to-dispatch/ReadyToDispatchDetails";
 import SiteReadinessTabs from "../installation/site-readiness/SiteReadinessTabs";
 import DispatchPlanningDetails from "../installation/dispatch-planning/DispatchPlanningDetails";
 import DispatchTabsWrapper from "../installation/dispatch/DispatchTabsWrapper";
-
-
 import GroupedSmoothTab from "./grouped-smooth-tab";
 import { StageId } from "@/types/lead-stage-types";
 import UnderInstallationTabsWrapper from "../installation/under-installation/UnderInstallationTabsWrapper";
 import FinalHandoverWrapper from "../installation/final-handover/FinalHandoverWrapper";
-
 type GroupKey = "leads" | "project" | "production" | "installation";
 
 export interface LeadDetailsGroupedProps {

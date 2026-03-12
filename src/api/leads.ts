@@ -677,3 +677,29 @@ export const useDeleteDocument = (leadId?: number) => {
     },
   });
 };
+
+export interface LeadDocument {
+  id: number;
+  doc_og_name: string;
+  doc_sys_name: string;
+  doc_type_id: number;
+  doc_type_tag: string;
+  doc_type_type: string;
+  tech_check_status: string | null;
+  created_at: string;
+  signed_url: string;
+}
+
+export const useAllLeadDocuments = (vendorId?: number, leadId?: number) => {
+  return useQuery<LeadDocument[]>({
+    queryKey: ["allLeadDocuments", vendorId, leadId],
+    queryFn: async () => {
+      const { data } = await apiClient.get(
+        `/leads/vendorId/${vendorId}/leadId/${leadId}/all-documents`
+      );
+      return data.data;
+    },
+    enabled: !!vendorId && !!leadId,
+    staleTime: 2 * 60 * 1000,
+  });
+};
