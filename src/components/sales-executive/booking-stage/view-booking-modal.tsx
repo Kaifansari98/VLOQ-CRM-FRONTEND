@@ -519,7 +519,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       },
       {
         onSuccess: () => {
-          toastManager.add({ title: "Site supervisor reassigned successfully.", type: "success" });
+          toastManager.add({ title: "Site supervisor assigned successfully.", type: "success" });
           const createdAt = new Date().toISOString();
           queryClient.setQueryData(
             ["leadLogs", leadId, vendorId],
