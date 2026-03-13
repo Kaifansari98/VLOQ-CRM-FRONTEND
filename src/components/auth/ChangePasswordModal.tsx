@@ -64,20 +64,22 @@ const strengthRequirements = [
   { regex: /[0-9]/, text: "At least 1 number" },
   { regex: /[a-z]/, text: "At least 1 lowercase letter" },
   { regex: /[A-Z]/, text: "At least 1 uppercase letter" },
+  { regex: /[^A-Za-z0-9]/, text: "At least 1 special character" },
 ];
 
 function getStrengthColor(score: number) {
   if (score === 0) return "bg-border";
   if (score <= 1) return "bg-red-500";
   if (score <= 2) return "bg-orange-500";
-  if (score === 3) return "bg-amber-500";
+  if (score <= 3) return "bg-amber-500";
+  if (score === 4) return "bg-yellow-500";
   return "bg-emerald-500";
 }
 
 function getStrengthText(score: number) {
   if (score === 0) return "Enter a password";
   if (score <= 2) return "Weak password";
-  if (score === 3) return "Medium password";
+  if (score <= 3) return "Medium password";
   return "Strong password";
 }
 
@@ -239,14 +241,14 @@ export default function ChangePasswordModal({
                   <div
                     role="progressbar"
                     aria-valuemin={0}
-                    aria-valuemax={4}
+                    aria-valuemax={5}
                     aria-valuenow={strengthScore}
                     aria-label="Password strength"
                     className="mt-2 mb-2 h-1 w-full overflow-hidden rounded-full bg-border"
                   >
                     <div
                       className={`h-full transition-all duration-500 ease-out ${getStrengthColor(strengthScore)}`}
-                      style={{ width: `${(strengthScore / 4) * 100}%` }}
+                      style={{ width: `${(strengthScore / 5) * 100}%` }}
                     />
                   </div>
 
@@ -330,7 +332,7 @@ export default function ChangePasswordModal({
               >
                 Cancel
               </Button>
-              <Button type="submit" size="sm" disabled={isPending || strengthScore < 4}>
+              <Button type="submit" size="sm" disabled={isPending || strengthScore < 5}>
                 {isPending ? "Saving..." : "Update Password"}
               </Button>
             </div>
