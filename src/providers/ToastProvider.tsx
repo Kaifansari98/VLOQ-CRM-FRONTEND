@@ -3,5 +3,5 @@
 import { ToastProvider as BaseToastProvider } from "@/components/ui/toast";
 
 export function ToastProvider() {
-  return <BaseToastProvider position="top-center" />;
+  return <BaseToastProvider position="top-right" />;
 }

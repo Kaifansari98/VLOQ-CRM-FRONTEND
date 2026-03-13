@@ -459,6 +459,7 @@ export default function FinalHandoverLeadDetails() {
           <ProjectDocumentsTimeline
             leadId={leadIdNum}
             vendorId={vendorId ?? 0}
+            upToStage="finalHandover"
           />
         </TabsContent>
       </Tabs>

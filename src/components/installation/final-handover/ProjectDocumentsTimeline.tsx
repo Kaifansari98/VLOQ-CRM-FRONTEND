@@ -440,21 +440,29 @@ function StageItem({ stage, docs, isLast }: StageItemProps) {
 interface Props {
   leadId: number;
   vendorId: number;
+  /** Show stages up to and including this stage id. Defaults to showing all. */
+  upToStage?: string;
 }
 
-export default function ProjectDocumentsTimeline({ leadId, vendorId }: Props) {
+export default function ProjectDocumentsTimeline({ leadId, vendorId, upToStage }: Props) {
   const { data: allDocs = [], isLoading } = useAllLeadDocuments(vendorId, leadId);
+
+  const visibleStages = useMemo(() => {
+    if (!upToStage) return STAGES;
+    const idx = STAGES.findIndex((s) => s.id === upToStage);
+    return idx === -1 ? STAGES : STAGES.slice(0, idx + 1);
+  }, [upToStage]);
 
   const stageDocMap = useMemo(() => {
     const map: Record<string, LeadDocument[]> = {};
-    for (const stage of STAGES) {
+    for (const stage of visibleStages) {
       map[stage.id] = filterDocsForStage(allDocs, stage);
     }
     return map;
-  }, [allDocs]);
+  }, [allDocs, visibleStages]);
 
   const totalFiles = allDocs.length;
-  const stagesWithFiles = STAGES.filter((s) => stageDocMap[s.id].length > 0).length;
+  const stagesWithFiles = visibleStages.filter((s) => stageDocMap[s.id].length > 0).length;
 
   return (
     <div className="pb-6 px-1">
@@ -502,12 +510,12 @@ export default function ProjectDocumentsTimeline({ leadId, vendorId }: Props) {
           initial="hidden"
           animate="visible"
         >
-          {STAGES.map((stage, idx) => (
+          {visibleStages.map((stage, idx) => (
             <StageItem
               key={stage.id}
               stage={stage}
               docs={stageDocMap[stage.id]}
-              isLast={idx === STAGES.length - 1}
+              isLast={idx === visibleStages.length - 1}
             />
           ))}
         </motion.div>
