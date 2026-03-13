@@ -66,9 +66,8 @@ export default function FinalHandover({
 }: FinalHandoverProps) {
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
-  const isHoUser = useAppSelector((s) => s.auth.is_ho_user);
   const effectiveUserType =
-    userType === "admin" && !isHoUser ? "sales-executive" : userType;
+    userType === "admin" ? "sales-executive" : userType;
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const queryClient = useQueryClient();
 

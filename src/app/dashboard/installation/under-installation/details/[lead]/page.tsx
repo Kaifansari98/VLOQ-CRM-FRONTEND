@@ -99,9 +99,8 @@ export default function UnderInstallationLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
-  const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
   const effectiveUserType =
-    userType === "admin" && !isHoUser ? "sales-executive" : userType;
+    userType === "admin" ? "sales-executive" : userType;
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data: underDetails } = useUnderInstallationDetails(

@@ -98,9 +98,8 @@ export default function FinalMeasurementLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type
   );
-  const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
   const effectiveUserType =
-    userType === "admin" && !isHoUser ? "sales-executive" : userType;
+    userType === "admin" ? "sales-executive" : userType;
 
   // UI STATES
   const [assignOpenLead, setAssignOpenLead] = useState(false);

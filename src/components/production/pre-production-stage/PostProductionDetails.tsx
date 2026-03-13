@@ -66,9 +66,8 @@ export default function PostProductionDetails({
 }: PostProductionDetailsProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
-  const isHoUser = useAppSelector((s) => s.auth.is_ho_user);
   const effectiveUserType =
-    userType === "admin" && !isHoUser ? "sales-executive" : userType;
+    userType === "admin" ? "sales-executive" : userType;
   const userId = useAppSelector((s) => s.auth.user?.id);
   const queryClient = useQueryClient();
 

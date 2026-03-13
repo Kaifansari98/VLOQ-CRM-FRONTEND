@@ -48,9 +48,8 @@ export default function GroupedSmoothTab({
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type as string | undefined
   );
-  const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
   const effectiveUserType =
-    userType === "admin" && !isHoUser ? "sales-executive" : userType;
+    userType === "admin" ? "sales-executive" : userType;
 
   // ✅ Limit visible items by maxVisibleStage
   const visibleGroups = React.useMemo(() => {

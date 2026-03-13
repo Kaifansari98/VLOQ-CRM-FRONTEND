@@ -62,9 +62,8 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type?.user_type
   );
-  const isHoUser = useAppSelector((state) => state.auth.user?.is_ho_user);
   const effectiveUserType =
-    userType === "admin" && !isHoUser ? "sales-executive" : userType;
+    userType === "admin" ? "sales-executive" : userType;
 
   // 🧩 --- Data Hook ---
   const { data, isLoading, error } = useFinalMeasurementLeadById(
