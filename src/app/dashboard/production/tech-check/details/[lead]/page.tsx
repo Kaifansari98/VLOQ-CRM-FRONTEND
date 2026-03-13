@@ -116,8 +116,7 @@ export default function ClientApprovalLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
   );
-  const effectiveUserType =
-    userType === "admin" ? "sales-executive" : userType;
+  const effectiveUserType = userType;
 
   const { mutate: approveTechCheckMutate, isPending: approving } =
     useApproveTechCheck();

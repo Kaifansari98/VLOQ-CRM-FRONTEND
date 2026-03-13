@@ -29,9 +29,6 @@ import {
   Users,
   XCircle,
   HouseIcon,
-  PanelsTopLeftIcon,
-  BoxIcon,
-  UsersRoundIcon,
   FileText,
   Clock,
   UserPlus,
@@ -98,8 +95,7 @@ export default function FinalMeasurementLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type
   );
-  const effectiveUserType =
-    userType === "admin" ? "sales-executive" : userType;
+  const effectiveUserType = userType;
 
   // UI STATES
   const [assignOpenLead, setAssignOpenLead] = useState(false);

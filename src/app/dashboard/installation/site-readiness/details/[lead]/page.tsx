@@ -95,8 +95,7 @@ export default function ReadyToDispatchLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type
   );
-  const effectiveUserType =
-    userType === "admin" ? "sales-executive" : userType;
+  const effectiveUserType = userType;
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);

@@ -98,8 +98,7 @@ export default function OrderLoginLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
   );
-  const effectiveUserType =
-    userType === "admin" ? "sales-executive" : userType;
+  const effectiveUserType = userType;
 
   const { data: readiness, isLoading: readinessLoading } =
     useLeadProductionReadiness(vendorId, leadIdNum, validInstanceId ?? undefined);
