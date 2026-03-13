@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   KeyRound,
 } from "lucide-react";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useDispatch } from "react-redux";
 import { logout } from "@/redux/slices/authSlice";
 import { logoutActivityApi } from "@/api/auth";
@@ -42,6 +42,10 @@ const schema = z
       .string()
       .min(8, "New password must be at least 8 characters"),
     confirmPassword: z.string().min(1, "Please confirm your new password"),
+  })
+  .refine((data) => data.newPassword !== data.currentPassword, {
+    message: "New password cannot be the same as your current password",
+    path: ["newPassword"],
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
     message: "Passwords do not match",
@@ -118,13 +122,13 @@ export default function ChangePasswordModal({
         currentPassword: values.currentPassword,
         newPassword: values.newPassword,
       });
-      toast.success("Password changed! Logging you out...");
+      toastManager.add({ title: "Password changed! Logging you out...", type: "success" });
       await logoutActivityApi().catch(() => {});
       dispatch(logout());
       localStorage.removeItem("token");
       window.location.href = "/login";
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to change password");
+      toastManager.add({ title: err?.response?.data?.message || "Failed to change password", type: "error" });
     }
   };
 
