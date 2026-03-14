@@ -348,7 +348,6 @@ export function canViewAndWorkSiteRedinessStage(
   stage: string,
 ): boolean {
   return (
-    role === "admin" ||
     role === "super-admin" ||
     ((role === "site-supervisor" || role === "head-site-supervisor") && stage === "site-readiness-stage")
   );
@@ -370,7 +369,6 @@ export function canViewAndWorkDispatchStage(
   stage: string,
 ): boolean {
   return (
-    role === "admin" ||
     role === "super-admin" ||
     (role === "factory" && stage === "dispatch-stage")
   );

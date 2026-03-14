@@ -800,6 +800,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                       <Card
                         onClick={() => {
                           if (
+                            !canViewAndWork ||
                             task.status === "completed" ||
                             task.status === "cancelled"
                           )

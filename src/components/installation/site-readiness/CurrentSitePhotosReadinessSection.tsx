@@ -115,7 +115,6 @@ export default function CurrentSitePhotosReadinessSection({
   };
 
   const canDelete =
-    userType === "admin" ||
     userType === "super-admin" ||
     (userType === "site-supervisor" && leadStatus === "site-readiness-stage");
 
