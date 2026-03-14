@@ -60,7 +60,7 @@ export const formatDateTime = (dateString?: string) => {
 
 export const canTechCheck = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super-admin", "admin", "tech-check"];
+  const allowedRoles = ["super-admin", "tech-check"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 

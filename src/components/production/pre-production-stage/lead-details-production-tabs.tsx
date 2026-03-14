@@ -206,8 +206,8 @@ export default function LeadDetailsProductionUtil({
         </div>
       )}
       <SmoothTab
-        items={allTabs}
-        defaultTabId={defaultTab ? "preProductionFiles" : "postProduction"}
+        items={userType === "admin" ? allTabs.filter((t) => t.id === "postProduction") : allTabs}
+        defaultTabId={userType === "admin" ? "postProduction" : defaultTab ? "preProductionFiles" : "postProduction"}
       />
     </div>
   );

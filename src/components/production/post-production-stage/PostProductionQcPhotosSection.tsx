@@ -140,14 +140,14 @@ export default function PostProductionQcPhotosSection({
     }
   };
 
+  const effectiveUserType = userType === "admin" ? "sales-executive" : userType;
   const canDelete =
-    userType === "admin" ||
     userType === "super-admin" ||
     (userType === "factory" &&
       (leadStatusIns ?? leadStatus) === "production-stage");
 
   const canViewAndWork = canViewAndWorkProductionStage(
-    userType,
+    effectiveUserType,
     leadStatusIns ?? leadStatus,
   );
 
