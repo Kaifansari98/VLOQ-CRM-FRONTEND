@@ -40,7 +40,8 @@ const schema = z
     currentPassword: z.string().min(1, "Current password is required"),
     newPassword: z
       .string()
-      .min(8, "New password must be at least 8 characters"),
+      .min(8, "New password must be at least 8 characters")
+      .regex(/[^A-Za-z0-9]/, "Password must contain at least 1 special character"),
     confirmPassword: z.string().min(1, "Please confirm your new password"),
   })
   .refine((data) => data.newPassword !== data.currentPassword, {

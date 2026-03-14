@@ -139,7 +139,7 @@ export default function LeadDetailsUtil({
     "clientdocumentation",
     "clientApproval",
   ];
-
+  
   const leadOptions = finalTabs.filter((t) => leadTabs.includes(t.id));
   const projectOptions = finalTabs.filter((t) => projectTabs.includes(t.id));
 
@@ -147,7 +147,6 @@ export default function LeadDetailsUtil({
 
   return (
     <>
-      {/* ================= MOBILE DROPDOWN ================= */}
       {/* ================= MOBILE DROPDOWN ================= */}
       <div className="block md:hidden mb-3">
         {shouldShowDropdown && (

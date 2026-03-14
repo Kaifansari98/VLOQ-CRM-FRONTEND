@@ -280,7 +280,6 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
 
   // ✅ Permissions
   const canDelete =
-    (userType === "admin" && isHoUser) ||
     userType === "super-admin" ||
     (userType === "tech-check" && leadStatus === "tech-check-stage");
 
