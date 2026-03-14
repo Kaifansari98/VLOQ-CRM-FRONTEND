@@ -54,6 +54,12 @@ export function NavUser({
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const userInitials = user.name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
 
   const handleLogout = async () => {
     try {
@@ -114,7 +120,9 @@ export function NavUser({
               >
                 <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  <AvatarFallback className="rounded-lg">
+                    {userInitials}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
@@ -134,7 +142,9 @@ export function NavUser({
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                    <AvatarFallback className="rounded-lg">
+                      {userInitials}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>

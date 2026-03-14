@@ -35,7 +35,6 @@ export default function LeadDetailsUtil({
   status,
   leadId,
   accountId,
-  leadInfo,
   defaultTab = "details",
   onlyThisTab,
 }: LeadDetailsUtilProps) {
@@ -139,7 +138,7 @@ export default function LeadDetailsUtil({
     "clientdocumentation",
     "clientApproval",
   ];
-  
+
   const leadOptions = finalTabs.filter((t) => leadTabs.includes(t.id));
   const projectOptions = finalTabs.filter((t) => projectTabs.includes(t.id));
 
