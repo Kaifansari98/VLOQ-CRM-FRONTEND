@@ -436,8 +436,7 @@ export function canAccessTodoTaskTabUnderInstallationStage(
 export function canAccessTodoTaskTabUnderFinalHandoverStage(
   role: string,
 ): boolean {
-  // 1. Admins always have access
-  if (role === "admin" || role === "super-admin" || role === "site-supervisor" || role === "head-site-supervisor")
+  if (role === "super-admin" || role === "site-supervisor" || role === "head-site-supervisor")
     return true;
 
   return false;

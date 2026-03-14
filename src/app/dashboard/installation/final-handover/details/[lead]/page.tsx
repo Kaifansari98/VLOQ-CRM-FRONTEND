@@ -135,7 +135,7 @@ export default function FinalHandoverLeadDetails() {
   const accountId = lead?.account_id;
   const leadStatusTag = lead?.statusType?.tag;
   const canShowMarkCompleted =
-    ["admin", "super-admin", "site-supervisor"].includes(normalizedEffectiveUserType) &&
+    ["super-admin", "site-supervisor"].includes(normalizedEffectiveUserType) &&
     leadStatusTag !== "Type 17";
 
   const { data: readiness, isLoading: readinessLoading } =
