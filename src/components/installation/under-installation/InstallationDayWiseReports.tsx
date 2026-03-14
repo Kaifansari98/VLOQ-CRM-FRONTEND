@@ -243,7 +243,6 @@ export default function InstallationDayWiseReports({
   };
 
   const canDelete =
-    userType === "admin" ||
     userType === "super-admin" ||
     (userType === "site-supervisor" &&
       leadStatus === "under-installation-stage");

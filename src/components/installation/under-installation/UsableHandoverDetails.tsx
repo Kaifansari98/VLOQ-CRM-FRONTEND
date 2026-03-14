@@ -91,7 +91,6 @@ export default function UsableHandover({
 
   const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
   const canMarkCompleted =
-    userType === "admin" ||
     userType === "super-admin" ||
     userType === "site-supervisor";
 

@@ -154,7 +154,6 @@ export default function InstallationMiscellaneous({
   );
   const canMarkAsReady =
     userType === "factory" ||
-    userType === "admin" ||
     userType === "super-admin";
 
   const isTaskReady = viewModalData?.task?.status === "completed";
@@ -357,21 +356,20 @@ export default function InstallationMiscellaneous({
   const hasCompletionDocs = Boolean(
     viewModalData?.documents?.some((d) => d.doc_type_tag === "Type 37"),
   );
-  const canResolveRole = ["admin", "super-admin", "site-supervisor"].includes(
+  const canResolveRole = ["super-admin", "site-supervisor"].includes(
     userType || "",
   );
   const canApproveReject =
     userType === "factory" ||
-    userType === "admin" ||
     userType === "super-admin";
   const showApprovalActions = canApproveReject && miscApproved == null;
   const canUpdateERD = canDoERDDate && !isTaskReady && isApproved;
   const canUpdateRequiredDelivery =
-    ["admin", "super-admin", "site-supervisor"].includes(userType || "") &&
+    ["super-admin", "site-supervisor"].includes(userType || "") &&
     isApproved &&
     isReady &&
     !viewModalData?.is_resolved;
-  const canManageDeliveryTask = ["factory", "admin", "super-admin"].includes(
+  const canManageDeliveryTask = ["factory", "super-admin"].includes(
     userType || "",
   );
 

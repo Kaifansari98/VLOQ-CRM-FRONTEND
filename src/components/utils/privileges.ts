@@ -418,7 +418,6 @@ export function canViewAndWorkUnderInstallationStage(
 ): boolean {
   // can work and view both and site suprvisor work only under-installation stage.
   return (
-    role === "admin" ||
     role === "super-admin" ||
     ((role === "site-supervisor" || role === "head-site-supervisor") && stage === "under-installation-stage")
   );
