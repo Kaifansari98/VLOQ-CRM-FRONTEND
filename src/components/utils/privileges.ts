@@ -73,7 +73,7 @@ export const canMoveToOrderLogin = (userType: string | undefined) => {
 
 export const canUploadFinalMeasurements = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super-admin", "admin", "site-supervisor", "head-site-supervisor"];
+  const allowedRoles = ["super-admin", "site-supervisor", "head-site-supervisor"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
