@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 
-import TrackTraceProjectTable from "@/components/custom/TrackTraceProjectTable";
+import TrackTraceProjectTable from "@/components/custom/track-trace-project-table";
 import { useTrackTraceProjects } from "@/hooks/track-trace/useTrackTraceProjects";
 import { TrackTraceProject } from "@/types/track-trace/track-trace.types";
 import { CreateProjectModal } from "@/components/track-trace/CreateProjectModal";
