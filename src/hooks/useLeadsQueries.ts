@@ -86,11 +86,12 @@ export const useVendorUserLeads = (
 // Hook for getting vendor user leads
 export const useVendorUserLeadsOpen = (
   vendorId: number,
-  userId: number
+  userId: number,
+  franchiseId?: number | null,
 ): UseQueryResult<VendorUserLeadsOpenResponse, Error> => {
   return useQuery({
-    queryKey: ["vendorUserLeadsOpen", vendorId, userId],
-    queryFn: () => getVendorUserLeadsOpen(vendorId, userId),
+    queryKey: ["vendorUserLeadsOpen", vendorId, userId, franchiseId ?? null],
+    queryFn: () => getVendorUserLeadsOpen(vendorId, userId, franchiseId),
     enabled: !!vendorId && !!userId,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,

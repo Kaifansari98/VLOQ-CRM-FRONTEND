@@ -328,10 +328,16 @@ export const getVendorUserLeads = async (
 export const getVendorUserLeadsOpen = async (
   vendorId: number,
   userId: number,
+  franchiseId?: number | null,
 ): Promise<VendorUserLeadsOpenResponse> => {
   const response = await apiClient.get(
     `/leads/bookingStage/status1-leads/vendorId/${vendorId}`,
-    { params: { userId } },
+    {
+      params: {
+        userId,
+        ...(franchiseId ? { franchise_id: franchiseId } : {}),
+      },
+    },
   );
   return response.data;
 };
