@@ -42,6 +42,9 @@ export default function LeadsGenerationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const franchiseId = useAppSelector(
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id
+  );
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
@@ -83,7 +86,7 @@ export default function LeadsGenerationPage() {
   };
   const [openPopover, setOpenPopover] = useState(false);
 
-  const { data: counts } = useActivityStatusCounts(vendorId);
+  const { data: counts } = useActivityStatusCounts(vendorId, franchiseId);
 
   const tabItems: TabItem[] = [
     {

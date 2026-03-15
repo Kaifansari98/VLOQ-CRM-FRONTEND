@@ -81,10 +81,13 @@ export const useRevertActivityStatus = () => {
   });
 };
 
-export const useActivityStatusCounts = (vendorId?: number) => {
+export const useActivityStatusCounts = (
+  vendorId?: number,
+  franchiseId?: number | null,
+) => {
   return useQuery({
-    queryKey: ["activityStatusCounts", vendorId],
-    queryFn: () => getActivityStatusCounts(vendorId!),
+    queryKey: ["activityStatusCounts", vendorId, franchiseId ?? null],
+    queryFn: () => getActivityStatusCounts(vendorId!, franchiseId),
     enabled: !!vendorId,
   });
 };

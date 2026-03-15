@@ -57,6 +57,9 @@ export default function PendingLeadsTable({
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const franchiseId = useAppSelector(
+    (s) => s.auth.franchise_id ?? s.auth.user?.franchise_id
+  );
   const router = useRouter();
 
   // ============================================
@@ -123,6 +126,7 @@ export default function PendingLeadsTable({
     const mappedFilters = mapTableFiltersToPayload(onHoldColumnFilters);
 
     return {
+      franchise_id: franchiseId ?? undefined,
       page: onHoldPagination.pageIndex + 1,
       limit: onHoldPagination.pageSize,
       global_search: onHoldGlobalFilter || "",
@@ -140,13 +144,14 @@ export default function PendingLeadsTable({
       date_range: mappedFilters.date_range,
       status: mappedFilters.stagetag,
     };
-  }, [onHoldPagination, onHoldGlobalFilter, onHoldColumnFilters, sorting]);
+  }, [franchiseId, onHoldPagination, onHoldGlobalFilter, onHoldColumnFilters, sorting]);
 
   const lostPayload: ActivityStatusFilterPayload = React.useMemo(() => {
     const sortOrder: "asc" | "desc" = sorting[0]?.desc ? "desc" : "asc";
     const mappedFilters = mapTableFiltersToPayload(lostColumnFilters);
 
     return {
+      franchise_id: franchiseId ?? undefined,
       page: lostPagination.pageIndex + 1,
       limit: lostPagination.pageSize,
       global_search: lostGlobalFilter || "",
@@ -166,13 +171,14 @@ export default function PendingLeadsTable({
       site_map_link: mappedFilters.site_map_link,
       created_at: sortOrder,
     };
-  }, [lostPagination, lostGlobalFilter, lostColumnFilters, sorting]);
+  }, [franchiseId, lostPagination, lostGlobalFilter, lostColumnFilters, sorting]);
 
   const lostApprovalPayload: ActivityStatusFilterPayload = React.useMemo(() => {
     const sortOrder: "asc" | "desc" = sorting[0]?.desc ? "desc" : "asc";
     const mappedFilters = mapTableFiltersToPayload(lostApprovalColumnFilters);
 
     return {
+      franchise_id: franchiseId ?? undefined,
       page: lostApprovalPagination.pageIndex + 1,
       limit: lostApprovalPagination.pageSize,
       global_search: lostApprovalGlobalFilter || "",
@@ -196,6 +202,7 @@ export default function PendingLeadsTable({
     lostApprovalPagination,
     lostApprovalGlobalFilter,
     lostApprovalColumnFilters,
+    franchiseId,
     sorting,
   ]);
   // ============================================

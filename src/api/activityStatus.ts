@@ -83,9 +83,15 @@ export const revertLeadToOnGoing = async (
 
 export const getActivityStatusCounts = async (
   vendorId: number,
+  franchiseId?: number | null,
 ): Promise<UiActivityStatusCounts> => {
   const res = await apiClient.get(
     `/leads/lead-activity-status/vendorId/${vendorId}/activity-status-counts`,
+    {
+      params: {
+        ...(franchiseId ? { franchise_id: franchiseId } : {}),
+      },
+    },
   );
   const data: ApiActivityStatusCounts = res.data.data;
 
@@ -201,6 +207,7 @@ export interface ActivityStatusLeadResponse {
 export interface ActivityStatusFilterPayload {
   page: number;
   limit: number;
+  franchise_id?: number;
 
   // Search filters
   global_search?: string;
