@@ -177,10 +177,11 @@ export interface AdminProjectsOverview {
 }
 
 export const getAdminProjectsOverview = async (
-  vendorId: number
+  vendorId: number,
+  franchiseId?: number
 ): Promise<AdminProjectsOverview> => {
   const res = await apiClient.get("/dashboard/admin/projects-overview", {
-    params: { vendor_id: vendorId },
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
   });
   return res.data.data as AdminProjectsOverview;
 };
@@ -221,10 +222,11 @@ export interface AdminTotalRevenue {
 }
 
 export const getAdminTotalRevenue = async (
-  vendorId: number
+  vendorId: number,
+  franchiseId?: number
 ): Promise<AdminTotalRevenue> => {
   const res = await apiClient.get("/dashboard/admin/total-revenue", {
-    params: { vendor_id: vendorId },
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
   });
   return res.data.data as AdminTotalRevenue;
 };
@@ -242,10 +244,11 @@ export interface AdminStageCounts {
 }
 
 export const getAdminStageCounts = async (
-  vendorId: number
+  vendorId: number,
+  franchiseId?: number
 ): Promise<AdminStageCounts> => {
   const res = await apiClient.get("/dashboard/admin/stage-counts", {
-    params: { vendor_id: vendorId },
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
   });
   return res.data.data as AdminStageCounts;
 };

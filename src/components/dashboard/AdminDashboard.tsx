@@ -204,17 +204,17 @@ export default function AdminDashboard() {
     data: projectsOverview,
     isLoading: isProjectsLoading,
     error: projectsError,
-  } = useAdminProjectsOverview(vendorId);
+  } = useAdminProjectsOverview(vendorId, franchiseId ?? undefined);
   const {
     data: totalRevenue,
     isLoading: isRevenueLoading,
     error: revenueError,
-  } = useAdminTotalRevenue(vendorId);
+  } = useAdminTotalRevenue(vendorId, franchiseId ?? undefined);
   const {
     data: stageCounts,
     isLoading: isStageCountsLoading,
     error: stageCountsError,
-  } = useAdminStageCounts(vendorId);
+  } = useAdminStageCounts(vendorId, franchiseId ?? undefined);
   const errorMessage =
     projectsError || revenueError || stageCountsError
       ? "Failed to load admin stats."

@@ -193,10 +193,10 @@ export function useLeadStatusCounts(
   return { overall, mine, isLoading, error, refetch: fetchData };
 }
 
-export function useAdminProjectsOverview(vendorId?: number) {
+export function useAdminProjectsOverview(vendorId?: number, franchiseId?: number) {
   return useQuery<AdminProjectsOverview>({
-    queryKey: ["admin-projects-overview", vendorId],
-    queryFn: () => getAdminProjectsOverview(vendorId!),
+    queryKey: ["admin-projects-overview", vendorId, franchiseId],
+    queryFn: () => getAdminProjectsOverview(vendorId!, franchiseId),
     enabled: !!vendorId,
   });
 }
@@ -209,18 +209,18 @@ export function useAdminOrdersInPipeline(vendorId?: number) {
   });
 }
 
-export function useAdminTotalRevenue(vendorId?: number) {
+export function useAdminTotalRevenue(vendorId?: number, franchiseId?: number) {
   return useQuery<AdminTotalRevenue>({
-    queryKey: ["admin-total-revenue", vendorId],
-    queryFn: () => getAdminTotalRevenue(vendorId!),
+    queryKey: ["admin-total-revenue", vendorId, franchiseId],
+    queryFn: () => getAdminTotalRevenue(vendorId!, franchiseId),
     enabled: !!vendorId,
   });
 }
 
-export function useAdminStageCounts(vendorId?: number) {
+export function useAdminStageCounts(vendorId?: number, franchiseId?: number) {
   return useQuery<AdminStageCounts>({
-    queryKey: ["admin-stage-counts", vendorId],
-    queryFn: () => getAdminStageCounts(vendorId!),
+    queryKey: ["admin-stage-counts", vendorId, franchiseId],
+    queryFn: () => getAdminStageCounts(vendorId!, franchiseId),
     enabled: !!vendorId,
   });
 }
