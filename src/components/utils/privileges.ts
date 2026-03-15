@@ -121,14 +121,7 @@ export const canViewThreeVerticalDocsOptionInTechCheck = (
 
 export const canOrderLogin = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = [
-    "super-admin",
-    "admin",
-    "backend",
-    "tech-check",
-    "factory",
-  ];
-  return allowedRoles.includes(userType.toLowerCase());
+  return ["super-admin", "backend"].includes(userType.toLowerCase());
 };
 
 export const canAssignSR = (userType: string | undefined) => {
@@ -180,14 +173,7 @@ export const canMoveToProduction = (userType: string | undefined) => {
 
 export const canViewToOrderLoginDetails = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = [
-    "super-admin",
-    "admin",
-    "backend",
-    "tech-check",
-    "factory",
-  ];
-  return allowedRoles.includes(userType.toLowerCase());
+  return ["super-admin", "backend"].includes(userType.toLowerCase());
 };
 
 export const canWorkTodoTaskOrderLoginStage = (role: string | undefined) => {
