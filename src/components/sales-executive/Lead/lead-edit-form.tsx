@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,8 +21,24 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import {
   useSourceTypes,
   useSiteTypes,
+  useProductStructureTypes,
+  useProductTypes,
 } from "@/hooks/useTypesMaster";
-import { updateLead, getLeadById, EditLeadPayload } from "@/api/leads";
+import {
+  updateLead,
+  getLeadById,
+  EditLeadPayload,
+  updateLeadProductType,
+  deleteLeadProductStructureInstance,
+  createLeadProductStructureInstance,
+} from "@/api/leads";
+import MultipleSelector, { Option } from "@/components/ui/multiselect";
+import StructureQuantityCards from "@/components/sales-executive/Lead/structure-quantity-cards";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { parsePhoneNumber } from "libphonenumber-js";
 import TextAreaInput from "@/components/origin-text-area";
 import MapPicker from "@/components/MapPicker";
@@ -91,6 +107,8 @@ const formSchema = z.object({
 
   archetech_name: z.string().max(300).optional(),
   designer_remark: z.string().max(2000).optional(),
+  product_types: z.array(z.string()).optional(),
+  product_structures: z.array(z.string()).optional(),
   initial_site_measurement_date: z
     .string()
     .optional()
@@ -122,6 +140,20 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     lng: number;
     address: string;
   } | null>(null);
+
+  // Product type & structure state
+  const [structureInstanceDetails, setStructureInstanceDetails] = useState<
+    { title: string; desc: string }[]
+  >([]);
+  const previousStructuresRef = useRef<string[]>([]);
+  const [showMaxStructureTooltip, setShowMaxStructureTooltip] = useState(false);
+  const maxStructureTooltipTimerRef = useRef<number | null>(null);
+  const [initialProductTypeId, setInitialProductTypeId] = useState<
+    number | null
+  >(null);
+  const [initialStructureIds, setInitialStructureIds] = useState<string[]>([]);
+  const [existingStructureInstanceIds, setExistingStructureInstanceIds] =
+    useState<number[]>([]);
 
   const updateLeadMutation = useMutation({
     mutationFn: async (payload: EditLeadPayload) => {
@@ -166,6 +198,8 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       archetech_name: "",
       designer_remark: "",
       initial_site_measurement_date: "",
+      product_types: [],
+      product_structures: [],
     },
     mode: "onChange",
   });
@@ -173,6 +207,149 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   const {
     formState: { dirtyFields },
   } = form;
+
+  // Product type & structure hooks
+  const { data: productStructures, isLoading: isStructuresLoading } =
+    useProductStructureTypes();
+  const { data: productTypes, isLoading: isProductTypesLoading } =
+    useProductTypes();
+
+  const selectedProductTypes = form.watch("product_types");
+  const selectedProductStructures = form.watch("product_structures");
+
+  const selectedTypeId = selectedProductTypes?.[0];
+  const selectedTypeLabel =
+    productTypes?.data?.find(
+      (type: any) => String(type.id) === selectedTypeId
+    )?.type || "";
+  const normalizedType = selectedTypeLabel.toLowerCase();
+  const hasSelectedFurnitureType = Boolean(selectedTypeId);
+
+  let parentFilter: "Kitchen" | "Wardrobe" | "Others" | null = null;
+  if (normalizedType.includes("kitchen")) {
+    parentFilter = "Kitchen";
+  } else if (normalizedType.includes("wardrobe")) {
+    parentFilter = "Wardrobe";
+  } else if (selectedTypeId) {
+    parentFilter = "Others";
+  }
+  const allowDuplicatesForWardrobe =
+    parentFilter === "Wardrobe" || parentFilter === "Others";
+  const isKitchenSingleSelect = parentFilter === "Kitchen";
+
+  const structureOptions: Option[] = useMemo(
+    () =>
+      productStructures?.data
+        ?.filter((p: any) => {
+          if (!parentFilter) return true;
+          const parent = String(p.parent || "").toLowerCase();
+          if (parentFilter === "Kitchen") return parent === "kitchen";
+          if (parentFilter === "Wardrobe") return parent === "wardrobe";
+          return parent !== "kitchen" && parent !== "wardrobe";
+        })
+        ?.map((p: any) => ({
+          value: String(p.id),
+          label: p.type,
+        })) ?? [],
+    [parentFilter, productStructures?.data]
+  );
+
+  const buildStructureDetails = useCallback(
+    (
+      nextIds: string[],
+      prevIds: string[],
+      prevDetails: { title: string; desc: string }[]
+    ) => {
+      const buckets = new Map<string, { title: string; desc: string }[]>();
+      prevIds.forEach((id, index) => {
+        const detail = prevDetails[index];
+        if (!detail) return;
+        const list = buckets.get(id) || [];
+        list.push(detail);
+        buckets.set(id, list);
+      });
+      return nextIds.map((id) => {
+        const list = buckets.get(id);
+        if (list && list.length > 0) {
+          return list.shift() as { title: string; desc: string };
+        }
+        const option = structureOptions.find((opt) => opt.value === id);
+        return { title: option?.label || id, desc: "" };
+      });
+    },
+    [structureOptions]
+  );
+
+  useEffect(() => {
+    const nextIds = selectedProductStructures || [];
+    const prevIds = previousStructuresRef.current;
+    setStructureInstanceDetails((prevDetails) => {
+      const nextDetails = buildStructureDetails(nextIds, prevIds, prevDetails);
+      previousStructuresRef.current = nextIds;
+      return nextDetails;
+    });
+  }, [buildStructureDetails, selectedProductStructures]);
+
+  useEffect(() => {
+    return () => {
+      if (maxStructureTooltipTimerRef.current) {
+        window.clearTimeout(maxStructureTooltipTimerRef.current);
+      }
+    };
+  }, []);
+
+  const buildStructureInstancesPayload = useCallback(() => {
+    return (selectedProductStructures || []).map((id, index) => {
+      const option = structureOptions.find((opt) => opt.value === id);
+      const detail = structureInstanceDetails[index];
+      const title = (detail?.title || option?.label || id).trim();
+      const description = detail?.desc?.trim() || "";
+      return {
+        product_structure_id: Number(id),
+        title,
+        description: description || undefined,
+      };
+    });
+  }, [selectedProductStructures, structureInstanceDetails, structureOptions]);
+
+  const structureQuantityItems = useMemo(
+    () =>
+      (selectedProductStructures || []).map((id, index) => {
+        const option = structureOptions.find((opt) => opt.value === id);
+        const detail = structureInstanceDetails[index];
+        const defaultTitle = option?.label || id;
+        return {
+          id,
+          label: option?.label || id,
+          title: detail?.title || defaultTitle,
+          desc: detail?.desc || "",
+          key: `${id}-${index}`,
+          index,
+        };
+      }),
+    [selectedProductStructures, structureInstanceDetails, structureOptions]
+  );
+
+  useEffect(() => {
+    if (!hasSelectedFurnitureType) return;
+    if (structureOptions.length !== 1) return;
+    const onlyId = structureOptions[0].value;
+    const current = form.getValues("product_structures") || [];
+    const onlySelections = current.filter((id) => id === onlyId);
+    if (allowDuplicatesForWardrobe) {
+      if (onlySelections.length === 0) {
+        form.setValue("product_structures", [onlyId], { shouldValidate: true });
+      } else if (current.length !== onlySelections.length) {
+        form.setValue("product_structures", onlySelections, {
+          shouldValidate: true,
+        });
+      }
+      return;
+    }
+    if (onlySelections.length !== 1 || current.length !== 1) {
+      form.setValue("product_structures", [onlyId], { shouldValidate: true });
+    }
+  }, [allowDuplicatesForWardrobe, form, hasSelectedFurnitureType, structureOptions]);
 
   useEffect(() => {
     console.log("LeadID: ", leadData.id);
@@ -205,6 +382,28 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
               .split("T")[0]
           : "";
 
+        // Pre-fill product type
+        const productTypeId =
+          lead.productMappings?.[0]?.product_type_id ||
+          lead.productMappings?.[0]?.productType?.id ||
+          lead.productMappings?.[0]?.product_type?.id ||
+          null;
+        const productTypeIds: string[] = productTypeId
+          ? [String(productTypeId)]
+          : [];
+
+        // Pre-fill product structures
+        const structureInstances: any[] =
+          lead.leadProductStructureMapping || [];
+        const structureIds = structureInstances.map((s: any) =>
+          String(s.product_structure_id)
+        );
+        const instanceIds = structureInstances.map((s: any) => s.id);
+        const instanceDetails = structureInstances.map((s: any) => ({
+          title: s.title || "",
+          desc: s.description || "",
+        }));
+
         // ✅ Reset form with normalized values
         form.reset({
           firstname: lead.firstname || "",
@@ -219,7 +418,18 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           archetech_name: lead.archetech_name || "",
           designer_remark: lead.designer_remark || "",
           initial_site_measurement_date: formattedDate,
+          product_types: productTypeIds,
+          product_structures: structureIds,
         });
+
+        // Store initial values for change detection
+        setInitialProductTypeId(productTypeId ? Number(productTypeId) : null);
+        setInitialStructureIds(structureIds);
+        setExistingStructureInstanceIds(instanceIds);
+
+        // Set structure instance details and sync ref
+        setStructureInstanceDetails(instanceDetails);
+        previousStructuresRef.current = structureIds;
 
         // Handle map location
         if (lead.site_map_link && lead.site_map_link.includes("maps?q=")) {
@@ -321,8 +531,21 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     // Always include updated_by
     payload.updated_by = createdBy!;
 
-    // If no changes detected
-    if (Object.keys(payload).length <= 1) {
+    // Detect product type / structure changes
+    const currentProductTypeId = values.product_types?.[0]
+      ? Number(values.product_types[0])
+      : null;
+    const currentStructureIds = values.product_structures || [];
+    const productTypeChanged = currentProductTypeId !== initialProductTypeId;
+    const structuresChanged =
+      JSON.stringify(currentStructureIds) !==
+      JSON.stringify(initialStructureIds);
+
+    const hasMainChanges = Object.keys(payload).length > 1;
+    const hasAnyChanges =
+      hasMainChanges || productTypeChanged || structuresChanged;
+
+    if (!hasAnyChanges) {
       toastManager.add({ title: "No changes made", type: "info" });
       return;
     }
@@ -330,14 +553,67 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     console.log("📤 Final Payload being sent:", payload);
 
     try {
-      const result = await updateLeadMutation.mutateAsync(
-        payload as EditLeadPayload
-      );
+      // 1. Main lead fields update
+      if (hasMainChanges) {
+        await updateLeadMutation.mutateAsync(payload as EditLeadPayload);
+      }
 
-      console.log("✅ Update successful:", result);
+      // 2. Product type update
+      if (productTypeChanged && currentProductTypeId) {
+        const label = productTypes?.data?.find(
+          (t: any) => t.id === currentProductTypeId
+        )?.type;
+        if (label) {
+          await updateLeadProductType(leadData.id, createdBy!, {
+            productType: label,
+          });
+        }
+      }
+
+      // 3. Structure instances full replace
+      if (structuresChanged) {
+        // Delete all existing instances
+        for (const instanceId of existingStructureInstanceIds) {
+          await deleteLeadProductStructureInstance(
+            vendorId!,
+            leadData.id,
+            instanceId
+          );
+        }
+        // Create new instances
+        const newInstances = buildStructureInstancesPayload();
+        for (const instance of newInstances) {
+          await createLeadProductStructureInstance(vendorId!, leadData.id, {
+            product_structure_id: instance.product_structure_id,
+            title: instance.title,
+            description: instance.description,
+            created_by: createdBy!,
+          });
+        }
+      }
+
+      if (!hasMainChanges) {
+        // Trigger success manually if only product type/structure changed
+        toastManager.add({
+          title: "Lead updated successfully!",
+          type: "success",
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["lead", leadData.id, vendorId, createdBy],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["universal-stage-leads"],
+          exact: false,
+        });
+        onClose();
+      }
     } catch (error: any) {
       console.error("❌ Update failed:", error);
-      toastManager.add({ title: error?.response?.data?.message || "Failed to update lead", type: "error" });
+      toastManager.add({
+        title:
+          error?.response?.data?.message || "Failed to update lead",
+        type: "error",
+      });
     }
   };
 
@@ -583,6 +859,145 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           )}
         />
 
+
+        {/* Product Type & Structure */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+          <FormField
+            control={form.control}
+            name="product_types"
+            render={({ field }) => {
+              const pickerData =
+                productTypes?.data?.map((p: any) => ({
+                  id: p.id,
+                  label: p.type,
+                })) || [];
+
+              return (
+                <FormItem>
+                  <FormLabel className="text-sm">Furniture Type</FormLabel>
+                  {isProductTypesLoading ? (
+                    <p className="text-xs text-muted-foreground">Loading...</p>
+                  ) : (
+                    <AssignToPicker
+                      data={pickerData}
+                      value={
+                        field.value?.length ? Number(field.value[0]) : undefined
+                      }
+                      onChange={(selectedId) => {
+                        field.onChange(
+                          selectedId ? [String(selectedId)] : []
+                        );
+                        // Clear structures when type changes
+                        form.setValue("product_structures", [], {
+                          shouldValidate: true,
+                        });
+                      }}
+                      placeholder="Search furniture type..."
+                    />
+                  )}
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+
+          <FormField
+            control={form.control}
+            name="product_structures"
+            render={({ field }) => {
+              const selectedOptions = (field.value || [])
+                .filter((id) =>
+                  structureOptions.some((opt) => opt.value === id)
+                )
+                .map((id) => {
+                  const option = structureOptions.find(
+                    (opt) => opt.value === id
+                  );
+                  return option || { value: id, label: id };
+                });
+              const shouldShowMaxTooltip =
+                showMaxStructureTooltip && hasSelectedFurnitureType;
+              const tooltipMessage = !hasSelectedFurnitureType
+                ? "Select a furniture type first."
+                : shouldShowMaxTooltip
+                ? "Maximum limit is 10 per item."
+                : "";
+
+              return (
+                <FormItem>
+                  <FormLabel className="text-sm">Furniture Structure</FormLabel>
+                  <FormControl>
+                    <Tooltip
+                      {...(shouldShowMaxTooltip ? { open: true } : {})}
+                    >
+                      <TooltipTrigger asChild>
+                        <div className="w-full">
+                          <MultipleSelector
+                            value={selectedOptions}
+                            onChange={(opts) => {
+                              const nextOptions = isKitchenSingleSelect
+                                ? opts.slice(-1)
+                                : opts;
+                              field.onChange(
+                                nextOptions.map((opt) => opt.value)
+                              );
+                            }}
+                            options={structureOptions}
+                            placeholder="Select furniture structures"
+                            disabled={
+                              isStructuresLoading || !hasSelectedFurnitureType
+                            }
+                            hidePlaceholderWhenSelected
+                            showSelectedOptionsInDropdown
+                            allowDuplicateSelections={allowDuplicatesForWardrobe}
+                            maxSelectedPerOption={10}
+                            onMaxSelectedPerOption={() => {
+                              setShowMaxStructureTooltip(true);
+                              if (maxStructureTooltipTimerRef.current) {
+                                window.clearTimeout(
+                                  maxStructureTooltipTimerRef.current
+                                );
+                              }
+                              maxStructureTooltipTimerRef.current =
+                                window.setTimeout(() => {
+                                  setShowMaxStructureTooltip(false);
+                                }, 1500);
+                            }}
+                          />
+                        </div>
+                      </TooltipTrigger>
+                      {tooltipMessage && (
+                        <TooltipContent side="top" sideOffset={6}>
+                          {tooltipMessage}
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+        </div>
+
+        <StructureQuantityCards
+          items={structureQuantityItems}
+          className="mt-2"
+          onRemove={(removeIndex) => {
+            const current = form.getValues("product_structures") || [];
+            const next = current.filter((_, i) => i !== removeIndex);
+            form.setValue("product_structures", next, {
+              shouldValidate: true,
+            });
+          }}
+          onSave={(index, details) => {
+            setStructureInstanceDetails((prev) => {
+              const next = [...prev];
+              next[index] = details;
+              return next;
+            });
+          }}
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
           {/* Architect Name */}

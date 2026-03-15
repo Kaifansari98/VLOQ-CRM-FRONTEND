@@ -124,7 +124,9 @@ export default function DispatchPlanningLeadDetails() {
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
-  const canViewSiteHistory = canViewSiteHistoryTab(effectiveUserType ?? "");
+  const canViewSiteHistory =
+    canViewSiteHistoryTab(effectiveUserType ?? "") &&
+    effectiveUserType?.toLowerCase() !== "admin";
   const deleteLeadMutation = useDeleteLead();
 
   // 🔥 Auto-open To-Do modal for Sales Executive

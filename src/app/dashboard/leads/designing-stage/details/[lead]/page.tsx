@@ -108,7 +108,8 @@ export default function DesigningStageLead() {
   const canAccessTodoTab = canAccessDessingTodoTab(userType);
   const canMoveToBooking =
     countsData?.QuotationDoc > 0 && countsData?.DesignsDoc > 0;
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canViewSiteHistory =
+    canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;

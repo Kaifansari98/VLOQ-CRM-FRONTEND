@@ -247,11 +247,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     useMutation({
       mutationFn: (nextProductTypeId: number) => {
         const nextTypeLabel =
-          nextProductTypeId === modularKitchenType?.id
-            ? "Modular Kitchen"
-            : nextProductTypeId === semiModularKitchenType?.id
-              ? "Semi-Modular Kitchen"
-              : undefined;
+          productTypes?.data?.find((t: any) => t.id === nextProductTypeId)?.type;
         return updateLeadProductType(leadId, userId || 0, {
           productType: nextTypeLabel,
         });
@@ -408,7 +404,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
   // ✅ 11. EVENT HANDLERS
   const handleOpenProductTypeEdit = () => {
-    if (!currentProductTypeId) return;
     setSelectedProductTypeId(currentProductTypeId);
     setEditProductTypeOpen(true);
   };
@@ -606,7 +601,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           <SectionCard
             title="Product Information"
             action={
-              !isKitchenType &&
               canEditStructures && (
                 <Button
                   type="button"
@@ -627,7 +621,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   label={
                     <span className="inline-flex items-center gap-2">
                       <span>Product Types</span>
-                      {canEditProductType && isModularKitchenType && (
+                      {canEditProductType && (
                         <button
                           type="button"
                           onClick={handleOpenProductTypeEdit}
@@ -1047,8 +1041,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 setSelectedProductTypeId(currentProductTypeId);
               }
             }}
-            title="Edit Product Type"
-            description="Switch between Modular Kitchen and Semi‑Modular Kitchen."
+            title={currentProductTypeId ? "Edit Product Type" : "Set Product Type"}
+            description="Select the product type for this lead."
             size="sm"
           >
             <div className="space-y-4 p-5">
@@ -1056,37 +1050,18 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 <label className="text-xs font-medium text-muted-foreground">
                   Product Type <span className="text-red-500">*</span>
                 </label>
-                <div className="mt-2 grid grid-cols-1 gap-2">
-                  {modularKitchenType && (
-                    <Button
-                      type="button"
-                      variant={
-                        selectedProductTypeId === modularKitchenType.id
-                          ? "default"
-                          : "outline"
-                      }
-                      onClick={() =>
-                        setSelectedProductTypeId(modularKitchenType.id)
-                      }
-                    >
-                      Modular Kitchen
-                    </Button>
-                  )}
-                  {semiModularKitchenType && (
-                    <Button
-                      type="button"
-                      variant={
-                        selectedProductTypeId === semiModularKitchenType.id
-                          ? "default"
-                          : "outline"
-                      }
-                      onClick={() =>
-                        setSelectedProductTypeId(semiModularKitchenType.id)
-                      }
-                    >
-                      Semi‑Modular Kitchen
-                    </Button>
-                  )}
+                <div className="mt-2">
+                  <AssignToPicker
+                    data={
+                      productTypes?.data?.map((t: any) => ({
+                        id: t.id,
+                        label: t.type,
+                      })) ?? []
+                    }
+                    value={selectedProductTypeId ?? undefined}
+                    onChange={(id) => setSelectedProductTypeId(id)}
+                    placeholder="Search product type..."
+                  />
                 </div>
               </div>
               <div className="flex justify-end gap-2">
@@ -1116,10 +1091,12 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  Confirm Product Type Change?
+                  {currentProductTypeId ? "Confirm Product Type Change?" : "Set Product Type?"}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will update the product type for this lead.
+                  {currentProductTypeId
+                    ? "This will update the product type for this lead."
+                    : "This will set the product type for this lead."}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

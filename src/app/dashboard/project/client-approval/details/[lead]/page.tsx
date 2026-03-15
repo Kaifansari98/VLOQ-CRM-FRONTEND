@@ -177,7 +177,8 @@ export default function ClientApprovalLeadDetails() {
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadButton(userType);
   const canViewPayment = canViewPaymentTab(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canViewSiteHistory =
+    canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
 
   return (
     <>

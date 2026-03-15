@@ -124,7 +124,8 @@ export default function LeadDetails() {
   const canDelete = canDeleteLedForSalesExecutiveButton(userType);
   const canEdit = canEditLeadForSalesExecutiveButton(userType);
   const canViewPayment = canViewPaymentTab(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canViewSiteHistory =
+    canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {

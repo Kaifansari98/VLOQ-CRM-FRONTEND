@@ -128,7 +128,8 @@ export default function ReadyToDispatchLeadDetails() {
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadButton(userType);
   const canViewPayment = canViewPaymentTab(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canViewSiteHistory =
+    canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
   const handleExpectedDateChange = async (newDate?: string) => {
     if (!newDate || !vendorId || !userId || !leadIdNum) return;
 

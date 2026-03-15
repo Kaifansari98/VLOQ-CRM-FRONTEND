@@ -153,6 +153,9 @@ export default function ProductionLeadDetails() {
   const canMoveReadyToDispatchStage = canMoveToReadyToDispatch(effectiveUserType);
   const canUpdateExpectedDate =
     canViewAndWorkEditProcutionExpectedDate(effectiveUserType);
+  const canViewMarkCompletedButton =
+    effectiveUserType?.toLowerCase() === "factory" ||
+    effectiveUserType?.toLowerCase() === "super-admin";
 
   const canShowTodoTab = canAccessTodoTaskTabProductionStage(effectiveUserType);
 
@@ -221,7 +224,9 @@ const latestOrderLoginDate =
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
-  const canViewSiteHistory = canViewSiteHistoryTab(effectiveUserType ?? "");
+  const canViewSiteHistory =
+    canViewSiteHistoryTab(effectiveUserType ?? "") &&
+    effectiveUserType?.toLowerCase() !== "admin";
 
   const productionDefaultTab = handledproductionDefaultTab(effectiveUserType ?? "");
 
@@ -443,7 +448,8 @@ const latestOrderLoginDate =
         </div>
 
         <div className="flex w-full items-center justify-end gap-2 md:w-auto">
-          {canMoveReadyToDispatchStage &&
+          {canViewMarkCompletedButton &&
+            canMoveReadyToDispatchStage &&
             (allInstancesCompleted ? (
               <Button
                 size="sm"
@@ -523,7 +529,8 @@ const latestOrderLoginDate =
                 Assign Task
               </DropdownMenuItem>
 
-              {canMoveReadyToDispatchStage &&
+              {canViewMarkCompletedButton &&
+                canMoveReadyToDispatchStage &&
                 (allInstancesCompleted ? (
                   <DropdownMenuItem
                     className="md:hidden"

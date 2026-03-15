@@ -141,7 +141,9 @@ export default function UnderInstallationLeadDetails() {
   const deleteLeadMutation = useDeleteLead();
   const canAccessTodoTab = canAccessTodoTaskTabUnderInstallationStage(effectiveUserType ?? "");
   const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
-  const canViewSiteHistory = canViewSiteHistoryTab(effectiveUserType ?? "");
+  const canViewSiteHistory =
+    canViewSiteHistoryTab(effectiveUserType ?? "") &&
+    effectiveUserType?.toLowerCase() !== "admin";
 
   const miscStatusReady = miscStatus?.all_resolved;
 

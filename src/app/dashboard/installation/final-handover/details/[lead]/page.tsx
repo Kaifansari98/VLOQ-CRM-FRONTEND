@@ -120,7 +120,9 @@ export default function FinalHandoverLeadDetails() {
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
-  const canViewSiteHistory = canViewSiteHistoryTab(effectiveUserType ?? "");
+  const canViewSiteHistory =
+    canViewSiteHistoryTab(effectiveUserType ?? "") &&
+    effectiveUserType?.toLowerCase() !== "admin";
   const canAccessTodoTab =
     canAccessTodoTaskTabUnderFinalHandoverStage(effectiveUserType ?? "");
   const normalizedUserType = userType?.toLowerCase() ?? "";

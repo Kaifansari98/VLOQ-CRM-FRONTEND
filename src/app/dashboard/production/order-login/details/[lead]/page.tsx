@@ -108,7 +108,9 @@ export default function OrderLoginLeadDetails() {
   const canMove = readiness?.readyForProduction === true;
   const canMoveToProductionStage = canMoveToProduction(effectiveUserType);
   const canViewTodoTask = canWorkTodoTaskOrderLoginStage(effectiveUserType);
-  const canViewSiteHistory = canViewSiteHistoryTab(effectiveUserType);
+  const canViewSiteHistory =
+    canViewSiteHistoryTab(effectiveUserType) &&
+    effectiveUserType?.toLowerCase() !== "admin";
 
   const disabledReason = readinessLoading
     ? "Checking production prerequisites..."
