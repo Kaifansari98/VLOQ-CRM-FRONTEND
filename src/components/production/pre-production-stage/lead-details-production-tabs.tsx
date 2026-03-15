@@ -95,12 +95,16 @@ export default function LeadDetailsProductionUtil({
     preProductionReadyData?.readyForUnderProduction ?? false;
 
   const defaultTab = canViewDefaultSubTabProductionStage(effectiveUserType ?? "");
+  const tabFromUrl = searchParams.get("tab");
+  const canAccessAllTabs = userType === "super-admin" || userType === "factory";
 
   const allTabs = [
     {
       id: "productionFiles",
       title: "Production Files",
       color: "bg-zinc-900 hover:bg-zinc-900",
+      disabled: !canAccessAllTabs,
+      disabledReason: "Only super-admin and factory can access this tab.",
       cardContent: (
         <ProductionFilesSection
           leadId={leadId}
@@ -114,6 +118,8 @@ export default function LeadDetailsProductionUtil({
       id: "preProductionFiles",
       title: "Pre Production",
       color: "bg-zinc-900 hover:bg-zinc-900",
+      disabled: !canAccessAllTabs,
+      disabledReason: "Only super-admin and factory can access this tab.",
       cardContent: (
         <PreProductionFilesSection
           leadId={leadId}
@@ -126,9 +132,9 @@ export default function LeadDetailsProductionUtil({
       id: "preProduction",
       title: "Under Production",
       color: "bg-zinc-900 hover:bg-zinc-900",
-      disabled: !defaultTab || !readyForUnderProduction,
-      disabledReason: !defaultTab
-        ? "You do not have permission to view this record."
+      disabled: !canAccessAllTabs || !readyForUnderProduction,
+      disabledReason: !canAccessAllTabs
+        ? "Only super-admin and factory can access this tab."
         : "Upload pre-production files first to enable Under Production.",
       cardContent: (
         <PreProductionDetails
@@ -142,7 +148,7 @@ export default function LeadDetailsProductionUtil({
       id: "postProduction",
       title: "Post Production",
       color: "bg-zinc-900 hover:bg-zinc-900",
-      disabled: !readyForPostProduction,
+      disabled: canAccessAllTabs && !readyForPostProduction,
       disabledReason:
         "You can access Post Production only after completing Under-Production.",
       cardContent: (
@@ -206,8 +212,8 @@ export default function LeadDetailsProductionUtil({
         </div>
       )}
       <SmoothTab
-        items={userType === "admin" ? allTabs.filter((t) => t.id === "postProduction") : allTabs}
-        defaultTabId={userType === "admin" ? "postProduction" : defaultTab ? "preProductionFiles" : "postProduction"}
+        items={allTabs}
+        defaultTabId={canAccessAllTabs ? (tabFromUrl ?? (defaultTab ? "preProductionFiles" : "postProduction")) : "postProduction"}
       />
     </div>
   );

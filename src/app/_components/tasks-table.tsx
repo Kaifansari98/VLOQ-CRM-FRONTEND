@@ -308,7 +308,7 @@ const MyTaskTable = () => {
           variant: "productionready",
         });
         router.push(
-          `/dashboard/production/pre-post-prod/details/${row.leadId}?accountId=${row.accountId}&instance_id=${row.instance_id}&remark=${clearnRemark}`,
+          `/dashboard/production/pre-post-prod/details/${row.leadId}?accountId=${row.accountId}&instance_id=${row.instance_id}&remark=${clearnRemark}&tab=preProduction`,
         );
       } else if (row.taskType === "Order Login") {
         const stage = (row.leadStage || "").toLowerCase();
