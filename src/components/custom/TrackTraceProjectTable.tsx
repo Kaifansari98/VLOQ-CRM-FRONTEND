@@ -19,8 +19,6 @@ interface Props {
   className?: string;
 }
 
-
-
 export default function TrackTraceProjectTable({
   table,
   onRowDoubleClick,
