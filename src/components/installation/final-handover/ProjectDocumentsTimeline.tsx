@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { useAppSelector } from "@/redux/store";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   Ruler,
@@ -446,12 +447,24 @@ interface Props {
 
 export default function ProjectDocumentsTimeline({ leadId, vendorId, upToStage }: Props) {
   const { data: allDocs = [], isLoading } = useAllLeadDocuments(vendorId, leadId);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type as string | undefined
+  );
 
   const visibleStages = useMemo(() => {
-    if (!upToStage) return STAGES;
-    const idx = STAGES.findIndex((s) => s.id === upToStage);
-    return idx === -1 ? STAGES : STAGES.slice(0, idx + 1);
-  }, [upToStage]);
+    let stages = STAGES;
+    if (upToStage) {
+      const idx = STAGES.findIndex((s) => s.id === upToStage);
+      stages = idx === -1 ? STAGES : STAGES.slice(0, idx + 1);
+    }
+    return stages.filter((s) => {
+      if (s.id === "orderLogin")
+        return userType === "backend" || userType === "super-admin";
+      if (s.id === "production")
+        return userType === "factory" || userType === "super-admin";
+      return true;
+    });
+  }, [upToStage, userType]);
 
   const stageDocMap = useMemo(() => {
     const map: Record<string, LeadDocument[]> = {};
