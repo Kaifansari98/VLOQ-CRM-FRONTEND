@@ -33,6 +33,7 @@ import { FileUploadField } from "@/components/custom/file-upload";
 import { useUploadCSPBooking } from "@/hooks/useUploadCSPBooking";
 import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 import { useLeadById } from "@/hooks/useLeadsQueries";
+import { useFollowUpUsers } from "@/hooks/useFollowUpUsers";
 import {
   Tooltip,
   TooltipContent,
@@ -117,6 +118,9 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const uploadCSPMutation = useUploadCSPBooking();
   const { data: leadData } = useLeadById(leadId, vendorId, userId);
   const lead = leadData?.data?.lead;
+  const franchiseId = useAppSelector(
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id
+  );
 
   const assignedSiteSupervisorFromMapping =
     leadData?.data?.lead?.assigned_site_supervisor_from_mapping ?? null;
@@ -138,7 +142,20 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
   const taskType = form.watch("task_type");
 
+  const { data: followUpUsersData } = useFollowUpUsers(
+    vendorId,
+    leadId,
+    franchiseId
+  );
+
   const mappedData = React.useMemo(() => {
+    if (taskType === "Follow Up") {
+      return (followUpUsersData?.data?.users ?? []).map((u: any) => ({
+        id: u.id,
+        label: u.user_name,
+      }));
+    }
+
     if (taskType === "BookingDone - ISM") {
       return (
         salesExecutives?.data?.sales_executives?.map((user: any) => ({
@@ -169,7 +186,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         label: user.user_name,
       })) ?? []
     );
-  }, [taskType, siteSupervisors, salesExecutives, assignedSiteSupervisorId]);
+  }, [taskType, siteSupervisors, salesExecutives, assignedSiteSupervisorId, followUpUsersData]);
 
   React.useEffect(() => {
     if (taskType === "Final Measurements" && assignedSiteSupervisorId) {

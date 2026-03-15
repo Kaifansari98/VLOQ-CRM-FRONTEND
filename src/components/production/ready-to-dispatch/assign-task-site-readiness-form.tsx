@@ -37,6 +37,7 @@ import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUse
 import { canAssignSR } from "@/components/utils/privileges";
 import CustomeTooltip from "@/components/custom-tooltip";
 import { useAssignedSiteSupervisor } from "@/api/installation/useSiteReadinessLeads";
+import { useFollowUpUsers } from "@/hooks/useFollowUpUsers";
 
 // ✅ Validation schema
 const formSchema = z
@@ -84,6 +85,9 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   userType,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const franchiseId = useAppSelector(
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id
+  );
   const userId = useAppSelector((state) => state.auth.user?.id);
   const router = useRouter();
   const leadId = data?.id!;
@@ -110,11 +114,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     error,
   } = useVendorSiteSupervisorUsers(vendorId!);
 
-  const mappedData =
-    vendorUsers?.data?.site_supervisors?.map((user: any) => ({
-      id: user.id,
-      label: user.user_name,
-    })) ?? [];
+  const { data: followUpUsersData } = useFollowUpUsers(vendorId, leadId, franchiseId);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -126,14 +126,30 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     },
   });
 
+  const taskType = form.watch("task_type");
+
+  const siteSupervisorList =
+    vendorUsers?.data?.site_supervisors?.map((user: any) => ({
+      id: user.id,
+      label: user.user_name,
+    })) ?? [];
+
+  const mappedData =
+    taskType === "Follow Up"
+      ? (followUpUsersData?.data?.users ?? []).map((u: any) => ({
+          id: u.id,
+          label: u.user_name,
+        }))
+      : siteSupervisorList;
+
   const assignedSupervisorId =
     assignedSiteSupervisor?.supervisor?.id ??
     assignedSiteSupervisor?.user_id ??
     undefined;
-  const matchedSupervisorId = mappedData.find(
+  const matchedSupervisorId = siteSupervisorList.find(
     (user: { id: number; label: string }) => user.id === assignedSupervisorId
   )?.id;
-  const isSiteReadinessTask = form.watch("task_type") === "Site Readiness";
+  const isSiteReadinessTask = taskType === "Site Readiness";
   const shouldLockAssignee = isSiteReadinessTask && !!matchedSupervisorId;
 
   // ✅ Auto-select "Follow Up" if Site Readiness is disabled

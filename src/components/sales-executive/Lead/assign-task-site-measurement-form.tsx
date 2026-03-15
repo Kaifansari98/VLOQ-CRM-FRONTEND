@@ -29,6 +29,7 @@ import { AssignToSiteMeasurementPayload } from "@/api/leads";
 import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useFollowUpUsers } from "@/hooks/useFollowUpUsers";
 
 interface Props {
   open: boolean;
@@ -88,12 +89,6 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const mutation = useAssignToSiteMeasurement(leadId);
   const queryClient = useQueryClient();
 
-  const mappedData =
-    vendorUsers?.data?.sales_executives?.map((user: any) => ({
-      id: user.id,
-      label: user.user_name,
-    })) ?? [];
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -103,6 +98,25 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       remark: "N/A",
     },
   });
+
+  const taskType = form.watch("task_type");
+  const isFollowUp = taskType === "Follow Up" || !!onlyFollowUp;
+
+  const { data: followUpUsersData } = useFollowUpUsers(
+    vendorId,
+    leadId,
+    franchiseId
+  );
+
+  const mappedData = isFollowUp
+    ? (followUpUsersData?.data?.users ?? []).map((u: any) => ({
+        id: u.id,
+        label: u.user_name,
+      }))
+    : vendorUsers?.data?.sales_executives?.map((user: any) => ({
+        id: user.id,
+        label: user.user_name,
+      })) ?? [];
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const payload: AssignToSiteMeasurementPayload = {

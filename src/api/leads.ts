@@ -361,6 +361,18 @@ export const getVendorSiteSuppervisorUsers = async (vendorId: number) => {
   return response.data;
 };
 
+export const getFollowUpUsers = async (
+  vendorId: number,
+  leadId: number,
+  franchiseId?: number | null,
+) => {
+  const params = franchiseId ? `?franchise_id=${franchiseId}` : "";
+  const response = await apiClient.get(
+    `/leads/follow-up-users/vendor/${vendorId}/lead/${leadId}${params}`,
+  );
+  return response.data;
+};
+
 export const getLeadById = async (
   leadId: number,
   vendorId: number,
