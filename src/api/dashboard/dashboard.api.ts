@@ -132,12 +132,13 @@ export const getSalesExecutiveTaskStats = async (
 
 export const getPerformanceSnapshot = async (
   vendorId: number,
-  userId: number
+  userId: number,
+  franchiseId?: number
 ): Promise<UiPerformanceSnapshot> => {
   const res = await apiClient.get(
     "/dashboard/sales-executive/performance-snapshot",
     {
-      params: { vendor_id: vendorId, user_id: userId },
+      params: { vendor_id: vendorId, user_id: userId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
     }
   );
 
@@ -271,11 +272,12 @@ export type UiAvgDaysToBooking = ApiAvgDaysToBooking;
 
 export const getAvgDaysToConvertLeadToBooking = async (
   vendorId: number,
-  userId: number
+  userId: number,
+  franchiseId?: number
 ): Promise<UiAvgDaysToBooking> => {
   const res = await apiClient.get(
     "/dashboard/avg-days-to-convert-lead-to-booking",
-    { params: { vendor_id: vendorId, user_id: userId } }
+    { params: { vendor_id: vendorId, user_id: userId, ...(franchiseId ? { franchise_id: franchiseId } : {}) } }
   );
   return res.data.data as UiAvgDaysToBooking;
 };
@@ -316,10 +318,11 @@ export interface SalesExecutiveStageLeads {
 
 export const getSalesExecutiveStageCounts = async (
   vendorId: number,
-  userId: number
+  userId: number,
+  franchiseId?: number
 ): Promise<SalesExecutiveStageCounts> => {
   const res = await apiClient.get("/dashboard/sales-executive/stage-counts", {
-    params: { vendor_id: vendorId, user_id: userId },
+    params: { vendor_id: vendorId, user_id: userId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
   });
   return res.data.data as SalesExecutiveStageCounts;
 };

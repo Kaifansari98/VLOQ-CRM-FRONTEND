@@ -57,7 +57,8 @@ export function useSalesExecutiveTaskStats(vendorId: number, userId: number) {
 // ---------------------------------------------------
 export function usePerformanceSnapshot(
   vendorId: number,
-  userId: number
+  userId: number,
+  franchiseId?: number
 ): UsePerformanceSnapshotResult {
   const [data, setData] = useState<UiPerformanceSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +73,7 @@ export function usePerformanceSnapshot(
     try {
       setIsLoading(true);
       setError(null);
-      const snapshot = await getPerformanceSnapshot(vendorId, userId);
+      const snapshot = await getPerformanceSnapshot(vendorId, userId, franchiseId);
       setData(snapshot);
     } catch (err) {
       logError("Failed to fetch performance snapshot:", err);
@@ -80,7 +81,7 @@ export function usePerformanceSnapshot(
     } finally {
       setIsLoading(false);
     }
-  }, [vendorId, userId]); // ADD dependencies here
+  }, [vendorId, userId, franchiseId]); // ADD dependencies here
 
   useEffect(() => {
     fetchData();
@@ -114,7 +115,8 @@ export interface UseAvgDaysToBookingResult {
 
 export function useAvgDaysToBooking(
   vendorId: number,
-  userId: number
+  userId: number,
+  franchiseId?: number
 ): UseAvgDaysToBookingResult {
   const [data, setData] = useState<UiAvgDaysToBooking | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -128,7 +130,7 @@ export function useAvgDaysToBooking(
     try {
       setIsLoading(true);
       setError(null);
-      const res = await getAvgDaysToConvertLeadToBooking(vendorId, userId);
+      const res = await getAvgDaysToConvertLeadToBooking(vendorId, userId, franchiseId);
       setData(res);
     } catch (err: any) {
       console.error("Failed to fetch avg days to booking:", err);
@@ -140,7 +142,7 @@ export function useAvgDaysToBooking(
 
   useEffect(() => {
     fetchData();
-  }, [vendorId, userId]);
+  }, [vendorId, userId, franchiseId]);
 
   return { data, isLoading, error, refetch: fetchData };
 }
@@ -234,7 +236,8 @@ export interface UseStageCountsResult {
 }
 export function useSalesExecutiveStageCounts(
   vendorId: number,
-  userId: number
+  userId: number,
+  franchiseId?: number
 ): UseStageCountsResult {
   const [data, setData] = useState<SalesExecutiveStageCounts | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -248,7 +251,7 @@ export function useSalesExecutiveStageCounts(
     try {
       setIsLoading(true);
       setError(null);
-      const res = await getSalesExecutiveStageCounts(vendorId, userId);
+      const res = await getSalesExecutiveStageCounts(vendorId, userId, franchiseId);
       setData(res);
     } catch (err: any) {
       console.error("Failed to fetch stage counts:", err);
@@ -260,7 +263,7 @@ export function useSalesExecutiveStageCounts(
 
   useEffect(() => {
     fetchData();
-  }, [vendorId, userId]);
+  }, [vendorId, userId, franchiseId]);
 
   return { data, isLoading, error, refetch: fetchData };
 }

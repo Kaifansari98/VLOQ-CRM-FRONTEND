@@ -321,21 +321,7 @@ export function canAccessTodoTaskTabProductionStage(role: string): boolean {
 }
 
 export function canViewAndWorkEditProcutionExpectedDate(role: string): boolean {
-  // 1. Admins always have access
-  if (role === "admin" || role === "super-admin" || role === "factory")
-    return true;
-
-  // 3. "can view only"
-  if (
-    role === "backend" ||
-    role === "tech-check" ||
-    role === "sales-executive" ||
-    role === "site-supervisor"
-  )
-    return false;
-
-  // 4. Everyone else has access by default
-  return true;
+  return role === "super-admin" || role === "factory";
 }
 
 export const canViewDefaultSubTabProductionStage = (role: string) => {
