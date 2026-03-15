@@ -325,10 +325,10 @@ export const useGetDashboardAllLeads = (vendorId: number, userId: number) => {
   });
 };
 
-export const useGetAdminDashboardAllLeads = (vendorId: number) => {
+export const useGetAdminDashboardAllLeads = (vendorId: number, franchiseId?: number) => {
   return useQuery<StageData>({
-    queryKey: ["admin-dashboard-leads", vendorId],
-    queryFn: () => getAdminDashboardAllLeads(vendorId),
+    queryKey: ["admin-dashboard-leads", vendorId, franchiseId],
+    queryFn: () => getAdminDashboardAllLeads(vendorId, franchiseId),
     enabled: !!vendorId,
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,

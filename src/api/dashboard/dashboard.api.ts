@@ -416,12 +416,13 @@ export const getDashboardAllLeads = async (
 };
 
 export const getAdminDashboardAllLeads = async (
-  vendorId: number
+  vendorId: number,
+  franchiseId?: number
 ): Promise<StageData> => {
   const res = await apiClient.get<StageResponse>(
     "/dashboard/admin/all-stage-leads",
     {
-      params: { vendor_id: vendorId },
+      params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
     }
   );
 
