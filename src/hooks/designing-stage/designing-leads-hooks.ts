@@ -182,7 +182,6 @@ export const useLeadStatusNotification = (
     queryKey: ["lead-status-notification", leadId, vendorId, instanceId],
     queryFn: () => getLeadStatusNotification(leadId!, vendorId!, instanceId),
     enabled: !!leadId && !!vendorId,
-    staleTime: 5 * 60 * 1000,
   });
 };
 

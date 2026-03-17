@@ -237,7 +237,9 @@ export const updateLeadProductType = async (
   const response = await apiClient.put(
     `/leads/update-product-type/${leadId}/userId/${userId}`,
     {
-      ...(payload.productTypeId ? { product_type_id: payload.productTypeId } : {}),
+      ...(payload.productTypeId
+        ? { product_type_id: payload.productTypeId }
+        : {}),
       ...(payload.productType ? { product_type: payload.productType } : {}),
     },
   );
@@ -594,7 +596,10 @@ export const useDeleteDocument = (leadId?: number) => {
       return data;
     },
     onSuccess: () => {
-      toastManager.add({ title: "Document deleted successfully!", type: "success" });
+      toastManager.add({
+        title: "Document deleted successfully!",
+        type: "success",
+      });
 
       // ✅ Invalidate both queries safely
       queryClient.invalidateQueries({ queryKey: ["lead"] });
@@ -689,10 +694,41 @@ export const useDeleteDocument = (leadId?: number) => {
         queryClient.invalidateQueries({
           queryKey: ["miscellaneousEntries"],
         });
+        queryClient.invalidateQueries({
+          queryKey: ["lead-product-structure-instances"],
+          exact: false,
+        });
       }
+
+      queryClient.invalidateQueries({
+        queryKey: ["postProductionReady"],
+        exact: false,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["postProductionCompleteness"],
+        exact: false,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["checkSiteReadinessCompletion"],
+        exact: false,
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["preProductionFiles"],
+        exact: false,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["currentSitePhotosAtSiteReadiness"],
+        exact: false,
+      });
     },
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: error?.response?.data?.message || "Failed to delete document", type: "error" });
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to delete document",
+        type: "error",
+      });
     },
   });
 };
@@ -714,7 +750,7 @@ export const useAllLeadDocuments = (vendorId?: number, leadId?: number) => {
     queryKey: ["allLeadDocuments", vendorId, leadId],
     queryFn: async () => {
       const { data } = await apiClient.get(
-        `/leads/vendorId/${vendorId}/leadId/${leadId}/all-documents`
+        `/leads/vendorId/${vendorId}/leadId/${leadId}/all-documents`,
       );
       return data.data;
     },

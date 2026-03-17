@@ -126,6 +126,8 @@ export default function PostProductionDetails({
 
       toastManager.add({ title: "No. of Boxes updated successfully!", type: "success" });
       queryClient.invalidateQueries({ queryKey: ["noOfBoxes"] });
+
+      queryClient.invalidateQueries({ queryKey: ["lead-product-structure-instances"],exact: false }); // Invalidate related queries to reflect changes across the board
       form.reset();
       setOpen(false);
     } catch (err: any) {
