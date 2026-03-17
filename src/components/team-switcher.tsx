@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import * as React from "react"
 import { ChevronsUpDown } from "lucide-react"
 
@@ -36,6 +37,7 @@ export function TeamSwitcher({
   activeTeamId?: number | null
 }) {
   const { isMobile } = useSidebar()
+  const router = useRouter()
   const dispatch = useAppDispatch()
   const userType = useAppSelector((state) => state.auth.user?.user_type?.user_type)
   const isSuperAdmin = userType?.toLowerCase() === "super-admin"
@@ -80,6 +82,7 @@ export function TeamSwitcher({
       if (nextTeam) {
         setActiveTeam(nextTeam)
         dispatch(setFranchiseId(nextTeam.id))
+        router.push("/dashboard")
       }
       setIsSwitching(false)
       setPendingTeam(undefined)
