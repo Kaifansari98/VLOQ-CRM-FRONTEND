@@ -115,9 +115,6 @@ const DispatchDetailsSchema = z.object({
 
         return false;
       },
-      {
-        message: "Enter a valid 10-digit mobile number",
-      },
     ),
 
   dispatch_remark: z.string().optional(),
