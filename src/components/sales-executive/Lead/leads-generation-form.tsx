@@ -360,7 +360,6 @@ export default function LeadsGenerationForm({
       });
       queryClient.invalidateQueries({
         queryKey: ["universal-stage-leads"],
-        exact: false,
       });
       queryClient.invalidateQueries({
         queryKey: ["vendorUserLeads", vendorId, userId],

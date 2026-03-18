@@ -28,19 +28,25 @@ import { EditMachineModal } from "@/components/track-trace/EditMachineModal";
 import { Plus, Loader2, Pencil } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import { useMachinesByVendor } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import type { MachineData } from "@/types/track-trace";
 
+import { useAssignedUsersByMachine } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
+import { UserMachineAssignModal } from "@/components/track-trace/UserMachineAssignModal";
 export default function MachineMasterPage() {
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const userId = useAppSelector((s) => s.auth.user?.id);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState<MachineData | null>(
     null,
   );
 
-  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const { data: machines, isLoading, error } = useMachinesByVendor(vendorId!);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [assignMachineId, setAssignMachineId] = useState<number | null>(null);
+
   // console.log("useMachinesByVendor", machines)
   const getStatusBadge = (status: string) => {
     const statusStyles = {
@@ -97,6 +103,20 @@ export default function MachineMasterPage() {
     }
   };
 
+  const handleAssignUsers = (machineId: number) => {
+    setAssignMachineId(machineId);
+    setIsAssignModalOpen(true);
+  };
+
+  function AssignedCountBadge({ machineId }: { machineId: number }) {
+    const { data } = useAssignedUsersByMachine(machineId);
+    if (!data?.count) return null;
+    return (
+      <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground text-background text-[10px] font-semibold px-1">
+        {data.count}
+      </span>
+    );
+  }
   return (
     <>
       {/* ---------------- HEADER ---------------- */}
@@ -172,6 +192,7 @@ export default function MachineMasterPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">Sr. No.</TableHead>
                     <TableHead className="w-15">Seq</TableHead>
                     <TableHead className="w-20">Image</TableHead>
                     <TableHead>Machine Name</TableHead>
@@ -179,17 +200,21 @@ export default function MachineMasterPage() {
                     <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Scan Type</TableHead>
-                    <TableHead className="w-25">Target per Hour (per Sqft)</TableHead>
+                    <TableHead className="w-25">
+                      Target per Hour (per Sqft)
+                    </TableHead>
                     <TableHead className="min-w-50">Description</TableHead>
                     <TableHead>Created At</TableHead>
-                    <TableHead className="w-20 text-center">
-                      Actions
+                    <TableHead className="w-32 text-center">
+                      Assign Users
                     </TableHead>
+                    <TableHead className="w-20 text-center">Edit</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {machines.map((machine) => (
+                  {machines.map((machine, index) => (
                     <TableRow key={machine.id}>
+                      <TableCell className="font-medium">{index + 1}</TableCell>
                       {/* Sequence Number */}
                       <TableCell className="font-medium">
                         {machine.sequence_no}
@@ -215,12 +240,12 @@ export default function MachineMasterPage() {
                       </TableCell>
 
                       {/* Machine Name */}
-                      <TableCell className="font-medium">
+                      <TableCell className="text-sm font-semibold capitalize">
                         {machine.machine_name}
                       </TableCell>
 
                       {/* Machine Code */}
-                      <TableCell className="font-mono text-sm">
+                      <TableCell className="text-sm font-semibold capitalize">
                         {machine.machine_code}
                       </TableCell>
 
@@ -248,10 +273,24 @@ export default function MachineMasterPage() {
                       </TableCell>
 
                       {/* Created At */}
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-sm">
                         {formatDate(machine.created_at)}
                       </TableCell>
 
+                      <TableCell className="text-center">
+                        <div className="relative inline-flex">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1 shadow-none"
+                            onClick={() => handleAssignUsers(machine.id)}
+                          >
+                            Assign
+                          </Button>
+
+                          <AssignedCountBadge machineId={machine.id} />
+                        </div>
+                      </TableCell>
                       {/* Actions */}
                       <TableCell className="text-center">
                         <Button
@@ -283,6 +322,17 @@ export default function MachineMasterPage() {
         open={isEditModalOpen}
         onOpenChange={handleEditModalClose}
         machine={selectedMachine}
+      />
+
+      <UserMachineAssignModal
+        open={isAssignModalOpen}
+        onOpenChange={(val) => {
+          setIsAssignModalOpen(val);
+          if (!val) setAssignMachineId(null);
+        }}
+        machineId={assignMachineId}
+        vendorId={vendorId!}
+        userId={userId!}
       />
     </>
   );

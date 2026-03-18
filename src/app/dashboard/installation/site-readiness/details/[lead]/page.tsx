@@ -183,6 +183,13 @@ export default function ReadyToDispatchLeadDetails() {
         queryKey: ["universal-stage-leads"],
         exact: false,
       });
+
+       queryClient.invalidateQueries({
+        queryKey: ["vendorUserTasks"],
+        exact: false,
+      });
+
+      
       queryClient.invalidateQueries({
         queryKey: ["vendorOverallLeads"],
       });

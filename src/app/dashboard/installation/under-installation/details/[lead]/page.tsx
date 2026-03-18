@@ -111,8 +111,6 @@ export default function UnderInstallationLeadDetails() {
 
   const { data: miscStatus, isLoading: isLoadingMisc } =
     useMiscellaneousResolutionStatus(vendorId, leadIdNum);
-  
-
 
   const [openStartModal, setOpenStartModal] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
@@ -139,7 +137,9 @@ export default function UnderInstallationLeadDetails() {
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const deleteLeadMutation = useDeleteLead();
-  const canAccessTodoTab = canAccessTodoTaskTabUnderInstallationStage(effectiveUserType ?? "");
+  const canAccessTodoTab = canAccessTodoTaskTabUnderInstallationStage(
+    effectiveUserType ?? "",
+  );
   const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
   const canViewSiteHistory =
     canViewSiteHistoryTab(effectiveUserType ?? "") &&
@@ -147,21 +147,30 @@ export default function UnderInstallationLeadDetails() {
 
   const miscStatusReady = miscStatus?.all_resolved;
 
-  console.log("miscStatus: ",miscStatus?.all_resolved)
-
+  console.log("miscStatus: ", miscStatus?.all_resolved);
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Missing vendor or user info!", type: "error" });
+      toastManager.add({
+        title: "Missing vendor or user info!",
+        type: "error",
+      });
       return;
     }
 
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toastManager.add({ title: "Lead deleted successfully!", type: "success" }),
+        onSuccess: () =>
+          toastManager.add({
+            title: "Lead deleted successfully!",
+            type: "success",
+          }),
         onError: (err: any) =>
-          toastManager.add({ title: err?.message || "Failed to delete lead", type: "error" }),
+          toastManager.add({
+            title: err?.message || "Failed to delete lead",
+            type: "error",
+          }),
       },
     );
 
@@ -209,7 +218,6 @@ export default function UnderInstallationLeadDetails() {
 
         {/* 🔹 Header Actions */}
         <div className="flex items-center space-x-2">
-
           {/* ───────────────────────────────────────────── */}
           {/*  MOVE TO FINAL HANDOVER BUTTON WITH CONDITIONS */}
           {/* ───────────────────────────────────────────── */}
@@ -434,12 +442,8 @@ export default function UnderInstallationLeadDetails() {
               ) : (
                 <CustomeTooltip
                   truncateValue={
-
-                    <TabsTrigger disabled value="todo" >
-                      <PencilLine
-                        size={16}
-                        className="mr-1 opacity-60"
-                      />
+                    <TabsTrigger disabled value="todo">
+                      <PencilLine size={16} className="mr-1 opacity-60" />
                       To-Do Task
                     </TabsTrigger>
                   }
@@ -639,7 +643,10 @@ export default function UnderInstallationLeadDetails() {
             <AlertDialogAction
               onClick={() => {
                 if (!lead?.vendor_id || !userId) {
-                  toastManager.add({ title: "Missing vendor or user information!", type: "error" });
+                  toastManager.add({
+                    title: "Missing vendor or user information!",
+                    type: "error",
+                  });
                   return;
                 }
 
@@ -651,11 +658,15 @@ export default function UnderInstallationLeadDetails() {
                   },
                   {
                     onSuccess: () => {
-                      toastManager.add({ title: "Lead moved to Final Handover stage!", type: "success" });
+                      // ✅ Correct key now
+                      queryClient.removeQueries({
+                        queryKey: ["lead-status", leadIdNum, vendorId],
+                      });
 
-                      setShowMoveModal(false);
+                      queryClient.removeQueries({
+                        queryKey: ["leadById", leadIdNum],
+                      });
 
-                      // 🔁 Invalidate required queries
                       queryClient.invalidateQueries({
                         queryKey: ["leadStats"],
                         exact: false,
@@ -665,7 +676,6 @@ export default function UnderInstallationLeadDetails() {
                         exact: false,
                       });
 
-                      // 🚀 Redirect
                       router.push("/dashboard/installation/final-handover");
                     },
                   },
@@ -684,7 +694,10 @@ export default function UnderInstallationLeadDetails() {
         statusType={activityType}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toastManager.add({ title: "Vendor or User info is missing!", type: "error" });
+            toastManager.add({
+              title: "Vendor or User info is missing!",
+              type: "error",
+            });
             return;
           }
           updateStatusMutation.mutate(
@@ -702,7 +715,10 @@ export default function UnderInstallationLeadDetails() {
             },
             {
               onSuccess: () => {
-                toastManager.add({ title: "Lead marked as On Hold!", type: "success" });
+                toastManager.add({
+                  title: "Lead marked as On Hold!",
+                  type: "success",
+                });
 
                 setActivityModalOpen(false);
 
@@ -712,7 +728,10 @@ export default function UnderInstallationLeadDetails() {
                 });
               },
               onError: (err: any) => {
-                toastManager.add({ title: err?.message || "Failed to update lead status", type: "error" });
+                toastManager.add({
+                  title: err?.message || "Failed to update lead status",
+                  type: "error",
+                });
               },
             },
           );
