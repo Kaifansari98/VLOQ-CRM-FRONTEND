@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
@@ -82,7 +82,10 @@ import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 export default function DispatchPlanningLeadDetails() {
   const router = useRouter();
   const { lead: leadId } = useParams();
+  const searchParams = useSearchParams();
   const leadIdNum = Number(leadId);
+  const instanceIdParam = searchParams.get("instance_id");
+  const validInstanceId = instanceIdParam && !Number.isNaN(Number(instanceIdParam)) ? Number(instanceIdParam) : null;
   const queryClient = useQueryClient();
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -373,6 +376,7 @@ export default function DispatchPlanningLeadDetails() {
               leadId={leadIdNum}
               accountId={accountId}
               defaultParentTab="installation"
+              dispatchInstanceId={validInstanceId}
             />
           )}
         </TabsContent>
@@ -385,6 +389,7 @@ export default function DispatchPlanningLeadDetails() {
               leadId={leadIdNum}
               accountId={accountId}
               defaultParentTab="installation"
+              dispatchInstanceId={validInstanceId}
             />
           )}
         </TabsContent>
