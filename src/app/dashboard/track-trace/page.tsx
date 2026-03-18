@@ -23,7 +23,7 @@ import TraceTraceDashboard from "@/components/dashboard/TraceTraceDashboard";
 
 export default function Page() {
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type
+    (state) => state.auth.user?.user_type?.user_type,
   );
 
   const [openSearchModal, setOpenSearchModal] = useState(false);
@@ -32,7 +32,7 @@ export default function Page() {
   // Runs only in the browser → safe
   useEffect(() => {
     setIsMac(
-      typeof navigator !== "undefined" && navigator.platform.includes("Mac")
+      typeof navigator !== "undefined" && navigator.platform.includes("Mac"),
     );
 
     const handleKey = (e: KeyboardEvent) => {
@@ -61,11 +61,11 @@ export default function Page() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">Dashboard</BreadcrumbLink>
+                <BreadcrumbLink href="#">Track Trace</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>Track Trace</BreadcrumbPage>
+                <BreadcrumbPage>Dashboard</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -77,13 +77,12 @@ export default function Page() {
             className="sm:hidden flex"
             aria-label="Search"
           >
-            <Search  />
+            <Search />
           </button>
 
-          {/* 🔍 Desktop Search Input */}
           <div
             onClick={() => setOpenSearchModal(true)}
-            className="hidden sm:flex items-center justify-between w-[260px] rounded-md border border-input bg-background px-3 py-1.5 text-sm text-muted-foreground cursor-pointer"
+            className="hidden sm:flex items-center justify-between w-65 rounded-md border border-input bg-background px-3 py-1.5 text-sm text-muted-foreground cursor-pointer"
           >
             <span className="truncate">Search leads...</span>
 
@@ -98,23 +97,9 @@ export default function Page() {
         </div>
       </header>
 
-      {/* Wrap everything inside the conditional dashboard renderer */}
-
       <FadeInProvider>
-              <TraceTraceDashboard></TraceTraceDashboard>
-            </FadeInProvider>
-
-        {/* <DashboardWrapper>
-            
-            <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-            <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                <div className="bg-muted/50 aspect-video rounded-xl" />
-                <div className="bg-muted/50 aspect-video rounded-xl" />
-                <div className="bg-muted/50 aspect-video rounded-xl" />
-            </div>
-            <div className="bg-muted/50 min-h-[100vh] flex-1 rounded-xl md:min-h-min" />
-            </div>
-        </DashboardWrapper> */}
+        <TraceTraceDashboard></TraceTraceDashboard>
+      </FadeInProvider>
 
       <GlobalLeadSearchModal
         open={openSearchModal}

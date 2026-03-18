@@ -325,7 +325,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     const promises: Promise<void>[] = [];
 
     if (!canUpdateInput) {
-      toastManager.add({ title: "You do not have permission to update selections.", type: "error" });
+      toastManager.add({
+        title: "You do not have permission to update selections.",
+        type: "error",
+      });
       return;
     }
 
@@ -352,7 +355,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         queryKey: ["getSelectionData", vendorId, leadId],
       });
     } catch (e: any) {
-      toastManager.add({ title: e?.message || "Some selections failed to update", type: "error" });
+      toastManager.add({
+        title: e?.message || "Some selections failed to update",
+        type: "error",
+      });
     }
   };
 
@@ -492,11 +498,17 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
   const handleUploadForInstance = async (values: InstanceUploadValues) => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Missing vendorId or userId for upload", type: "error" });
+      toastManager.add({
+        title: "Missing vendorId or userId for upload",
+        type: "error",
+      });
       return;
     }
     if (!activeInstance && structureInstances.length > 0) {
-      toastManager.add({ title: "Please select product instance", type: "error" });
+      toastManager.add({
+        title: "Please select product instance",
+        type: "error",
+      });
       return;
     }
 
@@ -510,26 +522,36 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         pptDocuments: values.pptDocuments,
         pythaDocuments: values.pythaDocuments,
       });
-      toastManager.add({ title: activeInstance
+      toastManager.add({
+        title: activeInstance
           ? `Files uploaded for ${activeInstance.title}`
-          : "Files uploaded", type: "success" });
+          : "Files uploaded",
+        type: "success",
+      });
       setUploadModalOpen(false);
       uploadForm.reset({ pptDocuments: [], pythaDocuments: [] });
       await queryClient.invalidateQueries({
         queryKey: ["clientDocumentationDetails", vendorId, leadId],
+        exact: false, // ✅ catches all variants including userId
       });
       queryClient.invalidateQueries({
         queryKey: ["getSelectionData", vendorId, leadId],
       });
     } catch (e: any) {
-      toastManager.add({ title: e?.response?.data?.message || "Failed to upload files", type: "error" });
+      toastManager.add({
+        title: e?.response?.data?.message || "Failed to upload files",
+        type: "error",
+      });
     }
   };
 
   const handleMoveStage = () => {
     if (!vendorId || !userId) return;
     if (selectionForm.formState.isDirty) {
-      toastManager.add({ title: "Please save Carcas, Shutter and Handles before moving stage", type: "error" });
+      toastManager.add({
+        title: "Please save Carcas, Shutter and Handles before moving stage",
+        type: "error",
+      });
       return;
     }
     moveToClientApproval(

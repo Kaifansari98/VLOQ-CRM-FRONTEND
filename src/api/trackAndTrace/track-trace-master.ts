@@ -149,3 +149,30 @@ export const createTrackTraceProjectApi = async (
 
   return response.data;
 };
+
+
+export const assignUsersToMachineApi = async (payload: {
+  machine_id: number;
+  vendor_id: number;
+  user_ids: number[];
+  created_by: number;
+}) => {
+  const response = await apiClient.post(
+    "/track-trace-master/machine-users-assign",
+    payload
+  );
+
+  return response.data;
+};
+
+
+
+
+export const getAssignedUsersByMachineApi = async (machine_id: number) => {
+  const response = await apiClient.get(
+    `/track-trace-master/machines/${machine_id}/assigned-users`
+  );
+
+  return response.data.data; 
+};
+

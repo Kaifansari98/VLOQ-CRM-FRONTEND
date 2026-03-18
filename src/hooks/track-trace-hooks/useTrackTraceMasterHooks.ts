@@ -1,8 +1,10 @@
 import {
   applyConfigurationApi,
+  assignUsersToMachineApi,
   createMachine,
   createTrackTraceProjectApi,
   fetchVendorLeads,
+  getAssignedUsersByMachineApi,
   getMachinesByVendor,
   postVendorLeads,
   updateMachine,
@@ -104,8 +106,6 @@ export const useVendorLeads = (
   });
 };
 
-
-
 export const useCreateTrackTraceProject = () => {
   const queryClient = useQueryClient();
 
@@ -126,3 +126,27 @@ export const useCreateTrackTraceProject = () => {
   });
 };
 
+export const useAssignUsersToMachine = () => {
+  return useMutation({
+    mutationFn: assignUsersToMachineApi,
+  });
+};
+
+type AssignedUsersResponse = {
+  users: number[];
+  count: number;
+};
+
+export const useAssignedUsersByMachine = (machineId?: number) => {
+  return useQuery<AssignedUsersResponse>({
+    queryKey: ["assigned-users", machineId],
+
+    queryFn: () => getAssignedUsersByMachineApi(machineId!),
+
+    enabled: !!machineId,
+
+    staleTime: 5 * 60 * 1000,
+
+    refetchOnWindowFocus: false,
+  });
+};

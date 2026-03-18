@@ -75,6 +75,7 @@ import BaseModal from "@/components/utils/baseModal";
 import { useDeleteDocument } from "@/api/leads";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import MiscTaskModal from "@/components/misc-task-modal";
+import VideoCard from "@/components/utils/VideoCard";
 
 interface InstallationMiscellaneousProps {
   vendorId: number;
@@ -152,9 +153,7 @@ export default function InstallationMiscellaneous({
     userType,
     leadStatus,
   );
-  const canMarkAsReady =
-    userType === "factory" ||
-    userType === "super-admin";
+  const canMarkAsReady = userType === "factory" || userType === "super-admin";
 
   const isTaskReady = viewModalData?.task?.status === "completed";
 
@@ -253,7 +252,10 @@ export default function InstallationMiscellaneous({
     }
 
     if (files.length === 0) {
-      toastManager.add({ title: "Please upload at least one document", type: "error" });
+      toastManager.add({
+        title: "Please upload at least one document",
+        type: "error",
+      });
       return;
     }
 
@@ -335,6 +337,40 @@ export default function InstallationMiscellaneous({
     return ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
   };
 
+  const separateImageAndDocs = (docs: any[]) => {
+    const imageExtensions = ["jpg", "jpeg", "png", "webp"];
+    const videoExtensions = ["mp4", "mov", "webm", "avi"]; // ✅ add more if needed
+
+    const images = docs.filter((d) => {
+      const ext = (d.doc_og_name || d.original_name)
+        ?.split(".")
+        .pop()
+        ?.toLowerCase();
+      return imageExtensions.includes(ext || "");
+    });
+
+    const videos = docs.filter((d) => {
+      const ext = (d.doc_og_name || d.original_name)
+        ?.split(".")
+        .pop()
+        ?.toLowerCase();
+      return videoExtensions.includes(ext || "");
+    });
+
+    const nonImages = docs.filter((d) => {
+      const ext = (d.doc_og_name || d.original_name)
+        ?.split(".")
+        .pop()
+        ?.toLowerCase();
+      return (
+        !imageExtensions.includes(ext || "") &&
+        !videoExtensions.includes(ext || "")
+      );
+    });
+
+    return { images, videos, nonImages };
+  };
+
   const teamOptions: Option[] = miscTeams.map((team) => ({
     value: String(team.id),
     label: team.name,
@@ -359,9 +395,7 @@ export default function InstallationMiscellaneous({
   const canResolveRole = ["super-admin", "site-supervisor"].includes(
     userType || "",
   );
-  const canApproveReject =
-    userType === "factory" ||
-    userType === "super-admin";
+  const canApproveReject = userType === "factory" || userType === "super-admin";
   const showApprovalActions = canApproveReject && miscApproved == null;
   const canUpdateERD = canDoERDDate && !isTaskReady && isApproved;
   const canUpdateRequiredDelivery =
@@ -791,7 +825,7 @@ export default function InstallationMiscellaneous({
             <FileUploadField
               value={files}
               onChange={setFiles}
-              accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx"
+              accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,.avi,"
               multiple
             />
             <p className="text-xs text-muted-foreground">
@@ -859,7 +893,6 @@ export default function InstallationMiscellaneous({
       {/* View Modal */}
       <BaseModal
         open={viewModal.open}
-        // ✅ Close pe id bhi null karo
         onOpenChange={(open) =>
           setViewModal({ open, id: open ? viewModal.id : null })
         }
@@ -907,7 +940,8 @@ export default function InstallationMiscellaneous({
                             {viewModalData?.created_user?.user_name}
                           </p>
                           <p className="text-base font-semibold text-foreground">
-                            {viewModalData && formatDate(viewModalData.created_at)}
+                            {viewModalData &&
+                              formatDate(viewModalData.created_at)}
                           </p>
                         </div>
                       </div>
@@ -1067,28 +1101,30 @@ export default function InstallationMiscellaneous({
                   (d) => d.doc_type_tag !== "Type 37",
                 );
 
-                const renderDocs = (docs: typeof entry.documents) => (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {docs.map((doc) => {
-                      const isImage = isImageFile(doc.original_name);
+                const renderDocs = (docs: typeof entry.documents) => {
+                  const { images, videos, nonImages } =
+                    separateImageAndDocs(docs);
 
-                      if (isImage) {
-                        return (
-                          <ImageComponent
-                            key={doc.document_id}
-                            doc={{
-                              id: doc.document_id,
-                              doc_og_name: doc.original_name,
-                              signedUrl: doc.signed_url,
-                              created_at: doc.uploaded_at,
-                            }}
-                            canDelete={canWork}
-                            onDelete={(id) => setConfirmDelete(Number(id))}
-                          />
-                        );
-                      }
+                  return (
 
-                      return (
+                  <div className="space-y-6">
+
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {images.map((doc) => (
+                        <ImageComponent
+                          key={doc.document_id}
+                          doc={{
+                            id: doc.document_id,
+                            doc_og_name: doc.original_name,
+                            signedUrl: doc.signed_url,
+                            created_at: doc.uploaded_at,
+                          }}
+                          canDelete={canWork}
+                          onDelete={(id) => setConfirmDelete(Number(id))}
+                        />
+                      ))}
+                      {nonImages.map((doc) => (
                         <DocumentCard
                           key={doc.document_id}
                           doc={{
@@ -1100,10 +1136,31 @@ export default function InstallationMiscellaneous({
                           canDelete={canWork}
                           onDelete={(id) => setConfirmDelete(Number(id))}
                         />
-                      );
-                    })}
-                  </div>
-                );
+                      ))}
+                    </div>
+
+
+                        {/* ✅ Videos */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {videos.map((doc) => (
+                        <VideoCard
+                          key={doc.document_id}
+                          doc={{
+                            id: doc.document_id,
+                            originalName: doc.original_name,
+                            signedUrl: doc.signed_url,
+                            created_at: doc.uploaded_at,
+                          }}
+                          canDelete={canWork}
+                          onDelete={(id) => setConfirmDelete(Number(id))}
+                        />
+                      ))}
+
+                      </div>
+
+                    </div>
+                  );
+                };
 
                 return (
                   <div className="space-y-6">
@@ -1418,7 +1475,10 @@ export default function InstallationMiscellaneous({
               onClick={() => {
                 if (!viewModalData) return;
                 if (!rejectReason.trim()) {
-                  toastManager.add({ title: "Please enter a rejection reason", type: "error" });
+                  toastManager.add({
+                    title: "Please enter a rejection reason",
+                    type: "error",
+                  });
                   return;
                 }
 
@@ -1434,11 +1494,7 @@ export default function InstallationMiscellaneous({
                     onSuccess: () => {
                       // ✅ Sirf invalidate — viewModalData khud update ho jaayega
                       queryClient.invalidateQueries({
-                        queryKey: [
-                          "miscellaneousEntries",
-                          vendorId,
-                          leadId,
-                        ],
+                        queryKey: ["miscellaneousEntries", vendorId, leadId],
                       });
                       setShowRejectModal(false);
                       setRejectReason("");
