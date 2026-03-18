@@ -4,15 +4,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   Plus,
-  Eye,
   Package,
   Calendar,
   FileText,
   CheckCircle2,
-  File,
   Wrench,
   User,
   Currency,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
@@ -39,12 +38,12 @@ import {
   useMiscellaneousEntries,
   useMiscTypes,
   useMiscTeams,
-  MiscellaneousEntry,
   CreateMiscellaneousPayload,
   useUpdateMiscERD,
   useMarkMiscellaneousTaskReady,
   useUpdateMiscApproval,
   useUpdateMiscRequiredDeliveryDate,
+  useUploadMiscellaneousDocuments,
 } from "@/api/installation/useUnderInstallationStageLeads";
 import { useAppSelector } from "@/redux/store";
 import TextSelectPicker from "@/components/TextSelectPicker";
@@ -84,6 +83,34 @@ interface InstallationMiscellaneousProps {
   initialTaskId?: number;
 }
 
+interface UploadCardProps {
+  onClick: () => void;
+  disabled?: boolean;
+}
+
+// ✅ UploadCard kept as-is (exported for potential use elsewhere)
+export const UploadCard = ({ onClick, disabled }: UploadCardProps) => {
+  return (
+    <div
+      onClick={!disabled ? onClick : undefined}
+      className={`
+        flex flex-col items-center justify-center 
+        border border-dashed rounded-xl 
+        min-h-30 h-full
+        cursor-pointer 
+        transition-all duration-200
+        hover:bg-muted/40 hover:border-primary
+        ${disabled ? "opacity-50 cursor-not-allowed" : ""}
+      `}
+    >
+      <Upload className="w-6 h-6 text-muted-foreground mb-2" />
+      <p className="text-xs text-muted-foreground text-center px-2">
+        Upload Documents
+      </p>
+    </div>
+  );
+};
+
 export default function InstallationMiscellaneous({
   vendorId,
   leadId,
@@ -116,7 +143,6 @@ export default function InstallationMiscellaneous({
 
   const resolveMisc = useResolveMiscellaneousEntry();
 
-  // ✅ Sirf id store karo — data entries se derive hoga (hamesha fresh)
   const [viewModal, setViewModal] = useState<{
     open: boolean;
     id: number | null;
@@ -131,11 +157,12 @@ export default function InstallationMiscellaneous({
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
-  // ✅ Live derived data — entries update hote hi ye bhi update ho jaayega
   const viewModalData = useMemo(
     () => entries?.find((e) => e.id === viewModal.id) ?? null,
     [entries, viewModal.id],
   );
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const { mutate: uploadDocs, isPending } = useUploadMiscellaneousDocuments();
 
   const [selectedERD, setSelectedERD] = useState<string | undefined>(undefined);
   const [selectedRequiredDelivery, setSelectedRequiredDelivery] = useState<
@@ -206,6 +233,19 @@ export default function InstallationMiscellaneous({
     useDeleteDocument(leadId);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
+  const [pendingDeleteAfterUpload, setPendingDeleteAfterUpload] = useState<
+    null | number
+  >(null);
+
+  const handleDeleteRequest = (docId: number, totalDocsInSection: number) => {
+    if (totalDocsInSection <= 1) {
+      setPendingDeleteAfterUpload(docId);
+      setUploadModalOpen(true);
+    } else {
+      setConfirmDelete(docId);
+    }
+  };
+
   const handleConfirmDelete = () => {
     if (!confirmDelete) return;
 
@@ -217,7 +257,6 @@ export default function InstallationMiscellaneous({
       },
       {
         onSuccess: () => {
-          // ✅ Query invalidate karo — viewModalData automatically update ho jaayega
           queryClient.invalidateQueries({
             queryKey: ["miscellaneousEntries", vendorId, leadId],
           });
@@ -322,24 +361,9 @@ export default function InstallationMiscellaneous({
     });
   };
 
-  const getFileIcon = (filename: string) => {
-    const ext = filename.split(".").pop()?.toLowerCase() || "";
-    const imageExts = ["jpg", "jpeg", "png", "gif", "webp"];
-    return imageExts.includes(ext) ? (
-      <File className="w-5 h-5 text-blue-500" />
-    ) : (
-      <File className="w-5 h-5 text-orange-500" />
-    );
-  };
-
-  const isImageFile = (filename: string) => {
-    const ext = filename.split(".").pop()?.toLowerCase() || "";
-    return ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
-  };
-
   const separateImageAndDocs = (docs: any[]) => {
     const imageExtensions = ["jpg", "jpeg", "png", "webp"];
-    const videoExtensions = ["mp4", "mov", "webm", "avi"]; // ✅ add more if needed
+    const videoExtensions = ["mp4", "mov", "webm", "avi"];
 
     const images = docs.filter((d) => {
       const ext = (d.doc_og_name || d.original_name)
@@ -383,7 +407,6 @@ export default function InstallationMiscellaneous({
 
   const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
 
-  // ✅ Saare derived values ab viewModalData se aayenge
   const entry = viewModalData;
   const miscApproved = viewModalData?.misc_approved;
   const isRejected = miscApproved === false;
@@ -406,6 +429,45 @@ export default function InstallationMiscellaneous({
   const canManageDeliveryTask = ["factory", "super-admin"].includes(
     userType || "",
   );
+
+  const handleUpload = () => {
+    if (!entry) return;
+
+    uploadDocs(
+      {
+        vendorId,
+        leadId,
+        miscId: entry.id,
+        created_by: userId!,
+        files,
+      },
+      {
+        onSuccess: () => {
+          setUploadModalOpen(false);
+          setFiles([]);
+
+          if (pendingDeleteAfterUpload !== null) {
+            const docIdToDelete = pendingDeleteAfterUpload;
+            setPendingDeleteAfterUpload(null);
+            deleteDocument(
+              { vendorId, deleted_by: userId!, documentId: docIdToDelete },
+              {
+                onSuccess: () => {
+                  queryClient.invalidateQueries({
+                    queryKey: ["miscellaneousEntries", vendorId, leadId],
+                  });
+                },
+              },
+            );
+          } else {
+            queryClient.invalidateQueries({
+              queryKey: ["miscellaneousEntries", vendorId, leadId],
+            });
+          }
+        },
+      },
+    );
+  };
 
   return (
     <div className="px-2 bg-white dark:bg-[#0a0a0a]">
@@ -433,31 +495,31 @@ export default function InstallationMiscellaneous({
         <Table>
           <TableHeader className="bg-muted/40">
             <TableRow className="hover:bg-transparent">
-              <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
+              <TableHead className="w-50 text-sm font-medium text-foreground/80">
                 Miscellaneous Type
               </TableHead>
-              <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
+              <TableHead className="w-50 text-sm font-medium text-foreground/80">
                 ERD Date
               </TableHead>
-              <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
+              <TableHead className="w-50 text-sm font-medium text-foreground/80">
                 Responsible Teams
               </TableHead>
-              <TableHead className="w-[100px] text-center text-sm font-medium text-foreground/80">
+              <TableHead className="w-25 text-center text-sm font-medium text-foreground/80">
                 Documents
               </TableHead>
-              <TableHead className="w-[100px] text-center text-sm font-medium text-foreground/80">
+              <TableHead className="w-25 text-center text-sm font-medium text-foreground/80">
                 Status
               </TableHead>
-              <TableHead className="w-[140px] text-center text-sm font-medium text-foreground/80">
+              <TableHead className="w-35 text-center text-sm font-medium text-foreground/80">
                 Marked As Ready
               </TableHead>
-              <TableHead className="w-[200px] text-sm font-medium text-foreground/80">
+              <TableHead className="w-50 text-sm font-medium text-foreground/80">
                 Problem Description
               </TableHead>
-              <TableHead className="w-[100px] text-sm font-medium text-foreground/80">
+              <TableHead className="w-25 text-sm font-medium text-foreground/80">
                 Quantity
               </TableHead>
-              <TableHead className="w-[120px] text-sm font-medium text-foreground/80">
+              <TableHead className="w-30 text-sm font-medium text-foreground/80">
                 Cost
               </TableHead>
             </TableRow>
@@ -490,7 +552,6 @@ export default function InstallationMiscellaneous({
               transition-all 
               border-b last:border-0
             "
-                  // ✅ Sirf id set karo
                   onClick={() => setViewModal({ open: true, id: entry.id })}
                 >
                   {/* TYPE */}
@@ -1025,7 +1086,6 @@ export default function InstallationMiscellaneous({
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Problem Description */}
               {viewModalData?.problem_description && (
                 <div className="space-y-1.5">
                   <p className="text-[13px] font-medium text-muted-foreground">
@@ -1090,7 +1150,6 @@ export default function InstallationMiscellaneous({
               )}
             </div>
 
-            {/* Documents */}
             {entry?.documents &&
               entry.documents.length > 0 &&
               (() => {
@@ -1100,64 +1159,72 @@ export default function InstallationMiscellaneous({
                 const miscDocs = entry.documents.filter(
                   (d) => d.doc_type_tag !== "Type 37",
                 );
-
-                const renderDocs = (docs: typeof entry.documents) => {
+                const renderDocs = (
+                  docs: typeof entry.documents,
+                  showupload?: boolean,
+                ) => {
                   const { images, videos, nonImages } =
                     separateImageAndDocs(docs);
+                  const totalInSection = docs.length;
 
                   return (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {images.map((doc) => (
+                          <ImageComponent
+                            key={doc.document_id}
+                            doc={{
+                              id: doc.document_id,
+                              doc_og_name: doc.original_name,
+                              signedUrl: doc.signed_url,
+                              created_at: doc.uploaded_at,
+                            }}
+                            canDelete={canWork}
+                            onDelete={(id) =>
+                              handleDeleteRequest(Number(id), totalInSection)
+                            }
+                          />
+                        ))}
 
-                  <div className="space-y-6">
+                        {nonImages.map((doc) => (
+                          <DocumentCard
+                            key={doc.document_id}
+                            doc={{
+                              id: doc.document_id,
+                              originalName: doc.original_name,
+                              signedUrl: doc.signed_url,
+                              created_at: doc.uploaded_at,
+                            }}
+                            canDelete={canWork}
+                            onDelete={(id) =>
+                              handleDeleteRequest(Number(id), totalInSection)
+                            }
+                          />
+                        ))}
 
+                        {videos.map((doc) => (
+                          <VideoCard
+                            key={doc.document_id}
+                            doc={{
+                              id: doc.document_id,
+                              originalName: doc.original_name,
+                              signedUrl: doc.signed_url,
+                              created_at: doc.uploaded_at,
+                            }}
+                            canDelete={canWork}
+                            onDelete={(id) =>
+                              handleDeleteRequest(Number(id), totalInSection)
+                            }
+                          />
+                        ))}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {images.map((doc) => (
-                        <ImageComponent
-                          key={doc.document_id}
-                          doc={{
-                            id: doc.document_id,
-                            doc_og_name: doc.original_name,
-                            signedUrl: doc.signed_url,
-                            created_at: doc.uploaded_at,
-                          }}
-                          canDelete={canWork}
-                          onDelete={(id) => setConfirmDelete(Number(id))}
-                        />
-                      ))}
-                      {nonImages.map((doc) => (
-                        <DocumentCard
-                          key={doc.document_id}
-                          doc={{
-                            id: doc.document_id,
-                            originalName: doc.original_name,
-                            signedUrl: doc.signed_url,
-                            created_at: doc.uploaded_at,
-                          }}
-                          canDelete={canWork}
-                          onDelete={(id) => setConfirmDelete(Number(id))}
-                        />
-                      ))}
-                    </div>
-
-
-                        {/* ✅ Videos */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {videos.map((doc) => (
-                        <VideoCard
-                          key={doc.document_id}
-                          doc={{
-                            id: doc.document_id,
-                            originalName: doc.original_name,
-                            signedUrl: doc.signed_url,
-                            created_at: doc.uploaded_at,
-                          }}
-                          canDelete={canWork}
-                          onDelete={(id) => setConfirmDelete(Number(id))}
-                        />
-                      ))}
-
+                        {canWork  && showupload && (
+                          <UploadCard
+                            onClick={() => setUploadModalOpen(true)}
+                            disabled={isPending}
+                          />
+                        )}
                       </div>
-
                     </div>
                   );
                 };
@@ -1179,7 +1246,7 @@ export default function InstallationMiscellaneous({
                             {miscDocs.length === 1 ? "file" : "files"}
                           </Badge>
                         </div>
-                        {renderDocs(miscDocs)}
+                        {renderDocs(miscDocs, true)}
                       </div>
                     )}
 
@@ -1198,14 +1265,13 @@ export default function InstallationMiscellaneous({
                             {completionDocs.length === 1 ? "file" : "files"}
                           </Badge>
                         </div>
-                        {renderDocs(completionDocs)}
+                        {renderDocs(completionDocs, false)}
                       </div>
                     )}
                   </div>
                 );
               })()}
 
-            {/* -------- ACTIONS -------- */}
             <div className="mt-2 rounded-xl border bg-muted/30 dark:bg-neutral-900/40 p-4">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-semibold text-foreground">
@@ -1221,7 +1287,6 @@ export default function InstallationMiscellaneous({
               </div>
 
               <DialogFooter className="flex-row items-start justify-between gap-4">
-                {/* Approval Actions */}
                 {showApprovalActions && (
                   <div className="flex items-center gap-3 flex-1">
                     <Button
@@ -1238,7 +1303,6 @@ export default function InstallationMiscellaneous({
                           },
                           {
                             onSuccess: () => {
-                              // ✅ Sirf invalidate — viewModalData khud update ho jaayega
                               queryClient.invalidateQueries({
                                 queryKey: [
                                   "miscellaneousEntries",
@@ -1399,7 +1463,6 @@ export default function InstallationMiscellaneous({
                                       },
                                       {
                                         onSuccess: () => {
-                                          // ✅ Sirf invalidate — viewModalData khud update ho jaayega
                                           queryClient.invalidateQueries({
                                             queryKey: [
                                               "miscellaneousEntries",
@@ -1492,7 +1555,6 @@ export default function InstallationMiscellaneous({
                   },
                   {
                     onSuccess: () => {
-                      // ✅ Sirf invalidate — viewModalData khud update ho jaayega
                       queryClient.invalidateQueries({
                         queryKey: ["miscellaneousEntries", vendorId, leadId],
                       });
@@ -1537,7 +1599,6 @@ export default function InstallationMiscellaneous({
                   },
                   {
                     onSuccess: () => {
-                      // ✅ Sirf invalidate — viewModalData khud update ho jaayega
                       queryClient.invalidateQueries({
                         queryKey: ["miscellaneousEntries", vendorId, leadId],
                       });
@@ -1583,7 +1644,6 @@ export default function InstallationMiscellaneous({
                   },
                   {
                     onSuccess: () => {
-                      // ✅ Sirf invalidate — viewModalData khud update ho jaayega
                       queryClient.invalidateQueries({
                         queryKey: ["miscellaneousEntries", vendorId, leadId],
                       });
@@ -1626,7 +1686,6 @@ export default function InstallationMiscellaneous({
                   },
                   {
                     onSuccess: () => {
-                      // ✅ Sirf invalidate — viewModalData khud update ho jaayega
                       queryClient.invalidateQueries({
                         queryKey: ["miscellaneousEntries", vendorId, leadId],
                       });
@@ -1681,6 +1740,39 @@ export default function InstallationMiscellaneous({
             : undefined
         }
       />
+
+      <BaseModal
+        open={uploadModalOpen}
+        onOpenChange={(open) => {
+          setUploadModalOpen(open);
+          if (!open) setPendingDeleteAfterUpload(null);
+        }}
+        title={
+          pendingDeleteAfterUpload !== null
+            ? "Upload Before Delete"
+            : "Upload Documents"
+        }
+        description={
+          pendingDeleteAfterUpload !== null
+            ? "Pehle ek naya document upload karo. Upload hone ke baad purana document automatically delete ho jaayega."
+            : "Add new documents to this miscellaneous entry"
+        }
+        size="md"
+      >
+        <div className="p-4 space-y-4 flex flex-col items-end">
+          <FileUploadField value={files} onChange={setFiles} multiple />
+
+          {isPending ? (
+            <Button disabled={true}>Uploading...</Button>
+          ) : (
+            <Button disabled={!files.length} onClick={() => handleUpload()}>
+              {pendingDeleteAfterUpload !== null
+                ? "Upload & Delete Old"
+                : "Upload Documents"}
+            </Button>
+          )}
+        </div>
+      </BaseModal>
     </div>
   );
 }

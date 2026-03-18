@@ -201,8 +201,12 @@ export const useMoveLeadToUnderInstallation = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: error?.response?.data?.message ||
-          "Failed to move lead to Under Installation stage", type: "error" });
+      toastManager.add({
+        title:
+          error?.response?.data?.message ||
+          "Failed to move lead to Under Installation stage",
+        type: "error",
+      });
     },
   });
 };
@@ -310,7 +314,10 @@ export const useSetActualInstallationStartDate = () => {
     mutationFn: setActualInstallationStartDate,
 
     onSuccess: () => {
-      toastManager.add({ title: "Installation start date updated!", type: "success" });
+      toastManager.add({
+        title: "Installation start date updated!",
+        type: "success",
+      });
 
       // 🔄 Refetch relevant queries
       queryClient.invalidateQueries({
@@ -322,7 +329,10 @@ export const useSetActualInstallationStartDate = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: error?.message || "Failed to update installation start date", type: "error" });
+      toastManager.add({
+        title: error?.message || "Failed to update installation start date",
+        type: "error",
+      });
     },
   });
 };
@@ -636,7 +646,10 @@ export const useCreateMiscellaneousEntry = () => {
     mutationFn: createMiscellaneousEntry,
 
     onSuccess: (data, variables) => {
-      toastManager.add({ title: "Miscellaneous entry created successfully", type: "success" });
+      toastManager.add({
+        title: "Miscellaneous entry created successfully",
+        type: "success",
+      });
 
       // Invalidate and refetch the list
       queryClient.invalidateQueries({
@@ -649,7 +662,12 @@ export const useCreateMiscellaneousEntry = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: error?.response?.data?.error || "Failed to create miscellaneous entry", type: "error" });
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create miscellaneous entry",
+        type: "error",
+      });
     },
   });
 };
@@ -780,14 +798,20 @@ export const useUpdateMiscERD = () => {
     mutationFn: updateMiscExpectedReadyDate,
 
     onSuccess: () => {
-      toastManager.add({ title: "Expected ready date updated!", type: "success" });
+      toastManager.add({
+        title: "Expected ready date updated!",
+        type: "success",
+      });
 
       client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
       client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: error?.message || "Failed to update date", type: "error" });
+      toastManager.add({
+        title: error?.message || "Failed to update date",
+        type: "error",
+      });
     },
   });
 };
@@ -821,14 +845,20 @@ export const useUpdateMiscRequiredDeliveryDate = () => {
     mutationFn: updateMiscRequiredDeliveryDate,
 
     onSuccess: () => {
-      toastManager.add({ title: "Required delivery date updated!", type: "success" });
+      toastManager.add({
+        title: "Required delivery date updated!",
+        type: "success",
+      });
 
       client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
       client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: error?.message || "Failed to update delivery date", type: "error" });
+      toastManager.add({
+        title: error?.message || "Failed to update delivery date",
+        type: "error",
+      });
     },
   });
 };
@@ -862,14 +892,20 @@ export const useUpdateMiscRequiredDeliveryDateByTaskId = () => {
     mutationFn: updateMiscRequiredDeliveryDateByTaskId,
 
     onSuccess: () => {
-      toastManager.add({ title: "Required delivery date updated!", type: "success" });
+      toastManager.add({
+        title: "Required delivery date updated!",
+        type: "success",
+      });
 
       client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
       client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: error?.message || "Failed to update delivery date", type: "error" });
+      toastManager.add({
+        title: error?.message || "Failed to update delivery date",
+        type: "error",
+      });
     },
   });
 };
@@ -907,7 +943,10 @@ export const useUploadMiscCompletionDocumentsByTaskId = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: error?.message || "Failed to upload documents", type: "error" });
+      toastManager.add({
+        title: error?.message || "Failed to upload documents",
+        type: "error",
+      });
     },
   });
 };
@@ -926,7 +965,10 @@ export const useUpdateMiscApproval = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: error?.message || "Failed to update miscellaneous", type: "error" });
+      toastManager.add({
+        title: error?.message || "Failed to update miscellaneous",
+        type: "error",
+      });
     },
   });
 };
@@ -1050,7 +1092,10 @@ export const useCreateInstallationIssueLog = () => {
       createInstallationIssueLog(payload),
 
     onSuccess: (data, variables) => {
-      toastManager.add({ title: "Issue log created successfully", type: "success" });
+      toastManager.add({
+        title: "Issue log created successfully",
+        type: "success",
+      });
 
       // Invalidate and refetch issue logs for this lead
       queryClient.invalidateQueries({
@@ -1068,7 +1113,10 @@ export const useCreateInstallationIssueLog = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: error?.response?.data?.message || "Failed to create issue log", type: "error" });
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to create issue log",
+        type: "error",
+      });
     },
   });
 };
@@ -1089,7 +1137,10 @@ export const useUpdateInstallationIssueLog = () => {
     }) => updateInstallationIssueLog(id, payload),
 
     onSuccess: (data) => {
-      toastManager.add({ title: "Issue log updated successfully", type: "success" });
+      toastManager.add({
+        title: "Issue log updated successfully",
+        type: "success",
+      });
 
       // Invalidate the specific issue log
       queryClient.invalidateQueries({
@@ -1103,7 +1154,10 @@ export const useUpdateInstallationIssueLog = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: error?.response?.data?.message || "Failed to update issue log", type: "error" });
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update issue log",
+        type: "error",
+      });
     },
   });
 };
@@ -1221,7 +1275,10 @@ export const useUpdateUsableHandover = () => {
     mutationFn: (formData: FormData) => updateUsableHandover(formData),
 
     onSuccess: (data, variables) => {
-      toastManager.add({ title: "Files uploaded successfully", type: "success" });
+      toastManager.add({
+        title: "Files uploaded successfully",
+        type: "success",
+      });
 
       // Extract vendor_id and lead_id from FormData
       const vendorId = variables.get("vendor_id");
@@ -1234,7 +1291,10 @@ export const useUpdateUsableHandover = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: error?.response?.data?.message || "Failed to upload files", type: "error" });
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to upload files",
+        type: "error",
+      });
     },
   });
 };
@@ -1249,7 +1309,10 @@ export const useUpdateRemarks = () => {
     mutationFn: (payload: UpdateRemarksPayload) => updateRemarks(payload),
 
     onSuccess: (data, variables) => {
-      toastManager.add({ title: "Remarks updated successfully", type: "success" });
+      toastManager.add({
+        title: "Remarks updated successfully",
+        type: "success",
+      });
 
       // Invalidate and refetch usable handover data
       queryClient.invalidateQueries({
@@ -1258,7 +1321,10 @@ export const useUpdateRemarks = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: error?.response?.data?.message || "Failed to update remarks", type: "error" });
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update remarks",
+        type: "error",
+      });
     },
   });
 };
@@ -1306,9 +1372,6 @@ export async function moveToFinalHandoverApi(
 }
 
 export function useMoveToFinalHandover() {
-  
-
-
   return useMutation({
     mutationFn: ({
       vendorId,
@@ -1321,7 +1384,10 @@ export function useMoveToFinalHandover() {
     }) => moveToFinalHandoverApi(vendorId, leadId, updated_by),
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: error?.response?.data?.error || "Failed to move lead", type: "error" });
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to move lead",
+        type: "error",
+      });
     },
   });
 }
@@ -1410,7 +1476,12 @@ export const useResolveMiscellaneousEntry = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: error?.response?.data?.error || "Failed to resolve miscellaneous entry", type: "error" });
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to resolve miscellaneous entry",
+        type: "error",
+      });
     },
   });
 };
@@ -1460,7 +1531,10 @@ export const useMarkMiscellaneousTaskReady = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: error?.response?.data?.error || "Failed to mark task as ready", type: "error" });
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to mark task as ready",
+        type: "error",
+      });
     },
   });
 };
@@ -1628,5 +1702,87 @@ export const usePendingMiscellaneousCount = (
 
     staleTime: 2 * 60 * 1000, // count should refresh more frequently
     refetchOnWindowFocus: true,
+  });
+};
+
+export type UploadMiscDocumentsPayload = {
+  vendorId: number;
+  leadId: number;
+  miscId: number;
+  created_by: number;
+  files: any[]; // React Native file objects
+};
+
+export type UploadMiscDocumentsResponse = {
+  doc_id: number;
+  misc_doc_id: number;
+}[];
+
+export const uploadMiscellaneousDocuments = async (
+  payload: UploadMiscDocumentsPayload,
+): Promise<UploadMiscDocumentsResponse> => {
+  const formData = new FormData();
+
+  // ✅ Required fields
+  formData.append("vendor_id", payload.vendorId.toString());
+  formData.append("lead_id", payload.leadId.toString());
+  formData.append("created_by", payload.created_by.toString());
+
+  // ✅ Files
+  payload.files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  const { data } = await apiClient.post(
+    `/leads/installation/under-installation/miscellaneous/${payload.miscId}/documents`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+
+  return data?.data;
+};
+
+export const useUploadMiscellaneousDocuments = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: uploadMiscellaneousDocuments,
+
+    onSuccess: (data, variables) => {
+      toastManager.add({
+        title: "Documents uploaded successfully",
+        type: "success",
+      });
+
+      // ✅ Refetch misc documents or details
+      queryClient.invalidateQueries({
+        queryKey: [
+          "miscellaneousDocuments",
+          variables.vendorId,
+          variables.leadId,
+          variables.miscId,
+        ],
+      });
+
+      // Optional: refresh misc list also
+      queryClient.invalidateQueries({
+        queryKey: [
+          "miscellaneousEntries",
+          variables.vendorId,
+          variables.leadId,
+        ],
+      });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to upload documents",
+        type: "error",
+      });
+    },
   });
 };

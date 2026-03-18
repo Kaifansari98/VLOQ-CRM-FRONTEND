@@ -183,7 +183,10 @@ const data = {
       icon: Monitor,
       items: [
         { title: "Dashboard", url: "/dashboard/track-trace" },
-        { title: "Manage Projects", url: "/dashboard/track-trace/manage-project" },
+        {
+          title: "Manage Projects",
+          url: "/dashboard/track-trace/manage-project",
+        },
         { title: "Configure", url: "/dashboard/track-trace/configure" },
       ],
     },
@@ -191,9 +194,7 @@ const data = {
       title: "Master",
       url: "#",
       icon: Monitor,
-      items: [
-        { title: "Machine", url: "/dashboard/track-trace/master" },
-      ],
+      items: [{ title: "Machine", url: "/dashboard/track-trace/master" }],
     },
   ],
 };
@@ -203,7 +204,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   React.useEffect(() => setMounted(true), []);
 
   const user = useAppSelector((state) => state.auth.user);
-  const selectedFranchiseId = useAppSelector((state) => state.auth.franchise_id);
+  const selectedFranchiseId = useAppSelector(
+    (state) => state.auth.franchise_id,
+  );
   const userType = user?.user_type?.user_type?.toLowerCase();
   const canSeeOverallLeads = userType === "admin" || userType === "super-admin";
   const isSuperAdmin = userType === "super-admin";
@@ -222,7 +225,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     usePendingMiscellaneousCount(vendorId ?? 0, franchiseId ?? 0);
   const { data: franchises = [] } = useFranchisesByVendorId(
     vendorId ?? 0,
-    !!vendorId
+    !!vendorId,
   );
 
   React.useEffect(() => {
@@ -262,7 +265,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       ? withoutOverall.filter(
           (item) =>
             item.title !== "Leads" &&
-            (userType === "site-supervisor" ? true : item.title !== "Project")
+            (userType === "site-supervisor" ? true : item.title !== "Project"),
         )
       : withoutOverall;
 
@@ -281,10 +284,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     userType === "backend"
                       ? subItem.title !== "Tech Check"
                       : subItem.title !== "Tech Check" &&
-                        subItem.title !== "Order Login"
+                        subItem.title !== "Order Login",
                   ),
                 }
-              : item
+              : item,
           )
         : adminOnlyItems;
 
@@ -299,7 +302,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const finalNavItems = filteredItems.map((item) => {
       if (item.title === "Installation" && item.items) {
         const underInstallationIndex = item.items.findIndex(
-          (subItem) => subItem.title === "Under Installation"
+          (subItem) => subItem.title === "Under Installation",
         );
         if (underInstallationIndex !== -1) {
           const shouldShowMisc = canSeeMiscLeads && miscLeadsCount > 0;
@@ -320,13 +323,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const finalTrackTraceItems = showTrackTrace ? data.trackTraceNav : [];
 
     return { navItems: finalNavItems, trackTraceItems: finalTrackTraceItems };
-  }, [mounted, canSeeOverallLeads, miscLeadsCount, isMiscLeadLoading, userType]);
+  }, [
+    mounted,
+    canSeeOverallLeads,
+    miscLeadsCount,
+    isMiscLeadLoading,
+    userType,
+  ]);
 
   const teams = React.useMemo(() => {
     if (!user) return [];
 
     const activeFranchise = franchises.find(
-      (franchise) => franchise.id === franchiseId
+      (franchise) => franchise.id === franchiseId,
     );
 
     const fallbackTeam = {
@@ -359,10 +368,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         {user ? (
-          <TeamSwitcher
-            teams={teams}
-            activeTeamId={franchiseId}
-          />
+          <TeamSwitcher teams={teams} activeTeamId={franchiseId} />
         ) : null}
       </SidebarHeader>
 
