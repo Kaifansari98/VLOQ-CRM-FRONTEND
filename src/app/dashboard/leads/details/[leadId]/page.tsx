@@ -31,6 +31,8 @@ const WORKFLOW_STAGE_ROUTE: Record<string, string> = {
   "production-stage": "/dashboard/production/pre-post-prod/details",
 };
 
+
+
 const buildQueryString = (searchParams: URLSearchParams) => {
   const query = searchParams.toString();
   return query.length > 0 ? `?${query}` : "";
@@ -41,7 +43,6 @@ export default function LeadDetailsRedirectPage() {
   const { leadId } = useParams();
   const searchParams = useSearchParams();
 
-  const accountId = searchParams.get("accountId");
   const instanceId = searchParams.get("instance_id");
   const instanceIdNum = instanceId ? Number(instanceId) : undefined;
 
@@ -53,35 +54,60 @@ export default function LeadDetailsRedirectPage() {
     vendorId!,
     instanceIdNum,
   );
+const targetUrl = useMemo(() => {
+  if (!Number.isFinite(leadIdNum) || !leadStatus) return null;
 
-  const targetUrl = useMemo(() => {
-    if (!Number.isFinite(leadIdNum) || !leadStatus) return null;
+  let routeBase: string | undefined;
 
-    let routeBase: string | undefined;
+  // 🔑 If production-related → use workflow_stage
+  if (leadStatus.workflow_stage) {
+    routeBase = WORKFLOW_STAGE_ROUTE[leadStatus.workflow_stage];
+  }
 
-    // 🔑 If production-related → use workflow_stage
-    if (leadStatus.workflow_stage) {
-      routeBase = WORKFLOW_STAGE_ROUTE[leadStatus.workflow_stage];
-    }
+  // 🔁 Fallback to lead status tag
+  if (!routeBase && leadStatus.lead_status_tag) {
+    routeBase = STAGE_ROUTE_BY_TYPE[leadStatus.lead_status_tag];
+  }
 
-    // 🔁 Fallback to lead status tag
-    if (!routeBase && leadStatus.lead_status_tag) {
-      routeBase = STAGE_ROUTE_BY_TYPE[leadStatus.lead_status_tag];
-    }
+  if (!routeBase) {
+    routeBase = STAGE_ROUTE_BY_TYPE["Type 1"];
+  }
 
-    if (!routeBase) {
-      routeBase = STAGE_ROUTE_BY_TYPE["Type 1"];
-    }
+  const finalUrl = `${routeBase}/${leadIdNum}${buildQueryString(searchParams)}`;
 
-    return `${routeBase}/${leadIdNum}${buildQueryString(searchParams)}`;
-  }, [leadIdNum, leadStatus, searchParams]);
+  // ✅ LOG BEFORE NAVIGATION (Decision Layer)
+  console.log("🚀 [Redirect Decision]", {
+    leadId: leadIdNum,
+    workflow_stage: leadStatus.workflow_stage,
+    lead_status_tag: leadStatus.lead_status_tag,
+    resolvedRouteBase: routeBase,
+    finalUrl,
+  });
 
-  useEffect(() => {
-    if (!vendorId || isLoading) return;
-    if (!targetUrl) return;
+  return finalUrl;
+}, [leadIdNum, leadStatus, searchParams]);
 
-    router.replace(targetUrl);
-  }, [isLoading, router, targetUrl, vendorId]);
+
+useEffect(() => {
+  if (!vendorId || isLoading) return;
+  if (!targetUrl) return;
+
+  // ✅ BEFORE NAVIGATION
+  console.log("➡️ [Before Navigation]", {
+    from: window.location.pathname + window.location.search,
+    to: targetUrl,
+  });
+
+  router.replace(targetUrl);
+
+  // ✅ AFTER NAVIGATION (approximation)
+  setTimeout(() => {
+    console.log("✅ [After Navigation Triggered]", {
+      navigatedTo: targetUrl,
+    });
+  }, 0);
+
+}, [isLoading, router, targetUrl, vendorId]);
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center gap-4">

@@ -215,20 +215,19 @@ export function NavMain({
                   <Link
                     href={item.url}
                     className={cn(
-                      "flex items-center gap-2 w-full justify-between transition-all duration-200",
+                      "flex items-center gap-2 w-full transition-all duration-200",
                       isGroupActive && "font-semibold text-primary rounded-md"
                     )}
                   >
-                    <div className="flex items-center gap-2">
-                      {item.icon && <item.icon />}
-                      <span>{item.title}</span>
-                    </div>
+                    {/* ✅ No wrapper div — icon direct child of Link */}
+                    {item.icon && <item.icon className="!size-5 shrink-0" />}
+                    <span>{item.title}</span>
                     {(() => {
                       if (!item.showCount || isOpen) return null;
                       const count = getGroupCount(item);
                       if (!count) return null;
                       return (
-                        <Badge className="ml-2 rounded-full">
+                        <Badge className="ml-auto rounded-full group-data-[collapsible=icon]:hidden">
                           {isLoading ? "…" : count}
                         </Badge>
                       );
@@ -294,17 +293,21 @@ export function NavMain({
           <Link
             href={item.url}
             className={cn(
-              "flex items-center justify-between w-full gap-2 transition-all duration-200",
+              "flex items-center gap-2 w-full transition-all duration-200",
               isSingleActive && "font-bold text-primary bg-muted/50 rounded-md",
               item.className
             )}
           >
-            <div className="flex items-center gap-2">
-              {item.icon && <item.icon className={item.iconClassName} />}
-              <span>{item.title}</span>
-            </div>
+            {/* ✅ No wrapper div — icon direct child of Link */}
+            {item.icon && <item.icon className={cn("!size-5 shrink-0", item.iconClassName)} />}
+            <span>{item.title}</span>
             {(item.showCount || item.customCount !== undefined) && (
-              <Badge className={cn("ml-2 rounded-full", item.badgeClassName)}>
+              <Badge
+                className={cn(
+                  "ml-auto rounded-full group-data-[collapsible=icon]:hidden",
+                  item.badgeClassName
+                )}
+              >
                 {isLoading || item.customCountLoading
                   ? "…"
                   : item.customCount ?? getCountForItem(item.showCount!)}

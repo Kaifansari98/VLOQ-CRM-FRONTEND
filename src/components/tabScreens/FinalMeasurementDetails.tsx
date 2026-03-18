@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Ban, Images, FileText, Plus } from "lucide-react";
+import { Ban, Images, FileText, Plus, Upload } from "lucide-react";
 import { useDeleteDocument } from "@/api/leads";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
@@ -54,6 +54,8 @@ const documentMimeTypes = [
 const documentAccept = ".pdf";
 const imageMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
 const imageAccept = ".jpg,.jpeg,.png,.gif";
+
+
 
 export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   // 🧩 --- Redux User Context ---

@@ -2,8 +2,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { Play, Trash2, Video } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Play, Trash2 } from "lucide-react";
+import VideoViewerModal from "./VideoViewerModal";
 
 interface VideoCardProps {
   doc: {
@@ -21,68 +21,90 @@ export default function VideoCard({
   canDelete,
   onDelete,
 }: VideoCardProps) {
-  const [playing, setPlaying] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   return (
     <>
-      <div className="relative rounded-xl border bg-muted/30 dark:bg-neutral-900 overflow-hidden group">
-        {/* Video Player */}
-        <div className="relative w-full aspect-video bg-black">
-          {playing ? (
+      <div
+        className="
+          group relative flex items-center gap-4 rounded-xl p-4
+          border border-border bg-card text-card-foreground
+          transition-all duration-200 hover:bg-muted/40
+        "
+      >
+        {/* Delete Button */}
+        {canDelete && (
+          <button
+            onClick={() => onDelete?.(doc.id)}
+            className="
+              absolute top-3 right-3 p-1 rounded-full
+              border border-border bg-card
+              hover:bg-muted
+              transition-colors
+            "
+          >
+            <Trash2 className="w-4 h-4 text-muted-foreground" />
+          </button>
+        )}
+
+        {/* Thumbnail */}
+        <div className="shrink-0">
+          <div
+            className="relative w-20 h-20 rounded-lg overflow-hidden border border-border bg-foreground/10 cursor-pointer"
+            onClick={() => setViewerOpen(true)}
+          >
             <video
               src={doc.signedUrl}
-              controls
-              autoPlay
-              className="w-full h-full object-contain"
-              onEnded={() => setPlaying(false)}
+              className="w-full h-full object-cover"
+              muted
+              preload="metadata"
             />
-          ) : (
-            <div
-              className="w-full h-full flex flex-col items-center justify-center gap-2 cursor-pointer"
-              onClick={() => setPlaying(true)}
-            >
-              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors">
-                <Play className="w-6 h-6 text-white fill-white" />
-              </div>
-              <p className="text-xs text-white/70">Click to play</p>
-            </div>
-          )}
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between px-3 py-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <Video className="w-4 h-4 text-muted-foreground shrink-0" />
-            <p className="text-xs text-muted-foreground truncate max-w-[140px]">
+        {/* Details */}
+        <div className="flex flex-col justify-between flex-1 min-w-0">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground truncate pr-6">
               {doc.originalName}
-            </p>
+            </h3>
+            {doc.created_at && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Uploaded on{" "}
+                {new Date(doc.created_at).toLocaleDateString("en-IN", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </p>
+            )}
           </div>
 
-          <div className="flex items-center gap-1">
-            {/* Download */}
-            <a
-              href={doc.signedUrl}
-              download={doc.originalName}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-1.5 rounded-md hover:bg-muted transition-colors"
+          {/* Play Button */}
+          <div className="flex items-end justify-between mt-3">
+            <button
+              onClick={() => setViewerOpen(true)}
+              className="
+                flex items-center gap-1.5 px-3 py-1.5 rounded-md
+                border border-border bg-muted/30
+                text-foreground text-xs font-medium
+                hover:bg-muted transition
+              "
             >
-              <Video className="w-3.5 h-3.5 text-muted-foreground" />
-            </a>
-            {/* Delete */}
-            {canDelete && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50"
-                onClick={() => onDelete?.(doc.id)} // Added optional chaining
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
-            )}
+              <Play className="w-4 h-4" />
+              Play
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Full Screen Video Modal */}
+      <VideoViewerModal
+        open={viewerOpen}
+        videoUrl={doc.signedUrl}
+        title={doc.originalName}
+        onClose={() => setViewerOpen(false)}
+      />
     </>
   );
 }
