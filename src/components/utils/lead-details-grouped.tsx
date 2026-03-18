@@ -34,6 +34,12 @@ export interface LeadDetailsGroupedProps {
   techCheckInstanceId?: number | null;
   orderLoginInstanceId?: number | null;
   productionInstanceId?: number | null;
+  readyToDispatchInstanceId?: number | null;
+  siteReadinessInstanceId?: number | null;
+  dispatchPlanningInstanceId?: number | null;
+  dispatchInstanceId?: number | null;
+  underInstallationInstanceId?: number | null;
+  finalHandoverInstanceId?: number | null;
 }
 
 const GROUP_ORDER: GroupKey[] = [
@@ -55,6 +61,12 @@ export default function LeadDetailsGrouped({
   techCheckInstanceId,
   orderLoginInstanceId,
   productionInstanceId,
+  readyToDispatchInstanceId,
+  siteReadinessInstanceId,
+  dispatchPlanningInstanceId,
+  dispatchInstanceId,
+  underInstallationInstanceId,
+  finalHandoverInstanceId,
 }: LeadDetailsGroupedProps) {
   const searchParams = useSearchParams();
   const groups = {
@@ -144,6 +156,7 @@ export default function LeadDetailsGrouped({
           <ReadyToDispatchDetails
             leadId={leadId}
             accountId={accountId}
+            instanceId={readyToDispatchInstanceId}
           />
         ),
       },
@@ -157,6 +170,7 @@ export default function LeadDetailsGrouped({
             leadId={leadId}
             accountId={accountId}
             name={leadName}
+            instanceId={siteReadinessInstanceId}
           />
         ),
       },
@@ -164,8 +178,8 @@ export default function LeadDetailsGrouped({
         id: "dispatchPlanning",
         title: "Dispatch Planning",
         component: (
-          <DispatchPlanningDetails leadId={leadId} accountId={accountId} />
-        ), // ✅ new component
+          <DispatchPlanningDetails leadId={leadId} accountId={accountId} instanceId={dispatchPlanningInstanceId} />
+        ),
       },
       {
         id: "dispatch",
@@ -175,6 +189,7 @@ export default function LeadDetailsGrouped({
             leadId={leadId}
             accountId={accountId}
             name={leadName}
+            instanceId={dispatchInstanceId}
           />
         ),
       },
@@ -186,6 +201,7 @@ export default function LeadDetailsGrouped({
             leadId={leadId}
             accountId={accountId}
             name={leadName}
+            instanceId={underInstallationInstanceId}
           />
         ),
       },
@@ -196,6 +212,7 @@ export default function LeadDetailsGrouped({
           <FinalHandoverWrapper
             leadId={leadId}
             accountId={accountId}
+            instanceId={finalHandoverInstanceId}
           />
         ),
       },

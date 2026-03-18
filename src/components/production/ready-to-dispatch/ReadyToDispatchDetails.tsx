@@ -6,6 +6,7 @@ import CurrentSitePhotosSection from "./CurrentSitePhotosSection";
 interface ReadyToDispatchDetailsProps {
   leadId: number;
   accountId: number;
+  instanceId?: number | null;
 }
 
 export default function ReadyToDispatchDetails({
