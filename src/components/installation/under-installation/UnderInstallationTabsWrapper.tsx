@@ -21,6 +21,7 @@ export default function UnderInstallationTabsWrapper({
   leadId: number;
   accountId?: number;
   name?: string;
+  instanceId?: number | null;
 }) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const account_id = accountId || 0;

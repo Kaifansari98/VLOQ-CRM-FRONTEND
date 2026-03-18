@@ -12,6 +12,7 @@ interface DispatchTabsWrapperProps {
   leadId: number;
   accountId: number;
   name?: string;
+  instanceId?: number | null;
 }
 
 const DispatchTabsWrapper: React.FC<DispatchTabsWrapperProps> = ({

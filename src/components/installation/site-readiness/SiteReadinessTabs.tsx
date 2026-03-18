@@ -10,6 +10,7 @@ interface SiteReadinessTabsProps {
   leadId: number;
   accountId: number;
   name?: string;
+  instanceId?: number | null;
 }
 
 export default function SiteReadinessTabs({

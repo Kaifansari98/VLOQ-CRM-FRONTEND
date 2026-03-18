@@ -52,6 +52,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 interface DispatchPlanningDetailsProps {
   leadId: number;
   accountId: number;
+  instanceId?: number | null;
 }
 
 const dispatchSchema = z.object({

@@ -11,6 +11,7 @@ export default function FinalHandoverWrapper({
 }: {
   leadId: number;
   accountId: number;
+  instanceId?: number | null;
 }) {
   const TAB_ITEMS = [
     {
