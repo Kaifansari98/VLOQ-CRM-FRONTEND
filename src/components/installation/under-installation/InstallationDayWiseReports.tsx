@@ -41,6 +41,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import VideoCard from "@/components/utils/VideoCard";
 
 interface InstallationDayWiseReportsProps {
   vendorId: number;
@@ -90,8 +91,6 @@ export default function InstallationDayWiseReports({
   const uploadMutation = useUploadInstallationUpdate();
   const { data: reports, refetch } = useInstallationUpdates(vendorId, leadId);
 
-  const { data: underDetails } = useUnderInstallationDetails(vendorId, leadId);
-
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
@@ -114,11 +113,17 @@ export default function InstallationDayWiseReports({
 
     // duplicate check
     if (usedDates.has(selectedDate)) {
-      toastManager.add({ title: "An update for this date already exists. Choose another date.", type: "error" });
+      toastManager.add({
+        title: "An update for this date already exists. Choose another date.",
+        type: "error",
+      });
       return;
     }
     if (files.length === 0) {
-      toastManager.add({ title: "Please upload at least one document", type: "error" });
+      toastManager.add({
+        title: "Please upload at least one document",
+        type: "error",
+      });
       return;
     }
 
@@ -134,7 +139,10 @@ export default function InstallationDayWiseReports({
       },
       {
         onSuccess: () => {
-          toastManager.add({ title: "Day-wise report uploaded successfully", type: "success" });
+          toastManager.add({
+            title: "Day-wise report uploaded successfully",
+            type: "success",
+          });
           setIsAddModalOpen(false);
           setSelectedDate(undefined);
           setRemark("");
@@ -142,7 +150,10 @@ export default function InstallationDayWiseReports({
           refetch();
         },
         onError: (error) => {
-          toastManager.add({ title: error?.message || "Failed to upload report", type: "error" });
+          toastManager.add({
+            title: error?.message || "Failed to upload report",
+            type: "error",
+          });
         },
       },
     );
@@ -162,11 +173,6 @@ export default function InstallationDayWiseReports({
     return filename.split(".").pop()?.toLowerCase() || "";
   };
 
-  const isImageFile = (filename: string) => {
-    const ext = getFileExtension(filename);
-    return ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
-  };
-
   function formatInstallationDate(dateString: string) {
     const date = new Date(dateString);
 
@@ -182,7 +188,7 @@ export default function InstallationDayWiseReports({
   }
 
   const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
-
+  const VIDEO_EXTENSIONS = ["mp4", "mov", "avi", "mkv", "webm"];
   const DOCUMENT_EXTENSIONS = [
     "pdf",
     "doc",
@@ -207,6 +213,11 @@ export default function InstallationDayWiseReports({
   const otherDocuments =
     viewModal.data?.documents.filter((doc) =>
       DOCUMENT_EXTENSIONS.includes(getExtension(doc.original_name)),
+    ) ?? [];
+
+  const videoDocuments =
+    viewModal.data?.documents.filter((doc) =>
+      VIDEO_EXTENSIONS.includes(getExtension(doc.original_name)),
     ) ?? [];
 
   const handleConfirmDelete = () => {
@@ -501,6 +512,20 @@ export default function InstallationDayWiseReports({
               {/* 📄 DOCUMENT FILES */}
               {otherDocuments.map((doc) => (
                 <DocumentCard
+                  key={doc.document_id}
+                  doc={{
+                    id: doc.document_id,
+                    originalName: doc.original_name,
+                    signedUrl: doc.signed_url,
+                    created_at: doc.uploaded_at,
+                  }}
+                  canDelete={canDelete}
+                  onDelete={(id) => setConfirmDelete(Number(id))}
+                />
+              ))}
+
+              {videoDocuments.map((doc) => (
+                <VideoCard
                   key={doc.document_id}
                   doc={{
                     id: doc.document_id,
