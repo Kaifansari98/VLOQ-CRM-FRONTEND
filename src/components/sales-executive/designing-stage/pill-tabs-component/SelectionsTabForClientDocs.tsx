@@ -537,6 +537,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       queryClient.invalidateQueries({
         queryKey: ["getSelectionData", vendorId, leadId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["allLeadDocuments"],
+      });
+      
     } catch (e: any) {
       toastManager.add({
         title: e?.response?.data?.message || "Failed to upload files",

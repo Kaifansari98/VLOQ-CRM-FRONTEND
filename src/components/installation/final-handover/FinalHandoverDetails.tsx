@@ -66,8 +66,7 @@ export default function FinalHandover({
 }: FinalHandoverProps) {
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
-  const effectiveUserType =
-    userType === "admin" ? "sales-executive" : userType;
+  const effectiveUserType = userType === "admin" ? "sales-executive" : userType;
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const queryClient = useQueryClient();
 
@@ -88,7 +87,10 @@ export default function FinalHandover({
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
-  const canWork = canViewAndWorkFinalHandoverStage(effectiveUserType ?? "", leadStatus);
+  const canWork = canViewAndWorkFinalHandoverStage(
+    effectiveUserType ?? "",
+    leadStatus,
+  );
   const [localDocuments, setLocalDocuments] = useState<any[]>([]);
   const sections: DocumentSection[] = [
     {
@@ -173,7 +175,10 @@ export default function FinalHandover({
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0 || !activeSection) {
-      toastManager.add({ title: "Please select at least one file to upload.", type: "error" });
+      toastManager.add({
+        title: "Please select at least one file to upload.",
+        type: "error",
+      });
       return;
     }
 
@@ -192,6 +197,9 @@ export default function FinalHandover({
 
     queryClient.invalidateQueries({
       queryKey: ["finalHandoverDocuments", vendorId, leadId],
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["allLeadDocuments"],
     });
   };
 

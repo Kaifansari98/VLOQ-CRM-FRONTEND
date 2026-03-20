@@ -733,6 +733,12 @@ export const useDeleteDocument = (leadId?: number) => {
   });
 };
 
+// @/api/leads.ts
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 export interface LeadDocument {
   id: number;
   doc_og_name: string;
@@ -740,19 +746,52 @@ export interface LeadDocument {
   doc_type_id: number;
   doc_type_tag: string;
   doc_type_type: string;
+  doc_title: string | null;
+  stage: string | null;
   tech_check_status: string | null;
+  product_structure_instance_id: number | null;
+  instance_title: string | null;
+  instance_type: string | null;  
   created_at: string;
   signed_url: string;
 }
 
-export const useAllLeadDocuments = (vendorId?: number, leadId?: number) => {
-  return useQuery<LeadDocument[]>({
-    queryKey: ["allLeadDocuments", vendorId, leadId],
+export interface DocGroup {
+  title: string;
+  totalDocs: number;
+  docs: LeadDocument[];
+}
+
+export interface InstanceGroup {
+  instanceId: number | null;
+  instanceTitle: string | null;  
+  instanceType: string | null;    
+  docGroups: DocGroup[];
+}
+
+export interface StageDocResult {
+  stageId: string;
+  totalFiles: number;
+  instanceGroups: InstanceGroup[];   
+}
+
+
+export const useAllLeadDocuments = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null,
+) => {
+  return useQuery<StageDocResult[]>({
+    queryKey: ["allLeadDocuments", vendorId, leadId, instanceId],
     queryFn: async () => {
+      const params = new URLSearchParams();
+      if (instanceId) params.set("instance_id", String(instanceId));
+
       const { data } = await apiClient.get(
-        `/leads/vendorId/${vendorId}/leadId/${leadId}/all-documents`,
+        `/leads/vendorId/${vendorId}/leadId/${leadId}/all-documents?${params.toString()}`,
       );
-      return data.data;
+
+      return data.data as StageDocResult[];
     },
     enabled: !!vendorId && !!leadId,
     staleTime: 2 * 60 * 1000,

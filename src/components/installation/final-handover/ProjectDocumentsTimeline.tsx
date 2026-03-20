@@ -5,244 +5,107 @@ import { useAppSelector } from "@/redux/store";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   Ruler,
-  BookOpen,
   FileCheck,
-  ClipboardCheck,
   CheckCircle2,
   Truck,
   Home,
   ChevronRight,
   FileText,
-  Images,
-  UserCircle,
-  Palette,
   Package,
-  PackageCheck,
   MapPin,
-  Navigation,
   Hammer,
   ShieldCheck,
   FolderOpen,
+  File,
+  Layers3,
 } from "lucide-react";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
-import { useAllLeadDocuments, type LeadDocument } from "@/api/leads";
+import VideoCard from "@/components/utils/VideoCard";
+import BaseModal from "@/components/utils/baseModal";
+import { Button } from "@/components/ui/button";
+import {
+  useAllLeadDocuments,
+  type LeadDocument,
+  type DocGroup,
+  type InstanceGroup,
+  type StageDocResult,
+} from "@/api/leads";
 import { cn } from "@/lib/utils";
+import { useSearchParams } from "next/navigation";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface StageConfig {
+interface StageUIConfig {
   id: string;
   label: string;
   icon: React.ElementType;
-  iconColor: string;
-  iconBg: string;
-  badgeColor: string;
-  tags: string[];
-  techCheckFilter?: ("APPROVED" | "REJECTED")[];
 }
 
-// ─── Stage definitions ────────────────────────────────────────────────────────
-
-const STAGES: StageConfig[] = [
-  {
-    id: "leads",
-    label: "Leads",
-    icon: UserCircle,
-    iconColor: "text-slate-500 dark:text-slate-400",
-    iconBg: "bg-slate-100 dark:bg-slate-800",
-    badgeColor: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
-    tags: ["Type 1"],
-  },
-  {
-    id: "ism",
-    label: "Initial Site Measurement",
-    icon: Ruler,
-    iconColor: "text-violet-500 dark:text-violet-400",
-    iconBg: "bg-violet-50 dark:bg-violet-900/30",
-    badgeColor: "bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400",
-    tags: ["Type 2", "Type 3", "Type 4"],
-  },
-  {
-    id: "designing",
-    label: "Designing Stage",
-    icon: Palette,
-    iconColor: "text-pink-500 dark:text-pink-400",
-    iconBg: "bg-pink-50 dark:bg-pink-900/30",
-    badgeColor: "bg-pink-50 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400",
-    tags: ["Type 5", "Type 6", "Type 7"],
-  },
-  {
-    id: "booking",
-    label: "Booking Stage",
-    icon: BookOpen,
-    iconColor: "text-blue-500 dark:text-blue-400",
-    iconBg: "bg-blue-50 dark:bg-blue-900/30",
-    badgeColor: "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
-    tags: ["Type 8", "Type 32"],
-  },
-  {
-    id: "bookingDoneIsm",
-    label: "Booking Done ISM",
-    icon: ClipboardCheck,
-    iconColor: "text-indigo-500 dark:text-indigo-400",
-    iconBg: "bg-indigo-50 dark:bg-indigo-900/30",
-    badgeColor: "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400",
-    tags: ["Type 33", "Type 34", "Type 35"],
-  },
-  {
-    id: "finalMeasurement",
-    label: "Final Measurement",
-    icon: Ruler,
-    iconColor: "text-cyan-500 dark:text-cyan-400",
-    iconBg: "bg-cyan-50 dark:bg-cyan-900/30",
-    badgeColor: "bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400",
-    tags: ["Type 9", "Type 10"],
-  },
-  {
-    id: "clientDoc",
-    label: "Client Documentation",
-    icon: FileCheck,
-    iconColor: "text-amber-500 dark:text-amber-400",
-    iconBg: "bg-amber-50 dark:bg-amber-900/30",
-    badgeColor: "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400",
-    tags: ["Type 11", "Type 12"],
-  },
-  {
-    id: "clientApproval",
-    label: "Client Approval",
-    icon: CheckCircle2,
-    iconColor: "text-green-500 dark:text-green-400",
-    iconBg: "bg-green-50 dark:bg-green-900/30",
-    badgeColor: "bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400",
-    tags: ["Type 13"],
-  },
-  {
-    id: "techCheck",
-    label: "Tech Check",
-    icon: ShieldCheck,
-    iconColor: "text-teal-500 dark:text-teal-400",
-    iconBg: "bg-teal-50 dark:bg-teal-900/30",
-    badgeColor: "bg-teal-50 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400",
-    tags: ["Type 11", "Type 12"],
-    techCheckFilter: ["APPROVED", "REJECTED"],
-  },
-  {
-    id: "orderLogin",
-    label: "Order Login",
-    icon: FileText,
-    iconColor: "text-sky-500 dark:text-sky-400",
-    iconBg: "bg-sky-50 dark:bg-sky-900/30",
-    badgeColor: "bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400",
-    tags: ["Type 36"],
-  },
-  {
-    id: "production",
-    label: "Production",
-    icon: Package,
-    iconColor: "text-orange-500 dark:text-orange-400",
-    iconBg: "bg-orange-50 dark:bg-orange-900/30",
-    badgeColor: "bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400",
-    tags: ["Type 14", "Type 15", "Type 16", "Type 17", "Type 38"],
-  },
-  {
-    id: "readyToDispatch",
-    label: "Ready to Dispatch",
-    icon: PackageCheck,
-    iconColor: "text-lime-500 dark:text-lime-400",
-    iconBg: "bg-lime-50 dark:bg-lime-900/30",
-    badgeColor: "bg-lime-50 text-lime-600 dark:bg-lime-900/30 dark:text-lime-400",
-    tags: ["Type 18"],
-  },
-  {
-    id: "siteReadiness",
-    label: "Site Readiness",
-    icon: MapPin,
-    iconColor: "text-yellow-500 dark:text-yellow-400",
-    iconBg: "bg-yellow-50 dark:bg-yellow-900/30",
-    badgeColor: "bg-yellow-50 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400",
-    tags: ["Type 19"],
-  },
-  {
-    id: "dispatchPlanning",
-    label: "Dispatch Planning",
-    icon: Navigation,
-    iconColor: "text-fuchsia-500 dark:text-fuchsia-400",
-    iconBg: "bg-fuchsia-50 dark:bg-fuchsia-900/30",
-    badgeColor: "bg-fuchsia-50 text-fuchsia-600 dark:bg-fuchsia-900/30 dark:text-fuchsia-400",
-    tags: ["Type 20"],
-  },
-  {
-    id: "dispatch",
-    label: "Dispatch Stage",
-    icon: Truck,
-    iconColor: "text-rose-500 dark:text-rose-400",
-    iconBg: "bg-rose-50 dark:bg-rose-900/30",
-    badgeColor: "bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400",
-    tags: ["Type 21", "Type 22"],
-  },
-  {
-    id: "underInstallation",
-    label: "Under Installation",
-    icon: Hammer,
-    iconColor: "text-stone-500 dark:text-stone-400",
-    iconBg: "bg-stone-100 dark:bg-stone-800",
-    badgeColor: "bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400",
-    tags: ["Type 23", "Type 24", "Type 25", "Type 26"],
-  },
-  {
-    id: "finalHandover",
-    label: "Final Handover",
-    icon: Home,
-    iconColor: "text-emerald-500 dark:text-emerald-400",
-    iconBg: "bg-emerald-50 dark:bg-emerald-900/30",
-    badgeColor: "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
-    tags: ["Type 27", "Type 28", "Type 29", "Type 30", "Type 31"],
-  },
+const STAGE_UI: StageUIConfig[] = [
+  { id: "ism", label: "Initial Site Measurement", icon: Ruler },
+  { id: "finalMeasurement", label: "Final Measurement", icon: Ruler },
+  { id: "clientDoc", label: "Client Documentation", icon: FileCheck },
+  { id: "clientApproval", label: "Client Approval", icon: CheckCircle2 },
+  { id: "techCheck", label: "Tech Check", icon: ShieldCheck },
+  { id: "production", label: "Production", icon: Package },
+  { id: "siteReadiness", label: "Site Readiness", icon: MapPin },
+  { id: "dispatch", label: "Dispatch Stage", icon: Truck },
+  { id: "underInstallation", label: "Under Installation", icon: Hammer },
+  { id: "finalHandover", label: "Final Handover", icon: Home },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 const IMAGE_EXTS = /\.(jpg|jpeg|png|webp|gif|bmp|tiff|heic|heif|avif|jfif)$/i;
-const isImageFile = (name: string) => IMAGE_EXTS.test(name ?? "");
+const VIDEO_EXTS = /\.(mp4|mov|avi|mkv|webm|m4v|3gp|wmv|flv|ogg)$/i;
 
-function filterDocsForStage(
-  allDocs: LeadDocument[],
-  stage: StageConfig
-): LeadDocument[] {
-  return allDocs.filter((doc) => {
-    if (!stage.tags.includes(doc.doc_type_tag)) return false;
-    if (stage.techCheckFilter) {
-      return (
-        doc.tech_check_status !== null &&
-        stage.techCheckFilter.includes(
-          doc.tech_check_status as "APPROVED" | "REJECTED"
-        )
-      );
-    }
-    if (stage.id === "clientDoc") return !doc.tech_check_status;
-    return true;
-  });
+const getFileType = (name: string): "image" | "video" | "document" => {
+  if (IMAGE_EXTS.test(name ?? "")) return "image";
+  if (VIDEO_EXTS.test(name ?? "")) return "video";
+  return "document";
+};
+
+function FileCard({ doc }: { doc: LeadDocument }) {
+  const type = getFileType(doc.doc_og_name);
+  if (type === "image")
+    return (
+      <ImageComponent
+        doc={{
+          id: doc.id,
+          doc_og_name: doc.doc_og_name,
+          signedUrl: doc.signed_url,
+          created_at: doc.created_at,
+        }}
+      />
+    );
+  if (type === "video")
+    return (
+      <VideoCard
+        doc={{
+          id: doc.id,
+          originalName: doc.doc_og_name,
+          signedUrl: doc.signed_url,
+          created_at: doc.created_at,
+        }}
+      />
+    );
+  return (
+    <DocumentCard
+      doc={{
+        id: doc.id,
+        originalName: doc.doc_og_name,
+        signedUrl: doc.signed_url,
+        created_at: doc.created_at,
+      }}
+    />
+  );
 }
-
-// ─── Animation variants ───────────────────────────────────────────────────────
 
 const listVariants = {
   hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.045, delayChildren: 0.05 },
-  },
+  visible: { transition: { staggerChildren: 0.045, delayChildren: 0.05 } },
 };
-
 const itemVariants: Variants = {
   hidden: { opacity: 0, x: -10 },
-  visible: {
-    opacity: 1,
-    x: 0,
-    transition: { duration: 0.28 },
-  },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.28 } },
 };
-
 const iconVariants = {
   hidden: { scale: 0.6, opacity: 0 },
   visible: {
@@ -251,41 +114,319 @@ const iconVariants = {
     transition: { type: "spring" as const, stiffness: 350, damping: 22 },
   },
 };
-
+const cardVariants: Variants = {
+  hidden: { opacity: 0, y: 8, scale: 0.97 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.22 } },
+};
 const gridVariants = {
   hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.06, delayChildren: 0.05 },
-  },
+  visible: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } },
 };
-
 const gridItemVariants: Variants = {
   hidden: { opacity: 0, y: 8, scale: 0.97 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.22 },
-  },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.22 } },
 };
 
-// ─── Stage Item ───────────────────────────────────────────────────────────────
+function TitleCard({ group }: { group: DocGroup }) {
+  const [modalOpen, setModalOpen] = useState(false);
+  const total = group.docs.length;
+  const preview = group.docs.slice(0, 4);
+  const extra = total - 4;
+
+  return (
+    <>
+      <motion.div
+        variants={cardVariants}
+        className="flex flex-col rounded-2xl border bg-card text-card-foreground overflow-hidden"
+        style={{ borderColor: "var(--border)" }}
+      >
+        {/* Card header */}
+        <div className="flex items-start justify-between px-4 pt-4 pb-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center border shrink-0"
+              style={{
+                background: "var(--muted)",
+                borderColor: "var(--border)",
+                color: "var(--muted-foreground)",
+              }}
+            >
+              <File className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <h3
+                className="font-semibold text-sm truncate"
+                style={{ color: "var(--foreground)" }}
+              >
+                {group.title}
+              </h3>
+              <p
+                className="text-xs mt-0.5"
+                style={{ color: "var(--muted-foreground)" }}
+              >
+                {total} {total === 1 ? "file" : "files"} uploaded
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-xs shrink-0 ml-2"
+            onClick={() => setModalOpen(true)}
+          >
+            View
+          </Button>
+        </div>
+
+        <div style={{ borderTop: "1px solid var(--border)" }} />
+
+        {/* Preview stack */}
+        <div className="px-4 py-3">
+          {total > 0 ? (
+            <div className="flex items-center gap-2">
+              <div className="flex -space-x-2">
+                {preview.map((doc, index) => (
+                  <div
+                    key={doc.id}
+                    className="w-9 h-9 rounded-lg border flex items-center justify-center overflow-hidden"
+                    style={{
+                      background: "var(--muted)",
+                      borderColor: "var(--border)",
+                      zIndex: 4 - index,
+                    }}
+                  >
+                    {getFileType(doc.doc_og_name) === "image" ? (
+                      <img
+                        src={doc.signed_url}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <FileText
+                        className="w-4 h-4"
+                        style={{ color: "var(--muted-foreground)" }}
+                      />
+                    )}
+                  </div>
+                ))}
+                {extra > 0 && (
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-medium"
+                    style={{
+                      background: "var(--accent)",
+                      color: "var(--accent-foreground)",
+                      zIndex: 0,
+                    }}
+                  >
+                    +{extra}
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-1.5 ml-1 flex-wrap">
+                {(() => {
+                  const images = group.docs.filter(
+                    (d) => getFileType(d.doc_og_name) === "image",
+                  ).length;
+                  const videos = group.docs.filter(
+                    (d) => getFileType(d.doc_og_name) === "video",
+                  ).length;
+                  const docCount = group.docs.filter(
+                    (d) => getFileType(d.doc_og_name) === "document",
+                  ).length;
+                  return (
+                    <>
+                      {images > 0 && (
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded-full"
+                          style={{
+                            background: "var(--muted)",
+                            color: "var(--muted-foreground)",
+                          }}
+                        >
+                          {images} photo{images > 1 ? "s" : ""}
+                        </span>
+                      )}
+                      {videos > 0 && (
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded-full"
+                          style={{
+                            background: "var(--muted)",
+                            color: "var(--muted-foreground)",
+                          }}
+                        >
+                          {videos} video{videos > 1 ? "s" : ""}
+                        </span>
+                      )}
+                      {docCount > 0 && (
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded-full"
+                          style={{
+                            background: "var(--muted)",
+                            color: "var(--muted-foreground)",
+                          }}
+                        >
+                          {docCount} doc{docCount > 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+              No files uploaded yet
+            </p>
+          )}
+        </div>
+      </motion.div>
+
+      {/* View Modal */}
+      <BaseModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        title={group.title}
+        description={`${total} file${total !== 1 ? "s" : ""} uploaded`}
+        icon={
+          <div
+            className="p-2.5 rounded-lg"
+            style={{ background: "var(--muted)" }}
+          >
+            <FileText
+              className="w-5 h-5"
+              style={{ color: "var(--muted-foreground)" }}
+            />
+          </div>
+        }
+        size="lg"
+      >
+        <div className="p-4 space-y-3">
+          {total === 0 ? (
+            <div
+              className="py-12 border border-dashed rounded-xl text-center"
+              style={{
+                borderColor: "var(--border)",
+                background: "var(--muted)",
+              }}
+            >
+              <FolderOpen
+                className="w-8 h-8 mx-auto mb-2"
+                style={{ color: "var(--muted-foreground)", opacity: 0.4 }}
+              />
+              <p
+                className="text-sm"
+                style={{ color: "var(--muted-foreground)" }}
+              >
+                No files uploaded yet
+              </p>
+            </div>
+          ) : (
+            <motion.div
+              variants={gridVariants}
+              initial="hidden"
+              animate="visible"
+              className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+            >
+              {group.docs.map((doc) => (
+                <motion.div key={doc.id} variants={gridItemVariants}>
+                  <FileCard doc={doc} />
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </div>
+      </BaseModal>
+    </>
+  );
+}
+
+interface InstanceSectionProps {
+  group: InstanceGroup;
+}
+
+function InstanceSection({ group }: InstanceSectionProps) {
+  const hasInstance = group.instanceId !== null;
+
+  const mainName = group.instanceType ?? group.instanceTitle;
+  const subtitleName =
+    group.instanceType &&
+    group.instanceTitle &&
+    group.instanceType !== group.instanceTitle
+      ? group.instanceTitle
+      : null;
+
+  return (
+    <div className="space-y-3">
+      {hasInstance && mainName && (
+        <div className="flex items-center gap-2.5 px-1 py-1">
+          {/* Icon box */}
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border"
+            style={{
+              background: "var(--card)",
+              borderColor: "var(--border)",
+            }}
+          >
+            <Layers3
+              className="w-3 h-3"
+              style={{ color: "var(--muted-foreground)" }}
+            />
+          </div>
+
+          {/* Names — one row */}
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span
+              className="text-[13px] font-medium truncate"
+              style={{ color: "var(--foreground)" }}
+            >
+              {mainName}
+            </span>
+
+            {subtitleName && (
+              <>
+                <span className="text-[11px] text-muted-foreground shrink-0">
+                  -
+                </span>
+                <span className="text-[12px] truncate text-muted-foreground">
+                  {subtitleName}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {group.docGroups.map((docGroup) => (
+          <TitleCard
+            key={`${group.instanceId ?? "__lead__"}|||${docGroup.title}`}
+            group={docGroup}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface StageItemProps {
-  stage: StageConfig;
-  docs: LeadDocument[];
+  uiConfig: StageUIConfig;
+  instanceGroups: InstanceGroup[];
+  totalFiles: number;
   isLast: boolean;
 }
 
-function StageItem({ stage, docs, isLast }: StageItemProps) {
+function StageItem({
+  uiConfig,
+  instanceGroups,
+  totalFiles,
+  isLast,
+}: StageItemProps) {
   const [open, setOpen] = useState(false);
-
-  const images = docs.filter((d) => isImageFile(d.doc_og_name));
-  const fileDocs = docs.filter((d) => !isImageFile(d.doc_og_name));
-  const total = docs.length;
-  const hasFiles = total > 0;
-
-  const Icon = stage.icon;
+  const hasFiles = totalFiles > 0;
+  const Icon = uiConfig.icon;
 
   return (
     <motion.div variants={itemVariants} className="relative flex gap-4">
@@ -295,55 +436,80 @@ function StageItem({ stage, docs, isLast }: StageItemProps) {
           variants={iconVariants}
           className={cn(
             "flex h-8 w-8 items-center justify-center rounded-lg shrink-0 z-10 transition-opacity",
-            stage.iconBg,
-            !hasFiles && "opacity-40"
+            !hasFiles && "opacity-40",
           )}
+          style={{
+            background: "var(--muted)",
+            border: "1px solid var(--border)",
+          }}
         >
-          <Icon size={14} className={cn(stage.iconColor, !hasFiles && "opacity-60")} />
+          <Icon
+            size={14}
+            style={{
+              color: hasFiles ? "var(--foreground)" : "var(--muted-foreground)",
+            }}
+          />
         </motion.div>
         {!isLast && (
-          <div className="w-px flex-1 min-h-[16px] mt-1 bg-border" />
+          <div
+            className="w-px flex-1 min-h-4 mt-1"
+            style={{ background: "var(--border)" }}
+          />
         )}
       </div>
 
-      {/* Card */}
+      {/* Content */}
       <div className={cn("flex-1 min-w-0", isLast ? "pb-0" : "pb-3")}>
+        {/* Stage header button */}
         <button
           onClick={() => hasFiles && setOpen((v) => !v)}
           disabled={!hasFiles}
           className={cn(
             "w-full flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors duration-200",
-            hasFiles
-              ? "border-border bg-white dark:bg-neutral-900 hover:bg-muted/40 dark:hover:bg-neutral-800 cursor-pointer"
-              : "border-border/40 bg-muted/20 dark:bg-neutral-900/40 cursor-default opacity-50"
+            !hasFiles && "cursor-default opacity-50",
           )}
+          style={{
+            borderColor: "var(--border)",
+            background: hasFiles ? "var(--card)" : "var(--muted)",
+          }}
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="text-sm font-medium text-neutral-800 dark:text-neutral-200 truncate">
-              {stage.label}
+            <span
+              className="text-sm font-medium truncate"
+              style={{ color: "var(--foreground)" }}
+            >
+              {uiConfig.label}
             </span>
             {hasFiles && (
               <motion.span
                 initial={{ scale: 0.7, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 400, damping: 20, delay: 0.1 }}
-                className={cn(
-                  "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium shrink-0",
-                  stage.badgeColor
-                )}
+                transition={{
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 20,
+                  delay: 0.1,
+                }}
+                className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium shrink-0"
+                style={{
+                  background: "var(--muted)",
+                  color: "var(--muted-foreground)",
+                }}
               >
-                {total} {total === 1 ? "file" : "files"}
+                {totalFiles} {totalFiles === 1 ? "file" : "files"}
               </motion.span>
             )}
           </div>
-
           {hasFiles && (
             <motion.span
               animate={{ rotate: open ? 90 : 0 }}
               transition={{ duration: 0.2, ease: "easeInOut" }}
               className="inline-flex shrink-0"
             >
-              <ChevronRight size={14} className="text-muted-foreground" />
+              <ChevronRight
+                size={14}
+                style={{ color: "var(--muted-foreground)" }}
+              />
             </motion.span>
           )}
         </button>
@@ -357,77 +523,33 @@ function StageItem({ stage, docs, isLast }: StageItemProps) {
               transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
               className="overflow-hidden"
             >
-              <div className="pt-3 space-y-4">
-                {images.length > 0 && (
-                  <div className="space-y-2">
-                    <motion.div
-                      initial={{ opacity: 0, x: -6 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.18 }}
-                      className="flex items-center gap-1.5 px-1"
-                    >
-                      <Images size={11} className="text-muted-foreground" />
-                      <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-                        Photos ({images.length})
-                      </span>
-                    </motion.div>
-                    <motion.div
-                      variants={gridVariants}
-                      initial="hidden"
-                      animate="visible"
-                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
-                    >
-                      {images.map((doc) => (
-                        <motion.div key={doc.id} variants={gridItemVariants}>
-                          <ImageComponent
-                            doc={{
-                              id: doc.id,
-                              doc_og_name: doc.doc_og_name,
-                              signedUrl: doc.signed_url,
-                              created_at: doc.created_at,
-                            }}
-                          />
-                        </motion.div>
-                      ))}
-                    </motion.div>
-                  </div>
-                )}
-
-                {fileDocs.length > 0 && (
-                  <div className="space-y-2">
-                    <motion.div
-                      initial={{ opacity: 0, x: -6 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.18 }}
-                      className="flex items-center gap-1.5 px-1"
-                    >
-                      <FileText size={11} className="text-muted-foreground" />
-                      <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-                        Documents ({fileDocs.length})
-                      </span>
-                    </motion.div>
-                    <motion.div
-                      variants={gridVariants}
-                      initial="hidden"
-                      animate="visible"
-                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
-                    >
-                      {fileDocs.map((doc) => (
-                        <motion.div key={doc.id} variants={gridItemVariants}>
-                          <DocumentCard
-                            doc={{
-                              id: doc.id,
-                              originalName: doc.doc_og_name,
-                              signedUrl: doc.signed_url,
-                              created_at: doc.created_at,
-                            }}
-                          />
-                        </motion.div>
-                      ))}
-                    </motion.div>
-                  </div>
-                )}
-              </div>
+              <motion.div
+                variants={{
+                  hidden: {},
+                  visible: {
+                    transition: { staggerChildren: 0.08, delayChildren: 0.04 },
+                  },
+                }}
+                initial="hidden"
+                animate="visible"
+                className="pt-3 space-y-5"
+              >
+                {instanceGroups.map((ig) => (
+                  <motion.div
+                    key={ig.instanceId ?? "__lead__"}
+                    variants={{
+                      hidden: { opacity: 0, y: 6 },
+                      visible: {
+                        opacity: 1,
+                        y: 0,
+                        transition: { duration: 0.22 },
+                      },
+                    }}
+                  >
+                    <InstanceSection group={ig} />
+                  </motion.div>
+                ))}
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -436,28 +558,39 @@ function StageItem({ stage, docs, isLast }: StageItemProps) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
 interface Props {
   leadId: number;
   vendorId: number;
-  /** Show stages up to and including this stage id. Defaults to showing all. */
   upToStage?: string;
 }
 
-export default function ProjectDocumentsTimeline({ leadId, vendorId, upToStage }: Props) {
-  const { data: allDocs = [], isLoading } = useAllLeadDocuments(vendorId, leadId);
+export default function ProjectDocumentsTimeline({
+  leadId,
+  vendorId,
+  upToStage,
+}: Props) {
+  const searchParams = useSearchParams();
+  const instanceId = searchParams.get("instance_id")
+    ? Number(searchParams.get("instance_id"))
+    : null;
+
+  const { data: stageResults = [], isLoading } = useAllLeadDocuments(
+    vendorId,
+    leadId,
+    instanceId,
+  );
+
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type as string | undefined
+    (state) => state.auth.user?.user_type?.user_type as string | undefined,
   );
 
   const visibleStages = useMemo(() => {
-    let stages = STAGES;
+    let ui = STAGE_UI;
     if (upToStage) {
-      const idx = STAGES.findIndex((s) => s.id === upToStage);
-      stages = idx === -1 ? STAGES : STAGES.slice(0, idx + 1);
+      const idx = STAGE_UI.findIndex((s) => s.id === upToStage);
+      ui = idx === -1 ? STAGE_UI : STAGE_UI.slice(0, idx + 1);
     }
-    return stages.filter((s) => {
+    return ui.filter((s) => {
       if (s.id === "orderLogin")
         return userType === "backend" || userType === "super-admin";
       if (s.id === "production")
@@ -466,16 +599,16 @@ export default function ProjectDocumentsTimeline({ leadId, vendorId, upToStage }
     });
   }, [upToStage, userType]);
 
-  const stageDocMap = useMemo(() => {
-    const map: Record<string, LeadDocument[]> = {};
-    for (const stage of visibleStages) {
-      map[stage.id] = filterDocsForStage(allDocs, stage);
-    }
+  const stageResultMap = useMemo(() => {
+    const map: Record<string, StageDocResult> = {};
+    for (const r of stageResults) map[r.stageId] = r;
     return map;
-  }, [allDocs, visibleStages]);
+  }, [stageResults]);
 
-  const totalFiles = allDocs.length;
-  const stagesWithFiles = visibleStages.filter((s) => stageDocMap[s.id].length > 0).length;
+  const totalFiles = useMemo(
+    () => stageResults.reduce((acc, s) => acc + s.totalFiles, 0),
+    [stageResults],
+  );
 
   return (
     <div className="pb-6 px-1">
@@ -487,10 +620,15 @@ export default function ProjectDocumentsTimeline({ leadId, vendorId, upToStage }
         className="mb-5 flex items-center justify-between"
       >
         <div className="flex items-center gap-4">
-          <FolderOpen size={25} className="text-muted-foreground" />
+          <FolderOpen size={25} style={{ color: "var(--muted-foreground)" }} />
           <div>
-            <h2 className="text-sm font-semibold">Project Documents</h2>
-            <p className="text-xs text-muted-foreground">
+            <h2
+              className="text-sm font-semibold"
+              style={{ color: "var(--foreground)" }}
+            >
+              Project Documents
+            </h2>
+            <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
               All files uploaded across every stage of this project.
             </p>
           </div>
@@ -500,7 +638,11 @@ export default function ProjectDocumentsTimeline({ leadId, vendorId, upToStage }
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.25, delay: 0.15 }}
-            className="text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full shrink-0"
+            className="text-xs px-2.5 py-1 rounded-full shrink-0"
+            style={{
+              background: "var(--muted)",
+              color: "var(--muted-foreground)",
+            }}
           >
             {totalFiles} {totalFiles === 1 ? "file" : "files"}
           </motion.span>
@@ -512,25 +654,31 @@ export default function ProjectDocumentsTimeline({ leadId, vendorId, upToStage }
         <div className="space-y-3">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="flex gap-4">
-              <div className="w-8 h-8 rounded-lg bg-muted animate-pulse shrink-0" />
-              <div className="flex-1 h-11 rounded-xl bg-muted animate-pulse" />
+              <div
+                className="w-8 h-8 rounded-lg animate-pulse shrink-0"
+                style={{ background: "var(--muted)" }}
+              />
+              <div
+                className="flex-1 h-11 rounded-xl animate-pulse"
+                style={{ background: "var(--muted)" }}
+              />
             </div>
           ))}
         </div>
       ) : (
-        <motion.div
-          variants={listVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          {visibleStages.map((stage, idx) => (
-            <StageItem
-              key={stage.id}
-              stage={stage}
-              docs={stageDocMap[stage.id]}
-              isLast={idx === visibleStages.length - 1}
-            />
-          ))}
+        <motion.div variants={listVariants} initial="hidden" animate="visible">
+          {visibleStages.map((uiConfig, idx) => {
+            const result = stageResultMap[uiConfig.id];
+            return (
+              <StageItem
+                key={uiConfig.id}
+                uiConfig={uiConfig}
+                instanceGroups={result?.instanceGroups ?? []}
+                totalFiles={result?.totalFiles ?? 0}
+                isLast={idx === visibleStages.length - 1}
+              />
+            );
+          })}
         </motion.div>
       )}
     </div>

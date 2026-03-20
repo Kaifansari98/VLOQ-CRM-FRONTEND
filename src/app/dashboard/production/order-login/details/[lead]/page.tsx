@@ -39,6 +39,7 @@ import {
   PencilLine,
   History,
   IndianRupee,
+  FolderOpen,
 } from "lucide-react";
 
 import {
@@ -83,6 +84,7 @@ import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 
 export default function OrderLoginLeadDetails() {
   const { lead: leadId } = useParams();
@@ -435,6 +437,11 @@ export default function OrderLoginLeadDetails() {
                   <MessageSquare size={16} className="mr-1 opacity-60" />
                   Chats
                 </TabsTrigger>
+                  <TabsTrigger value="documents">
+              <FolderOpen size={16} className="mr-1 opacity-60" />
+              Documents
+            </TabsTrigger>
+        
               </TabsList>
             </div>
           </div>
@@ -485,6 +492,14 @@ export default function OrderLoginLeadDetails() {
 
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />
+        </TabsContent>
+
+             <TabsContent value="documents">
+          <ProjectDocumentsTimeline
+            leadId={leadIdNum}
+            vendorId={vendorId ?? 0}
+            upToStage="techCheck"
+          />
         </TabsContent>
       </Tabs>
 

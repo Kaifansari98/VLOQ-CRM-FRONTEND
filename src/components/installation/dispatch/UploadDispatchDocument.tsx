@@ -88,7 +88,10 @@ export default function UploadDispatchDocument({
   ------------------------------------------------------------ */
   const handleUpload = async () => {
     if (selectedFiles.length === 0) {
-      toastManager.add({ title: "Please select at least one file.", type: "error" });
+      toastManager.add({
+        title: "Please select at least one file.",
+        type: "error",
+      });
       return;
     }
 
@@ -102,11 +105,15 @@ export default function UploadDispatchDocument({
           created_by: userId,
         },
       });
-      
+
       setSelectedFiles([]);
 
       queryClient.invalidateQueries({
         queryKey: ["dispatchDocuments", vendorId, leadId],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["allLeadDocuments"],
       });
     } catch (error) {
       toastManager.add({ title: "Failed to upload files.", type: "error" });
