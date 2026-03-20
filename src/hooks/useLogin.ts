@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import { apiClient } from "@/lib/apiClient"
 import { useDispatch } from "react-redux"
 import { setCredentials } from "@/redux/slices/authSlice"
+import { setActiveTheme } from "@/redux/slices/themeSlice"
 import { toastManager } from "@/components/ui/toast";
 
 interface LoginPayload {
@@ -24,8 +25,19 @@ export function useLogin() {
         throw new Error(error.response?.data?.message || "Login failed");
       }
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       dispatch(setCredentials({ user: data.user, token: data.token }));
+
+      // Fetch and store active theme for this vendor
+      try {
+        const vendorId = data.user?.vendor_id;
+        if (vendorId) {
+          const themeRes = await apiClient.get(`/themes/vendorId/${vendorId}/active`);
+          dispatch(setActiveTheme(themeRes.data?.data ?? null));
+        }
+      } catch {
+        // Theme fetch failure is non-blocking
+      }
     },
   });
 }

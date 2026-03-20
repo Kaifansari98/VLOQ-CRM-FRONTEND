@@ -28,6 +28,7 @@ import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { setFranchiseId } from "@/redux/slices/authSlice";
 import { usePendingMiscellaneousCount } from "@/api/installation/useUnderInstallationStageLeads";
 import { useFranchisesByVendorId } from "@/api/franchise";
+import { useTheme } from "next-themes";
 
 const data = {
   user: {
@@ -203,6 +204,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const activeTheme = useAppSelector((state) => state.theme.activeTheme);
+
+  const themeColor = React.useCallback(
+    (key: string): string | undefined => {
+      if (!activeTheme) return undefined;
+      const mapping = activeTheme.mappings.find((m) => m.key === key);
+      if (!mapping) return undefined;
+      return isDark ? mapping.dark : mapping.light;
+    },
+    [activeTheme, isDark],
+  );
+
+  const sidebarBg = themeColor("sidebar_bg");
+  const sidebarText = themeColor("sidebar_text");
+  const badgeBg = themeColor("sidebar_badge_bg");
+  const badgeText = themeColor("sidebar_badge_text");
+
   const user = useAppSelector((state) => state.auth.user);
   const selectedFranchiseId = useAppSelector(
     (state) => state.auth.franchise_id,
@@ -296,7 +316,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       url: "/dashboard/installation/under-installation/miscellaneous-leads",
       customCount: miscLeadsCount,
       customCountLoading: isMiscLeadLoading,
-      badgeClassName: "bg-red-500 text-white",
+      badgeClassName: badgeBg || badgeText ? undefined : "bg-red-500 text-white",
+      badgeStyle: badgeBg || badgeText
+        ? { backgroundColor: badgeBg, color: badgeText }
+        : undefined,
     };
 
     const finalNavItems = filteredItems.map((item) => {
@@ -364,8 +387,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }));
   }, [user, isSuperAdmin, franchises, franchiseId]);
 
+  const sidebarStyle: React.CSSProperties = {
+    ...(sidebarBg && {
+      "--sidebar": sidebarBg,
+      "--sidebar-accent": "rgba(255,255,255,0.12)",
+    } as React.CSSProperties),
+    ...(sidebarText && {
+      "--sidebar-foreground": sidebarText,
+      "--sidebar-accent-foreground": sidebarText,
+      "--sidebar-primary-foreground": sidebarText,
+    } as React.CSSProperties),
+    ...(badgeBg && { "--theme-badge-bg": badgeBg } as React.CSSProperties),
+    ...(badgeText && { "--theme-badge-text": badgeText } as React.CSSProperties),
+  };
+
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="icon" style={sidebarStyle} {...props}>
       <SidebarHeader>
         {user ? (
           <TeamSwitcher teams={teams} activeTeamId={franchiseId} />
