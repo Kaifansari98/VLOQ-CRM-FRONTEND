@@ -38,6 +38,7 @@ import {
   PencilLine,
   History,
   IndianRupee,
+  FolderOpen,
 } from "lucide-react";
 
 import {
@@ -88,6 +89,7 @@ import {
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 
 export default function UnderInstallationLeadDetails() {
   const { lead: leadId } = useParams();
@@ -470,6 +472,10 @@ export default function UnderInstallationLeadDetails() {
                 <MessageSquare size={16} className="mr-1 opacity-60" />
                 Chats
               </TabsTrigger>
+              <TabsTrigger value="documents">
+                <FolderOpen size={16} className="mr-1 opacity-60" />
+                Documents
+              </TabsTrigger>
             </TabsList>
 
             <ScrollBar orientation="horizontal" />
@@ -559,6 +565,14 @@ export default function UnderInstallationLeadDetails() {
 
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />
+        </TabsContent>
+
+        <TabsContent value="documents">
+          <ProjectDocumentsTimeline
+            leadId={leadIdNum}
+            vendorId={vendorId ?? 0}
+            upToStage="underInstallation"
+          />
         </TabsContent>
       </Tabs>
 

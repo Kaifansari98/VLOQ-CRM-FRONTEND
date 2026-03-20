@@ -37,6 +37,7 @@ import {
   PencilLine,
   History,
   IndianRupee,
+  FolderOpen,
 } from "lucide-react";
 
 import {
@@ -80,6 +81,7 @@ import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import { useQueryClient } from "@tanstack/react-query";
+import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 
 export default function BookingStageLeadsDetails() {
   const { lead: leadId } = useParams();
@@ -94,7 +96,7 @@ export default function BookingStageLeadsDetails() {
   const [assignOpen, setAssignOpen] = useState(false);
 
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type
+    (state) => state.auth.user?.user_type.user_type,
   );
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
@@ -121,16 +123,24 @@ export default function BookingStageLeadsDetails() {
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Missing vendor or user info!", type: "error" });
+      toastManager.add({
+        title: "Missing vendor or user info!",
+        type: "error",
+      });
       return;
     }
 
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toastManager.add({ title: "Lead deleted successfully!", type: "success" }),
-        onError: () => toastManager.add({ title: "Failed to delete lead", type: "error" }),
-      }
+        onSuccess: () =>
+          toastManager.add({
+            title: "Lead deleted successfully!",
+            type: "success",
+          }),
+        onError: () =>
+          toastManager.add({ title: "Failed to delete lead", type: "error" }),
+      },
     );
 
     setOpenDelete(false);
@@ -309,6 +319,10 @@ export default function BookingStageLeadsDetails() {
               <MessageSquare size={16} className="mr-1 opacity-60" />
               Chats
             </TabsTrigger>
+            <TabsTrigger value="documents">
+              <FolderOpen size={16} className="mr-1 opacity-60" />
+              Documents
+            </TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
@@ -338,6 +352,13 @@ export default function BookingStageLeadsDetails() {
 
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />
+        </TabsContent>
+        <TabsContent value="documents">
+          <ProjectDocumentsTimeline
+            leadId={leadIdNum}
+            vendorId={vendorId ?? 0}
+            upToStage="ism"
+          />
         </TabsContent>
       </Tabs>
 
@@ -392,7 +413,10 @@ export default function BookingStageLeadsDetails() {
         statusType={activityType}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toastManager.add({ title: "Vendor or User info is missing!", type: "error" });
+            toastManager.add({
+              title: "Vendor or User info is missing!",
+              type: "error",
+            });
             return;
           }
           updateStatusMutation.mutate(
@@ -410,7 +434,10 @@ export default function BookingStageLeadsDetails() {
             },
             {
               onSuccess: () => {
-                toastManager.add({ title: "Lead marked as On Hold!", type: "success" });
+                toastManager.add({
+                  title: "Lead marked as On Hold!",
+                  type: "success",
+                });
 
                 setActivityModalOpen(false);
 
@@ -420,9 +447,12 @@ export default function BookingStageLeadsDetails() {
                 });
               },
               onError: (err) => {
-                toastManager.add({ title: err || "Failed to update lead status", type: "error" });
+                toastManager.add({
+                  title: err || "Failed to update lead status",
+                  type: "error",
+                });
               },
-            }
+            },
           );
         }}
         loading={updateStatusMutation.isPending}

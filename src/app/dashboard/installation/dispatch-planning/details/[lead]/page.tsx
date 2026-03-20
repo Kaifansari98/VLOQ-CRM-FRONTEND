@@ -36,6 +36,7 @@ import {
   PencilLine,
   History,
   IndianRupee,
+  FolderOpen,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -82,6 +83,7 @@ import {
   useIsChatNotification,
 } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 
 export default function DispatchPlanningLeadDetails() {
   const router = useRouter();
@@ -92,16 +94,15 @@ export default function DispatchPlanningLeadDetails() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth?.user?.user_type.user_type
+    (state) => state.auth?.user?.user_type.user_type,
   );
-
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(
-    userType?.toLowerCase() === "sales-executive" ? "todo" : "details"
+    userType?.toLowerCase() === "sales-executive" ? "todo" : "details",
   );
   useChatTabFromUrl(setActiveTab);
   const isChatNotification = useIsChatNotification();
@@ -136,16 +137,24 @@ export default function DispatchPlanningLeadDetails() {
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Missing vendor or user info!", type: "error" });
+      toastManager.add({
+        title: "Missing vendor or user info!",
+        type: "error",
+      });
       return;
     }
 
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toastManager.add({ title: "Lead deleted successfully!", type: "success" }),
-        onError: () => toastManager.add({ title: "Failed to delete lead", type: "error" }),
-      }
+        onSuccess: () =>
+          toastManager.add({
+            title: "Lead deleted successfully!",
+            type: "success",
+          }),
+        onError: () =>
+          toastManager.add({ title: "Failed to delete lead", type: "error" }),
+      },
     );
 
     setOpenDelete(false);
@@ -369,6 +378,10 @@ export default function DispatchPlanningLeadDetails() {
               <MessageSquare size={16} className="mr-1 opacity-60" />
               Chats
             </TabsTrigger>
+            <TabsTrigger value="documents">
+              <FolderOpen size={16} className="mr-1 opacity-60" />
+              Documents
+            </TabsTrigger>
           </TabsList>
 
           <ScrollBar orientation="horizontal" />
@@ -408,6 +421,14 @@ export default function DispatchPlanningLeadDetails() {
 
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />
+        </TabsContent>
+
+        <TabsContent value="documents">
+          <ProjectDocumentsTimeline
+            leadId={leadIdNum}
+            vendorId={vendorId ?? 0}
+            upToStage="siteReadiness"
+          />
         </TabsContent>
       </Tabs>
 
@@ -471,7 +492,10 @@ export default function DispatchPlanningLeadDetails() {
                     leadId: leadIdNum,
                     payload: { updated_by: userId! },
                   });
-                  toastManager.add({ title: "Lead successfully moved to Dispatch stage 🚚", type: "success" });
+                  toastManager.add({
+                    title: "Lead successfully moved to Dispatch stage 🚚",
+                    type: "success",
+                  });
                   queryClient.invalidateQueries({ queryKey: ["leadStats"] });
                   queryClient.invalidateQueries({
                     queryKey: ["universal-stage-leads"],
@@ -499,7 +523,10 @@ export default function DispatchPlanningLeadDetails() {
         statusType={activityType}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toastManager.add({ title: "Vendor or User info is missing!", type: "error" });
+            toastManager.add({
+              title: "Vendor or User info is missing!",
+              type: "error",
+            });
             return;
           }
           updateStatusMutation.mutate(
@@ -517,7 +544,10 @@ export default function DispatchPlanningLeadDetails() {
             },
             {
               onSuccess: () => {
-                toastManager.add({ title: "Lead marked as On Hold!", type: "success" });
+                toastManager.add({
+                  title: "Lead marked as On Hold!",
+                  type: "success",
+                });
 
                 setActivityModalOpen(false);
 
@@ -527,9 +557,12 @@ export default function DispatchPlanningLeadDetails() {
                 });
               },
               onError: (err) => {
-                toastManager.add({ title: err || "Failed to update lead status", type: "error" });
+                toastManager.add({
+                  title: err || "Failed to update lead status",
+                  type: "error",
+                });
               },
-            }
+            },
           );
         }}
         loading={updateStatusMutation.isPending}

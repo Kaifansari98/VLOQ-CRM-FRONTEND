@@ -33,7 +33,10 @@ import { useDeleteDocument } from "@/api/leads";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 
-import { useInstanceStage, useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  useInstanceStage,
+  useLeadStatus,
+} from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 
 export default function WoodworkPackingDetailsSection({
@@ -52,8 +55,8 @@ export default function WoodworkPackingDetailsSection({
     typeof instanceId !== "undefined"
       ? instanceId
       : instanceIdFromUrl && !Number.isNaN(instanceIdFromUrl)
-      ? instanceIdFromUrl
-      : null;
+        ? instanceIdFromUrl
+        : null;
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
@@ -63,17 +66,17 @@ export default function WoodworkPackingDetailsSection({
   const { data: packingDetails, isLoading } = useGetWoodworkPackingDetails(
     vendorId,
     leadId,
-    effectiveInstanceId ?? undefined
+    effectiveInstanceId ?? undefined,
   );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
 
-    const { data, isLoading: instanceLoading } = useInstanceStage(
-      vendorId,
-      leadId,
-      instanceId!,
-    );
-    const leadStatusIns = data?.derived_stage;
+  const { data, isLoading: instanceLoading } = useInstanceStage(
+    vendorId,
+    leadId,
+    instanceId!,
+  );
+  const leadStatusIns = data?.derived_stage;
 
   const leadStatus = leadData?.status;
 
@@ -84,13 +87,13 @@ export default function WoodworkPackingDetailsSection({
     useUploadWoodworkPackingDetails(
       vendorId,
       leadId,
-      effectiveInstanceId ?? undefined
+      effectiveInstanceId ?? undefined,
     );
 
   const { refetch: refetchCompleteness } = usePostProductionCompleteness(
     vendorId,
     leadId,
-    effectiveInstanceId ?? undefined
+    effectiveInstanceId ?? undefined,
   );
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -102,10 +105,14 @@ export default function WoodworkPackingDetailsSection({
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
   const effectiveUserType = userType === "admin" ? "sales-executive" : userType;
-  const canViewAndWork = canViewAndWorkProductionStage(effectiveUserType, leadStatusIns ?? leadStatus);
+  const canViewAndWork = canViewAndWorkProductionStage(
+    effectiveUserType,
+    leadStatusIns ?? leadStatus,
+  );
   const canDelete =
     userType === "super-admin" ||
-    (userType === "factory" && (leadStatusIns ?? leadStatus) === "production-stage");
+    (userType === "factory" &&
+      (leadStatusIns ?? leadStatus) === "production-stage");
 
   useEffect(() => {
     if (normalizedRemark) setRemark(normalizedRemark);
@@ -131,7 +138,10 @@ export default function WoodworkPackingDetailsSection({
   // ---------------- UPLOAD HANDLER ----------------
   const handleUpload = async () => {
     if (selectedFiles.length === 0 && remark.trim() === "") {
-      toastManager.add({ title: "Add a remark or upload a file.", type: "error" });
+      toastManager.add({
+        title: "Add a remark or upload a file.",
+        type: "error",
+      });
       return;
     }
 
@@ -143,7 +153,10 @@ export default function WoodworkPackingDetailsSection({
       if (accountId) formData.append("account_id", String(accountId));
 
       await uploadPackingDetails(formData);
-      toastManager.add({ title: "Woodwork packing details updated!", type: "success" });
+      toastManager.add({
+        title: "Woodwork packing details updated!",
+        type: "success",
+      });
 
       setSelectedFiles([]);
 
@@ -156,9 +169,16 @@ export default function WoodworkPackingDetailsSection({
         ],
       });
 
+      queryClient.invalidateQueries({
+        queryKey: ["allLeadDocuments"],
+      });
+
       await refetchCompleteness();
     } catch (error: any) {
-      toastManager.add({ title: error?.response?.data?.message || "Upload failed.", type: "error" });
+      toastManager.add({
+        title: error?.response?.data?.message || "Upload failed.",
+        type: "error",
+      });
     }
   };
 
@@ -186,7 +206,10 @@ export default function WoodworkPackingDetailsSection({
         ],
       });
     } catch (error: any) {
-      toastManager.add({ title: error?.response?.data?.message || "Failed to update remark.", type: "error" });
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update remark.",
+        type: "error",
+      });
     }
   };
 

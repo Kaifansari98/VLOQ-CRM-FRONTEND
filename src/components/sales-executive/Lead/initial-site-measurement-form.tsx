@@ -139,7 +139,10 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   const mutation = useMutation({
     mutationFn: uploadInitialSiteMeasurement,
     onSuccess: () => {
-      toastManager.add({ title: "Initial Site Measurement Upload Successfully!", type: "success" });
+      toastManager.add({
+        title: "Initial Site Measurement Upload Successfully!",
+        type: "success",
+      });
       queryClient.invalidateQueries({
         queryKey: ["leadStats", vendorId, userId],
       });
@@ -162,7 +165,10 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!leadId || !accountId) {
-      toastManager.add({ title: "Lead or account data is missing!", type: "error" });
+      toastManager.add({
+        title: "Lead or account data is missing!",
+        type: "error",
+      });
       return;
     }
 
@@ -194,6 +200,10 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     });
 
     mutation.mutate(formData);
+
+    queryClient.invalidateQueries({
+      queryKey: ["allLeadDocuments"],
+    });
   };
 
   const handleReset = () => {

@@ -46,6 +46,7 @@ import {
   IndianRupee,
   Download,
   Loader2,
+  FolderOpen,
 } from "lucide-react";
 import CustomeTooltip from "@/components/custom-tooltip";
 
@@ -102,6 +103,7 @@ import {
   useIsChatNotification,
 } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -178,7 +180,10 @@ export default function ClientApprovalLeadDetails() {
     const originalName = doc?.doc_og_name || "download";
 
     if (!docUrl) {
-      toastManager.add({ title: "No download URL available for this document.", type: "error" });
+      toastManager.add({
+        title: "No download URL available for this document.",
+        type: "error",
+      });
       return;
     }
 
@@ -225,7 +230,7 @@ export default function ClientApprovalLeadDetails() {
     vendorId!,
     leadIdNum,
     userId!,
-    instanceIdNum!
+    instanceIdNum!,
   );
 
   const allPptDocs = clientDocsData?.documents?.ppt ?? [];
@@ -270,7 +275,7 @@ export default function ClientApprovalLeadDetails() {
     lead?.no_of_client_documents_initially_submitted;
   const instanceDocCount = validInstanceId
     ? clientDocsData?.product_structure_instances?.find(
-        (instance: any) => instance.id === validInstanceId
+        (instance: any) => instance.id === validInstanceId,
       )?.no_of_client_documents_initially_submitted
     : undefined;
 
@@ -281,15 +286,15 @@ export default function ClientApprovalLeadDetails() {
   const instanceSuffix =
     validInstanceId && totalInstanceCount > 1
       ? clientDocsData?.product_structure_instances?.find(
-          (instance: any) => instance.id === validInstanceId
+          (instance: any) => instance.id === validInstanceId,
         )?.quantity_index
       : null;
   const displayLeadCode =
     leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
   const instanceName = validInstanceId
-    ? clientDocsData?.product_structure_instances?.find(
-        (instance: any) => instance.id === validInstanceId
-      )?.title ?? ""
+    ? (clientDocsData?.product_structure_instances?.find(
+        (instance: any) => instance.id === validInstanceId,
+      )?.title ?? "")
     : "";
 
   const accountId = Number(lead?.account_id);
@@ -301,15 +306,26 @@ export default function ClientApprovalLeadDetails() {
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Missing vendor or user info!", type: "error" });
+      toastManager.add({
+        title: "Missing vendor or user info!",
+        type: "error",
+      });
       return;
     }
 
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toastManager.add({ title: "Lead deleted successfully!", type: "success" }),
-        onError: (err) => toastManager.add({ title: err?.message || "Failed to delete lead", type: "error" }),
+        onSuccess: () =>
+          toastManager.add({
+            title: "Lead deleted successfully!",
+            type: "success",
+          }),
+        onError: (err) =>
+          toastManager.add({
+            title: err?.message || "Failed to delete lead",
+            type: "error",
+          }),
       },
     );
 
@@ -354,10 +370,10 @@ export default function ClientApprovalLeadDetails() {
       d.tech_check_status === "REVISED",
   ).length;
   const requiredApprovalCount = validInstanceId
-    ? instanceDocCount ??
+    ? (instanceDocCount ??
       no_of_client_documents_initially_submitted ??
-      moveScope.docs.length
-    : no_of_client_documents_initially_submitted ?? moveScope.docs.length;
+      moveScope.docs.length)
+    : (no_of_client_documents_initially_submitted ?? moveScope.docs.length);
   const isMoveToOrderLoginDisabled =
     requiredApprovalCount > 0
       ? approvedCount < requiredApprovalCount ||
@@ -413,7 +429,9 @@ export default function ClientApprovalLeadDetails() {
                         )}
                       </>
                     ) : (
-                      <span className="text-sm text-muted-foreground">Loading…</span>
+                      <span className="text-sm text-muted-foreground">
+                        Loading…
+                      </span>
                     )}
                   </div>
                 </BreadcrumbPage>
@@ -600,7 +618,10 @@ export default function ClientApprovalLeadDetails() {
         onValueChange={(val) => {
           if (val === "todo") {
             if (!canTechCheck(effectiveUserType)) {
-              toastManager.add({ title: "You don’t have permission to access To-Do Tasks", type: "error" });
+              toastManager.add({
+                title: "You don’t have permission to access To-Do Tasks",
+                type: "error",
+              });
               return; // 🚫 block unauthorized users
             }
 
@@ -653,6 +674,10 @@ export default function ClientApprovalLeadDetails() {
               <TabsTrigger value="chats">
                 <MessageSquare size={16} className="mr-1 opacity-60" />
                 Chats
+              </TabsTrigger>
+              <TabsTrigger value="documents">
+                <FolderOpen size={16} className="mr-1 opacity-60" />
+                Documents
               </TabsTrigger>
             </TabsList>
 
@@ -738,6 +763,14 @@ export default function ClientApprovalLeadDetails() {
 
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />
+        </TabsContent>
+
+        <TabsContent value="documents">
+          <ProjectDocumentsTimeline
+            leadId={leadIdNum}
+            vendorId={vendorId ?? 0}
+            upToStage="techCheck"
+          />
         </TabsContent>
       </Tabs>
       {/* Modals */}
@@ -1225,7 +1258,10 @@ export default function ClientApprovalLeadDetails() {
                 disabled={selectedDocs.length === 0}
                 onClick={() => {
                   if (selectedDocs.length === 0) {
-                    toastManager.add({ title: "Please select at least one document.", type: "error" });
+                    toastManager.add({
+                      title: "Please select at least one document.",
+                      type: "error",
+                    });
                     return;
                   }
                   setOpenRejectDocsModal(false);
@@ -1240,7 +1276,10 @@ export default function ClientApprovalLeadDetails() {
                 disabled={selectedDocs.length === 0}
                 onClick={() => {
                   if (selectedDocs.length === 0) {
-                    toastManager.add({ title: "Please select at least one document.", type: "error" });
+                    toastManager.add({
+                      title: "Please select at least one document.",
+                      type: "error",
+                    });
                     return;
                   }
                   setOpenRejectDocsModal(false);
@@ -1330,7 +1369,10 @@ export default function ClientApprovalLeadDetails() {
                 variant="default"
                 onClick={() => {
                   if (!remark.trim()) {
-                    toastManager.add({ title: "Remark is required.", type: "error" });
+                    toastManager.add({
+                      title: "Remark is required.",
+                      type: "error",
+                    });
                     return;
                   }
                   setOpenRemarkModal(false);
@@ -1409,9 +1451,8 @@ export default function ClientApprovalLeadDetails() {
                   leadId: leadIdNum,
                   userId: userId!,
                   instanceId: instanceIdNum!,
-                  approvedDocs: selectedDocs
+                  approvedDocs: selectedDocs,
                 });
-
                 setOpenApproveConfirmModal(false);
                 setSelectedDocs([]);
               }}
@@ -1431,7 +1472,10 @@ export default function ClientApprovalLeadDetails() {
         statusType={activityType}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toastManager.add({ title: "Vendor or User info is missing!", type: "error" });
+            toastManager.add({
+              title: "Vendor or User info is missing!",
+              type: "error",
+            });
             return;
           }
           updateStatusMutation.mutate(
@@ -1449,7 +1493,10 @@ export default function ClientApprovalLeadDetails() {
             },
             {
               onSuccess: () => {
-                toastManager.add({ title: "Lead marked as On Hold!", type: "success" });
+                toastManager.add({
+                  title: "Lead marked as On Hold!",
+                  type: "success",
+                });
 
                 setActivityModalOpen(false);
 
@@ -1459,7 +1506,10 @@ export default function ClientApprovalLeadDetails() {
                 });
               },
               onError: (err) => {
-                toastManager.add({ title: err?.message || "Failed to update lead status", type: "error" });
+                toastManager.add({
+                  title: err?.message || "Failed to update lead status",
+                  type: "error",
+                });
               },
             },
           );

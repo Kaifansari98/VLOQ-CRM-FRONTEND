@@ -316,6 +316,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
           exact: false,
         });
 
+        
         onOpenChange(false);
         form.reset();
 

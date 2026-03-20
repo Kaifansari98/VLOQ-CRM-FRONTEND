@@ -38,6 +38,7 @@ import {
   PencilLine,
   History,
   IndianRupee,
+  FolderOpen,
 } from "lucide-react";
 
 import {
@@ -82,6 +83,7 @@ import {
   useIsChatNotification,
 } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 
 export default function ReadyToDispatchLeadDetails() {
   const { lead: leadId } = useParams();
@@ -90,7 +92,7 @@ export default function ReadyToDispatchLeadDetails() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth?.user?.user_type.user_type
+    (state) => state.auth?.user?.user_type.user_type,
   );
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
@@ -112,7 +114,7 @@ export default function ReadyToDispatchLeadDetails() {
   const lead = data?.data?.lead;
   const { data: sitePhotoCountData } = useCurrentSitePhotosCount(
     vendorId,
-    leadIdNum
+    leadIdNum,
   );
   const hasSitePhotos = sitePhotoCountData?.hasPhotos;
 
@@ -140,25 +142,42 @@ export default function ReadyToDispatchLeadDetails() {
         expected_order_login_ready_date: newDate,
         updated_by: userId,
       });
-      toastManager.add({ title: "Expected Order Login Ready Date updated successfully!", type: "success" });
+      toastManager.add({
+        title: "Expected Order Login Ready Date updated successfully!",
+        type: "success",
+      });
       queryClient.invalidateQueries({ queryKey: ["leadById", leadIdNum] });
     } catch (err: any) {
-      toastManager.add({ title: err?.message || "Failed to update expected order login date", type: "error" });
+      toastManager.add({
+        title: err?.message || "Failed to update expected order login date",
+        type: "error",
+      });
     }
   };
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Missing vendor or user info!", type: "error" });
+      toastManager.add({
+        title: "Missing vendor or user info!",
+        type: "error",
+      });
       return;
     }
 
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toastManager.add({ title: "Lead deleted successfully!", type: "success" }),
-        onError: (err) => toastManager.add({ title: err?.message || "Failed to delete lead", type: "error" }),
-      }
+        onSuccess: () =>
+          toastManager.add({
+            title: "Lead deleted successfully!",
+            type: "success",
+          }),
+        onError: (err) =>
+          toastManager.add({
+            title: err?.message || "Failed to delete lead",
+            type: "error",
+          }),
+      },
     );
 
     setOpenDelete(false);
@@ -310,10 +329,7 @@ export default function ReadyToDispatchLeadDetails() {
                 <CustomeTooltip
                   truncateValue={
                     <TabsTrigger value="todo" disabled>
-                      <PencilLine
-                        size={16}
-                        className="mr-1 opacity-60"
-                      />
+                      <PencilLine size={16} className="mr-1 opacity-60" />
                       To-Do Task
                     </TabsTrigger>
                   }
@@ -339,6 +355,10 @@ export default function ReadyToDispatchLeadDetails() {
               <TabsTrigger value="chats">
                 <MessageSquare size={16} className="mr-1 opacity-60" />
                 Chats
+              </TabsTrigger>
+              <TabsTrigger value="documents">
+                <FolderOpen size={16} className="mr-1 opacity-60" />
+                Documents
               </TabsTrigger>
             </TabsList>
 
@@ -382,6 +402,13 @@ export default function ReadyToDispatchLeadDetails() {
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />
         </TabsContent>
+        <TabsContent value="documents">
+          <ProjectDocumentsTimeline
+            leadId={leadIdNum}
+            vendorId={vendorId ?? 0}
+            upToStage="production"
+          />
+        </TabsContent>
       </Tabs>
 
       {/* Modals */}
@@ -413,7 +440,10 @@ export default function ReadyToDispatchLeadDetails() {
         statusType={activityType}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toastManager.add({ title: "Vendor or User info is missing!", type: "error" });
+            toastManager.add({
+              title: "Vendor or User info is missing!",
+              type: "error",
+            });
             return;
           }
           updateStatusMutation.mutate(
@@ -431,7 +461,10 @@ export default function ReadyToDispatchLeadDetails() {
             },
             {
               onSuccess: () => {
-                toastManager.add({ title: "Lead marked as On Hold!", type: "success" });
+                toastManager.add({
+                  title: "Lead marked as On Hold!",
+                  type: "success",
+                });
 
                 setActivityModalOpen(false);
 
@@ -441,9 +474,12 @@ export default function ReadyToDispatchLeadDetails() {
                 });
               },
               onError: (err) => {
-                toastManager.add({ title: err?.message || "Failed to update lead status", type: "error" });
+                toastManager.add({
+                  title: err?.message || "Failed to update lead status",
+                  type: "error",
+                });
               },
-            }
+            },
           );
         }}
         loading={updateStatusMutation.isPending}

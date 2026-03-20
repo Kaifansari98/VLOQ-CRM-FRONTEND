@@ -49,9 +49,12 @@ const formSchema = z.object({
     .nonempty({
       message: "At least one Final Measurement Document is required",
     })
-    .refine((files) => files.every((file) => documentMimeTypes.includes(file.type)), {
-      message: "Only PDF or image files are allowed",
-    })
+    .refine(
+      (files) => files.every((file) => documentMimeTypes.includes(file.type)),
+      {
+        message: "Only PDF or image files are allowed",
+      },
+    )
     .max(20, { message: "You can upload up to 20 files only" }),
 
   currentSitePhotos: z
@@ -59,7 +62,7 @@ const formSchema = z.object({
     .nonempty({ message: "At least one site photo is required" })
     .refine(
       (files) => files.every((file) => imageMimeTypes.includes(file.type)),
-      { message: "Only JPG, JPEG, PNG, or GIF images are allowed" }
+      { message: "Only JPG, JPEG, PNG, or GIF images are allowed" },
     ),
 
   criticalDiscussion: z.string().optional(),
@@ -100,7 +103,10 @@ const FinalMeasurementModal = ({
       },
       {
         onSuccess: () => {
-          toastManager.add({ title: "Final measurement uploaded successfully!", type: "success" });
+          toastManager.add({
+            title: "Final measurement uploaded successfully!",
+            type: "success",
+          });
           queryClient.invalidateQueries({
             queryKey: ["leadStats", vendorId, userId],
           });
@@ -108,6 +114,11 @@ const FinalMeasurementModal = ({
             queryKey: ["universal-stage-leads"],
             exact: false,
           });
+
+          queryClient.invalidateQueries({
+            queryKey: ["allLeadDocuments"],
+          });
+
           form.reset();
           onOpenChange(false);
 
@@ -115,9 +126,12 @@ const FinalMeasurementModal = ({
           router.push("/dashboard/project/client-documentation");
         },
         onError: (error: any) => {
-          toastManager.add({ title: error?.message || "Upload failed. Try again.", type: "error" });
+          toastManager.add({
+            title: error?.message || "Upload failed. Try again.",
+            type: "error",
+          });
         },
-      }
+      },
     );
   };
 

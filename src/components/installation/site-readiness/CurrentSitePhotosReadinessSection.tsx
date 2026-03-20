@@ -46,7 +46,7 @@ export default function CurrentSitePhotosReadinessSection({
   // 🔹 Fetch existing site photos
   const { data: sitePhotos, isLoading } = useCurrentSitePhotosAtSiteReadiness(
     vendorId,
-    leadId
+    leadId,
   );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
@@ -85,7 +85,10 @@ export default function CurrentSitePhotosReadinessSection({
     }
 
     if (selectedFiles.length === 0) {
-      toastManager.add({ title: "Please select at least one photo to upload.", type: "error" });
+      toastManager.add({
+        title: "Please select at least one photo to upload.",
+        type: "error",
+      });
       return;
     }
 
@@ -98,7 +101,10 @@ export default function CurrentSitePhotosReadinessSection({
         files: selectedFiles,
       });
 
-      toastManager.add({ title: "Current Site Photos uploaded successfully!", type: "success" });
+      toastManager.add({
+        title: "Current Site Photos uploaded successfully!",
+        type: "success",
+      });
       setSelectedFiles([]);
 
       // Refresh data
@@ -108,9 +114,17 @@ export default function CurrentSitePhotosReadinessSection({
       queryClient.invalidateQueries({
         queryKey: ["checkSiteReadinessCompletion", vendorId, leadId],
       });
+
+      queryClient.invalidateQueries({
+        queryKey: ["allLeadDocuments"],
+      });
     } catch (error: any) {
-      toastManager.add({ title: error?.response?.data?.message ||
-          "Failed to upload Current Site Photos.", type: "error" });
+      toastManager.add({
+        title:
+          error?.response?.data?.message ||
+          "Failed to upload Current Site Photos.",
+        type: "error",
+      });
     }
   };
 
