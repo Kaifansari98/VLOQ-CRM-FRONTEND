@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -11,6 +12,7 @@ import Script from "next/script";
 import { Suspense } from "react";
 import { MAINTENANCE_MODE } from "@/lib/maintainanceManagement";
 import MaintenanceScreen from "@/components/maintenance-screen";
+import { BRAND_CONFIGS } from "@/lib/brandConfig";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,11 +24,22 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Shambhala • CRM Platform",
-  description:
-    "A modern furniture CRM platform for managing leads, vendors, and projects efficiently.",
-};
+
+// ✅ ONLY ONE METADATA FUNCTION
+export async function generateMetadata(): Promise<Metadata> {
+  const host = headers().get("host") || "";
+  const brand = BRAND_CONFIGS.find((b) =>
+    host.includes(b.match)
+  );
+
+  return {
+    title: brand?.title || "Furnix CRM Platform",
+    description:
+      brand?.description ||
+      "A modern furniture CRM platform for managing leads, vendors, and projects efficiently.",
+  };
+}
+
 
 export default function RootLayout({
   children,
@@ -36,14 +49,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Preload Google Maps */}
         <link rel="dns-prefetch" href="//maps.googleapis.com" />
         <link rel="preconnect" href="https://maps.googleapis.com" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {/* Load Google Maps script early */}
+
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Script
           src={`https://maps.googleapis.com/maps/api/js?key=AIzaSyC1FZNdpxsDhZvcDJcTbbxEfvjJYQUFgSg&libraries=places,geometry`}
           strategy="beforeInteractive"
@@ -52,12 +62,7 @@ export default function RootLayout({
         {MAINTENANCE_MODE ? (
           <MaintenanceScreen />
         ) : (
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <AppProviders>
               <SessionLoader />
               <ProtectedLayout>
