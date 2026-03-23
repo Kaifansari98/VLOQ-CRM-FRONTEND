@@ -31,6 +31,7 @@ import {
   PencilLine,
   History,
   IndianRupee,
+  FolderOpen,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -82,6 +83,7 @@ import {
   useIsChatNotification,
 } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 
 export default function SiteMeasurementLead() {
   const router = useRouter();
@@ -98,7 +100,7 @@ export default function SiteMeasurementLead() {
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type
+    (state) => state.auth.user?.user_type.user_type,
   );
 
   const [openDelete, setOpenDelete] = useState(false);
@@ -109,7 +111,7 @@ export default function SiteMeasurementLead() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold" | "lostApproval">(
-    "onHold"
+    "onHold",
   );
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
@@ -139,7 +141,10 @@ export default function SiteMeasurementLead() {
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Vendor or User information is missing!", type: "error" });
+      toastManager.add({
+        title: "Vendor or User information is missing!",
+        type: "error",
+      });
       return;
     }
 
@@ -147,7 +152,10 @@ export default function SiteMeasurementLead() {
       { leadId: leadIdNum, vendorId, userId },
       {
         onSuccess: () => {
-          toastManager.add({ title: "Lead deleted successfully!", type: "success" });
+          toastManager.add({
+            title: "Lead deleted successfully!",
+            type: "success",
+          });
           setOpenDelete(false);
 
           queryClient.invalidateQueries({
@@ -162,7 +170,7 @@ export default function SiteMeasurementLead() {
         onError: () => {
           toastManager.add({ title: "Failed to delete lead!", type: "error" });
         },
-      }
+      },
     );
   };
 
@@ -416,7 +424,10 @@ export default function SiteMeasurementLead() {
             },
             {
               onSuccess: () => {
-                toastManager.add({ title: "Lead status updated successfully!", type: "success" });
+                toastManager.add({
+                  title: "Lead status updated successfully!",
+                  type: "success",
+                });
                 queryClient.invalidateQueries({
                   queryKey: ["universal-stage-leads"],
                 });
@@ -425,7 +436,7 @@ export default function SiteMeasurementLead() {
                 });
                 router.back();
               },
-            }
+            },
           );
         }}
         loading={updateStatusMutation.isPending}

@@ -39,6 +39,7 @@ import {
   PencilLine,
   History,
   IndianRupee,
+  FolderOpen,
 } from "lucide-react";
 
 import {
@@ -87,6 +88,7 @@ import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import { useQueryClient } from "@tanstack/react-query";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 
 export default function ClientDocumentationLeadDetails() {
   const { lead: leadId } = useParams();
@@ -96,7 +98,7 @@ export default function ClientDocumentationLeadDetails() {
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type
+    (state) => state.auth.user?.user_type.user_type,
   );
 
   // UI STATES
@@ -107,7 +109,7 @@ export default function ClientDocumentationLeadDetails() {
   const [openClientDocModal, setOpenClientDocModal] = useState(false);
 
   const [activeTab, setActiveTab] = useState(
-    userType === "sales-executive" ? "todo" : "details"
+    userType === "sales-executive" ? "todo" : "details",
   );
   useChatTabFromUrl(setActiveTab);
   const isChatNotification = useIsChatNotification();
@@ -140,15 +142,26 @@ export default function ClientDocumentationLeadDetails() {
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Missing vendor or user info!", type: "error" });
+      toastManager.add({
+        title: "Missing vendor or user info!",
+        type: "error",
+      });
       return;
     }
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toastManager.add({ title: "Lead deleted successfully!", type: "success" }),
-        onError: (err) => toastManager.add({ title: err?.message || "Failed to delete lead", type: "error" }),
-      }
+        onSuccess: () =>
+          toastManager.add({
+            title: "Lead deleted successfully!",
+            type: "success",
+          }),
+        onError: (err) =>
+          toastManager.add({
+            title: err?.message || "Failed to delete lead",
+            type: "error",
+          }),
+      },
     );
     setOpenDelete(false);
   };
@@ -332,6 +345,11 @@ export default function ClientDocumentationLeadDetails() {
               <MessageSquare size={16} className="mr-1 opacity-60" />
               Chats
             </TabsTrigger>
+
+            <TabsTrigger value="documents">
+              <FolderOpen size={16} className="mr-1 opacity-60" />
+              Documents
+            </TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
@@ -359,6 +377,14 @@ export default function ClientDocumentationLeadDetails() {
 
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />
+        </TabsContent>
+
+        <TabsContent value="documents">
+          <ProjectDocumentsTimeline
+            leadId={leadIdNum}
+            vendorId={vendorId ?? 0}
+            upToStage="clientDoc"
+          />
         </TabsContent>
       </Tabs>
 
@@ -416,7 +442,10 @@ export default function ClientDocumentationLeadDetails() {
         statusType="onHold"
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toastManager.add({ title: "Vendor or user info missing!", type: "error" });
+            toastManager.add({
+              title: "Vendor or user info missing!",
+              type: "error",
+            });
             return;
           }
 
@@ -435,7 +464,10 @@ export default function ClientDocumentationLeadDetails() {
             },
             {
               onSuccess: () => {
-                toastManager.add({ title: "Lead marked On Hold!", type: "success" });
+                toastManager.add({
+                  title: "Lead marked On Hold!",
+                  type: "success",
+                });
                 setActivityModalOpen(false);
 
                 queryClient.invalidateQueries({
@@ -443,9 +475,12 @@ export default function ClientDocumentationLeadDetails() {
                 });
               },
               onError: (err) => {
-                toastManager.add({ title: err?.message || "Failed to update status", type: "error" });
+                toastManager.add({
+                  title: err?.message || "Failed to update status",
+                  type: "error",
+                });
               },
-            }
+            },
           );
         }}
         loading={updateStatusMutation.isPending}

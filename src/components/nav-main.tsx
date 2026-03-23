@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { LucideIcon } from "lucide-react";
 import { useLeadStats } from "@/hooks/useLeadStats";
 import { useAppSelector } from "@/redux/store";
@@ -36,6 +36,7 @@ interface NavSubItem {
   customCount?: number;
   customCountLoading?: boolean;
   badgeClassName?: string;
+  badgeStyle?: React.CSSProperties;
   showCount?:
     | "total_leads"
     | "total_overall_leads"
@@ -72,6 +73,7 @@ interface NavItem {
   className?: string;
   iconClassName?: string;
   badgeClassName?: string;
+  badgeStyle?: React.CSSProperties;
   showCount?:
     | "total_leads"
     | "total_overall_leads"
@@ -215,8 +217,8 @@ export function NavMain({
                   <Link
                     href={item.url}
                     className={cn(
-                      "flex items-center gap-2 w-full transition-all duration-200",
-                      isGroupActive && "font-semibold text-primary rounded-md"
+                      "flex items-center gap-2 w-full transition-all duration-200 text-sidebar-foreground",
+                      isGroupActive && "font-semibold rounded-md"
                     )}
                   >
                     {/* ✅ No wrapper div — icon direct child of Link */}
@@ -227,7 +229,13 @@ export function NavMain({
                       const count = getGroupCount(item);
                       if (!count) return null;
                       return (
-                        <Badge className="ml-auto rounded-full group-data-[collapsible=icon]:hidden">
+                        <Badge
+                          className="ml-auto rounded-full group-data-[collapsible=icon]:hidden"
+                          style={{
+                            backgroundColor: "var(--theme-badge-bg)",
+                            color: "var(--theme-badge-text)",
+                          }}
+                        >
                           {isLoading ? "…" : count}
                         </Badge>
                       );
@@ -247,8 +255,8 @@ export function NavMain({
                             href={subItem.url}
                             onClick={handleMobileNavigate}
                             className={cn(
-                              "flex items-center justify-between w-full transition-all duration-200",
-                              isSubActive && "font-bold text-primary rounded-md"
+                              "flex items-center justify-between w-full transition-all duration-200 text-sidebar-foreground",
+                              isSubActive && "font-bold rounded-md"
                             )}
                           >
                             <span>{subItem.title}</span>
@@ -267,6 +275,12 @@ export function NavMain({
                                     "ml-2 rounded-full",
                                     subItem.badgeClassName
                                   )}
+                                  style={
+                                    subItem.badgeStyle ?? {
+                                      backgroundColor: "var(--theme-badge-bg)",
+                                      color: "var(--theme-badge-text)",
+                                    }
+                                  }
                                 >
                                   {isLoading || subItem.customCountLoading
                                     ? "…"
@@ -293,8 +307,8 @@ export function NavMain({
           <Link
             href={item.url}
             className={cn(
-              "flex items-center gap-2 w-full transition-all duration-200",
-              isSingleActive && "font-bold text-primary bg-muted/50 rounded-md",
+              "flex items-center gap-2 w-full transition-all duration-200 text-sidebar-foreground",
+              isSingleActive && "font-bold bg-sidebar-accent rounded-md",
               item.className
             )}
           >
@@ -307,6 +321,12 @@ export function NavMain({
                   "ml-auto rounded-full group-data-[collapsible=icon]:hidden",
                   item.badgeClassName
                 )}
+                style={
+                  item.badgeStyle ?? {
+                    backgroundColor: "var(--theme-badge-bg)",
+                    color: "var(--theme-badge-text)",
+                  }
+                }
               >
                 {isLoading || item.customCountLoading
                   ? "…"

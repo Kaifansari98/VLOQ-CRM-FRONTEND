@@ -31,6 +31,7 @@ import {
   PencilLine,
   History,
   IndianRupee,
+  FolderOpen,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -76,8 +77,12 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
-import { useChatTabFromUrl, useIsChatNotification } from "@/hooks/useChatTabFromUrl";
+import {
+  useChatTabFromUrl,
+  useIsChatNotification,
+} from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 
 export default function LeadDetails() {
   const router = useRouter();
@@ -93,7 +98,7 @@ export default function LeadDetails() {
   const userId = useAppSelector((s) => s.auth.user?.id);
 
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type
+    (state) => state.auth.user?.user_type.user_type,
   );
 
   const [openDelete, setOpenDelete] = useState(false);
@@ -117,7 +122,7 @@ export default function LeadDetails() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold" | "lostApproval">(
-    "onHold"
+    "onHold",
   );
 
   const canReassign = canReassignLeadButton(userType);
@@ -129,7 +134,10 @@ export default function LeadDetails() {
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Vendor or User information is missing!", type: "error" });
+      toastManager.add({
+        title: "Vendor or User information is missing!",
+        type: "error",
+      });
       return;
     }
 
@@ -137,7 +145,10 @@ export default function LeadDetails() {
       { leadId: leadIdNum, vendorId, userId },
       {
         onSuccess: () => {
-          toastManager.add({ title: "Lead deleted successfully!", type: "success" });
+          toastManager.add({
+            title: "Lead deleted successfully!",
+            type: "success",
+          });
           setOpenDelete(false);
 
           // ✅ Invalidate both queries so they refetch
@@ -152,9 +163,12 @@ export default function LeadDetails() {
           router.push("/dashboard/leads/leadstable");
         },
         onError: (error: any) => {
-          toastManager.add({ title: error?.message || "Failed to delete lead!", type: "error" });
+          toastManager.add({
+            title: error?.message || "Failed to delete lead!",
+            type: "error",
+          });
         },
-      }
+      },
     );
   };
 
@@ -230,8 +244,8 @@ export default function LeadDetails() {
           {/* Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button 
-              size="icon"
+              <Button
+                size="icon"
                 variant="ghost"
                 className="relative bg-accent p-1.5 rounded-sm"
               >
@@ -239,7 +253,6 @@ export default function LeadDetails() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-
               <DropdownMenuItem className="sm:hidden">
                 <UserPlus size={20} />
                 Assign Task
@@ -422,7 +435,10 @@ export default function LeadDetails() {
         statusType={activityType}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toastManager.add({ title: "Missing vendor/user info", type: "error" });
+            toastManager.add({
+              title: "Missing vendor/user info",
+              type: "error",
+            });
             return;
           }
           const status = activityType === "onHold" ? "onHold" : "lostApproval";
@@ -441,12 +457,16 @@ export default function LeadDetails() {
             },
             {
               onSuccess: () => {
-                toastManager.add({ title: status === "onHold"
-                    ? "Lead marked as On Hold!"
-                    : "Lead sent for Lost Approval!", type: "success" });
+                toastManager.add({
+                  title:
+                    status === "onHold"
+                      ? "Lead marked as On Hold!"
+                      : "Lead sent for Lost Approval!",
+                  type: "success",
+                });
                 setActivityModalOpen(false);
               },
-            }
+            },
           );
         }}
         loading={updateActivityStatusMutation.isPending}

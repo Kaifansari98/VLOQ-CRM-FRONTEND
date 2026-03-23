@@ -42,6 +42,7 @@ import {
   PencilLine,
   History,
   IndianRupee,
+  FolderOpen,
 } from "lucide-react";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import {
@@ -84,6 +85,7 @@ import {
   useIsChatNotification,
 } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 
 export default function DesigningStageLead() {
   const router = useRouter();
@@ -102,7 +104,7 @@ export default function DesigningStageLead() {
   const { data: countsData } = useDesigningStageCounts(vendorId, leadIdNum);
 
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type
+    (state) => state.auth.user?.user_type.user_type,
   );
 
   const canAccessTodoTab = canAccessDessingTodoTab(userType);
@@ -144,12 +146,12 @@ export default function DesigningStageLead() {
   const [bookingOpenLead, setBookingOpenLead] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold" | "lostApproval">(
-    "onHold"
+    "onHold",
   );
 
   // tabs state
   const [activeTab, setActiveTab] = useState(
-    userType === "sales-executive" ? "todo" : "details"
+    userType === "sales-executive" ? "todo" : "details",
   );
   useChatTabFromUrl(setActiveTab);
 
@@ -159,7 +161,10 @@ export default function DesigningStageLead() {
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Vendor or User information is missing!", type: "error" });
+      toastManager.add({
+        title: "Vendor or User information is missing!",
+        type: "error",
+      });
       return;
     }
 
@@ -167,7 +172,10 @@ export default function DesigningStageLead() {
       { leadId: leadIdNum, vendorId, userId },
       {
         onSuccess: () => {
-          toastManager.add({ title: "Lead deleted successfully!", type: "success" });
+          toastManager.add({
+            title: "Lead deleted successfully!",
+            type: "success",
+          });
           setOpenDelete(false);
 
           // ✅ Invalidate related queries
@@ -182,9 +190,12 @@ export default function DesigningStageLead() {
           router.push("/dashboard/leads/designing-stage");
         },
         onError: (error: any) => {
-          toastManager.add({ title: error?.message || "Failed to delete lead!", type: "error" });
+          toastManager.add({
+            title: error?.message || "Failed to delete lead!",
+            type: "error",
+          });
         },
-      }
+      },
     );
   };
 
@@ -388,10 +399,7 @@ export default function DesigningStageLead() {
                   <CustomeTooltip
                     truncateValue={
                       <TabsTrigger value="todo" disabled>
-                        <PencilLine
-                          size={16}
-                          className="mr-1 opacity-60"
-                        />
+                        <PencilLine size={16} className="mr-1 opacity-60" />
                         To-Do Task
                       </TabsTrigger>
                     }
@@ -414,7 +422,12 @@ export default function DesigningStageLead() {
                   <MessageSquare size={16} className="mr-1 opacity-60" />
                   Chats
                 </TabsTrigger>
+                <TabsTrigger value="documents">
+                  <FolderOpen size={16} className="mr-1 opacity-60" />
+                  Documents
+                </TabsTrigger>
               </TabsList>
+
               <ScrollBar orientation="horizontal" />
             </div>
           </div>
@@ -456,6 +469,13 @@ export default function DesigningStageLead() {
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />
         </TabsContent>
+        <TabsContent value="documents">
+          <ProjectDocumentsTimeline
+            leadId={leadIdNum}
+            vendorId={vendorId ?? 0}
+            upToStage="ism"
+          />
+        </TabsContent>
       </Tabs>
 
       {/* ✅ Modals */}
@@ -490,7 +510,10 @@ export default function DesigningStageLead() {
         statusType={activityType}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toastManager.add({ title: "Vendor or User info is missing!", type: "error" });
+            toastManager.add({
+              title: "Vendor or User info is missing!",
+              type: "error",
+            });
             return;
           }
           updateStatusMutation.mutate(
@@ -508,12 +531,16 @@ export default function DesigningStageLead() {
             },
             {
               onSuccess: () => {
-                toastManager.add({ title: activityType === "onHold"
-                    ? "Lead marked as On Hold!"
-                    : "Lead sent for Lost Approval!", type: "success" });
+                toastManager.add({
+                  title:
+                    activityType === "onHold"
+                      ? "Lead marked as On Hold!"
+                      : "Lead sent for Lost Approval!",
+                  type: "success",
+                });
                 setActivityModalOpen(false);
               },
-            }
+            },
           );
         }}
         loading={updateStatusMutation.isPending}

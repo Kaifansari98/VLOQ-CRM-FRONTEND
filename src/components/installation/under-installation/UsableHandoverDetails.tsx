@@ -189,6 +189,10 @@ export default function UsableHandover({
       queryClient.invalidateQueries({
         queryKey: ["finalHandoverReady"],
       });
+
+         queryClient.invalidateQueries({
+        queryKey: ["allLeadDocuments"],
+      });
     } catch (error) {
       console.error("Error uploading files:", error);
       toastManager.add({ title: "Failed to upload files.", type: "error" });

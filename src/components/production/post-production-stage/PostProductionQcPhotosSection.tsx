@@ -108,7 +108,10 @@ export default function PostProductionQcPhotosSection({
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) {
-      toastManager.add({ title: "Please select at least one photo to upload.", type: "error" });
+      toastManager.add({
+        title: "Please select at least one photo to upload.",
+        type: "error",
+      });
       return;
     }
 
@@ -119,7 +122,10 @@ export default function PostProductionQcPhotosSection({
       if (accountId) formData.append("account_id", String(accountId));
 
       await uploadQcFiles(formData);
-      toastManager.add({ title: "QC photos uploaded successfully!", type: "success" });
+      toastManager.add({
+        title: "QC photos uploaded successfully!",
+        type: "success",
+      });
       setSelectedFiles([]);
 
       queryClient.invalidateQueries({
@@ -134,9 +140,16 @@ export default function PostProductionQcPhotosSection({
         ],
       });
 
+      queryClient.invalidateQueries({
+        queryKey: ["allLeadDocuments"],
+      });
+
       await refetchCompleteness();
     } catch (error: any) {
-      toastManager.add({ title: error?.response?.data?.message || "Failed to upload QC photos.", type: "error" });
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to upload QC photos.",
+        type: "error",
+      });
     }
   };
 

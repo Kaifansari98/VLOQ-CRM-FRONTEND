@@ -8,13 +8,13 @@ export const getTechCheckLeads = async (
   vendorId: number,
   userId: number,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ) => {
   const { data } = await apiClient.get(
     `/leads/production/tech-check/vendorId/${vendorId}/userId/${userId}`,
     {
       params: { page, limit },
-    }
+    },
   );
   return data?.data;
 };
@@ -24,7 +24,7 @@ export const useTechCheckLeads = (
   vendorId: number | undefined,
   userId: number | undefined,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ) => {
   return useQuery({
     queryKey: ["techCheckLeads", vendorId, userId, page, limit],
@@ -37,10 +37,10 @@ export const useTechCheckLeads = (
 export const getTechCheckInstanceStatus = async (
   vendorId: number,
   leadId: number,
-  instanceId: number
+  instanceId: number,
 ) => {
   const { data } = await apiClient.get(
-    `/leads/production/tech-check/vendorId/${vendorId}/leadId/${leadId}/instanceId/${instanceId}/status`
+    `/leads/production/tech-check/vendorId/${vendorId}/leadId/${leadId}/instanceId/${instanceId}/status`,
   );
   return data?.data;
 };
@@ -48,12 +48,11 @@ export const getTechCheckInstanceStatus = async (
 export const useTechCheckInstanceStatus = (
   vendorId: number | undefined,
   leadId: number | undefined,
-  instanceId: number | null | undefined
+  instanceId: number | null | undefined,
 ) => {
   return useQuery({
     queryKey: ["techCheckInstanceStatus", vendorId, leadId, instanceId],
-    queryFn: () =>
-      getTechCheckInstanceStatus(vendorId!, leadId!, instanceId!),
+    queryFn: () => getTechCheckInstanceStatus(vendorId!, leadId!, instanceId!),
     enabled: !!vendorId && !!leadId && !!instanceId,
   });
 };
@@ -82,7 +81,7 @@ export const approveTechCheck = async ({
       ...(productStructureInstanceId
         ? { product_structure_instance_id: productStructureInstanceId }
         : {}),
-    }
+    },
   );
   return data;
 };
@@ -103,7 +102,7 @@ export const rejectTechCheck = async ({
 }) => {
   const { data } = await apiClient.post(
     `/leads/production/tech-check/leadId/${leadId}/vendorId/${vendorId}/userId/${userId}/instanceId/${instanceId}/reject`,
-    payload
+    payload,
   );
   return data;
 };
@@ -113,7 +112,10 @@ export const useApproveTechCheck = () => {
   return useMutation({
     mutationFn: approveTechCheck,
     onSuccess: async () => {
-      toastManager.add({ title: "Tech Check approved successfully!", type: "success" });
+      toastManager.add({
+        title: "Tech Check approved successfully!",
+        type: "success",
+      });
       await queryClient.invalidateQueries({ queryKey: ["techCheckLeads"] });
       await queryClient.invalidateQueries({ queryKey: ["leadStats"] });
     },
@@ -128,14 +130,17 @@ export const useRejectTechCheck = () => {
   return useMutation({
     mutationFn: rejectTechCheck,
     onSuccess: async () => {
-      toastManager.add({ title: "Tech Check rejected successfully!", type: "success" });
+      toastManager.add({
+        title: "Tech Check rejected successfully!",
+        type: "success",
+      });
       await queryClient.invalidateQueries({ queryKey: ["techCheckLeads"] });
       await queryClient.invalidateQueries({
         queryKey: ["clientDocumentationDetails"],
       });
     },
     onError: (error: unknown) => {
-      toastError(error)
+      toastError(error);
     },
   });
 };
@@ -156,7 +161,7 @@ export const approveMultipleDocuments = async ({
 }) => {
   const { data } = await apiClient.post(
     `/leads/production/tech-check/leadId/${leadId}/vendorId/${vendorId}/userId/${userId}/instanceId/${instanceId}/documents/approve`,
-    { approvedDocs }
+    { approvedDocs },
   );
   return data;
 };
@@ -167,12 +172,19 @@ export const useApproveMultipleDocuments = () => {
   return useMutation({
     mutationFn: approveMultipleDocuments,
     onSuccess: async () => {
-      toastManager.add({ title: "Selected documents approved successfully!", type: "success" });
+      toastManager.add({
+        title: "Selected documents approved successfully!",
+        type: "success",
+      });
       // Refresh the tech-check leads and client-doc details
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["techCheckLeads"] }),
         queryClient.invalidateQueries({
           queryKey: ["clientDocumentationDetails"],
+        }),
+
+        queryClient.invalidateQueries({
+          queryKey: ["allLeadDocuments"],
         }),
       ]);
     },
@@ -185,10 +197,10 @@ export const useApproveMultipleDocuments = () => {
 // ✅ --- Fetch Client Required Completion Date ---
 export const getClientRequiredCompletionDate = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   const { data } = await apiClient.get(
-    `/leads/vendorId/${vendorId}/leadId/${leadId}/client-required-completion-date`
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/client-required-completion-date`,
   );
   return data?.data;
 };
@@ -196,7 +208,7 @@ export const getClientRequiredCompletionDate = async (
 // ✅ --- React Query Hook ---
 export const useClientRequiredCompletionDate = (
   vendorId: number | undefined,
-  leadId: number | undefined
+  leadId: number | undefined,
 ) => {
   return useQuery({
     queryKey: ["clientRequiredCompletionDate", vendorId, leadId],

@@ -43,6 +43,7 @@ import {
   PencilLine,
   History,
   IndianRupee,
+  FolderOpen,
 } from "lucide-react";
 
 import {
@@ -95,6 +96,7 @@ import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 
 export default function ProductionLeadDetails() {
   const router = useRouter();
@@ -141,7 +143,7 @@ export default function ProductionLeadDetails() {
   const { data: postProductionStatus } = useCheckPostProductionReady(
     vendorId,
     leadIdNum,
-    instanceIdNum
+    instanceIdNum,
   );
 
   const { data: latestOrderLoginData } = useLatestOrderLoginByLead(
@@ -150,7 +152,8 @@ export default function ProductionLeadDetails() {
     instanceIdNum!,
   );
 
-  const canMoveReadyToDispatchStage = canMoveToReadyToDispatch(effectiveUserType);
+  const canMoveReadyToDispatchStage =
+    canMoveToReadyToDispatch(effectiveUserType);
   const canUpdateExpectedDate =
     canViewAndWorkEditProcutionExpectedDate(effectiveUserType);
   const canViewMarkCompletedButton =
@@ -159,10 +162,8 @@ export default function ProductionLeadDetails() {
 
   const canShowTodoTab = canAccessTodoTaskTabProductionStage(effectiveUserType);
 
-const latestOrderLoginDate =
-  latestOrderLoginData?.data?.estimated_completion_date ?? null;
-
-
+  const latestOrderLoginDate =
+    latestOrderLoginData?.data?.estimated_completion_date ?? null;
 
   useEffect(() => {
     if (
@@ -228,7 +229,9 @@ const latestOrderLoginDate =
     canViewSiteHistoryTab(effectiveUserType ?? "") &&
     effectiveUserType?.toLowerCase() !== "admin";
 
-  const productionDefaultTab = handledproductionDefaultTab(effectiveUserType ?? "");
+  const productionDefaultTab = handledproductionDefaultTab(
+    effectiveUserType ?? "",
+  );
 
   const deleteLeadMutation = useDeleteLead();
 
@@ -349,28 +352,44 @@ const latestOrderLoginDate =
         updated_by: userId,
       });
 
-      toastManager.add({ title: "Expected Order Login Ready Date updated successfully!", type: "success" });
+      toastManager.add({
+        title: "Expected Order Login Ready Date updated successfully!",
+        type: "success",
+      });
       queryClient.invalidateQueries({ queryKey: ["leadById", leadIdNum] });
       queryClient.invalidateQueries({
         queryKey: ["postProductionReady", vendorId, leadIdNum],
       });
     } catch (err: any) {
-      toastManager.add({ title: err?.message || "Failed to update expected order login date", type: "error" });
+      toastManager.add({
+        title: err?.message || "Failed to update expected order login date",
+        type: "error",
+      });
     }
   };
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Missing vendor or user info!", type: "error" });
+      toastManager.add({
+        title: "Missing vendor or user info!",
+        type: "error",
+      });
       return;
     }
 
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toastManager.add({ title: "Lead deleted successfully!", type: "success" }),
+        onSuccess: () =>
+          toastManager.add({
+            title: "Lead deleted successfully!",
+            type: "success",
+          }),
         onError: (err: any) =>
-          toastManager.add({ title: err?.message || "Failed to delete lead", type: "error" }),
+          toastManager.add({
+            title: err?.message || "Failed to delete lead",
+            type: "error",
+          }),
       },
     );
 
@@ -477,18 +496,28 @@ const latestOrderLoginDate =
                           return;
                         }
                         if (!vendorId || !leadIdNum || !userId) {
-                          toastManager.add({ title: "Missing vendor or user info!", type: "error" });
+                          toastManager.add({
+                            title: "Missing vendor or user info!",
+                            type: "error",
+                          });
                           return;
                         }
                         try {
                           await markProductionCompletedMutation.mutateAsync({
                             updatedBy: userId,
                           });
-                          toastManager.add({ title: "Production marked completed!", type: "success" });
+                          toastManager.add({
+                            title: "Production marked completed!",
+                            type: "success",
+                          });
                         } catch (err: any) {
-                          toastManager.add({ title: err?.response?.data?.message ||
+                          toastManager.add({
+                            title:
+                              err?.response?.data?.message ||
                               err?.message ||
-                              "Failed to mark production completed", type: "error" });
+                              "Failed to mark production completed",
+                            type: "error",
+                          });
                         }
                       }}
                     >
@@ -559,7 +588,10 @@ const latestOrderLoginDate =
                               return;
                             }
                             if (!vendorId || !leadIdNum || !userId) {
-                              toastManager.add({ title: "Missing vendor or user info!", type: "error" });
+                              toastManager.add({
+                                title: "Missing vendor or user info!",
+                                type: "error",
+                              });
                               return;
                             }
                             try {
@@ -568,11 +600,18 @@ const latestOrderLoginDate =
                                   updatedBy: userId,
                                 },
                               );
-                              toastManager.add({ title: "Production marked completed!", type: "success" });
+                              toastManager.add({
+                                title: "Production marked completed!",
+                                type: "success",
+                              });
                             } catch (err: any) {
-                              toastManager.add({ title: err?.response?.data?.message ||
+                              toastManager.add({
+                                title:
+                                  err?.response?.data?.message ||
                                   err?.message ||
-                                  "Failed to mark production completed", type: "error" });
+                                  "Failed to mark production completed",
+                                type: "error",
+                              });
                             }
                           }}
                         >
@@ -637,7 +676,6 @@ const latestOrderLoginDate =
                 <Factory size={16} className="mr-1 opacity-60" />
                 Production Details
               </TabsTrigger>
-
               {canShowTodoTab ? (
                 <TabsTrigger value="todo">
                   <PencilLine size={16} className="mr-1 opacity-60" />
@@ -647,24 +685,19 @@ const latestOrderLoginDate =
                 <CustomeTooltip
                   truncateValue={
                     <TabsTrigger value="too" disabled>
-                      <PencilLine
-                        size={16}
-                        className="mr-1 opacity-60"
-                      />
+                      <PencilLine size={16} className="mr-1 opacity-60" />
                       To-Do Task
                     </TabsTrigger>
                   }
                   value="Only factory user can access this tab"
                 />
               )}
-
               {canViewSiteHistory && (
                 <TabsTrigger value="history">
                   <History size={16} className="mr-1 opacity-60" />
                   Site History
                 </TabsTrigger>
               )}
-
               {canViewPayment && (
                 <TabsTrigger value="payment">
                   <IndianRupee size={16} className="mr-1 opacity-60" />
@@ -675,6 +708,10 @@ const latestOrderLoginDate =
                 <MessageSquare size={16} className="mr-1 opacity-60" />
                 Chats
               </TabsTrigger>
+              <TabsTrigger value="documents">
+                <FolderOpen size={16} className="mr-1 opacity-60" />
+                Documents
+              </TabsTrigger>{" "}
             </TabsList>
 
             <ScrollBar orientation="horizontal" />
@@ -749,6 +786,14 @@ const latestOrderLoginDate =
         <TabsContent value="chats">
           <LeadWiseChatScreen leadId={leadIdNum} />
         </TabsContent>
+
+        <TabsContent value="documents">
+          <ProjectDocumentsTimeline
+            leadId={leadIdNum}
+            vendorId={vendorId ?? 0}
+            upToStage="production"
+          />
+        </TabsContent>
       </Tabs>
 
       {/* Modals */}
@@ -808,7 +853,10 @@ const latestOrderLoginDate =
             <AlertDialogAction
               onClick={async () => {
                 if (!vendorId || !userId || !leadIdNum) {
-                  toastManager.add({ title: "Missing vendor or user information!", type: "error" });
+                  toastManager.add({
+                    title: "Missing vendor or user information!",
+                    type: "error",
+                  });
                   return;
                 }
 
@@ -819,7 +867,10 @@ const latestOrderLoginDate =
                     updated_by: userId,
                   });
 
-                  toastManager.add({ title: "Lead moved to Ready-To-Dispatch successfully!", type: "success" });
+                  toastManager.add({
+                    title: "Lead moved to Ready-To-Dispatch successfully!",
+                    type: "success",
+                  });
                   setOpenReadyToDispatch(false);
 
                   // ✅ Refetch relevant queries
@@ -840,7 +891,12 @@ const latestOrderLoginDate =
                     router.push("/dashboard/production/ready-to-dispatch");
                   }, 400);
                 } catch (err: any) {
-                  toastManager.add({ title: err?.message || "Failed to move lead to Ready-To-Dispatch", type: "error" });
+                  toastManager.add({
+                    title:
+                      err?.message ||
+                      "Failed to move lead to Ready-To-Dispatch",
+                    type: "error",
+                  });
                 }
               }}
             >
@@ -856,7 +912,10 @@ const latestOrderLoginDate =
         statusType={activityType}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toastManager.add({ title: "Vendor or User info is missing!", type: "error" });
+            toastManager.add({
+              title: "Vendor or User info is missing!",
+              type: "error",
+            });
             return;
           }
           updateStatusMutation.mutate(
@@ -874,7 +933,10 @@ const latestOrderLoginDate =
             },
             {
               onSuccess: () => {
-                toastManager.add({ title: "Lead marked as On Hold!", type: "success" });
+                toastManager.add({
+                  title: "Lead marked as On Hold!",
+                  type: "success",
+                });
 
                 setActivityModalOpen(false);
 
@@ -884,7 +946,10 @@ const latestOrderLoginDate =
                 });
               },
               onError: (err: any) => {
-                toastManager.add({ title: err?.message || "Failed to update lead status", type: "error" });
+                toastManager.add({
+                  title: err?.message || "Failed to update lead status",
+                  type: "error",
+                });
               },
             },
           );
