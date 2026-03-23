@@ -27,7 +27,11 @@ const geistMono = Geist_Mono({
 
 // ✅ ONLY ONE METADATA FUNCTION
 export async function generateMetadata(): Promise<Metadata> {
-  const host = headers().get("host") || "";
+  const headersList = await headers();
+  //const host = headersList.get("host") || "";
+  const host = headersList.get("x-forwarded-host") 
+          || headersList.get("host") 
+          || "";
   const brand = BRAND_CONFIGS.find((b) =>
     host.includes(b.match)
   );
