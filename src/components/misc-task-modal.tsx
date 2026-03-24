@@ -27,6 +27,7 @@ interface Props {
     taskId: number;
     dueDate?: string;
     remark?: string;
+    taskStatus?: string;
   };
 }
 
@@ -193,29 +194,45 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
         size="md"
       >
         <div className="space-y-4 p-6">
-          <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
-            <div className="flex flex-col gap-1">
-              <span className="text-base font-semibold">Mark as Completed</span>
+          {data?.taskStatus === "completed" ? (
+            <div className="flex flex-col items-center justify-center gap-0 py-6 text-center">
+              <div className="rounded-full bg-green-100 p-3 dark:bg-green-900 mb-4">
+                <svg className="h-6 w-6 text-green-600 dark:text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-base font-semibold text-green-700 dark:text-green-300">Task Completed</p>
               <p className="text-sm text-muted-foreground">
-                If this task is completed, you can mark it as done.
+                This dispatch task has already been marked as completed.
               </p>
             </div>
-            <Button className="w-28" onClick={() => setOpenCompletedModal(true)}>
-              Complete
-            </Button>
-          </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
+                <div className="flex flex-col gap-1">
+                  <span className="text-base font-semibold">Mark as Completed</span>
+                  <p className="text-sm text-muted-foreground">
+                    If this task is completed, you can mark it as done.
+                  </p>
+                </div>
+                <Button className="w-28" onClick={() => setOpenCompletedModal(true)}>
+                  Complete
+                </Button>
+              </div>
 
-          <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
-            <div className="flex flex-col gap-1">
-              <span className="text-base font-semibold">Reschedule</span>
-              <p className="text-sm text-muted-foreground">
-                If the schedule has changed, you can reschedule it.
-              </p>
-            </div>
-            <Button className="w-28" onClick={() => setOpenRescheduleModal(true)}>
-              Reschedule
-            </Button>
-          </div>
+              <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
+                <div className="flex flex-col gap-1">
+                  <span className="text-base font-semibold">Reschedule</span>
+                  <p className="text-sm text-muted-foreground">
+                    If the schedule has changed, you can reschedule it.
+                  </p>
+                </div>
+                <Button className="w-28" onClick={() => setOpenRescheduleModal(true)}>
+                  Reschedule
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </BaseModal>
 

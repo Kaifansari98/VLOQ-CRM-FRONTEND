@@ -412,19 +412,18 @@ export default function InstallationMiscellaneous({
   const isRejected = miscApproved === false;
   const isApproved = miscApproved === true;
   const isReady = viewModalData?.task?.status === "completed";
-  const hasCompletionDocs = Boolean(
-    viewModalData?.documents?.some((d) => d.doc_type_tag === "Type 37"),
-  );
   const canResolveRole = ["super-admin", "site-supervisor"].includes(
     userType || "",
   );
   const canApproveReject = userType === "factory" || userType === "super-admin";
   const showApprovalActions = canApproveReject && miscApproved == null;
   const canUpdateERD = canDoERDDate && !isTaskReady && isApproved;
+  const isDeliveryTaskCompleted = viewModalData?.delivery_task?.status === "completed";
   const canUpdateRequiredDelivery =
     ["super-admin", "site-supervisor"].includes(userType || "") &&
     isApproved &&
     isReady &&
+    !isDeliveryTaskCompleted &&
     !viewModalData?.is_resolved;
   const canManageDeliveryTask = ["factory", "super-admin"].includes(
     userType || "",
@@ -507,11 +506,8 @@ export default function InstallationMiscellaneous({
               <TableHead className="w-25 text-center text-sm font-medium text-foreground/80">
                 Documents
               </TableHead>
-              <TableHead className="w-25 text-center text-sm font-medium text-foreground/80">
-                Status
-              </TableHead>
               <TableHead className="w-35 text-center text-sm font-medium text-foreground/80">
-                Marked As Ready
+                Status
               </TableHead>
               <TableHead className="w-50 text-sm font-medium text-foreground/80">
                 Problem Description
@@ -528,7 +524,7 @@ export default function InstallationMiscellaneous({
           <TableBody>
             {!entries || entries.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="py-10 text-center">
+                <TableCell colSpan={8} className="py-10 text-center">
                   <div className="flex flex-col items-center">
                     <div className="p-3 bg-muted/40 rounded-full shadow-inner mb-2">
                       <Wrench className="w-7 h-7 opacity-50" />
@@ -627,62 +623,44 @@ export default function InstallationMiscellaneous({
 
                   {/* STATUS */}
                   <TableCell className="py-3 text-center">
-                    <Badge
-                      variant={
-                        entry.misc_approved === false
-                          ? "destructive"
-                          : entry.is_resolved
-                            ? "default"
-                            : "secondary"
-                      }
-                      className={`
-                  text-xs px-2 text-yellow-600 bg-yellow-100
-                  ${
-                    entry.misc_approved === false
-                      ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                      : entry.is_resolved
-                        ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                        : ""
-                  }
-                `}
-                    >
-                      {entry.misc_approved === false
-                        ? "Rejected"
-                        : entry.is_resolved
-                          ? "Resolved"
-                          : entry.misc_approved === true
-                            ? "Pending"
-                            : "Awaiting Approval"}
-                    </Badge>
-                  </TableCell>
+                    {(() => {
+                      const hasDispatchDocs = entry.delivery_task?.status === "completed";
 
-                  {/* MARKED AS READY */}
-                  <TableCell className="py-3 text-center">
-                    <Badge
-                      variant={
-                        entry.misc_approved === false
-                          ? "destructive"
-                          : entry.task?.status === "completed"
-                            ? "default"
-                            : "secondary"
+                      let label: string;
+                      let className: string;
+
+                      if (entry.misc_approved === false) {
+                        label = "REJECTED";
+                        className = "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300";
+                      } else if (entry.is_resolved) {
+                        label = "RESOLVED";
+                        className = "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300";
+                      } else if (hasDispatchDocs) {
+                        label = "DISPATCHED";
+                        className = "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300";
+                      } else if (entry.required_delivery_date) {
+                        label = "DISPATCH SCHEDULED";
+                        className = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300";
+                      } else if (entry.task?.status === "completed") {
+                        label = "RTD";
+                        className = "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300";
+                      } else if (entry.misc_approved === true && entry.expected_ready_date) {
+                        label = "UNDER PROCESS";
+                        className = "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300";
+                      } else if (entry.misc_approved === true) {
+                        label = "MISCL APPROVED";
+                        className = "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300";
+                      } else {
+                        label = "AWAITING APPROVAL";
+                        className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
                       }
-                      className={`
-                        text-xs px-2
-                        ${
-                          entry.misc_approved === false
-                            ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                            : entry.task?.status === "completed"
-                              ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                              : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
-                        }
-                      `}
-                    >
-                      {entry.misc_approved === false
-                        ? "Rejected"
-                        : entry.task?.status === "completed"
-                          ? "Completed"
-                          : "Pending"}
-                    </Badge>
+
+                      return (
+                        <Badge variant="outline" className={`text-xs px-2 border-0 font-medium ${className}`}>
+                          {label}
+                        </Badge>
+                      );
+                    })()}
                   </TableCell>
 
                   {/* DESCRIPTION */}
@@ -1429,7 +1407,7 @@ export default function InstallationMiscellaneous({
                         <div className="flex gap-2 ">
                           {viewModalData?.required_delivery_date &&
                             viewModalData?.delivery_task?.id &&
-                            !hasCompletionDocs &&
+                            !isDeliveryTaskCompleted &&
                             canManageDeliveryTask && (
                               <div className="flex justify-end pt-2">
                                 <Button
@@ -1446,7 +1424,7 @@ export default function InstallationMiscellaneous({
                             canResolveRole &&
                             isApproved &&
                             isReady &&
-                            hasCompletionDocs &&
+                            isDeliveryTaskCompleted &&
                             !viewModalData?.is_resolved && (
                               <div className="flex justify-end">
                                 <Button
@@ -1736,6 +1714,7 @@ export default function InstallationMiscellaneous({
                 taskId: viewModalData.delivery_task.id,
                 dueDate: viewModalData.delivery_task.due_date || undefined,
                 remark: viewModalData.delivery_task.remark || undefined,
+                taskStatus: viewModalData.delivery_task.status || undefined,
               }
             : undefined
         }
