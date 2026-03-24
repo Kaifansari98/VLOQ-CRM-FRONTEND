@@ -38,6 +38,10 @@ export interface ProductStructureInstance {
   tech_check_completed_at?: string | null;
   is_order_login_completed?: boolean | null;
   order_login_completed_at?: string | null;
+  is_pre_prod_done?: boolean | null;
+  pre_prod_done_at?: string | null;
+  is_under_production?: boolean | null;
+  under_production_at?: string | null;
   is_production_completed?: boolean | null;
   productStructure?: ProductStructure | null;
 }

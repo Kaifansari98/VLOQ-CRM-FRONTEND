@@ -502,7 +502,6 @@ export function UniversalTable({
           onlyInstance?.productStructure?.type ??
           lead.leadProductStructureMapping?.[0]?.productStructure?.type ??
           "";
-        const instanceCompleted = Boolean(onlyInstance?.is_production_completed);
         const suffix =
           instances.length > 1
             ? `.${onlyInstance?.quantity_index ?? 1}`
@@ -514,9 +513,13 @@ export function UniversalTable({
             leadCodeSuffix: suffix,
             furnitureStructureOverride: structureType,
             productionStatus: isType10
-              ? instanceCompleted
+              ? onlyInstance?.is_production_completed
                 ? "Completed"
-                : "Pending"
+                : onlyInstance?.is_under_production
+                  ? "Under Production"
+                  : onlyInstance?.is_pre_prod_done
+                    ? "Pre Prod Done"
+                    : "Pending"
               : undefined,
             instanceTitle: onlyInstance?.title ?? undefined,
             instanceDescription: onlyInstance?.description ?? undefined,
@@ -534,7 +537,6 @@ export function UniversalTable({
               item?.productStructure?.id === instance?.product_structure_id
           )?.productStructure?.type ??
           "";
-        const instanceCompleted = Boolean(instance?.is_production_completed);
         const suffixIndex = instance?.quantity_index ?? instanceIndex + 1;
         expanded.push(
           mapUniversalRow(lead, expanded.length, {
@@ -543,9 +545,13 @@ export function UniversalTable({
             leadCodeSuffix: instances.length > 1 ? `.${suffixIndex}` : "",
             furnitureStructureOverride: structureType,
             productionStatus: isType10
-              ? instanceCompleted
+              ? instance?.is_production_completed
                 ? "Completed"
-                : "Pending"
+                : instance?.is_under_production
+                  ? "Under Production"
+                  : instance?.is_pre_prod_done
+                    ? "Pre Prod Done"
+                    : "Pending"
               : undefined,
             instanceTitle: instance?.title ?? undefined,
             instanceDescription: instance?.description ?? undefined,

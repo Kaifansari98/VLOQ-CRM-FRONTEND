@@ -241,20 +241,19 @@ export function getUniversalTableColumns(
             cell: ({ row }) => {
               const status = (row.getValue("productionStatus") as string) || "";
               if (!status) return "—";
-              const isCompleted = status.toLowerCase() === "completed";
+
+              const dotColor =
+                status === "Completed"
+                  ? "bg-green-500"
+                  : status === "Under Production"
+                    ? "bg-orange-500"
+                    : status === "Pre Prod Done"
+                      ? "bg-yellow-400"
+                      : "bg-blue-500"; // Pending
+
               return (
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium",
-                    isCompleted ? "border-zinc-200 " : "border-zinc-200 ",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "h-2 w-2 rounded-full",
-                      isCompleted ? "bg-green-500" : "bg-blue-500",
-                    )}
-                  />
+                <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-medium">
+                  <span className={cn("h-2 w-2 rounded-full", dotColor)} />
                   {status}
                 </span>
               );
