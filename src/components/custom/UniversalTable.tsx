@@ -19,6 +19,14 @@ import ClearInput from "@/components/origin-input";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ListFilter, XCircle } from "lucide-react";
 
 import {
   UniversalStagePostPayload,
@@ -49,6 +57,92 @@ export interface UniversalTableProps {
   defaultViewType?: "my" | "overall";
   dataMode?: "universal" | "misc";
   activityStatus?: string;
+}
+
+// -------------------------------------------------------
+// 🔵 PRODUCTION STATUS FILTER
+// -------------------------------------------------------
+
+const PRODUCTION_STATUS_OPTIONS = [
+  { value: "all", label: "All Leads", dot: null },
+  { value: "Pending", label: "Pending", dot: "bg-blue-500" },
+  { value: "Pre Prod Done", label: "Pre Prod Done", dot: "bg-yellow-400" },
+  { value: "Under Production", label: "Under Production", dot: "bg-orange-500" },
+  { value: "Completed", label: "Completed", dot: "bg-green-500" },
+];
+
+function ProductionStatusFilter({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const isFiltered = value !== "all";
+  const selectedOption = PRODUCTION_STATUS_OPTIONS.find((o) => o.value === value);
+  const selectedLabel = selectedOption?.label;
+  const selectedDot = selectedOption?.dot ?? null;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="border-dashed">
+          {isFiltered ? (
+            <div
+              role="button"
+              aria-label="Clear Production Status filter"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange("all");
+              }}
+              className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0"
+            >
+              <XCircle className="h-4 w-4" />
+            </div>
+          ) : (
+            <ListFilter className="h-4 w-4 shrink-0" />
+          )}
+          <span className="flex items-center gap-1.5 truncate">
+            <span className="truncate">Production Status</span>
+            {isFiltered && (
+              <>
+                <Separator
+                  orientation="vertical"
+                  className="mx-0.5 data-[orientation=vertical]:h-4"
+                />
+                <Badge
+                  variant="secondary"
+                  className="font-normal px-1.5 py-0 h-5 text-xs truncate max-w-[110px] flex items-center gap-1"
+                >
+                  {selectedDot && (
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${selectedDot}`} />
+                  )}
+                  {selectedLabel}
+                </Badge>
+              </>
+            )}
+          </span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-52 p-1" align="start">
+        {PRODUCTION_STATUS_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => onChange(option.value)}
+            className={`w-full text-left px-3 py-1.5 text-sm rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground flex items-center gap-2 ${
+              value === option.value ? "bg-accent text-accent-foreground font-medium" : ""
+            }`}
+          >
+            {option.dot && (
+              <span className={`h-2 w-2 rounded-full shrink-0 ${option.dot}`} />
+            )}
+            {option.label}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 // -------------------------------------------------------
@@ -129,6 +223,9 @@ export function UniversalTable({
   const [overallColumnFilters, setOverallColumnFilters] =
     useState<ColumnFiltersState>([]);
 
+  const [productionStatusFilter, setProductionStatusFilter] =
+    useState<string>("all");
+
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     architechName: false,
@@ -194,6 +291,10 @@ export function UniversalTable({
       site_type: mappedFilters.site_type,
       site_map_link: mappedFilters.site_map_link,
       date_range: mappedFilters.date_range,
+      production_status:
+        normalizedType === "type 10" && productionStatusFilter !== "all"
+          ? productionStatusFilter
+          : undefined,
     };
   }, [
     userId,
@@ -205,6 +306,8 @@ export function UniversalTable({
     mySorting,
     myColumnFilters,
     myGlobalFilter,
+    productionStatusFilter,
+    normalizedType,
   ]);
 
   // -------------------- OVERALL LEADS POST PAYLOAD --------------------
@@ -255,6 +358,10 @@ export function UniversalTable({
       date_range: mappedFilters.date_range,
       created_at: sortOrder,
       // activity_status: activityStatus, // TODO: enable once backend supports this filter
+      production_status:
+        normalizedType === "type 10" && productionStatusFilter !== "all"
+          ? productionStatusFilter
+          : undefined,
     };
   }, [
     userId,
@@ -267,6 +374,8 @@ export function UniversalTable({
     overallSorting,
     overallColumnFilters,
     overallGlobalFilter,
+    productionStatusFilter,
+    normalizedType,
   ]);
 
   // -------------------- API CALLS --------------------
@@ -706,6 +815,12 @@ export function UniversalTable({
             title="Created At"
             multiple
           />
+          {normalizedType === "type 10" && (
+            <ProductionStatusFilter
+              value={productionStatusFilter}
+              onChange={setProductionStatusFilter}
+            />
+          )}
           {/* <DataTableSortList table={table} />
           <DataTableFilterList table={table} /> */}
           <DataTableViewOptions table={table} />
@@ -758,6 +873,12 @@ export function UniversalTable({
               title="Created At"
               multiple
             />
+            {normalizedType === "type 10" && (
+              <ProductionStatusFilter
+                value={productionStatusFilter}
+                onChange={setProductionStatusFilter}
+              />
+            )}
           </div>
 
           <div className="flex gap-2">

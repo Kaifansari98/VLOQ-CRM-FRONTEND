@@ -204,6 +204,7 @@ export interface UniversalStagePostPayload {
   site_map_link: boolean | null;
 
   created_at: SortOrder;
+  production_status?: string;
 }
 
 export const postUniversalStageLeads = async (
@@ -299,6 +300,7 @@ export interface VendorLeadsByTagPostPayload {
     to: string;
   };
   activity_status?: string;
+  production_status?: string;
 }
 
 export const postVendorLeadsByTag = async (
