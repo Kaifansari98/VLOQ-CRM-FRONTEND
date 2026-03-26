@@ -281,8 +281,8 @@ export function canViewAndWorkProductionStage(
   // 1. Admins always have access
   if (role === "admin" || role === "super-admin") return true;
 
-  // 2. Factory has access only in production stage
-  if (role === "factory") return stage === "production-stage";
+  // 2. Pre-prod has access only in production stage
+  if (role === "pre-prod") return stage === "production-stage";
 
   // 3. Backend and Tech-check never have access "can view only"
   if (

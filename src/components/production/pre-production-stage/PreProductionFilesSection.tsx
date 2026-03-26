@@ -98,7 +98,7 @@ export default function PreProductionFilesSection({
   const canDelete =
     userType === "admin" ||
     userType === "super-admin" ||
-    (userType === "factory" &&
+    (userType === "pre-prod" &&
       (leadStatusIns ?? leadStatus) === "production-stage");
 
   const canViewAndWork = canViewAndWorkProductionStage(
