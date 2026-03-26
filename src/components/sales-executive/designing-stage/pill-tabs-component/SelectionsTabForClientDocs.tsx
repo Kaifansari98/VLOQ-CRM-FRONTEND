@@ -58,6 +58,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useDeleteDocument } from "@/api/leads";
 
 interface Props {
@@ -471,14 +477,14 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
               nullBucket?.Carcas && nullBucket?.Shutter && nullBucket?.Handles,
             );
           }
-          // Single instance -> allow either null bucket or the instance bucket
+          // Single instance -> check instance bucket first, fall back to null (lead-level) bucket
           const nullBucket = selectionsByInstance.get(null);
           const firstInstanceBucket = activeInstance
             ? selectionsByInstance.get(activeInstance.id)
             : undefined;
-          const tracker = nullBucket || firstInstanceBucket;
           return Boolean(
-            tracker?.Carcas && tracker?.Shutter && tracker?.Handles,
+            (firstInstanceBucket?.Carcas && firstInstanceBucket?.Shutter && firstInstanceBucket?.Handles) ||
+            (nullBucket?.Carcas && nullBucket?.Shutter && nullBucket?.Handles),
           );
         })();
 
@@ -1104,37 +1110,50 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       {/* Move to Client Approval */}
       {isClientDocumentationStage && (
         <div className="pt-2">
-          <Button
-            onClick={handleMoveStage}
-            disabled={!canMoveStage}
-            className="w-full sm:w-auto"
-          >
-            {isMovingStage ? (
-              "Moving..."
-            ) : (
-              <>
-                <CheckCircle2 className="size-4 mr-2" />
-                Move to Client Approval
-              </>
-            )}
-          </Button>
-          {!allInstancesDocsReady && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Upload both Project Files and Pytha Files for all product
-              instances.
-            </p>
-          )}
-          {!allInstancesSelectionsReady && (
-            <p className="text-xs text-muted-foreground mt-1">
-              Carcas, Shutter and Handles are required for each product
-              instance.
-            </p>
-          )}
-          {selectionForm.formState.isDirty && (
-            <p className="text-xs text-muted-foreground mt-1">
-              Please save selections before moving stage.
-            </p>
-          )}
+          {(() => {
+            const missing: string[] = [];
+            if (!allInstancesSelectionsReady)
+              missing.push("Save Carcas, Shutter & Handles for all instances");
+            if (!allInstancesDocsReady)
+              missing.push("Upload Project Files & Pytha Files for all instances");
+            if (selectionForm.formState.isDirty)
+              missing.push("Save unsaved Design Selection changes");
+
+            return (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-block w-full sm:w-auto">
+                      <Button
+                        onClick={handleMoveStage}
+                        disabled={!canMoveStage}
+                        className="w-full sm:w-auto"
+                      >
+                        {isMovingStage ? (
+                          "Moving..."
+                        ) : (
+                          <>
+                            <CheckCircle2 className="size-4 mr-2" />
+                            Move to Client Approval
+                          </>
+                        )}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {missing.length > 0 && (
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="font-medium mb-1">Complete the following:</p>
+                      <ul className="list-disc pl-4 space-y-0.5">
+                        {missing.map((item) => (
+                          <li key={item} className="text-xs">{item}</li>
+                        ))}
+                      </ul>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
+            );
+          })()}
         </div>
       )}
 
