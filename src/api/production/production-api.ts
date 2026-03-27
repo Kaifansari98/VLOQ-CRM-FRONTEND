@@ -512,6 +512,22 @@ export const useCheckPreProductionFilesReady = (
   });
 };
 
+export const useMarkPreProdDone = (
+  vendorId?: number,
+  leadId?: number,
+) => {
+  return useMutation({
+    mutationFn: async ({ instanceId, updatedBy }: { instanceId: number; updatedBy: number }) => {
+      if (!vendorId || !leadId) throw new Error("Missing vendorId or leadId");
+      const { data } = await apiClient.put(
+        `/leads/production/post-production/vendorId/${vendorId}/leadId/${leadId}/mark-pre-prod-done`,
+        { instance_id: instanceId, updated_by: updatedBy },
+      );
+      return data;
+    },
+  });
+};
+
 export const markProductionCompleted = async (
   vendorId: number,
   leadId: number,

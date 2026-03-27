@@ -4,14 +4,16 @@ import React, { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { FolderOpen, Upload, Loader2 } from "lucide-react";
+import { FolderOpen, Upload, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { toastManager } from "@/components/ui/toast";
 import {
   usePreProductionFiles,
   useUploadPreProductionFiles,
+  useMarkPreProdDone,
 } from "@/api/production/production-api";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { useDeleteDocument } from "@/api/leads";
 import {
   AlertDialog,
@@ -69,10 +71,22 @@ export default function PreProductionFilesSection({
     effectiveInstanceId ?? undefined,
   );
 
+  const { mutateAsync: markPreProdDone, isPending: markingDone } =
+    useMarkPreProdDone(vendorId, leadId);
+
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const { data } = useInstanceStage(vendorId, leadId, instanceId!);
   const leadStatusIns = data?.derived_stage;
   const leadStatus = leadData?.status;
+
+  const { data: instancesResponse } = useLeadProductStructureInstances(leadId, vendorId);
+  const instances = Array.isArray(instancesResponse?.data)
+    ? instancesResponse?.data
+    : instancesResponse?.data?.data || [];
+  const currentInstance = instances.find(
+    (inst: any) => Number(inst.id) === effectiveInstanceId,
+  );
+  const isPreProdDone = currentInstance?.is_pre_prod_done === true;
 
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
@@ -105,6 +119,22 @@ export default function PreProductionFilesSection({
     userType,
     leadStatusIns ?? leadStatus,
   );
+
+  const handleMarkPreProdDone = async () => {
+    if (!effectiveInstanceId || !userId) return;
+    try {
+      await markPreProdDone({ instanceId: effectiveInstanceId, updatedBy: userId });
+      toastManager.add({ title: "Pre-prod marked as done!", type: "success" });
+      queryClient.invalidateQueries({
+        queryKey: ["lead-product-structure-instances", leadId, vendorId],
+      });
+    } catch (err: any) {
+      toastManager.add({
+        title: err?.response?.data?.message || "Failed to mark pre-prod done",
+        type: "error",
+      });
+    }
+  };
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) {
@@ -179,11 +209,37 @@ export default function PreProductionFilesSection({
           </p>
         </div>
 
-        {hasFiles && (
-          <span className="text-xs text-muted-foreground">
-            {files.length} File{files.length > 1 && "s"}
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {hasFiles && (
+            <span className="text-xs text-muted-foreground">
+              {files.length} File{files.length > 1 && "s"}
+            </span>
+          )}
+          {isPreProdDone ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Pre Prod Completed
+            </span>
+          ) : (
+            canViewAndWork && effectiveInstanceId && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleMarkPreProdDone}
+                disabled={markingDone}
+              >
+                {markingDone ? (
+                  <>
+                    <Loader2 className="animate-spin size-3.5 mr-1" />
+                    Marking...
+                  </>
+                ) : (
+                  "Mark Pre Prod Done"
+                )}
+              </Button>
+            )
+          )}
+        </div>
       </div>
 
       {/* -------------------------------- UPLOAD AREA -------------------------------- */}
