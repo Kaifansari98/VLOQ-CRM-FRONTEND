@@ -96,7 +96,7 @@ export default function LeadDetailsProductionUtil({
 
   const defaultTab = canViewDefaultSubTabProductionStage(effectiveUserType ?? "");
   const tabFromUrl = searchParams.get("tab");
-  const canAccessAllTabs = userType === "super-admin" || userType === "factory";
+  const canAccessAllTabs = userType === "super-admin" || userType === "factory" || userType === "pre-prod";
 
   const allTabs = [
     {
