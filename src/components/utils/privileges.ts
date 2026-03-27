@@ -198,6 +198,7 @@ export const canViewAndWorkProductionDetails = (
     "backend",
     "tech-check",
     "factory",
+    "pre-prod",
     "sales-executive",
     "site-supervisor",
     "head-site-supervisor",
@@ -213,6 +214,7 @@ export const handledproductionDefaultTab = (userType: string | undefined) => {
     "backend",
     "tech-check",
     "factory",
+    "pre-prod",
     "sales-executive",
     "site-supervisor",
     "head-site-supervisor",
@@ -299,7 +301,7 @@ export function canViewAndWorkProductionStage(
 
 export function canAccessTodoTaskTabProductionStage(role: string): boolean {
   // 1. Admins always have access
-  if (role === "admin" || role === "super-admin" || role === "factory")
+  if (role === "admin" || role === "super-admin" || role === "factory" || role === "pre-prod")
     return true;
 
   // 4. Everyone else has access by default
