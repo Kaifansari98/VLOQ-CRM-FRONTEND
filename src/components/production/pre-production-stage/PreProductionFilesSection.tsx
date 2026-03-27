@@ -31,7 +31,6 @@ import {
   useInstanceStage,
   useLeadStatus,
 } from "@/hooks/designing-stage/designing-leads-hooks";
-import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 
 interface PreProductionFilesSectionProps {
   leadId: number;
@@ -110,15 +109,12 @@ export default function PreProductionFilesSection({
     ) || [];
 
   const canDelete =
-    userType === "admin" ||
     userType === "super-admin" ||
-    (userType === "pre-prod" &&
-      (leadStatusIns ?? leadStatus) === "production-stage");
+    userType === "pre-prod";
 
-  const canViewAndWork = canViewAndWorkProductionStage(
-    userType,
-    leadStatusIns ?? leadStatus,
-  );
+  const canViewAndWork =
+    userType === "super-admin" ||
+    userType === "pre-prod";
 
   const handleMarkPreProdDone = async () => {
     if (!effectiveInstanceId || !userId) return;
