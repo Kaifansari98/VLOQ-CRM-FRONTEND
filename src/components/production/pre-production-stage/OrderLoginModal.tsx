@@ -240,10 +240,10 @@ export default function OrderLoginModal({
 
   console.log("instance id from orderlogin modal : ", instanceId);
 
-  const canWorkAndView = canViewAndWorkProductionStage(
-    userType,
-    leadStatusIns ?? leadStatus,
-  );
+  const isPreProd = userType?.toLowerCase() === "pre-prod";
+  const canWorkAndView =
+    !isPreProd &&
+    canViewAndWorkProductionStage(userType, leadStatusIns ?? leadStatus);
 
   return (
     <>
@@ -364,13 +364,15 @@ export default function OrderLoginModal({
                 </div>
               }
               value={
-                !canWorkAndView && userType === "factory"
-                  ? "This lead stage has progressed. Factory users cannot modify this section."
-                  : !canWorkAndView
-                    ? "You do not have access to assign or change vendors."
-                    : isCompleted
-                      ? "You cannot change the vendor after this order-login is marked as ready."
-                      : "Select a factory vendor."
+                isPreProd
+                  ? "Pre-prod users can only view this section."
+                  : !canWorkAndView && userType === "factory"
+                    ? "This lead stage has progressed. Factory users cannot modify this section."
+                    : !canWorkAndView
+                      ? "You do not have access to assign or change vendors."
+                      : isCompleted
+                        ? "You cannot change the vendor after this order-login is marked as ready."
+                        : "Select a factory vendor."
               }
             />
 
@@ -420,12 +422,14 @@ export default function OrderLoginModal({
                   </div>
                 }
                 value={
-                  !canWorkAndView && userType === "factory"
-                    ? "This lead stage has progressed. Factory users cannot modify this section."
-                    : !canWorkAndView
-                      ? "You do not have access to change or set production-ready dates."
-                      : isCompleted
-                        ? "You cannot change the date after this order-login is marked as ready."
+                  isPreProd
+                    ? "Pre-prod users can only view this section."
+                    : !canWorkAndView && userType === "factory"
+                      ? "This lead stage has progressed. Factory users cannot modify this section."
+                      : !canWorkAndView
+                        ? "You do not have access to change or set production-ready dates."
+                        : isCompleted
+                          ? "You cannot change the date after this order-login is marked as ready."
                         : "Select a production ready date."
                 }
               />
@@ -468,12 +472,14 @@ export default function OrderLoginModal({
                   </div>
                 }
                 value={
-                  !canWorkAndView && userType === "factory"
-                    ? "This lead stage has progressed. Factory users cannot modify this section."
-                    : !canWorkAndView
-                      ? "You do not have access to mark this order-login as completed."
-                      : isCompleted
-                        ? "This order-login is already completed."
+                  isPreProd
+                    ? "Pre-prod users can only view this section."
+                    : !canWorkAndView && userType === "factory"
+                      ? "This lead stage has progressed. Factory users cannot modify this section."
+                      : !canWorkAndView
+                        ? "You do not have access to mark this order-login as completed."
+                        : isCompleted
+                          ? "This order-login is already completed."
                         : !productionReadyDate
                           ? "Please set the Production Ready Date before marking as completed."
                           : !isProductionDateReached
