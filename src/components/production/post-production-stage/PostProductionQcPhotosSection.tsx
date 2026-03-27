@@ -153,16 +153,16 @@ export default function PostProductionQcPhotosSection({
     }
   };
 
+  const isPreProd = userType?.toLowerCase() === "pre-prod";
   const effectiveUserType = userType === "admin" ? "sales-executive" : userType;
   const canDelete =
-    userType === "super-admin" ||
-    (userType === "factory" &&
-      (leadStatusIns ?? leadStatus) === "production-stage");
-
-  const canViewAndWork = canViewAndWorkProductionStage(
-    effectiveUserType,
-    leadStatusIns ?? leadStatus,
-  );
+    !isPreProd &&
+    (userType === "super-admin" ||
+      (userType === "factory" &&
+        (leadStatusIns ?? leadStatus) === "production-stage"));
+  const canViewAndWork =
+    !isPreProd &&
+    canViewAndWorkProductionStage(effectiveUserType, leadStatusIns ?? leadStatus);
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {

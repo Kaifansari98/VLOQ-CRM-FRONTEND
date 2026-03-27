@@ -104,15 +104,16 @@ export default function WoodworkPackingDetailsSection({
   const [remark, setRemark] = useState(normalizedRemark);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
+  const isPreProd = userType?.toLowerCase() === "pre-prod";
   const effectiveUserType = userType === "admin" ? "sales-executive" : userType;
-  const canViewAndWork = canViewAndWorkProductionStage(
-    effectiveUserType,
-    leadStatusIns ?? leadStatus,
-  );
+  const canViewAndWork =
+    !isPreProd &&
+    canViewAndWorkProductionStage(effectiveUserType, leadStatusIns ?? leadStatus);
   const canDelete =
-    userType === "super-admin" ||
-    (userType === "factory" &&
-      (leadStatusIns ?? leadStatus) === "production-stage");
+    !isPreProd &&
+    (userType === "super-admin" ||
+      (userType === "factory" &&
+        (leadStatusIns ?? leadStatus) === "production-stage"));
 
   useEffect(() => {
     if (normalizedRemark) setRemark(normalizedRemark);
