@@ -620,6 +620,11 @@ export const useMarkOrderLoginFilled = (
       queryClient.invalidateQueries({
         queryKey: ["universalLeads"],
       });
+
+      queryClient.invalidateQueries({
+        queryKey: ["lead-product-structure-instances"],
+        exact: false,
+      });
     },
 
     onError: (error: any) => {

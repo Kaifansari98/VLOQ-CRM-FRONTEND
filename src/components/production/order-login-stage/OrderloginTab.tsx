@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle, Plus } from "lucide-react";
+import { CheckCircle, Plus, BadgeCheck } from "lucide-react";
 import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -28,6 +28,7 @@ import {
   useInstanceStage,
   useLeadStatus,
 } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { canAccessAddNewSectionButton } from "@/components/utils/privileges";
 import FileBreakUpField from "./FileBreakUpField";
 import AddSectionModal from "./AddSectionModal";
@@ -65,6 +66,15 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     instanceId!,
   );
   const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const { data: instancesResponse } = useLeadProductStructureInstances(leadId, vendorId);
+
+  const isOrderLoginFilled = useMemo(() => {
+    const instances = Array.isArray(instancesResponse?.data)
+      ? instancesResponse.data
+      : instancesResponse?.data?.data ?? [];
+    const current = instances.find((inst: any) => inst.id === instanceId);
+    return current?.is_order_login_filled === true;
+  }, [instancesResponse, instanceId]);
 
   // Mutations
   const { mutateAsync: updateSingle } = useUpdateOrderLogin(
@@ -416,25 +426,33 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
           </p>
         </div>
 
-        {/* ✅ Button visible ONLY when all 3 mandatory sections are filled */}
-        {canShowCompletedButton && (
-          <Button
-            onClick={() => setConfirmComplete(true)}
-            disabled={isMarkingComplete}
-            className="flex items-center gap-2 shrink-0 text-white disabled:opacity-60"
-          >
-            {isMarkingComplete ? (
-              <>
-                <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <CheckCircle className="w-4 h-4" />
-                Order Login Completed
-              </>
-            )}
-          </Button>
+        {/* ✅ Badge when already marked complete */}
+        {isOrderLoginFilled ? (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400 shrink-0">
+            <BadgeCheck className="w-4 h-4" />
+            <span className="text-sm font-medium">Order Login Completed</span>
+          </div>
+        ) : (
+          /* ✅ Button visible ONLY when all 3 mandatory sections are filled */
+          canShowCompletedButton && (
+            <Button
+              onClick={() => setConfirmComplete(true)}
+              disabled={isMarkingComplete}
+              className="flex items-center gap-2 shrink-0 text-white disabled:opacity-60"
+            >
+              {isMarkingComplete ? (
+                <>
+                  <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  Order Login Completed
+                </>
+              )}
+            </Button>
+          )
         )}
       </div>
 
