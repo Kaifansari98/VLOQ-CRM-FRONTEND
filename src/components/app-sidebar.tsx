@@ -279,7 +279,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       userType === "site-supervisor" ||
       userType === "tech-check" ||
       userType === "backend" ||
-      userType === "factory";
+      userType === "factory" ||
+      userType === "pre-prod";
 
     const baseItems = hideSectionsForRole
       ? withoutOverall.filter(
@@ -295,7 +296,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         : baseItems.filter((item) => item.title !== "Delivered Projects");
 
     const filteredItems =
-      userType === "backend" || userType === "factory"
+      userType === "backend" || userType === "factory" || userType === "pre-prod"
         ? adminOnlyItems.map((item) =>
             item.title === "Production"
               ? {
