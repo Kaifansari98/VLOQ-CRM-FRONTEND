@@ -110,6 +110,7 @@ export default function PostProductionDetails({
     useClientRequiredCompletionDate(vendorId, leadId);
 
   const canViewAndWork = canViewAndWorkProductionStage(effectiveUserType ?? "", leadStatusIns ?? leadStatus);
+  const canEditBoxes = canViewAndWork && userType?.toLowerCase() !== "factory";
 
   // ✅ Submit handler (fully validated)
   const onSubmit = async (values: BoxFormValues) => {
@@ -271,7 +272,7 @@ export default function PostProductionDetails({
                   rounded-lg 
                   bg-background backdrop-blur-sm 
                   transition-all duration-300 hover:border-primary/40
-                  ${!canViewAndWork ? "opacity-70" : ""}
+                  ${!canEditBoxes ? "opacity-70" : ""}
                 `}
                   >
                     <CardContent className="flex items-center gap-4 p-0">
@@ -291,7 +292,7 @@ export default function PostProductionDetails({
                           form.setValue("noOfBoxes", String(noOfBoxesValue));
                           setOpen(true);
                         }}
-                        disabled={!canViewAndWork}
+                        disabled={!canEditBoxes}
                         className="
                       rounded-full 
                       hover:bg-primary/10 
@@ -301,7 +302,7 @@ export default function PostProductionDetails({
                         <Pencil
                           size={18}
                           className={`${
-                            !canViewAndWork
+                            !canEditBoxes
                               ? "text-muted-foreground"
                               : "text-primary"
                           }`}
@@ -311,9 +312,9 @@ export default function PostProductionDetails({
                   </Card>
                 }
                 value={
-                  !canViewAndWork && userType === "factory"
-                    ? "This lead stage has progressed. Factory users cannot modify this section."
-                    : !canViewAndWork
+                  userType?.toLowerCase() === "factory"
+                    ? "Factory users cannot edit the number of boxes."
+                    : !canEditBoxes
                     ? "You do not have access to edit the number of boxes."
                     : "Click to edit the number of boxes for this order."
                 }
@@ -323,12 +324,12 @@ export default function PostProductionDetails({
                 truncateValue={
                   <div
                     className={`
-                  ${!canViewAndWork ? "opacity-70 pointer-events-none" : ""}
+                  ${!canEditBoxes ? "opacity-70 pointer-events-none" : ""}
                 `}
                   >
                     <Button
                       onClick={() => setOpen(true)}
-                      disabled={!canViewAndWork}
+                      disabled={!canEditBoxes}
                       className="
                     flex items-center gap-2 
                     px-4 py-2.5 
@@ -346,7 +347,9 @@ export default function PostProductionDetails({
                   </div>
                 }
                 value={
-                  !canViewAndWork
+                  userType?.toLowerCase() === "factory"
+                    ? "Factory users cannot set the number of boxes."
+                    : !canEditBoxes
                     ? "You do not have access to set the number of boxes."
                     : "Click to set the number of boxes for this order."
                 }

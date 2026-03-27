@@ -158,7 +158,6 @@ export default function ProductionLeadDetails() {
     canViewAndWorkEditProcutionExpectedDate(effectiveUserType);
   const canViewMarkCompletedButton =
     effectiveUserType?.toLowerCase() === "factory" ||
-    effectiveUserType?.toLowerCase() === "pre-prod" ||
     effectiveUserType?.toLowerCase() === "super-admin";
 
   const canShowTodoTab = canAccessTodoTaskTabProductionStage(effectiveUserType);
