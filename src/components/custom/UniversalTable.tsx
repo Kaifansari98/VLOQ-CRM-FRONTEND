@@ -224,7 +224,7 @@ export function UniversalTable({
     useState<ColumnFiltersState>([]);
 
   const [productionStatusFilter, setProductionStatusFilter] =
-    useState<string>("all");
+    useState<string>(normalizedUserType === "pre-prod" ? "Pending" : "all");
 
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
