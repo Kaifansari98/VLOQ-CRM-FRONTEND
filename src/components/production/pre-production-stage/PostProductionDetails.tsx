@@ -110,7 +110,10 @@ export default function PostProductionDetails({
     useClientRequiredCompletionDate(vendorId, leadId);
 
   const canViewAndWork = canViewAndWorkProductionStage(effectiveUserType ?? "", leadStatusIns ?? leadStatus);
-  const canEditBoxes = canViewAndWork && userType?.toLowerCase() !== "factory";
+  const canEditBoxes =
+    canViewAndWork &&
+    userType?.toLowerCase() !== "factory" &&
+    userType?.toLowerCase() !== "pre-prod";
 
   // ✅ Submit handler (fully validated)
   const onSubmit = async (values: BoxFormValues) => {
@@ -312,8 +315,9 @@ export default function PostProductionDetails({
                   </Card>
                 }
                 value={
-                  userType?.toLowerCase() === "factory"
-                    ? "Factory users cannot edit the number of boxes."
+                  userType?.toLowerCase() === "factory" ||
+                  userType?.toLowerCase() === "pre-prod"
+                    ? "You cannot edit the number of boxes."
                     : !canEditBoxes
                     ? "You do not have access to edit the number of boxes."
                     : "Click to edit the number of boxes for this order."
@@ -347,8 +351,9 @@ export default function PostProductionDetails({
                   </div>
                 }
                 value={
-                  userType?.toLowerCase() === "factory"
-                    ? "Factory users cannot set the number of boxes."
+                  userType?.toLowerCase() === "factory" ||
+                  userType?.toLowerCase() === "pre-prod"
+                    ? "You cannot set the number of boxes."
                     : !canEditBoxes
                     ? "You do not have access to set the number of boxes."
                     : "Click to set the number of boxes for this order."
