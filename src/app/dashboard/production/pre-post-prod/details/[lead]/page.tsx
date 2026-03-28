@@ -132,7 +132,7 @@ export default function ProductionLeadDetails() {
 
   const moveLeadMutation = useMoveLeadToReadyToDispatch();
 
-  const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+  const { data, isLoading, isError } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
   const { data: instancesResponse } = useLeadProductStructureInstances(
     leadIdNum,
@@ -398,6 +398,10 @@ export default function ProductionLeadDetails() {
 
   if (isLoading) {
     return <p className="p-6">Loading production lead details...</p>;
+  }
+
+  if (isError || !lead) {
+    return <p className="p-6">Failed to load lead details. Please try again.</p>;
   }
 
   const disabledReason = !canUpdateExpectedDate

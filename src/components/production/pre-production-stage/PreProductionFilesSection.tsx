@@ -25,6 +25,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import {
@@ -110,7 +115,7 @@ export default function PreProductionFilesSection({
 
   const canDelete =
     userType === "super-admin" ||
-    userType === "pre-prod";
+    (userType === "pre-prod" && !isPreProdDone);
 
   const canViewAndWork =
     userType === "super-admin" ||
@@ -218,21 +223,32 @@ export default function PreProductionFilesSection({
             </span>
           ) : (
             canViewAndWork && effectiveInstanceId && (
-              <Button
-                size="sm"
-                variant="default"
-                onClick={handleMarkPreProdDone}
-                disabled={markingDone}
-              >
-                {markingDone ? (
-                  <>
-                    <Loader2 className="animate-spin size-3.5 mr-1" />
-                    Marking...
-                  </>
-                ) : (
-                  "Mark Pre Prod Done"
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={!hasFiles ? 0 : undefined}>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={handleMarkPreProdDone}
+                      disabled={markingDone || !hasFiles}
+                    >
+                      {markingDone ? (
+                        <>
+                          <Loader2 className="animate-spin size-3.5 mr-1" />
+                          Marking...
+                        </>
+                      ) : (
+                        "Mark Pre Prod Done"
+                      )}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!hasFiles && (
+                  <TooltipContent side="bottom">
+                    Upload at least one file before marking pre-prod as done
+                  </TooltipContent>
                 )}
-              </Button>
+              </Tooltip>
             )
           )}
         </div>
