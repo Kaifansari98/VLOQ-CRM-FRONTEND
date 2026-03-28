@@ -11,7 +11,6 @@ import { Separator } from "@/components/ui/separator";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
-import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import {
@@ -27,9 +26,6 @@ import {
   Users,
   XCircle,
   HouseIcon,
-  PanelsTopLeftIcon,
-  BoxIcon,
-  UsersRoundIcon,
   ArrowUpRight,
   Clock,
   UserPlus,
@@ -103,7 +99,11 @@ export default function OrderLoginLeadDetails() {
   const effectiveUserType = userType;
 
   const { data: readiness, isLoading: readinessLoading } =
-    useLeadProductionReadiness(vendorId, leadIdNum, validInstanceId ?? undefined);
+    useLeadProductionReadiness(
+      vendorId,
+      leadIdNum,
+      validInstanceId ?? undefined,
+    );
 
   // derive convenience flags & message
   const lacksProdFiles = readiness ? !readiness.productionFiles?.hasAny : false;
@@ -157,20 +157,22 @@ export default function OrderLoginLeadDetails() {
     instances.length || lead?.productStructureInstances?.length || 0;
   const instanceSuffix =
     validInstanceId && totalInstanceCount > 1
-      ? (instances.find(
-          (instance: any) => instance.id === validInstanceId,
-        ) ??
+      ? (
+          instances.find((instance: any) => instance.id === validInstanceId) ??
           lead?.productStructureInstances?.find(
             (instance: any) => instance.id === validInstanceId,
-          ))?.quantity_index
+          )
+        )?.quantity_index
       : null;
   const displayLeadCode =
     leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
   const instanceName = validInstanceId
-    ? (instances.find((instance: any) => instance.id === validInstanceId) ??
+    ? ((
+        instances.find((instance: any) => instance.id === validInstanceId) ??
         lead?.productStructureInstances?.find(
           (instance: any) => instance.id === validInstanceId,
-        ))?.title ?? ""
+        )
+      )?.title ?? "")
     : "";
   const accountId = Number(lead?.account_id);
 
@@ -178,15 +180,26 @@ export default function OrderLoginLeadDetails() {
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Missing vendor or user info!", type: "error" });
+      toastManager.add({
+        title: "Missing vendor or user info!",
+        type: "error",
+      });
       return;
     }
 
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toastManager.add({ title: "Lead deleted successfully!", type: "success" }),
-        onError: (err) => toastManager.add({ title: err?.message || "Failed to delete lead", type: "error" }),
+        onSuccess: () =>
+          toastManager.add({
+            title: "Lead deleted successfully!",
+            type: "success",
+          }),
+        onError: (err) =>
+          toastManager.add({
+            title: err?.message || "Failed to delete lead",
+            type: "error",
+          }),
       },
     );
 
@@ -248,7 +261,8 @@ export default function OrderLoginLeadDetails() {
                         )}
                       </>
                     ) : (
-                      <span className="text-sm text-muted-foreground">Loading…
+                      <span className="text-sm text-muted-foreground">
+                        Loading…
                       </span>
                     )}
                   </div>
@@ -410,10 +424,7 @@ export default function OrderLoginLeadDetails() {
                     value="Only Backend access to this tab."
                     truncateValue={
                       <TabsTrigger value="todo" disabled>
-                        <PencilLine
-                          size={16}
-                          className="mr-1 opacity-60"
-                        />
+                        <PencilLine size={16} className="mr-1 opacity-60" />
                         To-Do Task
                       </TabsTrigger>
                     }
@@ -437,11 +448,10 @@ export default function OrderLoginLeadDetails() {
                   <MessageSquare size={16} className="mr-1 opacity-60" />
                   Chats
                 </TabsTrigger>
-                  <TabsTrigger value="documents">
-              <FolderOpen size={16} className="mr-1 opacity-60" />
-              Documents
-            </TabsTrigger>
-        
+                <TabsTrigger value="documents">
+                  <FolderOpen size={16} className="mr-1 opacity-60" />
+                  Documents
+                </TabsTrigger>
               </TabsList>
             </div>
           </div>
@@ -451,7 +461,9 @@ export default function OrderLoginLeadDetails() {
         <TabsContent value="details">
           <LeadDetailsGrouped
             status="orderLogin"
-            defaultTab={canOrderLogin(effectiveUserType) ? "orderLogin" : "techcheck"}
+            defaultTab={
+              canOrderLogin(effectiveUserType) ? "orderLogin" : "techcheck"
+            }
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
@@ -466,7 +478,9 @@ export default function OrderLoginLeadDetails() {
         <TabsContent value="todo">
           <LeadDetailsGrouped
             status="orderLogin"
-            defaultTab={canOrderLogin(effectiveUserType) ? "orderLogin" : "techcheck"}
+            defaultTab={
+              canOrderLogin(effectiveUserType) ? "orderLogin" : "techcheck"
+            }
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
@@ -494,7 +508,7 @@ export default function OrderLoginLeadDetails() {
           <LeadWiseChatScreen leadId={leadIdNum} />
         </TabsContent>
 
-             <TabsContent value="documents">
+        <TabsContent value="documents">
           <ProjectDocumentsTimeline
             leadId={leadIdNum}
             vendorId={vendorId ?? 0}
@@ -510,7 +524,10 @@ export default function OrderLoginLeadDetails() {
         statusType={activityType}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
-            toastManager.add({ title: "Vendor or User info is missing!", type: "error" });
+            toastManager.add({
+              title: "Vendor or User info is missing!",
+              type: "error",
+            });
             return;
           }
           updateStatusMutation.mutate(
@@ -528,7 +545,10 @@ export default function OrderLoginLeadDetails() {
             },
             {
               onSuccess: () => {
-                toastManager.add({ title: "Lead marked as On Hold!", type: "success" });
+                toastManager.add({
+                  title: "Lead marked as On Hold!",
+                  type: "success",
+                });
 
                 setActivityModalOpen(false);
 
@@ -538,7 +558,10 @@ export default function OrderLoginLeadDetails() {
                 });
               },
               onError: (err) => {
-                toastManager.add({ title: err?.message || "Failed to update lead status", type: "error" });
+                toastManager.add({
+                  title: err?.message || "Failed to update lead status",
+                  type: "error",
+                });
               },
             },
           );
