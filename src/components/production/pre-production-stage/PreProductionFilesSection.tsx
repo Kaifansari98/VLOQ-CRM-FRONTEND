@@ -206,11 +206,11 @@ export default function PreProductionFilesSection({
         </div>
 
         <div className="flex items-center gap-3">
-          {hasFiles && (
+          {/* {hasFiles && (
             <span className="text-xs text-muted-foreground">
               {files.length} File{files.length > 1 && "s"}
             </span>
-          )}
+          )} */}
           {isPreProdDone ? (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -220,7 +220,7 @@ export default function PreProductionFilesSection({
             canViewAndWork && effectiveInstanceId && (
               <Button
                 size="sm"
-                variant="outline"
+                variant="default"
                 onClick={handleMarkPreProdDone}
                 disabled={markingDone}
               >
