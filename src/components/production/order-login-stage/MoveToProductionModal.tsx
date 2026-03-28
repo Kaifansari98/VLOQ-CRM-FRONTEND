@@ -40,6 +40,7 @@ import {
 } from "@/api/production/order-login";
 import AssignToPicker from "@/components/assign-to-picker";
 import { useLeadById } from "@/hooks/useLeadsQueries";
+import { createLeadChatRoom } from "@/api/lead-chats";
 
 const schema = z.object({
   assign_to_user_id: z.number().min(1, "Please select a Factory user"),
@@ -132,6 +133,11 @@ export default function MoveToProductionModal({
       },
       {
         onSuccess: (response: any) => {
+          // Add factory and pre-prod users to lead chatroom
+          createLeadChatRoom(data.id, userId!).catch(() => {
+            // best-effort — don't block on chat member sync failure
+          });
+
           const movedToProduction = Boolean(
             response?.data?.moved_to_production ||
             response?.moved_to_production,

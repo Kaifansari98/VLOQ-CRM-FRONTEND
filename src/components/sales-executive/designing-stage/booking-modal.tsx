@@ -28,6 +28,7 @@ import {
   useHeadSiteSupervisors,
 } from "@/hooks/booking-stage/use-booking";
 import { BookingPayload, assignTaskBooking } from "@/api/booking";
+import { createLeadChatRoom } from "@/api/lead-chats";
 import { toastManager } from "@/components/ui/toast";
 import { useISMPaymentInfo } from "@/hooks/booking-stage/use-booking";
 import SelectDocumentModal from "@/components/modal/select-doc-modal";
@@ -295,6 +296,11 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     mutate(payload, {
       onSuccess: () => {
         toastManager.add({ title: "Booking saved successfully!", type: "success" });
+
+        // Add head site supervisor to lead chatroom
+        createLeadChatRoom(leadId, userId!).catch(() => {
+          // best-effort — don't block on chat member sync failure
+        });
 
         // Auto-create task for head site supervisor
         const today = new Date().toISOString().split("T")[0];
