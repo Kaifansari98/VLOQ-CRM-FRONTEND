@@ -12,6 +12,7 @@ import {
   Forklift,
   Handshake,
   Drill,
+  BarChart3,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -41,6 +42,11 @@ const data = {
       title: "Dashboard",
       url: "/dashboard",
       icon: LayoutDashboard,
+    },
+    {
+      title: "CRM Reports",
+      url: "/dashboard/crm-reports",
+      icon: BarChart3,
     },
     {
       title: "My Task",
@@ -293,7 +299,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const adminOnlyItems =
       userType === "admin" || userType === "super-admin"
         ? baseItems
-        : baseItems.filter((item) => item.title !== "Delivered Projects");
+        : baseItems.filter(
+            (item) =>
+              item.title !== "Delivered Projects" &&
+              item.title !== "CRM Reports",
+          );
 
     const filteredItems =
       userType === "backend" || userType === "factory" || userType === "pre-prod"
