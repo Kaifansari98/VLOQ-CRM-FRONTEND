@@ -29,6 +29,13 @@ export default function LoginPage() {
     const hostname =
       typeof window !== "undefined" ? window.location.hostname : "";
 
+    if (hostname.includes("frankvin")) {
+      setUseFallbackLogo(false);
+      setLogoSrc("/logos/frankvin.png");
+      setHeroSrc("/image.png");
+      return;
+    }
+
     if (hostname.includes("shambhala")) {
       setUseFallbackLogo(false);
       setLogoSrc("/logos/shambhala.png");
