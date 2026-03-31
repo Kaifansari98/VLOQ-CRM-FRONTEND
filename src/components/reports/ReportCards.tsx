@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { SlidersHorizontal, Download } from "lucide-react";
+import { Funnel, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReportFilterModal, type ReportFilters } from "./ReportFilterModal";
+import { useAppSelector } from "@/redux/store";
+import { useFranchisesByVendorId } from "@/api/franchise";
+import { generateEmployeeTaskReport } from "@/lib/reports/employeeTaskReport";
+import { toast } from "sonner";
 
 const REPORTS = [
   {
@@ -79,15 +83,72 @@ const cardVariants = {
 };
 
 export function ReportCards() {
+  const user = useAppSelector((state) => state.auth.user);
+  const reduxFranchiseId = useAppSelector((state) => state.auth.franchise_id);
+  const vendorId = user?.vendor_id ?? 0;
+  const isSuperAdmin = user?.user_type?.user_type?.toLowerCase() === "super-admin";
+  const adminFranchiseId = reduxFranchiseId ?? user?.franchise_id ?? null;
+
+  const { data: franchises = [] } = useFranchisesByVendorId(vendorId, true);
+
   const [activeFilter, setActiveFilter] = useState<{
     id: string;
     title: string;
     userTypes: string[];
   } | null>(null);
 
+  // Per-report applied filters — persists until page reload
+  const [appliedFilters, setAppliedFilters] = useState<Record<string, ReportFilters>>({});
+  // { [reportId]: stage message } — present means downloading
+  const [downloadStatus, setDownloadStatus] = useState<Record<string, string>>({});
+
+  const setStage = (reportId: string, stage: string) =>
+    setDownloadStatus((prev) => ({ ...prev, [reportId]: stage }));
+  const clearStage = (reportId: string) =>
+    setDownloadStatus((prev) => { const next = { ...prev }; delete next[reportId]; return next; });
+
   const handleApply = (filters: ReportFilters) => {
-    // filters are ready — wire to download/API logic here
-    console.log("Applied filters for", activeFilter?.id, filters);
+    if (!activeFilter) return;
+    setAppliedFilters((prev) => ({ ...prev, [activeFilter.id]: filters }));
+  };
+
+  const handleDownload = async (reportId: string) => {
+    if (reportId !== "employee-task") return;
+
+    const filters = appliedFilters[reportId];
+    if (!filters?.userId) {
+      toast.error("Please apply filters before downloading.");
+      const report = REPORTS.find((r) => r.id === reportId);
+      if (report) setActiveFilter({ id: report.id, title: report.title, userTypes: report.userTypes });
+      return;
+    }
+
+    const rawFranchiseId = filters._franchiseId ?? adminFranchiseId ?? 0;
+    const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
+    const userId = filters.userId === "all" ? "all" : Number(filters.userId);
+    const franchise = franchiseId !== "all" ? franchises.find((f) => f.id === franchiseId) : null;
+    const franchiseName = franchiseId === "all" ? "All Franchises" : (franchise?.franchise_name ?? "Unknown");
+
+    setStage(reportId, "Fetching data...");
+    try {
+      await generateEmployeeTaskReport({
+        vendorId,
+        userId,
+        franchiseId,
+        franchiseName,
+        employeeName: filters._employeeName ?? "All",
+        fromDate: filters.fromDate,
+        toDate: filters.toDate,
+        allFranchises: franchises.map((f) => ({ id: f.id, name: f.franchise_name })),
+        onProgress: (stage) => setStage(reportId, stage),
+      });
+      toast.success("Report downloaded successfully.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate report.");
+    } finally {
+      clearStage(reportId);
+    }
   };
 
   return (
@@ -110,13 +171,22 @@ export function ReportCards() {
                 {report.title}
               </h2>
               <button
-                className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                className="mt-0.5 shrink-0 relative transition-colors"
                 aria-label="Filter"
-                onClick={() =>
-                  setActiveFilter({ id: report.id, title: report.title, userTypes: report.userTypes })
-                }
+                onClick={() => {
+                  setActiveFilter({ id: report.id, title: report.title, userTypes: report.userTypes });
+                }}
               >
-                <SlidersHorizontal className="size-4" />
+                <Funnel
+                  className={`size-4 transition-colors ${
+                    appliedFilters[report.id]
+                      ? "text-purple-500 fill-purple-500/20"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                />
+                {appliedFilters[report.id] && (
+                  <span className="absolute -top-1 -right-1 size-2 rounded-full bg-purple-500" />
+                )}
               </button>
             </div>
 
@@ -126,9 +196,23 @@ export function ReportCards() {
             </p>
 
             {/* Download button */}
-            <Button size="sm" className="w-full gap-2 mt-auto">
-              <Download className="size-3.5" />
-              Download
+            <Button
+              size="sm"
+              className="w-full gap-2 mt-auto"
+              disabled={!!downloadStatus[report.id]}
+              onClick={() => handleDownload(report.id)}
+            >
+              {downloadStatus[report.id] ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin shrink-0" />
+                  <span className="truncate text-xs">{downloadStatus[report.id]}</span>
+                </>
+              ) : (
+                <>
+                  <Download className="size-3.5" />
+                  Download
+                </>
+              )}
             </Button>
           </motion.div>
         ))}

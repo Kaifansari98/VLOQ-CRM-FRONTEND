@@ -1,10 +1,18 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { format, parseISO } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import type { DateRange } from "react-day-picker";
 import BaseModal from "@/components/utils/baseModal";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -19,6 +27,7 @@ import { useBackendUsers, useTechCheckUsers } from "@/api/client-approval";
 import { useFactoryUsers } from "@/api/production/order-login";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
+import { cn } from "@/lib/utils";
 
 const USER_TYPE_LABELS: Record<string, string> = {
   "sales-executive": "Sales Executive",
@@ -35,10 +44,12 @@ const USER_TYPE_LABELS: Record<string, string> = {
 const VENDOR_LEVEL_TYPES = ["factory", "backend", "tech-check", "pre-prod"];
 
 export interface ReportFilters {
-  userType: string;
-  userId: string;
+  userType: string;       // specific type or "all"
+  userId: string;         // specific id or "all"
   fromDate: string;
   toDate: string;
+  _franchiseId?: number | "all";
+  _employeeName?: string;
 }
 
 const DEFAULT_FILTERS: ReportFilters = {
@@ -72,15 +83,27 @@ export function ReportFilterModal({
 
   const adminFranchiseId = reduxFranchiseId ?? user?.franchise_id ?? null;
 
-  const [selectedFranchiseId, setSelectedFranchiseId] = useState<string>("");
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<string>("");  // "" | "all" | "123"
   const [filters, setFilters] = useState<ReportFilters>(DEFAULT_FILTERS);
 
-  const activeFranchiseId = isSuperAdmin
-    ? selectedFranchiseId ? Number(selectedFranchiseId) : undefined
-    : adminFranchiseId ?? undefined;
+  const selectedDateRange = useMemo<DateRange | undefined>(() => {
+    if (!filters.fromDate && !filters.toDate) return undefined;
+
+    return {
+      from: filters.fromDate ? parseISO(filters.fromDate) : undefined,
+      to: filters.toDate ? parseISO(filters.toDate) : undefined,
+    };
+  }, [filters.fromDate, filters.toDate]);
 
   const selectedUserType = filters.userType;
-  const isVendorLevel = VENDOR_LEVEL_TYPES.includes(selectedUserType);
+  const isAllFranchise = selectedFranchiseId === "all";
+  const isAllUserType = selectedUserType === "all";
+  const isVendorLevel = VENDOR_LEVEL_TYPES.includes(selectedUserType) || isAllFranchise;
+
+  // For API calls: undefined when "all" or not selected, number when specific
+  const activeFranchiseId = isSuperAdmin
+    ? (selectedFranchiseId && !isAllFranchise) ? Number(selectedFranchiseId) : undefined
+    : adminFranchiseId ?? undefined;
 
   const { data: franchises = [] } = useFranchisesByVendorId(vendorId, isSuperAdmin);
 
@@ -138,11 +161,16 @@ export function ReportFilterModal({
   const isUsersLoading =
     isSalesLoading || isSiteSuperLoading || isFactoryLoading || isBackendLoading || isTechCheckLoading;
 
-  const showFranchiseSelect = isSuperAdmin && !isVendorLevel;
+  const showFranchiseSelect = isSuperAdmin;
+  const franchiseChosen = !showFranchiseSelect || !!selectedFranchiseId;
+  const userTypeChosen = !!selectedUserType;
+  // User select is disabled when userType is "all" (userId auto-becomes "all") or nothing selected yet
   const userSelectDisabled =
     isUsersLoading ||
-    !selectedUserType ||
-    (showFranchiseSelect && !selectedFranchiseId);
+    !userTypeChosen ||
+    !franchiseChosen ||
+    isAllUserType ||
+    isAllFranchise;
 
   const handleReset = () => {
     setFilters(DEFAULT_FILTERS);
@@ -150,8 +178,23 @@ export function ReportFilterModal({
   };
 
   const handleApply = () => {
-    onApply(filters);
+    const resolvedUserId = isAllUserType || isAllFranchise ? "all" : filters.userId;
+    const selectedUser = userOptions.find((u) => String(u.id) === filters.userId);
+    onApply({
+      ...filters,
+      userId: resolvedUserId,
+      _franchiseId: isAllFranchise ? "all" : (selectedFranchiseId ? Number(selectedFranchiseId) : activeFranchiseId),
+      _employeeName: resolvedUserId === "all" ? "All" : (selectedUser?.user_name ?? ""),
+    });
     onOpenChange(false);
+  };
+
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    setFilters((prev) => ({
+      ...prev,
+      fromDate: range?.from ? format(range.from, "yyyy-MM-dd") : "",
+      toDate: range?.to ? format(range.to, "yyyy-MM-dd") : "",
+    }));
   };
 
   return (
@@ -164,7 +207,7 @@ export function ReportFilterModal({
     >
       <div className="p-5 space-y-4">
 
-        {/* Franchise Select — super-admin only, hidden for vendor-level user types */}
+        {/* Franchise Select — super-admin only */}
         {showFranchiseSelect && (
           <div className="space-y-1">
             <Label className="text-xs">Filter by Franchise</Label>
@@ -172,13 +215,16 @@ export function ReportFilterModal({
               value={selectedFranchiseId}
               onValueChange={(val) => {
                 setSelectedFranchiseId(val);
-                setFilters((prev) => ({ ...prev, userId: "" }));
+                setFilters((prev) => ({ ...prev, userType: "", userId: "" }));
               }}
             >
               <SelectTrigger className="w-full h-8 text-xs">
                 <SelectValue placeholder="Select franchise" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all" className="text-xs font-medium">
+                  All Franchises
+                </SelectItem>
                 {franchises.map((f) => (
                   <SelectItem key={f.id} value={String(f.id)} className="text-xs">
                     {f.franchise_name}
@@ -194,14 +240,18 @@ export function ReportFilterModal({
           <Label className="text-xs">Filter by User Type</Label>
           <Select
             value={filters.userType}
+            disabled={showFranchiseSelect && !selectedFranchiseId}
             onValueChange={(val) =>
               setFilters((prev) => ({ ...prev, userType: val, userId: "" }))
             }
           >
             <SelectTrigger className="w-full h-8 text-xs">
-              <SelectValue placeholder="Select user type" />
+              <SelectValue placeholder={showFranchiseSelect && !selectedFranchiseId ? "Select a franchise first" : "Select user type"} />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all" className="text-xs font-medium">
+                All User Types
+              </SelectItem>
               {userTypes.map((value) => (
                 <SelectItem key={value} value={value} className="text-xs">
                   {USER_TYPE_LABELS[value] ?? value}
@@ -224,12 +274,14 @@ export function ReportFilterModal({
             <SelectTrigger className="w-full h-8 text-xs">
               <SelectValue
                 placeholder={
-                  !selectedUserType
+                  showFranchiseSelect && !selectedFranchiseId
+                    ? "Select a franchise first"
+                    : !selectedUserType
                     ? "Select a user type first"
+                    : isAllUserType || isAllFranchise
+                    ? "All Users"
                     : isUsersLoading
                     ? "Loading users..."
-                    : showFranchiseSelect && !selectedFranchiseId
-                    ? "Select a franchise first"
                     : "Select user"
                 }
               />
@@ -253,30 +305,43 @@ export function ReportFilterModal({
         {/* Date Filter */}
         <div className="space-y-1">
           <Label className="text-xs">Date Filter</Label>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <span className="text-xs text-muted-foreground">From</span>
-              <Input
-                type="date"
-                className="h-8 text-xs"
-                value={filters.fromDate}
-                onChange={(e) =>
-                  setFilters((prev) => ({ ...prev, fromDate: e.target.value }))
-                }
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="group h-9 w-full justify-between border-input bg-background px-3 text-xs font-normal hover:bg-background"
+              >
+                <span
+                  className={cn(
+                    "truncate text-left",
+                    !selectedDateRange?.from && "text-muted-foreground",
+                  )}
+                >
+                  {selectedDateRange?.from ? (
+                    selectedDateRange.to ? (
+                      `${format(selectedDateRange.from, "LLL dd, y")} - ${format(selectedDateRange.to, "LLL dd, y")}`
+                    ) : (
+                      format(selectedDateRange.from, "LLL dd, y")
+                    )
+                  ) : (
+                    "Pick a date range"
+                  )}
+                </span>
+                <CalendarIcon
+                  aria-hidden="true"
+                  className="size-4 shrink-0 text-muted-foreground/80 transition-colors group-hover:text-foreground"
+                />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-auto p-2">
+              <Calendar
+                mode="range"
+                selected={selectedDateRange}
+                onSelect={handleDateRangeChange}
+                numberOfMonths={2}
               />
-            </div>
-            <div className="space-y-1">
-              <span className="text-xs text-muted-foreground">To</span>
-              <Input
-                type="date"
-                className="h-8 text-xs"
-                value={filters.toDate}
-                onChange={(e) =>
-                  setFilters((prev) => ({ ...prev, toDate: e.target.value }))
-                }
-              />
-            </div>
-          </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
