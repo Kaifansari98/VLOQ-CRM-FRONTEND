@@ -226,10 +226,15 @@ export function ReportFilterModal({
   const handleApply = () => {
     const resolvedUserId = isAllUserType || isAllFranchise ? "all" : filters.userId;
     const selectedUser = userOptions.find((u) => String(u.id) === filters.userId);
-    const nextFilters = {
+    const resolvedFranchiseId: ReportFilters["_franchiseId"] = isAllFranchise
+      ? "all"
+      : selectedFranchiseId
+      ? Number(selectedFranchiseId)
+      : activeFranchiseId;
+    const nextFilters: ReportFilters = {
       ...filters,
       userId: resolvedUserId,
-      _franchiseId: isAllFranchise ? "all" : (selectedFranchiseId ? Number(selectedFranchiseId) : activeFranchiseId),
+      _franchiseId: resolvedFranchiseId,
       _employeeName: resolvedUserId === "all" ? "All" : (selectedUser?.user_name ?? ""),
     };
     onApply(nextFilters);
