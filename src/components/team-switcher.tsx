@@ -38,6 +38,7 @@ export function TeamSwitcher({
   const { isMobile } = useSidebar()
   const router = useRouter()
   const dispatch = useAppDispatch()
+  const isShambhala = typeof window !== "undefined" && window.location.hostname.includes("shambhala")
   const userType = useAppSelector((state) => state.auth.user?.user_type?.user_type)
   const isSuperAdmin = userType?.toLowerCase() === "super-admin"
   const [activeTeam, setActiveTeam] = React.useState(teams[0])
@@ -108,12 +109,29 @@ export function TeamSwitcher({
                 className="text-sidebar-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground relative aspect-square size-8 overflow-hidden rounded-lg border-none">
-                  <Image
-                    src="/logos/shambhala-short-logo.png"
-                    alt="Shambhala"
-                    fill
-                    className="object-cover"
-                  />
+                  {isShambhala ? (
+                    <Image
+                      src="/logos/shambhala-short-logo.png"
+                      alt="Shambhala"
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <>
+                      <Image
+                        src="/logos/furnix-logo-dark.png"
+                        alt="Logo"
+                        fill
+                        className="object-cover dark:hidden"
+                      />
+                      <Image
+                        src="/logos/furnix-logo-light.png"
+                        alt="Logo"
+                        fill
+                        className="object-cover hidden dark:block"
+                      />
+                    </>
+                  )}
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{activeTeam.name}</span>
