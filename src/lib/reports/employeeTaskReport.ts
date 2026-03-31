@@ -86,25 +86,32 @@ function formatTaskStatusLabel(status: string | null | undefined): string {
     .join(" ");
 }
 
-function getTaskStatus(task: VendorUserTask): string {
-  const { status, due_date } = task.userLeadTask;
-  const normalizedStatus = status?.toLowerCase();
+function getTaskStatus(dueDate: string | null | undefined, referenceDate: string | Date | null | undefined): string {
+  if (!dueDate) return "-";
 
-  if (
-    normalizedStatus === "completed" ||
-    normalizedStatus === "closed" ||
-    normalizedStatus === "cancelled"
-  ) {
-    return formatTaskStatusLabel(status);
-  }
-  if (!due_date) return status ?? "-";
-  const due = new Date(due_date);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate);
+  if (isNaN(due.getTime())) return "-";
+
+  const comparisonDate = referenceDate ? new Date(referenceDate) : new Date();
+  if (isNaN(comparisonDate.getTime())) return "-";
+
+  const today = new Date(comparisonDate);
   due.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
   if (due.getTime() === today.getTime()) return "Today";
   if (due > today) return "Upcoming";
   return "Overdue";
+}
+
+function getDisplayStatus(status: string | null | undefined): string {
+  const normalizedStatus = status?.toLowerCase();
+
+  if (normalizedStatus === "open") return "Pending";
+  if (normalizedStatus === "closed") return "Completed";
+  if (normalizedStatus === "completed") return "Completed";
+  if (normalizedStatus === "cancelled") return "Cancelled";
+
+  return formatTaskStatusLabel(status);
 }
 
 export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskReportParams) {
@@ -170,10 +177,17 @@ export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskRep
   // ── Data rows ──────────────────────────────────────────────────
   tasks.forEach((task, idx) => {
     const { userLeadTask, leadMaster } = task;
-    const taskStatus = getTaskStatus(task);
     const normalizedStatus = userLeadTask.status?.toLowerCase();
-    const isCompleted = normalizedStatus === "completed" || normalizedStatus === "closed";
-    const displayStatus = formatTaskStatusLabel(userLeadTask.status);
+    const isEndedTask =
+      normalizedStatus === "completed" ||
+      normalizedStatus === "closed" ||
+      normalizedStatus === "cancelled";
+    const completionDateRaw = isEndedTask
+      ? (userLeadTask.closed_at ?? userLeadTask.updated_at)
+      : null;
+    const completionDate = completionDateRaw ? formatDate(completionDateRaw) : "-";
+    const taskStatus = getTaskStatus(userLeadTask.due_date, completionDateRaw);
+    const displayStatus = getDisplayStatus(userLeadTask.status);
 
     const rowEmployeeName = userId === "all"
       ? (userLeadTask.assigned_to_name ?? userLeadTask.created_by_name ?? employeeName)
@@ -188,7 +202,7 @@ export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskRep
       userLeadTask.task_type ?? "-",
       formatDate(userLeadTask.created_at),
       formatDate(userLeadTask.due_date),
-      isCompleted ? formatDate(userLeadTask.closed_at ?? userLeadTask.updated_at) : "-",
+      completionDate,
       taskStatus,
       displayStatus,
     ];
@@ -210,20 +224,32 @@ export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskRep
       }
     });
 
-    // Color-code Task Status cell (col 10)
-    const statusCell = row.getCell(10);
+    const taskStatusCell = row.getCell(10);
+    const taskStatusColors: Record<string, string> = {
+      Upcoming: "FFD9EAD3",
+      Overdue: "FFF4CCCC",
+      Today: "FF9FC5E8",
+    };
+    if (taskStatusColors[taskStatus]) {
+      taskStatusCell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: taskStatusColors[taskStatus] },
+      };
+    }
+
+    const statusCell = row.getCell(11);
     const statusColors: Record<string, string> = {
-      Open:      "FFE8F0FE",
-      Closed:    "FFD9EAD3",
-      "In Progress": "FFFCE5CD",
-      Today:     "FFFFF2CC",
-      Upcoming:  "FFD9EAD3",
-      Overdue:   "FFFCE4D6",
       Completed: "FFD9EAD3",
+      Pending: "FF9FC5E8",
       Cancelled: "FFF4CCCC",
     };
-    if (statusColors[taskStatus]) {
-      statusCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: statusColors[taskStatus] } };
+    if (statusColors[displayStatus]) {
+      statusCell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: statusColors[displayStatus] },
+      };
     }
   });
 
