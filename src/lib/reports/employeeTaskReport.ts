@@ -260,6 +260,7 @@ export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskRep
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
+  const generatedDate = new Date().toISOString().slice(0, 10);
   const dateRange = fromDate && toDate ? `_${fromDate}_to_${toDate}` : "";
-  saveAs(blob, `Employee_Task_Report_${employeeName.replace(/\s+/g, "_")}${dateRange}.xlsx`);
+  saveAs(blob, `${generatedDate}_Employee_Task_Report_${employeeName.replace(/\s+/g, "_")}${dateRange}.xlsx`);
 }

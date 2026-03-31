@@ -86,7 +86,6 @@ export function ReportCards() {
   const user = useAppSelector((state) => state.auth.user);
   const reduxFranchiseId = useAppSelector((state) => state.auth.franchise_id);
   const vendorId = user?.vendor_id ?? 0;
-  const isSuperAdmin = user?.user_type?.user_type?.toLowerCase() === "super-admin";
   const adminFranchiseId = reduxFranchiseId ?? user?.franchise_id ?? null;
 
   const { data: franchises = [] } = useFranchisesByVendorId(vendorId, true);
@@ -99,6 +98,7 @@ export function ReportCards() {
 
   // Per-report applied filters — persists until page reload
   const [appliedFilters, setAppliedFilters] = useState<Record<string, ReportFilters>>({});
+  const [draftFilters, setDraftFilters] = useState<Record<string, ReportFilters>>({});
   // { [reportId]: stage message } — present means downloading
   const [downloadStatus, setDownloadStatus] = useState<Record<string, string>>({});
 
@@ -110,6 +110,25 @@ export function ReportCards() {
   const handleApply = (filters: ReportFilters) => {
     if (!activeFilter) return;
     setAppliedFilters((prev) => ({ ...prev, [activeFilter.id]: filters }));
+    setDraftFilters((prev) => ({ ...prev, [activeFilter.id]: filters }));
+  };
+
+  const handleDraftChange = (filters: ReportFilters) => {
+    if (!activeFilter) return;
+    setDraftFilters((prev) => ({ ...prev, [activeFilter.id]: filters }));
+  };
+
+  const clearFiltersForReport = (reportId: string) => {
+    setAppliedFilters((prev) => {
+      const next = { ...prev };
+      delete next[reportId];
+      return next;
+    });
+    setDraftFilters((prev) => {
+      const next = { ...prev };
+      delete next[reportId];
+      return next;
+    });
   };
 
   const handleDownload = async (reportId: string) => {
@@ -142,6 +161,7 @@ export function ReportCards() {
         allFranchises: franchises.map((f) => ({ id: f.id, name: f.franchise_name })),
         onProgress: (stage) => setStage(reportId, stage),
       });
+      clearFiltersForReport(reportId);
       toast.success("Report downloaded successfully.");
     } catch (err) {
       console.error(err);
@@ -225,6 +245,9 @@ export function ReportCards() {
           reportTitle={activeFilter.title}
           userTypes={activeFilter.userTypes}
           onApply={handleApply}
+          initialFilters={draftFilters[activeFilter.id] ?? appliedFilters[activeFilter.id]}
+          onDraftChange={handleDraftChange}
+          onResetDraft={() => clearFiltersForReport(activeFilter.id)}
         />
       )}
     </>

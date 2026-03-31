@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import type { DateRange } from "react-day-picker";
@@ -65,6 +65,9 @@ interface Props {
   reportTitle: string;
   userTypes: string[];
   onApply: (filters: ReportFilters) => void;
+  initialFilters?: ReportFilters;
+  onDraftChange?: (filters: ReportFilters) => void;
+  onResetDraft?: () => void;
 }
 
 export function ReportFilterModal({
@@ -73,6 +76,9 @@ export function ReportFilterModal({
   reportTitle,
   userTypes,
   onApply,
+  initialFilters,
+  onDraftChange,
+  onResetDraft,
 }: Props) {
   const user = useAppSelector((state) => state.auth.user);
   const reduxFranchiseId = useAppSelector((state) => state.auth.franchise_id);
@@ -80,11 +86,37 @@ export function ReportFilterModal({
   const vendorId = user?.vendor_id ?? 0;
   const userType = user?.user_type?.user_type?.toLowerCase();
   const isSuperAdmin = userType === "super-admin";
+  const isAdmin = userType === "admin";
 
   const adminFranchiseId = reduxFranchiseId ?? user?.franchise_id ?? null;
 
-  const [selectedFranchiseId, setSelectedFranchiseId] = useState<string>("");  // "" | "all" | "123"
-  const [filters, setFilters] = useState<ReportFilters>(DEFAULT_FILTERS);
+  const defaultFilters = useMemo<ReportFilters>(() => ({
+    ...DEFAULT_FILTERS,
+    userType: isSuperAdmin || isAdmin ? "all" : "",
+    userId: isSuperAdmin || isAdmin ? "all" : "",
+    _franchiseId: isSuperAdmin ? "all" : (adminFranchiseId ?? undefined),
+  }), [adminFranchiseId, isAdmin, isSuperAdmin]);
+
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<string>(
+    defaultFilters._franchiseId === "all"
+      ? "all"
+      : defaultFilters._franchiseId
+      ? String(defaultFilters._franchiseId)
+      : "",
+  );
+  const [filters, setFilters] = useState<ReportFilters>(initialFilters ?? defaultFilters);
+
+  useEffect(() => {
+    const nextFilters = initialFilters ?? defaultFilters;
+    setFilters(nextFilters);
+    setSelectedFranchiseId(
+      nextFilters._franchiseId === "all"
+        ? "all"
+        : nextFilters._franchiseId
+        ? String(nextFilters._franchiseId)
+        : "",
+    );
+  }, [defaultFilters, initialFilters, open]);
 
   const selectedDateRange = useMemo<DateRange | undefined>(() => {
     if (!filters.fromDate && !filters.toDate) return undefined;
@@ -172,29 +204,55 @@ export function ReportFilterModal({
     isAllUserType ||
     isAllFranchise;
 
+  const syncDraft = (nextFilters: ReportFilters, franchiseId: string = selectedFranchiseId) => {
+    onDraftChange?.({
+      ...nextFilters,
+      _franchiseId: franchiseId === "all" ? "all" : franchiseId ? Number(franchiseId) : undefined,
+    });
+  };
+
   const handleReset = () => {
-    setFilters(DEFAULT_FILTERS);
-    if (isSuperAdmin) setSelectedFranchiseId("");
+    setFilters(defaultFilters);
+    setSelectedFranchiseId(
+      defaultFilters._franchiseId === "all"
+        ? "all"
+        : defaultFilters._franchiseId
+        ? String(defaultFilters._franchiseId)
+        : "",
+    );
+    onResetDraft?.();
   };
 
   const handleApply = () => {
     const resolvedUserId = isAllUserType || isAllFranchise ? "all" : filters.userId;
     const selectedUser = userOptions.find((u) => String(u.id) === filters.userId);
-    onApply({
+    const nextFilters = {
       ...filters,
       userId: resolvedUserId,
       _franchiseId: isAllFranchise ? "all" : (selectedFranchiseId ? Number(selectedFranchiseId) : activeFranchiseId),
       _employeeName: resolvedUserId === "all" ? "All" : (selectedUser?.user_name ?? ""),
-    });
+    };
+    onApply(nextFilters);
+    onDraftChange?.(nextFilters);
     onOpenChange(false);
   };
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
-    setFilters((prev) => ({
-      ...prev,
+    const nextFilters = {
+      ...filters,
       fromDate: range?.from ? format(range.from, "yyyy-MM-dd") : "",
       toDate: range?.to ? format(range.to, "yyyy-MM-dd") : "",
-    }));
+    };
+    setFilters(nextFilters);
+    syncDraft(nextFilters);
+  };
+
+  const updateFilters = (updater: (prev: ReportFilters) => ReportFilters, franchiseId: string = selectedFranchiseId) => {
+    setFilters((prev) => {
+      const next = updater(prev);
+      syncDraft(next, franchiseId);
+      return next;
+    });
   };
 
   return (
@@ -215,7 +273,12 @@ export function ReportFilterModal({
               value={selectedFranchiseId}
               onValueChange={(val) => {
                 setSelectedFranchiseId(val);
-                setFilters((prev) => ({ ...prev, userType: "", userId: "" }));
+                updateFilters((prev) => ({
+                  ...prev,
+                  userType: val === "all" ? "all" : "",
+                  userId: "all",
+                  _franchiseId: val === "all" ? "all" : Number(val),
+                }), val);
               }}
             >
               <SelectTrigger className="w-full h-8 text-xs">
@@ -242,7 +305,11 @@ export function ReportFilterModal({
             value={filters.userType}
             disabled={showFranchiseSelect && !selectedFranchiseId}
             onValueChange={(val) =>
-              setFilters((prev) => ({ ...prev, userType: val, userId: "" }))
+              updateFilters((prev) => ({
+                ...prev,
+                userType: val,
+                userId: val === "all" ? "all" : "",
+              }))
             }
           >
             <SelectTrigger className="w-full h-8 text-xs">
@@ -267,7 +334,7 @@ export function ReportFilterModal({
           <Select
             value={filters.userId}
             onValueChange={(val) =>
-              setFilters((prev) => ({ ...prev, userId: val }))
+              updateFilters((prev) => ({ ...prev, userId: val }))
             }
             disabled={userSelectDisabled}
           >
