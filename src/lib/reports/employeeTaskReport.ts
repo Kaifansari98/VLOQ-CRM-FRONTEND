@@ -77,10 +77,25 @@ function formatDate(dateStr: string | null | undefined): string {
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function formatTaskStatusLabel(status: string | null | undefined): string {
+  if (!status) return "-";
+
+  return status
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
 function getTaskStatus(task: VendorUserTask): string {
   const { status, due_date } = task.userLeadTask;
-  if (status?.toLowerCase() === "completed" || status?.toLowerCase() === "closed") {
-    return "Completed";
+  const normalizedStatus = status?.toLowerCase();
+
+  if (
+    normalizedStatus === "completed" ||
+    normalizedStatus === "closed" ||
+    normalizedStatus === "cancelled"
+  ) {
+    return formatTaskStatusLabel(status);
   }
   if (!due_date) return status ?? "-";
   const due = new Date(due_date);
@@ -156,7 +171,9 @@ export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskRep
   tasks.forEach((task, idx) => {
     const { userLeadTask, leadMaster } = task;
     const taskStatus = getTaskStatus(task);
-    const isCompleted = userLeadTask.status?.toLowerCase() === "completed" || userLeadTask.status?.toLowerCase() === "closed";
+    const normalizedStatus = userLeadTask.status?.toLowerCase();
+    const isCompleted = normalizedStatus === "completed" || normalizedStatus === "closed";
+    const displayStatus = formatTaskStatusLabel(userLeadTask.status);
 
     const rowEmployeeName = userId === "all"
       ? (userLeadTask.assigned_to_name ?? userLeadTask.created_by_name ?? employeeName)
@@ -173,7 +190,7 @@ export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskRep
       formatDate(userLeadTask.due_date),
       isCompleted ? formatDate(userLeadTask.closed_at ?? userLeadTask.updated_at) : "-",
       taskStatus,
-      isCompleted ? "Completed" : "Pending",
+      displayStatus,
     ];
 
     const row = sheet.addRow(rowData);
@@ -196,10 +213,14 @@ export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskRep
     // Color-code Task Status cell (col 10)
     const statusCell = row.getCell(10);
     const statusColors: Record<string, string> = {
+      Open:      "FFE8F0FE",
+      Closed:    "FFD9EAD3",
+      "In Progress": "FFFCE5CD",
       Today:     "FFFFF2CC",
       Upcoming:  "FFD9EAD3",
       Overdue:   "FFFCE4D6",
       Completed: "FFD9EAD3",
+      Cancelled: "FFF4CCCC",
     };
     if (statusColors[taskStatus]) {
       statusCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: statusColors[taskStatus] } };
