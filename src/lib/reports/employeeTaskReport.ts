@@ -34,14 +34,14 @@ async function fetchTasksForFranchise(
 
   if (userId === "all") {
     const { data } = await apiClient.post<VendorUserTasksApiResponse>(
-      `/leads/tasks/vendorId/${vendorId}/tasks/filter/all`,
+      `/leads/tasks/vendorId/${vendorId}/tasks/report/filter/all`,
       basePayload,
     );
     return (data.data ?? []).map((t) => ({ ...t, _franchiseName: franchiseName }));
   }
 
   const { data } = await apiClient.post<VendorUserTasksApiResponse>(
-    `/leads/tasks/vendorId/${vendorId}/userId/${userId}/tasks/filter`,
+    `/leads/tasks/vendorId/${vendorId}/userId/${userId}/tasks/report/filter`,
     basePayload,
   );
   return (data.data ?? []).map((t) => ({ ...t, _franchiseName: franchiseName }));
