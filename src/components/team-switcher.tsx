@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import Image from "next/image"
-import { useRouter } from "next/navigation"
-import * as React from "react"
-import { ChevronsUpDown } from "lucide-react"
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import * as React from "react";
+import { ChevronsUpDown } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -12,91 +12,95 @@ import {
   DropdownMenuLabel,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
-import { useAppDispatch, useAppSelector } from "@/redux/store"
-import { setFranchiseId } from "@/redux/slices/authSlice"
-import TimeLoaderComponent from "@/components/utils/TimeLoaderComponent"
+} from "@/components/ui/sidebar";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import { setFranchiseId } from "@/redux/slices/authSlice";
+import TimeLoaderComponent from "@/components/utils/TimeLoaderComponent";
 
 export function TeamSwitcher({
   teams,
   activeTeamId,
 }: {
   teams: {
-    id: number
-    name: string
-    logo: React.ElementType
-    plan: string
-  }[]
-  activeTeamId?: number | null
+    id: number;
+    name: string;
+    logo: React.ElementType;
+    plan: string;
+  }[];
+  activeTeamId?: number | null;
 }) {
-  const { isMobile } = useSidebar()
-  const router = useRouter()
-  const dispatch = useAppDispatch()
-  const isShambhala = typeof window !== "undefined" && window.location.hostname.includes("shambhala")
-  const userType = useAppSelector((state) => state.auth.user?.user_type?.user_type)
-  const isSuperAdmin = userType?.toLowerCase() === "super-admin"
-  const [activeTeam, setActiveTeam] = React.useState(teams[0])
-  const [isSwitching, setIsSwitching] = React.useState(false)
+  const { isMobile } = useSidebar();
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+  const isShambhala =
+    typeof window !== "undefined" &&
+    window.location.hostname.includes("shambhala");
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
+  const isSuperAdmin = userType?.toLowerCase() === "super-admin";
+  const [activeTeam, setActiveTeam] = React.useState(teams[0]);
+  const [isSwitching, setIsSwitching] = React.useState(false);
   const [pendingTeam, setPendingTeam] = React.useState<
     { id: number; name: string } | undefined
-  >(undefined)
-  const switchTimeoutRef = React.useRef<number | null>(null)
+  >(undefined);
+  const switchTimeoutRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
-    if (!teams.length) return
+    if (!teams.length) return;
     setActiveTeam((prev) => {
       const preferred =
         activeTeamId != null
           ? teams.find((team) => team.id === activeTeamId)
-          : undefined
-      if (preferred) return preferred
+          : undefined;
+      if (preferred) return preferred;
       if (prev) {
-        const stillExists = teams.find((team) => team.id === prev.id)
-        if (stillExists) return stillExists
+        const stillExists = teams.find((team) => team.id === prev.id);
+        if (stillExists) return stillExists;
       }
-      return teams[0]
-    })
-  }, [teams, activeTeamId])
+      return teams[0];
+    });
+  }, [teams, activeTeamId]);
 
   if (!activeTeam) {
-    return null
+    return null;
   }
 
   const handleTeamClick = (team: { id: number; name: string }) => {
-    if (team.id === activeTeam.id) return
-    setPendingTeam(team)
-    setIsSwitching(true)
+    if (team.id === activeTeam.id) return;
+    setPendingTeam(team);
+    setIsSwitching(true);
 
     if (switchTimeoutRef.current) {
-      window.clearTimeout(switchTimeoutRef.current)
+      window.clearTimeout(switchTimeoutRef.current);
     }
 
     switchTimeoutRef.current = window.setTimeout(() => {
-      const nextTeam = teams.find((t) => t.id === team.id)
+      const nextTeam = teams.find((t) => t.id === team.id);
       if (nextTeam) {
-        setActiveTeam(nextTeam)
-        dispatch(setFranchiseId(nextTeam.id))
-        router.push("/dashboard")
+        setActiveTeam(nextTeam);
+        dispatch(setFranchiseId(nextTeam.id));
+        router.push("/dashboard");
       }
-      setIsSwitching(false)
-      setPendingTeam(undefined)
-      switchTimeoutRef.current = null
-    }, 3000)
-  }
+      setIsSwitching(false);
+      setPendingTeam(undefined);
+      switchTimeoutRef.current = null;
+    }, 3000);
+  };
 
   React.useEffect(() => {
     return () => {
       if (switchTimeoutRef.current) {
-        window.clearTimeout(switchTimeoutRef.current)
+        window.clearTimeout(switchTimeoutRef.current);
       }
-    }
-  }, [])
+    };
+  }, []);
 
   return (
     <>
@@ -134,7 +138,9 @@ export function TeamSwitcher({
                   )}
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{activeTeam.name}</span>
+                  <span className="truncate font-medium">
+                    {activeTeam.name}
+                  </span>
                   <span className="truncate text-xs">{activeTeam.plan}</span>
                 </div>
                 {isSuperAdmin && <ChevronsUpDown className="ml-auto" />}
@@ -197,5 +203,5 @@ export function TeamSwitcher({
         }
       />
     </>
-  )
+  );
 }
