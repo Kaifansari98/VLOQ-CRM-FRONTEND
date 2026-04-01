@@ -8,6 +8,7 @@ import { ReportFilterModal, type ReportFilters } from "./ReportFilterModal";
 import { useAppSelector } from "@/redux/store";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { generateEmployeeTaskReport } from "@/lib/reports/employeeTaskReport";
+import { generateInstallationReport } from "@/lib/reports/installationReport";
 import { toast } from "sonner";
 
 const REPORTS = [
@@ -28,7 +29,7 @@ const REPORTS = [
     id: "installation",
     title: "Installation Report",
     description: "Summarise dispatch, on-site progress, and final handover records.",
-    userTypes: ["site-supervisor", "factory"],
+    userTypes: [],
   },
   {
     id: "misc-issue-log",
@@ -86,6 +87,7 @@ export function ReportCards() {
   const user = useAppSelector((state) => state.auth.user);
   const reduxFranchiseId = useAppSelector((state) => state.auth.franchise_id);
   const vendorId = user?.vendor_id ?? 0;
+  const isSuperAdmin = user?.user_type?.user_type?.toLowerCase() === "super-admin";
   const adminFranchiseId = reduxFranchiseId ?? user?.franchise_id ?? null;
 
   const { data: franchises = [] } = useFranchisesByVendorId(vendorId, true);
@@ -131,14 +133,53 @@ export function ReportCards() {
     });
   };
 
+  const openFilterModal = (reportId: string) => {
+    const report = REPORTS.find((r) => r.id === reportId);
+    if (report) setActiveFilter({ id: report.id, title: report.title, userTypes: report.userTypes });
+  };
+
   const handleDownload = async (reportId: string) => {
+    if (reportId === "installation") {
+      const filters = appliedFilters[reportId];
+      // Super-admin must pick a franchise via the filter modal
+      if (isSuperAdmin && !filters?._franchiseId) {
+        toast.error("Please apply filters before downloading.");
+        openFilterModal(reportId);
+        return;
+      }
+      const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? 0;
+      const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
+      const franchise = franchiseId !== "all" ? franchises.find((f) => f.id === franchiseId) : null;
+      const franchiseName = franchiseId === "all" ? "All Franchises" : (franchise?.franchise_name ?? "Unknown");
+
+      setStage(reportId, "Fetching leads...");
+      try {
+        await generateInstallationReport({
+          vendorId,
+          franchiseId,
+          franchiseName,
+          fromDate: filters?.fromDate ?? "",
+          toDate: filters?.toDate ?? "",
+          allFranchises: franchises.map((f) => ({ id: f.id, name: f.franchise_name })),
+          onProgress: (stage) => setStage(reportId, stage),
+        });
+        toast.success("Report downloaded successfully.");
+      } catch (err: unknown) {
+        console.error(err);
+        const msg = err instanceof Error ? err.message : "Failed to generate report.";
+        toast.error(msg);
+      } finally {
+        clearStage(reportId);
+      }
+      return;
+    }
+
     if (reportId !== "employee-task") return;
 
     const filters = appliedFilters[reportId];
     if (!filters?.userId) {
       toast.error("Please apply filters before downloading.");
-      const report = REPORTS.find((r) => r.id === reportId);
-      if (report) setActiveFilter({ id: report.id, title: report.title, userTypes: report.userTypes });
+      openFilterModal(reportId);
       return;
     }
 
@@ -161,7 +202,6 @@ export function ReportCards() {
         allFranchises: franchises.map((f) => ({ id: f.id, name: f.franchise_name })),
         onProgress: (stage) => setStage(reportId, stage),
       });
-      clearFiltersForReport(reportId);
       toast.success("Report downloaded successfully.");
     } catch (err) {
       console.error(err);
