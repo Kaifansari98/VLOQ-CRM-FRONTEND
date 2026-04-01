@@ -89,6 +89,7 @@ export async function generateTechCheckStageReport(
       Math.max(max, row.rejection_dates.length, row.revised_upload_dates.length),
     0,
   );
+  const visibleCycles = Math.min(maxCycles, 2);
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "FurnixCRM";
@@ -103,7 +104,7 @@ export async function generateTechCheckStageReport(
     "Franchise Store",
     "TechCheck Req Date",
   ];
-  const cycleHeaders = Array.from({ length: maxCycles }, (_, index) => [
+  const cycleHeaders = Array.from({ length: visibleCycles }, (_, index) => [
     `${ordinalLabel(index)} rejection Date/Time`,
     `${ordinalLabel(index)} Revised File Uploaded Date/Time`,
   ]).flat();
@@ -164,7 +165,7 @@ export async function generateTechCheckStageReport(
   headerRow.height = 32;
 
   rows.forEach((entry, index) => {
-    const cycleValues = Array.from({ length: maxCycles }, (_, cycleIndex) => [
+    const cycleValues = Array.from({ length: visibleCycles }, (_, cycleIndex) => [
       formatDateTime(entry.rejection_dates[cycleIndex]),
       formatDateTime(entry.revised_upload_dates[cycleIndex]),
     ]).flat();
