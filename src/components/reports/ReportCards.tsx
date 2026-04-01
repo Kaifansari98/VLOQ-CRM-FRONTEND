@@ -11,6 +11,7 @@ import { generateEmployeeTaskReport } from "@/lib/reports/employeeTaskReport";
 import { generateInstallationReport } from "@/lib/reports/installationReport";
 import { generateMiscIssueLogReport } from "@/lib/reports/miscIssueLogReport";
 import { generateLeadsOverviewReport } from "@/lib/reports/leadsOverviewReport";
+import { generateTechCheckStageReport } from "@/lib/reports/techCheckStageReport";
 import { toast } from "sonner";
 
 const REPORTS = [
@@ -49,7 +50,7 @@ const REPORTS = [
     id: "techcheck-stage",
     title: "TechCheck Stage Report",
     description: "Review technical verification outcomes and pending tech-check items.",
-    userTypes: ["tech-check", "sales-executive"],
+    userTypes: [],
   },
   {
     id: "payments",
@@ -222,6 +223,38 @@ export function ReportCards() {
       setStage(reportId, "Fetching leads...");
       try {
         await generateLeadsOverviewReport({
+          vendorId,
+          franchiseId,
+          fromDate: filters?.fromDate ?? "",
+          toDate: filters?.toDate ?? "",
+          onProgress: (stage) => setStage(reportId, stage),
+        });
+        toast.success("Report downloaded successfully.");
+      } catch (err: unknown) {
+        console.error(err);
+        const msg =
+          err instanceof Error ? err.message : "Failed to generate report.";
+        toast.error(msg);
+      } finally {
+        clearStage(reportId);
+      }
+      return;
+    }
+
+    if (reportId === "techcheck-stage") {
+      const filters = appliedFilters[reportId];
+      if (isSuperAdmin && !filters?._franchiseId) {
+        toast.error("Please apply filters before downloading.");
+        openFilterModal(reportId);
+        return;
+      }
+
+      const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? "all";
+      const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
+
+      setStage(reportId, "Fetching tech check data...");
+      try {
+        await generateTechCheckStageReport({
           vendorId,
           franchiseId,
           fromDate: filters?.fromDate ?? "",
