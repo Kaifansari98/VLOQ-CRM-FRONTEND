@@ -211,8 +211,9 @@ export async function generateInstallationReport(params: GenerateInstallationRep
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
+  const generatedDate = new Date().toISOString().slice(0, 10);
   const dateRange = fromDate && toDate ? `_${fromDate}_to_${toDate}` : "";
-  const filename = `Installation_Report${dateRange}.xlsx`;
+  const filename = `${generatedDate}_Installation_Report${dateRange}.xlsx`;
   console.log("[InstallationReport] Saving file:", filename);
   saveAs(blob, filename);
   console.log("[InstallationReport] Done.");
