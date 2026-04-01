@@ -9,6 +9,7 @@ import { useAppSelector } from "@/redux/store";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { generateEmployeeTaskReport } from "@/lib/reports/employeeTaskReport";
 import { generateInstallationReport } from "@/lib/reports/installationReport";
+import { generateMiscIssueLogReport } from "@/lib/reports/miscIssueLogReport";
 import { toast } from "sonner";
 
 const REPORTS = [
@@ -35,7 +36,7 @@ const REPORTS = [
     id: "misc-issue-log",
     title: "Miscl + Issue Log Report",
     description: "Consolidated log of miscellaneous leads and open issues raised on-site.",
-    userTypes: ["site-supervisor", "factory"],
+    userTypes: [],
   },
   {
     id: "leads-overview",
@@ -167,6 +168,38 @@ export function ReportCards() {
       } catch (err: unknown) {
         console.error(err);
         const msg = err instanceof Error ? err.message : "Failed to generate report.";
+        toast.error(msg);
+      } finally {
+        clearStage(reportId);
+      }
+      return;
+    }
+
+    if (reportId === "misc-issue-log") {
+      const filters = appliedFilters[reportId];
+      if (isSuperAdmin && !filters?._franchiseId) {
+        toast.error("Please apply filters before downloading.");
+        openFilterModal(reportId);
+        return;
+      }
+
+      const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? "all";
+      const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
+
+      setStage(reportId, "Fetching logs...");
+      try {
+        await generateMiscIssueLogReport({
+          vendorId,
+          franchiseId,
+          fromDate: filters?.fromDate ?? "",
+          toDate: filters?.toDate ?? "",
+          onProgress: (stage) => setStage(reportId, stage),
+        });
+        toast.success("Report downloaded successfully.");
+      } catch (err: unknown) {
+        console.error(err);
+        const msg =
+          err instanceof Error ? err.message : "Failed to generate report.";
         toast.error(msg);
       } finally {
         clearStage(reportId);
