@@ -10,6 +10,7 @@ import { useFranchisesByVendorId } from "@/api/franchise";
 import { generateEmployeeTaskReport } from "@/lib/reports/employeeTaskReport";
 import { generateInstallationReport } from "@/lib/reports/installationReport";
 import { generateMiscIssueLogReport } from "@/lib/reports/miscIssueLogReport";
+import { generateLeadsOverviewReport } from "@/lib/reports/leadsOverviewReport";
 import { toast } from "sonner";
 
 const REPORTS = [
@@ -42,7 +43,7 @@ const REPORTS = [
     id: "leads-overview",
     title: "Leads Overview Report",
     description: "High-level snapshot of total leads, conversions, and pipeline health.",
-    userTypes: ["sales-executive"],
+    userTypes: [],
   },
   {
     id: "techcheck-stage",
@@ -189,6 +190,38 @@ export function ReportCards() {
       setStage(reportId, "Fetching logs...");
       try {
         await generateMiscIssueLogReport({
+          vendorId,
+          franchiseId,
+          fromDate: filters?.fromDate ?? "",
+          toDate: filters?.toDate ?? "",
+          onProgress: (stage) => setStage(reportId, stage),
+        });
+        toast.success("Report downloaded successfully.");
+      } catch (err: unknown) {
+        console.error(err);
+        const msg =
+          err instanceof Error ? err.message : "Failed to generate report.";
+        toast.error(msg);
+      } finally {
+        clearStage(reportId);
+      }
+      return;
+    }
+
+    if (reportId === "leads-overview") {
+      const filters = appliedFilters[reportId];
+      if (isSuperAdmin && !filters?._franchiseId) {
+        toast.error("Please apply filters before downloading.");
+        openFilterModal(reportId);
+        return;
+      }
+
+      const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? "all";
+      const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
+
+      setStage(reportId, "Fetching leads...");
+      try {
+        await generateLeadsOverviewReport({
           vendorId,
           franchiseId,
           fromDate: filters?.fromDate ?? "",
