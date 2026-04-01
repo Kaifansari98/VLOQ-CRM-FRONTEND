@@ -28,6 +28,7 @@ import { useFactoryUsers } from "@/api/production/order-login";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const USER_TYPE_LABELS: Record<string, string> = {
   "sales-executive": "Sales Executive",
@@ -306,72 +307,100 @@ export function ReportFilterModal({
         {/* Filter by User Type */}
         <div className="space-y-1">
           <Label className="text-xs">Filter by User Type</Label>
-          <Select
-            value={filters.userType}
-            disabled={showFranchiseSelect && !selectedFranchiseId}
-            onValueChange={(val) =>
-              updateFilters((prev) => ({
-                ...prev,
-                userType: val,
-                userId: val === "all" ? "all" : "",
-              }))
-            }
-          >
-            <SelectTrigger className="w-full h-8 text-xs">
-              <SelectValue placeholder={showFranchiseSelect && !selectedFranchiseId ? "Select a franchise first" : "Select user type"} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="text-xs font-medium">
-                All User Types
-              </SelectItem>
-              {userTypes.map((value) => (
-                <SelectItem key={value} value={value} className="text-xs">
-                  {USER_TYPE_LABELS[value] ?? value}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="block w-full">
+                <Select
+                  value={filters.userType}
+                  disabled={showFranchiseSelect && !selectedFranchiseId}
+                  onValueChange={(val) =>
+                    updateFilters((prev) => ({
+                      ...prev,
+                      userType: val,
+                      userId: val === "all" ? "all" : "",
+                    }))
+                  }
+                >
+                  <SelectTrigger className="w-full h-8 text-xs">
+                    <SelectValue placeholder={showFranchiseSelect && !selectedFranchiseId ? "Select a franchise first" : "Select user type"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-xs font-medium">
+                      All User Types
+                    </SelectItem>
+                    {userTypes.map((value) => (
+                      <SelectItem key={value} value={value} className="text-xs">
+                        {USER_TYPE_LABELS[value] ?? value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </span>
+            </TooltipTrigger>
+            {showFranchiseSelect && !selectedFranchiseId && (
+              <TooltipContent side="top">Select a franchise first</TooltipContent>
+            )}
+          </Tooltip>
         </div>
 
         {/* Filter by User */}
         <div className="space-y-1">
           <Label className="text-xs">Filter by User</Label>
-          <Select
-            value={filters.userId}
-            onValueChange={(val) =>
-              updateFilters((prev) => ({ ...prev, userId: val }))
-            }
-            disabled={userSelectDisabled}
-          >
-            <SelectTrigger className="w-full h-8 text-xs">
-              <SelectValue
-                placeholder={
-                  showFranchiseSelect && !selectedFranchiseId
-                    ? "Select a franchise first"
-                    : !selectedUserType
-                    ? "Select a user type first"
-                    : isAllUserType || isAllFranchise
-                    ? "All Users"
-                    : isUsersLoading
-                    ? "Loading users..."
-                    : "Select user"
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {userOptions.length === 0 ? (
-                <div className="px-3 py-2 text-xs text-muted-foreground">
-                  No users found
-                </div>
-              ) : (
-                userOptions.map((u) => (
-                  <SelectItem key={u.id} value={String(u.id)} className="text-xs">
-                    {u.user_name}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="block w-full">
+                <Select
+                  value={filters.userId}
+                  onValueChange={(val) =>
+                    updateFilters((prev) => ({ ...prev, userId: val }))
+                  }
+                  disabled={userSelectDisabled}
+                >
+                  <SelectTrigger className="w-full h-8 text-xs">
+                    <SelectValue
+                      placeholder={
+                        showFranchiseSelect && !selectedFranchiseId
+                          ? "Select a franchise first"
+                          : !selectedUserType
+                          ? "Select a user type first"
+                          : isAllUserType || isAllFranchise
+                          ? "All Users"
+                          : isUsersLoading
+                          ? "Loading users..."
+                          : "Select user"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {userOptions.length === 0 ? (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">
+                        No users found
+                      </div>
+                    ) : (
+                      userOptions.map((u) => (
+                        <SelectItem key={u.id} value={String(u.id)} className="text-xs">
+                          {u.user_name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </span>
+            </TooltipTrigger>
+            {userSelectDisabled && (
+              <TooltipContent side="top">
+                {showFranchiseSelect && !selectedFranchiseId
+                  ? "Select a franchise first"
+                  : !selectedUserType
+                  ? "Select a user type first"
+                  : isAllUserType || isAllFranchise
+                  ? "All users will be included"
+                  : isUsersLoading
+                  ? "Loading users..."
+                  : null}
+              </TooltipContent>
+            )}
+          </Tooltip>
         </div>
 
         {/* Date Filter */}
