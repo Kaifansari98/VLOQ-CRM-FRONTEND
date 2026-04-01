@@ -178,6 +178,9 @@ export default function OrderLoginModal({
         queryKey: ["orderLoginByLead", vendorId, leadId, instanceId],
       });
       queryClient.invalidateQueries({
+        queryKey: ["leadById", leadId],
+      });
+      queryClient.invalidateQueries({
         queryKey: ["postProductionReady", vendorId, leadId],
       });
     } catch (err: any) {
@@ -226,6 +229,9 @@ export default function OrderLoginModal({
       toastManager.add({ title: "Production ready date updated successfully!", type: "success" });
       queryClient.invalidateQueries({
         queryKey: ["orderLoginByLead", vendorId, leadId, instanceId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["leadById", leadId],
       });
       queryClient.invalidateQueries({
         queryKey: ["latestOrderLogin", vendorId, leadId],

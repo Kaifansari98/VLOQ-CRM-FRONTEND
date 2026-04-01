@@ -153,12 +153,15 @@ export const useUpdateExpectedOrderLoginReadyDate = () =>
 export const getLatestOrderLoginByLead = async (
   vendorId: number,
   leadId: number,
-  instanceId: number,
+  instanceId?: number,
 ) => {
   const { data } = await apiClient.get(
     `/leads/production/pre-production/vendorId/${vendorId}/get-latest-order-login`,
     {
-      params: { lead_id: leadId, instance_id: instanceId },
+      params: {
+        lead_id: leadId,
+        ...(typeof instanceId !== "undefined" ? { instance_id: instanceId } : {}),
+      },
     }
   );
   return data;
@@ -172,8 +175,8 @@ export const useLatestOrderLoginByLead = (
   return useQuery({
     queryKey: ["latestOrderLogin", vendorId, leadId, instanceId], // ✅ include instanceId
     queryFn: () =>
-      getLatestOrderLoginByLead(vendorId!, leadId!, instanceId!),
-    enabled: !!vendorId && !!leadId && !!instanceId, // ✅ wait for instanceId
+      getLatestOrderLoginByLead(vendorId!, leadId!, instanceId),
+    enabled: !!vendorId && !!leadId,
     staleTime: 0, // optional: always treat fresh (good for production tracking)
   });
 };

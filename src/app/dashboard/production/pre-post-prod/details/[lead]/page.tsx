@@ -149,7 +149,7 @@ export default function ProductionLeadDetails() {
   const { data: latestOrderLoginData } = useLatestOrderLoginByLead(
     vendorId,
     Number(leadIdNum),
-    instanceIdNum!,
+    undefined,
   );
 
   const canMoveReadyToDispatchStage =
@@ -194,7 +194,7 @@ export default function ProductionLeadDetails() {
       // Case 1: Expected date is missing → set by buffer
       !expectedDate ||
       // Case 2: Expected date < latest order login date → update to latest
-      (expectedDate && new Date(expectedDate) < new Date(latestDate));
+      (expectedDate && new Date(expectedDate) < new Date(computedDate));
 
     // ✅ REMOVED Case 3 (expectedDate === computedDate) because this causes repeated API calls
 
@@ -202,7 +202,7 @@ export default function ProductionLeadDetails() {
       // Determine the correct date to set
       const dateToSet = !expectedDate
         ? computedDate // If missing, set 3-day buffer
-        : latestDate; // If smaller, set to latest order login date
+        : computedDate; // If smaller, set to latest order login date + 3 days buffer
 
       handleExpectedDateChange(dateToSet);
     }
