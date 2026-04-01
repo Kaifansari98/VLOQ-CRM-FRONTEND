@@ -2,9 +2,6 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { apiClient } from "@/lib/apiClient";
 
-// ── Installation stages: Type 15 (Under Installation), Type 16 (Final Handover), Type 27+ (Project Completed)
-const INSTALLATION_TAGS = ["Type 15", "Type 16", "Type 27", "Type 28", "Type 29", "Type 30", "Type 31"];
-
 interface GenerateInstallationReportParams {
   vendorId: number;
   franchiseId: number | "all";
@@ -15,12 +12,13 @@ interface GenerateInstallationReportParams {
   onProgress?: (stage: string) => void;
 }
 
-interface InstallationLead {
+interface InstallationReportLead {
   id: number;
   lead_code: string;
   firstname: string;
   lastname: string;
   franchise_id: number | null;
+  franchise_name: string | null;
   actual_installation_start_date: string | null;
   expected_installation_end_date: string | null;
   actual_installation_completion_at: string | null;
@@ -28,105 +26,36 @@ interface InstallationLead {
   shutter_installation_completion_date: string | null;
   usable_handover_completed_at: string | null;
   final_handover_marked_at: string | null;
+  misc_count: number;
+  issue_count: number;
 }
 
-async function fetchLeadsForFranchise(
+async function fetchReportData(
   vendorId: number,
-  franchiseId: number,
-  dateRange: { from: string; to: string } | undefined,
-): Promise<InstallationLead[]> {
-  const results: InstallationLead[] = [];
-
-  for (const tag of INSTALLATION_TAGS) {
-    let page = 1;
-    const limit = 500;
-    while (true) {
-      const payload: Record<string, unknown> = {
-        franchise_id: franchiseId,
-        tag,
-        page,
-        limit,
-        filter_name: "",
-        filter_lead_code: "",
-        contact: "",
-        alt_contact_no: "",
-        email: "",
-        site_address: "",
-        archetech_name: "",
-        designer_remark: "",
-        furniture_type: [],
-        furniture_structure: [],
-        site_type: [],
-        source: [],
-        assign_to: [],
-        site_map_link: null,
-        created_at: "asc",
-      };
-
-      if (dateRange) {
-        payload.date_range = dateRange;
-      }
-
-      const { data } = await apiClient.post(
-        `/leads/bookingStage/vendorId/${vendorId}/vendor-leads-by-tag/all-leads`,
-        payload,
-      );
-
-      const leads: InstallationLead[] = data?.data ?? [];
-      results.push(...leads);
-
-      const total: number = data?.count ?? 0;
-      if (page * limit >= total) break;
-      page++;
-    }
-  }
-
-  return results;
-}
-
-async function fetchAllLeads(
-  vendorId: number,
-  franchiseId: number | "all",
+  franchiseId: number | null,
   fromDate: string,
   toDate: string,
-  allFranchises: { id: number; name: string }[],
-): Promise<InstallationLead[]> {
-  const dateRange = fromDate && toDate ? { from: fromDate, to: toDate } : undefined;
+): Promise<InstallationReportLead[]> {
+  const params: Record<string, string> = {};
+  if (franchiseId !== null) params.franchise_id = String(franchiseId);
+  if (fromDate) params.from_date = fromDate;
+  if (toDate) params.to_date = toDate;
 
-  if (franchiseId === "all") {
-    const all: InstallationLead[] = [];
-    for (const f of allFranchises) {
-      const leads = await fetchLeadsForFranchise(vendorId, f.id, dateRange);
-      all.push(...leads);
-    }
-    return all;
-  }
+  console.log("[InstallationReport] Calling API", {
+    url: `/leads/installation/under-installation/vendorId/${vendorId}/report/installation-data`,
+    params,
+  });
 
-  return fetchLeadsForFranchise(vendorId, franchiseId, dateRange);
-}
+  const { data } = await apiClient.get(
+    `/leads/installation/under-installation/vendorId/${vendorId}/report/installation-data`,
+    { params },
+  );
 
-async function fetchMiscCount(vendorId: number, leadId: number): Promise<number> {
-  try {
-    const { data } = await apiClient.get(
-      `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/get-all`,
-    );
-    const entries = data?.data ?? data ?? [];
-    return Array.isArray(entries) ? entries.length : 0;
-  } catch {
-    return 0;
-  }
-}
+  console.log("[InstallationReport] API response:", data);
 
-async function fetchIssueCount(vendorId: number, leadId: number): Promise<number> {
-  try {
-    const { data } = await apiClient.get(
-      `/leads/installation/under-installation/issue-log/vendor/${vendorId}/lead/${leadId}`,
-    );
-    const entries = data?.data ?? data ?? [];
-    return Array.isArray(entries) ? entries.length : 0;
-  } catch {
-    return 0;
-  }
+  const leads: InstallationReportLead[] = data?.data ?? [];
+  console.log(`[InstallationReport] Leads count: ${leads.length}`);
+  return leads;
 }
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -148,29 +77,27 @@ function daysBetween(from: string | null | undefined, to: string | null | undefi
 export async function generateInstallationReport(params: GenerateInstallationReportParams) {
   const { vendorId, franchiseId, fromDate, toDate, allFranchises = [], onProgress } = params;
 
-  onProgress?.("Fetching installation leads...");
-  const leads = await fetchAllLeads(vendorId, franchiseId, fromDate, toDate, allFranchises);
+  console.log("[InstallationReport] Starting report generation", params);
+
+  onProgress?.("Fetching installation data...");
+
+  let leads: InstallationReportLead[] = [];
+
+  if (franchiseId === "all") {
+    // Fetch all franchises together (backend handles null = all)
+    leads = await fetchReportData(vendorId, null, fromDate, toDate);
+  } else {
+    leads = await fetchReportData(vendorId, franchiseId, fromDate, toDate);
+  }
+
+  console.log(`[InstallationReport] Total leads fetched: ${leads.length}`);
 
   if (leads.length === 0) {
+    console.warn("[InstallationReport] No leads found — throwing error");
     throw new Error("No installation leads found for the selected filters.");
   }
 
-  // Build franchise lookup map
-  const franchiseMap = new Map<number, string>(allFranchises.map((f) => [f.id, f.name]));
-
-  // Fetch misc + issue counts in parallel batches
-  onProgress?.("Fetching misc & issue counts...");
-  const countsData = await Promise.all(
-    leads.map(async (lead) => {
-      const [miscCount, issueCount] = await Promise.all([
-        fetchMiscCount(vendorId, lead.id),
-        fetchIssueCount(vendorId, lead.id),
-      ]);
-      return { miscCount, issueCount };
-    }),
-  );
-
-  onProgress?.("Building report...");
+  onProgress?.("Building Excel report...");
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "FurnixCRM";
@@ -178,19 +105,18 @@ export async function generateInstallationReport(params: GenerateInstallationRep
 
   const sheet = workbook.addWorksheet("Installation Report");
 
-  // ── Column widths ──────────────────────────────────────────────
   sheet.columns = [
     { key: "srNo",               width: 8  },
     { key: "leadCode",           width: 14 },
     { key: "leadName",           width: 26 },
     { key: "franchiseStore",     width: 22 },
     { key: "installStartDate",   width: 22 },
-    { key: "expectedCompletion", width: 24 },
+    { key: "expectedCompletion", width: 26 },
     { key: "daysTaken",          width: 22 },
     { key: "miscCount",          width: 22 },
     { key: "issueCount",         width: 22 },
     { key: "carcassDate",        width: 26 },
-    { key: "shutterDate",        width: 30 },
+    { key: "shutterDate",        width: 32 },
     { key: "usableHandoverDate", width: 22 },
     { key: "fullCompletionDate", width: 28 },
     { key: "finalHandoverDate",  width: 22 },
@@ -198,7 +124,7 @@ export async function generateInstallationReport(params: GenerateInstallationRep
 
   const totalCols = sheet.columns.length;
 
-  // ── Title row ──────────────────────────────────────────────────
+  // Title row
   sheet.mergeCells(1, 1, 1, totalCols);
   const titleCell = sheet.getCell("A1");
   titleCell.value = "Installation Report";
@@ -207,7 +133,7 @@ export async function generateInstallationReport(params: GenerateInstallationRep
   titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9E1F2" } };
   sheet.getRow(1).height = 28;
 
-  // ── Header row ─────────────────────────────────────────────────
+  // Header row
   const HEADERS = [
     "Sr. No.",
     "Lead Code",
@@ -239,21 +165,18 @@ export async function generateInstallationReport(params: GenerateInstallationRep
   });
   headerRow.height = 28;
 
-  // ── Data rows ──────────────────────────────────────────────────
+  // Data rows
   leads.forEach((lead, idx) => {
-    const { miscCount, issueCount } = countsData[idx];
-    const franchiseName = lead.franchise_id ? (franchiseMap.get(lead.franchise_id) ?? "-") : "-";
-
     const rowData = [
       idx + 1,
       lead.lead_code ?? "-",
       `${lead.firstname} ${lead.lastname}`.trim() || "-",
-      franchiseName,
+      lead.franchise_name ?? "-",
       formatDate(lead.actual_installation_start_date),
       formatDate(lead.expected_installation_end_date),
       daysBetween(lead.actual_installation_start_date, lead.actual_installation_completion_at),
-      miscCount,
-      issueCount,
+      lead.misc_count,
+      lead.issue_count,
       formatDate(lead.carcass_installation_completion_date),
       formatDate(lead.shutter_installation_completion_date),
       formatDate(lead.usable_handover_completed_at),
@@ -280,13 +203,17 @@ export async function generateInstallationReport(params: GenerateInstallationRep
     });
   });
 
-  // ── Download ───────────────────────────────────────────────────
   onProgress?.("Preparing file...");
+  console.log("[InstallationReport] Writing Excel buffer...");
+
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
   const dateRange = fromDate && toDate ? `_${fromDate}_to_${toDate}` : "";
-  saveAs(blob, `Installation_Report${dateRange}.xlsx`);
+  const filename = `Installation_Report${dateRange}.xlsx`;
+  console.log("[InstallationReport] Saving file:", filename);
+  saveAs(blob, filename);
+  console.log("[InstallationReport] Done.");
 }

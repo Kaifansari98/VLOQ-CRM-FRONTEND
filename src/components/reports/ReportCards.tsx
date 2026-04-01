@@ -147,7 +147,7 @@ export function ReportCards() {
         openFilterModal(reportId);
         return;
       }
-      const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? 0;
+      const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? "all";
       const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
       const franchise = franchiseId !== "all" ? franchises.find((f) => f.id === franchiseId) : null;
       const franchiseName = franchiseId === "all" ? "All Franchises" : (franchise?.franchise_name ?? "Unknown");
@@ -183,7 +183,7 @@ export function ReportCards() {
       return;
     }
 
-    const rawFranchiseId = filters._franchiseId ?? adminFranchiseId ?? 0;
+    const rawFranchiseId = filters._franchiseId ?? adminFranchiseId ?? "all";
     const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
     const userId = filters.userId === "all" ? "all" : Number(filters.userId);
     const franchise = franchiseId !== "all" ? franchises.find((f) => f.id === franchiseId) : null;
