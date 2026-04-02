@@ -588,7 +588,9 @@ export default function ProjectDocumentsTimeline({
   const visibleStages = useMemo(() => {
     let ui = STAGE_UI;
     if (upToStage) {
-      const idx = STAGE_UI.findIndex((s) => s.id === upToStage);
+      const effectiveUpToStage =
+        upToStage === "ism" ? "bookingDone" : upToStage;
+      const idx = STAGE_UI.findIndex((s) => s.id === effectiveUpToStage);
       ui = idx === -1 ? STAGE_UI : STAGE_UI.slice(0, idx + 1);
     }
     return ui.filter((s) => {
