@@ -140,6 +140,7 @@ export interface EditLeadPayload {
   site_map_link?: string;
   site_type_id?: number;
   source_id?: number;
+  priority?: string;
   archetech_name?: string;
   designer_remark?: string;
   updated_by: number;

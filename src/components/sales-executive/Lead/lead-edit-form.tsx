@@ -45,6 +45,13 @@ import MapPicker from "@/components/MapPicker";
 import { MapPin } from "lucide-react";
 import CustomeDatePicker from "@/components/date-picker";
 import AssignToPicker from "@/components/assign-to-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toastError } from "@/lib/utils";
 
 // ✅ Utility: Normalize phone numbers to E.164 format
@@ -60,6 +67,12 @@ const toE164 = (number?: string, countryCode?: string): string => {
   // Fallback to India (adjust if needed for your use case)
   return `+91${number}`;
 };
+
+const priorityOptions = [
+  { id: "High", label: "High" },
+  { id: "Medium", label: "Medium" },
+  { id: "Low", label: "Low" },
+] as const;
 
 // Form validation schema
 const formSchema = z.object({
@@ -89,6 +102,7 @@ const formSchema = z.object({
   site_address: z.string().min(1, "Site Address is required").max(2000),
   site_map_link: z.string().optional().or(z.literal("")),
   source_id: z.string().min(1, "Please select a source"),
+  priority: z.enum(["High", "Medium", "Low"]),
 
   // Optional fields
   alt_contact_no: z
@@ -195,6 +209,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       site_address: "",
       site_map_link: "",
       source_id: "",
+      priority: "Medium",
       archetech_name: "",
       designer_remark: "",
       initial_site_measurement_date: "",
@@ -415,6 +430,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           site_address: lead.site_address || "",
           site_map_link: lead.site_map_link || "",
           source_id: lead.source_id ? String(lead.source_id) : "",
+          priority: lead.priority || "Medium",
           archetech_name: lead.archetech_name || "",
           designer_remark: lead.designer_remark || "",
           initial_site_measurement_date: formattedDate,
@@ -511,6 +527,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     if (isDirty("site_type_id"))
       payload.site_type_id = Number(values.site_type_id);
     if (isDirty("source_id")) payload.source_id = Number(values.source_id);
+    if (isDirty("priority")) payload.priority = values.priority;
     if (isDirty("site_address")) payload.site_address = values.site_address;
     if (values.site_map_link && values.site_map_link.trim() !== "") {
       payload.site_map_link = values.site_map_link.trim();
@@ -723,7 +740,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         </div>
 
         {/* Site Type & Source */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
           <FormField
             control={form.control}
             name="site_type_id"
@@ -796,6 +813,31 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                 </FormItem>
               );
             }}
+          />
+
+          <FormField
+            control={form.control}
+            name="priority"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Priority *</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger className="text-sm w-full">
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {priorityOptions.map((option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
           />
         </div>
 
