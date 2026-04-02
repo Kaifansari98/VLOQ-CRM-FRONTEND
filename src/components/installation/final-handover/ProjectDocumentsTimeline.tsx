@@ -42,6 +42,7 @@ interface StageUIConfig {
 
 const STAGE_UI: StageUIConfig[] = [
   { id: "ism", label: "Initial Site Measurement", icon: Ruler },
+  { id: "bookingDone", label: "Booking Done Documents", icon: FileText },
   { id: "finalMeasurement", label: "Final Measurement", icon: Ruler },
   { id: "clientDoc", label: "Client Documentation", icon: FileCheck },
   { id: "clientApproval", label: "Client Approval", icon: CheckCircle2 },

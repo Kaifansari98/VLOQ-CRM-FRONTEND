@@ -112,7 +112,6 @@ export default function PostProductionDetails({
   const canViewAndWork = canViewAndWorkProductionStage(effectiveUserType ?? "", leadStatusIns ?? leadStatus);
   const canEditBoxes =
     canViewAndWork &&
-    userType?.toLowerCase() !== "factory" &&
     userType?.toLowerCase() !== "pre-prod";
 
   // ✅ Submit handler (fully validated)
@@ -315,7 +314,6 @@ export default function PostProductionDetails({
                   </Card>
                 }
                 value={
-                  userType?.toLowerCase() === "factory" ||
                   userType?.toLowerCase() === "pre-prod"
                     ? "You cannot edit the number of boxes."
                     : !canEditBoxes
@@ -351,7 +349,6 @@ export default function PostProductionDetails({
                   </div>
                 }
                 value={
-                  userType?.toLowerCase() === "factory" ||
                   userType?.toLowerCase() === "pre-prod"
                     ? "You cannot set the number of boxes."
                     : !canEditBoxes
