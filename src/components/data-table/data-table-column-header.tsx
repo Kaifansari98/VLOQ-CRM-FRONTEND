@@ -29,6 +29,7 @@ import SiteMapLinkFilter from "./site-map-link-filter";
 import AssignToFilter from "./assign-to-filter";
 import StageTypeFilter from "./stage-type-filter";
 import TaskTypeFilterPicker from "./data-table-task-filter";
+import PriorityFilter from "./priority-filter";
 
 interface DataTableColumnHeaderProps<
   TData,
@@ -54,6 +55,7 @@ export function DataTableColumnHeader<TData, TValue>({
   const isSalesExecutiveColumn = column.id === "sales_executive";
   const isStageColumn = column.id === "status";
   const isTastTypeColumn = column.id === "taskType";
+  const isPriorityColumn = column.id === "priority";
 
   const filterValue = column.getFilterValue();
   const hasActiveFilter = Array.isArray(filterValue)
@@ -70,7 +72,7 @@ export function DataTableColumnHeader<TData, TValue>({
     isSourceColumn ||
     isSiteMapColumn ||
     isSalesExecutiveColumn ||
-    isStageColumn || isTastTypeColumn;
+    isStageColumn || isTastTypeColumn || isPriorityColumn;
 
   if (!column.getCanSort() && !column.getCanHide()) {
     return <div className={cn(className)}>{title}</div>;
@@ -143,6 +145,12 @@ export function DataTableColumnHeader<TData, TValue>({
           {isStageColumn && (
             <div onSelect={(e) => e.preventDefault()}>
               <StageTypeFilter column={column as any} />
+            </div>
+          )}
+
+          {isPriorityColumn && (
+            <div onSelect={(e) => e.preventDefault()}>
+              <PriorityFilter column={column as any} />
             </div>
           )}
           {isStructureColumn && (

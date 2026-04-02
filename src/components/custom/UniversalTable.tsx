@@ -278,6 +278,7 @@ export function UniversalTable({
       source: mappedFilters.source,
       status: mappedFilters.status,
       assign_to: assignToFilter,
+      priority: mappedFilters.priority,
       siteType: mappedFilters.siteType,
       architectName: mappedFilters.architectName,
       created_at: sortOrder,
@@ -345,6 +346,7 @@ export function UniversalTable({
       source: mappedFilters.source,
 
       assign_to: assignToFilter,
+      priority: mappedFilters.priority,
       site_address: mappedFilters.site_address,
       archetech_name: mappedFilters.archetech_name,
       designer_remark: mappedFilters.designer_remark,
@@ -413,6 +415,7 @@ export function UniversalTable({
       assign_to: Array.isArray(mappedFilters.assign_to)
         ? mappedFilters.assign_to
         : [],
+      priority: mappedFilters.priority,
       site_address: mappedFilters.site_address,
       archetech_name: mappedFilters.archetech_name,
       designer_remark: mappedFilters.designer_remark,
@@ -696,13 +699,18 @@ export function UniversalTable({
     return normalizedType === "type 10";
   }, [normalizedType]);
 
+  const showPriorityColumn = useMemo(() => {
+    return ["type 1", "type 2", "type 3"].includes(normalizedType);
+  }, [normalizedType]);
+
   const columns = useMemo(
     () =>
       getUniversalTableColumns({
         showStageColumn,
         showProductionStatusColumn,
+        showPriorityColumn,
       }),
-    [showStageColumn, showProductionStatusColumn],
+    [showStageColumn, showProductionStatusColumn, showPriorityColumn],
   );
 
   // -------------------- TABLE INSTANCE --------------------

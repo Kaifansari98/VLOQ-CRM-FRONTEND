@@ -30,12 +30,17 @@ import {
 interface UniversalColumnOptions {
   showStageColumn?: boolean;
   showProductionStatusColumn?: boolean;
+  showPriorityColumn?: boolean;
 }
 
 export function getUniversalTableColumns(
   options: UniversalColumnOptions = {},
 ): ColumnDef<LeadColumn>[] {
-  const { showStageColumn = false, showProductionStatusColumn = false } =
+  const {
+    showStageColumn = false,
+    showProductionStatusColumn = false,
+    showPriorityColumn = false,
+  } =
     options;
   const columns: ColumnDef<LeadColumn>[] = [
     // 1) Lead Code
@@ -83,46 +88,64 @@ export function getUniversalTableColumns(
       },
     },
 
-    // Priority
-    {
-      accessorKey: "priority",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Priority" />
-      ),
-      meta: {
-        label: "Priority",
-      },
-      enableSorting: false,
-      enableHiding: true,
-      enableColumnFilter: false,
-      cell: ({ row }) => {
-        const value = (row.getValue("priority") as string) || "";
-        if (!value) return "—";
+    ...(showPriorityColumn
+      ? ([
+          {
+            accessorKey: "priority",
+            filterFn: tableSingleValueMultiSelectFilter,
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Priority" />
+            ),
+            meta: {
+              label: "Priority",
+            },
+            enableSorting: false,
+            enableHiding: true,
+            enableColumnFilter: true,
+            cell: ({ row }) => {
+              const value = (row.getValue("priority") as string) || "";
+              if (!value) return "—";
 
-        const config: Record<string, { dot: string; pill: string }> = {
-          High:   { dot: "bg-red-500",    pill: "bg-red-500/10 text-red-600 border-red-200" },
-          Medium: { dot: "bg-orange-500", pill: "bg-orange-500/10 text-orange-600 border-orange-200" },
-          Low:    { dot: "bg-yellow-500", pill: "bg-yellow-500/10 text-yellow-600 border-yellow-200" },
-        };
+              const config: Record<string, { dot: string; pill: string }> = {
+                High: {
+                  dot: "bg-red-500",
+                  pill: "bg-red-500/10 text-red-600 border-red-200",
+                },
+                Medium: {
+                  dot: "bg-orange-500",
+                  pill: "bg-orange-500/10 text-orange-600 border-orange-200",
+                },
+                Low: {
+                  dot: "bg-yellow-500",
+                  pill: "bg-yellow-500/10 text-yellow-600 border-yellow-200",
+                },
+              };
 
-        const style = config[value] ?? {
-          dot: "bg-zinc-400",
-          pill: "bg-zinc-100 text-zinc-600 border-zinc-200",
-        };
+              const style = config[value] ?? {
+                dot: "bg-zinc-400",
+                pill: "bg-zinc-100 text-zinc-600 border-zinc-200",
+              };
 
-        return (
-          <span
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
-              style.pill,
-            )}
-          >
-            <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", style.dot)} />
-            {value}
-          </span>
-        );
-      },
-    },
+              return (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                    style.pill,
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full shrink-0",
+                      style.dot,
+                    )}
+                  />
+                  {value}
+                </span>
+              );
+            },
+          },
+        ] satisfies ColumnDef<LeadColumn>[])
+      : []),
 
     // Stage
     ...(showStageColumn

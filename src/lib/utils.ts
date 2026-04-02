@@ -268,6 +268,10 @@ export function mapTableFiltersToPayload(filters: ColumnFiltersState) {
         payload.source = value;
         break;
 
+      case "priority":
+        payload.priority = Array.isArray(value) ? value : [value];
+        break;
+
       case "sales_executive":
         payload.assign_to = value;
         break;

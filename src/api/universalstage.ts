@@ -97,6 +97,7 @@ export interface UniversalStageLead {
   site_map_link: string | null;
 
   archetech_name: string | null;
+  priority?: string | null;
 
   designer_remark: string | null;
 
@@ -201,6 +202,7 @@ export interface UniversalStagePostPayload {
   source: number[];
   stagetag?: string[];
   assign_to: number[];
+  priority?: string[];
   site_map_link: boolean | null;
 
   created_at: SortOrder;
@@ -292,6 +294,7 @@ export interface VendorLeadsByTagPostPayload {
   source?: number[];
   stagetag?: string[];
   assign_to?: number[];
+  priority?: string[];
   site_map_link?: boolean | null;
 
   created_at?: SortOrder;
