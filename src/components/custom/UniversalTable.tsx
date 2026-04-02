@@ -278,7 +278,10 @@ export function UniversalTable({
       source: mappedFilters.source,
       status: mappedFilters.status,
       assign_to: assignToFilter,
-      priority: mappedFilters.priority,
+      priority:
+        Array.isArray(mappedFilters.priority) && mappedFilters.priority.length > 0
+          ? mappedFilters.priority
+          : undefined,
       siteType: mappedFilters.siteType,
       architectName: mappedFilters.architectName,
       created_at: sortOrder,
@@ -346,7 +349,10 @@ export function UniversalTable({
       source: mappedFilters.source,
 
       assign_to: assignToFilter,
-      priority: mappedFilters.priority,
+      priority:
+        Array.isArray(mappedFilters.priority) && mappedFilters.priority.length > 0
+          ? mappedFilters.priority
+          : undefined,
       site_address: mappedFilters.site_address,
       archetech_name: mappedFilters.archetech_name,
       designer_remark: mappedFilters.designer_remark,
@@ -415,7 +421,10 @@ export function UniversalTable({
       assign_to: Array.isArray(mappedFilters.assign_to)
         ? mappedFilters.assign_to
         : [],
-      priority: mappedFilters.priority,
+      priority:
+        Array.isArray(mappedFilters.priority) && mappedFilters.priority.length > 0
+          ? mappedFilters.priority
+          : undefined,
       site_address: mappedFilters.site_address,
       archetech_name: mappedFilters.archetech_name,
       designer_remark: mappedFilters.designer_remark,

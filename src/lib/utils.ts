@@ -269,7 +269,9 @@ export function mapTableFiltersToPayload(filters: ColumnFiltersState) {
         break;
 
       case "priority":
-        payload.priority = Array.isArray(value) ? value : [value];
+        payload.priority = (Array.isArray(value) ? value : [value])
+          .map((item) => String(item).trim())
+          .filter(Boolean);
         break;
 
       case "sales_executive":
