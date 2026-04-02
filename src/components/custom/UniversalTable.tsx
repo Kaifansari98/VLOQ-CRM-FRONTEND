@@ -71,6 +71,13 @@ const PRODUCTION_STATUS_OPTIONS = [
   { value: "Completed", label: "Completed", dot: "bg-green-500" },
 ];
 
+const PRIORITY_FILTER_OPTIONS = [
+  { value: "all", label: "All Priorities", dot: null },
+  { value: "High", label: "High", dot: "bg-red-500" },
+  { value: "Medium", label: "Medium", dot: "bg-orange-500" },
+  { value: "Low", label: "Low", dot: "bg-yellow-500" },
+];
+
 function ProductionStatusFilter({
   value,
   onChange,
@@ -127,6 +134,80 @@ function ProductionStatusFilter({
       </PopoverTrigger>
       <PopoverContent className="w-52 p-1" align="start">
         {PRODUCTION_STATUS_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => onChange(option.value)}
+            className={`w-full text-left px-3 py-1.5 text-sm rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground flex items-center gap-2 ${
+              value === option.value ? "bg-accent text-accent-foreground font-medium" : ""
+            }`}
+          >
+            {option.dot && (
+              <span className={`h-2 w-2 rounded-full shrink-0 ${option.dot}`} />
+            )}
+            {option.label}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function PriorityQuickFilter({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const isFiltered = value !== "all";
+  const selectedOption = PRIORITY_FILTER_OPTIONS.find((o) => o.value === value);
+  const selectedLabel = selectedOption?.label;
+  const selectedDot = selectedOption?.dot ?? null;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="border-dashed">
+          {isFiltered ? (
+            <div
+              role="button"
+              aria-label="Clear Priority filter"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange("all");
+              }}
+              className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0"
+            >
+              <XCircle className="h-4 w-4" />
+            </div>
+          ) : (
+            <ListFilter className="h-4 w-4 shrink-0" />
+          )}
+          <span className="flex items-center gap-1.5 truncate">
+            <span className="truncate">Priority</span>
+            {isFiltered && (
+              <>
+                <Separator
+                  orientation="vertical"
+                  className="mx-0.5 data-[orientation=vertical]:h-4"
+                />
+                <Badge
+                  variant="secondary"
+                  className="font-normal px-1.5 py-0 h-5 text-xs truncate max-w-[110px] flex items-center gap-1"
+                >
+                  {selectedDot && (
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${selectedDot}`} />
+                  )}
+                  {selectedLabel}
+                </Badge>
+              </>
+            )}
+          </span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-52 p-1" align="start">
+        {PRIORITY_FILTER_OPTIONS.map((option) => (
           <button
             key={option.value}
             onClick={() => onChange(option.value)}
@@ -759,6 +840,33 @@ export function UniversalTable({
     getRowId: getRowId ?? ((row) => row.rowKey ?? row.id.toString()),
   });
 
+  const priorityFilterValue = useMemo(() => {
+    const priorityFilter = activeColumnFilters.find(
+      (filter) => filter.id === "priority",
+    );
+    if (!priorityFilter) return "all";
+
+    const value = priorityFilter.value;
+    if (Array.isArray(value) && value.length > 0) {
+      return String(value[0]);
+    }
+
+    return "all";
+  }, [activeColumnFilters]);
+
+  const handlePriorityFilterChange = (value: string) => {
+    const column = table.getColumn("priority");
+    if (!column) return;
+
+    column.setFilterValue(value === "all" ? [] : [value]);
+
+    if (effectiveViewType === "my") {
+      setMyPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    } else {
+      setOverallPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }
+  };
+
   // -------------------- ROW NAVIGATION --------------------
   const withInstanceId = (path: string, instanceId?: number) => {
     if (!instanceId) return path;
@@ -833,6 +941,12 @@ export function UniversalTable({
             title="Created At"
             multiple
           />
+          {showPriorityColumn && (
+            <PriorityQuickFilter
+              value={priorityFilterValue}
+              onChange={handlePriorityFilterChange}
+            />
+          )}
           {normalizedType === "type 10" && (
             <ProductionStatusFilter
               value={productionStatusFilter}
@@ -891,6 +1005,12 @@ export function UniversalTable({
               title="Created At"
               multiple
             />
+            {showPriorityColumn && (
+              <PriorityQuickFilter
+                value={priorityFilterValue}
+                onChange={handlePriorityFilterChange}
+              />
+            )}
             {normalizedType === "type 10" && (
               <ProductionStatusFilter
                 value={productionStatusFilter}
