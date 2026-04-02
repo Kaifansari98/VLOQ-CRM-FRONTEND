@@ -27,4 +27,5 @@ export type LeadColumn = {
   updatedAt: string; //n
   site_map_link?: string;
   statusTag?: string;
+  priority?: string;
 };

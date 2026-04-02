@@ -561,6 +561,7 @@ export function UniversalTable({
     sales_executive: lead.assignedTo?.user_name ?? "",
     assignedToId: lead.assignedTo?.id ?? "",
     accountId: lead.account?.id ?? lead.account_id ?? 0,
+    priority: lead.priority ?? "",
   });
 
   // -------------------- TABLE DATA --------------------
