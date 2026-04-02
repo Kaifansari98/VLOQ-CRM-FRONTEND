@@ -65,7 +65,7 @@ export function CreateProjectModal({
   onOpenChange,
 }: CreateProjectModalProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
-  const vendorToken = "d17645d6-17cb-48b6-ba32-542892701e37";
+  const vendorToken = "7e7a9dda-cc59-4ec4-b153-cfdc0ddd6b01";
 
   const { mutate: createProject, isPending } = useCreateTrackTraceProject();
 
