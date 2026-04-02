@@ -806,6 +806,11 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 value={lead.siteType?.type}
               />
               <InfoRow icon={Magnet} label="Source" value={lead.source?.type} />
+              <InfoRow
+                icon={Package}
+                label="Priority"
+                value={lead.priority}
+              />
             </div>
           </SectionCard>
 

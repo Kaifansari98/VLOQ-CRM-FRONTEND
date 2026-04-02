@@ -33,6 +33,7 @@ export interface CreateLeadPayload {
   vendor_id: number;
   franchise_id: number;
   created_by: number;
+  priority: string;
   product_types: string[];
   product_structures: string[];
   product_structure_instances?: {
@@ -62,6 +63,7 @@ export interface Lead {
   updated_by: number | null;
   updated_at: string;
   vendor_id: number;
+  priority?: string;
   assign_to: number | null;
   assigned_by: number | null;
   account: Account;

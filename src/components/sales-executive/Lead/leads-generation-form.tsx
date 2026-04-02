@@ -56,6 +56,12 @@ import {
 } from "@/components/ui/tooltip";
 import StructureQuantityCards from "@/components/sales-executive/Lead/structure-quantity-cards";
 
+const priorityOptions = [
+  { id: 1, label: "High", value: "High" },
+  { id: 2, label: "Medium", value: "Medium" },
+  { id: 3, label: "Low", value: "Low" },
+] as const;
+
 // Schema for Create Lead - all fields required as per business logic
 const createFormSchema = (userType: string | undefined) => {
   const isAdminOrSuperAdmin =
@@ -88,6 +94,9 @@ const createFormSchema = (userType: string | undefined) => {
     archetech_name: z.string().max(300).optional(),
     designer_remark: z.string().max(2000).optional(),
     initial_site_measurement_date: z.string().optional(),
+    priority: z.enum(["High", "Medium", "Low"], {
+      message: "Please select a priority",
+    }),
   });
 };
 
@@ -117,6 +126,7 @@ const draftFormSchema = (userType: string | undefined) => {
     archetech_name: z.string().optional(),
     designer_remark: z.string().optional(),
     initial_site_measurement_date: z.string().optional(),
+    priority: z.enum(["High", "Medium", "Low"]).optional(),
   });
 };
 
@@ -175,6 +185,7 @@ export default function LeadsGenerationForm({
       documents: "",
       archetech_name: "",
       designer_remark: "N/A",
+      priority: "Medium",
       assign_to: "",
       assigned_by: "",
     },
@@ -507,6 +518,7 @@ export default function LeadsGenerationForm({
       vendor_id: vendorId,
       franchise_id: franchiseId,
       created_by: createdBy,
+      priority: values.priority || "Medium",
       // ✅ new field
       site_map_link: savedMapLocation
         ? `https://www.google.com/maps?q=${savedMapLocation.lat},${savedMapLocation.lng}`
@@ -601,6 +613,7 @@ export default function LeadsGenerationForm({
       vendor_id: vendorId,
       franchise_id: franchiseId,
       created_by: createdBy,
+      priority: values.priority || undefined,
       site_map_link: savedMapLocation
         ? `https://www.google.com/maps?q=${savedMapLocation.lat},${savedMapLocation.lng}`
         : undefined,
@@ -812,6 +825,36 @@ export default function LeadsGenerationForm({
             }}
           />
 
+          <FormField
+            control={form.control}
+            name="priority"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Priority *</FormLabel>
+                <AssignToPicker
+                  data={priorityOptions.map((option) => ({
+                    id: option.id,
+                    label: option.label,
+                  }))}
+                  value={
+                    priorityOptions.find((option) => option.value === field.value)
+                      ?.id
+                  }
+                  onChange={(selectedId: number | null) => {
+                    const selected = priorityOptions.find(
+                      (option) => option.id === selectedId
+                    );
+                    if (selected) field.onChange(selected.value);
+                  }}
+                  placeholder="Select priority..."
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
           <FormField
             control={form.control}
             name="source_id"
