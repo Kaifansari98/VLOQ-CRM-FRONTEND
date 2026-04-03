@@ -241,6 +241,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const canSeeMiscLeads =
     userType === "admin" ||
     userType === "super-admin" ||
+    userType === "backend" ||
     userType === "factory" ||
     userType === "site-supervisor";
   const vendorId = user?.vendor_id;
