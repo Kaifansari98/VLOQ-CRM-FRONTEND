@@ -92,6 +92,7 @@ export interface LeadProductStructureInstance {
   title: string;
   status: string;
   description?: string | null;
+  production_erd_date?: string | null;
   created_by: number;
   created_at: string;
   updated_by?: number | null;

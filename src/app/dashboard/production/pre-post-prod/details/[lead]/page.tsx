@@ -149,7 +149,7 @@ export default function ProductionLeadDetails() {
   const { data: latestOrderLoginData } = useLatestOrderLoginByLead(
     vendorId,
     Number(leadIdNum),
-    undefined,
+    validInstanceId ?? undefined,
   );
 
   const canMoveReadyToDispatchStage =
@@ -165,6 +165,16 @@ export default function ProductionLeadDetails() {
   const latestOrderLoginDate =
     latestOrderLoginData?.data?.estimated_completion_date ?? null;
 
+  const instances = Array.isArray(instancesResponse?.data)
+    ? instancesResponse?.data
+    : instancesResponse?.data?.data || [];
+
+  const currentInstance = validInstanceId
+    ? instances.find(
+        (instance: any) => Number(instance?.id) === validInstanceId,
+      )
+    : null;
+
   useEffect(() => {
     if (
       !latestOrderLoginDate ||
@@ -179,11 +189,17 @@ export default function ProductionLeadDetails() {
     const computedDate = baseDate.toISOString().split("T")[0];
 
     // 2️⃣ Normalize expected date and latest order login date to day strings
-    const expectedDate = lead?.expected_order_login_ready_date
-      ? new Date(lead.expected_order_login_ready_date)
+    const expectedDate = validInstanceId
+      ? currentInstance?.production_erd_date
+        ? new Date(currentInstance.production_erd_date)
+            .toISOString()
+            .split("T")[0]
+        : undefined
+      : lead?.expected_order_login_ready_date
+        ? new Date(lead.expected_order_login_ready_date)
           .toISOString()
           .split("T")[0]
-      : undefined;
+        : undefined;
 
     const latestDate = new Date(latestOrderLoginDate)
       .toISOString()
@@ -212,7 +228,9 @@ export default function ProductionLeadDetails() {
     latestOrderLoginDate,
     postProductionStatus?.all_order_login_dates_added,
     lead?.expected_order_login_ready_date, // ✅ Only this specific field
+    currentInstance?.production_erd_date,
     lead?.id, // ✅ To ensure lead is loaded
+    validInstanceId,
   ]);
 
   const leadCode = lead?.lead_code ?? "";
@@ -249,10 +267,6 @@ export default function ProductionLeadDetails() {
     validInstanceId ?? undefined,
   );
 
-  const instances = Array.isArray(instancesResponse?.data)
-    ? instancesResponse?.data
-    : instancesResponse?.data?.data || [];
-
   const totalInstanceCount = instances.length;
   const instanceSuffix =
     validInstanceId && totalInstanceCount > 1
@@ -267,12 +281,6 @@ export default function ProductionLeadDetails() {
         (instance: any) => Number(instance?.id) === validInstanceId,
       )?.title ?? "")
     : "";
-
-  const currentInstance = validInstanceId
-    ? instances.find(
-        (instance: any) => Number(instance?.id) === validInstanceId,
-      )
-    : null;
 
   const incompleteInstances = instances.filter(
     (instance: any) => instance?.is_production_completed !== true,
@@ -350,6 +358,7 @@ export default function ProductionLeadDetails() {
         leadId: leadIdNum,
         expected_order_login_ready_date: newDate,
         updated_by: userId,
+        instance_id: validInstanceId,
       });
 
       toastManager.add({
@@ -358,7 +367,18 @@ export default function ProductionLeadDetails() {
       });
       queryClient.invalidateQueries({ queryKey: ["leadById", leadIdNum] });
       queryClient.invalidateQueries({
+        queryKey: ["lead-product-structure-instances", leadIdNum, vendorId],
+      });
+      queryClient.invalidateQueries({
         queryKey: ["postProductionReady", vendorId, leadIdNum],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [
+          "latestOrderLogin",
+          vendorId,
+          leadIdNum,
+          validInstanceId ?? undefined,
+        ],
       });
     } catch (err: any) {
       toastManager.add({
@@ -727,7 +747,9 @@ export default function ProductionLeadDetails() {
             </label>
             <CustomeDatePicker
               value={
-                lead?.expected_order_login_ready_date ||
+                (validInstanceId
+                  ? currentInstance?.production_erd_date
+                  : lead?.expected_order_login_ready_date) ||
                 (postProductionStatus?.all_order_login_dates_added &&
                 latestOrderLoginDate
                   ? (() => {
