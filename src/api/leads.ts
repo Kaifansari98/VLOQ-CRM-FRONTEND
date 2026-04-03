@@ -92,6 +92,11 @@ export interface LeadProductStructureInstance {
   title: string;
   status: string;
   description?: string | null;
+  is_order_login_filled?: boolean | null;
+  is_pre_prod_done?: boolean | null;
+  is_under_production?: boolean | null;
+  is_post_production?: boolean | null;
+  is_production_completed?: boolean | null;
   production_erd_date?: string | null;
   created_by: number;
   created_at: string;
