@@ -42,6 +42,7 @@ export interface ProductStructureInstance {
   pre_prod_done_at?: string | null;
   is_under_production?: boolean | null;
   under_production_at?: string | null;
+  is_post_production?: boolean | null;
   is_production_completed?: boolean | null;
   productStructure?: ProductStructure | null;
 }

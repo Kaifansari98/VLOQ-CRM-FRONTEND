@@ -309,6 +309,8 @@ export function getUniversalTableColumns(
               const dotColor =
                 status === "Completed"
                   ? "bg-green-500"
+                  : status === "Post Production"
+                    ? "bg-violet-500"
                   : status === "Under Production"
                     ? "bg-orange-500"
                     : status === "Pre Prod Done"

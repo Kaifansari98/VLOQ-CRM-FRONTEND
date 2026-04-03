@@ -68,6 +68,7 @@ const PRODUCTION_STATUS_OPTIONS = [
   { value: "Pending", label: "Pending", dot: "bg-blue-500" },
   { value: "Pre Prod Done", label: "Pre Prod Done", dot: "bg-yellow-400" },
   { value: "Under Production", label: "Under Production", dot: "bg-orange-500" },
+  { value: "Post Production", label: "Post Production", dot: "bg-violet-500" },
   { value: "Completed", label: "Completed", dot: "bg-green-500" },
 ];
 
@@ -718,6 +719,8 @@ export function UniversalTable({
             productionStatus: isType10
               ? onlyInstance?.is_production_completed
                 ? "Completed"
+                : onlyInstance?.is_post_production
+                  ? "Post Production"
                 : onlyInstance?.is_under_production
                   ? "Under Production"
                   : onlyInstance?.is_pre_prod_done
@@ -750,6 +753,8 @@ export function UniversalTable({
             productionStatus: isType10
               ? instance?.is_production_completed
                 ? "Completed"
+                : instance?.is_post_production
+                  ? "Post Production"
                 : instance?.is_under_production
                   ? "Under Production"
                   : instance?.is_pre_prod_done
