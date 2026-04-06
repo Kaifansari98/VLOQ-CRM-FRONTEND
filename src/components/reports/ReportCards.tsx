@@ -8,6 +8,7 @@ import { ReportFilterModal, type ReportFilters } from "./ReportFilterModal";
 import { useAppSelector } from "@/redux/store";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { generateEmployeeTaskReport } from "@/lib/reports/employeeTaskReport";
+import { generateLeadTrackingReport } from "@/lib/reports/leadTrackingReport";
 import { generateInstallationReport } from "@/lib/reports/installationReport";
 import { generateMiscIssueLogReport } from "@/lib/reports/miscIssueLogReport";
 import { generateLeadsOverviewReport } from "@/lib/reports/leadsOverviewReport";
@@ -24,10 +25,9 @@ const REPORTS = [
   },
   {
     id: "lead-tracking",
-    title: "Lead Tracking Reports",
+    title: "Lead Tracking Report",
     description: "Monitor lead movement across all pipeline stages from open to closure.",
-    active: false,
-    userTypes: [],
+    userTypes: ["sales-executive", "site-supervisor", "factory", "backend", "pre-prod", "tech-check"],
   },
   {
     id: "installation",
@@ -312,6 +312,40 @@ export function ReportCards() {
         const msg =
           err instanceof Error ? err.message : "Failed to generate report.";
         toast.error(msg);
+      } finally {
+        clearStage(reportId);
+      }
+      return;
+    }
+
+    if (reportId === "lead-tracking") {
+      const filters = appliedFilters[reportId];
+      if (!filters?.userId) {
+        toast.error("Please apply filters before downloading.");
+        openFilterModal(reportId);
+        return;
+      }
+
+      const rawFranchiseId = filters._franchiseId ?? adminFranchiseId ?? "all";
+      const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
+      const userId = filters.userId === "all" ? "all" : Number(filters.userId);
+
+      setStage(reportId, "Fetching tracking data...");
+      try {
+        await generateLeadTrackingReport({
+          vendorId,
+          vendorReportCode,
+          userId,
+          userType: filters.userType,
+          franchiseId,
+          fromDate: filters.fromDate,
+          toDate: filters.toDate,
+          onProgress: (stage) => setStage(reportId, stage),
+        });
+        toast.success("Report downloaded successfully.");
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to generate report.");
       } finally {
         clearStage(reportId);
       }
