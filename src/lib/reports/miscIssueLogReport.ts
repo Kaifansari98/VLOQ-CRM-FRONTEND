@@ -7,6 +7,7 @@ interface GenerateMiscIssueLogReportParams {
   vendorId: number;
   vendorReportCode: string;
   franchiseId: number | "all";
+  leadId?: number | null;
   fromDate: string;
   toDate: string;
   onProgress?: (stage: string) => void;
@@ -34,11 +35,13 @@ interface MiscIssueLogRow {
 async function fetchReportData(
   vendorId: number,
   franchiseId: number | null,
+  leadId: number | null,
   fromDate: string,
   toDate: string,
 ): Promise<MiscIssueLogRow[]> {
   const params: Record<string, string> = {};
   if (franchiseId !== null) params.franchise_id = String(franchiseId);
+  if (leadId !== null) params.lead_id = String(leadId);
   if (fromDate) params.from_date = fromDate;
   if (toDate) params.to_date = toDate;
 
@@ -64,14 +67,14 @@ function formatDate(dateStr: string | null | undefined): string {
 export async function generateMiscIssueLogReport(
   params: GenerateMiscIssueLogReportParams,
 ) {
-  const { vendorId, franchiseId, fromDate, toDate, onProgress } = params;
+  const { vendorId, franchiseId, leadId = null, fromDate, toDate, onProgress } = params;
 
   onProgress?.("Fetching misc and issue logs...");
 
   const rows =
     franchiseId === "all"
-      ? await fetchReportData(vendorId, null, fromDate, toDate)
-      : await fetchReportData(vendorId, franchiseId, fromDate, toDate);
+      ? await fetchReportData(vendorId, null, leadId, fromDate, toDate)
+      : await fetchReportData(vendorId, franchiseId, leadId, fromDate, toDate);
 
   if (rows.length === 0) {
     throw new Error(

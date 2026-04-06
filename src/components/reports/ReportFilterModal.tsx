@@ -127,6 +127,8 @@ export function ReportFilterModal({
 
   const selectedUserType = filters.userType;
   const isInstallationReport = reportTitle === "Installation Report";
+  const isMiscIssueLogReport = reportTitle === "Miscl + Issue Log Report";
+  const supportsLeadFilter = isInstallationReport || isMiscIssueLogReport;
   const isAllFranchise = selectedFranchiseId === "all";
   const isAllUserType = selectedUserType === "all";
   const isVendorLevel = VENDOR_LEVEL_TYPES.includes(selectedUserType) || isAllFranchise;
@@ -139,9 +141,9 @@ export function ReportFilterModal({
   const { data: franchises = [] } = useFranchisesByVendorId(vendorId, isSuperAdmin);
 
   const { data: vendorLeads = [], isLoading: isLeadsLoading } = useQuery({
-    queryKey: ["report-installation-leads", vendorId],
+    queryKey: ["report-filter-leads", vendorId],
     queryFn: () => getVendorLeads(vendorId),
-    enabled: !!vendorId && isInstallationReport,
+    enabled: !!vendorId && supportsLeadFilter,
   });
 
   // Sales Executive — franchise-aware
@@ -195,8 +197,8 @@ export function ReportFilterModal({
     }
   }, [selectedUserType, salesData, siteSuperData, factoryData, backendData, techCheckData]);
 
-  const installationLeadOptions = useMemo(() => {
-    if (!isInstallationReport) return [];
+  const leadOptions = useMemo(() => {
+    if (!supportsLeadFilter) return [];
 
     return (vendorLeads as Lead[])
       .filter((lead) => {
@@ -214,7 +216,7 @@ export function ReportFilterModal({
           lead.lead_code?.slice(0, 2).toUpperCase() ||
           "LD",
       }));
-  }, [isInstallationReport, selectedFranchiseId, vendorLeads]);
+  }, [selectedFranchiseId, supportsLeadFilter, vendorLeads]);
 
   const isUsersLoading =
     isSalesLoading || isSiteSuperLoading || isFactoryLoading || isBackendLoading || isTechCheckLoading;
@@ -229,7 +231,7 @@ export function ReportFilterModal({
     !franchiseChosen ||
     isAllUserType ||
     isAllFranchise;
-  const leadSelectDisabled = showFranchiseSelect ? isAllFranchise : false;
+  const leadSelectDisabled = !supportsLeadFilter || (showFranchiseSelect ? isAllFranchise : false);
 
   const syncDraft = (nextFilters: ReportFilters, franchiseId: string = selectedFranchiseId) => {
     onDraftChange?.({
@@ -253,7 +255,7 @@ export function ReportFilterModal({
   const handleApply = () => {
     const resolvedUserId = isAllUserType || isAllFranchise ? "all" : filters.userId;
     const selectedUser = userOptions.find((u) => String(u.id) === filters.userId);
-    const selectedLead = installationLeadOptions.find(
+    const selectedLead = leadOptions.find(
       (lead) => String(lead.id) === filters.leadId,
     );
     const resolvedFranchiseId: ReportFilters["_franchiseId"] = isAllFranchise
@@ -334,7 +336,7 @@ export function ReportFilterModal({
           </div>
         )}
 
-        {isInstallationReport && (
+        {supportsLeadFilter && (
           <div className="space-y-1">
             <Label className="text-xs">Filter by Leads</Label>
             <Tooltip>
@@ -348,7 +350,7 @@ export function ReportFilterModal({
                         leadId: val ? String(val) : "",
                       }))
                     }
-                    data={installationLeadOptions}
+                    data={leadOptions}
                     disabled={leadSelectDisabled}
                     emptyLabel={
                       leadSelectDisabled
