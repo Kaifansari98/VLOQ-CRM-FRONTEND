@@ -16,6 +16,7 @@ interface GenerateMiscIssueLogReportParams {
 interface MiscIssueLogRow {
   row_type: "misc" | "issue";
   row_id: number;
+  lead_id: number;
   lead_code: string | null;
   client_name: string | null;
   franchise_store: string | null;

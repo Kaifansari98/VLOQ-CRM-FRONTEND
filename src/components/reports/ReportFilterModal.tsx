@@ -25,6 +25,11 @@ import { apiClient } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
+interface ReportLeadAvailabilityRow {
+  id?: number;
+  lead_id?: number;
+}
+
 const USER_TYPE_LABELS: Record<string, string> = {
   "sales-executive": "Sales Executive",
   "site-supervisor": "Site Supervisor",
@@ -146,6 +151,40 @@ export function ReportFilterModal({
     enabled: !!vendorId && supportsLeadFilter,
   });
 
+  const { data: reportLeadRows = [] } = useQuery({
+    queryKey: [
+      "report-lead-availability",
+      reportTitle,
+      vendorId,
+      activeFranchiseId ?? "all",
+    ],
+    queryFn: async () => {
+      const params =
+        activeFranchiseId !== undefined
+          ? { params: { franchise_id: activeFranchiseId } }
+          : undefined;
+
+      if (isInstallationReport) {
+        const { data } = await apiClient.get(
+          `/leads/installation/under-installation/vendorId/${vendorId}/report/installation-data`,
+          params,
+        );
+        return (data?.data ?? []) as ReportLeadAvailabilityRow[];
+      }
+
+      if (isMiscIssueLogReport) {
+        const { data } = await apiClient.get(
+          `/leads/installation/under-installation/vendorId/${vendorId}/report/misc-issue-log-data`,
+          params,
+        );
+        return (data?.data ?? []) as ReportLeadAvailabilityRow[];
+      }
+
+      return [] as ReportLeadAvailabilityRow[];
+    },
+    enabled: !!vendorId && supportsLeadFilter,
+  });
+
   // Sales Executive — franchise-aware
   const { data: salesData, isLoading: isSalesLoading } = useVendorSalesExecutiveUsers(
     vendorId,
@@ -197,11 +236,20 @@ export function ReportFilterModal({
     }
   }, [selectedUserType, salesData, siteSuperData, factoryData, backendData, techCheckData]);
 
+  const eligibleLeadIds = useMemo(() => {
+    return new Set(
+      reportLeadRows
+        .map((row) => row.id ?? row.lead_id)
+        .filter((leadId): leadId is number => typeof leadId === "number"),
+    );
+  }, [reportLeadRows]);
+
   const leadOptions = useMemo(() => {
     if (!supportsLeadFilter) return [];
 
     return (vendorLeads as Lead[])
       .filter((lead) => {
+        if (!eligibleLeadIds.has(lead.id)) return false;
         if (!selectedFranchiseId || selectedFranchiseId === "all") return true;
         return Number(lead.franchise_id) === Number(selectedFranchiseId);
       })
@@ -216,7 +264,7 @@ export function ReportFilterModal({
           lead.lead_code?.slice(0, 2).toUpperCase() ||
           "LD",
       }));
-  }, [selectedFranchiseId, supportsLeadFilter, vendorLeads]);
+  }, [eligibleLeadIds, selectedFranchiseId, supportsLeadFilter, vendorLeads]);
 
   const isUsersLoading =
     isSalesLoading || isSiteSuperLoading || isFactoryLoading || isBackendLoading || isTechCheckLoading;
