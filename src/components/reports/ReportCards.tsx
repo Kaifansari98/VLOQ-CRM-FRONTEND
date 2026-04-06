@@ -161,6 +161,7 @@ export function ReportCards() {
         await generateInstallationReport({
           vendorId,
           franchiseId,
+          leadId: filters?.leadId ? Number(filters.leadId) : null,
           franchiseName,
           fromDate: filters?.fromDate ?? "",
           toDate: filters?.toDate ?? "",

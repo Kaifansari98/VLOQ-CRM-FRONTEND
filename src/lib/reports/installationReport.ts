@@ -5,6 +5,7 @@ import { apiClient } from "@/lib/apiClient";
 interface GenerateInstallationReportParams {
   vendorId: number;
   franchiseId: number | "all";
+  leadId?: number | null;
   franchiseName: string;
   fromDate: string;
   toDate: string;
@@ -33,11 +34,13 @@ interface InstallationReportLead {
 async function fetchReportData(
   vendorId: number,
   franchiseId: number | null,
+  leadId: number | null,
   fromDate: string,
   toDate: string,
 ): Promise<InstallationReportLead[]> {
   const params: Record<string, string> = {};
   if (franchiseId !== null) params.franchise_id = String(franchiseId);
+  if (leadId !== null) params.lead_id = String(leadId);
   if (fromDate) params.from_date = fromDate;
   if (toDate) params.to_date = toDate;
 
@@ -75,7 +78,7 @@ function daysBetween(from: string | null | undefined, to: string | null | undefi
 }
 
 export async function generateInstallationReport(params: GenerateInstallationReportParams) {
-  const { vendorId, franchiseId, fromDate, toDate, allFranchises = [], onProgress } = params;
+  const { vendorId, franchiseId, leadId = null, fromDate, toDate, allFranchises = [], onProgress } = params;
 
   console.log("[InstallationReport] Starting report generation", params);
 
@@ -85,9 +88,9 @@ export async function generateInstallationReport(params: GenerateInstallationRep
 
   if (franchiseId === "all") {
     // Fetch all franchises together (backend handles null = all)
-    leads = await fetchReportData(vendorId, null, fromDate, toDate);
+    leads = await fetchReportData(vendorId, null, leadId, fromDate, toDate);
   } else {
-    leads = await fetchReportData(vendorId, franchiseId, fromDate, toDate);
+    leads = await fetchReportData(vendorId, franchiseId, leadId, fromDate, toDate);
   }
 
   console.log(`[InstallationReport] Total leads fetched: ${leads.length}`);

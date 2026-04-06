@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import type { DateRange } from "react-day-picker";
+import ReportAssignToPicker from "@/components/reports/ReportAssignToPicker";
 import BaseModal from "@/components/utils/baseModal";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -13,16 +14,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAppSelector } from "@/redux/store";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
+import { getVendorLeads, type Lead } from "@/api/leads";
 import { useBackendUsers, useTechCheckUsers } from "@/api/client-approval";
 import { useFactoryUsers } from "@/api/production/order-login";
 import { useQuery } from "@tanstack/react-query";
@@ -47,10 +42,12 @@ const VENDOR_LEVEL_TYPES = ["factory", "backend", "tech-check", "pre-prod"];
 export interface ReportFilters {
   userType: string;       // specific type or "all"
   userId: string;         // specific id or "all"
+  leadId?: string;
   fromDate: string;
   toDate: string;
   _franchiseId?: number | "all";
   _employeeName?: string;
+  _leadName?: string;
 }
 
 const DEFAULT_FILTERS: ReportFilters = {
@@ -129,6 +126,7 @@ export function ReportFilterModal({
   }, [filters.fromDate, filters.toDate]);
 
   const selectedUserType = filters.userType;
+  const isInstallationReport = reportTitle === "Installation Report";
   const isAllFranchise = selectedFranchiseId === "all";
   const isAllUserType = selectedUserType === "all";
   const isVendorLevel = VENDOR_LEVEL_TYPES.includes(selectedUserType) || isAllFranchise;
@@ -139,6 +137,12 @@ export function ReportFilterModal({
     : adminFranchiseId ?? undefined;
 
   const { data: franchises = [] } = useFranchisesByVendorId(vendorId, isSuperAdmin);
+
+  const { data: vendorLeads = [], isLoading: isLeadsLoading } = useQuery({
+    queryKey: ["report-installation-leads", vendorId],
+    queryFn: () => getVendorLeads(vendorId),
+    enabled: !!vendorId && isInstallationReport,
+  });
 
   // Sales Executive — franchise-aware
   const { data: salesData, isLoading: isSalesLoading } = useVendorSalesExecutiveUsers(
@@ -191,6 +195,23 @@ export function ReportFilterModal({
     }
   }, [selectedUserType, salesData, siteSuperData, factoryData, backendData, techCheckData]);
 
+  const installationLeadOptions = useMemo(() => {
+    if (!isInstallationReport) return [];
+
+    return (vendorLeads as Lead[])
+      .filter((lead) => {
+        if (!selectedFranchiseId || selectedFranchiseId === "all") return true;
+        return Number(lead.franchise_id) === Number(selectedFranchiseId);
+      })
+      .map((lead) => ({
+        id: String(lead.id),
+        label:
+          `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim() ||
+          lead.lead_code ||
+          `Lead ${lead.id}`,
+      }));
+  }, [isInstallationReport, selectedFranchiseId, vendorLeads]);
+
   const isUsersLoading =
     isSalesLoading || isSiteSuperLoading || isFactoryLoading || isBackendLoading || isTechCheckLoading;
 
@@ -204,6 +225,7 @@ export function ReportFilterModal({
     !franchiseChosen ||
     isAllUserType ||
     isAllFranchise;
+  const leadSelectDisabled = showFranchiseSelect ? isAllFranchise : false;
 
   const syncDraft = (nextFilters: ReportFilters, franchiseId: string = selectedFranchiseId) => {
     onDraftChange?.({
@@ -227,6 +249,9 @@ export function ReportFilterModal({
   const handleApply = () => {
     const resolvedUserId = isAllUserType || isAllFranchise ? "all" : filters.userId;
     const selectedUser = userOptions.find((u) => String(u.id) === filters.userId);
+    const selectedLead = installationLeadOptions.find(
+      (lead) => String(lead.id) === filters.leadId,
+    );
     const resolvedFranchiseId: ReportFilters["_franchiseId"] = isAllFranchise
       ? "all"
       : selectedFranchiseId
@@ -237,6 +262,7 @@ export function ReportFilterModal({
       userId: resolvedUserId,
       _franchiseId: resolvedFranchiseId,
       _employeeName: resolvedUserId === "all" ? "All" : (selectedUser?.user_name ?? ""),
+      _leadName: selectedLead?.label ?? "",
     };
     onApply(nextFilters);
     onDraftChange?.(nextFilters);
@@ -275,32 +301,68 @@ export function ReportFilterModal({
         {showFranchiseSelect && (
           <div className="space-y-1">
             <Label className="text-xs">Filter by Franchise</Label>
-            <Select
+            <ReportAssignToPicker
               value={selectedFranchiseId}
-              onValueChange={(val) => {
-                setSelectedFranchiseId(val);
-                updateFilters((prev) => ({
-                  ...prev,
-                  userType: val === "all" ? "all" : "",
-                  userId: "all",
-                  _franchiseId: val === "all" ? "all" : Number(val),
-                }), val);
+              onChange={(val) => {
+                const nextValue = String(val ?? "");
+                setSelectedFranchiseId(nextValue);
+                updateFilters(
+                  (prev) => ({
+                    ...prev,
+                    userType: nextValue === "all" ? "all" : "",
+                    userId: "all",
+                    leadId: "",
+                    _franchiseId: nextValue === "all" ? "all" : Number(nextValue),
+                  }),
+                  nextValue,
+                );
               }}
-            >
-              <SelectTrigger className="w-full h-8 text-xs">
-                <SelectValue placeholder="Select franchise" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-xs font-medium">
-                  All Franchises
-                </SelectItem>
-                {franchises.map((f) => (
-                  <SelectItem key={f.id} value={String(f.id)} className="text-xs">
-                    {f.franchise_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              data={[
+                { id: "all", label: "All Franchises" },
+                ...franchises.map((f) => ({
+                  id: String(f.id),
+                  label: f.franchise_name,
+                })),
+              ]}
+              emptyLabel="Select franchise"
+              placeholder="Search franchise..."
+            />
+          </div>
+        )}
+
+        {isInstallationReport && (
+          <div className="space-y-1">
+            <Label className="text-xs">Filter by Leads</Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="block w-full">
+                  <ReportAssignToPicker
+                    value={filters.leadId}
+                    onChange={(val) =>
+                      updateFilters((prev) => ({
+                        ...prev,
+                        leadId: val ? String(val) : "",
+                      }))
+                    }
+                    data={installationLeadOptions}
+                    disabled={leadSelectDisabled}
+                    emptyLabel={
+                      leadSelectDisabled
+                        ? "Select a franchise first"
+                        : isLeadsLoading
+                          ? "Loading leads..."
+                          : "Select lead"
+                    }
+                    placeholder="Search lead..."
+                  />
+                </span>
+              </TooltipTrigger>
+              {leadSelectDisabled && (
+                <TooltipContent side="top">
+                  Lead filter is enabled only when a specific franchise is selected.
+                </TooltipContent>
+              )}
+            </Tooltip>
           </div>
         )}
 
@@ -312,31 +374,30 @@ export function ReportFilterModal({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="block w-full">
-                    <Select
+                    <ReportAssignToPicker
                       value={filters.userType}
                       disabled={showFranchiseSelect && !selectedFranchiseId}
-                      onValueChange={(val) =>
+                      onChange={(val) =>
                         updateFilters((prev) => ({
                           ...prev,
-                          userType: val,
-                          userId: val === "all" ? "all" : "",
+                          userType: String(val ?? ""),
+                          userId: String(val) === "all" ? "all" : "",
                         }))
                       }
-                    >
-                      <SelectTrigger className="w-full h-8 text-xs">
-                        <SelectValue placeholder={showFranchiseSelect && !selectedFranchiseId ? "Select a franchise first" : "Select user type"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all" className="text-xs font-medium">
-                          All User Types
-                        </SelectItem>
-                        {userTypes.map((value) => (
-                          <SelectItem key={value} value={value} className="text-xs">
-                            {USER_TYPE_LABELS[value] ?? value}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      data={[
+                        { id: "all", label: "All User Types" },
+                        ...userTypes.map((value) => ({
+                          id: value,
+                          label: USER_TYPE_LABELS[value] ?? value,
+                        })),
+                      ]}
+                      emptyLabel={
+                        showFranchiseSelect && !selectedFranchiseId
+                          ? "Select a franchise first"
+                          : "Select user type"
+                      }
+                      placeholder="Search user type..."
+                    />
                   </span>
                 </TooltipTrigger>
                 {showFranchiseSelect && !selectedFranchiseId && (
@@ -350,42 +411,32 @@ export function ReportFilterModal({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="block w-full">
-                    <Select
+                    <ReportAssignToPicker
                       value={filters.userId}
-                      onValueChange={(val) =>
-                        updateFilters((prev) => ({ ...prev, userId: val }))
+                      onChange={(val) =>
+                        updateFilters((prev) => ({
+                          ...prev,
+                          userId: val ? String(val) : "",
+                        }))
                       }
                       disabled={userSelectDisabled}
-                    >
-                      <SelectTrigger className="w-full h-8 text-xs">
-                        <SelectValue
-                          placeholder={
-                            showFranchiseSelect && !selectedFranchiseId
-                              ? "Select a franchise first"
-                              : !selectedUserType
-                              ? "Select a user type first"
-                              : isAllUserType || isAllFranchise
+                      data={userOptions.map((u) => ({
+                        id: String(u.id),
+                        label: u.user_name,
+                      }))}
+                      emptyLabel={
+                        showFranchiseSelect && !selectedFranchiseId
+                          ? "Select a franchise first"
+                          : !selectedUserType
+                            ? "Select a user type first"
+                            : isAllUserType || isAllFranchise
                               ? "All Users"
                               : isUsersLoading
-                              ? "Loading users..."
-                              : "Select user"
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {userOptions.length === 0 ? (
-                          <div className="px-3 py-2 text-xs text-muted-foreground">
-                            No users found
-                          </div>
-                        ) : (
-                          userOptions.map((u) => (
-                            <SelectItem key={u.id} value={String(u.id)} className="text-xs">
-                              {u.user_name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+                                ? "Loading users..."
+                                : "Select user"
+                      }
+                      placeholder="Search user..."
+                    />
                   </span>
                 </TooltipTrigger>
                 {userSelectDisabled && (

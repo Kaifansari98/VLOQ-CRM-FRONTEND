@@ -63,6 +63,7 @@ export interface Lead {
   updated_by: number | null;
   updated_at: string;
   vendor_id: number;
+  franchise_id?: number | null;
   priority?: string;
   assign_to: number | null;
   assigned_by: number | null;
