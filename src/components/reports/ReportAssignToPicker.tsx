@@ -21,6 +21,8 @@ import {
 interface SelectData {
   id: number | string;
   label: string;
+  description?: string;
+  avatarText?: string;
 }
 
 interface SelectGroup {
@@ -61,6 +63,38 @@ export default function ReportAssignToPicker({
   const stringValue =
     value !== undefined && value !== null ? String(value) : "";
   const selectedItem = groupedData.find((item) => item.id === value);
+
+  const renderItemContent = (item: SelectData) => {
+    const isSelected = value === item.id;
+
+    if (!item.description && !item.avatarText) {
+      return (
+        <>
+          {item.label}
+          {isSelected && <CheckIcon size={16} className="ml-auto" />}
+        </>
+      );
+    }
+
+    return (
+      <div className="flex w-full items-center gap-3">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
+          {item.avatarText ?? item.label.slice(0, 2).toUpperCase()}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium text-foreground">
+            {item.label}
+          </div>
+          {item.description && (
+            <div className="truncate text-xs text-muted-foreground">
+              {item.description}
+            </div>
+          )}
+        </div>
+        {isSelected && <CheckIcon size={16} className="shrink-0 text-foreground" />}
+      </div>
+    );
+  };
 
   return (
     <div className="relative *:not-first:mt-2 group">
@@ -113,16 +147,13 @@ export default function ReportAssignToPicker({
                         {group.items.map((item) => (
                           <CommandItem
                             key={item.id}
-                            value={item.label.toLowerCase()}
+                            value={`${item.label} ${item.description ?? ""}`.toLowerCase()}
                             onSelect={() => {
                               setOpen(false);
                               onChange?.(value === item.id ? null : item.id);
                             }}
                           >
-                            {item.label}
-                            {value === item.id && (
-                              <CheckIcon size={16} className="ml-auto" />
-                            )}
+                            {renderItemContent(item)}
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -132,16 +163,13 @@ export default function ReportAssignToPicker({
                     {data.map((item) => (
                       <CommandItem
                         key={item.id}
-                        value={item.label.toLowerCase()}
+                        value={`${item.label} ${item.description ?? ""}`.toLowerCase()}
                         onSelect={() => {
                           setOpen(false);
                           onChange?.(value === item.id ? null : item.id);
                         }}
                       >
-                        {item.label}
-                        {value === item.id && (
-                          <CheckIcon size={16} className="ml-auto" />
-                        )}
+                        {renderItemContent(item)}
                       </CommandItem>
                     ))}
                   </CommandGroup>

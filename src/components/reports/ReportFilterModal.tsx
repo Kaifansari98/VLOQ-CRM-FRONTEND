@@ -209,6 +209,10 @@ export function ReportFilterModal({
           `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim() ||
           lead.lead_code ||
           `Lead ${lead.id}`,
+        description: lead.lead_code || `Lead ${lead.id}`,
+        avatarText: `${lead.firstname?.[0] ?? ""}${lead.lastname?.[0] ?? ""}`.trim().toUpperCase() ||
+          lead.lead_code?.slice(0, 2).toUpperCase() ||
+          "LD",
       }));
   }, [isInstallationReport, selectedFranchiseId, vendorLeads]);
 
