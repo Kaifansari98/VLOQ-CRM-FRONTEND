@@ -73,12 +73,7 @@ function buildTechCheckSheet(
   rows: TechCheckStageReportRow[],
   sheetName: string,
 ) {
-  const maxCycles = rows.reduce(
-    (max, row) =>
-      Math.max(max, row.rejection_dates.length, row.revised_upload_dates.length),
-    0,
-  );
-  const visibleCycles = Math.min(maxCycles, 4);
+  const visibleCycles = 5;
 
   const sheet = workbook.addWorksheet(sheetName);
   const baseHeaders = [
@@ -88,18 +83,13 @@ function buildTechCheckSheet(
     "Franchise Store",
     "TechCheck Req Date",
   ];
-  const rejectionHeaders = Array.from(
-    { length: visibleCycles },
-    (_, index) => `${ordinalLabel(index)} rejection Date/Time`,
-  );
-  const revisedUploadHeaders = Array.from(
-    { length: visibleCycles },
-    (_, index) => `${ordinalLabel(index)} Revised File Uploaded Date/Time`,
-  );
+  const cycleHeaders = Array.from({ length: visibleCycles }, (_, index) => [
+    `${ordinalLabel(index)} rejection Date/Time`,
+    `${ordinalLabel(index)} Revised File Uploaded Date/Time`,
+  ]).flat();
   const headers = [
     ...baseHeaders,
-    ...rejectionHeaders,
-    ...revisedUploadHeaders,
+    ...cycleHeaders,
     "Techcheck Approved Date",
   ];
 
@@ -152,14 +142,10 @@ function buildTechCheckSheet(
   headerRow.height = 32;
 
   rows.forEach((entry, index) => {
-    const rejectionValues = Array.from(
-      { length: visibleCycles },
-      (_, cycleIndex) => formatDateTime(entry.rejection_dates[cycleIndex]),
-    );
-    const revisedUploadValues = Array.from(
-      { length: visibleCycles },
-      (_, cycleIndex) => formatDateTime(entry.revised_upload_dates[cycleIndex]),
-    );
+    const cycleValues = Array.from({ length: visibleCycles }, (_, cycleIndex) => [
+      formatDateTime(entry.rejection_dates[cycleIndex]),
+      formatDateTime(entry.revised_upload_dates[cycleIndex]),
+    ]).flat();
 
     const row = sheet.addRow([
       index + 1,
@@ -167,8 +153,7 @@ function buildTechCheckSheet(
       entry.client_name,
       entry.franchise_store,
       formatDateTime(entry.tech_check_req_date),
-      ...rejectionValues,
-      ...revisedUploadValues,
+      ...cycleValues,
       formatDateTime(entry.tech_check_approved_date),
     ]);
 
