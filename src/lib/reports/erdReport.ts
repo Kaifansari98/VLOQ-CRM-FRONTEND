@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { apiClient } from "@/lib/apiClient";
-import { buildReportFileName } from "@/lib/reports/fileName";
+import { buildReportFileName, buildSheetName } from "@/lib/reports/fileName";
 
 interface GenerateErdReportParams {
   vendorId: number;
@@ -50,27 +50,12 @@ function formatDate(dateStr: string | null | undefined): string {
   });
 }
 
-export async function generateErdReport(params: GenerateErdReportParams) {
-  const { vendorId, franchiseId, fromDate, toDate, onProgress } = params;
-
-  onProgress?.("Fetching ERD data...");
-
-  const rows =
-    franchiseId === "all"
-      ? await fetchReportData(vendorId, null, fromDate, toDate)
-      : await fetchReportData(vendorId, franchiseId, fromDate, toDate);
-
-  if (rows.length === 0) {
-    throw new Error("No ERD rows found for the selected filters.");
-  }
-
-  onProgress?.("Building Excel report...");
-
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = "FurnixCRM";
-  workbook.created = new Date();
-
-  const sheet = workbook.addWorksheet("ERD Report");
+function buildErdSheet(
+  workbook: ExcelJS.Workbook,
+  rows: ErdReportRow[],
+  sheetName: string,
+) {
+  const sheet = workbook.addWorksheet(sheetName);
   const headers = [
     "Sr. No.",
     "Lead Code",
@@ -158,6 +143,54 @@ export async function generateErdReport(params: GenerateErdReportParams) {
       }
     });
   });
+}
+
+export async function generateErdReport(params: GenerateErdReportParams) {
+  const { vendorId, franchiseId, fromDate, toDate, onProgress } = params;
+
+  onProgress?.("Fetching ERD data...");
+
+  const rows =
+    franchiseId === "all"
+      ? await fetchReportData(vendorId, null, fromDate, toDate)
+      : await fetchReportData(vendorId, franchiseId, fromDate, toDate);
+
+  if (rows.length === 0) {
+    throw new Error("No ERD rows found for the selected filters.");
+  }
+
+  onProgress?.("Building Excel report...");
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "FurnixCRM";
+  workbook.created = new Date();
+  const usedSheetNames = new Set<string>();
+  buildErdSheet(
+    workbook,
+    rows,
+    buildSheetName(
+      franchiseId === "all" ? "Consolidated - All Franchisee" : "ERD Report",
+      usedSheetNames,
+    ),
+  );
+
+  if (franchiseId === "all") {
+    const groupedRows = new Map<string, ErdReportRow[]>();
+    for (const row of rows) {
+      const key = row.franchise_store || "Unknown Franchise";
+      const group = groupedRows.get(key) ?? [];
+      group.push(row);
+      groupedRows.set(key, group);
+    }
+
+    for (const [franchiseName, franchiseRows] of groupedRows) {
+      buildErdSheet(
+        workbook,
+        franchiseRows,
+        buildSheetName(franchiseName, usedSheetNames),
+      );
+    }
+  }
 
   onProgress?.("Preparing file...");
 

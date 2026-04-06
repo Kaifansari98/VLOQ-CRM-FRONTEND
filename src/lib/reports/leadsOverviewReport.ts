@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { apiClient } from "@/lib/apiClient";
-import { buildReportFileName } from "@/lib/reports/fileName";
+import { buildReportFileName, buildSheetName } from "@/lib/reports/fileName";
 
 interface GenerateLeadsOverviewReportParams {
   vendorId: number;
@@ -54,29 +54,12 @@ async function fetchReportData(
   return data?.data ?? [];
 }
 
-export async function generateLeadsOverviewReport(
-  params: GenerateLeadsOverviewReportParams,
+function buildLeadsOverviewSheet(
+  workbook: ExcelJS.Workbook,
+  rows: LeadsOverviewRow[],
+  sheetName: string,
 ) {
-  const { vendorId, franchiseId, fromDate, toDate, onProgress } = params;
-
-  onProgress?.("Fetching leads...");
-
-  const rows =
-    franchiseId === "all"
-      ? await fetchReportData(vendorId, null, fromDate, toDate)
-      : await fetchReportData(vendorId, franchiseId, fromDate, toDate);
-
-  if (rows.length === 0) {
-    throw new Error("No leads found for the selected filters.");
-  }
-
-  onProgress?.("Building Excel report...");
-
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = "FurnixCRM";
-  workbook.created = new Date();
-
-  const sheet = workbook.addWorksheet("Leads Overview");
+  const sheet = workbook.addWorksheet(sheetName);
 
   sheet.columns = [
     { key: "srNo", width: 8 },
@@ -198,6 +181,56 @@ export async function generateLeadsOverviewReport(
       }
     });
   });
+}
+
+export async function generateLeadsOverviewReport(
+  params: GenerateLeadsOverviewReportParams,
+) {
+  const { vendorId, franchiseId, fromDate, toDate, onProgress } = params;
+
+  onProgress?.("Fetching leads...");
+
+  const rows =
+    franchiseId === "all"
+      ? await fetchReportData(vendorId, null, fromDate, toDate)
+      : await fetchReportData(vendorId, franchiseId, fromDate, toDate);
+
+  if (rows.length === 0) {
+    throw new Error("No leads found for the selected filters.");
+  }
+
+  onProgress?.("Building Excel report...");
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "FurnixCRM";
+  workbook.created = new Date();
+  const usedSheetNames = new Set<string>();
+  buildLeadsOverviewSheet(
+    workbook,
+    rows,
+    buildSheetName(
+      franchiseId === "all" ? "Consolidated - All Franchisee" : "Leads Overview Report",
+      usedSheetNames,
+    ),
+  );
+
+  if (franchiseId === "all") {
+    const groupedRows = new Map<string, LeadsOverviewRow[]>();
+    for (const row of rows) {
+      const key = row.franchise_store || "Unknown Franchise";
+      const group = groupedRows.get(key) ?? [];
+      group.push(row);
+      groupedRows.set(key, group);
+    }
+
+    for (const [franchiseName, franchiseRows] of groupedRows) {
+      buildLeadsOverviewSheet(
+        workbook,
+        franchiseRows,
+        buildSheetName(franchiseName, usedSheetNames),
+      );
+    }
+  }
 
   onProgress?.("Preparing file...");
 

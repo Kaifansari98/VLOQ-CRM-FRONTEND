@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { apiClient } from "@/lib/apiClient";
-import { buildReportFileName } from "@/lib/reports/fileName";
+import { buildReportFileName, buildSheetName } from "@/lib/reports/fileName";
 
 interface GenerateMiscIssueLogReportParams {
   vendorId: number;
@@ -65,31 +65,12 @@ function formatDate(dateStr: string | null | undefined): string {
   });
 }
 
-export async function generateMiscIssueLogReport(
-  params: GenerateMiscIssueLogReportParams,
+function buildMiscIssueSheet(
+  workbook: ExcelJS.Workbook,
+  rows: MiscIssueLogRow[],
+  sheetName: string,
 ) {
-  const { vendorId, franchiseId, leadId = null, fromDate, toDate, onProgress } = params;
-
-  onProgress?.("Fetching misc and issue logs...");
-
-  const rows =
-    franchiseId === "all"
-      ? await fetchReportData(vendorId, null, leadId, fromDate, toDate)
-      : await fetchReportData(vendorId, franchiseId, leadId, fromDate, toDate);
-
-  if (rows.length === 0) {
-    throw new Error(
-      "No miscellaneous or issue log rows found for the selected filters.",
-    );
-  }
-
-  onProgress?.("Building Excel report...");
-
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = "FurnixCRM";
-  workbook.created = new Date();
-
-  const sheet = workbook.addWorksheet("Miscl + Issue Log");
+  const sheet = workbook.addWorksheet(sheetName);
 
   sheet.columns = [
     { key: "srNo", width: 8 },
@@ -205,6 +186,58 @@ export async function generateMiscIssueLogReport(
       }
     });
   });
+}
+
+export async function generateMiscIssueLogReport(
+  params: GenerateMiscIssueLogReportParams,
+) {
+  const { vendorId, franchiseId, leadId = null, fromDate, toDate, onProgress } = params;
+
+  onProgress?.("Fetching misc and issue logs...");
+
+  const rows =
+    franchiseId === "all"
+      ? await fetchReportData(vendorId, null, leadId, fromDate, toDate)
+      : await fetchReportData(vendorId, franchiseId, leadId, fromDate, toDate);
+
+  if (rows.length === 0) {
+    throw new Error(
+      "No miscellaneous or issue log rows found for the selected filters.",
+    );
+  }
+
+  onProgress?.("Building Excel report...");
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "FurnixCRM";
+  workbook.created = new Date();
+  const usedSheetNames = new Set<string>();
+  buildMiscIssueSheet(
+    workbook,
+    rows,
+    buildSheetName(
+      franchiseId === "all" ? "Consolidated - All Franchisee" : "Miscl + Issue Log",
+      usedSheetNames,
+    ),
+  );
+
+  if (franchiseId === "all") {
+    const groupedRows = new Map<string, MiscIssueLogRow[]>();
+    for (const row of rows) {
+      const key = row.franchise_store || "Unknown Franchise";
+      const group = groupedRows.get(key) ?? [];
+      group.push(row);
+      groupedRows.set(key, group);
+    }
+
+    for (const [franchiseName, franchiseRows] of groupedRows) {
+      buildMiscIssueSheet(
+        workbook,
+        franchiseRows,
+        buildSheetName(franchiseName, usedSheetNames),
+      );
+    }
+  }
 
   onProgress?.("Preparing file...");
 

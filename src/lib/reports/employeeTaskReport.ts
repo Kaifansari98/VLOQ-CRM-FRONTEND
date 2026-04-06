@@ -2,7 +2,7 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { apiClient } from "@/lib/apiClient";
 import type { VendorUserTasksApiResponse, VendorUserTask } from "@/hooks/useTasksQueries";
-import { buildReportFileName } from "@/lib/reports/fileName";
+import { buildReportFileName, buildSheetName } from "@/lib/reports/fileName";
 
 interface GenerateEmployeeTaskReportParams {
   vendorId: number;
@@ -116,31 +116,15 @@ function getDisplayStatus(status: string | null | undefined): string {
   return formatTaskStatusLabel(status);
 }
 
-export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskReportParams) {
-  const {
-    vendorId,
-    vendorReportCode,
-    userId,
-    franchiseId,
-    franchiseName,
-    employeeName,
-    fromDate,
-    toDate,
-    onProgress,
-  } = params;
+function buildEmployeeTaskSheet(
+  workbook: ExcelJS.Workbook,
+  tasks: TaggedTask[],
+  sheetName: string,
+  userId: number | "all",
+  employeeName: string,
+) {
+  const sheet = workbook.addWorksheet(sheetName);
 
-  onProgress?.("Fetching data...");
-  const tasks = await fetchAllTasks(vendorId, userId, franchiseId, franchiseName, fromDate, toDate, params.allFranchises ?? []);
-
-  onProgress?.("Building report...");
-
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = "FurnixCRM";
-  workbook.created = new Date();
-
-  const sheet = workbook.addWorksheet("Employee Task Report");
-
-  // ── Column widths ──────────────────────────────────────────────
   sheet.columns = [
     { key: "srNo",           width: 8  },
     { key: "employeeName",   width: 22 },
@@ -156,8 +140,6 @@ export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskRep
   ];
 
   const totalCols = sheet.columns.length;
-
-  // ── Title row ──────────────────────────────────────────────────
   sheet.mergeCells(1, 1, 1, totalCols);
   const titleCell = sheet.getCell("A1");
   titleCell.value = "Employee Task Report";
@@ -166,7 +148,6 @@ export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskRep
   titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9E1F2" } };
   sheet.getRow(1).height = 28;
 
-  // ── Header row ─────────────────────────────────────────────────
   const HEADERS = [
     "Sr. No.", "Employee Name", "Franchise Store", "Lead Code", "Lead Name",
     "Task Type", "Task Generated on", "Due date", "Task Completion Date", "Task Status", "Status",
@@ -186,7 +167,6 @@ export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskRep
   });
   headerRow.height = 22;
 
-  // ── Data rows ──────────────────────────────────────────────────
   tasks.forEach((task, idx) => {
     const { userLeadTask, leadMaster } = task;
     const normalizedStatus = userLeadTask.status?.toLowerCase();
@@ -205,7 +185,7 @@ export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskRep
       ? (userLeadTask.assigned_to_name ?? userLeadTask.created_by_name ?? employeeName)
       : employeeName;
 
-    const rowData = [
+    const row = sheet.addRow([
       idx + 1,
       rowEmployeeName,
       task._franchiseName,
@@ -217,11 +197,9 @@ export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskRep
       completionDate,
       taskStatus,
       displayStatus,
-    ];
+    ]);
 
-    const row = sheet.addRow(rowData);
     row.height = 18;
-
     row.eachCell({ includeEmpty: true }, (cell, colNum) => {
       cell.alignment = { horizontal: colNum === 1 ? "center" : "left", vertical: "middle" };
       cell.font = { size: 10 };
@@ -264,6 +242,60 @@ export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskRep
       };
     }
   });
+}
+
+export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskReportParams) {
+  const {
+    vendorId,
+    vendorReportCode,
+    userId,
+    franchiseId,
+    franchiseName,
+    employeeName,
+    fromDate,
+    toDate,
+    onProgress,
+  } = params;
+
+  onProgress?.("Fetching data...");
+  const tasks = await fetchAllTasks(vendorId, userId, franchiseId, franchiseName, fromDate, toDate, params.allFranchises ?? []);
+
+  onProgress?.("Building report...");
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "FurnixCRM";
+  workbook.created = new Date();
+  const usedSheetNames = new Set<string>();
+  buildEmployeeTaskSheet(
+    workbook,
+    tasks,
+    buildSheetName(
+      franchiseId === "all" ? "Consolidated - All Franchisee" : "Employee Task Report",
+      usedSheetNames,
+    ),
+    userId,
+    employeeName,
+  );
+
+  if (franchiseId === "all") {
+    const groupedTasks = new Map<string, TaggedTask[]>();
+    for (const task of tasks) {
+      const key = task._franchiseName || "Unknown Franchise";
+      const group = groupedTasks.get(key) ?? [];
+      group.push(task);
+      groupedTasks.set(key, group);
+    }
+
+    for (const [franchiseLabel, franchiseTasks] of groupedTasks) {
+      buildEmployeeTaskSheet(
+        workbook,
+        franchiseTasks,
+        buildSheetName(franchiseLabel, usedSheetNames),
+        userId,
+        employeeName,
+      );
+    }
+  }
 
   // ── Download ───────────────────────────────────────────────────
   onProgress?.("Preparing file...");

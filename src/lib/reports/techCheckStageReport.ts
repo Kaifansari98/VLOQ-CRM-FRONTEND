@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { apiClient } from "@/lib/apiClient";
-import { buildReportFileName } from "@/lib/reports/fileName";
+import { buildReportFileName, buildSheetName } from "@/lib/reports/fileName";
 
 interface GenerateTechCheckStageReportParams {
   vendorId: number;
@@ -68,24 +68,11 @@ function ordinalLabel(index: number): string {
   return `${value}th`;
 }
 
-export async function generateTechCheckStageReport(
-  params: GenerateTechCheckStageReportParams,
+function buildTechCheckSheet(
+  workbook: ExcelJS.Workbook,
+  rows: TechCheckStageReportRow[],
+  sheetName: string,
 ) {
-  const { vendorId, franchiseId, fromDate, toDate, onProgress } = params;
-
-  onProgress?.("Fetching tech check data...");
-
-  const rows =
-    franchiseId === "all"
-      ? await fetchReportData(vendorId, null, fromDate, toDate)
-      : await fetchReportData(vendorId, franchiseId, fromDate, toDate);
-
-  if (rows.length === 0) {
-    throw new Error("No tech check stage rows found for the selected filters.");
-  }
-
-  onProgress?.("Building Excel report...");
-
   const maxCycles = rows.reduce(
     (max, row) =>
       Math.max(max, row.rejection_dates.length, row.revised_upload_dates.length),
@@ -93,12 +80,7 @@ export async function generateTechCheckStageReport(
   );
   const visibleCycles = Math.min(maxCycles, 4);
 
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = "FurnixCRM";
-  workbook.created = new Date();
-
-  const sheet = workbook.addWorksheet("TechCheck Stage");
-
+  const sheet = workbook.addWorksheet(sheetName);
   const baseHeaders = [
     "Sr. No.",
     "Lead Code",
@@ -121,7 +103,7 @@ export async function generateTechCheckStageReport(
     "Techcheck Approved Date",
   ];
 
-  sheet.columns = headers.map((header, index) => ({
+  sheet.columns = headers.map((_, index) => ({
     key: `col_${index + 1}`,
     width:
       index === 0
@@ -130,9 +112,7 @@ export async function generateTechCheckStageReport(
           ? 16
           : index === 2
             ? 24
-            : index === 3
-              ? 24
-              : 24,
+            : 24,
   }));
 
   sheet.mergeCells(1, 1, 1, headers.length);
@@ -215,6 +195,56 @@ export async function generateTechCheckStageReport(
       }
     });
   });
+}
+
+export async function generateTechCheckStageReport(
+  params: GenerateTechCheckStageReportParams,
+) {
+  const { vendorId, franchiseId, fromDate, toDate, onProgress } = params;
+
+  onProgress?.("Fetching tech check data...");
+
+  const rows =
+    franchiseId === "all"
+      ? await fetchReportData(vendorId, null, fromDate, toDate)
+      : await fetchReportData(vendorId, franchiseId, fromDate, toDate);
+
+  if (rows.length === 0) {
+    throw new Error("No tech check stage rows found for the selected filters.");
+  }
+
+  onProgress?.("Building Excel report...");
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "FurnixCRM";
+  workbook.created = new Date();
+  const usedSheetNames = new Set<string>();
+  buildTechCheckSheet(
+    workbook,
+    rows,
+    buildSheetName(
+      franchiseId === "all" ? "Consolidated - All Franchisee" : "TechCheck Stage Report",
+      usedSheetNames,
+    ),
+  );
+
+  if (franchiseId === "all") {
+    const groupedRows = new Map<string, TechCheckStageReportRow[]>();
+    for (const row of rows) {
+      const key = row.franchise_store || "Unknown Franchise";
+      const group = groupedRows.get(key) ?? [];
+      group.push(row);
+      groupedRows.set(key, group);
+    }
+
+    for (const [franchiseName, franchiseRows] of groupedRows) {
+      buildTechCheckSheet(
+        workbook,
+        franchiseRows,
+        buildSheetName(franchiseName, usedSheetNames),
+      );
+    }
+  }
 
   onProgress?.("Preparing file...");
 

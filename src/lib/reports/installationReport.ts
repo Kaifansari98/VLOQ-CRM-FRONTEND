@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { apiClient } from "@/lib/apiClient";
-import { buildReportFileName } from "@/lib/reports/fileName";
+import { buildReportFileName, buildSheetName } from "@/lib/reports/fileName";
 
 interface GenerateInstallationReportParams {
   vendorId: number;
@@ -79,6 +79,106 @@ function daysBetween(from: string | null | undefined, to: string | null | undefi
   return String(diff);
 }
 
+function buildInstallationSheet(
+  workbook: ExcelJS.Workbook,
+  rows: InstallationReportLead[],
+  sheetName: string,
+) {
+  const sheet = workbook.addWorksheet(sheetName);
+
+  sheet.columns = [
+    { key: "srNo",               width: 8  },
+    { key: "leadCode",           width: 14 },
+    { key: "leadName",           width: 26 },
+    { key: "franchiseStore",     width: 22 },
+    { key: "installStartDate",   width: 22 },
+    { key: "expectedCompletion", width: 26 },
+    { key: "daysTaken",          width: 22 },
+    { key: "miscCount",          width: 22 },
+    { key: "issueCount",         width: 22 },
+    { key: "carcassDate",        width: 26 },
+    { key: "shutterDate",        width: 32 },
+    { key: "usableHandoverDate", width: 22 },
+    { key: "fullCompletionDate", width: 28 },
+    { key: "finalHandoverDate",  width: 22 },
+  ];
+
+  const totalCols = sheet.columns.length;
+  sheet.mergeCells(1, 1, 1, totalCols);
+  const titleCell = sheet.getCell("A1");
+  titleCell.value = "Installation Report";
+  titleCell.font = { bold: true, size: 13 };
+  titleCell.alignment = { horizontal: "center", vertical: "middle" };
+  titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9E1F2" } };
+  sheet.getRow(1).height = 28;
+
+  const HEADERS = [
+    "Sr. No.",
+    "Lead Code",
+    "Lead Name",
+    "Franchise Store",
+    "Installation Start Date",
+    "Expected Date of Completion",
+    "No. of Days Taken",
+    "No. of Misc Generated",
+    "No. of Issues Generated",
+    "Carcass Completion Date",
+    "Shutter Installation Completion Date",
+    "Usable Handover Date",
+    "Full Installation Completion Date",
+    "Final Handover Date",
+  ];
+
+  const headerRow = sheet.getRow(2);
+  HEADERS.forEach((h, i) => {
+    const cell = headerRow.getCell(i + 1);
+    cell.value = h;
+    cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4472C4" } };
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+    cell.border = {
+      top: { style: "thin" }, bottom: { style: "thin" },
+      left: { style: "thin" }, right: { style: "thin" },
+    };
+  });
+  headerRow.height = 28;
+
+  rows.forEach((lead, idx) => {
+    const row = sheet.addRow([
+      idx + 1,
+      lead.lead_code ?? "-",
+      `${lead.firstname} ${lead.lastname}`.trim() || "-",
+      lead.franchise_name ?? "-",
+      formatDate(lead.actual_installation_start_date),
+      formatDate(lead.expected_installation_end_date),
+      daysBetween(lead.actual_installation_start_date, lead.actual_installation_completion_at),
+      lead.misc_count,
+      lead.issue_count,
+      formatDate(lead.carcass_installation_completion_date),
+      formatDate(lead.shutter_installation_completion_date),
+      formatDate(lead.usable_handover_completed_at),
+      formatDate(lead.actual_installation_completion_at),
+      formatDate(lead.final_handover_marked_at),
+    ]);
+
+    row.height = 18;
+    row.eachCell({ includeEmpty: true }, (cell, colNum) => {
+      const isCenter = colNum === 1 || colNum === 7 || colNum === 8 || colNum === 9;
+      cell.alignment = { horizontal: isCenter ? "center" : "left", vertical: "middle" };
+      cell.font = { size: 10 };
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFD9D9D9" } },
+        bottom: { style: "thin", color: { argb: "FFD9D9D9" } },
+        left: { style: "thin", color: { argb: "FFD9D9D9" } },
+        right: { style: "thin", color: { argb: "FFD9D9D9" } },
+      };
+      if (idx % 2 === 1) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F2F2" } };
+      }
+    });
+  });
+}
+
 export async function generateInstallationReport(params: GenerateInstallationReportParams) {
   const {
     vendorId,
@@ -116,106 +216,33 @@ export async function generateInstallationReport(params: GenerateInstallationRep
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "FurnixCRM";
   workbook.created = new Date();
+  const usedSheetNames = new Set<string>();
+  buildInstallationSheet(
+    workbook,
+    leads,
+    buildSheetName(
+      franchiseId === "all" ? "Consolidated - All Franchisee" : "Installation Report",
+      usedSheetNames,
+    ),
+  );
 
-  const sheet = workbook.addWorksheet("Installation Report");
+  if (franchiseId === "all") {
+    const groupedRows = new Map<string, InstallationReportLead[]>();
+    for (const lead of leads) {
+      const key = lead.franchise_name ?? "Unknown Franchise";
+      const group = groupedRows.get(key) ?? [];
+      group.push(lead);
+      groupedRows.set(key, group);
+    }
 
-  sheet.columns = [
-    { key: "srNo",               width: 8  },
-    { key: "leadCode",           width: 14 },
-    { key: "leadName",           width: 26 },
-    { key: "franchiseStore",     width: 22 },
-    { key: "installStartDate",   width: 22 },
-    { key: "expectedCompletion", width: 26 },
-    { key: "daysTaken",          width: 22 },
-    { key: "miscCount",          width: 22 },
-    { key: "issueCount",         width: 22 },
-    { key: "carcassDate",        width: 26 },
-    { key: "shutterDate",        width: 32 },
-    { key: "usableHandoverDate", width: 22 },
-    { key: "fullCompletionDate", width: 28 },
-    { key: "finalHandoverDate",  width: 22 },
-  ];
-
-  const totalCols = sheet.columns.length;
-
-  // Title row
-  sheet.mergeCells(1, 1, 1, totalCols);
-  const titleCell = sheet.getCell("A1");
-  titleCell.value = "Installation Report";
-  titleCell.font = { bold: true, size: 13 };
-  titleCell.alignment = { horizontal: "center", vertical: "middle" };
-  titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9E1F2" } };
-  sheet.getRow(1).height = 28;
-
-  // Header row
-  const HEADERS = [
-    "Sr. No.",
-    "Lead Code",
-    "Lead Name",
-    "Franchise Store",
-    "Installation Start Date",
-    "Expected Date of Completion",
-    "No. of Days Taken",
-    "No. of Misc Generated",
-    "No. of Issues Generated",
-    "Carcass Completion Date",
-    "Shutter Installation Completion Date",
-    "Usable Handover Date",
-    "Full Installation Completion Date",
-    "Final Handover Date",
-  ];
-
-  const headerRow = sheet.getRow(2);
-  HEADERS.forEach((h, i) => {
-    const cell = headerRow.getCell(i + 1);
-    cell.value = h;
-    cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4472C4" } };
-    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
-    cell.border = {
-      top: { style: "thin" }, bottom: { style: "thin" },
-      left: { style: "thin" }, right: { style: "thin" },
-    };
-  });
-  headerRow.height = 28;
-
-  // Data rows
-  leads.forEach((lead, idx) => {
-    const rowData = [
-      idx + 1,
-      lead.lead_code ?? "-",
-      `${lead.firstname} ${lead.lastname}`.trim() || "-",
-      lead.franchise_name ?? "-",
-      formatDate(lead.actual_installation_start_date),
-      formatDate(lead.expected_installation_end_date),
-      daysBetween(lead.actual_installation_start_date, lead.actual_installation_completion_at),
-      lead.misc_count,
-      lead.issue_count,
-      formatDate(lead.carcass_installation_completion_date),
-      formatDate(lead.shutter_installation_completion_date),
-      formatDate(lead.usable_handover_completed_at),
-      formatDate(lead.actual_installation_completion_at),
-      formatDate(lead.final_handover_marked_at),
-    ];
-
-    const row = sheet.addRow(rowData);
-    row.height = 18;
-
-    row.eachCell({ includeEmpty: true }, (cell, colNum) => {
-      const isCenter = colNum === 1 || colNum === 7 || colNum === 8 || colNum === 9;
-      cell.alignment = { horizontal: isCenter ? "center" : "left", vertical: "middle" };
-      cell.font = { size: 10 };
-      cell.border = {
-        top: { style: "thin", color: { argb: "FFD9D9D9" } },
-        bottom: { style: "thin", color: { argb: "FFD9D9D9" } },
-        left: { style: "thin", color: { argb: "FFD9D9D9" } },
-        right: { style: "thin", color: { argb: "FFD9D9D9" } },
-      };
-      if (idx % 2 === 1) {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F2F2" } };
-      }
-    });
-  });
+    for (const [franchiseName, franchiseRows] of groupedRows) {
+      buildInstallationSheet(
+        workbook,
+        franchiseRows,
+        buildSheetName(franchiseName, usedSheetNames),
+      );
+    }
+  }
 
   onProgress?.("Preparing file...");
   console.log("[InstallationReport] Writing Excel buffer...");
