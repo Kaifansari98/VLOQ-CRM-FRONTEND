@@ -1,9 +1,11 @@
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { apiClient } from "@/lib/apiClient";
+import { buildReportFileName } from "@/lib/reports/fileName";
 
 interface GenerateInstallationReportParams {
   vendorId: number;
+  vendorReportCode: string;
   franchiseId: number | "all";
   leadId?: number | null;
   franchiseName: string;
@@ -78,7 +80,16 @@ function daysBetween(from: string | null | undefined, to: string | null | undefi
 }
 
 export async function generateInstallationReport(params: GenerateInstallationReportParams) {
-  const { vendorId, franchiseId, leadId = null, fromDate, toDate, allFranchises = [], onProgress } = params;
+  const {
+    vendorId,
+    vendorReportCode,
+    franchiseId,
+    leadId = null,
+    fromDate,
+    toDate,
+    allFranchises = [],
+    onProgress,
+  } = params;
 
   console.log("[InstallationReport] Starting report generation", params);
 
@@ -214,9 +225,7 @@ export async function generateInstallationReport(params: GenerateInstallationRep
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
-  const generatedDate = new Date().toISOString().slice(0, 10);
-  const dateRange = fromDate && toDate ? `_${fromDate}_to_${toDate}` : "";
-  const filename = `${generatedDate}_Installation_Report${dateRange}.xlsx`;
+  const filename = buildReportFileName(vendorReportCode, "Installation Report");
   console.log("[InstallationReport] Saving file:", filename);
   saveAs(blob, filename);
   console.log("[InstallationReport] Done.");

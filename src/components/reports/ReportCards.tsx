@@ -91,6 +91,11 @@ export function ReportCards() {
   const user = useAppSelector((state) => state.auth.user);
   const reduxFranchiseId = useAppSelector((state) => state.auth.franchise_id);
   const vendorId = user?.vendor_id ?? 0;
+  const vendorReportCode =
+    user?.vendor?.vendor_report_code ||
+    user?.vendor?.["vendor-report-code"] ||
+    user?.vendor?.vendor_code ||
+    `VENDOR_${vendorId}`;
   const isSuperAdmin = user?.user_type?.user_type?.toLowerCase() === "super-admin";
   const adminFranchiseId = reduxFranchiseId ?? user?.franchise_id ?? null;
 
@@ -160,6 +165,7 @@ export function ReportCards() {
       try {
         await generateInstallationReport({
           vendorId,
+          vendorReportCode,
           franchiseId,
           leadId: filters?.leadId ? Number(filters.leadId) : null,
           franchiseName,
@@ -194,6 +200,7 @@ export function ReportCards() {
       try {
         await generateMiscIssueLogReport({
           vendorId,
+          vendorReportCode,
           franchiseId,
           fromDate: filters?.fromDate ?? "",
           toDate: filters?.toDate ?? "",
@@ -226,6 +233,7 @@ export function ReportCards() {
       try {
         await generateLeadsOverviewReport({
           vendorId,
+          vendorReportCode,
           franchiseId,
           fromDate: filters?.fromDate ?? "",
           toDate: filters?.toDate ?? "",
@@ -258,6 +266,7 @@ export function ReportCards() {
       try {
         await generateTechCheckStageReport({
           vendorId,
+          vendorReportCode,
           franchiseId,
           fromDate: filters?.fromDate ?? "",
           toDate: filters?.toDate ?? "",
@@ -290,6 +299,7 @@ export function ReportCards() {
       try {
         await generateErdReport({
           vendorId,
+          vendorReportCode,
           franchiseId,
           fromDate: filters?.fromDate ?? "",
           toDate: filters?.toDate ?? "",
@@ -326,6 +336,7 @@ export function ReportCards() {
     try {
       await generateEmployeeTaskReport({
         vendorId,
+        vendorReportCode,
         userId,
         franchiseId,
         franchiseName,

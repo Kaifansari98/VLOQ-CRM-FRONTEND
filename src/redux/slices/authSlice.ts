@@ -10,7 +10,14 @@ export interface User {
   user_type_id: number
   user_role: string
   status: string
-  vendor: Record<string, any>
+  vendor: {
+    id?: number
+    vendor_name?: string
+    vendor_code?: string
+    vendor_report_code?: string | null
+    ["vendor-report-code"]?: string | null
+    [key: string]: any
+  }
   user_type: Record<string, any>
   is_ho_user: boolean
 }

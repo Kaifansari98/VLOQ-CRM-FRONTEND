@@ -2,9 +2,11 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { apiClient } from "@/lib/apiClient";
 import type { VendorUserTasksApiResponse, VendorUserTask } from "@/hooks/useTasksQueries";
+import { buildReportFileName } from "@/lib/reports/fileName";
 
 interface GenerateEmployeeTaskReportParams {
   vendorId: number;
+  vendorReportCode: string;
   userId: number | "all";
   franchiseId: number | "all";
   franchiseName: string;
@@ -115,7 +117,17 @@ function getDisplayStatus(status: string | null | undefined): string {
 }
 
 export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskReportParams) {
-  const { vendorId, userId, franchiseId, franchiseName, employeeName, fromDate, toDate, onProgress } = params;
+  const {
+    vendorId,
+    vendorReportCode,
+    userId,
+    franchiseId,
+    franchiseName,
+    employeeName,
+    fromDate,
+    toDate,
+    onProgress,
+  } = params;
 
   onProgress?.("Fetching data...");
   const tasks = await fetchAllTasks(vendorId, userId, franchiseId, franchiseName, fromDate, toDate, params.allFranchises ?? []);
@@ -260,7 +272,5 @@ export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskRep
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
-  const generatedDate = new Date().toISOString().slice(0, 10);
-  const dateRange = fromDate && toDate ? `_${fromDate}_to_${toDate}` : "";
-  saveAs(blob, `${generatedDate}_Employee_Task_Report_${employeeName.replace(/\s+/g, "_")}${dateRange}.xlsx`);
+  saveAs(blob, buildReportFileName(vendorReportCode, "Employee Task Report"));
 }

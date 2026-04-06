@@ -1,9 +1,11 @@
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { apiClient } from "@/lib/apiClient";
+import { buildReportFileName } from "@/lib/reports/fileName";
 
 interface GenerateMiscIssueLogReportParams {
   vendorId: number;
+  vendorReportCode: string;
   franchiseId: number | "all";
   fromDate: string;
   toDate: string;
@@ -207,7 +209,5 @@ export async function generateMiscIssueLogReport(
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
-  const generatedDate = new Date().toISOString().slice(0, 10);
-  const dateRange = fromDate && toDate ? `_${fromDate}_to_${toDate}` : "";
-  saveAs(blob, `${generatedDate}_Miscl_Issue_Log_Report${dateRange}.xlsx`);
+  saveAs(blob, buildReportFileName(params.vendorReportCode, "Miscl + Issue Log Report"));
 }
