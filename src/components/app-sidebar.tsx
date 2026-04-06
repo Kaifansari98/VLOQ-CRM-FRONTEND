@@ -13,6 +13,7 @@ import {
   Handshake,
   Drill,
   BarChart3,
+  MapPinned,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -204,6 +205,19 @@ const data = {
       items: [{ title: "Machine", url: "/dashboard/track-trace/master" }],
     },
   ],
+  mastersNav: [
+    {
+      title: "CRM Masters",
+      url: "#",
+      icon: MapPinned,
+      items: [
+        {
+          title: "Field Masters",
+          url: "/dashboard/masters-management/field-masters",
+        },
+      ],
+    },
+  ],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -272,7 +286,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }
     : data.user;
 
-  const { navItems, trackTraceItems } = React.useMemo(() => {
+  const { navItems, trackTraceItems, mastersItems } = React.useMemo(() => {
     const environment = (
       process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION"
     ).toUpperCase();
@@ -356,11 +370,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     // Track & Trace sirf STAGING mein dikhega
     const finalTrackTraceItems = showTrackTrace ? data.trackTraceNav : [];
+    const finalMastersItems = isSuperAdmin ? data.mastersNav : [];
 
-    return { navItems: finalNavItems, trackTraceItems: finalTrackTraceItems };
+    return {
+      navItems: finalNavItems,
+      trackTraceItems: finalTrackTraceItems,
+      mastersItems: finalMastersItems,
+    };
   }, [
     mounted,
     canSeeOverallLeads,
+    isSuperAdmin,
     miscLeadsCount,
     isMiscLeadLoading,
     userType,
@@ -422,7 +442,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        <NavMain items={navItems} trackTraceItems={trackTraceItems} />
+        <NavMain
+          items={navItems}
+          trackTraceItems={trackTraceItems}
+          mastersItems={mastersItems}
+        />
       </SidebarContent>
 
       <SidebarFooter>
