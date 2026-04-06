@@ -27,7 +27,7 @@ const REPORTS = [
     id: "lead-tracking",
     title: "Lead Tracking Report",
     description: "Monitor lead movement across all pipeline stages from open to closure.",
-    userTypes: ["sales-executive", "site-supervisor", "factory", "backend", "pre-prod", "tech-check"],
+    userTypes: [],
   },
   {
     id: "installation",
@@ -320,26 +320,25 @@ export function ReportCards() {
 
     if (reportId === "lead-tracking") {
       const filters = appliedFilters[reportId];
-      if (!filters?.userId) {
+      if (isSuperAdmin && !filters?._franchiseId) {
         toast.error("Please apply filters before downloading.");
         openFilterModal(reportId);
         return;
       }
 
-      const rawFranchiseId = filters._franchiseId ?? adminFranchiseId ?? "all";
+      const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? "all";
       const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
-      const userId = filters.userId === "all" ? "all" : Number(filters.userId);
 
       setStage(reportId, "Fetching tracking data...");
       try {
         await generateLeadTrackingReport({
           vendorId,
           vendorReportCode,
-          userId,
-          userType: filters.userType,
+          userId: "all",
+          userType: "all",
           franchiseId,
-          fromDate: filters.fromDate,
-          toDate: filters.toDate,
+          fromDate: filters?.fromDate ?? "",
+          toDate: filters?.toDate ?? "",
           onProgress: (stage) => setStage(reportId, stage),
         });
         toast.success("Report downloaded successfully.");
