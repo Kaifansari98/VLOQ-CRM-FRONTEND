@@ -91,18 +91,6 @@ function getOrdinalLabel(position: number): string {
   }
 }
 
-function formatAdditionalPayment(
-  payment:
-    | {
-        amount: number | null;
-        created_at: string | null;
-      }
-    | undefined,
-): string {
-  if (!payment) return "-";
-  return `${formatAmount(payment.amount)} - ${formatDate(payment.created_at)}`;
-}
-
 function applyHeaderCellStyle(cell: ExcelJS.Cell) {
   cell.alignment = {
     horizontal: "center",
@@ -154,7 +142,10 @@ function buildPaymentsSheet(
     (_, index) => `${getOrdinalLabel(index + 1)} Payment`,
   );
 
-  const allHeaders = [...baseHeaders, ...additionalHeaders];
+  const allHeaders = [
+    ...baseHeaders,
+    ...additionalHeaders.flatMap((header) => [`${header} Amount`, `${header} Date`]),
+  ];
 
   sheet.columns = [
     { key: "srNo", width: 8 },
@@ -168,10 +159,16 @@ function buildPaymentsSheet(
     { key: "bookingAdvanceCollected", width: 24 },
     { key: "baDate", width: 18 },
     { key: "baDescription", width: 32 },
-    ...additionalHeaders.map((_, index) => ({
-      key: `additionalPayment${index + 1}`,
-      width: 24,
-    })),
+    ...additionalHeaders.flatMap((_, index) => [
+      {
+        key: `additionalPaymentAmount${index + 1}`,
+        width: 18,
+      },
+      {
+        key: `additionalPaymentDate${index + 1}`,
+        width: 18,
+      },
+    ]),
   ];
 
   sheet.mergeCells(1, 1, 1, allHeaders.length);
@@ -199,7 +196,7 @@ function buildPaymentsSheet(
 
   if (additionalHeaders.length > 0) {
     const startColumn = baseHeaders.length + 1;
-    const endColumn = baseHeaders.length + additionalHeaders.length;
+    const endColumn = baseHeaders.length + additionalHeaders.length * 2;
 
     sheet.mergeCells(2, startColumn, 2, endColumn);
     const sectionCell = groupHeaderRow.getCell(startColumn);
@@ -207,14 +204,27 @@ function buildPaymentsSheet(
     applyHeaderCellStyle(sectionCell);
 
     additionalHeaders.forEach((header, index) => {
-      const cell = subHeaderRow.getCell(baseHeaders.length + index + 1);
-      cell.value = header;
-      applyHeaderCellStyle(cell);
+      const amountColumn = baseHeaders.length + index * 2 + 1;
+      const dateColumn = amountColumn + 1;
+
+      sheet.mergeCells(3, amountColumn, 3, dateColumn);
+      const paymentHeaderCell = subHeaderRow.getCell(amountColumn);
+      paymentHeaderCell.value = header;
+      applyHeaderCellStyle(paymentHeaderCell);
+
+      const amountLabelCell = sheet.getRow(4).getCell(amountColumn);
+      amountLabelCell.value = "Amount";
+      applyHeaderCellStyle(amountLabelCell);
+
+      const dateLabelCell = sheet.getRow(4).getCell(dateColumn);
+      dateLabelCell.value = "Date";
+      applyHeaderCellStyle(dateLabelCell);
     });
   }
 
   groupHeaderRow.height = 28;
   subHeaderRow.height = 28;
+  sheet.getRow(4).height = 28;
 
   rows.forEach((entry, index) => {
     const row = sheet.addRow([
@@ -229,9 +239,10 @@ function buildPaymentsSheet(
       formatAmount(entry.booking_advance_collected),
       formatDate(entry.ba_date),
       entry.ba_description || "-",
-      ...Array.from({ length: maxAdditionalPayments }, (_, paymentIndex) =>
-        formatAdditionalPayment(entry.additional_payments[paymentIndex]),
-      ),
+      ...Array.from({ length: maxAdditionalPayments }, (_, paymentIndex) => [
+        formatAmount(entry.additional_payments[paymentIndex]?.amount),
+        formatDate(entry.additional_payments[paymentIndex]?.created_at),
+      ]).flat(),
     ]);
 
     row.height = 18;
@@ -242,7 +253,11 @@ function buildPaymentsSheet(
         colNum === 6 ||
         colNum === 7 ||
         colNum === 9 ||
-        colNum === 10;
+        colNum === 10 ||
+        (colNum > baseHeaders.length &&
+          (colNum - baseHeaders.length) % 2 === 1) ||
+        (colNum > baseHeaders.length &&
+          (colNum - baseHeaders.length) % 2 === 0);
       cell.alignment = {
         horizontal: isCenter ? "center" : "left",
         vertical: "middle",
