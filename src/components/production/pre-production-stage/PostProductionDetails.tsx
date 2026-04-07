@@ -209,7 +209,7 @@ export default function PostProductionDetails({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="flex flex-col gap-3 rounded-2xl border border-border bg-muted/30 px-4 py-3 shadow-sm backdrop-blur-sm md:flex-row md:items-center md:justify-between"
+          className="flex flex-col gap-3 rounded-2xl border border-border bg-muted/30 px-4 py-3  md:flex-row md:items-center md:justify-between"
         >
           <ClientRequiredDeliveryDateBanner
             leadId={leadId}
@@ -228,7 +228,7 @@ export default function PostProductionDetails({
                 truncateValue={
                   <Card
                     className={`
-                  flex min-w-[230px] items-center gap-4 rounded-2xl border border-border/70 bg-background px-4 py-2
+                  flex min-w-[230px] items-center gap-4 rounded-2xl bg-background px-4 py-2
                   transition-all duration-300 hover:border-primary/40
                   ${!canEditBoxes ? "opacity-70" : ""}
                 `}
