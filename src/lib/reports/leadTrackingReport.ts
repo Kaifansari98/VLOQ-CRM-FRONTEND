@@ -27,7 +27,6 @@ interface LeadTrackingReportRow {
   lead_creation_date: string | null;
   ism_completion_date: string | null;
   booking_done_date: string | null;
-  booking_adv_cleared_date: string | null;
   fm_scheduled_date: string | null;
   fm_completion_date: string | null;
   client_approval_date: string | null;
@@ -104,7 +103,6 @@ function buildLeadTrackingSheet(
     "Lead Creation Date",
     "ISM Completion Date",
     "Booking Done Date",
-    "Booking Adv Cleared Date (AT HO)",
     "FM Scheduled Date",
     "FM Completion Date",
     "Client Approval Date",
@@ -136,7 +134,6 @@ function buildLeadTrackingSheet(
     { key: "leadCreationDate", width: 18 },
     { key: "ismCompletionDate", width: 18 },
     { key: "bookingDoneDate", width: 18 },
-    { key: "bookingAdvClearedDate", width: 22 },
     { key: "fmScheduledDate", width: 18 },
     { key: "fmCompletionDate", width: 18 },
     { key: "clientApprovalDate", width: 18 },
@@ -205,7 +202,6 @@ function buildLeadTrackingSheet(
       formatDate(entry.lead_creation_date),
       formatDate(entry.ism_completion_date),
       formatDate(entry.booking_done_date),
-      formatDate(entry.booking_adv_cleared_date),
       formatDate(entry.fm_scheduled_date),
       formatDate(entry.fm_completion_date),
       formatDate(entry.client_approval_date),
