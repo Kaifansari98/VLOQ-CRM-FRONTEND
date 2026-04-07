@@ -276,6 +276,8 @@ export default function PendingLeadDetails() {
         open={openApproveModal}
         onOpenChange={setOpenApproveModal}
         statusType="lost"
+        existingRemark={latestActivityStatus?.activity_status_remark || ""}
+        existingRemarkLabel="Sales executive remark"
         onSubmitRemark={(remark) => {
           if (!vendorId || !userId) {
             toastManager.add({ title: "Missing vendor/user info", type: "error" });

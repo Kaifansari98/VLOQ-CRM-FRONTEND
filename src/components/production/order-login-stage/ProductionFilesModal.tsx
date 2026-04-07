@@ -35,6 +35,7 @@ import TextAreaInput from "@/components/origin-text-area";
 import { Badge } from "@/components/ui/badge";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import { useSearchParams } from "next/navigation";
+import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
 
 interface ProductionFilesSectionProps {
   leadId: number;
@@ -150,7 +151,10 @@ export default function ProductionFilesSection({
     !readOnly && canUploadOrDeleteOrderLogin(userType, data?.derived_stage!);
 
   return (
-    <div className="border rounded-lg bg-background shadow-sm">
+    <div className="space-y-4">
+      <ClientRequiredDeliveryDateBanner leadId={leadId} />
+
+      <div className="border rounded-lg bg-background shadow-sm">
       {/* -------------------------------- HEADER -------------------------------- */}
       <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b bg-muted/30 ">
         <div className="space-y-0.5">
@@ -328,6 +332,7 @@ export default function ProductionFilesSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </div>
     </div>
   );
 }

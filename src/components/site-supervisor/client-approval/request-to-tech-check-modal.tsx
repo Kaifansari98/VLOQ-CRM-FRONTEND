@@ -225,7 +225,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
               restriction="futureOnly"
               minDate={minClientRequiredDate}
             />
-            <p className="mt-2 text-xs text-muted-foreground">
+            {/* <p className="mt-2 text-xs text-muted-foreground">
               Select a date from{" "}
               {new Date(minClientRequiredDate).toLocaleDateString("en-GB", {
                 day: "2-digit",
@@ -233,7 +233,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
                 year: "numeric",
               })}{" "}
               onwards.
-            </p>
+            </p> */}
           </div>
 
           <AlertDialogFooter>
@@ -316,7 +316,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
                           minDate={minClientRequiredDate}
                         />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground">
+                      {/* <p className="text-xs text-muted-foreground">
                         Select a date from{" "}
                         {new Date(minClientRequiredDate).toLocaleDateString(
                           "en-GB",
@@ -327,7 +327,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
                           },
                         )}{" "}
                         onwards.
-                      </p>
+                      </p> */}
                       <FormMessage />
                     </FormItem>
                   )}

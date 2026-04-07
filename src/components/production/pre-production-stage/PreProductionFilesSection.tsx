@@ -36,6 +36,7 @@ import {
   useInstanceStage,
   useLeadStatus,
 } from "@/hooks/designing-stage/designing-leads-hooks";
+import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
 
 interface PreProductionFilesSectionProps {
   leadId: number;
@@ -195,7 +196,10 @@ export default function PreProductionFilesSection({
   };
 
   return (
-    <div className="border rounded-lg bg-background shadow-sm">
+    <div className="space-y-4">
+      <ClientRequiredDeliveryDateBanner leadId={leadId} />
+
+      <div className="border rounded-lg bg-background shadow-sm">
       {/* -------------------------------- HEADER -------------------------------- */}
       <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
         <div className="space-y-0">
@@ -368,6 +372,7 @@ export default function PreProductionFilesSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </div>
     </div>
   );
 }

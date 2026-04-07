@@ -24,6 +24,7 @@ interface Props {
   onSubmitRemark: (remark: string, dueDate?: string) => void; // callback
   loading?: boolean;
   existingRemark?: string;
+  existingRemarkLabel?: string;
 }
 
 const formSchema = z.object({
@@ -38,6 +39,7 @@ const ActivityStatusModal: React.FC<Props> = ({
   onSubmitRemark,
   loading = false,
   existingRemark,
+  existingRemarkLabel = "Sales executive remark",
 }) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -118,9 +120,7 @@ const ActivityStatusModal: React.FC<Props> = ({
 
             {statusType === "lost" && existingRemark && (
               <div className="space-y-2 rounded-md border bg-muted/40 p-3">
-                <p className="text-sm font-medium">
-                  Remark provided while sending this lead to Lost
-                </p>
+                <p className="text-sm font-medium">{existingRemarkLabel}</p>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                   {existingRemark}
                 </p>
