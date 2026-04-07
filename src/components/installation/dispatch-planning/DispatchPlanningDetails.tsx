@@ -524,6 +524,7 @@ export default function DispatchPlanningDetails({
                           )
                   }
                   restriction="futureAfterTwoDays"
+                  disableSundays
                 />
               </div>
 

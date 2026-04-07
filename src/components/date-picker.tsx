@@ -30,6 +30,7 @@ interface CustomeDatePickerProps {
   intervalEndDate?: string;
   disabledDates?: string[];
   disabledDatesReason?: string;
+  disableSundays?: boolean;
 }
 
 export default function CustomeDatePicker({
@@ -42,6 +43,7 @@ export default function CustomeDatePicker({
   intervalEndDate,
   disabledDates,
   disabledDatesReason,
+  disableSundays = false,
 }: CustomeDatePickerProps) {
   const [date, setDate] = React.useState<Date | undefined>(
     value ? parseISO(value) : undefined
@@ -99,6 +101,9 @@ export default function CustomeDatePicker({
   const disableDates = (date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    if (disableSundays && date.getDay() === 0) return true;
+
     if (disabledDateSet.size > 0) {
       const dateKey = format(date, "yyyy-MM-dd");
       if (disabledDateSet.has(dateKey)) return true;
