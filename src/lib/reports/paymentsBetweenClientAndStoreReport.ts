@@ -24,6 +24,10 @@ interface PaymentsBetweenClientAndStoreReportRow {
   booking_advance_collected: number | null;
   ba_date: string | null;
   ba_description: string | null;
+  additional_payments: {
+    amount: number | null;
+    created_at: string | null;
+  }[];
 }
 
 async function fetchReportData(
@@ -67,6 +71,55 @@ function formatAmount(value: number | null | undefined): string {
   });
 }
 
+function getOrdinalLabel(position: number): string {
+  if (position % 100 >= 11 && position % 100 <= 13) {
+    return `${position}th`;
+  }
+
+  switch (position % 10) {
+    case 1:
+      return `${position}st`;
+    case 2:
+      return `${position}nd`;
+    case 3:
+      return `${position}rd`;
+    default:
+      return `${position}th`;
+  }
+}
+
+function formatAdditionalPayment(
+  payment:
+    | {
+        amount: number | null;
+        created_at: string | null;
+      }
+    | undefined,
+): string {
+  if (!payment) return "-";
+  return `${formatAmount(payment.amount)} - ${formatDate(payment.created_at)}`;
+}
+
+function applyHeaderCellStyle(cell: ExcelJS.Cell) {
+  cell.alignment = {
+    horizontal: "center",
+    vertical: "middle",
+    wrapText: true,
+  };
+  cell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FF4472C4" },
+  };
+  cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+  cell.border = {
+    top: { style: "thin" },
+    bottom: { style: "thin" },
+    left: { style: "thin" },
+    right: { style: "thin" },
+  };
+}
+
 function buildPaymentsSheet(
   workbook: ExcelJS.Workbook,
   rows: PaymentsBetweenClientAndStoreReportRow[],
@@ -74,7 +127,7 @@ function buildPaymentsSheet(
 ) {
   const sheet = workbook.addWorksheet(sheetName);
 
-  const headers = [
+  const baseHeaders = [
     "Sr. No.",
     "Lead Code",
     "Client Name",
@@ -88,6 +141,18 @@ function buildPaymentsSheet(
     "BA Description",
   ];
 
+  const maxAdditionalPayments = rows.reduce(
+    (max, row) => Math.max(max, row.additional_payments.length),
+    0,
+  );
+
+  const additionalHeaders = Array.from(
+    { length: maxAdditionalPayments },
+    (_, index) => `${getOrdinalLabel(index + 1)} Payment`,
+  );
+
+  const allHeaders = [...baseHeaders, ...additionalHeaders];
+
   sheet.columns = [
     { key: "srNo", width: 8 },
     { key: "leadCode", width: 18 },
@@ -100,11 +165,15 @@ function buildPaymentsSheet(
     { key: "bookingAdvanceCollected", width: 24 },
     { key: "baDate", width: 18 },
     { key: "baDescription", width: 32 },
+    ...additionalHeaders.map((_, index) => ({
+      key: `additionalPayment${index + 1}`,
+      width: 24,
+    })),
   ];
 
-  sheet.mergeCells(1, 1, 1, headers.length);
+  sheet.mergeCells(1, 1, 1, allHeaders.length);
   const titleCell = sheet.getCell("A1");
-  titleCell.value = "Payments Report (Between client and Store)";
+  titleCell.value = "Payments Report";
   titleCell.font = { bold: true, size: 13 };
   titleCell.alignment = { horizontal: "center", vertical: "middle" };
   titleCell.fill = {
@@ -114,29 +183,35 @@ function buildPaymentsSheet(
   };
   sheet.getRow(1).height = 28;
 
-  const headerRow = sheet.getRow(2);
-  headers.forEach((header, index) => {
-    const cell = headerRow.getCell(index + 1);
+  const groupHeaderRow = sheet.getRow(2);
+  const subHeaderRow = sheet.getRow(3);
+
+  baseHeaders.forEach((header, index) => {
+    const columnIndex = index + 1;
+    sheet.mergeCells(2, columnIndex, 3, columnIndex);
+    const cell = groupHeaderRow.getCell(columnIndex);
     cell.value = header;
-    cell.alignment = {
-      horizontal: "center",
-      vertical: "middle",
-      wrapText: true,
-    };
-    cell.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF4472C4" },
-    };
-    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
-    cell.border = {
-      top: { style: "thin" },
-      bottom: { style: "thin" },
-      left: { style: "thin" },
-      right: { style: "thin" },
-    };
+    applyHeaderCellStyle(cell);
   });
-  headerRow.height = 32;
+
+  if (additionalHeaders.length > 0) {
+    const startColumn = baseHeaders.length + 1;
+    const endColumn = baseHeaders.length + additionalHeaders.length;
+
+    sheet.mergeCells(2, startColumn, 2, endColumn);
+    const sectionCell = groupHeaderRow.getCell(startColumn);
+    sectionCell.value = "Additional Payments Made";
+    applyHeaderCellStyle(sectionCell);
+
+    additionalHeaders.forEach((header, index) => {
+      const cell = subHeaderRow.getCell(baseHeaders.length + index + 1);
+      cell.value = header;
+      applyHeaderCellStyle(cell);
+    });
+  }
+
+  groupHeaderRow.height = 28;
+  subHeaderRow.height = 28;
 
   rows.forEach((entry, index) => {
     const row = sheet.addRow([
@@ -151,11 +226,20 @@ function buildPaymentsSheet(
       formatAmount(entry.booking_advance_collected),
       formatDate(entry.ba_date),
       entry.ba_description || "-",
+      ...Array.from({ length: maxAdditionalPayments }, (_, paymentIndex) =>
+        formatAdditionalPayment(entry.additional_payments[paymentIndex]),
+      ),
     ]);
 
     row.height = 18;
     row.eachCell({ includeEmpty: true }, (cell, colNum) => {
-      const isCenter = colNum === 1 || colNum === 5 || colNum === 6 || colNum === 7 || colNum === 9 || colNum === 10;
+      const isCenter =
+        colNum === 1 ||
+        colNum === 5 ||
+        colNum === 6 ||
+        colNum === 7 ||
+        colNum === 9 ||
+        colNum === 10;
       cell.alignment = {
         horizontal: isCenter ? "center" : "left",
         vertical: "middle",
@@ -238,11 +322,5 @@ export async function generatePaymentsBetweenClientAndStoreReport(
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
-  saveAs(
-    blob,
-    buildReportFileName(
-      params.vendorReportCode,
-      "Payments Report (Between client and Store)",
-    ),
-  );
+  saveAs(blob, buildReportFileName(params.vendorReportCode, "Payments Report"));
 }

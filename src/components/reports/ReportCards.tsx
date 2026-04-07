@@ -64,7 +64,7 @@ const REPORTS: ReportCardConfig[] = [
   },
   {
     id: "payments",
-    title: "Payments Report (Between client and Store)",
+    title: "Payments Report",
     description: "Lead-wise payment summary for ISM and booking advance collected at store level.",
     userTypes: [],
   },
