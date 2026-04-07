@@ -71,6 +71,7 @@ import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useFinalHandoverReady,
+  useGetUsableHandover,
   useMoveToFinalHandover,
   useSetActualInstallationStartDate,
   useUnderInstallationDetails,
@@ -111,6 +112,8 @@ export default function UnderInstallationLeadDetails() {
     vendorId,
     leadIdNum,
   );
+  const { data: usableHandoverData, isLoading: isLoadingUsableHandover } =
+    useGetUsableHandover(vendorId ?? 0, leadIdNum);
   const setStartMutation = useSetActualInstallationStartDate();
   const { data: finalReady } = useFinalHandoverReady(vendorId!, leadIdNum);
 
@@ -151,6 +154,9 @@ export default function UnderInstallationLeadDetails() {
     effectiveUserType?.toLowerCase() !== "admin";
 
   const miscStatusReady = miscStatus?.all_resolved;
+  const isUsableHandoverCompleted = Boolean(
+    usableHandoverData?.usable_handover_completed,
+  );
 
   console.log("miscStatus: ", miscStatus?.all_resolved);
 
@@ -242,6 +248,38 @@ export default function UnderInstallationLeadDetails() {
                 </div>
               }
               value="Start Installation first to move this lead to Final Handover."
+            />
+          ) : isLoadingUsableHandover ? (
+            <CustomeTooltip
+              truncateValue={
+                <div className="opacity-60 cursor-not-allowed">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    disabled
+                    className="pointer-events-none hidden sm:flex"
+                  >
+                    Move to Final Handover
+                  </Button>
+                </div>
+              }
+              value="Checking usable handover completion status..."
+            />
+          ) : !isUsableHandoverCompleted ? (
+            <CustomeTooltip
+              truncateValue={
+                <div className="opacity-60 cursor-not-allowed">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    disabled
+                    className="pointer-events-none hidden sm:flex"
+                  >
+                    Move to Final Handover
+                  </Button>
+                </div>
+              }
+              value="Mark Usable Handover as completed before moving to Final Handover."
             />
           ) : isLoadingMisc ? (
             // 2️⃣ Checking misc status → block
@@ -337,6 +375,26 @@ export default function UnderInstallationLeadDetails() {
                     </DropdownMenuItem>
                   }
                   value="Start Installation first to move this lead to Final Handover."
+                />
+              ) : isLoadingUsableHandover ? (
+                <CustomeTooltip
+                  truncateValue={
+                    <DropdownMenuItem className="sm:hidden" disabled>
+                      <Handshake size={20} />
+                      Move to Final Handover
+                    </DropdownMenuItem>
+                  }
+                  value="Checking usable handover completion status..."
+                />
+              ) : !isUsableHandoverCompleted ? (
+                <CustomeTooltip
+                  truncateValue={
+                    <DropdownMenuItem className="sm:hidden" disabled>
+                      <Handshake size={20} />
+                      Move to Final Handover
+                    </DropdownMenuItem>
+                  }
+                  value="Mark Usable Handover as completed before moving to Final Handover."
                 />
               ) : isLoadingMisc ? (
                 // 2️⃣ Checking misc status → block
