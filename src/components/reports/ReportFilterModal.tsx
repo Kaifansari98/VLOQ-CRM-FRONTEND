@@ -134,8 +134,12 @@ export function ReportFilterModal({
   const isInstallationReport = reportTitle === "Installation Report";
   const isMiscIssueLogReport = reportTitle === "Miscl + Issue Log Report";
   const isLeadTrackingReport = reportTitle === "Lead Tracking Report";
+  const isPaymentsReport = reportTitle === "Payments Report";
   const supportsLeadFilter =
-    isInstallationReport || isMiscIssueLogReport || isLeadTrackingReport;
+    isInstallationReport ||
+    isMiscIssueLogReport ||
+    isLeadTrackingReport ||
+    isPaymentsReport;
   const isAllFranchise = selectedFranchiseId === "all";
   const isAllUserType = selectedUserType === "all";
   const isVendorLevel = VENDOR_LEVEL_TYPES.includes(selectedUserType) || isAllFranchise;
@@ -185,6 +189,21 @@ export function ReportFilterModal({
       if (isLeadTrackingReport) {
         const { data } = await apiClient.get(
           "/vendors/reports/lead-tracking",
+          {
+            params: {
+              vendor_id: vendorId,
+              ...(activeFranchiseId !== undefined
+                ? { franchise_id: activeFranchiseId }
+                : {}),
+            },
+          },
+        );
+        return (data?.data ?? []) as ReportLeadAvailabilityRow[];
+      }
+
+      if (isPaymentsReport) {
+        const { data } = await apiClient.get(
+          "/vendors/reports/payments-between-client-and-store",
           {
             params: {
               vendor_id: vendorId,

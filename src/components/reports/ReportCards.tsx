@@ -343,6 +343,7 @@ export function ReportCards() {
           vendorId,
           vendorReportCode,
           franchiseId,
+          leadId: filters?.leadId ? Number(filters.leadId) : null,
           fromDate: filters?.fromDate ?? "",
           toDate: filters?.toDate ?? "",
           onProgress: (stage) => setStage(reportId, stage),

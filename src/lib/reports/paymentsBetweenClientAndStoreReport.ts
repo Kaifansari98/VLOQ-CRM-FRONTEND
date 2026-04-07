@@ -7,6 +7,7 @@ interface GeneratePaymentsBetweenClientAndStoreReportParams {
   vendorId: number;
   vendorReportCode: string;
   franchiseId: number | "all";
+  leadId?: number | null;
   fromDate: string;
   toDate: string;
   onProgress?: (stage: string) => void;
@@ -33,6 +34,7 @@ interface PaymentsBetweenClientAndStoreReportRow {
 async function fetchReportData(
   vendorId: number,
   franchiseId: number | null,
+  leadId: number | null,
   fromDate: string,
   toDate: string,
 ): Promise<PaymentsBetweenClientAndStoreReportRow[]> {
@@ -41,6 +43,7 @@ async function fetchReportData(
   };
 
   if (franchiseId !== null) params.franchise_id = String(franchiseId);
+  if (leadId !== null) params.lead_id = String(leadId);
   if (fromDate) params.from_date = fromDate;
   if (toDate) params.to_date = toDate;
 
@@ -65,10 +68,10 @@ function formatDate(dateStr: string | null | undefined): string {
 
 function formatAmount(value: number | null | undefined): string {
   if (value === null || value === undefined) return "-";
-  return Number(value).toLocaleString("en-IN", {
+  return `₹${Number(value).toLocaleString("en-IN", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  });
+  })}`;
 }
 
 function getOrdinalLabel(position: number): string {
@@ -266,14 +269,14 @@ function buildPaymentsSheet(
 export async function generatePaymentsBetweenClientAndStoreReport(
   params: GeneratePaymentsBetweenClientAndStoreReportParams,
 ) {
-  const { vendorId, franchiseId, fromDate, toDate, onProgress } = params;
+  const { vendorId, franchiseId, leadId = null, fromDate, toDate, onProgress } = params;
 
   onProgress?.("Fetching payment data...");
 
   const rows =
     franchiseId === "all"
-      ? await fetchReportData(vendorId, null, fromDate, toDate)
-      : await fetchReportData(vendorId, franchiseId, fromDate, toDate);
+      ? await fetchReportData(vendorId, null, leadId, fromDate, toDate)
+      : await fetchReportData(vendorId, franchiseId, leadId, fromDate, toDate);
 
   if (rows.length === 0) {
     throw new Error("No payment rows found for the selected filters.");
