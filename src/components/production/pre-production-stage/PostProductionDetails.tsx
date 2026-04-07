@@ -209,10 +209,13 @@ export default function PostProductionDetails({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between"
+          className="flex flex-col gap-3 rounded-2xl border border-border bg-muted/30 px-4 py-3 shadow-sm backdrop-blur-sm md:flex-row md:items-center md:justify-between"
         >
-          <ClientRequiredDeliveryDateBanner leadId={leadId} />
-          <div className="flex items-center justify-center">
+          <ClientRequiredDeliveryDateBanner
+            leadId={leadId}
+            className="flex-1 border-0 bg-transparent px-0 py-0 shadow-none dark:bg-transparent"
+          />
+          <div className="flex items-center justify-center md:justify-end">
             {isLoading ? (
               <Badge
                 variant="secondary"
@@ -225,20 +228,17 @@ export default function PostProductionDetails({
                 truncateValue={
                   <Card
                     className={`
-                  flex items-center gap-4 px-4 py-1 
-                  border border-border/60 
-                  rounded-lg 
-                  bg-background backdrop-blur-sm 
+                  flex min-w-[230px] items-center gap-4 rounded-2xl border border-border/70 bg-background px-4 py-2
                   transition-all duration-300 hover:border-primary/40
                   ${!canEditBoxes ? "opacity-70" : ""}
                 `}
                   >
                     <CardContent className="flex items-center gap-4 p-0">
                       <div className="flex flex-col items-start">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           No. of Boxes
                         </span>
-                        <span className="text-sm font-semibold text-foreground">
+                        <span className="text-sm font-semibold text-foreground sm:text-base">
                           {noOfBoxesValue} Box{noOfBoxesValue > 1 ? "es" : ""}
                         </span>
                       </div>

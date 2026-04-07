@@ -3,13 +3,16 @@
 import { motion } from "framer-motion";
 import { useClientRequiredCompletionDate } from "@/api/tech-check";
 import { useAppSelector } from "@/redux/store";
+import { cn } from "@/lib/utils";
 
 interface ClientRequiredDeliveryDateBannerProps {
   leadId: number;
+  className?: string;
 }
 
 export default function ClientRequiredDeliveryDateBanner({
   leadId,
+  className,
 }: ClientRequiredDeliveryDateBannerProps) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const { data } = useClientRequiredCompletionDate(vendorId, leadId);
@@ -19,15 +22,18 @@ export default function ClientRequiredDeliveryDateBanner({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="
-        flex items-center gap-3
-        bg-muted/50
-        dark:bg-neutral-900/50
-        border border-border
-        rounded-xl
-        px-4 py-3
-        backdrop-blur-sm
-      "
+      className={cn(
+        `
+          flex items-center gap-3
+          bg-muted/50
+          dark:bg-neutral-900/50
+          border border-border
+          rounded-xl
+          px-4 py-3
+          backdrop-blur-sm
+        `,
+        className,
+      )}
     >
       <motion.div
         className="
