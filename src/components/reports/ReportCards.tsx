@@ -14,9 +14,18 @@ import { generateMiscIssueLogReport } from "@/lib/reports/miscIssueLogReport";
 import { generateLeadsOverviewReport } from "@/lib/reports/leadsOverviewReport";
 import { generateTechCheckStageReport } from "@/lib/reports/techCheckStageReport";
 import { generateErdReport } from "@/lib/reports/erdReport";
+import { generatePaymentsBetweenClientAndStoreReport } from "@/lib/reports/paymentsBetweenClientAndStoreReport";
 import { toast } from "sonner";
 
-const REPORTS = [
+interface ReportCardConfig {
+  id: string;
+  title: string;
+  description: string;
+  userTypes: string[];
+  active?: boolean;
+}
+
+const REPORTS: ReportCardConfig[] = [
   {
     id: "employee-task",
     title: "Employee Task Report",
@@ -55,9 +64,8 @@ const REPORTS = [
   },
   {
     id: "payments",
-    title: "Payments Report",
-    description: "Detailed view of payment transactions between clients and the store.",
-    active: false,
+    title: "Payments Report (Between client and Store)",
+    description: "Lead-wise payment summary for ISM and booking advance collected at store level.",
     userTypes: [],
   },
   {
@@ -299,6 +307,39 @@ export function ReportCards() {
       setStage(reportId, "Fetching ERD data...");
       try {
         await generateErdReport({
+          vendorId,
+          vendorReportCode,
+          franchiseId,
+          fromDate: filters?.fromDate ?? "",
+          toDate: filters?.toDate ?? "",
+          onProgress: (stage) => setStage(reportId, stage),
+        });
+        toast.success("Report downloaded successfully.");
+      } catch (err: unknown) {
+        console.error(err);
+        const msg =
+          err instanceof Error ? err.message : "Failed to generate report.";
+        toast.error(msg);
+      } finally {
+        clearStage(reportId);
+      }
+      return;
+    }
+
+    if (reportId === "payments") {
+      const filters = appliedFilters[reportId];
+      if (isSuperAdmin && !filters?._franchiseId) {
+        toast.error("Please apply filters before downloading.");
+        openFilterModal(reportId);
+        return;
+      }
+
+      const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? "all";
+      const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
+
+      setStage(reportId, "Fetching payment data...");
+      try {
+        await generatePaymentsBetweenClientAndStoreReport({
           vendorId,
           vendorReportCode,
           franchiseId,
