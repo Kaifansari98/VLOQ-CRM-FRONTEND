@@ -48,6 +48,7 @@ import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkDispatchPlanningStage } from "@/components/utils/privileges";
 import { Checkbox } from "@/components/ui/checkbox";
+import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
 
 interface DispatchPlanningDetailsProps {
   leadId: number;
@@ -399,6 +400,7 @@ export default function DispatchPlanningDetails({
 
   return (
     <div className="space-y-4 pb-6">
+      <ClientRequiredDeliveryDateBanner leadId={leadId} />
       {/* Dispatch Planning Information */}
       <div className="border h-full rounded-lg overflow-y-auto bg-background">
         {/* ---------- HEADER ---------- */}

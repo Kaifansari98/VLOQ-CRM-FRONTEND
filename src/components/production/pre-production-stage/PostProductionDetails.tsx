@@ -34,12 +34,12 @@ import {
   useGetNoOfBoxes,
   useUpdateNoOfBoxes,
 } from "@/api/production/production-api";
-import { useClientRequiredCompletionDate } from "@/api/tech-check";
 import { useInstanceStage, useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 import WoodworkPackingDetailsSection from "../post-production-stage/WoodworkPackingDetailsSection";
 import HardwarePackingDetailsSection from "../post-production-stage/HardwarePackingDetailsSection";
 import PostProductionQcPhotosSection from "../post-production-stage/PostProductionQcPhotosSection";
+import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
 
 // ✅ Define Zod Schema
 const boxSchema = z.object({
@@ -105,9 +105,6 @@ export default function PostProductionDetails({
     defaultValues: { noOfBoxes: "" },
     mode: "onChange", // 🔥 ensures validation messages show immediately
   });
-
-  const { data: clientRequiredCompletionDateData } =
-    useClientRequiredCompletionDate(vendorId, leadId);
 
   const canViewAndWork = canViewAndWorkProductionStage(effectiveUserType ?? "", leadStatusIns ?? leadStatus);
   const canEditBoxes =
@@ -208,54 +205,13 @@ export default function PostProductionDetails({
         animate="visible"
         className="w-full space-y-4 mb-3"
       >
-        {/* -------- Client Required Completion Section -------- */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between bg-muted/50 dark:bg-neutral-900/50 border border-border rounded-xl px-4 py-3 backdrop-blur-sm"
+          className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between"
         >
-          <div className="flex items-center gap-4">
-            {/* Animated green indicator */}
-            <motion.div
-              className="
-        w-3 h-3 rounded-full
-        bg-green-500 
-        shadow-[0_0_8px_rgba(34,197,94,0.6)]
-      "
-              animate={{
-                scale: [1, 1.25, 1],
-                opacity: [0.75, 1, 0.75],
-              }}
-              transition={{
-                repeat: Infinity,
-                duration: 1.6,
-                ease: "easeInOut",
-              }}
-            />
-
-            {/* Text + Date */}
-            <div className="flex flex-col">
-              <p className="text-xs font-medium text-muted-foreground tracking-wide">
-                Client Required Delivery Date
-              </p>
-
-              <span className="text-sm font-semibold text-foreground">
-                {clientRequiredCompletionDateData?.client_required_order_login_complition_date
-                  ? new Date(
-                      clientRequiredCompletionDateData?.client_required_order_login_complition_date
-                    ).toLocaleDateString("en-GB", {
-                      weekday: "long",
-                      day: "2-digit",
-                      month: "long",
-                      year: "numeric",
-                    })
-                  : "Not specified"}
-              </span>
-            </div>
-          </div>
-
-          {/* ---------- RIGHT: No Of Boxes section restored ---------- */}
+          <ClientRequiredDeliveryDateBanner leadId={leadId} />
           <div className="flex items-center justify-center">
             {isLoading ? (
               <Badge

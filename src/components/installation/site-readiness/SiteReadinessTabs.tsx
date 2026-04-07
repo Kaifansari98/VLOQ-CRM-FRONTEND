@@ -5,6 +5,7 @@ import { ClipboardCheck, Images } from "lucide-react";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import SiteReadinessDetails from "./SiteReadinessDetails";
 import CurrentSitePhotosReadinessSection from "./CurrentSitePhotosReadinessSection";
+import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
 
 interface SiteReadinessTabsProps {
   leadId: number;
@@ -60,6 +61,9 @@ export default function SiteReadinessTabs({
 
   return (
     <div className="w-full h-full">
+      <div className="mb-4">
+        <ClientRequiredDeliveryDateBanner leadId={leadId} />
+      </div>
       <SmoothTab
         items={tabItems}
         defaultTabId="checklist"      

@@ -2,6 +2,7 @@
 
 import React from "react";
 import CurrentSitePhotosSection from "./CurrentSitePhotosSection";
+import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
 
 interface ReadyToDispatchDetailsProps {
   leadId: number;
@@ -15,6 +16,7 @@ export default function ReadyToDispatchDetails({
 }: ReadyToDispatchDetailsProps) {
   return (
     <div className="py-2 space-y-4">
+      <ClientRequiredDeliveryDateBanner leadId={leadId} />
       <CurrentSitePhotosSection leadId={leadId} accountId={accountId} />
     </div>
   );

@@ -3,9 +3,8 @@
 import { useAppSelector } from "@/redux/store";
 import { useOrderLoginByLead } from "@/api/production/order-login";
 import OrderLoginCard from "./OrderLoginCard";
-import { useClientRequiredCompletionDate } from "@/api/tech-check";
-import { motion } from "framer-motion";
 import ComingSoon from "@/components/generics/ComingSoon";
+import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
 
 interface PreProductionDetailsProps {
   leadId?: number;
@@ -40,16 +39,12 @@ export default function PreProductionDetails({
   instanceId,
 }: PreProductionDetailsProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
-  const userId = useAppSelector((s) => s.auth.user?.id)
   const { data, isLoading, isError } = useOrderLoginByLead(
     vendorId,
     leadId,
     instanceId ?? undefined
   );
   console.log("Under production Data: ", data);
-
-  const { data: ClientRequiredCompletionDate } =
-    useClientRequiredCompletionDate(vendorId, leadId);
 
   if (isLoading) {
     return (
@@ -78,59 +73,7 @@ export default function PreProductionDetails({
 
   return (
     <div className="space-y-4 bg-[#fff] dark:bg-[#0a0a0a]">
-      {/* -------- Client Required Completion Section (Exact Same UI) -------- */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="
-    flex items-center gap-3 
-    bg-muted/50 
-    dark:bg-neutral-900/50
-    border border-border 
-    rounded-xl 
-    px-4 py-3 
-    backdrop-blur-sm
-  "
-      >
-        {/* Animated green dot */}
-        <motion.div
-          className="
-      w-3 h-3 rounded-full 
-      bg-green-500 
-      shadow-[0_0_8px_rgba(34,197,94,0.6)]
-    "
-          animate={{
-            scale: [1, 1.25, 1],
-            opacity: [0.75, 1, 0.75],
-          }}
-          transition={{
-            repeat: Infinity,
-            duration: 1.6,
-            ease: "easeInOut",
-          }}
-        />
-
-        {/* Label + Date */}
-        <div className="flex flex-col">
-          <p className="text-xs font-medium text-muted-foreground tracking-wide">
-            Client Required Delivery Date
-          </p>
-
-          <span className="text-sm font-semibold text-foreground">
-            {ClientRequiredCompletionDate?.client_required_order_login_complition_date
-              ? new Date(
-                  ClientRequiredCompletionDate.client_required_order_login_complition_date,
-                ).toLocaleDateString("en-GB", {
-                  weekday: "long",
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                })
-              : "Not specified"}
-          </span>
-        </div>
-      </motion.div>
+      <ClientRequiredDeliveryDateBanner leadId={leadId || 0} />
 
       {data.length === 0 ? (
         <p className="text-sm text-muted-foreground">
