@@ -13,8 +13,18 @@ import {
 export function getCutListColumns(
   machineColumns: string[],
   onMachineHeaderClick?: (machineName: string) => void,
-  onMachineCellClick?: (cutListId: number, machineId: number, machineName: string, currentlyAssigned: boolean) => void
+  onMachineCellClick?: (cutListId: number, machineId: number, machineName: string, currentlyAssigned: boolean) => void,
+  data?: any[]  // ✅ add this
 ): ColumnDef<any>[] {
+  // ✅ Build unique option lists from data
+  const uniqueGroups = Array.from(
+    new Set((data ?? []).map((row) => row.group_name).filter(Boolean))
+  ).sort();
+
+  const uniqueCategories = Array.from(
+    new Set((data ?? []).map((row) => row.category_name?.trim()).filter(Boolean))
+  ).sort();
+
   return [
     // Checkbox column (no filter)
     {
@@ -41,7 +51,7 @@ export function getCutListColumns(
       enableHiding: false,
       enablePinning: true,
     },
-    
+
     // ID column with filter
     {
       accessorKey: "id",
@@ -72,6 +82,147 @@ export function getCutListColumns(
       size: 80,
       enablePinning: true,
       enableColumnFilter: true,
+    },
+    {
+      accessorKey: "group_name",
+      header: ({ column }) => {
+        const selected: string[] = (column.getFilterValue() as string[]) ?? [];
+        return (
+          <div className="flex items-center gap-2">
+            <span>Group</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-6 w-6 p-0 ${selected.length > 0 ? "text-primary" : ""}`}
+                >
+                  <Filter className="h-3 w-3" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2" align="start">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {selected.length > 0 ? `${selected.length} selected` : "Filter by group"}
+                  </span>
+                  {selected.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 px-1 text-xs"
+                      onClick={() => column.setFilterValue(undefined)}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                <div className="max-h-52 overflow-y-auto space-y-1">
+                  {uniqueGroups.map((group) => {
+                    const isChecked = selected.includes(group);
+                    return (
+                      <label
+                        key={group}
+                        className="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-accent cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={isChecked}
+                          onCheckedChange={(checked) => {
+                            const next = checked
+                              ? [...selected, group]
+                              : selected.filter((v) => v !== group);
+                            column.setFilterValue(next.length > 0 ? next : undefined);
+                          }}
+                        />
+                        <span className="text-sm truncate" title={group}>{group}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        );
+      },
+      cell: ({ row }) => (
+        <div className="text-sm break-words whitespace-normal max-w-[250px]">{row.original.group_name ?? "—"}</div>
+      ),
+      size: 300,
+      enableColumnFilter: true,
+      filterFn: (row, columnId, filterValue: string[]) => {
+        if (!filterValue || filterValue.length === 0) return true;
+        return filterValue.includes(row.getValue(columnId));
+      },
+    },
+
+    {
+      accessorKey: "category_name",
+      header: ({ column }) => {
+        const selected: string[] = (column.getFilterValue() as string[]) ?? [];
+        return (
+          <div className="flex items-center gap-2">
+            <span>Category</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-6 w-6 p-0 ${selected.length > 0 ? "text-primary" : ""}`}
+                >
+                  <Filter className="h-3 w-3" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2" align="start">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {selected.length > 0 ? `${selected.length} selected` : "Filter by category"}
+                  </span>
+                  {selected.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 px-1 text-xs"
+                      onClick={() => column.setFilterValue(undefined)}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                <div className="max-h-52 overflow-y-auto space-y-1">
+                  {uniqueCategories.map((category) => {
+                    const isChecked = selected.includes(category);
+                    return (
+                      <label
+                        key={category}
+                        className="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-accent cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={isChecked}
+                          onCheckedChange={(checked) => {
+                            const next = checked
+                              ? [...selected, category]
+                              : selected.filter((v) => v !== category);
+                            column.setFilterValue(next.length > 0 ? next : undefined);
+                          }}
+                        />
+                        <span className="text-sm truncate" title={category}>{category}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        );
+      },
+      cell: ({ row }) => (
+        <div className="whitespace-nowrap text-sm">{row.original.category_name?.trim() ?? "—"}</div>
+      ),
+      size: 150,
+      enableColumnFilter: true,
+      filterFn: (row, columnId, filterValue: string[]) => {
+        if (!filterValue || filterValue.length === 0) return true;
+        return filterValue.includes(row.getValue<string>(columnId)?.trim());
+      },
     },
 
     // Description column with filter
@@ -105,6 +256,8 @@ export function getCutListColumns(
       enablePinning: true,
       enableColumnFilter: true,
     },
+
+
 
     // Item Name
     {
@@ -520,9 +673,9 @@ export function getCutListColumns(
         const isAssigned = machineData?.assigned || false;
         const machineId = machineData?.machineId;
         const cutListId = row.original.id;
-        
+
         return (
-          <div 
+          <div
             className="flex items-center justify-center cursor-pointer hover:bg-accent rounded p-1 transition-colors"
             onClick={() => {
               if (machineId && onMachineCellClick) {
@@ -544,7 +697,7 @@ export function getCutListColumns(
       filterFn: (row: any, columnId: string, filterValue: string) => {
         const machineData = row.getValue(columnId);
         const isAssigned = machineData?.assigned || false;
-        
+
         if (filterValue === "assigned") return isAssigned;
         if (filterValue === "not-assigned") return !isAssigned;
         return true;
