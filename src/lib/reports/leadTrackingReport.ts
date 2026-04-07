@@ -9,6 +9,7 @@ interface GenerateLeadTrackingReportParams {
   userId: number | "all";
   userType: string;
   franchiseId: number | "all";
+  leadId?: number | null;
   fromDate: string;
   toDate: string;
   onProgress?: (stage: string) => void;
@@ -52,6 +53,7 @@ async function fetchReportData(
   franchiseId: number | null,
   userType: string | null,
   userId: number | null,
+  leadId: number | null,
   fromDate: string,
   toDate: string,
 ): Promise<LeadTrackingReportRow[]> {
@@ -62,6 +64,7 @@ async function fetchReportData(
   if (franchiseId !== null) params.franchise_id = String(franchiseId);
   if (userType && userType !== "all") params.user_type = userType;
   if (userId !== null) params.user_id = String(userId);
+  if (leadId !== null) params.lead_id = String(leadId);
   if (fromDate) params.from_date = fromDate;
   if (toDate) params.to_date = toDate;
 
@@ -257,6 +260,7 @@ export async function generateLeadTrackingReport(
     userId,
     userType,
     franchiseId,
+    leadId = null,
     fromDate,
     toDate,
     onProgress,
@@ -271,6 +275,7 @@ export async function generateLeadTrackingReport(
           null,
           userType || null,
           userId === "all" ? null : userId,
+          leadId,
           fromDate,
           toDate,
         )
@@ -279,6 +284,7 @@ export async function generateLeadTrackingReport(
           franchiseId,
           userType || null,
           userId === "all" ? null : userId,
+          leadId,
           fromDate,
           toDate,
         );

@@ -133,7 +133,9 @@ export function ReportFilterModal({
   const selectedUserType = filters.userType;
   const isInstallationReport = reportTitle === "Installation Report";
   const isMiscIssueLogReport = reportTitle === "Miscl + Issue Log Report";
-  const supportsLeadFilter = isInstallationReport || isMiscIssueLogReport;
+  const isLeadTrackingReport = reportTitle === "Lead Tracking Report";
+  const supportsLeadFilter =
+    isInstallationReport || isMiscIssueLogReport || isLeadTrackingReport;
   const isAllFranchise = selectedFranchiseId === "all";
   const isAllUserType = selectedUserType === "all";
   const isVendorLevel = VENDOR_LEVEL_TYPES.includes(selectedUserType) || isAllFranchise;
@@ -176,6 +178,21 @@ export function ReportFilterModal({
         const { data } = await apiClient.get(
           `/leads/installation/under-installation/vendorId/${vendorId}/report/misc-issue-log-data`,
           params,
+        );
+        return (data?.data ?? []) as ReportLeadAvailabilityRow[];
+      }
+
+      if (isLeadTrackingReport) {
+        const { data } = await apiClient.get(
+          "/vendors/reports/lead-tracking",
+          {
+            params: {
+              vendor_id: vendorId,
+              ...(activeFranchiseId !== undefined
+                ? { franchise_id: activeFranchiseId }
+                : {}),
+            },
+          },
         );
         return (data?.data ?? []) as ReportLeadAvailabilityRow[];
       }
