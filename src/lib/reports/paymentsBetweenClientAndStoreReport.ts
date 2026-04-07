@@ -207,24 +207,18 @@ function buildPaymentsSheet(
       const amountColumn = baseHeaders.length + index * 2 + 1;
       const dateColumn = amountColumn + 1;
 
-      sheet.mergeCells(3, amountColumn, 3, dateColumn);
-      const paymentHeaderCell = subHeaderRow.getCell(amountColumn);
-      paymentHeaderCell.value = header;
-      applyHeaderCellStyle(paymentHeaderCell);
-
-      const amountLabelCell = sheet.getRow(4).getCell(amountColumn);
-      amountLabelCell.value = "Amount";
+      const amountLabelCell = subHeaderRow.getCell(amountColumn);
+      amountLabelCell.value = `${header} Amount`;
       applyHeaderCellStyle(amountLabelCell);
 
-      const dateLabelCell = sheet.getRow(4).getCell(dateColumn);
-      dateLabelCell.value = "Date";
+      const dateLabelCell = subHeaderRow.getCell(dateColumn);
+      dateLabelCell.value = `${header} Date`;
       applyHeaderCellStyle(dateLabelCell);
     });
   }
 
   groupHeaderRow.height = 28;
   subHeaderRow.height = 28;
-  sheet.getRow(4).height = 28;
 
   rows.forEach((entry, index) => {
     const row = sheet.addRow([
