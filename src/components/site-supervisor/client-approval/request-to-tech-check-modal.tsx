@@ -40,12 +40,25 @@ import AssignToPicker from "@/components/assign-to-picker";
 import CustomeDatePicker from "@/components/date-picker";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { addDays, format } from "date-fns";
+
+const getMinClientRequiredDate = () =>
+  format(addDays(new Date(), 20), "yyyy-MM-dd");
 
 const schema = z.object({
   assign_to_user_id: z.number().min(1, "Please select a Tech Check user"),
   client_required_order_login_complition_date: z
     .string()
-    .min(1, "Please select a date"),
+    .min(1, "Please select a date")
+    .refine(
+      (value) => {
+        if (!value) return false;
+        return value >= getMinClientRequiredDate();
+      },
+      {
+        message: "Client required date must be at least 20 days after Move to Tech Check",
+      },
+    ),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -71,6 +84,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
 
   const { data: techCheckUsers, isLoading } = useTechCheckUsers(vendorId!);
   const { mutate, isPending } = useRequestToTechCheck();
+  const minClientRequiredDate = getMinClientRequiredDate();
 
   const [showSingleUserConfirm, setShowSingleUserConfirm] = useState(false);
   const [singleUserDate, setSingleUserDate] = useState<string | undefined>("");
@@ -107,6 +121,14 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
   const handleSingleUserSubmit = () => {
     if (!singleUserDate) {
       toastManager.add({ title: "Please select a completion date", type: "error" });
+      return;
+    }
+
+    if (singleUserDate < minClientRequiredDate) {
+      toastManager.add({
+        title: "Client required date must be at least 20 days after Move to Tech Check",
+        type: "error",
+      });
       return;
     }
 
@@ -201,7 +223,17 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
               value={singleUserDate}
               onChange={(value) => setSingleUserDate(value || "")}
               restriction="futureOnly"
+              minDate={minClientRequiredDate}
             />
+            <p className="mt-2 text-xs text-muted-foreground">
+              Select a date from{" "}
+              {new Date(minClientRequiredDate).toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "long",
+                year: "numeric",
+              })}{" "}
+              onwards.
+            </p>
           </div>
 
           <AlertDialogFooter>
@@ -281,8 +313,21 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
                           value={field.value}
                           onChange={field.onChange}
                           restriction="futureOnly"
+                          minDate={minClientRequiredDate}
                         />
                       </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Select a date from{" "}
+                        {new Date(minClientRequiredDate).toLocaleDateString(
+                          "en-GB",
+                          {
+                            day: "2-digit",
+                            month: "long",
+                            year: "numeric",
+                          },
+                        )}{" "}
+                        onwards.
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
