@@ -183,6 +183,8 @@ export const UploadBookingDoc = async (payload: UploadBookintPayload) => {
 export interface PaymentLog {
   id: number;
   amount: number;
+  status_id?: number | null;
+  status_type?: string | null;
   payment_text: string;
   payment_date: string;
   entry_date: string;

@@ -46,6 +46,15 @@ const formatDate = (dateString: string) => {
   };
 };
 
+const formatStatusType = (statusType?: string | null) => {
+  if (!statusType) return null;
+
+  const normalized = statusType.replace(/-/g, " ").trim();
+  if (!normalized) return null;
+
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -159,6 +168,8 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
     );
   }
 
+  const visibleLogs = logs.filter((log) => log.amount > 0);
+
   return (
 
       <motion.div
@@ -174,9 +185,10 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
           style={{ height: `calc(100% - 2rem)` }}
         />
 
-        {logs
-          .filter((log) => log.amount > 0) // ✅ Only show logs with amount > 0
-          .map((log, index) => (
+        {visibleLogs.map((log) => {
+          const formattedStatus = formatStatusType(log.status_type);
+
+          return (
             <motion.div
               key={log.id}
               variants={itemVariants as any}
@@ -220,10 +232,12 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
                           <span className="text-2xl font-bold text-primary">
                             ₹{log.amount.toLocaleString("en-IN")}
                           </span>
-                          {/* <Badge variant="outline" className="text-sm bg-primary/10 text-primary border-primary/30">
-                            Confirmed
-                          </Badge> */}
                         </div>
+                        {formattedStatus && (
+                          <p className="mt-2 text-sm font-medium text-muted-foreground">
+                            {formattedStatus}
+                          </p>
+                        )}
                       </div>
                     </div>
                     {log.payment_file && (
@@ -312,7 +326,8 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
                 </Card>
               </motion.div>
             </motion.div>
-          ))}
+          );
+        })}
       </motion.div>
 
   );
