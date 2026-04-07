@@ -609,6 +609,7 @@ export default function PendingLeadsTable({
         open={openActivityStatus}
         onOpenChange={setOpenActivityStatus}
         statusType="lost"
+        existingRemark={activeLead?.designerRemark || ""}
         onSubmitRemark={(remark) => {
           if (!activeLead || !vendorId || !userId) return;
 

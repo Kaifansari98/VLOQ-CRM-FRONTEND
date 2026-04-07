@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import BaseModal from "@/components/utils/baseModal";
 import z from "zod";
 import { useForm } from "react-hook-form";
@@ -23,6 +23,7 @@ interface Props {
   statusType: "onHold" | "lostApproval" | "lost"; // which action triggered
   onSubmitRemark: (remark: string, dueDate?: string) => void; // callback
   loading?: boolean;
+  existingRemark?: string;
 }
 
 const formSchema = z.object({
@@ -36,14 +37,22 @@ const ActivityStatusModal: React.FC<Props> = ({
   statusType,
   onSubmitRemark,
   loading = false,
+  existingRemark,
 }) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      remark: "",
+      remark: statusType === "lost" ? "N/A" : "",
       dueDate: "",
     },
   });
+
+  useEffect(() => {
+    form.reset({
+      remark: statusType === "lost" ? "N/A" : "",
+      dueDate: "",
+    });
+  }, [form, open, statusType]);
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
     if (statusType === "onHold" && !values.dueDate) {
@@ -105,6 +114,17 @@ const ActivityStatusModal: React.FC<Props> = ({
                   </FormItem>
                 )}
               />
+            )}
+
+            {statusType === "lost" && existingRemark && (
+              <div className="space-y-2 rounded-md border bg-muted/40 p-3">
+                <p className="text-sm font-medium">
+                  Remark provided while sending this lead to Lost
+                </p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {existingRemark}
+                </p>
+              </div>
             )}
 
             {/* Remark */}
