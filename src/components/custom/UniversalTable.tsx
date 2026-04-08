@@ -57,6 +57,7 @@ export interface UniversalTableProps {
   defaultViewType?: "my" | "overall";
   dataMode?: "universal" | "misc";
   activityStatus?: string;
+  pendingServicesOnly?: boolean;
 }
 
 // -------------------------------------------------------
@@ -243,6 +244,7 @@ export function UniversalTable({
   type,
   dataMode = "universal",
   activityStatus,
+  pendingServicesOnly = false,
 }: UniversalTableProps) {
   // -------------------- GLOBAL STATE --------------------
 
@@ -381,6 +383,7 @@ export function UniversalTable({
         normalizedType === "type 10" && productionStatusFilter !== "all"
           ? productionStatusFilter
           : undefined,
+      pending_services: pendingServicesOnly || undefined,
     };
   }, [
     userId,
@@ -394,6 +397,7 @@ export function UniversalTable({
     myGlobalFilter,
     productionStatusFilter,
     normalizedType,
+    pendingServicesOnly,
   ]);
 
   // -------------------- OVERALL LEADS POST PAYLOAD --------------------
@@ -452,6 +456,7 @@ export function UniversalTable({
         normalizedType === "type 10" && productionStatusFilter !== "all"
           ? productionStatusFilter
           : undefined,
+      pending_services: pendingServicesOnly || undefined,
     };
   }, [
     userId,
@@ -466,6 +471,7 @@ export function UniversalTable({
     overallGlobalFilter,
     productionStatusFilter,
     normalizedType,
+    pendingServicesOnly,
   ]);
 
   // -------------------- API CALLS --------------------

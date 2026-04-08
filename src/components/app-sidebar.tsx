@@ -181,7 +181,7 @@ const data = {
     },
     {
       title: "Servicing",
-      url: "#",
+      url: "/dashboard/installation/servicing",
       icon: Drill,
     },
   ],
