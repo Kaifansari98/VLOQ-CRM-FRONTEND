@@ -340,6 +340,14 @@ const MyTaskTable = () => {
           params.set("instance_id", String(row.instance_id));
         }
         router.push(`${basePath}?${params.toString()}`);
+      } else if (
+        row.taskType === "1st Servicing" ||
+        row.taskType === "2nd Servicing" ||
+        row.taskType === "3rd Servicing"
+      ) {
+        router.push(
+          `/dashboard/installation/final-handover/details/${row.leadId}?accountId=${row.accountId}&tab=servicing&source=servicing`,
+        );
       } else {
         console.log("follow up is under development");
       }
