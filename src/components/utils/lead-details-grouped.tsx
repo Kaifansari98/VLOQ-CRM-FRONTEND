@@ -19,6 +19,7 @@ import GroupedSmoothTab from "./grouped-smooth-tab";
 import { StageId } from "@/types/lead-stage-types";
 import UnderInstallationTabsWrapper from "../installation/under-installation/UnderInstallationTabsWrapper";
 import FinalHandoverWrapper from "../installation/final-handover/FinalHandoverWrapper";
+import ServicingWrapper from "../installation/servicing/ServicingWrapper";
 type GroupKey = "leads" | "project" | "production" | "installation";
 
 export interface LeadDetailsGroupedProps {
@@ -226,11 +227,7 @@ export default function LeadDetailsGrouped({
             {
               id: "servicing" as StageId,
               title: "Servicing",
-              component: (
-                <div className="p-4 text-sm text-muted-foreground">
-                  Servicing details will be shown here.
-                </div>
-              ),
+              component: <ServicingWrapper />,
             },
           ]
         : []),
