@@ -165,7 +165,9 @@ export default function FinalHandoverLeadDetails() {
     if (!readiness) return "Unable to verify readiness.";
 
     if (!readiness.docs_complete)
-      return "Upload all Final Handover documents before completing the project.";
+      return readiness.requires_amc_documents
+        ? "Upload all Final Handover documents including AMC Contract Documents before completing the project."
+        : "Upload all Final Handover documents before completing the project.";
 
     if (!readiness.pending_tasks_clear)
       return "Resolve all pending work tasks before marking project as completed.";

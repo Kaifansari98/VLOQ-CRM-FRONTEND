@@ -177,11 +177,12 @@ const data = {
           url: "/dashboard/installation/final-handover",
           showCount: "total_final_handover_stage_leads" as const,
         },
-        {
-          title: "Servicing",
-          url: "#",
-        },
       ],
+    },
+    {
+      title: "Servicing",
+      url: "#",
+      icon: Drill,
     },
   ],
   trackTraceNav: [

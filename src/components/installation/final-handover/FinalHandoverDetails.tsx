@@ -21,8 +21,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { FileUploadField } from "@/components/custom/file-upload";
 import {
   useGetFinalHandoverDocuments,
+  useUpdateAmcOptedStatus,
   useUploadFinalHandoverDocuments,
 } from "@/api/installation/useFinalHandoverStageLeads";
+import {
+  useGetServicingDocuments,
+  useUploadServicingDocuments,
+} from "@/api/installation/useServicingStageLeads";
 import { useDeleteDocument } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,6 +42,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
@@ -84,6 +90,8 @@ export default function FinalHandover({
     leadId,
   );
   const uploadMutation = useUploadFinalHandoverDocuments();
+  const uploadServicingMutation = useUploadServicingDocuments();
+  const updateAmcOptedMutation = useUpdateAmcOptedStatus();
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
@@ -92,6 +100,12 @@ export default function FinalHandover({
     leadStatus,
   );
   const [localDocuments, setLocalDocuments] = useState<any[]>([]);
+  const [confirmAmcStatus, setConfirmAmcStatus] = useState<boolean | null>(null);
+  const isAmcOpted = !!leadData?.is_amc_opted;
+  const {
+    data: servicingDocuments,
+    isLoading: isServicingLoading,
+  } = useGetServicingDocuments(vendorId, leadId, isAmcOpted);
   const sections: DocumentSection[] = [
     {
       id: "final_site_photos",
@@ -150,11 +164,32 @@ export default function FinalHandover({
     },
   ];
 
+  const finalSections = React.useMemo(
+    () =>
+      isAmcOpted
+        ? [
+            ...sections,
+            {
+              id: "amc_contract_documents",
+              title: "AMC Contract Documents",
+              icon: <FileText className="w-6 h-6" />,
+              description: "Upload AMC contract documents",
+              fieldName: "amc_contract_documents",
+              accept: ".jpg,.jpeg,.png,.pdf,.doc,.docx,.zip",
+              color: "text-emerald-600",
+              bgColor: "bg-emerald-50 dark:bg-emerald-950",
+              iconBg: "bg-emerald-100 dark:bg-emerald-900",
+            },
+          ]
+        : sections,
+    [isAmcOpted, sections],
+  );
+
   useEffect(() => {
     if (activeSection) {
       setLocalDocuments(getDocumentsForSection(activeSection.id));
     }
-  }, [activeSection, documents]);
+  }, [activeSection, documents, servicingDocuments]);
 
   const docsByType = React.useMemo(() => {
     if (!documents) return {};
@@ -170,8 +205,9 @@ export default function FinalHandover({
         (d: any) => d.doc_type_tag === "Type 30",
       ),
       qc_documents: documents.filter((d: any) => d.doc_type_tag === "Type 31"),
+      amc_contract_documents: servicingDocuments || [],
     };
-  }, [documents]);
+  }, [documents, servicingDocuments]);
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0 || !activeSection) {
@@ -192,7 +228,11 @@ export default function FinalHandover({
       formData.append(activeSection.fieldName, file);
     });
 
-    await uploadMutation.mutateAsync(formData);
+    if (activeSection.id === "amc_contract_documents") {
+      await uploadServicingMutation.mutateAsync(formData);
+    } else {
+      await uploadMutation.mutateAsync(formData);
+    }
     setSelectedFiles([]);
 
     queryClient.invalidateQueries({
@@ -200,6 +240,9 @@ export default function FinalHandover({
     });
     queryClient.invalidateQueries({
       queryKey: ["allLeadDocuments"],
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["servicingDocuments", vendorId, leadId],
     });
   };
 
@@ -229,6 +272,26 @@ export default function FinalHandover({
     return (docsByType[sectionId as keyof typeof docsByType] || []) as any[];
   };
 
+  const normalizedUserType = userType?.toLowerCase() ?? "";
+  const amcOptedAt = leadData?.amc_opted_at as string | undefined;
+  const canSetAmcYes = ["site-supervisor", "admin", "super-admin"].includes(
+    normalizedUserType,
+  );
+  const canSetAmcNo = ["admin", "super-admin"].includes(normalizedUserType);
+  const canToggleAmc =
+    !updateAmcOptedMutation.isPending &&
+    ((!isAmcOpted && canSetAmcYes) || (isAmcOpted && canSetAmcNo));
+  const amcDisabledReason = !["site-supervisor", "admin", "super-admin"].includes(
+    normalizedUserType,
+  )
+    ? "Only site-supervisor, admin, and super-admin can update AMC status."
+    : isAmcOpted && !canSetAmcNo
+      ? "Only admin and super-admin can mark AMC back to No."
+      : undefined;
+
+  const isUploading =
+    uploadMutation.isPending || uploadServicingMutation.isPending;
+
   const separateImageAndDocs = (docs: any[]) => {
     const imageExtensions = ["jpg", "jpeg", "png", "webp"];
     const images = docs.filter((d: any) => {
@@ -242,7 +305,7 @@ export default function FinalHandover({
     return { images, nonImages };
   };
 
-  if (isLoading) {
+  if (isLoading || (isAmcOpted && isServicingLoading)) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="animate-spin mr-2 size-5" />
@@ -253,18 +316,70 @@ export default function FinalHandover({
     );
   }
 
+  const formatAmcDateTime = (dateString?: string) => {
+    if (!dateString) return "";
+
+    const date = new Date(dateString);
+    const time = date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+    const fullDate = date.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    return `${time} - ${dayName}, ${fullDate}`;
+  };
+
   return (
     <div className="space-y-6 pb-6 bg-[#fff] dark:bg-[#0a0a0a]">
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">Final Handover</h2>
-        <p className="text-sm text-muted-foreground">
-          Upload and manage all final handover documents and photos
-        </p>
+      {/* Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">Final Handover</h2>
+          <p className="text-sm text-muted-foreground">
+            Upload and manage all final handover documents and photos
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900/60">
+          <Checkbox
+            id="is-amc-opted"
+            checked={isAmcOpted}
+            disabled={!canToggleAmc}
+            onCheckedChange={() => {
+              if (!canToggleAmc) return;
+              setConfirmAmcStatus(!isAmcOpted);
+            }}
+            className="mt-1 h-4 w-4 data-[state=checked]:bg-black data-[state=checked]:border-black dark:data-[state=checked]:bg-white dark:data-[state=checked]:border-white dark:data-[state=checked]:text-black"
+          />
+          <div className="space-y-1">
+            <label
+              htmlFor="is-amc-opted"
+              className={`text-sm ${
+                canToggleAmc ? "cursor-pointer" : "cursor-not-allowed opacity-70"
+              }`}
+            >
+              Is Annual Maintainance Complience Opted in ?
+            </label>
+            {isAmcOpted && amcOptedAt && (
+              <p className="text-xs text-muted-foreground">
+                {formatAmcDateTime(amcOptedAt)}
+              </p>
+            )}
+            {!canToggleAmc && amcDisabledReason && (
+              <p className="text-xs text-muted-foreground">{amcDisabledReason}</p>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {sections.map((section, index) => {
+        {finalSections.map((section, index) => {
           const docs = getDocumentsForSection(section.id);
 
           return (
@@ -448,10 +563,10 @@ export default function FinalHandover({
                   >
                     <Button
                       onClick={handleUpload}
-                      disabled={uploadMutation.isPending}
+                      disabled={isUploading}
                       className="gap-2"
                     >
-                      {uploadMutation.isPending ? (
+                      {isUploading ? (
                         <>
                           <Loader2 className="animate-spin w-4 h-4" />
                           Uploading...
@@ -574,6 +689,57 @@ export default function FinalHandover({
               disabled={deleting}
             >
               {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={confirmAmcStatus !== null}
+        onOpenChange={() => setConfirmAmcStatus(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAmcStatus ? "Mark AMC as opted?" : "Mark AMC as not opted?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAmcStatus
+                ? "This will set AMC opted status to Yes and store the current date and time."
+                : "This will set AMC opted status to No and clear the stored AMC date and time."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateAmcOptedMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={updateAmcOptedMutation.isPending}
+              onClick={() => {
+                if (confirmAmcStatus === null || !userId) return;
+
+                updateAmcOptedMutation.mutate(
+                  {
+                    vendorId,
+                    leadId,
+                    updated_by: userId,
+                    is_amc_opted: confirmAmcStatus,
+                  },
+                  {
+                    onSuccess: () => {
+                      toastManager.add({
+                        title: confirmAmcStatus
+                          ? "AMC opted status marked as Yes."
+                          : "AMC opted status marked as No.",
+                        type: "success",
+                      });
+                      setConfirmAmcStatus(null);
+                    },
+                  },
+                );
+              }}
+            >
+              {updateAmcOptedMutation.isPending ? "Updating..." : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -51,6 +51,13 @@ export interface TotalProjectPaymentStatus {
   total_project_amount: number;
 }
 
+export interface UpdateAmcOptedPayload {
+  vendorId: number;
+  leadId: number;
+  updated_by: number;
+  is_amc_opted: boolean;
+}
+
 /* ==========================================================
       🔹 API FUNCTIONS
       ========================================================== */
@@ -235,6 +242,20 @@ export const moveLeadToProjectCompleted = async (
   return data;
 };
 
+export const updateAmcOptedStatus = async ({
+  vendorId,
+  leadId,
+  updated_by,
+  is_amc_opted,
+}: UpdateAmcOptedPayload) => {
+  const { data } = await apiClient.put(
+    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/amc-opted`,
+    { updated_by, is_amc_opted },
+  );
+
+  return data?.data;
+};
+
 export const useMoveProjectCompleted = () => {
   return useMutation({
     mutationFn: ({
@@ -246,5 +267,27 @@ export const useMoveProjectCompleted = () => {
       leadId: number;
       updated_by: number;
     }) => moveLeadToProjectCompleted(vendorId, leadId, updated_by),
+  });
+};
+
+export const useUpdateAmcOptedStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateAmcOptedPayload) => updateAmcOptedStatus(payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["lead-status", variables.leadId, variables.vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["finalHandoverStageLeads"],
+      });
+    },
+    onError: (err: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: err?.response?.data?.message || "Failed to update AMC opted status",
+        type: "error",
+      });
+    },
   });
 };
