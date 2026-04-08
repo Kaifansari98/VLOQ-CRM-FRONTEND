@@ -158,10 +158,10 @@ export default function MachineMasterPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">
-                Machine Master
+                Workstations
               </h1>
               <p className="text-muted-foreground mt-1">
-                Manage and configure all production machines for vendor-level
+                Manage and configure all production workstation for vendor-level
                 operations.
               </p>
             </div>
@@ -170,7 +170,7 @@ export default function MachineMasterPage() {
               onClick={() => setIsCreateModalOpen(true)}
             >
               <Plus className="h-4 w-4" />
-              Create Machine
+              Create Workstation
             </Button>
           </div>
 
@@ -182,11 +182,11 @@ export default function MachineMasterPage() {
               </div>
             ) : error ? (
               <div className="flex items-center justify-center p-12">
-                <p className="text-muted-foreground">Failed to load machines</p>
+                <p className="text-muted-foreground">Failed to load workstation</p>
               </div>
             ) : !machines || machines.length === 0 ? (
               <div className="flex items-center justify-center p-12">
-                <p className="text-muted-foreground">No machines found</p>
+                <p className="text-muted-foreground">No workstation found</p>
               </div>
             ) : (
               <Table>
@@ -195,7 +195,7 @@ export default function MachineMasterPage() {
                     <TableHead className="w-12">Sr. No.</TableHead>
                     <TableHead className="w-15">Seq</TableHead>
                     <TableHead className="w-20">Image</TableHead>
-                    <TableHead>Machine Name</TableHead>
+                    <TableHead>Workstation Name</TableHead>
                     <TableHead>Code</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>

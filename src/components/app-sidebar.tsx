@@ -195,14 +195,15 @@ const data = {
           title: "Manage Projects",
           url: "/dashboard/track-trace/manage-project",
         },
-        { title: "Configure", url: "/dashboard/track-trace/configure" },
+        
+        // { title: "Configure", url: "/dashboard/track-trace/configure" },
       ],
     },
     {
       title: "Master",
       url: "#",
       icon: Monitor,
-      items: [{ title: "Machine", url: "/dashboard/track-trace/master" }],
+      items: [{ title: "Workstation", url: "/dashboard/track-trace/master" }],
     },
   ],
   mastersNav: [
