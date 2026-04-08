@@ -354,7 +354,7 @@ export default function FinalHandover({
               if (!canToggleAmc) return;
               setConfirmAmcStatus(!isAmcOpted);
             }}
-            className="mt-1 h-4 w-4 data-[state=checked]:bg-black data-[state=checked]:border-black dark:data-[state=checked]:bg-white dark:data-[state=checked]:border-white dark:data-[state=checked]:text-black"
+            className="h-4 w-4 data-[state=checked]:bg-black data-[state=checked]:border-black dark:data-[state=checked]:bg-white dark:data-[state=checked]:border-white dark:data-[state=checked]:text-black"
           />
           <div className="space-y-1">
             <label
@@ -363,7 +363,7 @@ export default function FinalHandover({
                 canToggleAmc ? "cursor-pointer" : "cursor-not-allowed opacity-70"
               }`}
             >
-              Is Annual Maintainance Complience Opted in ?
+              Is AMC Opted in ?
             </label>
             {isAmcOpted && amcOptedAt && (
               <p className="text-xs text-muted-foreground">
