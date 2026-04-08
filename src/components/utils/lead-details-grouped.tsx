@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import OpenLeadDetails from "@/components/tabScreens/OpenLeadDetails";
 import BookingLeadsDetails from "@/components/sales-executive/booking-stage/view-booking-modal";
 import SiteMeasurementLeadDetails from "@/components/tabScreens/SiteMeasurementLeadDetails";
@@ -69,6 +69,11 @@ export default function LeadDetailsGrouped({
   finalHandoverInstanceId,
 }: LeadDetailsGroupedProps) {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const servicingSource = searchParams.get("source");
+  const showServicingTab =
+    pathname?.startsWith("/dashboard/installation/servicing") ||
+    servicingSource === "servicing";
   const groups = {
     leads: [
       {
@@ -216,6 +221,19 @@ export default function LeadDetailsGrouped({
           />
         ),
       },
+      ...(showServicingTab
+        ? [
+            {
+              id: "servicing" as StageId,
+              title: "Servicing",
+              component: (
+                <div className="p-4 text-sm text-muted-foreground">
+                  Servicing details will be shown here.
+                </div>
+              ),
+            },
+          ]
+        : []),
     ],
   } as const;
 
@@ -237,6 +255,7 @@ export default function LeadDetailsGrouped({
     "dispatch",
     "underInstallation",
     "finalHandover",
+    "servicing",
   ];
 
   const visibleGroups = React.useMemo(() => {
@@ -255,7 +274,9 @@ export default function LeadDetailsGrouped({
 
       // agar ye last allowed group hai to andar se cutoff lagao
       if (key === defaultParentTab && status) {
-        const maxIndex = stageOrder.indexOf(status);
+        const effectiveStatus =
+          showServicingTab && status === "finalHandover" ? "servicing" : status;
+        const maxIndex = stageOrder.indexOf(effectiveStatus);
         filtered[key] = stages.filter(
           (s) => stageOrder.indexOf(s.id) <= maxIndex
         );
@@ -265,7 +286,7 @@ export default function LeadDetailsGrouped({
     }
 
     return filtered;
-  }, [defaultParentTab, status]);
+  }, [defaultParentTab, status, showServicingTab]);
 
   const tabParam = searchParams.get("tab") as StageId | null;
   const resolvedTab =

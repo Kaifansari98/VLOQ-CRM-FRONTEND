@@ -22,7 +22,7 @@ type Row = {
 };
 
 const navigateServicing = (row: Row) =>
-  `/dashboard/installation/final-handover/details/${row.id}?accountId=${row.accountId}`;
+  `/dashboard/installation/final-handover/details/${row.id}?accountId=${row.accountId}&tab=servicing&source=servicing`;
 
 export default function ServicingPage() {
   return (
