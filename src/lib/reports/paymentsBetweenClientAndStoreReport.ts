@@ -100,9 +100,9 @@ function applyHeaderCellStyle(cell: ExcelJS.Cell) {
   cell.fill = {
     type: "pattern",
     pattern: "solid",
-    fgColor: { argb: "FF4472C4" },
+    fgColor: { argb: "FF4C3A34" },
   };
-  cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+  cell.font = { bold: true, color: { argb: "FFFAF4E5" }, size: 10 };
   cell.border = {
     top: { style: "thin" },
     bottom: { style: "thin" },
@@ -174,12 +174,12 @@ function buildPaymentsSheet(
   sheet.mergeCells(1, 1, 1, allHeaders.length);
   const titleCell = sheet.getCell("A1");
   titleCell.value = "Payments Report";
-  titleCell.font = { bold: true, size: 13 };
+  titleCell.font = { bold: true, size: 13, color: { argb: "FFFAF4E5" } };
   titleCell.alignment = { horizontal: "center", vertical: "middle" };
   titleCell.fill = {
     type: "pattern",
     pattern: "solid",
-    fgColor: { argb: "FFD9E1F2" },
+    fgColor: { argb: "FF4C3A34" },
   };
   sheet.getRow(1).height = 28;
 

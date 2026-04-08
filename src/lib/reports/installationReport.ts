@@ -107,9 +107,9 @@ function buildInstallationSheet(
   sheet.mergeCells(1, 1, 1, totalCols);
   const titleCell = sheet.getCell("A1");
   titleCell.value = "Installation Report";
-  titleCell.font = { bold: true, size: 13 };
+  titleCell.font = { bold: true, size: 13, color: { argb: "FFFAF4E5" } };
   titleCell.alignment = { horizontal: "center", vertical: "middle" };
-  titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9E1F2" } };
+  titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4C3A34" } };
   sheet.getRow(1).height = 28;
 
   const HEADERS = [
@@ -134,8 +134,8 @@ function buildInstallationSheet(
     const cell = headerRow.getCell(i + 1);
     cell.value = h;
     cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4472C4" } };
-    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4C3A34" } };
+    cell.font = { bold: true, color: { argb: "FFFAF4E5" }, size: 10 };
     cell.border = {
       top: { style: "thin" }, bottom: { style: "thin" },
       left: { style: "thin" }, right: { style: "thin" },
