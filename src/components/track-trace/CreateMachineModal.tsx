@@ -35,9 +35,9 @@ import MachinePicker from "../machine-picker";
 
 // Zod Schema - Fixed
 const createMachineSchema = z.object({
-  machine_name: z.string().min(1, "Machine name is required"),
-  machine_code: z.string().min(1, "Machine code is required"),
-  machine_type_id: z.string().min(1, "Machine type is required"),
+  machine_name: z.string().min(1, "Workstation name is required"),
+  machine_code: z.string().min(1, "Workstation code is required"),
+  machine_type_id: z.string().min(1, "Workstation type is required"),
   status: z
     .enum(["ACTIVE", "MAINTENANCE", "INACTIVE", "RETIRED"])
     .refine((val) => val !== undefined, {
@@ -64,7 +64,7 @@ const createMachineSchema = z.object({
     }),
   machine_image: z
     .array(z.instanceof(File))
-    .min(1, "Machine image is required")
+    .min(1, "Workstation image is required")
     .max(1, "Only one image is allowed"),
 });
 
@@ -117,7 +117,7 @@ export function CreateMachineModal({
     }
 
     if (!data.machine_image || data.machine_image.length === 0) {
-      toastManager.add({ title: "Please upload a machine image", type: "error" });
+      toastManager.add({ title: "Please upload a workstation image", type: "error" });
       return;
     }
 
@@ -140,17 +140,17 @@ export function CreateMachineModal({
 
     createMachine(payload, {
       onSuccess: (response) => {
-        console.log("Machine created successfully:", response);
-        toastManager.add({ title: "Machine created successfully", type: "success" });
+        console.log("Workstation created successfully:", response);
+        toastManager.add({ title: "Workstation created successfully", type: "success" });
         form.reset();
         onOpenChange(false);
       },
       onError: (error: any) => {
-        console.error("Error creating machine:", error);
+        console.error("Error creating workstation:", error);
         const errorMessage =
           error?.response?.data?.message ||
           error?.message ||
-          "Failed to create machine";
+          "Failed to create workstation";
         toastManager.add({ title: errorMessage, type: "error" });
       },
     });
@@ -160,8 +160,8 @@ export function CreateMachineModal({
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Create New Machine"
-      description="Add a new production machine to your vendor inventory"
+      title="Create New Workstation"
+      description="Add a new workstation to your vendor inventory"
       size="lg"
       icon={
         <div className="flex items-center justify-center rounded-full bg-foreground text-background p-2">
@@ -178,11 +178,11 @@ export function CreateMachineModal({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  Machine Name <span className="text-destructive">*</span>
+                  Workstation Name <span className="text-destructive">*</span>
                 </FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Enter machine name"
+                    placeholder="Enter workstation name"
                     {...field}
                     disabled={isPending}
                   />
@@ -200,7 +200,7 @@ export function CreateMachineModal({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Machine Code <span className="text-destructive">*</span>
+                    Workstation Code <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -229,7 +229,7 @@ export function CreateMachineModal({
 
                 return (
                   <FormItem>
-                    <FormLabel className="text-sm">Machine Type *</FormLabel>
+                    <FormLabel className="text-sm">Workstation Type *</FormLabel>
 
                     {isLoading ? (
                       <p className="text-xs text-muted-foreground">
@@ -242,7 +242,7 @@ export function CreateMachineModal({
                         onChange={(selectedId: number | null) => {
                           field.onChange(selectedId ? String(selectedId) : ""); // ✅ cast to string
                         }}
-                        placeholder="Search machine type..."
+                        placeholder="Search workstation type..."
                       />
                     )}
 
@@ -436,7 +436,7 @@ export function CreateMachineModal({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  Machine Image <span className="text-destructive">*</span>
+                  Workstation Image <span className="text-destructive">*</span>
                 </FormLabel>
                 <FormControl>
                   <FileUploadField
@@ -473,7 +473,7 @@ export function CreateMachineModal({
                   Creating...
                 </>
               ) : (
-                "Create Machine"
+                "Create Workstation"
               )}
             </Button>
           </div>

@@ -243,15 +243,16 @@ export default function CutListTable({
     setDialogOpen(true);
   }
 
-  const columns = useMemo(
-    () =>
-      getCutListColumns(
-        machineColumns,
-        handleMachineHeaderClick,
-        handleMachineCellClick,
-      ),
-    [machineColumns, data, onMachineAssign],
-  );
+ const columns = useMemo(
+  () =>
+    getCutListColumns(
+      machineColumns,
+      handleMachineHeaderClick,
+      handleMachineCellClick,
+      data,  // ✅ pass data here
+    ),
+  [machineColumns, data, onMachineAssign],
+);
 
   const table = useReactTable({
     data: data ?? [],
@@ -266,7 +267,7 @@ export default function CutListTable({
       rowSelection,
       columnFilters,
       columnPinning: {
-        left: ["select", "id", "description"],
+        left: ["select", "id","group_name"],
       },
     },
     enableRowSelection: true,

@@ -69,7 +69,7 @@ export default function RealTimeTracking({ items }: RealTimeTrackingProps) {
 
         {items.map((item, index) => {
           const cfg   = STATUS_CONFIG[item.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.completed;
-          const badge = `${ALPHA[index % ALPHA.length]}${(index % 3) + 1}`;
+          // const badge = `${ALPHA[index % ALPHA.length]}${(index % 3) + 1}`;
 
           return (
             <div
@@ -77,9 +77,9 @@ export default function RealTimeTracking({ items }: RealTimeTrackingProps) {
               className="flex items-start gap-3 px-3.5 py-3 rounded-xl border border-border hover:bg-muted/30 transition-colors duration-150"
             >
               {/* Index badge */}
-              <div className="shrink-0 w-8 h-8 rounded-lg bg-foreground text-background flex items-center justify-center font-bold text-[10px] tracking-tight select-none mt-0.5">
+              {/* <div className="shrink-0 w-8 h-8 rounded-lg bg-foreground text-background flex items-center justify-center font-bold text-[10px] tracking-tight select-none mt-0.5">
                 {badge}
-              </div>
+              </div> */}
 
               {/* Main */}
               <div className="flex-1 min-w-0">
