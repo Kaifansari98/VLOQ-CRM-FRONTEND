@@ -88,6 +88,7 @@ export default function ServicingDetails({ leadId }: { leadId: number }) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const [openActionModal, setOpenActionModal] = useState(false);
   const [activeServiceLabel, setActiveServiceLabel] = useState<string>("");
+  const [activeServiceId, setActiveServiceId] = useState<number | undefined>();
   const {
     data: serviceSchedules,
     isLoading,
@@ -180,6 +181,7 @@ export default function ServicingDetails({ leadId }: { leadId: number }) {
                             setActiveServiceLabel(
                               `${formatServiceOrdinal(service.service_no)} Service`,
                             );
+                            setActiveServiceId(service.id);
                             setOpenActionModal(true);
                           }}
                         >
@@ -252,6 +254,8 @@ export default function ServicingDetails({ leadId }: { leadId: number }) {
         open={openActionModal}
         onOpenChange={setOpenActionModal}
         serviceLabel={activeServiceLabel}
+        leadId={leadId}
+        serviceId={activeServiceId}
       />
     </div>
   );

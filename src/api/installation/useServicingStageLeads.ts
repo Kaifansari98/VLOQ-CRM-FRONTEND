@@ -7,6 +7,10 @@ interface ApiErrorResponse {
   message?: string;
 }
 
+interface RescheduleServicePayload {
+  updated_by: number;
+}
+
 export interface ServicingDocument {
   id: number;
   vendor_id: number;
@@ -75,6 +79,20 @@ export const getServiceSchedules = async (
   );
 
   return data?.data || [];
+};
+
+export const rescheduleService = async (
+  vendorId: number,
+  leadId: number,
+  serviceId: number,
+  payload: RescheduleServicePayload,
+): Promise<ServiceSchedule> => {
+  const { data } = await apiClient.put(
+    `/leads/installation/servicing/vendorId/${vendorId}/leadId/${leadId}/serviceId/${serviceId}/reschedule`,
+    payload,
+  );
+
+  return data?.data;
 };
 
 export const getServicingDocuments = async (
@@ -149,6 +167,37 @@ export const useUploadServicingDocuments = () => {
         title:
           err?.response?.data?.message ||
           "Failed to upload AMC contract documents",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useRescheduleService = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      serviceId,
+      payload,
+    }: {
+      vendorId: number;
+      leadId: number;
+      serviceId: number;
+      payload: RescheduleServicePayload;
+    }) => rescheduleService(vendorId, leadId, serviceId, payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["serviceSchedules", variables.vendorId, variables.leadId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+    },
+    onError: (err: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: err?.response?.data?.message || "Failed to reschedule service",
         type: "error",
       });
     },
