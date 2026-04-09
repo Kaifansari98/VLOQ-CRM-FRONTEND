@@ -227,7 +227,7 @@ export default function LeadDetailsGrouped({
             {
               id: "servicing" as StageId,
               title: "Servicing",
-              component: <ServicingWrapper />,
+              component: <ServicingWrapper leadId={leadId} />,
             },
           ]
         : []),
