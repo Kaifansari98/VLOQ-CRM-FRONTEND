@@ -20,7 +20,11 @@ import {
   useRescheduleService,
 } from "@/api/installation/useServicingStageLeads";
 import { toastManager } from "@/components/ui/toast";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 
 interface ServicingActionModalProps {
@@ -60,8 +64,12 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
     "admin",
     "super-admin",
   ].includes(normalizedUserType);
-  const canReopenRejected = ["admin", "super-admin"].includes(normalizedUserType);
+  const canReopenRejected = ["admin", "super-admin"].includes(
+    normalizedUserType,
+  );
   const isRejectedService = serviceStatus === "rejected";
+  const rejectedTooltipMessage =
+    "This service is rejected. Change it back to open first.";
 
   const handleConfirmReschedule = () => {
     if (!vendorId || !userId || !serviceId) return;
@@ -154,21 +162,51 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
             <div className="flex flex-col gap-1">
               <span className="text-base font-semibold">Mark as Complete</span>
               <p className="text-sm text-muted-foreground">
-                Upload the service document and add an optional remark to complete
-                this servicing visit.
+                Upload the service document and add an optional remark to
+                complete this servicing visit.
               </p>
             </div>
-            <Button className="w-28">Complete</Button>
+            {isRejectedService ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0}>
+                    <Button className="w-28" disabled>
+                      Complete
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  {rejectedTooltipMessage}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <Button className="w-28">Complete</Button>
+            )}
           </div>
 
           <div className="flex items-center justify-between gap-3 rounded-xl border p-3">
             <div className="flex flex-col gap-1">
-              <span className="text-base font-semibold">Mark as Reschedule</span>
+              <span className="text-base font-semibold">
+                Mark as Reschedule
+              </span>
               <p className="text-sm text-muted-foreground">
                 Move this servicing visit to the next month on the same date.
               </p>
             </div>
-            {isRescheduled ? (
+            {isRejectedService ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0}>
+                    <Button className="w-28" variant="outline" disabled>
+                      Reschedule
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  {rejectedTooltipMessage}
+                </TooltipContent>
+              </Tooltip>
+            ) : isRescheduled ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span tabIndex={0}>
@@ -197,7 +235,9 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
             <div className="space-y-4 rounded-xl border p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex flex-col gap-1">
-                  <span className="text-base font-semibold">Mark as Reject</span>
+                  <span className="text-base font-semibold">
+                    Mark as Reject
+                  </span>
                   <p className="text-sm text-muted-foreground">
                     Reject this servicing visit with a mandatory remark.
                   </p>
@@ -213,7 +253,7 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Remark</label>
+                <label className="text-sm font-medium mb-2">Remark</label>
                 <Textarea
                   value={rejectRemark}
                   onChange={(e) => setRejectRemark(e.target.value)}
