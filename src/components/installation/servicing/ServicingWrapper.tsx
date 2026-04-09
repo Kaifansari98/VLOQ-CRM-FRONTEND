@@ -37,7 +37,7 @@ export default function ServicingWrapper({
       color: "bg-zinc-900 hover:bg-zinc-900",
       cardContent: (
         <div className="p-2 bg-[#fff] dark:bg-[#0a0a0a]">
-          <AmcServicingDetails />
+          <AmcServicingDetails leadId={leadId} />
         </div>
       ),
     },

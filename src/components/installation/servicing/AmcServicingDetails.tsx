@@ -1,12 +1,14 @@
 "use client";
 
-export default function AmcServicingDetails() {
+import ServiceSchedulesBoard from "./ServiceSchedulesBoard";
+
+export default function AmcServicingDetails({ leadId }: { leadId: number }) {
   return (
-    <div className="rounded-lg border bg-background p-6">
-      <h2 className="text-lg font-semibold">AMC Servicing</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        View and manage AMC service visits and contract-based servicing activity.
-      </p>
-    </div>
+    <ServiceSchedulesBoard
+      leadId={leadId}
+      serviceType="amc"
+      title="AMC Servicing"
+      description="View and manage scheduled AMC service visits for this project."
+    />
   );
 }
