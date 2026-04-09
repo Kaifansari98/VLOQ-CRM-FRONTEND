@@ -89,6 +89,7 @@ export default function ServicingDetails({ leadId }: { leadId: number }) {
   const [openActionModal, setOpenActionModal] = useState(false);
   const [activeServiceLabel, setActiveServiceLabel] = useState<string>("");
   const [activeServiceId, setActiveServiceId] = useState<number | undefined>();
+  const [activeServiceRescheduled, setActiveServiceRescheduled] = useState(false);
   const {
     data: serviceSchedules,
     isLoading,
@@ -182,6 +183,7 @@ export default function ServicingDetails({ leadId }: { leadId: number }) {
                               `${formatServiceOrdinal(service.service_no)} Service`,
                             );
                             setActiveServiceId(service.id);
+                            setActiveServiceRescheduled(service.rescheduled_once);
                             setOpenActionModal(true);
                           }}
                         >
@@ -216,7 +218,7 @@ export default function ServicingDetails({ leadId }: { leadId: number }) {
                       </div>
                     </div>
                   </CardHeader>
-                  <div className="mx-6 border-t border-dashed border-gray-300 dark:border-gray-700" />
+                  {/* <div className="mx-6 border-t border-dashed border-gray-300 dark:border-gray-700" />
                   <CardContent className="space-y-2 pt-0">
                     <div className="[&_p:first-child]:text-[10px]">
                       <InfoRow
@@ -242,7 +244,7 @@ export default function ServicingDetails({ leadId }: { leadId: number }) {
                         value={formatDateTime(service.created_at)}
                       />
                     </div>
-                  </CardContent>
+                  </CardContent> */}
                 </Card>
               );
             })()
@@ -256,6 +258,7 @@ export default function ServicingDetails({ leadId }: { leadId: number }) {
         serviceLabel={activeServiceLabel}
         leadId={leadId}
         serviceId={activeServiceId}
+        isRescheduled={activeServiceRescheduled}
       />
     </div>
   );

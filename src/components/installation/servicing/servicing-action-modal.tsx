@@ -16,6 +16,7 @@ import {
 import { useAppSelector } from "@/redux/store";
 import { useRescheduleService } from "@/api/installation/useServicingStageLeads";
 import { toastManager } from "@/components/ui/toast";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ServicingActionModalProps {
   open: boolean;
@@ -23,6 +24,7 @@ interface ServicingActionModalProps {
   serviceLabel?: string;
   leadId: number;
   serviceId?: number;
+  isRescheduled?: boolean;
 }
 
 const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
@@ -31,6 +33,7 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
   serviceLabel,
   leadId,
   serviceId,
+  isRescheduled = false,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -90,14 +93,29 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
                 Move this servicing visit to the next month on the same date.
               </p>
             </div>
-            <Button
-              className="w-28"
-              variant="outline"
-              onClick={() => setOpenRescheduleConfirm(true)}
-              disabled={rescheduleMutation.isPending}
-            >
-              Reschedule
-            </Button>
+            {isRescheduled ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0}>
+                    <Button className="w-28" variant="outline" disabled>
+                      Reschedule
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  This service has been already rescheduled.
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <Button
+                className="w-28"
+                variant="outline"
+                onClick={() => setOpenRescheduleConfirm(true)}
+                disabled={rescheduleMutation.isPending}
+              >
+                Reschedule
+              </Button>
+            )}
           </div>
 
           <div className="flex items-center justify-between gap-3 rounded-xl border p-3">
