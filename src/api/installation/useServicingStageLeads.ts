@@ -24,6 +24,9 @@ export interface ServicingDocument {
 export interface ServiceScheduleUser {
   id: number;
   user_name: string;
+  user_type?: {
+    user_type: string;
+  };
 }
 
 export interface ServiceScheduleDocument {
