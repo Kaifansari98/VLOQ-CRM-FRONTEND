@@ -11,6 +11,15 @@ interface RescheduleServicePayload {
   updated_by: number;
 }
 
+interface RejectServicePayload {
+  updated_by: number;
+  remark: string;
+}
+
+interface ReopenServicePayload {
+  updated_by: number;
+}
+
 export interface ServicingDocument {
   id: number;
   vendor_id: number;
@@ -89,6 +98,34 @@ export const rescheduleService = async (
 ): Promise<ServiceSchedule> => {
   const { data } = await apiClient.put(
     `/leads/installation/servicing/vendorId/${vendorId}/leadId/${leadId}/serviceId/${serviceId}/reschedule`,
+    payload,
+  );
+
+  return data?.data;
+};
+
+export const rejectService = async (
+  vendorId: number,
+  leadId: number,
+  serviceId: number,
+  payload: RejectServicePayload,
+): Promise<ServiceSchedule> => {
+  const { data } = await apiClient.put(
+    `/leads/installation/servicing/vendorId/${vendorId}/leadId/${leadId}/serviceId/${serviceId}/reject`,
+    payload,
+  );
+
+  return data?.data;
+};
+
+export const reopenService = async (
+  vendorId: number,
+  leadId: number,
+  serviceId: number,
+  payload: ReopenServicePayload,
+): Promise<ServiceSchedule> => {
+  const { data } = await apiClient.put(
+    `/leads/installation/servicing/vendorId/${vendorId}/leadId/${leadId}/serviceId/${serviceId}/reopen`,
     payload,
   );
 
@@ -198,6 +235,68 @@ export const useRescheduleService = () => {
     onError: (err: AxiosError<ApiErrorResponse>) => {
       toastManager.add({
         title: err?.response?.data?.message || "Failed to reschedule service",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useRejectService = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      serviceId,
+      payload,
+    }: {
+      vendorId: number;
+      leadId: number;
+      serviceId: number;
+      payload: RejectServicePayload;
+    }) => rejectService(vendorId, leadId, serviceId, payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["serviceSchedules", variables.vendorId, variables.leadId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+    },
+    onError: (err: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: err?.response?.data?.message || "Failed to reject service",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useReopenService = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      serviceId,
+      payload,
+    }: {
+      vendorId: number;
+      leadId: number;
+      serviceId: number;
+      payload: ReopenServicePayload;
+    }) => reopenService(vendorId, leadId, serviceId, payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["serviceSchedules", variables.vendorId, variables.leadId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+    },
+    onError: (err: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: err?.response?.data?.message || "Failed to reopen service",
         type: "error",
       });
     },

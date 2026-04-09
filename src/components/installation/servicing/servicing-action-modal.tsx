@@ -14,9 +14,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useAppSelector } from "@/redux/store";
-import { useRescheduleService } from "@/api/installation/useServicingStageLeads";
+import {
+  useRejectService,
+  useReopenService,
+  useRescheduleService,
+} from "@/api/installation/useServicingStageLeads";
 import { toastManager } from "@/components/ui/toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Textarea } from "@/components/ui/textarea";
 
 interface ServicingActionModalProps {
   open: boolean;
@@ -25,6 +30,7 @@ interface ServicingActionModalProps {
   leadId: number;
   serviceId?: number;
   isRescheduled?: boolean;
+  serviceStatus?: "open" | "completed" | "rejected";
 }
 
 const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
@@ -34,11 +40,28 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
   leadId,
   serviceId,
   isRescheduled = false,
+  serviceStatus = "open",
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type as string | undefined,
+  );
   const [openRescheduleConfirm, setOpenRescheduleConfirm] = useState(false);
+  const [openRejectConfirm, setOpenRejectConfirm] = useState(false);
+  const [openReopenConfirm, setOpenReopenConfirm] = useState(false);
+  const [rejectRemark, setRejectRemark] = useState("");
   const rescheduleMutation = useRescheduleService();
+  const rejectMutation = useRejectService();
+  const reopenMutation = useReopenService();
+  const normalizedUserType = (userType || "").toLowerCase();
+  const canViewRejectSection = [
+    "head-site-supervisor",
+    "admin",
+    "super-admin",
+  ].includes(normalizedUserType);
+  const canReopenRejected = ["admin", "super-admin"].includes(normalizedUserType);
+  const isRejectedService = serviceStatus === "rejected";
 
   const handleConfirmReschedule = () => {
     if (!vendorId || !userId || !serviceId) return;
@@ -59,6 +82,58 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
             type: "success",
           });
           setOpenRescheduleConfirm(false);
+          onOpenChange(false);
+        },
+      },
+    );
+  };
+
+  const handleConfirmReject = () => {
+    if (!vendorId || !userId || !serviceId || !rejectRemark.trim()) return;
+
+    rejectMutation.mutate(
+      {
+        vendorId,
+        leadId,
+        serviceId,
+        payload: {
+          updated_by: userId,
+          remark: rejectRemark.trim(),
+        },
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: `${serviceLabel || "Service"} rejected successfully`,
+            type: "success",
+          });
+          setOpenRejectConfirm(false);
+          setRejectRemark("");
+          onOpenChange(false);
+        },
+      },
+    );
+  };
+
+  const handleConfirmReopen = () => {
+    if (!vendorId || !userId || !serviceId) return;
+
+    reopenMutation.mutate(
+      {
+        vendorId,
+        leadId,
+        serviceId,
+        payload: {
+          updated_by: userId,
+        },
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: `${serviceLabel || "Service"} reopened successfully`,
+            type: "success",
+          });
+          setOpenReopenConfirm(false);
           onOpenChange(false);
         },
       },
@@ -118,17 +193,55 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
             )}
           </div>
 
-          <div className="flex items-center justify-between gap-3 rounded-xl border p-3">
-            <div className="flex flex-col gap-1">
-              <span className="text-base font-semibold">Mark as Reject</span>
-              <p className="text-sm text-muted-foreground">
-                Reject this servicing visit with a mandatory remark when required.
-              </p>
+          {canViewRejectSection && !isRejectedService ? (
+            <div className="space-y-4 rounded-xl border p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-1">
+                  <span className="text-base font-semibold">Mark as Reject</span>
+                  <p className="text-sm text-muted-foreground">
+                    Reject this servicing visit with a mandatory remark.
+                  </p>
+                </div>
+                <Button
+                  className="w-28"
+                  variant="destructive"
+                  onClick={() => setOpenRejectConfirm(true)}
+                  disabled={!rejectRemark.trim() || rejectMutation.isPending}
+                >
+                  Reject
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Remark</label>
+                <Textarea
+                  value={rejectRemark}
+                  onChange={(e) => setRejectRemark(e.target.value)}
+                  placeholder="Enter rejection remark"
+                  className="min-h-24"
+                />
+              </div>
             </div>
-            <Button className="w-28" variant="destructive">
-              Reject
-            </Button>
-          </div>
+          ) : null}
+
+          {isRejectedService && canReopenRejected ? (
+            <div className="flex items-center justify-between gap-3 rounded-xl border p-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-base font-semibold">Mark as Open</span>
+                <p className="text-sm text-muted-foreground">
+                  Change this rejected service back to open.
+                </p>
+              </div>
+              <Button
+                className="w-28"
+                variant="outline"
+                onClick={() => setOpenReopenConfirm(true)}
+                disabled={reopenMutation.isPending}
+              >
+                Open
+              </Button>
+            </div>
+          ) : null}
         </div>
       </BaseModal>
 
@@ -155,6 +268,54 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
               disabled={rescheduleMutation.isPending}
             >
               {rescheduleMutation.isPending ? "Processing..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={openRejectConfirm} onOpenChange={setOpenRejectConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Reject {serviceLabel || "service"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark the service as rejected and save your remark.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={rejectMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmReject}
+              disabled={rejectMutation.isPending || !rejectRemark.trim()}
+            >
+              {rejectMutation.isPending ? "Processing..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={openReopenConfirm} onOpenChange={setOpenReopenConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Reopen {serviceLabel || "service"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will change the rejected service back to open.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={reopenMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmReopen}
+              disabled={reopenMutation.isPending}
+            >
+              {reopenMutation.isPending ? "Processing..." : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
