@@ -4,6 +4,8 @@ import React from "react";
 import BaseModal from "@/components/utils/baseModal";
 import type { ServiceSchedule } from "@/api/installation/useServicingStageLeads";
 import { Button } from "@/components/ui/button";
+import { ImageComponent } from "@/components/utils/ImageCard";
+import DocumentCard from "@/components/utils/documentCard";
 
 function formatDateTime(value?: string | null) {
   if (!value) return "-";
@@ -15,6 +17,12 @@ function formatDateTime(value?: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function isImageDocument(fileName?: string | null) {
+  if (!fileName) return false;
+
+  return /\.(jpg|jpeg|png|webp|gif|bmp|svg|heic|heif)$/i.test(fileName);
 }
 
 interface ServicingViewModalProps {
@@ -57,30 +65,29 @@ const ServicingViewModal: React.FC<ServicingViewModalProps> = ({
           </div>
 
           {service?.completionDocuments?.length ? (
-            <div className="space-y-2">
+            <div className="grid gap-3">
               {service.completionDocuments.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border px-4 py-3"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {doc.doc_og_name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Uploaded on {formatDateTime(doc.created_at)}
-                    </p>
-                  </div>
-                  <Button asChild variant="outline" size="sm">
-                    <a
-                      href={doc.signed_url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      View
-                    </a>
-                  </Button>
-                </div>
+                isImageDocument(doc.doc_og_name) ? (
+                  <ImageComponent
+                    key={doc.id}
+                    doc={{
+                      id: doc.id,
+                      doc_og_name: doc.doc_og_name,
+                      signedUrl: doc.signed_url,
+                      created_at: doc.created_at,
+                    }}
+                  />
+                ) : (
+                  <DocumentCard
+                    key={doc.id}
+                    doc={{
+                      id: doc.id,
+                      originalName: doc.doc_og_name,
+                      signedUrl: doc.signed_url,
+                      created_at: doc.created_at,
+                    }}
+                  />
+                )
               ))}
             </div>
           ) : (

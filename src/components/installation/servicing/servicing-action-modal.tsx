@@ -373,6 +373,10 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
       <ServicingCompleteModal
         open={openCompleteModal}
         onOpenChange={setOpenCompleteModal}
+        onCompleted={() => {
+          setOpenCompleteModal(false);
+          onOpenChange(false);
+        }}
         serviceLabel={serviceLabel}
         leadId={leadId}
         accountId={accountId}

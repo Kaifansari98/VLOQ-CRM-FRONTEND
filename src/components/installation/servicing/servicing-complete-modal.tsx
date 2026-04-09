@@ -12,6 +12,7 @@ import { toastManager } from "@/components/ui/toast";
 interface ServicingCompleteModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCompleted?: () => void;
   serviceLabel?: string;
   leadId: number;
   accountId?: number;
@@ -21,6 +22,7 @@ interface ServicingCompleteModalProps {
 const ServicingCompleteModal: React.FC<ServicingCompleteModalProps> = ({
   open,
   onOpenChange,
+  onCompleted,
   serviceLabel,
   leadId,
   accountId,
@@ -72,6 +74,7 @@ const ServicingCompleteModal: React.FC<ServicingCompleteModalProps> = ({
             type: "success",
           });
           onOpenChange(false);
+          onCompleted?.();
         },
       },
     );
