@@ -91,6 +91,7 @@ export default function ServicingDetails({ leadId }: { leadId: number }) {
   const [openActionModal, setOpenActionModal] = useState(false);
   const [activeServiceLabel, setActiveServiceLabel] = useState<string>("");
   const [activeServiceId, setActiveServiceId] = useState<number | undefined>();
+  const [activeAccountId, setActiveAccountId] = useState<number | undefined>();
   const [activeServiceRescheduled, setActiveServiceRescheduled] = useState(false);
   const [activeServiceStatus, setActiveServiceStatus] = useState<
     "open" | "completed" | "rejected"
@@ -205,6 +206,7 @@ export default function ServicingDetails({ leadId }: { leadId: number }) {
                               `${formatServiceOrdinal(service.service_no)} Service`,
                             );
                             setActiveServiceId(service.id);
+                            setActiveAccountId(service.account_id);
                             setActiveServiceRescheduled(service.rescheduled_once);
                             setActiveServiceStatus(service.status);
                             setActiveService(service);
@@ -281,6 +283,7 @@ export default function ServicingDetails({ leadId }: { leadId: number }) {
         onOpenChange={setOpenActionModal}
         serviceLabel={activeServiceLabel}
         leadId={leadId}
+        accountId={activeAccountId}
         serviceId={activeServiceId}
         isRescheduled={activeServiceRescheduled}
         serviceStatus={activeServiceStatus}

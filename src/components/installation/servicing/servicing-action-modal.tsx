@@ -33,6 +33,7 @@ interface ServicingActionModalProps {
   onOpenChange: (open: boolean) => void;
   serviceLabel?: string;
   leadId: number;
+  accountId?: number;
   serviceId?: number;
   isRescheduled?: boolean;
   serviceStatus?: "open" | "completed" | "rejected";
@@ -43,6 +44,7 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
   onOpenChange,
   serviceLabel,
   leadId,
+  accountId,
   serviceId,
   isRescheduled = false,
   serviceStatus = "open",
@@ -372,6 +374,9 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
         open={openCompleteModal}
         onOpenChange={setOpenCompleteModal}
         serviceLabel={serviceLabel}
+        leadId={leadId}
+        accountId={accountId}
+        serviceId={serviceId}
       />
     </>
   );

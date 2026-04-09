@@ -1,36 +1,81 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import BaseModal from "@/components/utils/baseModal";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import TextAreaInput from "@/components/origin-text-area";
+import { useAppSelector } from "@/redux/store";
+import { useCompleteService } from "@/api/installation/useServicingStageLeads";
+import { toastManager } from "@/components/ui/toast";
 
 interface ServicingCompleteModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   serviceLabel?: string;
-}
-
-function formatMarkedAt(date: Date) {
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+  leadId: number;
+  accountId?: number;
+  serviceId?: number;
 }
 
 const ServicingCompleteModal: React.FC<ServicingCompleteModalProps> = ({
   open,
   onOpenChange,
   serviceLabel,
+  leadId,
+  accountId,
+  serviceId,
 }) => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
   const [files, setFiles] = useState<File[]>([]);
   const [remark, setRemark] = useState("");
+  const completeMutation = useCompleteService();
 
-  const markedAt = useMemo(() => formatMarkedAt(new Date()), [open]);
+  useEffect(() => {
+    if (!open) {
+      setFiles([]);
+      setRemark("");
+    }
+  }, [open]);
+
+  const handleSubmit = () => {
+    if (!vendorId || !userId || !leadId || !accountId || !serviceId || !files.length) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("vendorId", String(vendorId));
+    formData.append("leadId", String(leadId));
+    formData.append("accountId", String(accountId));
+    formData.append("serviceId", String(serviceId));
+    formData.append("userId", String(userId));
+
+    if (remark.trim()) {
+      formData.append("remark", remark.trim());
+    }
+
+    files.forEach((file) => {
+      formData.append("service_completion_documents", file);
+    });
+
+    completeMutation.mutate(
+      {
+        formData,
+        vendorId,
+        leadId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: `${serviceLabel || "Service"} completed successfully`,
+            type: "success",
+          });
+          onOpenChange(false);
+        },
+      },
+    );
+  };
 
   return (
     <BaseModal
@@ -41,7 +86,6 @@ const ServicingCompleteModal: React.FC<ServicingCompleteModalProps> = ({
       size="lg"
     >
       <div className="space-y-6 p-6">
-
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-3">
             <label className="text-sm font-medium">
@@ -75,10 +119,27 @@ const ServicingCompleteModal: React.FC<ServicingCompleteModalProps> = ({
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t pt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={completeMutation.isPending}
+          >
             Close
           </Button>
-          <Button disabled>Submit</Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={
+              completeMutation.isPending ||
+              !files.length ||
+              !vendorId ||
+              !userId ||
+              !leadId ||
+              !accountId ||
+              !serviceId
+            }
+          >
+            {completeMutation.isPending ? "Submitting..." : "Submit"}
+          </Button>
         </div>
       </div>
     </BaseModal>

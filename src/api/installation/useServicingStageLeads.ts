@@ -20,6 +20,12 @@ interface ReopenServicePayload {
   updated_by: number;
 }
 
+interface CompleteServiceParams {
+  formData: FormData;
+  vendorId: number;
+  leadId: number;
+}
+
 export interface ServicingDocument {
   id: number;
   vendor_id: number;
@@ -128,6 +134,22 @@ export const reopenService = async (
   const { data } = await apiClient.put(
     `/leads/installation/servicing/vendorId/${vendorId}/leadId/${leadId}/serviceId/${serviceId}/reopen`,
     payload,
+  );
+
+  return data?.data;
+};
+
+export const completeService = async (
+  formData: FormData,
+): Promise<{ service: ServiceSchedule; documents: ServicingDocument[] }> => {
+  const { data } = await apiClient.post(
+    "/leads/installation/servicing/complete",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
   );
 
   return data?.data;
@@ -298,6 +320,27 @@ export const useReopenService = () => {
     onError: (err: AxiosError<ApiErrorResponse>) => {
       toastManager.add({
         title: err?.response?.data?.message || "Failed to reopen service",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useCompleteService = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ formData }: CompleteServiceParams) => completeService(formData),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["serviceSchedules", variables.vendorId, variables.leadId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+    },
+    onError: (err: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: err?.response?.data?.message || "Failed to complete service",
         type: "error",
       });
     },
