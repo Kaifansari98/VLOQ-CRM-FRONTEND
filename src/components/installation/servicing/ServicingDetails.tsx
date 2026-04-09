@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CalendarDays, CircleDot } from "lucide-react";
 import ServicingActionModal from "./servicing-action-modal";
+import ServicingViewModal from "./servicing-view-modal";
+import type { ServiceSchedule } from "@/api/installation/useServicingStageLeads";
 
 function formatDateTime(value?: string | null) {
   if (!value) return "-";
@@ -93,6 +95,8 @@ export default function ServicingDetails({ leadId }: { leadId: number }) {
   const [activeServiceStatus, setActiveServiceStatus] = useState<
     "open" | "completed" | "rejected"
   >("open");
+  const [openViewModal, setOpenViewModal] = useState(false);
+  const [activeService, setActiveService] = useState<ServiceSchedule | null>(null);
   const {
     data: serviceSchedules,
     isLoading,
@@ -157,7 +161,22 @@ export default function ServicingDetails({ leadId }: { leadId: number }) {
                           Free service schedule for this project.
                         </p>
                       </div>
-                      {isActionDisabled ? (
+                      {service.status === "completed" ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-md px-4"
+                          onClick={() => {
+                            setActiveServiceLabel(
+                              `${formatServiceOrdinal(service.service_no)} Service`,
+                            );
+                            setActiveService(service);
+                            setOpenViewModal(true);
+                          }}
+                        >
+                          View
+                        </Button>
+                      ) : isActionDisabled ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span tabIndex={0}>
@@ -188,6 +207,7 @@ export default function ServicingDetails({ leadId }: { leadId: number }) {
                             setActiveServiceId(service.id);
                             setActiveServiceRescheduled(service.rescheduled_once);
                             setActiveServiceStatus(service.status);
+                            setActiveService(service);
                             setOpenActionModal(true);
                           }}
                         >
@@ -264,6 +284,12 @@ export default function ServicingDetails({ leadId }: { leadId: number }) {
         serviceId={activeServiceId}
         isRescheduled={activeServiceRescheduled}
         serviceStatus={activeServiceStatus}
+      />
+      <ServicingViewModal
+        open={openViewModal}
+        onOpenChange={setOpenViewModal}
+        serviceLabel={activeServiceLabel}
+        service={activeService}
       />
     </div>
   );

@@ -77,6 +77,7 @@ export interface ServiceSchedule {
   completedBy: ServiceScheduleUser | null;
   rejectedBy: ServiceScheduleUser | null;
   completionDocument: ServiceScheduleDocument | null;
+  completionDocuments: ServiceScheduleDocument[];
 }
 
 export const getServiceSchedules = async (
