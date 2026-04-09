@@ -41,14 +41,6 @@ const ServicingCompleteModal: React.FC<ServicingCompleteModalProps> = ({
       size="lg"
     >
       <div className="space-y-6 p-6">
-        <div className="rounded-xl border bg-muted/20 px-4 py-3">
-          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Marked At
-          </p>
-          <p className="mt-1 text-sm font-semibold text-foreground">
-            {markedAt}
-          </p>
-        </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-3">
@@ -73,7 +65,7 @@ const ServicingCompleteModal: React.FC<ServicingCompleteModalProps> = ({
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Remark</label>
+          <label className="text-sm font-medium mb-2">Remark ( Optional )</label>
           <TextAreaInput
             value={remark}
             onChange={setRemark}
