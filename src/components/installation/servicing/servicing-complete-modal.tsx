@@ -17,6 +17,7 @@ interface ServicingCompleteModalProps {
   leadId: number;
   accountId?: number;
   serviceId?: number;
+  requireAmcContractDocuments?: boolean;
 }
 
 const ServicingCompleteModal: React.FC<ServicingCompleteModalProps> = ({
@@ -27,22 +28,33 @@ const ServicingCompleteModal: React.FC<ServicingCompleteModalProps> = ({
   leadId,
   accountId,
   serviceId,
+  requireAmcContractDocuments = false,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const [files, setFiles] = useState<File[]>([]);
+  const [amcContractFiles, setAmcContractFiles] = useState<File[]>([]);
   const [remark, setRemark] = useState("");
   const completeMutation = useCompleteService();
 
   useEffect(() => {
     if (!open) {
       setFiles([]);
+      setAmcContractFiles([]);
       setRemark("");
     }
   }, [open]);
 
   const handleSubmit = () => {
-    if (!vendorId || !userId || !leadId || !accountId || !serviceId || !files.length) {
+    if (
+      !vendorId ||
+      !userId ||
+      !leadId ||
+      !accountId ||
+      !serviceId ||
+      !files.length ||
+      (requireAmcContractDocuments && !amcContractFiles.length)
+    ) {
       return;
     }
 
@@ -59,6 +71,10 @@ const ServicingCompleteModal: React.FC<ServicingCompleteModalProps> = ({
 
     files.forEach((file) => {
       formData.append("service_completion_documents", file);
+    });
+
+    amcContractFiles.forEach((file) => {
+      formData.append("amc_contract_documents", file);
     });
 
     completeMutation.mutate(
@@ -111,6 +127,30 @@ const ServicingCompleteModal: React.FC<ServicingCompleteModalProps> = ({
           </p>
         </div>
 
+        {requireAmcContractDocuments ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <label className="text-sm font-medium">
+                AMC Contract Documents
+                <span className="ml-1 text-destructive">*</span>
+              </label>
+              <span className="text-xs text-muted-foreground">
+                PDF, image, doc, sheet
+              </span>
+            </div>
+            <FileUploadField
+              value={amcContractFiles}
+              onChange={setAmcContractFiles}
+              multiple={true}
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp"
+              maxFiles={10}
+            />
+            <p className="text-xs text-muted-foreground">
+              Upload AMC contract documents because AMC is opted for this lead.
+            </p>
+          </div>
+        ) : null}
+
         <div className="space-y-2">
           <label className="text-sm font-medium mb-2">Remark ( Optional )</label>
           <TextAreaInput
@@ -134,6 +174,7 @@ const ServicingCompleteModal: React.FC<ServicingCompleteModalProps> = ({
             disabled={
               completeMutation.isPending ||
               !files.length ||
+              (requireAmcContractDocuments && !amcContractFiles.length) ||
               !vendorId ||
               !userId ||
               !leadId ||

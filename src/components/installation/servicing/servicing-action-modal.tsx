@@ -458,6 +458,7 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
         leadId={leadId}
         accountId={accountId}
         serviceId={serviceId}
+        requireAmcContractDocuments={isThirdFreeService && isAmcOpted}
       />
 
       <AlertDialog open={confirmAmcStatus !== null} onOpenChange={(open) => {
