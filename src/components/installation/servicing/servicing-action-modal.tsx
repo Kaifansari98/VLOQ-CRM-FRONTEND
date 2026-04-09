@@ -26,6 +26,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
+import ServicingCompleteModal from "./servicing-complete-modal";
 
 interface ServicingActionModalProps {
   open: boolean;
@@ -54,6 +55,7 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
   const [openRescheduleConfirm, setOpenRescheduleConfirm] = useState(false);
   const [openRejectConfirm, setOpenRejectConfirm] = useState(false);
   const [openReopenConfirm, setOpenReopenConfirm] = useState(false);
+  const [openCompleteModal, setOpenCompleteModal] = useState(false);
   const [rejectRemark, setRejectRemark] = useState("");
   const rescheduleMutation = useRescheduleService();
   const rejectMutation = useRejectService();
@@ -180,7 +182,12 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
                 </TooltipContent>
               </Tooltip>
             ) : (
-              <Button className="w-28">Complete</Button>
+              <Button
+                className="w-28"
+                onClick={() => setOpenCompleteModal(true)}
+              >
+                Complete
+              </Button>
             )}
           </div>
 
@@ -360,6 +367,12 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ServicingCompleteModal
+        open={openCompleteModal}
+        onOpenChange={setOpenCompleteModal}
+        serviceLabel={serviceLabel}
+      />
     </>
   );
 };
