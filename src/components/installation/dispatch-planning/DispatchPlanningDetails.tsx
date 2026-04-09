@@ -72,6 +72,12 @@ const dispatchSchema = z.object({
     .refine((val) => val === true || val === false, {
       message: "Please select material lift availability",
     }),
+  vehicle_approachability: z
+    .boolean()
+    .optional()
+    .refine((val) => val === true || val === false, {
+      message: "Please select vehicle approachability",
+    }),
   alt_onsite_contact_person_name: z.string().optional(),
   alt_onsite_contact_person_number: z.string().optional(),
   dispatch_planning_remark: z.string().optional(),
@@ -169,11 +175,13 @@ export default function DispatchPlanningDetails({
       alt_onsite_contact_person_name: "",
       alt_onsite_contact_person_number: "",
       material_lift_availability: undefined as any,
+      vehicle_approachability: undefined as any,
       dispatch_planning_remark: "",
     },
   });
 
   const watchLiftAvailability = watchDispatch("material_lift_availability");
+  const watchVehicleApproachability = watchDispatch("vehicle_approachability");
 
   // Payment Form
   const {
@@ -208,9 +216,17 @@ export default function DispatchPlanningDetails({
   useEffect(() => {
     if (dispatchInfoData) {
       const apiValue = dispatchInfoData.material_lift_availability;
+      const vehicleApiValue =
+        dispatchInfoData.vehicle_approachability_for_dispatch;
 
       const normalizedLiftAvailability =
         apiValue === true ? true : apiValue === false ? false : undefined;
+      const normalizedVehicleApproachability =
+        vehicleApiValue === true
+          ? true
+          : vehicleApiValue === false
+            ? false
+            : undefined;
 
       const formValues = {
         required_date_for_dispatch: dispatchInfoData.required_date_for_dispatch
@@ -227,6 +243,7 @@ export default function DispatchPlanningDetails({
         alt_onsite_contact_person_number:
           dispatchInfoData.alt_onsite_contact_person_number || "",
         material_lift_availability: normalizedLiftAvailability,
+        vehicle_approachability: normalizedVehicleApproachability,
         dispatch_planning_remark:
           dispatchInfoData.dispatch_planning_remark || "",
       };
@@ -269,6 +286,9 @@ export default function DispatchPlanningDetails({
       const payload = {
         ...values,
         material_lift_availability: values.material_lift_availability
+          ? "true"
+          : "false",
+        vehicle_approachability: values.vehicle_approachability
           ? "true"
           : "false",
         created_by: userId,
@@ -581,6 +601,52 @@ export default function DispatchPlanningDetails({
               {errorsDispatch.material_lift_availability && (
                 <p className="text-xs text-red-500">
                   {errorsDispatch.material_lift_availability.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <Label className="flex items-center gap-1 text-sm font-medium">
+                <Truck className="h-4 w-4" />
+                VEHICLE APPROACHABILITY{" "}
+                <span className="text-red-500">*</span>
+              </Label>
+
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    disabled={!canViewAndWork}
+                    checked={watchVehicleApproachability === true}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setValueDispatch("vehicle_approachability", true, {
+                          shouldValidate: true,
+                        });
+                      }
+                    }}
+                  />
+                  <label className="text-sm">Yes</label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    disabled={!canViewAndWork}
+                    checked={watchVehicleApproachability === false}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setValueDispatch("vehicle_approachability", false, {
+                          shouldValidate: true,
+                        });
+                      }
+                    }}
+                  />
+                  <label className="text-sm">No</label>
+                </div>
+              </div>
+
+              {errorsDispatch.vehicle_approachability && (
+                <p className="text-xs text-red-500">
+                  {errorsDispatch.vehicle_approachability.message}
                 </p>
               )}
             </div>
