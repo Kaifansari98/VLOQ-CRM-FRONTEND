@@ -47,13 +47,23 @@ const ServicingViewModal: React.FC<ServicingViewModalProps> = ({
       size="lg"
     >
       <div className="space-y-6 p-6">
-        <div className="rounded-xl border bg-muted/20 px-4 py-3">
-          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Marked At
-          </p>
-          <p className="mt-1 text-sm font-semibold text-foreground">
-            {formatDateTime(service?.completed_at)}
-          </p>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-xl border bg-muted/20 px-4 py-3">
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Marked At
+            </p>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              {formatDateTime(service?.completed_at)}
+            </p>
+          </div>
+          <div className="rounded-xl border bg-muted/20 px-4 py-3">
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Marked By
+            </p>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              {service?.completedBy?.user_name || "-"}
+            </p>
+          </div>
         </div>
 
         <div className="space-y-3">
