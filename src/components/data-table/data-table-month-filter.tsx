@@ -110,22 +110,6 @@ export function DataTableMonthFilter({
 
       <PopoverContent className="w-[360px] rounded-2xl border p-4 shadow-xl" align="start">
         <div className="mb-4 rounded-xl border bg-muted/30 p-3">
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                Service Month
-              </div>
-              <div className="text-base font-semibold leading-none">{visibleYear}</div>
-            </div>
-            {hasValue && (
-              <Badge
-                variant="secondary"
-                className="h-6 rounded-full px-2.5 text-[11px] font-medium"
-              >
-                {label}
-              </Badge>
-            )}
-          </div>
 
           <div className="flex items-center justify-between">
             <button
@@ -137,8 +121,8 @@ export function DataTableMonthFilter({
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
 
-            <div className="text-xs font-medium text-muted-foreground">
-              Select month
+            <div className="text-base font-semibold leading-none">
+            {visibleYear}
             </div>
 
             <button
@@ -152,7 +136,24 @@ export function DataTableMonthFilter({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 rounded-2xl bg-muted/20 p-2">
+        <div className="mb-3 flex items-center justify-between">
+            <div>
+              <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                Service Month
+              </div>
+              {/* <div className="text-base font-semibold leading-none">{visibleYear}</div> */}
+            </div>
+            {hasValue && (
+              <Badge
+                variant="secondary"
+                className="h-6 rounded-full px-2.5 text-[11px] font-medium"
+              >
+                {label}
+              </Badge>
+            )}
+          </div>
+
+        <div className="grid grid-cols-3 gap-2 rounded-2xl bg-muted/20 py-2">
           {MONTHS.map((monthLabel, monthIndex) => {
             const isSelected =
               value?.year === visibleYear && value?.month === monthIndex;
@@ -198,7 +199,7 @@ export function DataTableMonthFilter({
               type="button"
               size="sm"
               onClick={() => onChange(undefined)}
-              className="h-9 rounded-xl bg-slate-950 px-3 text-xs font-medium text-white hover:bg-slate-800"
+              className="h-9 rounded-lg bg-slate-950 px-3 text-xs font-medium text-white hover:bg-slate-800"
             >
               <FilterX className="mr-1.5 h-3.5 w-3.5" />
               Remove Filter
