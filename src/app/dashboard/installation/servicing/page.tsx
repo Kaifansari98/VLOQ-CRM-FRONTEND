@@ -63,6 +63,7 @@ export default function ServicingPage() {
             type="Type 17"
             enableAdminTabs={true}
             pendingServicesOnly={true}
+            showServicingColumn={true}
             onRowNavigate={navigateServicing}
           />
         </Suspense>

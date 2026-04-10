@@ -31,6 +31,7 @@ interface UniversalColumnOptions {
   showStageColumn?: boolean;
   showProductionStatusColumn?: boolean;
   showPriorityColumn?: boolean;
+  showServicingColumn?: boolean;
 }
 
 export function getUniversalTableColumns(
@@ -40,6 +41,7 @@ export function getUniversalTableColumns(
     showStageColumn = false,
     showProductionStatusColumn = false,
     showPriorityColumn = false,
+    showServicingColumn = false,
   } =
     options;
   const columns: ColumnDef<LeadColumn>[] = [
@@ -87,6 +89,31 @@ export function getUniversalTableColumns(
         label: "Name",
       },
     },
+
+    ...(showServicingColumn
+      ? ([
+          {
+            accessorKey: "servicing",
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Servicing" />
+            ),
+            cell: ({ row }) => {
+              const value = row.getValue("servicing") as string | undefined;
+              return (
+                <span className="text-sm text-foreground">
+                  {value && value.trim() ? value : "—"}
+                </span>
+              );
+            },
+            meta: {
+              label: "Servicing",
+            },
+            enableSorting: false,
+            enableHiding: true,
+            enableColumnFilter: true,
+          },
+        ] satisfies ColumnDef<LeadColumn>[])
+      : []),
 
     ...(showPriorityColumn
       ? ([

@@ -58,6 +58,7 @@ export interface UniversalTableProps {
   dataMode?: "universal" | "misc";
   activityStatus?: string;
   pendingServicesOnly?: boolean;
+  showServicingColumn?: boolean;
 }
 
 // -------------------------------------------------------
@@ -245,6 +246,7 @@ export function UniversalTable({
   dataMode = "universal",
   activityStatus,
   pendingServicesOnly = false,
+  showServicingColumn = false,
 }: UniversalTableProps) {
   // -------------------- GLOBAL STATE --------------------
 
@@ -612,6 +614,51 @@ export function UniversalTable({
     dataMode === "misc" ? (miscData?.count ?? 0) : (myData?.count ?? 0);
   const overallCount = dataMode === "misc" ? 0 : (overallData?.count ?? 0);
 
+  const formatOrdinal = (value: number) => {
+    const mod10 = value % 10;
+    const mod100 = value % 100;
+
+    if (mod10 === 1 && mod100 !== 11) return `${value}st`;
+    if (mod10 === 2 && mod100 !== 12) return `${value}nd`;
+    if (mod10 === 3 && mod100 !== 13) return `${value}rd`;
+    return `${value}th`;
+  };
+
+  const formatServiceDate = (value: string | Date) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+
+    const day = formatOrdinal(date.getDate());
+    const monthYear = new Intl.DateTimeFormat("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "Asia/Kolkata",
+    })
+      .format(date)
+      .replace(/^\d+\s/, "");
+
+    return `${day} ${monthYear}`;
+  };
+
+  const getPendingServicingLabel = (lead: any) => {
+    const pendingSchedules = Array.isArray(lead?.serviceSchedules)
+      ? lead.serviceSchedules
+      : [];
+
+    const nextPending = pendingSchedules[0];
+
+    if (!nextPending?.service_no || !nextPending?.service_type || !nextPending?.scheduled_for) {
+      return "";
+    }
+
+    const serviceTypeLabel =
+      String(nextPending.service_type).toLowerCase() === "amc" ? "AMC" : "Free";
+
+    const scheduledFor = formatServiceDate(nextPending.scheduled_for);
+    return `${formatOrdinal(nextPending.service_no)} ${serviceTypeLabel} Servicing${scheduledFor ? ` - ${scheduledFor}` : ""}`;
+  };
+
   // -------------------- ROW MAPPER --------------------
 
   const mapUniversalRow = (
@@ -662,6 +709,7 @@ export function UniversalTable({
     assignedToId: lead.assignedTo?.id ?? "",
     accountId: lead.account?.id ?? lead.account_id ?? 0,
     priority: lead.priority ?? "",
+    servicing: getPendingServicingLabel(lead),
   });
 
   // -------------------- TABLE DATA --------------------
@@ -810,8 +858,14 @@ export function UniversalTable({
         showStageColumn,
         showProductionStatusColumn,
         showPriorityColumn,
+        showServicingColumn,
       }),
-    [showStageColumn, showProductionStatusColumn, showPriorityColumn],
+    [
+      showStageColumn,
+      showProductionStatusColumn,
+      showPriorityColumn,
+      showServicingColumn,
+    ],
   );
 
   // -------------------- TABLE INSTANCE --------------------

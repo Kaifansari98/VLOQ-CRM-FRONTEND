@@ -203,7 +203,7 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
       >
         <div className="space-y-4 p-6">
           {isThirdFreeService ? (
-            <div className="flex items-center gap-3 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900/60">
+            <div className="flex items-center gap-3 px-4 py-3">
               <Checkbox
                 id="is-amc-opted-servicing"
                 checked={isAmcOpted}
