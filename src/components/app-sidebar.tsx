@@ -192,6 +192,7 @@ const data = {
       icon: Monitor,
       items: [
         { title: "Dashboard", url: "/dashboard/track-trace" },
+        { title: "Real Time", url: "/dashboard/track-trace/dashboard" },
         {
           title: "Manage Projects",
           url: "/dashboard/track-trace/manage-project",
