@@ -16,7 +16,12 @@ import {
 import { useAppSelector } from "@/redux/store";
 import CustomeTooltip from "../custom-tooltip";
 
-type GroupKey = "leads" | "project" | "production" | "installation";
+type GroupKey =
+  | "leads"
+  | "project"
+  | "production"
+  | "installation"
+  | "servicing";
 
 interface GroupedSmoothTabProps {
   groups: Record<
@@ -33,6 +38,7 @@ const groupLabels: Record<GroupKey, string> = {
   project: "Project",
   production: "Production",
   installation: "Installation",
+  servicing: "Servicing",
 };
 
 export default function GroupedSmoothTab({
@@ -101,6 +107,7 @@ export default function GroupedSmoothTab({
     ...(visibleGroups.project || []),
     ...(visibleGroups.production || []),
     ...(visibleGroups.installation || []),
+    ...(visibleGroups.servicing || []),
   ],
   [visibleGroups]
 );

@@ -20,7 +20,12 @@ import { StageId } from "@/types/lead-stage-types";
 import UnderInstallationTabsWrapper from "../installation/under-installation/UnderInstallationTabsWrapper";
 import FinalHandoverWrapper from "../installation/final-handover/FinalHandoverWrapper";
 import ServicingWrapper from "../installation/servicing/ServicingWrapper";
-type GroupKey = "leads" | "project" | "production" | "installation";
+type GroupKey =
+  | "leads"
+  | "project"
+  | "production"
+  | "installation"
+  | "servicing";
 
 export interface LeadDetailsGroupedProps {
   defaultTab?: StageId;
@@ -48,6 +53,7 @@ const GROUP_ORDER: GroupKey[] = [
   "project",
   "production",
   "installation",
+  "servicing",
 ];
 
 export default function LeadDetailsGrouped({
@@ -222,16 +228,16 @@ export default function LeadDetailsGrouped({
           />
         ),
       },
-      ...(showServicingTab
-        ? [
-            {
-              id: "servicing" as StageId,
-              title: "Servicing",
-              component: <ServicingWrapper leadId={leadId} />,
-            },
-          ]
-        : []),
     ],
+    servicing: showServicingTab
+      ? [
+          {
+            id: "servicing" as StageId,
+            title: "Servicing",
+            component: <ServicingWrapper leadId={leadId} />,
+          },
+        ]
+      : [],
   } as const;
 
   // ✅ Filter based on defaultParentTab
@@ -256,9 +262,14 @@ export default function LeadDetailsGrouped({
   ];
 
   const visibleGroups = React.useMemo(() => {
+    const effectiveParentTab =
+      showServicingTab && defaultParentTab === "installation"
+        ? "servicing"
+        : defaultParentTab;
+
     const allowedKeys = GROUP_ORDER.slice(
       0,
-      GROUP_ORDER.indexOf(defaultParentTab) + 1
+      GROUP_ORDER.indexOf(effectiveParentTab) + 1
     );
 
     const filtered = {} as Record<
@@ -270,7 +281,7 @@ export default function LeadDetailsGrouped({
       const stages = groups[key];
 
       // agar ye last allowed group hai to andar se cutoff lagao
-      if (key === defaultParentTab && status) {
+      if (key === effectiveParentTab && status) {
         const effectiveStatus =
           showServicingTab && status === "finalHandover" ? "servicing" : status;
         const maxIndex = stageOrder.indexOf(effectiveStatus);
