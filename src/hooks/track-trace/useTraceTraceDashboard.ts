@@ -10,6 +10,7 @@ export function useTraceTraceDashboard(vendorId?: number) {
     queryKey: TRACE_TRACE_DASHBOARD_KEY(vendorId ?? 0),
     queryFn: () => getTraceTraceDashboard(vendorId!),
     enabled: !!vendorId,
-    staleTime: 30_000, // 30s — scan counts change frequently
+    staleTime: 10000, // 10s — scan counts change frequently
+    refetchInterval: 30000
   });
 }

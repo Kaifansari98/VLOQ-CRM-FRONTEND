@@ -5,6 +5,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -16,7 +17,15 @@ import type {
   ProjectScanStatus,
 } from "@/api/track-trace/track-trace-dashboard.api";
 import { useAppSelector } from "@/redux/store";
-import { CheckCircle2, Clock, Package } from "lucide-react";
+import {
+  Activity,
+  Archive,
+  CheckCircle2,
+  Clock,
+  Layers,
+  Package2,
+  TrendingUp,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -25,44 +34,85 @@ import { cn } from "@/lib/utils";
 function MachineCell({ machine }: { machine: MachineScanStatus }) {
   const allDone = machine.all_scanned;
   const pct =
-    machine.total > 0
-      ? Math.round((machine.scanned / machine.total) * 100)
-      : 0;
+    machine.total > 0 ? Math.round((machine.scanned / machine.total) * 100) : 0;
 
   return (
-    <div className="flex flex-col gap-1 min-w-[110px]">
-      {/* Status label */}
-      <div className="flex items-center gap-1">
-        {allDone ? (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 className="size-3" />
-            All Scanned
-          </span>
-        ) : machine.pending > 0 ? (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-            <Clock className="size-3" />
-            {machine.pending} pending
-          </span>
-        ) : (
-          <span className="text-[10px] text-muted-foreground">Not started</span>
-        )}
-      </div>
+    <div className="flex flex-col gap-2 min-w-[120px]">
+      {/* Status chip */}
+      {allDone ? (
+        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-emerald-600 ring-1 ring-emerald-500/20 dark:text-emerald-400">
+          <CheckCircle2 className="size-2.5" />
+          ALL DONE
+        </span>
+      ) : machine.pending > 0 ? (
+        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-orange-500/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-orange-600 ring-1 ring-orange-500/20 dark:text-orange-400">
+          <Clock className="size-2.5" />
+          {machine.pending} PENDING
+        </span>
+      ) : (
+        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold tracking-wide text-muted-foreground">
+          NOT STARTED
+        </span>
+      )}
 
-      {/* Progress bar */}
-      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+      {/* Progress track */}
+      <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
         <div
           className={cn(
-            "h-full rounded-full transition-all",
-            allDone ? "bg-emerald-500" : "bg-amber-400"
+            "absolute inset-y-0 left-0 rounded-full transition-all duration-700",
+            allDone
+              ? "bg-gradient-to-r from-emerald-500 to-emerald-400"
+              : pct > 0
+              ? "bg-gradient-to-r from-orange-500 to-amber-400"
+              : "w-0"
           )}
           style={{ width: `${pct}%` }}
         />
       </div>
 
-      {/* Scanned / total */}
-      <span className="text-[10px] text-muted-foreground">
-        {machine.scanned}/{machine.total}
-      </span>
+      {/* Count + pct */}
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold tabular-nums text-foreground">
+          {machine.scanned}
+          <span className="font-normal text-muted-foreground">/{machine.total}</span>
+        </span>
+        <span
+          className={cn(
+            "text-[10px] font-bold tabular-nums",
+            allDone ? "text-emerald-500" : "text-muted-foreground"
+          )}
+        >
+          {pct}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Summary stat card ────────────────────────────────────────────────────────
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  icon: React.ElementType;
+  color: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm">
+      <div className={cn("rounded-lg p-2", color)}>
+        <Icon className="size-4" />
+      </div>
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          {label}
+        </p>
+        <p className="text-xl font-black tabular-nums text-foreground">{value}</p>
+      </div>
     </div>
   );
 }
@@ -72,14 +122,21 @@ function MachineCell({ machine }: { machine: MachineScanStatus }) {
 function ProjectTable({ projects }: { projects: ProjectScanStatus[] }) {
   if (projects.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-        <Package className="size-10 text-muted-foreground/40" />
-        <p className="text-sm text-muted-foreground">No projects found</p>
+      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-20 text-center gap-4">
+        <div className="rounded-2xl bg-muted p-5">
+          <Package2 className="size-10 text-muted-foreground/50" />
+        </div>
+        <div>
+          <p className="font-semibold text-foreground">No projects found</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Projects will appear here once they are created
+          </p>
+        </div>
       </div>
     );
   }
 
-  // Collect all unique machines in sequence order across all projects
+  // Collect all unique machines in sequence order
   const machineMap = new Map<number, { id: number; name: string; seq: number }>();
   projects.forEach((p) =>
     p.machines.forEach((m) => {
@@ -97,86 +154,190 @@ function ProjectTable({ projects }: { projects: ProjectScanStatus[] }) {
   );
 
   return (
-    <div className="rounded-md border overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="min-w-[200px] sticky left-0 bg-background z-10 border-r">
-              Project
-            </TableHead>
-            <TableHead className="min-w-[100px]">Status</TableHead>
-            <TableHead className="min-w-[110px]">Created</TableHead>
-            {allMachines.map((m) => (
-              <TableHead key={m.id} className="min-w-[130px]">
-                {m.name}
+    <div className="overflow-hidden rounded-xl border shadow-sm">
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/60 hover:bg-muted/60">
+              <TableHead className="min-w-[220px] sticky left-0 z-10 bg-muted/60 border-r py-3 text-xs font-black uppercase tracking-widest text-muted-foreground">
+                Project
               </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
+              {allMachines.map((m, i) => (
+                <TableHead
+                  key={m.id}
+                  className="min-w-[150px] py-3 text-xs font-black uppercase tracking-widest text-muted-foreground"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-[9px] font-black text-foreground">
+                      {i + 1}
+                    </span>
+                    {m.name}
+                  </div>
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
 
-        <TableBody>
-          {projects.map((project) => {
-            const statusColor =
-              project.project_status === "Initiated"
-                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                : project.project_status === "Started"
-                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                : "bg-muted text-muted-foreground";
+          <TableBody>
+            {projects.map((project, rowIdx) => {
+              const machineById = new Map(
+                project.machines.map((m) => [m.machine_id, m])
+              );
+              const totalPending = project.machines.reduce(
+                (s, m) => s + m.pending,
+                0
+              );
+              const allProjectDone = totalPending === 0 && project.machines.length > 0;
 
-            const machineById = new Map(
-              project.machines.map((m) => [m.machine_id, m])
-            );
-
-            return (
-              <TableRow key={project.project_id}>
-                {/* Project name */}
-                <TableCell className="font-medium sticky left-0 bg-background z-10 border-r max-w-[200px]">
-                  <span className="block truncate" title={project.project_name}>
-                    {project.project_name}
-                  </span>
-                </TableCell>
-
-                {/* Status badge */}
-                <TableCell>
-                  <span
+              return (
+                <TableRow
+                  key={project.project_id}
+                  className={cn(
+                    "group transition-colors",
+                    rowIdx % 2 === 0 ? "bg-background" : "bg-muted/20",
+                    "hover:bg-primary/5"
+                  )}
+                >
+                  {/* Project name */}
+                  <TableCell
                     className={cn(
-                      "text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize whitespace-nowrap",
-                      statusColor
+                      "sticky left-0 z-10 border-r py-4 font-medium transition-colors",
+                      rowIdx % 2 === 0 ? "bg-background" : "bg-muted/20",
+                      "group-hover:bg-primary/5"
                     )}
                   >
-                    {project.project_status}
-                  </span>
-                </TableCell>
-
-                {/* Created date */}
-                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                  {new Date(project.created_at).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </TableCell>
-
-                {/* One column per machine */}
-                {allMachines.map((m) => {
-                  const machine = machineById.get(m.id);
-                  return (
-                    <TableCell key={m.id}>
-                      {machine ? (
-                        <MachineCell machine={machine} />
-                      ) : (
-                        <span className="text-[10px] text-muted-foreground/40">
-                          —
+                    <div className="flex items-center gap-2.5 max-w-[200px]">
+                      <div
+                        className={cn(
+                          "h-2 w-2 shrink-0 rounded-full",
+                          allProjectDone
+                            ? "bg-emerald-500"
+                            : totalPending > 0
+                            ? "bg-orange-400"
+                            : "bg-muted-foreground/30"
+                        )}
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <span
+                          className="block truncate text-sm font-semibold text-foreground"
+                          title={project.project_name}
+                        >
+                          {project.project_name}
                         </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          <span className="font-semibold text-foreground">
+                            {project.panels_scanned}
+                          </span>
+                          /{project.total_panels} panels done
+                        </span>
+                      </div>
+                    </div>
+                  </TableCell>
+
+                  {/* Machine columns */}
+                  {allMachines.map((m) => {
+                    const machine = machineById.get(m.id);
+                    return (
+                      <TableCell key={m.id} className="py-4 align-top">
+                        {machine ? (
+                          <MachineCell machine={machine} />
+                        ) : (
+                          <div className="flex items-center justify-center">
+                            <span className="text-lg text-muted-foreground/20">—</span>
+                          </div>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              );
+            })}
+          </TableBody>
+
+          {/* ── Footer totals ── */}
+          <TableFooter>
+            <TableRow className="border-t-2 bg-muted/80 hover:bg-muted/80">
+              <TableCell className="sticky left-0 z-10 bg-muted/80 border-r py-4">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    Grand Total
+                  </span>
+                  <span className="text-sm font-black text-foreground">
+                    {projects.length}{" "}
+                    <span className="font-normal text-muted-foreground">
+                      project{projects.length !== 1 ? "s" : ""}
+                    </span>
+                  </span>
+                </div>
+              </TableCell>
+              {allMachines.map((m) => {
+                const totalScanned = projects.reduce((sum, p) => {
+                  const machine = p.machines.find((pm) => pm.machine_id === m.id);
+                  return sum + (machine?.scanned ?? 0);
+                }, 0);
+                const totalCount = projects.reduce((sum, p) => {
+                  const machine = p.machines.find((pm) => pm.machine_id === m.id);
+                  return sum + (machine?.total ?? 0);
+                }, 0);
+                const totalPending = projects.reduce((sum, p) => {
+                  const machine = p.machines.find((pm) => pm.machine_id === m.id);
+                  return sum + (machine?.pending ?? 0);
+                }, 0);
+                const allDone = totalCount > 0 && totalPending === 0;
+                const pct =
+                  totalCount > 0 ? Math.round((totalScanned / totalCount) * 100) : 0;
+
+                return (
+                  <TableCell key={m.id} className="py-4 align-top">
+                    <div className="flex flex-col gap-2 min-w-[120px]">
+                      {allDone ? (
+                        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-emerald-600 ring-1 ring-emerald-500/20 dark:text-emerald-400">
+                          <CheckCircle2 className="size-2.5" />
+                          ALL DONE
+                        </span>
+                      ) : totalPending > 0 ? (
+                        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-orange-500/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-orange-600 ring-1 ring-orange-500/20 dark:text-orange-400">
+                          <Clock className="size-2.5" />
+                          {totalPending} PENDING
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground">—</span>
                       )}
-                    </TableCell>
-                  );
-                })}
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                      <div className="relative h-2 w-full overflow-hidden rounded-full bg-background">
+                        <div
+                          className={cn(
+                            "absolute inset-y-0 left-0 rounded-full transition-all",
+                            allDone
+                              ? "bg-gradient-to-r from-emerald-500 to-emerald-400"
+                              : "bg-gradient-to-r from-orange-500 to-amber-400"
+                          )}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black tabular-nums text-foreground">
+                          {totalScanned}
+                          <span className="font-normal text-muted-foreground">
+                            /{totalCount}
+                          </span>
+                        </span>
+                        <span
+                          className={cn(
+                            "text-[10px] font-bold tabular-nums",
+                            allDone ? "text-emerald-500" : "text-muted-foreground"
+                          )}
+                        >
+                          {pct}%
+                        </span>
+                      </div>
+                    </div>
+                  </TableCell>
+                );
+              })}
+            </TableRow>
+          </TableFooter>
+        </Table>
+      </div>
     </div>
   );
 }
@@ -185,19 +346,23 @@ function ProjectTable({ projects }: { projects: ProjectScanStatus[] }) {
 
 function TableSkeleton() {
   return (
-    <div className="rounded-md border overflow-hidden">
-      <div className="flex gap-6 px-4 py-3 border-b bg-muted/40">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-4 w-24" />
+    <div className="overflow-hidden rounded-xl border shadow-sm">
+      <div className="flex gap-6 px-5 py-4 border-b bg-muted/60">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-4 w-28" />
         ))}
       </div>
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="flex gap-6 items-center px-4 py-4 border-b">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-4 w-20" />
-          {Array.from({ length: 3 }).map((_, j) => (
-            <Skeleton key={j} className="h-10 w-28 rounded" />
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div
+          key={i}
+          className={cn(
+            "flex gap-6 items-center px-5 py-5 border-b",
+            i % 2 === 0 ? "bg-background" : "bg-muted/20"
+          )}
+        >
+          <Skeleton className="h-4 w-44" />
+          {Array.from({ length: 4 }).map((_, j) => (
+            <Skeleton key={j} className="h-14 w-32 rounded-lg" />
           ))}
         </div>
       ))}
@@ -211,35 +376,126 @@ export default function TraceTraceDashboard() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const { data, isLoading, isError } = useTraceTraceDashboard(vendorId);
 
+  const totalActive = data?.active_count ?? 0;
+  const totalArchived = data?.archived_count ?? 0;
+
+  const activeTotalScanned =
+    data?.active.reduce(
+      (sum, p) => sum + p.machines.reduce((s, m) => s + m.scanned, 0),
+      0
+    ) ?? 0;
+  const activeTotalItems =
+    data?.active.reduce(
+      (sum, p) => sum + p.machines.reduce((s, m) => s + m.total, 0),
+      0
+    ) ?? 0;
+  const activePanelsScanned =
+    data?.active.reduce((sum, p) => sum + p.panels_scanned, 0) ?? 0;
+  const activeTotalPanels =
+    data?.active.reduce((sum, p) => sum + p.total_panels, 0) ?? 0;
+
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-xl font-bold">Track & Trace Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Monitor scan progress across all projects and machines
-        </p>
+    <div className="flex flex-col gap-8 p-6">
+      {/* ── Page header ── */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="h-6 w-1 rounded-full bg-primary" />
+            <h1 className="text-2xl font-black tracking-tight text-foreground">
+              Track & Trace
+            </h1>
+          </div>
+          <p className="text-sm text-muted-foreground pl-3">
+            Real-time scan progress across all projects and machines
+          </p>
+        </div>
+        {data && (
+          <div className="flex items-center gap-2">
+            <Activity className="size-4 text-emerald-500 animate-pulse" />
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              Live
+            </span>
+          </div>
+        )}
       </div>
 
-      {isError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          Failed to load dashboard data. Please try again.
+      {/* ── Stat cards ── */}
+      {data && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+          <StatCard
+            label="Active Projects"
+            value={totalActive}
+            icon={TrendingUp}
+            color="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+          />
+          <StatCard
+            label="Archived"
+            value={totalArchived}
+            icon={Archive}
+            color="bg-muted text-muted-foreground"
+          />
+          {/* <StatCard
+            label="Items Scanned"
+            value={activeTotalScanned.toLocaleString()}
+            icon={CheckCircle2}
+            color="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+          /> */}
+          {/* <StatCard
+            label="Total Items"
+            value={activeTotalItems.toLocaleString()}
+            icon={Package2}
+            color="bg-orange-500/10 text-orange-600 dark:text-orange-400"
+          /> */}
+          <StatCard
+            label="Panels Done"
+            value={activePanelsScanned.toLocaleString()}
+            icon={Layers}
+            color="bg-violet-500/10 text-violet-600 dark:text-violet-400"
+          />
+          <StatCard
+            label="Total Panels"
+            value={activeTotalPanels.toLocaleString()}
+            icon={Layers}
+            color="bg-muted text-muted-foreground"
+          />
         </div>
       )}
 
+      {isError && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-5 py-4 text-sm text-destructive">
+          ⚠ Failed to load dashboard data. Please refresh and try again.
+        </div>
+      )}
+
+      {/* ── Tabs ── */}
       <Tabs defaultValue="active">
-        <TabsList className="mb-4">
-          <TabsTrigger value="active" className="gap-2">
+        <TabsList className="mb-6 h-10 rounded-xl bg-muted/60 p-1">
+          <TabsTrigger
+            value="active"
+            className="gap-2 rounded-lg px-4 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm"
+          >
+            <span className="h-2 w-2 rounded-full bg-blue-500" />
             Active
             {data && (
-              <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4">
+              <Badge
+                variant="secondary"
+                className="ml-0.5 h-5 min-w-5 rounded-full px-1.5 text-[10px] font-black"
+              >
                 {data.active_count}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="archived" className="gap-2">
+          <TabsTrigger
+            value="archived"
+            className="gap-2 rounded-lg px-4 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm"
+          >
+            <Archive className="size-3.5" />
             Archived
             {data && (
-              <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4">
+              <Badge
+                variant="secondary"
+                className="ml-0.5 h-5 min-w-5 rounded-full px-1.5 text-[10px] font-black"
+              >
                 {data.archived_count}
               </Badge>
             )}

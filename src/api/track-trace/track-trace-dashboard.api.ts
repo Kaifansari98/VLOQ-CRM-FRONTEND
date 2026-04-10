@@ -17,6 +17,8 @@ export interface ProjectScanStatus {
   project_status: string;
   track_trace_status: string;
   created_at: string;
+  panels_scanned: number;
+  total_panels: number;
   machines: MachineScanStatus[];
 }
 
