@@ -606,7 +606,7 @@ export default function DispatchPlanningDetails({
               <div className="space-y-3">
                 <Label className="flex items-center gap-1 text-sm font-medium">
                   <Truck className="h-4 w-4" />
-                  VEHICLE APPROACHABILITY{" "}
+                  Vehicle Approachability{" "}
                   <span className="text-red-500">*</span>
                 </Label>
 
