@@ -7,6 +7,25 @@ interface ApiErrorResponse {
   message?: string;
 }
 
+interface RescheduleServicePayload {
+  updated_by: number;
+}
+
+interface RejectServicePayload {
+  updated_by: number;
+  remark: string;
+}
+
+interface ReopenServicePayload {
+  updated_by: number;
+}
+
+interface CompleteServiceParams {
+  formData: FormData;
+  vendorId: number;
+  leadId: number;
+}
+
 export interface ServicingDocument {
   id: number;
   vendor_id: number;
@@ -20,6 +39,121 @@ export interface ServicingDocument {
   signed_url: string;
   doc_type_tag: string;
 }
+
+export interface ServiceScheduleUser {
+  id: number;
+  user_name: string;
+  user_type?: {
+    user_type: string;
+  };
+}
+
+export interface ServiceScheduleDocument {
+  id: number;
+  doc_og_name: string;
+  doc_sys_name: string;
+  created_at: string;
+  signed_url: string;
+}
+
+export interface ServiceSchedule {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  account_id: number;
+  service_no: number;
+  service_type: "free" | "amc";
+  scheduled_for: string;
+  original_scheduled_for: string;
+  status: "open" | "completed" | "rejected";
+  rescheduled_once: boolean;
+  rescheduled_from: string | null;
+  completed_at: string | null;
+  completion_remark: string | null;
+  completion_document_id: number | null;
+  rejected_at: string | null;
+  rejection_remark: string | null;
+  closure_reason: string | null;
+  created_by: number;
+  created_at: string;
+  updated_by: number | null;
+  updated_at: string;
+  createdBy: ServiceScheduleUser;
+  updatedBy: ServiceScheduleUser | null;
+  completedBy: ServiceScheduleUser | null;
+  rejectedBy: ServiceScheduleUser | null;
+  completionDocument: ServiceScheduleDocument | null;
+  completionDocuments: ServiceScheduleDocument[];
+}
+
+export const getServiceSchedules = async (
+  vendorId: number,
+  leadId: number,
+): Promise<ServiceSchedule[]> => {
+  const { data } = await apiClient.get(
+    `/leads/installation/servicing/vendorId/${vendorId}/leadId/${leadId}/schedules`,
+  );
+
+  return data?.data || [];
+};
+
+export const rescheduleService = async (
+  vendorId: number,
+  leadId: number,
+  serviceId: number,
+  payload: RescheduleServicePayload,
+): Promise<ServiceSchedule> => {
+  const { data } = await apiClient.put(
+    `/leads/installation/servicing/vendorId/${vendorId}/leadId/${leadId}/serviceId/${serviceId}/reschedule`,
+    payload,
+  );
+
+  return data?.data;
+};
+
+export const rejectService = async (
+  vendorId: number,
+  leadId: number,
+  serviceId: number,
+  payload: RejectServicePayload,
+): Promise<ServiceSchedule> => {
+  const { data } = await apiClient.put(
+    `/leads/installation/servicing/vendorId/${vendorId}/leadId/${leadId}/serviceId/${serviceId}/reject`,
+    payload,
+  );
+
+  return data?.data;
+};
+
+export const reopenService = async (
+  vendorId: number,
+  leadId: number,
+  serviceId: number,
+  payload: ReopenServicePayload,
+): Promise<ServiceSchedule> => {
+  const { data } = await apiClient.put(
+    `/leads/installation/servicing/vendorId/${vendorId}/leadId/${leadId}/serviceId/${serviceId}/reopen`,
+    payload,
+  );
+
+  return data?.data;
+};
+
+export const completeService = async (
+  formData: FormData,
+): Promise<{ service: ServiceSchedule; documents: ServicingDocument[] }> => {
+  const { data } = await apiClient.post(
+    "/leads/installation/servicing/complete",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+
+  return data?.data;
+};
 
 export const getServicingDocuments = async (
   vendorId: number,
@@ -60,6 +194,18 @@ export const useGetServicingDocuments = (
   });
 };
 
+export const useGetServiceSchedules = (
+  vendorId?: number,
+  leadId?: number,
+  enabled: boolean = true,
+) => {
+  return useQuery({
+    queryKey: ["serviceSchedules", vendorId, leadId],
+    queryFn: () => getServiceSchedules(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId && enabled,
+  });
+};
+
 export const useUploadServicingDocuments = () => {
   const queryClient = useQueryClient();
 
@@ -81,6 +227,120 @@ export const useUploadServicingDocuments = () => {
         title:
           err?.response?.data?.message ||
           "Failed to upload AMC contract documents",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useRescheduleService = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      serviceId,
+      payload,
+    }: {
+      vendorId: number;
+      leadId: number;
+      serviceId: number;
+      payload: RescheduleServicePayload;
+    }) => rescheduleService(vendorId, leadId, serviceId, payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["serviceSchedules", variables.vendorId, variables.leadId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+    },
+    onError: (err: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: err?.response?.data?.message || "Failed to reschedule service",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useRejectService = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      serviceId,
+      payload,
+    }: {
+      vendorId: number;
+      leadId: number;
+      serviceId: number;
+      payload: RejectServicePayload;
+    }) => rejectService(vendorId, leadId, serviceId, payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["serviceSchedules", variables.vendorId, variables.leadId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+    },
+    onError: (err: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: err?.response?.data?.message || "Failed to reject service",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useReopenService = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      serviceId,
+      payload,
+    }: {
+      vendorId: number;
+      leadId: number;
+      serviceId: number;
+      payload: ReopenServicePayload;
+    }) => reopenService(vendorId, leadId, serviceId, payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["serviceSchedules", variables.vendorId, variables.leadId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+    },
+    onError: (err: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: err?.response?.data?.message || "Failed to reopen service",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useCompleteService = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ formData }: CompleteServiceParams) => completeService(formData),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["serviceSchedules", variables.vendorId, variables.leadId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+    },
+    onError: (err: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: err?.response?.data?.message || "Failed to complete service",
         type: "error",
       });
     },

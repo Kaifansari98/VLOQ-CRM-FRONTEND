@@ -101,6 +101,7 @@ export interface DispatchPlanningInfoPayload {
   alt_onsite_contact_person_name?: string;
   alt_onsite_contact_person_number?: string;
   material_lift_availability: string;
+  vehicle_approachability: string;
   dispatch_planning_remark?: string;
   created_by: number;
 }

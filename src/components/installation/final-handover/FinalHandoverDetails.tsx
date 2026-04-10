@@ -345,7 +345,7 @@ export default function FinalHandover({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900/60">
+        <div className="flex items-center gap-3 px-4 py-3">
           <Checkbox
             id="is-amc-opted"
             checked={isAmcOpted}
@@ -356,7 +356,7 @@ export default function FinalHandover({
             }}
             className="h-4 w-4 data-[state=checked]:bg-black data-[state=checked]:border-black dark:data-[state=checked]:bg-white dark:data-[state=checked]:border-white dark:data-[state=checked]:text-black"
           />
-          <div className="space-y-1">
+          <div className="space-y-1 rounded-md bg-muted/40 px-3 py-2">
             <label
               htmlFor="is-amc-opted"
               className={`text-sm ${

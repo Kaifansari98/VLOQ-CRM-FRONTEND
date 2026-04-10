@@ -208,6 +208,7 @@ export interface UniversalStagePostPayload {
 
   created_at: SortOrder;
   production_status?: string;
+  pending_services?: boolean;
 }
 
 export const postUniversalStageLeads = async (

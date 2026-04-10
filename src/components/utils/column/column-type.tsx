@@ -28,4 +28,5 @@ export type LeadColumn = {
   site_map_link?: string;
   statusTag?: string;
   priority?: string;
+  servicing?: string;
 };

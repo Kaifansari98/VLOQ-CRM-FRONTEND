@@ -94,28 +94,26 @@ const DispatchDetailsSchema = z.object({
     .string()
     .trim()
     .optional()
-    .refine(
-      (val) => {
-        if (!val) return true;
+    .refine((val) => {
+      if (!val) return true;
 
-        const digits = val.replace(/\D/g, "");
+      const digits = val.replace(/\D/g, "");
 
-        // Reject repeated digits like 0000000000, 1111111111, etc.
-        const isRepeated =
-          /^(\d)\1{9}$/.test(digits) ||
-          (digits.length === 12 && /^(\d)\1{9}$/.test(digits.slice(2)));
+      // Reject repeated digits like 0000000000, 1111111111, etc.
+      const isRepeated =
+        /^(\d)\1{9}$/.test(digits) ||
+        (digits.length === 12 && /^(\d)\1{9}$/.test(digits.slice(2)));
 
-        if (isRepeated) return false;
+      if (isRepeated) return false;
 
-        // CASE 1 → Exactly 10 digits
-        if (digits.length === 10) return true;
+      // CASE 1 → Exactly 10 digits
+      if (digits.length === 10) return true;
 
-        // CASE 2 → Country code + 10 digits
-        if (digits.length === 12 && digits.startsWith("91")) return true;
+      // CASE 2 → Country code + 10 digits
+      if (digits.length === 12 && digits.startsWith("91")) return true;
 
-        return false;
-      },
-    ),
+      return false;
+    }),
 
   dispatch_remark: z.string().optional(),
   updated_by: z.number(),
@@ -299,24 +297,24 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            {loadingRequiredDate ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-muted text-muted-foreground border">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Loading
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-primary/10 text-primary border border-primary/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                Live
-              </span>
-            )}
+          <div className="shrink-0 text-right">
+            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Vehicle Approachability
+            </p>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              {loadingRequiredDate
+                ? "Loading..."
+                : requiredDateData?.vehicle_approachability_for_dispatch === true
+                  ? "Yes"
+                  : requiredDateData?.vehicle_approachability_for_dispatch === false
+                    ? "No"
+                    : "-"}
+            </p>
           </div>
         </div>
 
         {/* Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-
           {/* ---- Required Delivery Date Card ---- */}
           <div className="relative overflow-hidden rounded-xl border bg-background hover:bg-muted/30 transition-colors duration-200">
             <div className="p-3 sm:p-4">
@@ -336,16 +334,24 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               ) : requiredDateData?.required_date_for_dispatch ? (
                 <div>
                   <p className="text-base sm:text-lg font-bold text-foreground leading-tight">
-                    {format(new Date(requiredDateData.required_date_for_dispatch), "dd MMM yyyy")}
+                    {format(
+                      new Date(requiredDateData.required_date_for_dispatch),
+                      "dd MMM yyyy",
+                    )}
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">
-                    {format(new Date(requiredDateData.required_date_for_dispatch), "EEEE")}
+                    {format(
+                      new Date(requiredDateData.required_date_for_dispatch),
+                      "EEEE",
+                    )}
                   </p>
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5 mt-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
-                  <span className="text-sm text-muted-foreground/60 italic">Not set</span>
+                  <span className="text-sm text-muted-foreground/60 italic">
+                    Not set
+                  </span>
                 </div>
               )}
             </div>
@@ -369,7 +375,9 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     variant="ghost"
                     className="h-6 w-6 p-0 rounded-lg hover:bg-accent transition-colors"
                     onClick={() => {
-                      setNoOfBoxesInput(requiredDateData?.no_of_boxes?.toString() || "");
+                      setNoOfBoxesInput(
+                        requiredDateData?.no_of_boxes?.toString() || "",
+                      );
                       setOpenBoxesModal(true);
                     }}
                   >
@@ -386,7 +394,9 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                       ? requiredDateData?.no_of_boxes || 0
                       : totalInstanceBoxes}
                   </p>
-                  <p className="text-[11px] text-muted-foreground mb-0.5 font-medium">boxes</p>
+                  <p className="text-[11px] text-muted-foreground mb-0.5 font-medium">
+                    boxes
+                  </p>
                 </div>
               )}
             </div>
@@ -412,7 +422,9 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                 <div className="space-y-1">
                   <p className="text-sm sm:text-base font-bold text-foreground capitalize leading-tight truncate">
                     {requiredDateData?.onsite_contact_person_name || (
-                      <span className="text-muted-foreground/60 font-normal italic text-sm">No name</span>
+                      <span className="text-muted-foreground/60 font-normal italic text-sm">
+                        No name
+                      </span>
                     )}
                   </p>
                   {requiredDateData?.onsite_contact_person_number ? (
@@ -425,7 +437,9 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                   ) : (
                     <div className="flex items-center gap-1.5">
                       <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
-                      <span className="text-[11px] text-muted-foreground/60 italic">No contact</span>
+                      <span className="text-[11px] text-muted-foreground/60 italic">
+                        No contact
+                      </span>
                     </div>
                   )}
                 </div>
@@ -464,8 +478,12 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                             <CheckCircle2 className="h-4 w-4 text-primary" />
                           </div>
                           <div>
-                            <p className="text-sm font-bold text-foreground leading-none">Available</p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">Lift on-site</p>
+                            <p className="text-sm font-bold text-foreground leading-none">
+                              Available
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              Lift on-site
+                            </p>
                           </div>
                         </>
                       ) : (
@@ -474,8 +492,12 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                             <XCircle className="h-4 w-4 text-destructive" />
                           </div>
                           <div>
-                            <p className="text-sm font-bold text-foreground leading-none">Not Available</p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">Manual handling</p>
+                            <p className="text-sm font-bold text-foreground leading-none">
+                              Not Available
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              Manual handling
+                            </p>
                           </div>
                         </>
                       )}
@@ -483,7 +505,9 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                   ) : (
                     <div className="flex items-center gap-1.5 mt-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
-                      <span className="text-sm text-muted-foreground/60 italic">Not set</span>
+                      <span className="text-sm text-muted-foreground/60 italic">
+                        Not set
+                      </span>
                     </div>
                   )}
                 </div>
@@ -492,7 +516,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
           })()}
         </div>
       </div>
-
 
       {/* Dispatch Details Form */}
       <div className="border rounded-lg bg-background overflow-hidden">
@@ -711,8 +734,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
           )}
         </div>
       </div>
-
-     
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         <div className="h-full">
@@ -944,8 +965,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
             </div>
           )}
 
-    
-
           <DialogFooter className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 mt-2">
             <Button
               variant="outline"
@@ -961,7 +980,10 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                 try {
                   if (useLeadLevelBoxes) {
                     if (!noOfBoxesInput || Number(noOfBoxesInput) <= 0) {
-                      toastManager.add({ title: "Please enter a valid positive number", type: "error" });
+                      toastManager.add({
+                        title: "Please enter a valid positive number",
+                        type: "error",
+                      });
                       return;
                     }
                     const formData = new FormData();
@@ -975,7 +997,10 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                       (item) => !item.value || Number(item.value) <= 0,
                     );
                     if (invalid) {
-                      toastManager.add({ title: "Please enter boxes for all instances", type: "error" });
+                      toastManager.add({
+                        title: "Please enter boxes for all instances",
+                        type: "error",
+                      });
                       return;
                     }
 
@@ -993,7 +1018,10 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     }
                   }
 
-                  toastManager.add({ title: "No. of Boxes updated successfully!", type: "success" });
+                  toastManager.add({
+                    title: "No. of Boxes updated successfully!",
+                    type: "success",
+                  });
                   queryClient.invalidateQueries({
                     queryKey: ["requiredDateForDispatch"],
                   });
@@ -1006,8 +1034,12 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                   });
                   setOpenBoxesModal(false);
                 } catch (err: any) {
-                  toastManager.add({ title: err?.response?.data?.message ||
-                      "Failed to update No. of Boxes", type: "error" });
+                  toastManager.add({
+                    title:
+                      err?.response?.data?.message ||
+                      "Failed to update No. of Boxes",
+                    type: "error",
+                  });
                 }
               }}
               disabled={updatingBoxes}
@@ -1059,7 +1091,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
         </AlertDialogContent>
       </AlertDialog>
 
-         {selectedTask && (
+      {selectedTask && (
         <FollowUpModal
           open={openTaskModal}
           onOpenChange={setOpenTaskModal}
