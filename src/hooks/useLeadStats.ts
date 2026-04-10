@@ -21,6 +21,9 @@ interface LeadStatsResponse {
     total_dispatch_planning_stage_leads: number;
     total_my_tasks: number;
     total_under_installation_stage_leads: number;
+    total_final_handover_stage_leads: number;
+    total_project_completed_stage_leads: number;
+    total_servicing_stage_leads: number;
 
     // group totals (NEW)
     total_leads_group: number;

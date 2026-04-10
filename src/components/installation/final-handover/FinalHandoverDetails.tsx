@@ -359,7 +359,7 @@ export default function FinalHandover({
           <div className="space-y-1 rounded-md bg-muted/40 px-3 py-2">
             <label
               htmlFor="is-amc-opted"
-              className={`text-sm ${
+              className={`text-sm font-bold ${
                 canToggleAmc ? "cursor-pointer" : "cursor-not-allowed opacity-70"
               }`}
             >

@@ -108,9 +108,11 @@ export function DataTableMonthFilter({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[360px] rounded-2xl border p-4 shadow-xl" align="start">
+      <PopoverContent
+        className="w-[360px] rounded-2xl border p-4 shadow-xl"
+        align="start"
+      >
         <div className="mb-4 rounded-xl border bg-muted/30 p-3">
-
           <div className="flex items-center justify-between">
             <button
               type="button"
@@ -122,7 +124,7 @@ export function DataTableMonthFilter({
             </button>
 
             <div className="text-base font-semibold leading-none">
-            {visibleYear}
+              {visibleYear}
             </div>
 
             <button
@@ -137,21 +139,21 @@ export function DataTableMonthFilter({
         </div>
 
         <div className="mb-3 flex items-center justify-between">
-            <div>
-              <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                Service Month
-              </div>
-              {/* <div className="text-base font-semibold leading-none">{visibleYear}</div> */}
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              Service Month
             </div>
-            {hasValue && (
-              <Badge
-                variant="secondary"
-                className="h-6 rounded-full px-2.5 text-[11px] font-medium"
-              >
-                {label}
-              </Badge>
-            )}
+            {/* <div className="text-base font-semibold leading-none">{visibleYear}</div> */}
           </div>
+          {hasValue && (
+            <Badge
+              variant="secondary"
+              className="h-6 rounded-full px-2.5 text-[11px] font-medium"
+            >
+              {label}
+            </Badge>
+          )}
+        </div>
 
         <div className="grid grid-cols-3 gap-2 rounded-2xl bg-muted/20 py-2">
           {MONTHS.map((monthLabel, monthIndex) => {

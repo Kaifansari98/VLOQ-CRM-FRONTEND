@@ -183,6 +183,7 @@ const data = {
       title: "Servicing",
       url: "/dashboard/installation/servicing",
       icon: Drill,
+      showCount: "total_servicing_stage_leads" as const,
     },
   ],
   trackTraceNav: [
