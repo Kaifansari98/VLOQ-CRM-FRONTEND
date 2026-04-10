@@ -1,7 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight, CalendarIcon, XCircle } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  CalendarIcon,
+  XCircle,
+  FilterX,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,18 +24,18 @@ type MonthFilterValue = {
 };
 
 const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
+  "January",
+  "February",
+  "March",
+  "April",
   "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 interface DataTableMonthFilterProps {
@@ -60,7 +66,11 @@ export function DataTableMonthFilter({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="border-dashed max-w-[190px]">
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-dashed w-[280px] justify-start gap-2 pr-3"
+        >
           {hasValue ? (
             <div
               role="button"
@@ -72,14 +82,14 @@ export function DataTableMonthFilter({
               }}
               className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring flex-shrink-0"
             >
-              <XCircle className="h-4 w-4" />
+              <XCircle className="h-3.5 w-3.5" />
             </div>
           ) : (
-            <CalendarIcon className="h-4 w-4 flex-shrink-0" />
+            <CalendarIcon className="h-3.5 w-3.5 flex-shrink-0" />
           )}
 
-          <span className="flex items-center gap-1.5 truncate">
-            <span className="truncate">{title}</span>
+          <span className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="shrink-0 text-xs font-medium">{title}</span>
             {hasValue && (
               <>
                 <Separator
@@ -88,7 +98,7 @@ export function DataTableMonthFilter({
                 />
                 <Badge
                   variant="secondary"
-                  className="font-normal px-1.5 py-0 h-5 text-xs truncate"
+                  className="ml-auto max-w-[150px] truncate px-2 py-0 h-5 text-[11px] font-medium"
                 >
                   {label}
                 </Badge>
@@ -98,30 +108,51 @@ export function DataTableMonthFilter({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[320px] p-4" align="start">
-        <div className="mb-4 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setVisibleYear((prev) => prev - 1)}
-            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            aria-label="Previous year"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
+      <PopoverContent className="w-[360px] rounded-2xl border p-4 shadow-xl" align="start">
+        <div className="mb-4 rounded-xl border bg-muted/30 p-3">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                Service Month
+              </div>
+              <div className="text-base font-semibold leading-none">{visibleYear}</div>
+            </div>
+            {hasValue && (
+              <Badge
+                variant="secondary"
+                className="h-6 rounded-full px-2.5 text-[11px] font-medium"
+              >
+                {label}
+              </Badge>
+            )}
+          </div>
 
-          <div className="text-xl font-semibold">{visibleYear}</div>
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setVisibleYear((prev) => prev - 1)}
+              className="rounded-full border bg-background p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              aria-label="Previous year"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setVisibleYear((prev) => prev + 1)}
-            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            aria-label="Next year"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
+            <div className="text-xs font-medium text-muted-foreground">
+              Select month
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setVisibleYear((prev) => prev + 1)}
+              className="rounded-full border bg-background p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              aria-label="Next year"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-2 rounded-2xl bg-muted/20 p-2">
           {MONTHS.map((monthLabel, monthIndex) => {
             const isSelected =
               value?.year === visibleYear && value?.month === monthIndex;
@@ -137,13 +168,25 @@ export function DataTableMonthFilter({
                   })
                 }
                 className={[
-                  "rounded-xl px-3 py-4 text-sm font-medium transition-colors",
+                  "group rounded-xl border px-3 py-3 text-left transition-all",
                   isSelected
-                    ? "bg-slate-900 text-white"
-                    : "hover:bg-accent hover:text-accent-foreground",
+                    ? "border-slate-900 bg-slate-950 text-white shadow-sm"
+                    : "border-transparent bg-background hover:border-border hover:bg-accent/50",
                 ].join(" ")}
               >
-                {monthLabel}
+                <div
+                  className={[
+                    "text-[11px] uppercase tracking-[0.16em]",
+                    isSelected
+                      ? "text-white/70"
+                      : "text-muted-foreground group-hover:text-foreground/70",
+                  ].join(" ")}
+                >
+                  {String(monthIndex + 1).padStart(2, "0")}
+                </div>
+                <div className="mt-1 text-xs font-semibold leading-tight">
+                  {monthLabel}
+                </div>
               </button>
             );
           })}
@@ -153,10 +196,11 @@ export function DataTableMonthFilter({
           <div className="mt-4 flex justify-end">
             <Button
               type="button"
-              variant="ghost"
               size="sm"
               onClick={() => onChange(undefined)}
+              className="h-9 rounded-xl bg-slate-950 px-3 text-xs font-medium text-white hover:bg-slate-800"
             >
+              <FilterX className="mr-1.5 h-3.5 w-3.5" />
               Remove Filter
             </Button>
           </div>
