@@ -23,7 +23,6 @@ import {
   Package,
   Pencil,
   CalendarDays,
-  XCircle,
   ArrowUpDown,
   UserRound,
 } from "lucide-react";
@@ -297,20 +296,6 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               </p>
             </div>
           </div>
-          <div className="shrink-0 text-right">
-            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Vehicle Approachability
-            </p>
-            <p className="mt-1 text-sm font-semibold text-foreground">
-              {loadingRequiredDate
-                ? "Loading..."
-                : requiredDateData?.vehicle_approachability_for_dispatch === true
-                  ? "Yes"
-                  : requiredDateData?.vehicle_approachability_for_dispatch === false
-                    ? "No"
-                    : "-"}
-            </p>
-          </div>
         </div>
 
         {/* Cards Grid */}
@@ -447,7 +432,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
             </div>
           </div>
 
-          {/* ---- Material Lift Availability Card ---- */}
+          {/* ---- Material Lift & Vehicle Approachability Card ---- */}
           {(() => {
             const isAvailable =
               requiredDateData?.material_lift_availability === true ||
@@ -457,59 +442,57 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               requiredDateData?.material_lift_availability === "false";
             const liftSet = isAvailable || isUnavailable;
 
+            const approachability =
+              requiredDateData?.vehicle_approachability_for_dispatch;
+            const approachabilityLabel =
+              approachability === true
+                ? "Yes"
+                : approachability === false
+                  ? "No"
+                  : "-";
+
             return (
               <div className="relative overflow-hidden rounded-xl border bg-background hover:bg-muted/30 transition-colors duration-200">
                 <div className="p-3 sm:p-4">
-                  <div className="flex items-center gap-2 mb-2.5">
+                  <div className="flex items-center gap-2 mb-3">
                     <div className="h-7 w-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                       <ArrowUpDown className="h-3.5 w-3.5 text-primary" />
                     </div>
                     <p className="text-[10px] font-semibold text-muted-foreground tracking-widest uppercase leading-none">
-                      Material Lift
+                      Site Access
                     </p>
                   </div>
-                  {loadingRequiredDate ? (
-                    <div className="h-7 w-24 bg-muted animate-pulse rounded-lg mt-1" />
-                  ) : liftSet ? (
-                    <div className="flex items-center gap-2 mt-1">
-                      {isAvailable ? (
-                        <>
-                          <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                            <CheckCircle2 className="h-4 w-4 text-primary" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-foreground leading-none">
-                              Available
-                            </p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">
-                              Lift on-site
-                            </p>
-                          </div>
-                        </>
+                  <div className="space-y-2.5">
+                    {/* Material Lift row */}
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="text-[11px] text-muted-foreground font-medium leading-none">
+                        Material Lift
+                      </p>
+                      {loadingRequiredDate ? (
+                        <div className="h-3.5 w-16 bg-muted animate-pulse rounded" />
+                      ) : liftSet ? (
+                        <p className={`text-[11px] font-semibold leading-none ${isAvailable ? "text-foreground" : "text-destructive"}`}>
+                          {isAvailable ? "Available" : "Not Available"}
+                        </p>
                       ) : (
-                        <>
-                          <div className="h-8 w-8 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center justify-center shrink-0">
-                            <XCircle className="h-4 w-4 text-destructive" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-foreground leading-none">
-                              Not Available
-                            </p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">
-                              Manual handling
-                            </p>
-                          </div>
-                        </>
+                        <p className="text-[11px] text-muted-foreground/50 italic leading-none">—</p>
                       )}
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
-                      <span className="text-sm text-muted-foreground/60 italic">
-                        Not set
-                      </span>
+                    <div className="h-px bg-border/50" />
+                    {/* Vehicle Approachability row */}
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="text-[11px] text-muted-foreground font-medium leading-none">
+                        Vehicle Approachability
+                      </p>
+                      {loadingRequiredDate ? (
+                        <div className="h-3.5 w-8 bg-muted animate-pulse rounded" />
+                      ) : (
+                        <p className={`text-[11px] font-semibold leading-none ${approachabilityLabel === "Yes" ? "text-foreground" : approachabilityLabel === "No" ? "text-destructive" : "text-muted-foreground/50 italic"}`}>
+                          {approachabilityLabel}
+                        </p>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             );
