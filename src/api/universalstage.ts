@@ -306,6 +306,7 @@ export interface VendorLeadsByTagPostPayload {
   };
   activity_status?: string;
   production_status?: string;
+  pending_services?: boolean;
 }
 
 export const postVendorLeadsByTag = async (

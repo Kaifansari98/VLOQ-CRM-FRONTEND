@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import ClearInput from "@/components/origin-input";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
+import { DataTableMonthFilter } from "@/components/data-table/data-table-month-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import {
   Popover,
@@ -311,6 +312,9 @@ export function UniversalTable({
 
   const [productionStatusFilter, setProductionStatusFilter] =
     useState<string>(normalizedUserType === "pre-prod" ? "Pending" : "all");
+  const [servicingMonthFilter, setServicingMonthFilter] = useState<
+    { month: number; year: number } | undefined
+  >(undefined);
 
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
@@ -331,6 +335,35 @@ export function UniversalTable({
     effectiveViewType === "my" ? mySorting : overallSorting;
   const activeColumnFilters =
     effectiveViewType === "my" ? myColumnFilters : overallColumnFilters;
+
+  const servicingDateRange = useMemo(() => {
+    if (!showServicingColumn || !pendingServicesOnly || !servicingMonthFilter) {
+      return undefined;
+    }
+
+    const from = new Date(
+      servicingMonthFilter.year,
+      servicingMonthFilter.month,
+      1,
+    );
+    const to = new Date(
+      servicingMonthFilter.year,
+      servicingMonthFilter.month + 1,
+      0,
+    );
+
+    const formatLocalDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    return {
+      from: formatLocalDate(from),
+      to: formatLocalDate(to),
+    };
+  }, [pendingServicesOnly, servicingMonthFilter, showServicingColumn]);
 
   // -------------------- MY LEADS POST PAYLOAD --------------------
 
@@ -380,7 +413,7 @@ export function UniversalTable({
       furnitue_structures: mappedFilters.furnitue_structures,
       site_type: mappedFilters.site_type,
       site_map_link: mappedFilters.site_map_link,
-      date_range: mappedFilters.date_range,
+      date_range: servicingDateRange ?? mappedFilters.date_range,
       production_status:
         normalizedType === "type 10" && productionStatusFilter !== "all"
           ? productionStatusFilter
@@ -400,6 +433,7 @@ export function UniversalTable({
     productionStatusFilter,
     normalizedType,
     pendingServicesOnly,
+    servicingDateRange,
   ]);
 
   // -------------------- OVERALL LEADS POST PAYLOAD --------------------
@@ -451,7 +485,7 @@ export function UniversalTable({
       site_type: mappedFilters.site_type,
 
       site_map_link: mappedFilters.site_map_link,
-      date_range: mappedFilters.date_range,
+      date_range: servicingDateRange ?? mappedFilters.date_range,
       created_at: sortOrder,
       // activity_status: activityStatus, // TODO: enable once backend supports this filter
       production_status:
@@ -474,6 +508,7 @@ export function UniversalTable({
     productionStatusFilter,
     normalizedType,
     pendingServicesOnly,
+    servicingDateRange,
   ]);
 
   // -------------------- API CALLS --------------------
@@ -525,7 +560,7 @@ export function UniversalTable({
       site_type: mappedFilters.site_type,
 
       site_map_link: mappedFilters.site_map_link,
-      date_range: mappedFilters.date_range,
+      date_range: servicingDateRange ?? mappedFilters.date_range,
       created_at: sortOrder,
     };
   }, [
@@ -536,6 +571,7 @@ export function UniversalTable({
     mySorting,
     myColumnFilters,
     myGlobalFilter,
+    servicingDateRange,
   ]);
 
   const { data: miscData, isLoading: isMiscLoading } =
@@ -710,6 +746,7 @@ export function UniversalTable({
     accountId: lead.account?.id ?? lead.account_id ?? 0,
     priority: lead.priority ?? "",
     servicing: getPendingServicingLabel(lead),
+    scheduledAt: lead.serviceSchedules?.[0]?.scheduled_for ?? "",
   });
 
   // -------------------- TABLE DATA --------------------
@@ -1001,11 +1038,19 @@ export function UniversalTable({
 
         {/* 📱 MOBILE FILTERS (4 components in a row) */}
         <div className="flex md:hidden gap-2 flex-wrap">
-          <DataTableDateFilter
-            column={table.getColumn("createdAt")!}
-            title="Created At"
-            multiple
-          />
+          {showServicingColumn && pendingServicesOnly ? (
+            <DataTableMonthFilter
+              title="Filter By Month"
+              value={servicingMonthFilter}
+              onChange={setServicingMonthFilter}
+            />
+          ) : (
+            <DataTableDateFilter
+              column={table.getColumn("createdAt")!}
+              title="Created At"
+              multiple
+            />
+          )}
           {showPriorityColumn && (
             <PriorityQuickFilter
               value={priorityFilterValue}
@@ -1065,11 +1110,19 @@ export function UniversalTable({
               className="h-8 w-64"
             />
 
-            <DataTableDateFilter
-              column={table.getColumn("createdAt")!}
-              title="Created At"
-              multiple
-            />
+            {showServicingColumn && pendingServicesOnly ? (
+              <DataTableMonthFilter
+                title="Filter By Month"
+                value={servicingMonthFilter}
+                onChange={setServicingMonthFilter}
+              />
+            ) : (
+              <DataTableDateFilter
+                column={table.getColumn("createdAt")!}
+                title="Created At"
+                multiple
+              />
+            )}
             {showPriorityColumn && (
               <PriorityQuickFilter
                 value={priorityFilterValue}

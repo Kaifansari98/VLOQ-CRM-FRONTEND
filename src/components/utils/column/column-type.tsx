@@ -15,6 +15,7 @@ export type LeadColumn = {
   architechName: string;
   source: string;
   createdAt: string | number;
+  scheduledAt?: string | number;
   altContact?: string;
   email: string; // R
   // site_supervisor?: string;
