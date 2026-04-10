@@ -518,7 +518,7 @@ export default function DispatchPlanningDetails({
               />
             </div>
 
-            <div className="md:col-span-2 grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
+            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
               {/* Required Delivery Date */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-1">
@@ -555,98 +555,100 @@ export default function DispatchPlanningDetails({
                   </p>
                 )}
               </div>
+                
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                {/* Material Lift Availability */}
+                <div className="space-y-3">
+                  <Label className="flex items-center gap-1 text-sm font-medium">
+                    <Truck className="h-4 w-4" />
+                    Material Lift Availability{" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
 
-              {/* Material Lift Availability */}
-              <div className="space-y-3">
-                <Label className="flex items-center gap-1 text-sm font-medium">
-                  <Truck className="h-4 w-4" />
-                  Material Lift Availability{" "}
-                  <span className="text-red-500">*</span>
-                </Label>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        disabled={!canViewAndWork}
+                        checked={watchLiftAvailability === true}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setValueDispatch("material_lift_availability", true, {
+                              shouldValidate: true,
+                            });
+                          }
+                        }}
+                      />
+                      <label className="text-sm">Available</label>
+                    </div>
 
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      disabled={!canViewAndWork}
-                      checked={watchLiftAvailability === true}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setValueDispatch("material_lift_availability", true, {
-                            shouldValidate: true,
-                          });
-                        }
-                      }}
-                    />
-                    <label className="text-sm">Available</label>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        disabled={!canViewAndWork}
+                        checked={watchLiftAvailability === false}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setValueDispatch("material_lift_availability", false, {
+                              shouldValidate: true,
+                            });
+                          }
+                        }}
+                      />
+                      <label className="text-sm">Not Available</label>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      disabled={!canViewAndWork}
-                      checked={watchLiftAvailability === false}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setValueDispatch("material_lift_availability", false, {
-                            shouldValidate: true,
-                          });
-                        }
-                      }}
-                    />
-                    <label className="text-sm">Not Available</label>
-                  </div>
+                  {errorsDispatch.material_lift_availability && (
+                    <p className="text-xs text-red-500">
+                      {errorsDispatch.material_lift_availability.message}
+                    </p>
+                  )}
                 </div>
 
-                {errorsDispatch.material_lift_availability && (
-                  <p className="text-xs text-red-500">
-                    {errorsDispatch.material_lift_availability.message}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-3">
+                  <Label className="flex items-center gap-1 text-sm font-medium">
+                    <Truck className="h-4 w-4" />
+                    Vehicle Approachability{" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
 
-              <div className="space-y-3">
-                <Label className="flex items-center gap-1 text-sm font-medium">
-                  <Truck className="h-4 w-4" />
-                  Vehicle Approachability{" "}
-                  <span className="text-red-500">*</span>
-                </Label>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        disabled={!canViewAndWork}
+                        checked={watchVehicleApproachability === true}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setValueDispatch("vehicle_approachability", true, {
+                              shouldValidate: true,
+                            });
+                          }
+                        }}
+                      />
+                      <label className="text-sm">Yes</label>
+                    </div>
 
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      disabled={!canViewAndWork}
-                      checked={watchVehicleApproachability === true}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setValueDispatch("vehicle_approachability", true, {
-                            shouldValidate: true,
-                          });
-                        }
-                      }}
-                    />
-                    <label className="text-sm">Yes</label>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        disabled={!canViewAndWork}
+                        checked={watchVehicleApproachability === false}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setValueDispatch("vehicle_approachability", false, {
+                              shouldValidate: true,
+                            });
+                          }
+                        }}
+                      />
+                      <label className="text-sm">No</label>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      disabled={!canViewAndWork}
-                      checked={watchVehicleApproachability === false}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setValueDispatch("vehicle_approachability", false, {
-                            shouldValidate: true,
-                          });
-                        }
-                      }}
-                    />
-                    <label className="text-sm">No</label>
-                  </div>
+                  {errorsDispatch.vehicle_approachability && (
+                    <p className="text-xs text-red-500">
+                      {errorsDispatch.vehicle_approachability.message}
+                    </p>
+                  )}
                 </div>
-
-                {errorsDispatch.vehicle_approachability && (
-                  <p className="text-xs text-red-500">
-                    {errorsDispatch.vehicle_approachability.message}
-                  </p>
-                )}
               </div>
             </div>
           </div>
