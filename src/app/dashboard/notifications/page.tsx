@@ -12,18 +12,31 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
-import { useNotifications } from "@/hooks/useNotifications";
 import { useAppSelector } from "@/redux/store";
 import { useDispatch } from "react-redux";
 import { markNotificationRead } from "@/redux/slices/notificationsSlice";
-import { markNotificationRead as markReadApi } from "@/api/notifications";
+import {
+  fetchNotifications,
+  markNotificationRead as markReadApi,
+} from "@/api/notifications";
 import { NotificationItem } from "@/types/notifications";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
-import { Bell, Briefcase, MessageCircle, Target, CheckCheck, Circle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Bell,
+  Briefcase,
+  ChevronLeft,
+  ChevronRight,
+  CheckCheck,
+  Circle,
+  MessageCircle,
+  Target,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { toastManager } from "@/components/ui/toast";
 
 const TYPE_CONFIG: Record<
   NonNullable<NotificationItem["type"]>,
@@ -127,11 +140,66 @@ const item = {
 };
 
 export default function NotificationsPage() {
+  const PAGE_SIZE = 20;
   const router = useRouter();
   const dispatch = useDispatch();
   const user = useAppSelector((state) => state.auth.user);
-  const { notifications, isLoading, refresh } = useNotifications();
-  const hasMarkedRef = useRef(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const markedIdsRef = useRef<Set<number>>(new Set());
+
+  const refreshNotifications = useCallback(
+    async (options: { silent?: boolean; pageOverride?: number } = {}) => {
+      if (!user?.id || !user?.vendor_id) {
+        setNotifications([]);
+        setTotalCount(0);
+        return;
+      }
+
+      const currentPage = options.pageOverride ?? page;
+      if (!options.silent) {
+        setIsLoading(true);
+      }
+
+      try {
+        const { notifications: fetchedItems, totalCount: fetchedTotalCount } =
+          await fetchNotifications(user.vendor_id, user.id, {
+            take: PAGE_SIZE,
+            skip: (currentPage - 1) * PAGE_SIZE,
+          });
+        const maxPage = Math.max(1, Math.ceil(fetchedTotalCount / PAGE_SIZE));
+
+        if (fetchedTotalCount > 0 && currentPage > maxPage) {
+          setPage(maxPage);
+          return;
+        }
+
+        setNotifications(
+          [...fetchedItems].sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime(),
+          ),
+        );
+        setTotalCount(fetchedTotalCount);
+      } catch (error) {
+        if (!options.silent) {
+          toastManager.add({
+            title: "Failed to load notifications",
+            type: "error",
+          });
+        }
+        console.error(error);
+      } finally {
+        if (!options.silent) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [page, user?.id, user?.vendor_id],
+  );
 
   const handleNavigate = (redirectUrl: string) => {
     if (/^https?:\/\//i.test(redirectUrl)) {
@@ -144,10 +212,15 @@ export default function NotificationsPage() {
   const handleNotificationClick = async (notification: NotificationItem) => {
     if (user?.id && !notification.is_read) {
       dispatch(markNotificationRead(notification.id));
+      setNotifications((current) =>
+        current.map((item) =>
+          item.id === notification.id ? { ...item, is_read: true } : item,
+        ),
+      );
       try {
         await markReadApi(notification.id, user.id);
       } catch {
-        refresh({ silent: true });
+        refreshNotifications({ silent: true });
       }
     }
 
@@ -157,25 +230,47 @@ export default function NotificationsPage() {
   };
 
   useEffect(() => {
-    if (hasMarkedRef.current) return;
-    if (!user?.id) return;
-    if (notifications.length === 0) return;
+    refreshNotifications();
+  }, [page, refreshNotifications]);
 
-    const unreadItems = notifications.filter((item) => !item.is_read);
-    if (unreadItems.length === 0) {
-      hasMarkedRef.current = true;
-      return;
-    }
+  useEffect(() => {
+    if (!user?.id || notifications.length === 0) return;
 
-    hasMarkedRef.current = true;
-    unreadItems.forEach((item) => dispatch(markNotificationRead(item.id)));
-    Promise.all(unreadItems.map((item) => markReadApi(item.id, user.id))).catch(
-      () => refresh({ silent: true })
+    const unreadItems = notifications.filter(
+      (item) => !item.is_read && !markedIdsRef.current.has(item.id),
     );
-  }, [dispatch, notifications, refresh, user?.id]);
+    if (unreadItems.length === 0) return;
+
+    unreadItems.forEach((item) => {
+      markedIdsRef.current.add(item.id);
+      dispatch(markNotificationRead(item.id));
+    });
+
+    setNotifications((current) =>
+      current.map((item) =>
+        unreadItems.some((unreadItem) => unreadItem.id === item.id)
+          ? { ...item, is_read: true }
+          : item,
+      ),
+    );
+
+    Promise.all(unreadItems.map((item) => markReadApi(item.id, user.id))).catch(
+      () => {
+        unreadItems.forEach((item) => markedIdsRef.current.delete(item.id));
+        refreshNotifications({ silent: true });
+      },
+    );
+  }, [dispatch, notifications, refreshNotifications, user?.id]);
 
   const groupedNotifications = groupNotificationsByDate(notifications);
   const hasNotifications = notifications.length > 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const pageStart = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const pageEnd = Math.min(page * PAGE_SIZE, totalCount);
+  const groupedEntries = useMemo(
+    () => Object.entries(groupedNotifications),
+    [groupedNotifications],
+  );
 
   return (
     <>
@@ -255,7 +350,7 @@ export default function NotificationsPage() {
                 animate="show"
                 className="space-y-8"
               >
-                {Object.entries(groupedNotifications).map(([dateGroup, groupNotifs]) => (
+                {groupedEntries.map(([dateGroup, groupNotifs]) => (
                   <motion.div key={dateGroup} variants={item} className="space-y-3">
                     {/* Date Divider */}
                     <div className="flex items-center gap-3">
@@ -351,6 +446,37 @@ export default function NotificationsPage() {
                     </div>
                   </motion.div>
                 ))}
+
+                <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {pageStart}-{pageEnd} of {totalCount} notifications
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((current) => Math.max(1, current - 1))}
+                      disabled={page <= 1 || isLoading}
+                    >
+                      <ChevronLeft className="mr-1 h-4 w-4" />
+                      Previous
+                    </Button>
+                    <span className="min-w-[88px] text-center text-sm text-muted-foreground">
+                      Page {page} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setPage((current) => Math.min(totalPages, current + 1))
+                      }
+                      disabled={page >= totalPages || isLoading}
+                    >
+                      Next
+                      <ChevronRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

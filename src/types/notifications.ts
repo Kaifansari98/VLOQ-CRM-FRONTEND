@@ -14,4 +14,5 @@ export interface NotificationItem {
 export interface NotificationListResult {
   notifications: NotificationItem[]
   unreadCount: number
+  totalCount: number
 }

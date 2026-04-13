@@ -37,8 +37,12 @@ export const fetchNotifications = async (
     typeof data?.unread_count === "number"
       ? data.unread_count
       : notifications.filter((item: NotificationItem) => !item.is_read).length;
+  const totalCount =
+    typeof data?.total_count === "number"
+      ? data.total_count
+      : notifications.length;
 
-  return { notifications, unreadCount };
+  return { notifications, unreadCount, totalCount };
 };
 
 export const markNotificationRead = async (id: number, userId: number) => {
