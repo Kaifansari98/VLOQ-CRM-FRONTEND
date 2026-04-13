@@ -363,13 +363,13 @@ export default function TraceTraceDashboard() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
+                <BreadcrumbLink href="/dashboard">Track Trace</BreadcrumbLink>
               </BreadcrumbItem>
 
               <BreadcrumbSeparator className="hidden md:block" />
 
               <BreadcrumbItem>
-                <BreadcrumbPage>Booking Stage</BreadcrumbPage>
+                <BreadcrumbPage>Real Time</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>

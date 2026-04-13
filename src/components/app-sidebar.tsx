@@ -205,8 +205,11 @@ const data = {
       title: "Master",
       url: "#",
       icon: Monitor,
-      items: [{ title: "Workstation", url: "/dashboard/track-trace/master" }],
+      items: [{ title: "Workstation", url: "/dashboard/track-trace/master/workstation" },
+        { title: "Category", url: "/dashboard/track-trace/master/category" }
+      ],
     },
+    
   ],
   mastersNav: [
     {
