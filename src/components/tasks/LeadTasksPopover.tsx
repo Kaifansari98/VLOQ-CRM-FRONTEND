@@ -1,10 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, CalendarCheck2, ClipboardCheck, User } from "lucide-react";
+import { useAppSelector } from "@/redux/store";
+import {
+  Calendar,
+  CalendarCheck2,
+  ClipboardCheck,
+  Loader2,
+  User,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { formatDate } from "@/lib/format";
 import { useActiveLeadTasks } from "@/hooks/useTasksQueries";
 import CustomeTooltip from "@/components/custom-tooltip";
@@ -19,14 +30,18 @@ export default function LeadTasksPopover({
   leadId,
 }: LeadTasksPopoverProps) {
   const [openTasksPopover, setOpenTasksPopover] = useState(false);
+  const franchiseId = useAppSelector(
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id,
+  );
   const {
     data: activeLeadTasks = [],
     isLoading: isActiveLeadTasksLoading,
-  } = useActiveLeadTasks(vendorId, leadId, !!vendorId && !!leadId);
-
-  if (isActiveLeadTasksLoading || activeLeadTasks.length === 0) {
-    return null;
-  }
+  } = useActiveLeadTasks(
+    vendorId,
+    leadId,
+    franchiseId ?? undefined,
+    !!vendorId && !!leadId,
+  );
 
   return (
     <Popover open={openTasksPopover} onOpenChange={setOpenTasksPopover}>
@@ -62,61 +77,81 @@ export default function LeadTasksPopover({
           </Badge>
         </div>
 
-        <div className="max-h-[420px] overflow-y-auto divide-y divide-border">
-          {activeLeadTasks.map((task, index) => (
-            <div
-              key={`${task.task_type}-${task.due_date}-${index}`}
-              className="px-4 py-3 transition-colors hover:bg-muted/40"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">
-                    {task.task_type}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {/* <Badge
-                    variant="outline"
-                    className="text-[10px] uppercase tracking-wide text-muted-foreground"
-                  >
-                    {task.status.replace("_", " ")}
-                  </Badge> */}
-                  <Calendar size={11} className="text-muted-foreground"/>
-                  <span className="whitespace-nowrap text-[11px] text-muted-foreground">
-                    {formatDate(task.due_date, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </span>
-                </div>
-              </div>
-
-              {task.remark && task.remark.trim().toLowerCase() !== "n/a" ? (
-                <CustomeTooltip
-                  value={task.remark}
-                  truncateValue={
-                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                      {task.remark}
-                    </p>
-                  }
-                />
-              ) : null}
-
-              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <User size={12}/> {task.user?.user_name ?? "Unknown"}
-                </span>
-                {task.lead_stage ? (
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-green-500"></span>
-                    <span>{task.lead_stage}</span>
-                  </span>
-                ) : null}
-              </div>
+        {isActiveLeadTasksLoading ? (
+          <div className="flex min-h-[148px] flex-col items-center justify-center gap-2 px-4 py-6 text-center">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <p className="text-sm font-medium text-foreground">
+              Loading tasks
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Fetching pending tasks for this lead.
+            </p>
+          </div>
+        ) : activeLeadTasks.length === 0 ? (
+          <div className="flex min-h-[168px] flex-col items-center justify-center gap-3 px-5 py-6 text-center">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted">
+              <ClipboardCheck className="h-5 w-5 text-muted-foreground" />
             </div>
-          ))}
-        </div>
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-foreground">
+                No pending tasks
+              </p>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                There are no open or in-progress tasks for this lead right now.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="max-h-[420px] overflow-y-auto divide-y divide-border">
+            {activeLeadTasks.map((task, index) => (
+              <div
+                key={`${task.task_type}-${task.due_date}-${index}`}
+                className="px-4 py-3 transition-colors hover:bg-muted/40"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      {task.task_type}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Calendar size={11} className="text-muted-foreground" />
+                    <span className="whitespace-nowrap text-[11px] text-muted-foreground">
+                      {formatDate(task.due_date, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                </div>
+
+                {task.remark && task.remark.trim().toLowerCase() !== "n/a" ? (
+                  <CustomeTooltip
+                    value={task.remark}
+                    truncateValue={
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                        {task.remark}
+                      </p>
+                    }
+                  />
+                ) : null}
+
+                <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <User size={12} /> {task.user?.user_name ?? "Unknown"}
+                  </span>
+                  {task.lead_stage ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-green-500"></span>
+                      <span>{task.lead_stage}</span>
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

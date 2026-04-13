@@ -241,9 +241,12 @@ export const useVendorAllTasksFilter = (
 export const getActiveLeadTasks = async (
   vendorId: number,
   leadId: number,
+  franchiseId?: number,
 ): Promise<ActiveLeadTasksResponse> => {
   const response = await apiClient.get(
-    `/leads/tasks/vendorId/${vendorId}/leadId/${leadId}/active-tasks`,
+    `/leads/tasks/vendorId/${vendorId}/leadId/${leadId}/active-tasks${
+      franchiseId ? `?franchise_id=${franchiseId}` : ""
+    }`,
   );
   return response.data.data;
 };
@@ -251,11 +254,12 @@ export const getActiveLeadTasks = async (
 export const useActiveLeadTasks = (
   vendorId: number,
   leadId: number,
+  franchiseId?: number,
   enabled: boolean = true,
 ): UseQueryResult<ActiveLeadTasksResponse, Error> => {
   return useQuery({
-    queryKey: ["activeLeadTasks", vendorId, leadId],
-    queryFn: () => getActiveLeadTasks(vendorId, leadId),
+    queryKey: ["activeLeadTasks", vendorId, leadId, franchiseId ?? null],
+    queryFn: () => getActiveLeadTasks(vendorId, leadId, franchiseId),
     enabled: enabled && !!vendorId && !!leadId,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
