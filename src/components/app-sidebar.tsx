@@ -293,7 +293,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const environment = (
       process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION"
     ).toUpperCase();
-    const showTrackTrace = environment === "STAGING" || "LOCAL";
+    const showTrackTrace =
+      environment === "STAGING" || environment === "LOCAL";
 
     const withoutOverall = canSeeOverallLeads
       ? data.navMain
