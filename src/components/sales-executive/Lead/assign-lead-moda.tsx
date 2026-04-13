@@ -90,6 +90,9 @@ const AssignLeadModal = ({
   leadData,
 }: AssignLeadModalProps) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const franchiseId = useAppSelector(
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id,
+  );
   const userId = useAppSelector((state) => state.auth.user?.id);
   const [openConfirmation, setOpenConfirmation] = useState<boolean>(false);
   const queryClient = useQueryClient();
@@ -102,8 +105,9 @@ const AssignLeadModal = ({
 
   // Fetch sales executives
   const { data, isLoading, isError } = useQuery<ApiResponse>({
-    queryKey: ["vendor-sales-executive", vendorId],
-    queryFn: () => getVendorSalesExecutiveUsers(vendorId!),
+    queryKey: ["vendor-sales-executive", vendorId, franchiseId],
+    queryFn: () => getVendorSalesExecutiveUsers(vendorId!, franchiseId ?? undefined),
+    enabled: !!vendorId,
   });
 
   // Helper: get initials for avatar
