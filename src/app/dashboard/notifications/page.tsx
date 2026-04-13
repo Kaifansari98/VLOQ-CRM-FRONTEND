@@ -124,21 +124,6 @@ const groupNotificationsByDate = (notifications: NotificationItem[]) => {
   return groups;
 };
 
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-    }
-  }
-};
-
-const item = {
-  hidden: { opacity: 0, x: -20 },
-  show: { opacity: 1, x: 0 }
-};
-
 export default function NotificationsPage() {
   const PAGE_SIZE = 20;
   const router = useRouter();
@@ -345,13 +330,13 @@ export default function NotificationsPage() {
             {/* Notifications Timeline */}
             {!isLoading && hasNotifications && (
               <motion.div
-                variants={container}
-                initial="hidden"
-                animate="show"
+                key={`${page}-${notifications.length}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
                 className="space-y-8"
               >
                 {groupedEntries.map(([dateGroup, groupNotifs]) => (
-                  <motion.div key={dateGroup} variants={item} className="space-y-3">
+                  <div key={dateGroup} className="space-y-3">
                     {/* Date Divider */}
                     <div className="flex items-center gap-3">
                       <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -369,11 +354,9 @@ export default function NotificationsPage() {
                         const initial = getInitial(senderName);
 
                         return (
-                          <motion.button
+                          <button
                             key={notification.id}
                             onClick={() => handleNotificationClick(notification)}
-                            whileHover={{ scale: 1.005 }}
-                            whileTap={{ scale: 0.998 }}
                             className={cn(
                               "group relative w-full rounded-lg border bg-card p-4 text-left transition-colors",
                               "hover:bg-accent/50",
@@ -440,11 +423,11 @@ export default function NotificationsPage() {
                                 </div>
                               )}
                             </div>
-                          </motion.button>
+                          </button>
                         );
                       })}
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
 
                 <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
