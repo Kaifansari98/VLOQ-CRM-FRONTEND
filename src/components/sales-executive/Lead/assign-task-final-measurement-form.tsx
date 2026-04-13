@@ -145,6 +145,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       current_site_photos: [],
     },
   });
+  const hasAutoSelectedTaskTypeRef = React.useRef(false);
 
   const taskType = form.watch("task_type");
   const hasPendingBookingDoneApproval = bookingDoneLockIns.some(
@@ -224,6 +225,22 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       form.setValue("task_type", "Follow Up");
     }
   }, [siteSupervisorCheck, isSiteSupervisorAssigned, form]);
+
+  React.useEffect(() => {
+    if (!open) {
+      hasAutoSelectedTaskTypeRef.current = false;
+      return;
+    }
+
+    if (hasAutoSelectedTaskTypeRef.current || isFinalMeasurementsDisabled) {
+      return;
+    }
+
+    form.setValue("task_type", "Final Measurements", {
+      shouldValidate: true,
+    });
+    hasAutoSelectedTaskTypeRef.current = true;
+  }, [open, form, isFinalMeasurementsDisabled]);
 
   React.useEffect(() => {
     if (
