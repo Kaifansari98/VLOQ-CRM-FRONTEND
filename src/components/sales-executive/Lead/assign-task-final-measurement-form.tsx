@@ -23,7 +23,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
 import z from "zod";
-import { useAssignToFinalMeasurement, useCheckSiteSupervisorAssigned } from "@/hooks/useLeadsQueries";
+import {
+  useAssignToFinalMeasurement,
+  useCheckSiteSupervisorAssigned,
+  useLeadSuperAdminApprovalLockIns,
+} from "@/hooks/useLeadsQueries";
 import { AssignToFinalMeasurementPayload } from "@/api/final-measurement";
 import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -113,6 +117,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data: siteSupervisorCheck } = useCheckSiteSupervisorAssigned(vendorId, leadId);
   const isSiteSupervisorAssigned = siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
+  const { data: bookingDoneLockIns = [], isLoading: bookingDoneLockInsLoading } =
+    useLeadSuperAdminApprovalLockIns(vendorId, leadId, "booking_done");
   const mutation = useAssignToFinalMeasurement(leadId);
   const queryClient = useQueryClient();
   const uploadCSPMutation = useUploadCSPBooking();
@@ -141,6 +147,23 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   });
 
   const taskType = form.watch("task_type");
+  const hasPendingBookingDoneApproval = bookingDoneLockIns.some(
+    (lockIn) => !lockIn.is_approved
+  );
+  const isFinalMeasurementsDisabled =
+    bookingDoneLockInsLoading ||
+    hasPendingBookingDoneApproval ||
+    !canAccessRestrictedTasks ||
+    !isSiteSupervisorAssigned;
+  const finalMeasurementsTooltip = bookingDoneLockInsLoading
+    ? "Checking super admin approval status"
+    : hasPendingBookingDoneApproval
+      ? "Super Admin approval for Booking Done is pending"
+      : !canAccessRestrictedTasks
+        ? "You don't have permission to select this"
+        : !isSiteSupervisorAssigned
+          ? "Site supervisor is not assigned yet"
+          : null;
 
   const { data: followUpUsersData } = useFollowUpUsers(
     vendorId,
@@ -202,6 +225,15 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     }
   }, [siteSupervisorCheck, isSiteSupervisorAssigned, form]);
 
+  React.useEffect(() => {
+    if (
+      form.getValues("task_type") === "Final Measurements" &&
+      isFinalMeasurementsDisabled
+    ) {
+      form.setValue("task_type", "Follow Up");
+    }
+  }, [form, isFinalMeasurementsDisabled]);
+
   console.log("[AssignFM] site_map_link", {
     value: lead?.site_map_link ?? null,
     hasValue: Boolean(lead?.site_map_link?.trim()),
@@ -218,6 +250,17 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         value: lead?.site_map_link ?? null,
         hasValue: Boolean(lead?.site_map_link?.trim()),
       });
+      if (
+        values.task_type === "Final Measurements" &&
+        hasPendingBookingDoneApproval
+      ) {
+        toastManager.add({
+          title: "Super Admin approval for Booking Done is pending",
+          type: "error",
+        });
+        return;
+      }
+
       if (
         values.task_type === "Final Measurements" &&
         !lead?.site_map_link?.trim()
@@ -340,22 +383,15 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                             <span>
                               <SelectItem
                                 value="Final Measurements"
-                                disabled={
-                                  !canAccessRestrictedTasks ||
-                                  !isSiteSupervisorAssigned
-                                }
+                                disabled={isFinalMeasurementsDisabled}
                               >
                                 Final Measurements
                               </SelectItem>
                             </span>
                           </TooltipTrigger>
-                          {!canAccessRestrictedTasks ? (
+                          {finalMeasurementsTooltip ? (
                             <TooltipContent>
-                              You don&apos;t have permission to select this
-                            </TooltipContent>
-                          ) : !isSiteSupervisorAssigned ? (
-                            <TooltipContent>
-                              Site supervisor is not assigned yet
+                              {finalMeasurementsTooltip}
                             </TooltipContent>
                           ) : null}
                         </Tooltip>

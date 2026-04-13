@@ -208,6 +208,40 @@ export const useCheckSiteSupervisorAssigned = (
   });
 };
 
+export interface LeadSuperAdminApprovalLockIn {
+  id: number;
+  vendor_id: number;
+  franchise_id: number | null;
+  lead_id: number;
+  approval_type: "booking_done" | "order_login" | "dispatch_planning";
+  is_approved: boolean;
+  approved_at: string | null;
+  approved_by: number | null;
+  approval_remark: string | null;
+}
+
+export const useLeadSuperAdminApprovalLockIns = (
+  vendorId?: number,
+  leadId?: number,
+  approvalType?: "booking_done" | "order_login" | "dispatch_planning"
+) => {
+  return useQuery({
+    queryKey: ["leadSuperAdminApprovalLockIns", vendorId, leadId, approvalType ?? null],
+    queryFn: async () => {
+      const { data } = await apiClient.get(
+        `/leads/super-admin-approval-lockins/vendor/${vendorId}/lead/${leadId}`,
+        {
+          params: approvalType ? { approval_type: approvalType } : undefined,
+        }
+      );
+      return (data?.data ?? []) as LeadSuperAdminApprovalLockIn[];
+    },
+    enabled: !!vendorId && !!leadId,
+    staleTime: 1000 * 30,
+    refetchOnWindowFocus: false,
+  });
+};
+
 export const useCheckContactOrEmailExists = () => {
   return useMutation<
     ContactOrEmailCheckResult,
