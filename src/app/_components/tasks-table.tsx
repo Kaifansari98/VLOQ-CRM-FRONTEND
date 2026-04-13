@@ -40,6 +40,7 @@ import FinalMeasurementModal from "@/components/sales-executive/booking-stage/fi
 import FollowUpModal from "@/components/follow-up-modal";
 import MiscTaskModal from "@/components/misc-task-modal";
 import BookingDoneIsmForm from "@/components/sales-executive/Lead/booking-done-ism-form";
+import BookingDoneApprovalModal from "@/components/tasks/BookingDoneApprovalModal";
 import ClearInput from "@/components/origin-input";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
@@ -62,6 +63,8 @@ const MyTaskTable = () => {
   const [openMeasurement, setOpenMeasurement] = useState(false);
   const [openFinalMeasurement, setOpenFinalMeasurement] = useState(false);
   const [openBookingDoneIsm, setOpenBookingDoneIsm] = useState(false);
+  const [openBookingDoneApproval, setOpenBookingDoneApproval] =
+    useState(false);
 
   // ✅ SEPARATE TASK TYPE FILTERS
   const [myTaskTypeFilter, setMyTaskTypeFilter] = useState<string[]>([]);
@@ -240,6 +243,12 @@ const MyTaskTable = () => {
           variant: "bookingdoneism",
         });
         setOpenBookingDoneIsm(true);
+      } else if (row.taskType === "Booking Done Approval") {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "bookingdoneapproval",
+        });
+        setOpenBookingDoneApproval(true);
       } else if (row.taskType === "Final Measurements") {
         setRowAction({
           row: { original: row } as any,
@@ -731,6 +740,15 @@ const MyTaskTable = () => {
           id: rowAction?.row.original.leadId || 0,
           accountId: rowAction?.row.original.accountId || 0,
           name: rowAction?.row.original.name || "",
+        }}
+      />
+
+      <BookingDoneApprovalModal
+        open={openBookingDoneApproval}
+        onOpenChange={setOpenBookingDoneApproval}
+        data={{
+          leadId: rowAction?.row.original.leadId || 0,
+          taskId: rowAction?.row.original.id || 0,
         }}
       />
 

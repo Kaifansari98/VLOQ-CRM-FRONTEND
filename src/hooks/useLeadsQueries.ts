@@ -242,6 +242,38 @@ export const useLeadSuperAdminApprovalLockIns = (
   });
 };
 
+export const approveBookingDoneTask = async (
+  leadId: number,
+  taskId: number,
+  payload: {
+    approved_by: number;
+    approval_remark?: string | null;
+  }
+) => {
+  const { data } = await apiClient.patch(
+    `/leads/super-admin-approval-lockins/booking-done/lead/${leadId}/task/${taskId}/approve`,
+    payload
+  );
+  return data;
+};
+
+export const useApproveBookingDoneTask = () => {
+  return useMutation({
+    mutationFn: ({
+      leadId,
+      taskId,
+      payload,
+    }: {
+      leadId: number;
+      taskId: number;
+      payload: {
+        approved_by: number;
+        approval_remark?: string | null;
+      };
+    }) => approveBookingDoneTask(leadId, taskId, payload),
+  });
+};
+
 export const useCheckContactOrEmailExists = () => {
   return useMutation<
     ContactOrEmailCheckResult,
