@@ -65,6 +65,7 @@ export default function ProductionFilesSection({
     leadId,
     resolvedInstanceId,
   );
+  const { data: leadStatusData } = useLeadStatus(leadId, vendorId);
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
   const queryClient = useQueryClient();
@@ -72,12 +73,12 @@ export default function ProductionFilesSection({
   const { data: productionFiles, isLoading } = useProductionFiles(
     vendorId,
     leadId,
-    instanceId,
+    resolvedInstanceId,
   );
   const { mutateAsync: uploadFiles, isPending } = useUploadProductionFiles(
     vendorId,
     leadId,
-    instanceId,
+    resolvedInstanceId,
   );
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -123,7 +124,12 @@ export default function ProductionFilesSection({
       setSelectedFiles([]);
 
       queryClient.invalidateQueries({
-        queryKey: ["productionFiles", vendorId, leadId, instanceId ?? "all"],
+        queryKey: [
+          "productionFiles",
+          vendorId,
+          leadId,
+          resolvedInstanceId ?? "all",
+        ],
       });
       queryClient.invalidateQueries({
         queryKey: ["leadProductionReadiness", vendorId, leadId],
@@ -147,8 +153,11 @@ export default function ProductionFilesSection({
   // ✅ Permission logic for delete
   console.log("UserType: ", userType);
   console.log("Lead Status data with istance id ", data);
+  const effectiveStage =
+    data?.derived_stage ?? leadStatusData?.status ?? "";
   const canDelete =
-    !readOnly && canUploadOrDeleteOrderLogin(userType, data?.derived_stage!);
+    !readOnly &&
+    canUploadOrDeleteOrderLogin(userType ?? "", effectiveStage);
 
   return (
     <div className="space-y-4">
