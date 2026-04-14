@@ -145,7 +145,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       current_site_photos: [],
     },
   });
-  const hasAutoSelectedTaskTypeRef = React.useRef(false);
+  const hasUserChangedTaskTypeRef = React.useRef(false);
 
   const taskType = form.watch("task_type");
   const hasPendingBookingDoneApproval = bookingDoneLockIns.some(
@@ -228,18 +228,19 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
   React.useEffect(() => {
     if (!open) {
-      hasAutoSelectedTaskTypeRef.current = false;
+      hasUserChangedTaskTypeRef.current = false;
       return;
     }
 
-    if (hasAutoSelectedTaskTypeRef.current || isFinalMeasurementsDisabled) {
-      return;
+    if (
+      !isFinalMeasurementsDisabled &&
+      !hasUserChangedTaskTypeRef.current &&
+      form.getValues("task_type") !== "Final Measurements"
+    ) {
+      form.setValue("task_type", "Final Measurements", {
+        shouldValidate: true,
+      });
     }
-
-    form.setValue("task_type", "Final Measurements", {
-      shouldValidate: true,
-    });
-    hasAutoSelectedTaskTypeRef.current = true;
   }, [open, form, isFinalMeasurementsDisabled]);
 
   React.useEffect(() => {
@@ -386,7 +387,13 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-sm">Task Type</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value}
+                    onValueChange={(value) => {
+                      hasUserChangedTaskTypeRef.current = true;
+                      field.onChange(value);
+                    }}
+                  >
                     <FormControl>
                       <SelectTrigger className="text-sm w-full">
                         <SelectValue placeholder="Select task type" />

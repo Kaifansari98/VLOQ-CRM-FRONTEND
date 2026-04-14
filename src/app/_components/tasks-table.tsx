@@ -48,6 +48,7 @@ import { DataTableViewOptions } from "@/components/data-table/data-table-view-op
 import CustomTabs from "@/components/custom/customeTab";
 import { extractTitleText, mapTaskTableFiltersToPayload } from "@/lib/utils";
 import TaskTypeFilter from "@/components/data-table/data-table-task-filter";
+import OrderLoginApprovalModal from "@/components/tasks/OrderLoginApprovalModal";
 
 const MyTaskTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -63,8 +64,8 @@ const MyTaskTable = () => {
   const [openMeasurement, setOpenMeasurement] = useState(false);
   const [openFinalMeasurement, setOpenFinalMeasurement] = useState(false);
   const [openBookingDoneIsm, setOpenBookingDoneIsm] = useState(false);
-  const [openBookingDoneApproval, setOpenBookingDoneApproval] =
-    useState(false);
+  const [openBookingDoneApproval, setOpenBookingDoneApproval] = useState(false);
+  const [openOrderLoginApproval, setOpenOrderLoginApproval] = useState(false);
 
   // ✅ SEPARATE TASK TYPE FILTERS
   const [myTaskTypeFilter, setMyTaskTypeFilter] = useState<string[]>([]);
@@ -249,6 +250,12 @@ const MyTaskTable = () => {
           variant: "bookingdoneapproval",
         });
         setOpenBookingDoneApproval(true);
+      } else if (row.taskType === "Order Login Approval") {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "orderloginapproval",
+        });
+        setOpenOrderLoginApproval(true);
       } else if (row.taskType === "Final Measurements") {
         setRowAction({
           row: { original: row } as any,
@@ -261,16 +268,15 @@ const MyTaskTable = () => {
           variant: "Follow Up",
         });
         setOpenFollowUp(true);
-      } 
-       else if (row.taskType === "Dispatch") {
+      } else if (row.taskType === "Dispatch") {
         setRowAction({
           row: { original: row } as any,
           variant: "Dispatch",
         });
-          router.push(
+        router.push(
           `/dashboard/installation/dispatch-planning/details/${row.leadId}?accountId=${row.accountId}`,
         );
-      }else if (row.taskType === "Pending Materials") {
+      } else if (row.taskType === "Pending Materials") {
         setRowAction({
           row: { original: row } as any,
           variant: "Pending Materials",
@@ -394,7 +400,7 @@ const MyTaskTable = () => {
       assignedToName: task.userLeadTask.assigned_to_name || null,
       assignedAt: task.userLeadTask.created_at,
       remark: task.userLeadTask?.remark || "",
-      instance_id: task.userLeadTask?.instance_id  
+      instance_id: task.userLeadTask?.instance_id,
     }));
   }, [vendorAllData?.data, vendorUserData?.data, viewScope]);
 
@@ -577,7 +583,7 @@ const MyTaskTable = () => {
         </div>
 
         {/* ================= TABLE ================= */}
-      <DataTable
+        <DataTable
           table={table}
           onRowDoubleClick={handleRowDoubleClick}
           className="pt-3 px-4"
@@ -746,6 +752,15 @@ const MyTaskTable = () => {
       <BookingDoneApprovalModal
         open={openBookingDoneApproval}
         onOpenChange={setOpenBookingDoneApproval}
+        data={{
+          leadId: rowAction?.row.original.leadId || 0,
+          taskId: rowAction?.row.original.id || 0,
+        }}
+      />
+
+      <OrderLoginApprovalModal
+        open={openOrderLoginApproval}
+        onOpenChange={setOpenOrderLoginApproval}
         data={{
           leadId: rowAction?.row.original.leadId || 0,
           taskId: rowAction?.row.original.id || 0,

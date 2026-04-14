@@ -10,6 +10,7 @@ import OrderLoginTab from "./OrderloginTab";
 import { useTechCheckInstanceStatus } from "@/api/tech-check";
 import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
+import { useLeadSuperAdminApprovalLockIns } from "@/hooks/useLeadsQueries";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
 
@@ -41,6 +42,10 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       : (instanceId ?? null);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const {
+    data: orderLoginLockIns = [],
+    isLoading: orderLoginLockInsLoading,
+  } = useLeadSuperAdminApprovalLockIns(vendorId, leadId, "order_login");
 
   const { data: clientDocs } = useClientDocumentationDetails(
     vendorId,
@@ -93,6 +98,19 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
 
   const activeTab =
     tabMapping[tabParam || ""] || forceDefaultTab || "order-login";
+  const hasPendingOrderLoginApproval = orderLoginLockIns.some(
+    (lockIn) => !lockIn.is_approved,
+  );
+  const isOrderLoginLocked =
+    orderLoginLockInsLoading || hasPendingOrderLoginApproval;
+  const lockedTabsTooltip = orderLoginLockInsLoading
+    ? "Checking super admin approval status"
+    : "Super Admin approval for Order Login is still pending";
+  const safeDefaultTab =
+    isOrderLoginLocked &&
+    (activeTab === "order-login" || activeTab === "production-files")
+      ? "approved-docs"
+      : activeTab;
 
   return (
     <div className="space-y-6 bg-[#fff] dark:bg-[#0a0a0a]">
@@ -159,7 +177,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         )}
 
       <SmoothTab
-        defaultTabId={activeTab}
+        key={`${leadId}-${scopedInstanceId ?? "all"}-${safeDefaultTab}-${isOrderLoginLocked ? "locked" : "open"}`}
+        defaultTabId={safeDefaultTab}
         className="-mt-3"
         items={[
           {
@@ -177,6 +196,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             id: "production-files",
             title: "Production Files",
             color: "bg-zinc-800 hover:bg-zinc-900",
+            disabled: isOrderLoginLocked,
+            disabledReason: lockedTabsTooltip,
             cardContent: (
               <ProductionFilesSection
                 leadId={leadId}
@@ -189,6 +210,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             id: "order-login",
             title: "Order Login",
             color: "bg-zinc-800 hover:bg-zinc-900",
+            disabled: isOrderLoginLocked,
+            disabledReason: lockedTabsTooltip,
             cardContent: (
               <OrderLoginTab
                 leadId={leadId}

@@ -58,6 +58,7 @@ export interface DataTableRowAction<TData> {
     | "productionready"
     | "bookingdoneism"
     | "bookingdoneapproval"
+    | "orderloginapproval"
     | "Dispatch"
     | "miscellaneous"
 }
