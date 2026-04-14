@@ -306,6 +306,38 @@ export const useApproveOrderLoginTask = () => {
   });
 };
 
+export const approveDispatchPlanningTask = async (
+  leadId: number,
+  taskId: number,
+  payload: {
+    approved_by: number;
+    approval_remark?: string | null;
+  }
+) => {
+  const { data } = await apiClient.patch(
+    `/leads/super-admin-approval-lockins/dispatch-planning/lead/${leadId}/task/${taskId}/approve`,
+    payload
+  );
+  return data;
+};
+
+export const useApproveDispatchPlanningTask = () => {
+  return useMutation({
+    mutationFn: ({
+      leadId,
+      taskId,
+      payload,
+    }: {
+      leadId: number;
+      taskId: number;
+      payload: {
+        approved_by: number;
+        approval_remark?: string | null;
+      };
+    }) => approveDispatchPlanningTask(leadId, taskId, payload),
+  });
+};
+
 export const useCheckContactOrEmailExists = () => {
   return useMutation<
     ContactOrEmailCheckResult,

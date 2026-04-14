@@ -49,6 +49,7 @@ import CustomTabs from "@/components/custom/customeTab";
 import { extractTitleText, mapTaskTableFiltersToPayload } from "@/lib/utils";
 import TaskTypeFilter from "@/components/data-table/data-table-task-filter";
 import OrderLoginApprovalModal from "@/components/tasks/OrderLoginApprovalModal";
+import DispatchPlanningApprovalModal from "@/components/tasks/DispatchPlanningApprovalModal";
 
 const MyTaskTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -66,6 +67,8 @@ const MyTaskTable = () => {
   const [openBookingDoneIsm, setOpenBookingDoneIsm] = useState(false);
   const [openBookingDoneApproval, setOpenBookingDoneApproval] = useState(false);
   const [openOrderLoginApproval, setOpenOrderLoginApproval] = useState(false);
+  const [openDispatchPlanningApproval, setOpenDispatchPlanningApproval] =
+    useState(false);
 
   // ✅ SEPARATE TASK TYPE FILTERS
   const [myTaskTypeFilter, setMyTaskTypeFilter] = useState<string[]>([]);
@@ -256,6 +259,12 @@ const MyTaskTable = () => {
           variant: "orderloginapproval",
         });
         setOpenOrderLoginApproval(true);
+      } else if (row.taskType === "Dispatch Planning Approval") {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "dispatchplanningapproval",
+        });
+        setOpenDispatchPlanningApproval(true);
       } else if (row.taskType === "Final Measurements") {
         setRowAction({
           row: { original: row } as any,
@@ -761,6 +770,15 @@ const MyTaskTable = () => {
       <OrderLoginApprovalModal
         open={openOrderLoginApproval}
         onOpenChange={setOpenOrderLoginApproval}
+        data={{
+          leadId: rowAction?.row.original.leadId || 0,
+          taskId: rowAction?.row.original.id || 0,
+        }}
+      />
+
+      <DispatchPlanningApprovalModal
+        open={openDispatchPlanningApproval}
+        onOpenChange={setOpenDispatchPlanningApproval}
         data={{
           leadId: rowAction?.row.original.leadId || 0,
           taskId: rowAction?.row.original.id || 0,

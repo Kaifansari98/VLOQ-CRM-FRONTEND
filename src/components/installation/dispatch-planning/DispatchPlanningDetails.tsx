@@ -46,9 +46,11 @@ import { useDeleteDocument } from "@/api/leads";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useLeadSuperAdminApprovalLockIns } from "@/hooks/useLeadsQueries";
 import { canViewAndWorkDispatchPlanningStage } from "@/components/utils/privileges";
 import { Checkbox } from "@/components/ui/checkbox";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
+import CustomeTooltip from "@/components/custom-tooltip";
 
 interface DispatchPlanningDetailsProps {
   leadId: number;
@@ -138,6 +140,10 @@ export default function DispatchPlanningDetails({
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
+  const {
+    data: dispatchPlanningLockIns = [],
+    isLoading: dispatchPlanningLockInsLoading,
+  } = useLeadSuperAdminApprovalLockIns(vendorId, leadId, "dispatch_planning");
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [infoSaved, setInfoSaved] = useState(false);
@@ -413,6 +419,18 @@ export default function DispatchPlanningDetails({
     userType,
     leadStatus,
   );
+  const hasPendingDispatchPlanningApproval = dispatchPlanningLockIns.some(
+    (lockIn) => !lockIn.is_approved,
+  );
+  const isDispatchPlanningInfoLocked =
+    dispatchPlanningLockInsLoading || hasPendingDispatchPlanningApproval;
+  const dispatchPlanningInfoTooltip = dispatchPlanningLockInsLoading
+    ? "Checking super admin approval status"
+    : hasPendingDispatchPlanningApproval
+      ? "Super Admin approval for Dispatch Planning is pending"
+      : "";
+  const canEditDispatchPlanningInfo =
+    canViewAndWork && !isDispatchPlanningInfoLocked;
 
   const pendingPayment = watchPayment("pending_payment");
   const pendingPaymentDetails = watchPayment("pending_payment_details");
@@ -439,7 +457,14 @@ export default function DispatchPlanningDetails({
         </div>
 
         {/* ---------- BODY ---------- */}
-        <div className="p-6 space-y-4">
+        <CustomeTooltip
+          value={dispatchPlanningInfoTooltip}
+          truncateValue={
+            <div
+              className={`p-6 space-y-4 ${
+                isDispatchPlanningInfoLocked ? "opacity-60" : ""
+              }`}
+            >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
             {/* Onsite Contact Person Name */}
             <div className="space-y-2">
@@ -451,7 +476,7 @@ export default function DispatchPlanningDetails({
               <Input
                 placeholder="Enter contact person name"
                 {...registerDispatch("onsite_contact_person_name")}
-                disabled={!canViewAndWork}
+                disabled={!canEditDispatchPlanningInfo}
               />
               {errorsDispatch.onsite_contact_person_name && (
                 <p className="text-xs text-red-500">
@@ -470,7 +495,7 @@ export default function DispatchPlanningDetails({
               <PhoneInput
                 placeholder="Enter contact number"
                 defaultCountry="IN"
-                disabled={!canViewAndWork}
+                disabled={!canEditDispatchPlanningInfo}
                 value={getValuesDispatch("onsite_contact_person_number")}
                 onChange={(value) =>
                   setValueDispatch("onsite_contact_person_number", value || "")
@@ -493,7 +518,7 @@ export default function DispatchPlanningDetails({
               <Input
                 placeholder="Enter alternate contact person name"
                 {...registerDispatch("alt_onsite_contact_person_name")}
-                disabled={!canViewAndWork}
+                disabled={!canEditDispatchPlanningInfo}
               />
             </div>
 
@@ -506,7 +531,7 @@ export default function DispatchPlanningDetails({
               <PhoneInput
                 placeholder="Enter alternate contact number"
                 defaultCountry="IN"
-                disabled={!canViewAndWork}
+                disabled={!canEditDispatchPlanningInfo}
                 value={getValuesDispatch("alt_onsite_contact_person_number")}
                 onChange={(value) =>
                   setValueDispatch(
@@ -528,7 +553,7 @@ export default function DispatchPlanningDetails({
                 </Label>
                 <div
                   className={
-                    !canViewAndWork
+                    !canEditDispatchPlanningInfo
                       ? "opacity-50 pointer-events-none w-full"
                       : "w-full"
                   }
@@ -536,7 +561,7 @@ export default function DispatchPlanningDetails({
                   <CustomeDatePicker
                     value={getValuesDispatch("required_date_for_dispatch")}
                     onChange={
-                      !canViewAndWork
+                      !canEditDispatchPlanningInfo
                         ? () => {}
                         : (value) =>
                             setValueDispatch(
@@ -568,7 +593,7 @@ export default function DispatchPlanningDetails({
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                       <Checkbox
-                        disabled={!canViewAndWork}
+                        disabled={!canEditDispatchPlanningInfo}
                         checked={watchLiftAvailability === true}
                         onCheckedChange={(checked) => {
                           if (checked) {
@@ -583,7 +608,7 @@ export default function DispatchPlanningDetails({
 
                     <div className="flex items-center gap-2">
                       <Checkbox
-                        disabled={!canViewAndWork}
+                        disabled={!canEditDispatchPlanningInfo}
                         checked={watchLiftAvailability === false}
                         onCheckedChange={(checked) => {
                           if (checked) {
@@ -614,7 +639,7 @@ export default function DispatchPlanningDetails({
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                       <Checkbox
-                        disabled={!canViewAndWork}
+                        disabled={!canEditDispatchPlanningInfo}
                         checked={watchVehicleApproachability === true}
                         onCheckedChange={(checked) => {
                           if (checked) {
@@ -629,7 +654,7 @@ export default function DispatchPlanningDetails({
 
                     <div className="flex items-center gap-2">
                       <Checkbox
-                        disabled={!canViewAndWork}
+                        disabled={!canEditDispatchPlanningInfo}
                         checked={watchVehicleApproachability === false}
                         onCheckedChange={(checked) => {
                           if (checked) {
@@ -666,7 +691,7 @@ export default function DispatchPlanningDetails({
                 setValueDispatch("dispatch_planning_remark", value || "")
               }
               maxLength={1000}
-              disabled={!canViewAndWork}
+              disabled={!canEditDispatchPlanningInfo}
             />
           </div>
 
@@ -674,7 +699,9 @@ export default function DispatchPlanningDetails({
             {canViewAndWork && (
               <Button
                 onClick={handleSaveInfo}
-                disabled={saveInfoMutation.isPending}
+                disabled={
+                  saveInfoMutation.isPending || !canEditDispatchPlanningInfo
+                }
                 size={"sm"}
               >
                 {saveInfoMutation.isPending ? (
@@ -688,7 +715,9 @@ export default function DispatchPlanningDetails({
               </Button>
             )}
           </div>
-        </div>
+            </div>
+          }
+        />
       </div>
 
       {/* Payment Information */}
