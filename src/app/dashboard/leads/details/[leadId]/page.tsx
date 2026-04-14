@@ -59,14 +59,14 @@ const targetUrl = useMemo(() => {
 
   let routeBase: string | undefined;
 
-  // 🔑 If production-related → use workflow_stage
-  if (leadStatus.workflow_stage) {
-    routeBase = WORKFLOW_STAGE_ROUTE[leadStatus.workflow_stage];
+  // Prefer the latest persisted lead status tag first.
+  if (leadStatus.lead_status_tag) {
+    routeBase = STAGE_ROUTE_BY_TYPE[leadStatus.lead_status_tag];
   }
 
-  // 🔁 Fallback to lead status tag
-  if (!routeBase && leadStatus.lead_status_tag) {
-    routeBase = STAGE_ROUTE_BY_TYPE[leadStatus.lead_status_tag];
+  // Fallback to workflow-stage only when a tag route is unavailable.
+  if (!routeBase && leadStatus.workflow_stage) {
+    routeBase = WORKFLOW_STAGE_ROUTE[leadStatus.workflow_stage];
   }
 
   if (!routeBase) {
