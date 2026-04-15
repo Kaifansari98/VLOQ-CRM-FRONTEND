@@ -46,6 +46,7 @@ export interface LeadDetailsGroupedProps {
   dispatchInstanceId?: number | null;
   underInstallationInstanceId?: number | null;
   finalHandoverInstanceId?: number | null;
+  allowServicingTabFromDeliveredProjects?: boolean;
 }
 
 const GROUP_ORDER: GroupKey[] = [
@@ -74,13 +75,16 @@ export default function LeadDetailsGrouped({
   dispatchInstanceId,
   underInstallationInstanceId,
   finalHandoverInstanceId,
+  allowServicingTabFromDeliveredProjects = false,
 }: LeadDetailsGroupedProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const servicingSource = searchParams.get("source");
   const showServicingTab =
     pathname?.startsWith("/dashboard/installation/servicing") ||
-    servicingSource === "servicing";
+    servicingSource === "servicing" ||
+    (servicingSource === "delivered-projects" &&
+      allowServicingTabFromDeliveredProjects);
   const groups = {
     leads: [
       {

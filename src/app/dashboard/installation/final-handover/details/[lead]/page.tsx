@@ -139,6 +139,10 @@ export default function FinalHandoverLeadDetails() {
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = lead?.account_id;
   const leadStatusTag = lead?.statusType?.tag;
+  const isSmallOrderLead = !!lead?.productMappings?.some(
+    (mapping: any) => mapping.productType?.tag === "Type 7",
+  );
+  const allowServicingTabFromDeliveredProjects = !isSmallOrderLead;
   const canShowMarkCompleted =
     ["super-admin", "site-supervisor"].includes(normalizedEffectiveUserType) &&
     leadStatusTag !== "Type 17";
@@ -426,6 +430,9 @@ export default function FinalHandoverLeadDetails() {
                 accountId={accountId}
                 defaultParentTab="installation"
                 finalHandoverInstanceId={validInstanceId}
+                allowServicingTabFromDeliveredProjects={
+                  allowServicingTabFromDeliveredProjects
+                }
               />
             )}
           </main>
@@ -441,6 +448,9 @@ export default function FinalHandoverLeadDetails() {
                 accountId={accountId}
                 defaultParentTab="installation"
                 finalHandoverInstanceId={validInstanceId}
+                allowServicingTabFromDeliveredProjects={
+                  allowServicingTabFromDeliveredProjects
+                }
               />
             )}
           </main>

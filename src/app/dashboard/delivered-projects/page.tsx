@@ -22,7 +22,7 @@ type Row = {
 };
 
 const navigateDeliveredProjects = (row: Row) =>
-  `/dashboard/installation/final-handover/details/${row.id}?accountId=${row.accountId}&tab=finalHandover`;
+  `/dashboard/installation/final-handover/details/${row.id}?accountId=${row.accountId}&tab=finalHandover&source=delivered-projects`;
 
 export default function DeliveredProjectsPage() {
   return (
@@ -67,4 +67,4 @@ export default function DeliveredProjectsPage() {
       </main>
     </>
   );
-}
+} 
