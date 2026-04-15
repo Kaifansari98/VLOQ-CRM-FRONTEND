@@ -46,6 +46,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 import { canViewAndWorkFinalHandoverStage } from "@/components/utils/privileges";
 import BaseModal from "@/components/utils/baseModal";
 
@@ -84,6 +85,10 @@ export default function FinalHandover({
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
+  const { data: leadResponse } = useLeadById(leadId, vendorId, userId);
+  const isSmallOrderLead = !!leadResponse?.data?.lead?.productMappings?.some(
+    (mapping: any) => mapping.productType?.tag === "Type 7",
+  );
 
   const { data: documents, isLoading } = useGetFinalHandoverDocuments(
     vendorId,
@@ -345,36 +350,40 @@ export default function FinalHandover({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 px-4 py-3">
-          <Checkbox
-            id="is-amc-opted"
-            checked={isAmcOpted}
-            disabled={!canToggleAmc}
-            onCheckedChange={() => {
-              if (!canToggleAmc) return;
-              setConfirmAmcStatus(!isAmcOpted);
-            }}
-            className="h-4 w-4 data-[state=checked]:bg-black data-[state=checked]:border-black dark:data-[state=checked]:bg-white dark:data-[state=checked]:border-white dark:data-[state=checked]:text-black"
-          />
-          <div className="space-y-1 rounded-md bg-muted/40 px-3 py-2">
-            <label
-              htmlFor="is-amc-opted"
-              className={`text-sm font-bold ${
-                canToggleAmc ? "cursor-pointer" : "cursor-not-allowed opacity-70"
-              }`}
-            >
-              Is AMC Opted in ?
-            </label>
-            {isAmcOpted && amcOptedAt && (
-              <p className="text-xs text-muted-foreground">
-                {formatAmcDateTime(amcOptedAt)}
-              </p>
-            )}
-            {!canToggleAmc && amcDisabledReason && (
-              <p className="text-xs text-muted-foreground">{amcDisabledReason}</p>
-            )}
+        {!isSmallOrderLead && (
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Checkbox
+              id="is-amc-opted"
+              checked={isAmcOpted}
+              disabled={!canToggleAmc}
+              onCheckedChange={() => {
+                if (!canToggleAmc) return;
+                setConfirmAmcStatus(!isAmcOpted);
+              }}
+              className="h-4 w-4 data-[state=checked]:bg-black data-[state=checked]:border-black dark:data-[state=checked]:bg-white dark:data-[state=checked]:border-white dark:data-[state=checked]:text-black"
+            />
+            <div className="space-y-1 rounded-md bg-muted/40 px-3 py-2">
+              <label
+                htmlFor="is-amc-opted"
+                className={`text-sm font-bold ${
+                  canToggleAmc ? "cursor-pointer" : "cursor-not-allowed opacity-70"
+                }`}
+              >
+                Is AMC Opted in ?
+              </label>
+              {isAmcOpted && amcOptedAt && (
+                <p className="text-xs text-muted-foreground">
+                  {formatAmcDateTime(amcOptedAt)}
+                </p>
+              )}
+              {!canToggleAmc && amcDisabledReason && (
+                <p className="text-xs text-muted-foreground">
+                  {amcDisabledReason}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Cards Grid */}
