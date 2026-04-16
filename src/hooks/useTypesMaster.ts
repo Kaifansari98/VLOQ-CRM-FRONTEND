@@ -5,6 +5,7 @@ import {
   createInstallerUser,
   createIssueLogType,
   fetchInstallerUsersForMaster,
+  fetchUsersForMaster,
   fetchCompanyVendorsForMaster,
   createMiscellaneousTeam,
   createMiscellaneousType,
@@ -32,6 +33,8 @@ import {
   updateSourceTypeStatus,
   updateSiteType,
   updateSiteTypeStatus,
+  fetchUserTypes,
+  createUser,
 } from "@/api/typesMasterApi"
 import { useAppSelector } from "@/redux/store" // assuming you have typed hooks
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -45,12 +48,32 @@ const getIssueLogTypesQueryKey = (vendorId?: number) => ["issueLogTypes", vendor
 const getMiscellaneousTeamsQueryKey = (vendorId?: number) => ["miscellaneousTeams", vendorId];
 const getInstallerUsersMasterQueryKey = (vendorId?: number) => ["installerUsersMaster", vendorId];
 const getCompanyVendorsMasterQueryKey = (vendorId?: number) => ["companyVendorsMaster", vendorId];
+const getUsersMasterQueryKey = (vendorId?: number) => ["usersMaster", vendorId];
 
 export const useCompanyVendorsForMaster = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   return useQuery({
     queryKey: getCompanyVendorsMasterQueryKey(vendorId),
     queryFn: () => fetchCompanyVendorsForMaster(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export const useUsersForMaster = (params: {
+  page: number;
+  limit: number;
+  search?: string;
+}) => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getUsersMasterQueryKey(vendorId).concat([
+      params.page,
+      params.limit,
+      params.search ?? "",
+    ]),
+    queryFn: () => fetchUsersForMaster(vendorId!, params),
     enabled: !!vendorId,
     retry: false,
     refetchOnWindowFocus: false,
@@ -655,4 +678,35 @@ export const useProductTypes = () => {
     queryFn: () => fetchProductTypes(vendorId!),
     enabled: !!vendorId,
   })
+}
+
+export const useUserTypes = () => {
+  return useQuery({
+    queryKey: ["userTypes"],
+    queryFn: fetchUserTypes,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useCreateUser = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getUsersMasterQueryKey(vendorId) });
+      toastManager.add({
+        title: "User created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to create user.",
+        type: "error",
+      });
+    },
+  });
 }

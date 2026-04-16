@@ -218,6 +218,10 @@ const data = {
           title: "Field Masters",
           url: "/dashboard/masters-management/field-masters",
         },
+        {
+          title: "User Master",
+          url: "/dashboard/masters-management/user-master",
+        },
       ],
     },
   ],

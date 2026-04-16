@@ -91,6 +91,37 @@ export interface CompanyVendorMasterResponse {
   data: CompanyVendorMasterEntry[];
 }
 
+export interface UserMasterEntry {
+  id: number;
+  vendor_id: number;
+  franchise_id?: number | null;
+  user_name: string;
+  user_contact: string;
+  user_email: string;
+  user_timezone: string;
+  status: string;
+  created_at: string;
+  user_type?: {
+    user_type: string;
+  } | null;
+  franchise?: {
+    franchise_name: string;
+  } | null;
+}
+
+export interface UserMasterResponse {
+  success: boolean;
+  count: number;
+  data: UserMasterEntry[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalRecoards: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
 export interface CreateSiteTypeMasterPayload {
   vendor_id: number;
   type: string;
@@ -392,6 +423,31 @@ export const fetchCompanyVendorsForMaster = async (vendorId: number) => {
   };
 }
 
+export const fetchUsersForMaster = async (
+  vendorId: number,
+  params: { page: number; limit: number; search?: string },
+) => {
+  const res = await apiClient.get<UserMasterResponse>(`/users/vendor/${vendorId}`, {
+    params: {
+      page: params.page,
+      limit: params.limit,
+      search: params.search ?? "",
+    },
+  });
+  return {
+    success: Boolean(res.data?.success),
+    count: Number(res.data?.count ?? 0),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+    pagination: res.data?.pagination ?? {
+      currentPage: 1,
+      totalPages: 1,
+      totalRecoards: 0,
+      hasNext: false,
+      hasPrev: false,
+    },
+  };
+}
+
 export const createInstallerUser = async (payload: CreateInstallerUserMasterPayload) => {
   const res = await apiClient.post(`/installer-users/create-installer-user`, payload)
   return res.data
@@ -457,4 +513,60 @@ export const updateCompanyVendorStatus = async (
 export const fetchProductTypes = async (vendorId: number) => {
   const res = await apiClient.get(`/leads/get-all-product-types/${vendorId}`)
   return res.data
+}
+
+export interface FranchiseMasterEntry {
+  id: number;
+  franchise_name: string;
+  vendor_id: number;
+}
+
+export interface FranchiseMasterResponse {
+  success: boolean;
+  data: FranchiseMasterEntry[];
+}
+
+export interface UserTypeMasterEntry {
+  id: number;
+  user_type: string;
+}
+
+export interface UserTypeMasterResponse {
+  success: boolean;
+  data: UserTypeMasterEntry[];
+}
+
+export interface CreateUserMasterPayload {
+  vendor_id: number;
+  franchise_id: number;
+  user_name: string;
+  user_contact: string;
+  user_email: string;
+  user_timezone: string;
+  password: string;
+  user_type_id: number;
+  status?: string;
+}
+
+export const fetchFranchisesForVendor = async (vendorId: number) => {
+  const res = await apiClient.get<FranchiseMasterResponse>(
+    `/franchises/vendor/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const fetchUserTypes = async () => {
+  const res = await apiClient.get<UserTypeMasterResponse>(`/user-types`);
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const createUser = async (payload: CreateUserMasterPayload) => {
+  const res = await apiClient.post(`/users/create-user`, payload);
+  return res.data;
 }
