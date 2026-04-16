@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-
 import {
   Dialog,
   DialogContent,
@@ -33,23 +32,24 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAppSelector } from "@/redux/store";
-
-
 import { cn } from "@/lib/utils";
 import {
   FolderOpen,
   Layers,
   Pencil,
   Plus,
+  RefreshCw,
   Search,
   ToggleLeft,
   ToggleRight,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
+  useCheckExternalToken,
   useCreateProjectCategory,
   useProjectCategories,
   useProjectCategoryTypes,
+  useSyncCategories,
   useToggleCategoryStatus,
   useUpdateProjectCategory,
 } from "@/hooks/track-trace/useProjectCategories";
@@ -67,13 +67,7 @@ interface CategoryFormDialogProps {
   userId: number;
 }
 
-function CategoryFormDialog({
-  open,
-  onClose,
-  editData,
-  vendorId,
-  userId,
-}: CategoryFormDialogProps) {
+function CategoryFormDialog({ open, onClose, editData, vendorId, userId }: CategoryFormDialogProps) {
   const { data: types = [], isLoading: typesLoading } = useProjectCategoryTypes();
   const createMutation = useCreateProjectCategory(vendorId);
   const updateMutation = useUpdateProjectCategory(vendorId);
@@ -85,14 +79,11 @@ function CategoryFormDialog({
   const isEdit = !!editData;
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  // Populate form when editing
   useEffect(() => {
     if (editData) {
       setCategoryName(editData.category_name);
       setSelectedTypeIds(
-        editData.projectCategoriesMasterVendorMapping.map(
-          (m) => m.project_categories_type_master_id
-        )
+        editData.projectCategoriesMasterVendorMapping.map((m) => m.project_categories_type_master_id)
       );
     } else {
       setCategoryName("");
@@ -102,35 +93,19 @@ function CategoryFormDialog({
   }, [editData, open]);
 
   const toggleType = (id: number) => {
-    setSelectedTypeIds((prev) =>
-      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
-    );
+    setSelectedTypeIds((prev) => prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]);
   };
 
   const handleSubmit = async () => {
-    if (!categoryName.trim()) {
-      setError("Category name is required");
-      return;
-    }
-
+    if (!categoryName.trim()) { setError("Category name is required"); return; }
     if (isEdit && editData) {
       await updateMutation.mutateAsync({
-        id: editData.id,
-        vendor_id: vendorId,
-        category_name: categoryName.trim(),
-        status: editData.status,
-        type_ids: selectedTypeIds,
-        created_by:userId,
-        updated_by:userId
+        id: editData.id, vendor_id: vendorId, category_name: categoryName.trim(),
+        status: editData.status, type_ids: selectedTypeIds, created_by: userId, updated_by: userId,
       });
     } else {
-      await createMutation.mutateAsync({
-        vendor_id: vendorId,
-        category_name: categoryName.trim(),
-        type_ids: selectedTypeIds,
-      });
+      await createMutation.mutateAsync({ vendor_id: vendorId, category_name: categoryName.trim(), type_ids: selectedTypeIds });
     }
-
     onClose();
   };
 
@@ -145,44 +120,31 @@ function CategoryFormDialog({
         </DialogHeader>
 
         <div className="flex flex-col gap-5 py-2">
-          {/* Category name */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="category_name">Category Name</Label>
             <Input
               id="category_name"
               placeholder="e.g. Shutter Finish"
               value={categoryName}
-              onChange={(e) => {
-                setCategoryName(e.target.value);
-                if (error) setError("");
-              }}
+              onChange={(e) => { setCategoryName(e.target.value); if (error) setError(""); }}
               className={cn(error && "border-destructive")}
             />
             {error && <p className="text-xs text-destructive">{error}</p>}
           </div>
 
-          {/* Module types */}
           <div className="flex flex-col gap-2">
             <Label>Assign to Modules</Label>
             {typesLoading ? (
               <div className="flex flex-col gap-2">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-8 w-full" />
-                ))}
+                {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
               </div>
             ) : types.length === 0 ? (
               <p className="text-sm text-muted-foreground">No modules configured</p>
             ) : (
               <div className="flex flex-col gap-1 rounded-lg border p-3 max-h-52 overflow-y-auto">
                 {types.map((type) => (
-                  <label
-                    key={type.id}
-                    className="flex items-center gap-3 rounded-md px-2 py-2 cursor-pointer hover:bg-muted/60 transition-colors"
-                  >
-                    <Checkbox
-                      checked={selectedTypeIds.includes(type.id)}
-                      onCheckedChange={() => toggleType(type.id)}
-                    />
+                  <label key={type.id} className="flex items-center gap-3 rounded-md px-2 py-2 cursor-pointer hover:bg-muted/60 transition-colors">
+                    <Checkbox checked={selectedTypeIds.includes(type.id)} onCheckedChange={() => toggleType(type.id)} />
                     <span className="text-sm font-medium">{type.module_name}</span>
                   </label>
                 ))}
@@ -197,9 +159,7 @@ function CategoryFormDialog({
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose} disabled={isPending}>
-            Cancel
-          </Button>
+          <Button variant="outline" onClick={onClose} disabled={isPending}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={isPending}>
             {isPending ? "Saving..." : isEdit ? "Save Changes" : "Create Category"}
           </Button>
@@ -213,11 +173,12 @@ function CategoryFormDialog({
 
 export default function ProjectCategoriesPage() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const userId = useAppSelector((state) => state.auth.user?.id);
-  
+  const userId   = useAppSelector((state) => state.auth.user?.id);
 
   const { data: categories = [], isLoading, isError } = useProjectCategories(vendorId);
-  const toggleStatus = useToggleCategoryStatus(vendorId ?? 0);
+  const toggleStatus  = useToggleCategoryStatus(vendorId ?? 0);
+  const { data: hasToken } = useCheckExternalToken(vendorId);
+  const syncMutation  = useSyncCategories(vendorId ?? 0);
 
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -225,288 +186,224 @@ export default function ProjectCategoriesPage() {
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return categories.filter((c) =>
-      c.category_name.toLowerCase().includes(q)
-    );
+    return categories.filter((c) => c.category_name.toLowerCase().includes(q));
   }, [categories, search]);
 
-  const handleEdit = (category: ProjectCategory) => {
-    setEditCategory(category);
-    setDialogOpen(true);
-  };
-
-  const handleToggle = (category: ProjectCategory) => {
-    toggleStatus.mutate({
-      id: category.id,
-      status: category.status === "Yes" ? "No" : "Yes",
-    });
-  };
-
-  const handleDialogClose = () => {
-    setDialogOpen(false);
-    setEditCategory(null);
-  };
+  const handleEdit        = (category: ProjectCategory) => { setEditCategory(category); setDialogOpen(true); };
+  const handleToggle      = (category: ProjectCategory) => { toggleStatus.mutate({ id: category.id, status: category.status === "Yes" ? "No" : "Yes" }); };
+  const handleDialogClose = () => { setDialogOpen(false); setEditCategory(null); };
 
   return (
     <>
-    <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+      <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
         <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1" />
-
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
-          />
-
+          <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink href="/dashboard">Master</BreadcrumbLink>
               </BreadcrumbItem>
-
               <BreadcrumbSeparator className="hidden md:block" />
-
               <BreadcrumbItem>
                 <BreadcrumbPage>Project Categories</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-
         <div className="flex items-center gap-2">
           <NotificationBell />
           <AnimatedThemeToggler />
         </div>
       </header>
-    <div className="flex flex-col gap-6 p-6">
 
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="h-6 w-1 rounded-full bg-primary" />
-            <h1 className="text-2xl font-black tracking-tight text-foreground">
-              Project Categories
-            </h1>
-          </div>
-          <p className="text-sm text-muted-foreground pl-3">
-            Manage categories and assign them to modules
-          </p>
-        </div>
+      <div className="flex flex-col gap-6 p-6">
 
-        <Button
-          onClick={() => { setEditCategory(null); setDialogOpen(true); }}
-          className="gap-2"
-        >
-          <Plus className="size-4" />
-          New Category
-        </Button>
-      </div>
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="h-6 w-1 rounded-full bg-primary" />
+              <h1 className="text-2xl font-black tracking-tight text-foreground">Project Categories</h1>
+            </div>
+            <p className="text-sm text-muted-foreground pl-3">Manage categories and assign them to modules</p>
+          </div>
 
-      {/* ── Stats ── */}
-      {!isLoading && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm">
-            <div className="rounded-lg p-2 bg-blue-500/10 text-blue-600 dark:text-blue-400">
-              <Layers className="size-4" />
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Total</p>
-              <p className="text-xl font-black tabular-nums">{categories.length}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm">
-            <div className="rounded-lg p-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <ToggleRight className="size-4" />
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Active</p>
-              <p className="text-xl font-black tabular-nums">
-                {categories.filter((c) => c.status === "Yes").length}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm">
-            <div className="rounded-lg p-2 bg-muted text-muted-foreground">
-              <ToggleLeft className="size-4" />
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Inactive</p>
-              <p className="text-xl font-black tabular-nums">
-                {categories.filter((c) => c.status === "No").length}
-              </p>
-            </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Sync button — only when CadBid token is active */}
+            {hasToken && (
+              <Button
+                variant="outline"
+                onClick={() => syncMutation.mutate()}
+                disabled={syncMutation.isPending}
+                className="gap-2"
+              >
+                <RefreshCw className={cn("size-4", syncMutation.isPending && "animate-spin")} />
+                {syncMutation.isPending ? "Syncing..." : "Sync Categories"}
+              </Button>
+            )}
+            <Button onClick={() => { setEditCategory(null); setDialogOpen(true); }} className="gap-2">
+              <Plus className="size-4" />
+              New Category
+            </Button>
           </div>
         </div>
-      )}
 
-      {isError && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-5 py-4 text-sm text-destructive">
-          ⚠ Failed to load categories. Please refresh and try again.
+        {/* ── No token notice ── */}
+        {hasToken === false && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-5 py-3 text-sm text-amber-700 dark:text-amber-400">
+            ⚡ Connect your CadBid account to enable category sync.
+          </div>
+        )}
+
+        {/* ── Stats ── */}
+        {!isLoading && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm">
+              <div className="rounded-lg p-2 bg-blue-500/10 text-blue-600 dark:text-blue-400"><Layers className="size-4" /></div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Total</p>
+                <p className="text-xl font-black tabular-nums">{categories.length}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm">
+              <div className="rounded-lg p-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"><ToggleRight className="size-4" /></div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Active</p>
+                <p className="text-xl font-black tabular-nums">{categories.filter((c) => c.status === "Yes").length}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm">
+              <div className="rounded-lg p-2 bg-muted text-muted-foreground"><ToggleLeft className="size-4" /></div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Inactive</p>
+                <p className="text-xl font-black tabular-nums">{categories.filter((c) => c.status === "No").length}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isError && (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-5 py-4 text-sm text-destructive">
+            ⚠ Failed to load categories. Please refresh and try again.
+          </div>
+        )}
+
+        {/* ── Search ── */}
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input placeholder="Search categories..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
-      )}
 
-      {/* ── Search ── */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input
-          placeholder="Search categories..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      {/* ── Table ── */}
-      <div className="overflow-hidden rounded-xl border shadow-sm">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/60 hover:bg-muted/60">
-              <TableHead className="w-10 text-xs font-black uppercase tracking-widest text-muted-foreground">#</TableHead>
-              <TableHead className="text-xs font-black uppercase tracking-widest text-muted-foreground">Category</TableHead>
-              <TableHead className="text-xs font-black uppercase tracking-widest text-muted-foreground">Assigned Modules</TableHead>
-              <TableHead className="text-xs font-black uppercase tracking-widest text-muted-foreground">Status</TableHead>
-              <TableHead className="text-xs font-black uppercase tracking-widest text-muted-foreground text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-6" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                  <TableCell><Skeleton className="h-6 w-56" /></TableCell>
-                  <TableCell><Skeleton className="h-6 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
-                </TableRow>
-              ))
-            ) : filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5}>
-                  <div className="flex flex-col items-center justify-center py-16 gap-3">
-                    <div className="rounded-2xl bg-muted p-5">
-                      <FolderOpen className="size-10 text-muted-foreground/50" />
-                    </div>
-                    <p className="font-semibold text-foreground">
-                      {search ? "No categories match your search" : "No categories yet"}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {search ? "Try a different search term" : "Click 'New Category' to get started"}
-                    </p>
-                  </div>
-                </TableCell>
+        {/* ── Table ── */}
+        <div className="overflow-hidden rounded-xl border shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/60 hover:bg-muted/60">
+                <TableHead className="w-10 text-xs font-black uppercase tracking-widest text-muted-foreground">#</TableHead>
+                <TableHead className="text-xs font-black uppercase tracking-widest text-muted-foreground">Category</TableHead>
+                <TableHead className="text-xs font-black uppercase tracking-widest text-muted-foreground">Assigned Modules</TableHead>
+                <TableHead className="text-xs font-black uppercase tracking-widest text-muted-foreground">Status</TableHead>
+                <TableHead className="text-xs font-black uppercase tracking-widest text-muted-foreground text-right">Actions</TableHead>
               </TableRow>
-            ) : (
-              filtered.map((category, idx) => {
-                const isActive = category.status === "Yes";
-                const assignedModules = category.projectCategoriesMasterVendorMapping;
+            </TableHeader>
 
-                return (
-                  <TableRow
-                    key={category.id}
-                    className={cn(
-                      "group transition-colors hover:bg-primary/5",
-                      idx % 2 === 0 ? "bg-background" : "bg-muted/20"
-                    )}
-                  >
-                    {/* # */}
-                    <TableCell className="text-xs text-muted-foreground font-mono">
-                      {idx + 1}
-                    </TableCell>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-6" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-56" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                  </TableRow>
+                ))
+              ) : filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    <div className="flex flex-col items-center justify-center py-16 gap-3">
+                      <div className="rounded-2xl bg-muted p-5"><FolderOpen className="size-10 text-muted-foreground/50" /></div>
+                      <p className="font-semibold text-foreground">{search ? "No categories match your search" : "No categories yet"}</p>
+                      <p className="text-sm text-muted-foreground">{search ? "Try a different search term" : "Click 'New Category' to get started"}</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filtered.map((category, idx) => {
+                  const isActive = category.status === "Yes";
+                  const assignedModules = category.projectCategoriesMasterVendorMapping;
 
-                    {/* Name */}
-                    <TableCell>
-                      <span className="font-semibold text-sm text-foreground">
-                        {category.category_name}
-                      </span>
-                    </TableCell>
+                  return (
+                    <TableRow
+                      key={category.id}
+                      className={cn("group transition-colors hover:bg-primary/5", idx % 2 === 0 ? "bg-background" : "bg-muted/20")}
+                    >
+                      <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
 
-                    {/* Modules */}
-                    <TableCell>
-                      {assignedModules.length === 0 ? (
-                        <span className="text-xs text-muted-foreground italic">
-                          No modules assigned
-                        </span>
-                      ) : (
-                        <div className="flex flex-wrap gap-1.5">
-                          {assignedModules.map((m) => (
-                            <Badge
-                              key={m.id}
-                              variant="secondary"
-                              className="text-[10px] font-semibold px-2 py-0.5"
-                            >
-                              {m.projectCategoriesTypeMaster.module_name}
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm text-foreground">{category.category_name}</span>
+                          {/* CadBid badge for synced categories */}
+                          {(category as any).external_category_id && (
+                            <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 text-muted-foreground border-muted-foreground/30">
+                              CadBid
                             </Badge>
-                          ))}
+                          )}
                         </div>
-                      )}
-                    </TableCell>
+                      </TableCell>
 
-                    {/* Status */}
-                    <TableCell>
-                      <span
-                        className={cn(
+                      <TableCell>
+                        {assignedModules.length === 0 ? (
+                          <span className="text-xs text-muted-foreground italic">No modules assigned</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {assignedModules.map((m) => (
+                              <Badge key={m.id} variant="secondary" className="text-[10px] font-semibold px-2 py-0.5">
+                                {m.projectCategoriesTypeMaster.module_name}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </TableCell>
+
+                      <TableCell>
+                        <span className={cn(
                           "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wide",
                           isActive
                             ? "bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20 dark:text-emerald-400"
                             : "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {isActive ? "Active" : "Inactive"}
-                      </span>
-                    </TableCell>
+                        )}>
+                          {isActive ? "Active" : "Inactive"}
+                        </span>
+                      </TableCell>
 
-                    {/* Actions */}
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleEdit(category)}
-                          className="h-8 w-8 p-0"
-                          title="Edit"
-                        >
-                          <Pencil className="size-3.5" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleToggle(category)}
-                          disabled={toggleStatus.isPending}
-                          className={cn(
-                            "h-8 w-8 p-0",
-                            isActive
-                              ? "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                              : "text-muted-foreground hover:text-foreground"
-                          )}
-                          title={isActive ? "Deactivate" : "Activate"}
-                        >
-                          {isActive ? (
-                            <ToggleRight className="size-4" />
-                          ) : (
-                            <ToggleLeft className="size-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button size="sm" variant="ghost" onClick={() => handleEdit(category)} className="h-8 w-8 p-0" title="Edit">
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            size="sm" variant="ghost"
+                            onClick={() => handleToggle(category)}
+                            disabled={toggleStatus.isPending}
+                            className={cn("h-8 w-8 p-0", isActive ? "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" : "text-muted-foreground hover:text-foreground")}
+                            title={isActive ? "Deactivate" : "Activate"}
+                          >
+                            {isActive ? <ToggleRight className="size-4" /> : <ToggleLeft className="size-4" />}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <CategoryFormDialog open={dialogOpen} onClose={handleDialogClose} editData={editCategory} vendorId={vendorId ?? 0} userId={userId ?? 0} />
       </div>
-
-      {/* ── Dialog ── */}
-      <CategoryFormDialog
-        open={dialogOpen}
-        onClose={handleDialogClose}
-        editData={editCategory}
-        vendorId={vendorId ?? 0}
-        userId={userId ?? 0}
-      />
-    </div>
     </>
   );
 }

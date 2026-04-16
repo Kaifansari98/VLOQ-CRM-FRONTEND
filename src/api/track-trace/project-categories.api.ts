@@ -60,3 +60,13 @@ export const toggleProjectCategoryStatus = async (id: number, status: "Yes" | "N
   const { data } = await apiClient.patch(`/track-trace/project-categories/${id}/status`, { status });
   return data;
 };
+
+export const checkExternalToken = async (vendorId: number) => {
+  const res = await apiClient.get(`/track-trace/category/project-categories/check-token?vendor_id=${vendorId}`);
+  return res.data.data as { has_token: boolean; token: { name: string; email: string; created_at: string } | null };
+};
+ 
+export const syncCategoriesFromExternal = async (vendorId: number) => {
+  const res = await apiClient.post(`/track-trace/category/project-categories/sync`, { vendor_id: vendorId });
+  return res.data.data as { total: number; created: number; updated: number; skipped: number };
+};
