@@ -35,6 +35,8 @@ import {
   updateSiteTypeStatus,
   fetchUserTypes,
   createUser,
+  updateUser,
+  type UpdateUserMasterPayload,
 } from "@/api/typesMasterApi"
 import { useAppSelector } from "@/redux/store" // assuming you have typed hooks
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -65,6 +67,7 @@ export const useUsersForMaster = (params: {
   page: number;
   limit: number;
   search?: string;
+  franchise_id?: number;
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   return useQuery({
@@ -72,6 +75,7 @@ export const useUsersForMaster = (params: {
       params.page,
       params.limit,
       params.search ?? "",
+      params.franchise_id ?? 0,
     ]),
     queryFn: () => fetchUsersForMaster(vendorId!, params),
     enabled: !!vendorId,
@@ -705,6 +709,29 @@ export const useCreateUser = () => {
     onError: (error: any) => {
       toastManager.add({
         title: error?.response?.data?.message || "Failed to create user.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateUser = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: ({ userId, payload }: { userId: number; payload: UpdateUserMasterPayload }) =>
+      updateUser(userId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getUsersMasterQueryKey(vendorId) });
+      toastManager.add({
+        title: "User updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update user.",
         type: "error",
       });
     },

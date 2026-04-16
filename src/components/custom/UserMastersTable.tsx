@@ -10,13 +10,14 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { CheckIcon, EyeIcon, EyeOffIcon, Plus, UserPlus, XIcon } from "lucide-react";
+import { CheckIcon, EyeIcon, EyeOffIcon, ListFilter, Pencil, Plus, UserCog, UserPlus, XCircle, XIcon } from "lucide-react";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 import { cn } from "@/lib/utils";
 import {
   useUsersForMaster,
   useCreateUser,
+  useUpdateUser,
   useUserTypes,
 } from "@/hooks/useTypesMaster";
 import { useFranchisesByVendorId } from "@/api/franchise";
@@ -37,6 +38,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PhoneInput } from "@/components/ui/phone-input";
 import AssignToPicker from "@/components/assign-to-picker";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 type UserMasterRow = {
   srNo: number;
@@ -47,6 +55,8 @@ type UserMasterRow = {
   user_type: string;
   franchise_name: string;
   status: string;
+  franchise_id: number | null;
+  user_type_id: number | null;
 };
 
 function formatUserTypeLabel(value?: string | null) {
@@ -145,6 +155,82 @@ const columns: ColumnDef<UserMasterRow>[] = [
   },
 ];
 
+function FilterByStores({
+  value,
+  onChange,
+  franchises,
+}: {
+  value: number | undefined;
+  onChange: (v: number | undefined) => void;
+  franchises: { id: number; franchise_name: string }[];
+}) {
+  const isFiltered = value !== undefined;
+  const selectedLabel = franchises.find((f) => f.id === value)?.franchise_name;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="border-dashed h-9">
+          {isFiltered ? (
+            <div
+              role="button"
+              aria-label="Clear store filter"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange(undefined);
+              }}
+              className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0"
+            >
+              <XCircle className="h-4 w-4" />
+            </div>
+          ) : (
+            <ListFilter className="h-4 w-4 shrink-0" />
+          )}
+          <span className="flex items-center gap-1.5 truncate">
+            <span className="truncate">Filter by Store</span>
+            {isFiltered && (
+              <>
+                <Separator
+                  orientation="vertical"
+                  className="mx-0.5 data-[orientation=vertical]:h-4"
+                />
+                <Badge
+                  variant="secondary"
+                  className="font-normal px-1.5 py-0 h-5 text-xs truncate max-w-[120px]"
+                >
+                  {selectedLabel}
+                </Badge>
+              </>
+            )}
+          </span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-1" align="start">
+        <button
+          onClick={() => onChange(undefined)}
+          className={`w-full text-left px-3 py-1.5 text-sm rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
+            !isFiltered ? "bg-accent text-accent-foreground font-medium" : ""
+          }`}
+        >
+          All Stores
+        </button>
+        {franchises.map((fr) => (
+          <button
+            key={fr.id}
+            onClick={() => onChange(fr.id)}
+            className={`w-full text-left px-3 py-1.5 text-sm rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
+              value === fr.id ? "bg-accent text-accent-foreground font-medium" : ""
+            }`}
+          >
+            {fr.franchise_name}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 const strengthRequirements = [
   { regex: /.{8,}/, text: "At least 8 characters" },
   { regex: /[0-9]/, text: "At least 1 number" },
@@ -189,17 +275,23 @@ export default function UserMastersTable() {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [openCreateModal, setOpenCreateModal] = React.useState(false);
+  const [modalMode, setModalMode] = React.useState<"create" | "edit">("create");
+  const [editingUserId, setEditingUserId] = React.useState<number | null>(null);
+  const [franchiseFilter, setFranchiseFilter] = React.useState<number | undefined>(undefined);
   const [form, setForm] = React.useState(defaultForm);
+  const [originalForm, setOriginalForm] = React.useState(defaultForm);
   const [showPassword, setShowPassword] = React.useState(false);
 
   const { data, isLoading, isError, error } = useUsersForMaster({
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
     search: globalFilter,
+    franchise_id: franchiseFilter,
   });
   const { data: franchisesData = [] } = useFranchisesByVendorId(vendorId, !!vendorId);
   const { data: userTypesData } = useUserTypes();
   const createUserMutation = useCreateUser();
+  const updateUserMutation = useUpdateUser();
 
   const tableData = React.useMemo<UserMasterRow[]>(
     () =>
@@ -212,6 +304,9 @@ export default function UserMastersTable() {
         user_type: item.user_type?.user_type ?? "—",
         franchise_name: item.franchise?.franchise_name ?? "—",
         status: item.status,
+        franchise_id: item.franchise_id ?? null,
+        user_type_id:
+          userTypesData?.data?.find((ut) => ut.user_type === item.user_type?.user_type)?.id ?? null,
       })),
     [data, pagination.pageIndex, pagination.pageSize],
   );
@@ -245,16 +340,85 @@ export default function UserMastersTable() {
 
   const resetForm = () => {
     setForm(defaultForm);
+    setOriginalForm(defaultForm);
     setShowPassword(false);
+    setModalMode("create");
+    setEditingUserId(null);
   };
 
   const isFormValid =
     form.user_name.trim() &&
     form.user_contact.trim() &&
     form.user_email.trim() &&
-    form.password.trim() &&
+    (modalMode === "edit" || form.password.trim()) &&
     form.franchise_id &&
     form.user_type_id;
+
+  const handleRowDoubleClick = (row: UserMasterRow) => {
+    const prefilled = {
+      user_name: row.user_name,
+      user_contact: row.user_contact,
+      user_email: row.user_email,
+      password: "",
+      franchise_id: row.franchise_id ? String(row.franchise_id) : "",
+      user_type_id: row.user_type_id ? String(row.user_type_id) : "",
+      status: (row.status === "active" || row.status === "inactive" ? row.status : "active") as "active" | "inactive",
+    };
+    setForm(prefilled);
+    setOriginalForm(prefilled);
+    setEditingUserId(row.id);
+    setModalMode("edit");
+    setOpenCreateModal(true);
+  };
+
+  const handleSave = () => {
+    if (!editingUserId || !vendorId) return;
+
+    // Normalize phone to national number for comparison
+    const extractNational = (val: string) => {
+      const parsed = parsePhoneNumberFromString(val);
+      return parsed?.nationalNumber ?? val.replace(/\D/g, "");
+    };
+
+    const payload: Record<string, any> = {};
+
+    if (form.user_name.trim() !== originalForm.user_name.trim())
+      payload.user_name = form.user_name.trim();
+
+    const currContact = extractNational(form.user_contact);
+    const origContact = extractNational(originalForm.user_contact);
+    if (currContact !== origContact) payload.user_contact = currContact;
+
+    if (form.user_email.trim() !== originalForm.user_email.trim())
+      payload.user_email = form.user_email.trim();
+
+    if (form.franchise_id !== originalForm.franchise_id)
+      payload.franchise_id = Number(form.franchise_id);
+
+    if (form.user_type_id !== originalForm.user_type_id)
+      payload.user_type_id = Number(form.user_type_id);
+
+    if (form.status !== originalForm.status) payload.status = form.status;
+
+    // Only include password if the user typed something new
+    if (form.password.trim()) payload.password = form.password;
+
+    if (Object.keys(payload).length === 0) {
+      setOpenCreateModal(false);
+      resetForm();
+      return;
+    }
+
+    updateUserMutation.mutate(
+      { userId: editingUserId, payload },
+      {
+        onSuccess: () => {
+          resetForm();
+          setOpenCreateModal(false);
+        },
+      },
+    );
+  };
 
   const handleCreate = () => {
     if (!isFormValid || !vendorId) return;
@@ -288,15 +452,25 @@ export default function UserMastersTable() {
       <Card className="rounded-2xl p-0 border-0">
         <CardContent className="space-y-4 p-0">
           <div className="flex items-center justify-between gap-3">
-            <ClearInput
-              value={globalFilter}
-              onChange={(e) => {
-                setGlobalFilter(e.target.value);
-                setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-              }}
-              placeholder="Search users..."
-              className="h-9 w-full max-w-sm"
-            />
+            <div className="flex items-center gap-2 flex-1">
+              <ClearInput
+                value={globalFilter}
+                onChange={(e) => {
+                  setGlobalFilter(e.target.value);
+                  setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                }}
+                placeholder="Search users..."
+                className="h-9 w-full max-w-md"
+              />
+              <FilterByStores
+                value={franchiseFilter}
+                onChange={(v) => {
+                  setFranchiseFilter(v);
+                  setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                }}
+                franchises={franchisesData}
+              />
+            </div>
             <Button onClick={() => setOpenCreateModal(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Create User
@@ -313,7 +487,7 @@ export default function UserMastersTable() {
             </div>
           ) : (
             <div className="select-none">
-              <DataTable table={table} />
+              <DataTable table={table} onRowDoubleClick={handleRowDoubleClick} />
             </div>
           )}
         </CardContent>
@@ -328,21 +502,28 @@ export default function UserMastersTable() {
       >
         <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center gap-3 px-6 pt-6 pb-4 border-b">
+          <div className="flex items-center gap-3 px-6 pt-6 pb-0">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-              <UserPlus size={18} className="text-primary" />
+              {modalMode === "edit" ? (
+                <UserCog size={18} className="text-primary" />
+              ) : (
+                <UserPlus size={18} className="text-primary" />
+              )}
             </div>
             <div className="flex flex-col">
               <DialogTitle className="text-base font-semibold leading-tight">
-                Create User
+                {modalMode === "edit" ? "Edit User" : "Create User"}
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground leading-tight mt-0.5">
-                Add a new user for this vendor.
+                {modalMode === "edit"
+                  ? "Update the details for this user."
+                  : "Add a new user for this vendor."}
               </DialogDescription>
             </div>
           </div>
+          <div className="mx-6 border-b" />
 
-          <div className="px-6 pt-2 pb-5 space-y-4">
+          <div className="px-6 pb-5 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             {/* Row 1: User Name | Contact No. */}
             <div className="space-y-2">
@@ -429,14 +610,18 @@ export default function UserMastersTable() {
 
             {/* Row 4: Password (full width) */}
             <div className="col-span-2 space-y-2">
-              <Label htmlFor="user-password">Password</Label>
+              <Label htmlFor="user-password">
+                Password{modalMode === "edit" && (
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">(leave blank to keep current)</span>
+                )}
+              </Label>
               <div className="relative">
                 <Input
                   id="user-password"
                   type={showPassword ? "text" : "password"}
                   value={form.password}
                   onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                  placeholder="Enter password"
+                  placeholder={modalMode === "edit" ? "Leave blank to keep current password" : "Enter password"}
                   className="pe-9 h-9"
                 />
                 <button
@@ -449,39 +634,43 @@ export default function UserMastersTable() {
                 </button>
               </div>
 
-              {/* Strength bar */}
-              <div
-                role="progressbar"
-                aria-valuemin={0}
-                aria-valuemax={5}
-                aria-valuenow={passwordStrengthScore}
-                aria-label="Password strength"
-                className="mt-2 mb-2 h-1 w-full overflow-hidden rounded-full bg-border"
-              >
-                <div
-                  className={`h-full transition-all duration-500 ease-out ${getStrengthColor(passwordStrengthScore)}`}
-                  style={{ width: `${(passwordStrengthScore / 5) * 100}%` }}
-                />
-              </div>
+              {/* Strength bar — always shown in create, only shown when typing in edit */}
+              {(modalMode === "create" || form.password.length > 0) && (
+                <>
+                  <div
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={5}
+                    aria-valuenow={passwordStrengthScore}
+                    aria-label="Password strength"
+                    className="mt-2 mb-2 h-1 w-full overflow-hidden rounded-full bg-border"
+                  >
+                    <div
+                      className={`h-full transition-all duration-500 ease-out ${getStrengthColor(passwordStrengthScore)}`}
+                      style={{ width: `${(passwordStrengthScore / 5) * 100}%` }}
+                    />
+                  </div>
 
-              <p className="text-xs font-medium text-foreground mb-1.5">
-                {getStrengthText(passwordStrengthScore)}
-              </p>
+                  <p className="text-xs font-medium text-foreground mb-1.5">
+                    {getStrengthText(passwordStrengthScore)}
+                  </p>
 
-              <ul className="space-y-1">
-                {passwordStrength.map((req) => (
-                  <li key={req.text} className="flex items-center gap-2">
-                    {req.met ? (
-                      <CheckIcon size={13} className="text-emerald-500 shrink-0" />
-                    ) : (
-                      <XIcon size={13} className="text-muted-foreground/60 shrink-0" />
-                    )}
-                    <span className={`text-xs ${req.met ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
-                      {req.text}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+                  <ul className="space-y-1">
+                    {passwordStrength.map((req) => (
+                      <li key={req.text} className="flex items-center gap-2">
+                        {req.met ? (
+                          <CheckIcon size={13} className="text-emerald-500 shrink-0" />
+                        ) : (
+                          <XIcon size={13} className="text-muted-foreground/60 shrink-0" />
+                        )}
+                        <span className={`text-xs ${req.met ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                          {req.text}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
           </div>
 
@@ -493,16 +682,34 @@ export default function UserMastersTable() {
                 setOpenCreateModal(false);
                 resetForm();
               }}
-              disabled={createUserMutation.isPending}
+              disabled={createUserMutation.isPending || updateUserMutation.isPending}
             >
               Cancel
             </Button>
             <Button
               size="sm"
-              onClick={handleCreate}
-              disabled={!isFormValid || !vendorId || createUserMutation.isPending}
+              onClick={modalMode === "edit" ? handleSave : handleCreate}
+              disabled={
+                !isFormValid ||
+                !vendorId ||
+                createUserMutation.isPending ||
+                updateUserMutation.isPending
+              }
             >
-              {createUserMutation.isPending ? "Creating..." : "Create User"}
+              {modalMode === "edit" ? (
+                updateUserMutation.isPending ? (
+                  "Saving..."
+                ) : (
+                  <>
+                    <Pencil size={13} className="mr-1.5" />
+                    Save Changes
+                  </>
+                )
+              ) : createUserMutation.isPending ? (
+                "Creating..."
+              ) : (
+                "Create User"
+              )}
             </Button>
           </div>
           </div>

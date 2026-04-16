@@ -425,13 +425,14 @@ export const fetchCompanyVendorsForMaster = async (vendorId: number) => {
 
 export const fetchUsersForMaster = async (
   vendorId: number,
-  params: { page: number; limit: number; search?: string },
+  params: { page: number; limit: number; search?: string; franchise_id?: number },
 ) => {
   const res = await apiClient.get<UserMasterResponse>(`/users/vendor/${vendorId}`, {
     params: {
       page: params.page,
       limit: params.limit,
       search: params.search ?? "",
+      ...(params.franchise_id ? { franchise_id: params.franchise_id } : {}),
     },
   });
   return {
@@ -568,5 +569,21 @@ export const fetchUserTypes = async () => {
 
 export const createUser = async (payload: CreateUserMasterPayload) => {
   const res = await apiClient.post(`/users/create-user`, payload);
+  return res.data;
+}
+
+export interface UpdateUserMasterPayload {
+  user_name?: string;
+  user_contact?: string;
+  user_email?: string;
+  user_timezone?: string;
+  password?: string;
+  user_type_id?: number;
+  franchise_id?: number | null;
+  status?: string;
+}
+
+export const updateUser = async (userId: number, payload: UpdateUserMasterPayload) => {
+  const res = await apiClient.patch(`/users/update-user/${userId}`, payload);
   return res.data;
 }
