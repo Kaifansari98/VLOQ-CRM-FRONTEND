@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -76,13 +77,20 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onC
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const previewUrl = getPreviewUrl(url, fileExt);
 
-  return (
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, []);
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-sm p-4 sm:p-6"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-4xl h-[85vh] rounded-xl overflow-hidden bg-white dark:bg-neutral-900 border border-border flex flex-col"
+        className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-white dark:bg-neutral-900 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -97,7 +105,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onC
           </div>
           <button
             onClick={onClose}
-            className="ml-3 shrink-0 p-1.5 rounded-full border border-border hover:bg-muted dark:hover:bg-neutral-800 transition-colors text-neutral-500 dark:text-neutral-400"
+            className="ml-3 shrink-0 p-1.5 rounded-full text-neutral-500 dark:text-neutral-400"
             aria-label="Close preview"
           >
             ✕
@@ -121,7 +129,8 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onC
           />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
 
