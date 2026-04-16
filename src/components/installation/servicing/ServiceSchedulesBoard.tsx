@@ -74,6 +74,9 @@ export default function ServiceSchedulesBoard({
   description,
 }: ServiceSchedulesBoardProps) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
   const [openActionModal, setOpenActionModal] = useState(false);
   const [openViewModal, setOpenViewModal] = useState(false);
   const [activeService, setActiveService] = useState<ServiceSchedule | null>(null);
@@ -81,6 +84,17 @@ export default function ServiceSchedulesBoard({
     vendorId,
     leadId,
   );
+  const normalizedUserType = String(userType ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, "-");
+  const canTakeServicingAction = ![
+    "sales-executive",
+    "tech-check",
+    "backend",
+    "pre-prod",
+    "production",
+  ].includes(normalizedUserType);
 
   const filteredServiceCards = useMemo(
     () =>
@@ -154,7 +168,7 @@ export default function ServiceSchedulesBoard({
                       >
                         View
                       </Button>
-                    ) : isActionDisabled ? (
+                    ) : !canTakeServicingAction ? null : isActionDisabled ? (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span tabIndex={0}>
