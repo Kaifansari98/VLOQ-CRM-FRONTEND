@@ -41,27 +41,25 @@ import CustomeDatePicker from "@/components/date-picker";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { addDays, format } from "date-fns";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 
-const getMinClientRequiredDate = () =>
-  format(addDays(new Date(), 20), "yyyy-MM-dd");
+const DEFAULT_MIN_DAYS = 20;
 
-const schema = z.object({
-  assign_to_user_id: z.number().min(1, "Please select a Tech Check user"),
-  client_required_order_login_complition_date: z
-    .string()
-    .min(1, "Please select a date")
-    .refine(
-      (value) => {
-        if (!value) return false;
-        return value >= getMinClientRequiredDate();
-      },
-      {
-        message: "Client required date must be at least 20 days after Move to Tech Check",
-      },
-    ),
-});
+const buildSchema = (minDate: string, minDays: number) =>
+  z.object({
+    assign_to_user_id: z.number().min(1, "Please select a Tech Check user"),
+    client_required_order_login_complition_date: z
+      .string()
+      .min(1, "Please select a date")
+      .refine((value) => !!value && value >= minDate, {
+        message: `Client required date must be at least ${minDays} days from today`,
+      }),
+  });
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = {
+  assign_to_user_id: number;
+  client_required_order_login_complition_date: string;
+};
 
 interface RequestToTechCheckModalProps {
   open: boolean;
@@ -84,7 +82,16 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
 
   const { data: techCheckUsers, isLoading } = useTechCheckUsers(vendorId!);
   const { mutate, isPending } = useRequestToTechCheck();
-  const minClientRequiredDate = getMinClientRequiredDate();
+  const { data: leadStatusData } = useLeadStatus(data.id, vendorId);
+
+  const minDays =
+    (leadStatusData as any)?.total_required_chs_manufacturing_days ??
+    DEFAULT_MIN_DAYS;
+  const minClientRequiredDate = format(addDays(new Date(), minDays), "yyyy-MM-dd");
+  const schema = React.useMemo(
+    () => buildSchema(minClientRequiredDate, minDays),
+    [minClientRequiredDate, minDays],
+  );
 
   const [showSingleUserConfirm, setShowSingleUserConfirm] = useState(false);
   const [singleUserDate, setSingleUserDate] = useState<string | undefined>("");
@@ -126,7 +133,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
 
     if (singleUserDate < minClientRequiredDate) {
       toastManager.add({
-        title: "Client required date must be at least 20 days after Move to Tech Check",
+        title: `Client required date must be at least ${minDays} days from today`,
         type: "error",
       });
       return;
