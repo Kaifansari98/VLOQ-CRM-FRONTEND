@@ -84,11 +84,17 @@ interface Props {
 }
 
 const formSchema = z.object({
-  carcas: z.array(z.string()).optional(),
+  carcas: z
+    .array(z.string())
+    .min(1, "Select at least one carcass type"),
   carcas_remark: z.string().optional(),
-  shutter: z.array(z.string()).optional(),
+  shutter: z
+    .array(z.string())
+    .min(1, "Select at least one shutter type"),
   shutter_remark: z.string().optional(),
-  handles: z.array(z.string()).optional(),
+  handles: z
+    .array(z.string())
+    .min(1, "Select at least one handle type"),
   handles_remark: z.string().optional(),
 });
 
@@ -891,49 +897,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
                 <FormField
                   control={selectionForm.control}
-                  name="shutter"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel className="font-medium">Shutter</FormLabel>
-                      <FormControl>
-                        <ClientDocsSelectionMultiSelect
-                          value={field.value || []}
-                          onChange={field.onChange}
-                          options={shutterOptions}
-                          placeholder="Select shutter options"
-                          disabled={
-                            isPending || !canUpdateInput || isSelectionMastersLoading
-                          }
-                        />
-                      </FormControl>
-                      <FormField
-                        control={selectionForm.control}
-                        name="shutter_remark"
-                        render={({ field: remarkField }) => (
-                          <FormItem>
-                            <FormControl>
-                              <TextAreaInput
-                                value={remarkField.value ?? DEFAULT_REMARK}
-                                onChange={remarkField.onChange}
-                                placeholder="Enter shutter remark..."
-                                disabled={isPending || !canUpdateInput}
-                                className="h-24"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={selectionForm.control}
                   name="handles"
                   render={({ field }) => (
-                    <FormItem className="space-y-2 md:col-span-2">
+                    <FormItem className="space-y-2">
                       <FormLabel className="font-medium">Handles</FormLabel>
                       <FormControl>
                         <ClientDocsSelectionMultiSelect
@@ -956,6 +922,46 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                 value={remarkField.value ?? DEFAULT_REMARK}
                                 onChange={remarkField.onChange}
                                 placeholder="Enter handles remark..."
+                                disabled={isPending || !canUpdateInput}
+                                className="h-24"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={selectionForm.control}
+                  name="shutter"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2 md:col-span-2">
+                      <FormLabel className="font-medium">Shutter</FormLabel>
+                      <FormControl>
+                        <ClientDocsSelectionMultiSelect
+                          value={field.value || []}
+                          onChange={field.onChange}
+                          options={shutterOptions}
+                          placeholder="Select shutter options"
+                          disabled={
+                            isPending || !canUpdateInput || isSelectionMastersLoading
+                          }
+                        />
+                      </FormControl>
+                      <FormField
+                        control={selectionForm.control}
+                        name="shutter_remark"
+                        render={({ field: remarkField }) => (
+                          <FormItem>
+                            <FormControl>
+                              <TextAreaInput
+                                value={remarkField.value ?? DEFAULT_REMARK}
+                                onChange={remarkField.onChange}
+                                placeholder="Enter shutter remark..."
                                 disabled={isPending || !canUpdateInput}
                                 className="h-24"
                               />
