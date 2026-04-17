@@ -776,15 +776,16 @@ export function UniversalTable({
     const isType9 = normalizedType === "type 9";
     const isType10 = normalizedType === "type 10";
 
+    let rows: LeadColumn[];
+
     if (!isType8 && !isType9 && !isType10) {
-      return activeData.map((item, idx) =>
+      rows = activeData.map((item, idx) =>
         mapUniversalRow(item, idx, { rowKey: String(item.id) }),
       );
-    }
+    } else {
+      const expanded: LeadColumn[] = [];
 
-    const expanded: LeadColumn[] = [];
-
-    activeData.forEach((lead) => {
+      activeData.forEach((lead) => {
       const instances = Array.isArray(lead?.productStructureInstances)
         ? lead.productStructureInstances
         : [];
@@ -879,8 +880,26 @@ export function UniversalTable({
       });
     });
 
-    return expanded;
-  }, [activeData, normalizedType]);
+      rows = expanded;
+    }
+
+    // Client-side month filter for the servicing table.
+    // The backend receives date_range but may not filter reliably, so we
+    // enforce it here using the already-resolved next-pending service date.
+    if (showServicingColumn && pendingServicesOnly && servicingMonthFilter) {
+      return rows.filter((row) => {
+        if (!row.scheduledAt) return false;
+        const date = new Date(row.scheduledAt as string);
+        if (isNaN(date.getTime())) return false;
+        return (
+          date.getMonth() === servicingMonthFilter.month &&
+          date.getFullYear() === servicingMonthFilter.year
+        );
+      });
+    }
+
+    return rows;
+  }, [activeData, normalizedType, showServicingColumn, pendingServicesOnly, servicingMonthFilter]);
 
   React.useEffect(() => {
     // console.log("[UniversalTable] data pipeline", {
