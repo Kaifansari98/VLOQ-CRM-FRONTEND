@@ -122,6 +122,46 @@ export interface UserMasterResponse {
   };
 }
 
+export interface CarcassTypeMasterEntry {
+  id: number;
+  name: string;
+  vendor_id: number;
+}
+
+export interface CarcassTypeMasterResponse {
+  success: boolean;
+  data: CarcassTypeMasterEntry[];
+}
+
+export interface ShutterSubTypeMasterEntry {
+  id: number;
+  name: string;
+  shutter_type_id: number;
+}
+
+export interface ShutterTypeMasterEntry {
+  id: number;
+  name: string;
+  vendor_id: number;
+  subTypes?: ShutterSubTypeMasterEntry[];
+}
+
+export interface ShutterTypeMasterResponse {
+  success: boolean;
+  data: ShutterTypeMasterEntry[];
+}
+
+export interface HandleTypeMasterEntry {
+  id: number;
+  name: string;
+  vendor_id: number;
+}
+
+export interface HandleTypeMasterResponse {
+  success: boolean;
+  data: HandleTypeMasterEntry[];
+}
+
 export interface CreateSiteTypeMasterPayload {
   vendor_id: number;
   type: string;
@@ -244,6 +284,41 @@ export const fetchSourceTypes = async (vendorId: number) => {
 export const fetchProductStructureTypes = async (vendorId: number) => {
   const res = await apiClient.get(`/leads/get-all-productStructure-types/${vendorId}`)
   return res.data
+}
+
+export const fetchCarcassTypes = async (vendorId: number) => {
+  const res = await apiClient.get<CarcassTypeMasterResponse>(
+    `/leads/get-all-carcass-types/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const fetchShutterTypes = async (vendorId: number) => {
+  const res = await apiClient.get<ShutterTypeMasterResponse>(
+    `/leads/get-all-shutter-types/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data)
+      ? res.data.data.map((item) => ({
+          ...item,
+          subTypes: Array.isArray(item.subTypes) ? item.subTypes : [],
+        }))
+      : [],
+  };
+}
+
+export const fetchHandleTypes = async (vendorId: number) => {
+  const res = await apiClient.get<HandleTypeMasterResponse>(
+    `/leads/get-all-handle-types/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
 }
 
 export const fetchSiteTypes = async (vendorId: number) => {

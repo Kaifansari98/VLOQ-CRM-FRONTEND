@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useEffect } from "react";
 import { Command as CommandPrimitive, useCommandState } from "cmdk";
-import { XIcon } from "lucide-react";
+import { Check, XIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -90,6 +90,8 @@ interface MultipleSelectorProps {
   showSelectedOptionsInDropdown?: boolean;
   /** Allow selecting the same option multiple times. */
   allowDuplicateSelections?: boolean;
+  /** Show a right-side check icon for selected dropdown items. */
+  showSelectedCheckIcon?: boolean;
 }
 
 export interface MultipleSelectorRef {
@@ -204,6 +206,7 @@ const MultipleSelector = ({
   hideClearAllButton = false,
   showSelectedOptionsInDropdown = false,
   allowDuplicateSelections = false,
+  showSelectedCheckIcon = false,
 }: MultipleSelectorProps) => {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [open, setOpen] = React.useState(false);
@@ -693,7 +696,12 @@ const MultipleSelector = ({
                                   "pointer-events-none cursor-not-allowed opacity-50"
                               )}
                             >
-                              {option.label}
+                              <span className="flex min-w-0 flex-1 items-center">
+                                {option.label}
+                              </span>
+                              {showSelectedCheckIcon && isSelected ? (
+                                <Check className="ml-2 h-4 w-4 shrink-0" />
+                              ) : null}
                             </CommandItem>
                           );
                         })}

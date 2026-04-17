@@ -65,6 +65,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useDeleteDocument } from "@/api/leads";
+import {
+  useCarcassTypes,
+  useHandleTypes,
+  useShutterTypes,
+} from "@/hooks/useTypesMaster";
+import ClientDocsSelectionMultiSelect, {
+  ClientDocsSelectionOption,
+} from "./ClientDocsSelectionMultiSelect";
 
 interface Props {
   leadId: number;
@@ -73,9 +81,12 @@ interface Props {
 }
 
 const formSchema = z.object({
-  carcas: z.string().optional(),
-  shutter: z.string().optional(),
-  handles: z.string().optional(),
+  carcas: z.array(z.string()).optional(),
+  carcas_remark: z.string().optional(),
+  shutter: z.array(z.string()).optional(),
+  shutter_remark: z.string().optional(),
+  handles: z.array(z.string()).optional(),
+  handles_remark: z.string().optional(),
 });
 
 const instanceUploadSchema = z.object({
@@ -89,6 +100,39 @@ const instanceUploadSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 type InstanceUploadValues = z.infer<typeof instanceUploadSchema>;
+
+const splitSelectionValue = (value?: string) =>
+  (value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => {
+      const normalized = item.toUpperCase();
+      return Boolean(item) && normalized !== "NULL" && normalized !== "N/A";
+    });
+
+const DEFAULT_REMARK = "N/A";
+
+const parseSelectionDesc = (value?: string) => {
+  const raw = (value || "").trim();
+  if (!raw) {
+    return { selections: [] as string[], remark: DEFAULT_REMARK };
+  }
+
+  const selectionMatch = raw.match(/Selections:\s*([\s\S]*?)(?:\nRemark:|$)/i);
+  const remarkMatch = raw.match(/Remark:\s*([\s\S]*)$/i);
+
+  if (selectionMatch || remarkMatch) {
+    return {
+      selections: splitSelectionValue(selectionMatch?.[1] || ""),
+      remark: remarkMatch?.[1]?.trim() || DEFAULT_REMARK,
+    };
+  }
+
+  return {
+    selections: splitSelectionValue(raw),
+    remark: DEFAULT_REMARK,
+  };
+};
 
 const SelectionsTabForClientDocs: React.FC<Props> = ({
   leadId,
@@ -112,6 +156,12 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     isError,
     refetch,
   } = useSelectionData(vendorId!, leadId!);
+  const { data: carcassTypesData, isLoading: isCarcassTypesLoading } =
+    useCarcassTypes();
+  const { data: shutterTypesData, isLoading: isShutterTypesLoading } =
+    useShutterTypes();
+  const { data: handleTypesData, isLoading: isHandleTypesLoading } =
+    useHandleTypes();
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const { data: structureInstancesData } = useLeadProductStructureInstances(
     leadId,
@@ -149,9 +199,95 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     ? structureInstancesData.data
     : [];
 
+  const carcassOptions = React.useMemo<ClientDocsSelectionOption[]>(
+    () =>
+      (carcassTypesData?.data || []).map((item) => ({
+        value: `carcass-${item.id}`,
+        label: item.name,
+      })),
+    [carcassTypesData?.data],
+  );
+
+  const shutterOptions = React.useMemo<ClientDocsSelectionOption[]>(
+    () =>
+      [...(shutterTypesData?.data || [])]
+        .sort((a, b) => {
+          const aHasDistinctSubTypes = (a.subTypes || []).some((subType) => {
+            const subLabel = subType.name?.trim() || "";
+            const mainLabel = a.name?.trim() || "";
+            return (
+              subLabel.length > 0 &&
+              subLabel.toLowerCase() !== mainLabel.toLowerCase()
+            );
+          });
+          const bHasDistinctSubTypes = (b.subTypes || []).some((subType) => {
+            const subLabel = subType.name?.trim() || "";
+            const mainLabel = b.name?.trim() || "";
+            return (
+              subLabel.length > 0 &&
+              subLabel.toLowerCase() !== mainLabel.toLowerCase()
+            );
+          });
+
+          if (aHasDistinctSubTypes !== bHasDistinctSubTypes) {
+            return aHasDistinctSubTypes ? -1 : 1;
+          }
+
+          return (a.name || "").localeCompare(b.name || "");
+        })
+        .flatMap((item) => {
+        const mainLabel = item.name?.trim() || "";
+        const subTypes = Array.isArray(item.subTypes) ? item.subTypes : [];
+        const distinctSubTypes = subTypes.filter((subType) => {
+          const subLabel = subType.name?.trim() || "";
+          return (
+            subLabel.length > 0 &&
+            subLabel.toLowerCase() !== mainLabel.toLowerCase()
+          );
+        });
+
+        if (distinctSubTypes.length === 0) {
+          return mainLabel
+            ? [
+                {
+                  value: `shutter-${item.id}`,
+                  label: mainLabel,
+                },
+              ]
+            : [];
+        }
+
+        return distinctSubTypes.map((subType) => ({
+          value: `shutter-${item.id}-sub-${subType.id}`,
+          label: subType.name,
+          group: mainLabel,
+        }));
+      }),
+    [shutterTypesData?.data],
+  );
+
+  const handleOptions = React.useMemo<ClientDocsSelectionOption[]>(
+    () =>
+      (handleTypesData?.data || []).map((item) => ({
+        value: `handle-${item.id}`,
+        label: item.name,
+      })),
+    [handleTypesData?.data],
+  );
+
+  const isSelectionMastersLoading =
+    isCarcassTypesLoading || isShutterTypesLoading || isHandleTypesLoading;
+
   const selectionForm = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { carcas: "", shutter: "", handles: "" },
+    defaultValues: {
+      carcas: [],
+      carcas_remark: DEFAULT_REMARK,
+      shutter: [],
+      shutter_remark: DEFAULT_REMARK,
+      handles: [],
+      handles_remark: DEFAULT_REMARK,
+    },
     mode: "onBlur",
   });
 
@@ -233,42 +369,55 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       handles,
     });
 
+    const parsedCarcas = parseSelectionDesc(carcas?.desc);
+    const parsedShutter = parseSelectionDesc(shutter?.desc);
+    const parsedHandles = parseSelectionDesc(handles?.desc);
+
     setExistingSelections({ carcas, shutter, handles });
-    const sanitize = (val?: string) => {
-      const v = (val || "").trim().toUpperCase();
-      return v && v !== "NULL" && v !== "N/A" ? val : "";
-    };
     selectionForm.reset({
-      carcas: sanitize(carcas?.desc),
-      shutter: sanitize(shutter?.desc),
-      handles: sanitize(handles?.desc),
+      carcas: parsedCarcas.selections,
+      carcas_remark: parsedCarcas.remark,
+      shutter: parsedShutter.selections,
+      shutter_remark: parsedShutter.remark,
+      handles: parsedHandles.selections,
+      handles_remark: parsedHandles.remark,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeInstance?.id, selectionsData?.data]);
 
   useEffect(() => {
     if (!uploadModalOpen) {
-      const sanitize = (val?: string) => {
-        const v = (val || "").trim().toUpperCase();
-        return v && v !== "NULL" && v !== "N/A" ? val : "";
-      };
+      const parsedCarcas = parseSelectionDesc(existingSelections.carcas?.desc);
+      const parsedShutter = parseSelectionDesc(existingSelections.shutter?.desc);
+      const parsedHandles = parseSelectionDesc(existingSelections.handles?.desc);
+
       selectionForm.reset({
-        carcas: sanitize(existingSelections.carcas?.desc),
-        shutter: sanitize(existingSelections.shutter?.desc),
-        handles: sanitize(existingSelections.handles?.desc),
+        carcas: parsedCarcas.selections,
+        carcas_remark: parsedCarcas.remark,
+        shutter: parsedShutter.selections,
+        shutter_remark: parsedShutter.remark,
+        handles: parsedHandles.selections,
+        handles_remark: parsedHandles.remark,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadModalOpen]);
 
-  const normalizeValue = (v?: string) =>
-    v?.trim() && v.trim() !== "" ? v.trim() : "N/A";
+  const normalizeValue = (values?: string[], remark?: string) => {
+    const normalized = (values || [])
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const normalizedRemark = remark?.trim() || DEFAULT_REMARK;
+    const selectionText = normalized.length ? normalized.join(", ") : "N/A";
+    return `Selections: ${selectionText}\nRemark: ${normalizedRemark}`;
+  };
 
   const upsertSelection = async (
     type: "Carcas" | "Shutter" | "Handles",
-    descRaw?: string,
+    descRaw?: string[],
+    remark?: string,
   ) => {
-    const desc = normalizeValue(descRaw);
+    const desc = normalizeValue(descRaw, remark);
     const currentInstanceId = activeInstance?.id ?? null;
 
     // Get selections for the current instance to find the correct one
@@ -338,12 +487,18 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       return;
     }
 
-    if (dirtyFields.carcas)
-      promises.push(upsertSelection("Carcas", values.carcas));
-    if (dirtyFields.shutter)
-      promises.push(upsertSelection("Shutter", values.shutter));
-    if (dirtyFields.handles)
-      promises.push(upsertSelection("Handles", values.handles));
+    if (dirtyFields.carcas || dirtyFields.carcas_remark)
+      promises.push(
+        upsertSelection("Carcas", values.carcas, values.carcas_remark),
+      );
+    if (dirtyFields.shutter || dirtyFields.shutter_remark)
+      promises.push(
+        upsertSelection("Shutter", values.shutter, values.shutter_remark),
+      );
+    if (dirtyFields.handles || dirtyFields.handles_remark)
+      promises.push(
+        upsertSelection("Handles", values.handles, values.handles_remark),
+      );
 
     if (!promises.length) {
       toastManager.add({ title: "No changes detected", type: "info" });
@@ -650,24 +805,6 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const renderInstanceEditorContent = (instance_id: number | null) => {
     if (instance_id === null && structureInstances.length > 0) return null;
 
-    // Get selections for this specific instance_id
-    const instanceSelections = getSelectionsByInstanceId(instance_id);
-
-    // Get the current instance object (if exists)
-    const currentInstance = instance_id
-      ? structureInstances.find((inst) => inst.id === instance_id)
-      : null;
-
-    // Sanitize selection values for display
-    const sanitize = (val?: string) => {
-      const v = (val || "").trim().toUpperCase();
-      return v && v !== "NULL" && v !== "N/A" ? val : "";
-    };
-
-    const displayCarcas = sanitize(instanceSelections.carcas?.desc);
-    const displayShutter = sanitize(instanceSelections.shutter?.desc);
-    const displayHandles = sanitize(instanceSelections.handles?.desc);
-
     return (
       <div className="flex-1 space-y-6 py-4 px-5">
         <div className="space-y-4">
@@ -703,14 +840,34 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                     <FormItem className="space-y-2">
                       <FormLabel className="font-medium">Carcas</FormLabel>
                       <FormControl>
-                        <TextAreaInput
-                          value={displayCarcas || field.value || ""}
+                        <ClientDocsSelectionMultiSelect
+                          value={field.value || []}
                           onChange={field.onChange}
-                          placeholder="Enter Carcas selection..."
-                          disabled={isPending || !canUpdateInput}
-                          className="h-24"
+                          options={carcassOptions}
+                          placeholder="Select carcass options"
+                          disabled={
+                            isPending || !canUpdateInput || isSelectionMastersLoading
+                          }
                         />
                       </FormControl>
+                      <FormField
+                        control={selectionForm.control}
+                        name="carcas_remark"
+                        render={({ field: remarkField }) => (
+                          <FormItem className="">
+                            <FormControl>
+                              <TextAreaInput
+                                value={remarkField.value ?? DEFAULT_REMARK}
+                                onChange={remarkField.onChange}
+                                placeholder="Enter carcas remark..."
+                                disabled={isPending || !canUpdateInput}
+                                className="h-24"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -723,14 +880,34 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                     <FormItem className="space-y-2">
                       <FormLabel className="font-medium">Shutter</FormLabel>
                       <FormControl>
-                        <TextAreaInput
-                          value={displayShutter || field.value || ""}
+                        <ClientDocsSelectionMultiSelect
+                          value={field.value || []}
                           onChange={field.onChange}
-                          placeholder="Enter Shutter details..."
-                          disabled={isPending || !canUpdateInput}
-                          className="h-24"
+                          options={shutterOptions}
+                          placeholder="Select shutter options"
+                          disabled={
+                            isPending || !canUpdateInput || isSelectionMastersLoading
+                          }
                         />
                       </FormControl>
+                      <FormField
+                        control={selectionForm.control}
+                        name="shutter_remark"
+                        render={({ field: remarkField }) => (
+                          <FormItem>
+                            <FormControl>
+                              <TextAreaInput
+                                value={remarkField.value ?? DEFAULT_REMARK}
+                                onChange={remarkField.onChange}
+                                placeholder="Enter shutter remark..."
+                                disabled={isPending || !canUpdateInput}
+                                className="h-24"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -743,14 +920,34 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                     <FormItem className="space-y-2 md:col-span-2">
                       <FormLabel className="font-medium">Handles</FormLabel>
                       <FormControl>
-                        <TextAreaInput
-                          value={displayHandles || field.value || ""}
+                        <ClientDocsSelectionMultiSelect
+                          value={field.value || []}
                           onChange={field.onChange}
-                          placeholder="Enter Handles details..."
-                          disabled={isPending || !canUpdateInput}
-                          className="h-24"
+                          options={handleOptions}
+                          placeholder="Select handle options"
+                          disabled={
+                            isPending || !canUpdateInput || isSelectionMastersLoading
+                          }
                         />
                       </FormControl>
+                      <FormField
+                        control={selectionForm.control}
+                        name="handles_remark"
+                        render={({ field: remarkField }) => (
+                          <FormItem>
+                            <FormControl>
+                              <TextAreaInput
+                                value={remarkField.value ?? DEFAULT_REMARK}
+                                onChange={remarkField.onChange}
+                                placeholder="Enter handles remark..."
+                                disabled={isPending || !canUpdateInput}
+                                className="h-24"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}

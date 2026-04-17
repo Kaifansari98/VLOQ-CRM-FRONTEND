@@ -7,6 +7,9 @@ import {
   fetchInstallerUsersForMaster,
   fetchUsersForMaster,
   fetchCompanyVendorsForMaster,
+  fetchCarcassTypes,
+  fetchShutterTypes,
+  fetchHandleTypes,
   createMiscellaneousTeam,
   createMiscellaneousType,
   createSourceType,
@@ -51,6 +54,9 @@ const getMiscellaneousTeamsQueryKey = (vendorId?: number) => ["miscellaneousTeam
 const getInstallerUsersMasterQueryKey = (vendorId?: number) => ["installerUsersMaster", vendorId];
 const getCompanyVendorsMasterQueryKey = (vendorId?: number) => ["companyVendorsMaster", vendorId];
 const getUsersMasterQueryKey = (vendorId?: number) => ["usersMaster", vendorId];
+const getCarcassTypesQueryKey = (vendorId?: number) => ["carcassTypes", vendorId];
+const getShutterTypesQueryKey = (vendorId?: number) => ["shutterTypes", vendorId];
+const getHandleTypesQueryKey = (vendorId?: number) => ["handleTypes", vendorId];
 
 export const useCompanyVendorsForMaster = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -276,6 +282,39 @@ export const useProductStructureTypes = () => {
     queryFn: () => fetchProductStructureTypes(vendorId!),
     enabled: !!vendorId,
   })
+}
+
+export const useCarcassTypes = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getCarcassTypesQueryKey(vendorId),
+    queryFn: () => fetchCarcassTypes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useShutterTypes = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getShutterTypesQueryKey(vendorId),
+    queryFn: () => fetchShutterTypes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useHandleTypes = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getHandleTypesQueryKey(vendorId),
+    queryFn: () => fetchHandleTypes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
 }
 
 export const useSiteTypes = () => {
