@@ -7,7 +7,9 @@ import {
   useLeadStatus,
   useSelectionData,
   useSubmitSelection,
+  useUpsertCHSSelectionTypeMapping,
 } from "@/hooks/designing-stage/designing-leads-hooks";
+import type { CHSMappingItem } from "@/api/designingStageQueries";
 import { useAppSelector } from "@/redux/store";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -146,10 +148,12 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const queryClient = useQueryClient();
   const router = useRouter();
 
-  const { mutate: createSelection, isPending: isCreating } =
+  const { mutateAsync: createSelectionAsync, isPending: isCreating } =
     useSubmitSelection();
-  const { mutate: editSelection, isPending: isEditing } =
+  const { mutateAsync: editSelectionAsync, isPending: isEditing } =
     useEditSelectionData();
+  const { mutateAsync: saveCHSMappings } =
+    useUpsertCHSSelectionTypeMapping();
   const {
     data: selectionsData,
     isLoading,
@@ -412,72 +416,73 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     return `Selections: ${selectionText}\nRemark: ${normalizedRemark}`;
   };
 
+  const parseOptionValueToCHSItem = (
+    value: string,
+    type: "Carcas" | "Shutter" | "Handles",
+  ): CHSMappingItem => {
+    if (type === "Carcas") {
+      const match = value.match(/^carcass-(\d+)$/);
+      if (match) return { carcass_type_id: Number(match[1]) };
+    } else if (type === "Shutter") {
+      const subMatch = value.match(/^shutter-(\d+)-sub-(\d+)$/);
+      if (subMatch)
+        return {
+          shutter_type_id: Number(subMatch[1]),
+          shutter_sub_type_id: Number(subMatch[2]),
+        };
+      const match = value.match(/^shutter-(\d+)$/);
+      if (match) return { shutter_type_id: Number(match[1]) };
+    } else if (type === "Handles") {
+      const match = value.match(/^handle-(\d+)$/);
+      if (match) return { handle_type_id: Number(match[1]) };
+    }
+    return {};
+  };
+
   const upsertSelection = async (
     type: "Carcas" | "Shutter" | "Handles",
     descRaw?: string[],
     remark?: string,
-  ) => {
+  ): Promise<number | null> => {
     const desc = normalizeValue(descRaw, remark);
     const currentInstanceId = activeInstance?.id ?? null;
 
-    // Get selections for the current instance to find the correct one
     const instanceSelections = getSelectionsByInstanceId(currentInstanceId);
     const existing =
       instanceSelections[type.toLowerCase() as keyof typeof instanceSelections];
 
-    // Check if the existing selection is actually for THIS specific instance
-    // (not a lead-level fallback)
     const isInstanceSpecific =
       existing &&
       (existing.product_structure_instance_id ?? null) === currentInstanceId;
 
     if (existing && isInstanceSpecific) {
-      // Update the instance-specific selection
-      return new Promise<void>((resolve, reject) =>
-        editSelection(
-          {
-            selectionId: existing.id,
-            payload: {
-              type,
-              desc,
-              updated_by: userId!,
-              // Don't change the instance_id when updating
-              product_structure_instance_id:
-                existing.product_structure_instance_id ?? null,
-            },
-          },
-          {
-            onSuccess: () => resolve(),
-            onError: (e: any) => reject(e),
-          },
-        ),
-      );
-    }
-
-    // Create new selection (either no selection exists, or only lead-level exists)
-    // Don't modify lead-level selections; create instance-specific ones instead
-    return new Promise<void>((resolve, reject) =>
-      createSelection(
-        {
+      const result = await editSelectionAsync({
+        selectionId: existing.id,
+        payload: {
           type,
           desc,
-          vendor_id: vendorId!,
-          lead_id: leadId!,
-          user_id: userId!,
-          account_id: accountId!,
-          product_structure_instance_id: currentInstanceId,
+          updated_by: userId!,
+          product_structure_instance_id:
+            existing.product_structure_instance_id ?? null,
         },
-        {
-          onSuccess: () => resolve(),
-          onError: (e: any) => reject(e),
-        },
-      ),
-    );
+      });
+      return (result as any)?.data?.id ?? existing.id;
+    }
+
+    const result = await createSelectionAsync({
+      type,
+      desc,
+      vendor_id: vendorId!,
+      lead_id: leadId!,
+      user_id: userId!,
+      account_id: accountId!,
+      product_structure_instance_id: currentInstanceId,
+    });
+    return (result as any)?.data?.id ?? null;
   };
 
   const onSaveSelections = async (values: FormValues) => {
     const dirtyFields = selectionForm.formState.dirtyFields;
-    const promises: Promise<void>[] = [];
 
     if (!canUpdateInput) {
       toastManager.add({
@@ -487,26 +492,45 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       return;
     }
 
-    if (dirtyFields.carcas || dirtyFields.carcas_remark)
-      promises.push(
-        upsertSelection("Carcas", values.carcas, values.carcas_remark),
-      );
-    if (dirtyFields.shutter || dirtyFields.shutter_remark)
-      promises.push(
-        upsertSelection("Shutter", values.shutter, values.shutter_remark),
-      );
-    if (dirtyFields.handles || dirtyFields.handles_remark)
-      promises.push(
-        upsertSelection("Handles", values.handles, values.handles_remark),
-      );
+    const dirty: Array<{
+      type: "Carcas" | "Shutter" | "Handles";
+      vals?: string[];
+      remark?: string;
+    }> = [];
 
-    if (!promises.length) {
+    if (dirtyFields.carcas || dirtyFields.carcas_remark)
+      dirty.push({ type: "Carcas", vals: values.carcas, remark: values.carcas_remark });
+    if (dirtyFields.shutter || dirtyFields.shutter_remark)
+      dirty.push({ type: "Shutter", vals: values.shutter, remark: values.shutter_remark });
+    if (dirtyFields.handles || dirtyFields.handles_remark)
+      dirty.push({ type: "Handles", vals: values.handles, remark: values.handles_remark });
+
+    if (!dirty.length) {
       toastManager.add({ title: "No changes detected", type: "info" });
       return;
     }
 
     try {
-      await Promise.all(promises);
+      for (const { type, vals, remark } of dirty) {
+        const selectionId = await upsertSelection(type, vals, remark);
+
+        if (selectionId && vendorId && userId) {
+          const items: CHSMappingItem[] = (vals || [])
+            .map((v) => parseOptionValueToCHSItem(v, type))
+            .filter((item) => Object.keys(item).length > 0);
+
+          if (items.length > 0) {
+            await saveCHSMappings({
+              vendor_id: vendorId,
+              lead_id: leadId,
+              selection_id: selectionId,
+              items,
+              created_by: userId,
+            });
+          }
+        }
+      }
+
       toastManager.add({ title: "Selections saved", type: "success" });
       await refetch();
       queryClient.invalidateQueries({

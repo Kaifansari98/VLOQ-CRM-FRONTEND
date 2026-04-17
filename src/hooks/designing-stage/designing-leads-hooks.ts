@@ -6,6 +6,7 @@ import {
   fetchDesigningStageLeads,
   getDesigningStageCounts,
   getDesignsDoc,
+  getCHSSelectionTypeMappings,
   getInstanceStage,
   getLeadStatus,
   getLeadStatusNotification,
@@ -14,6 +15,10 @@ import {
   submitQuotation,
   submitSelection,
   SubmitSelectionPayload,
+  upsertCHSSelectionTypeMapping,
+  UpsertCHSMappingPayload,
+  updateCHSSelectionTypeMapping,
+  UpdateCHSMappingPayload,
 } from "@/api/designingStageQueries";
 import {
   DesignSelectionsResponse,
@@ -163,6 +168,47 @@ export const useAddMeetingDocs = () => {
     },
   });
 };
+
+// ─── CHS Selection Type Mapping Hooks ────────────────────────────────────────
+
+export const useUpsertCHSSelectionTypeMapping = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpsertCHSMappingPayload) =>
+      upsertCHSSelectionTypeMapping(payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["chsSelectionMappings", variables.vendor_id, variables.lead_id],
+      });
+    },
+  });
+};
+
+export const useGetCHSSelectionTypeMappings = (
+  vendorId?: number,
+  leadId?: number,
+  selectionId?: number,
+) => {
+  return useQuery({
+    queryKey: ["chsSelectionMappings", vendorId, leadId, selectionId],
+    queryFn: () => getCHSSelectionTypeMappings(vendorId!, leadId!, selectionId),
+    enabled: !!vendorId && !!leadId,
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+export const useUpdateCHSSelectionTypeMapping = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: UpdateCHSMappingPayload }) =>
+      updateCHSSelectionTypeMapping(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chsSelectionMappings"] });
+    },
+  });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const useLeadStatus = (leadId?: number, vendorId?: number) => {
   return useQuery({

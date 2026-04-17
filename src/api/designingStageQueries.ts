@@ -276,6 +276,68 @@ export const editSelection = async (
   return response.data;
 };
 
+// ─── CHS Selection Type Mapping ──────────────────────────────────────────────
+
+export interface CHSMappingItem {
+  carcass_type_id?: number | null;
+  shutter_type_id?: number | null;
+  shutter_sub_type_id?: number | null;
+  handle_type_id?: number | null;
+}
+
+export interface UpsertCHSMappingPayload {
+  vendor_id: number;
+  lead_id: number;
+  selection_id: number;
+  items: CHSMappingItem[];
+  created_by: number;
+}
+
+export interface UpdateCHSMappingPayload {
+  carcass_type_id?: number | null;
+  shutter_type_id?: number | null;
+  shutter_sub_type_id?: number | null;
+  handle_type_id?: number | null;
+  updated_by: number;
+}
+
+export const upsertCHSSelectionTypeMapping = async (
+  payload: UpsertCHSMappingPayload,
+) => {
+  const { data } = await apiClient.post(
+    "/leads/designing-stage/chs-selection-type-mapping",
+    payload,
+  );
+  return data;
+};
+
+export const getCHSSelectionTypeMappings = async (
+  vendorId: number,
+  leadId: number,
+  selectionId?: number,
+) => {
+  const params = new URLSearchParams();
+  if (selectionId) params.set("selection_id", String(selectionId));
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/chs-selection-type-mapping${query}`,
+  );
+  return data;
+};
+
+export const updateCHSSelectionTypeMapping = async (
+  id: number,
+  payload: UpdateCHSMappingPayload,
+) => {
+  const { data } = await apiClient.put(
+    `/leads/designing-stage/chs-selection-type-mapping/${id}`,
+    payload,
+  );
+  return data;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const getDesigningStageCounts = async (
   vendorId: number,
   leadId: number,
