@@ -846,7 +846,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                 return days != null ? (
                   <div className="flex items-center gap-2 mt-1.5">
                     <span className="text-xs text-muted-foreground">
-                      CHS Manufacturing Timeline:
+                      Manufacturing Timeline:
                     </span>
                     <span className="inline-flex items-center gap-1 text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                       {days} days
