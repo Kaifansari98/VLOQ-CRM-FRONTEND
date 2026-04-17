@@ -528,6 +528,12 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         queryKey: ["designingStageCounts", vendorId, leadId],
       });
       queryClient.invalidateQueries({
+        queryKey: ["lead-status", leadId, vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["chsSelectionMappings", vendorId, leadId],
+      });
+      queryClient.invalidateQueries({
         queryKey: ["getSelectionData", vendorId, leadId],
       });
     } catch (e: any) {
@@ -834,6 +840,25 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             <div>
               <h4 className="text-sm font-semibold">Design Selections</h4>
               {!canUpdateInput && <Badge variant="secondary">Read only</Badge>}
+              {(() => {
+                const days = (leadData as any)
+                  ?.total_required_chs_manufacturing_days;
+                return days != null ? (
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className="text-xs text-muted-foreground">
+                      CHS Manufacturing Timeline:
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                      {days} days
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">
+                    Save Carcas &amp; Shutter selections to auto-calculate the
+                    required CHS manufacturing timeline.
+                  </p>
+                );
+              })()}
             </div>
             <div>
               {canUpdateInput && (
