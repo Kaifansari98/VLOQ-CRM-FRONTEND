@@ -510,15 +510,15 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             .map((v) => parseOptionValueToCHSItem(v, type))
             .filter((item) => Object.keys(item).length > 0);
 
-          if (items.length > 0) {
-            await saveCHSMappings({
-              vendor_id: vendorId,
-              lead_id: leadId,
-              selection_id: selectionId,
-              items,
-              created_by: userId,
-            });
-          }
+          // Always call — empty items clears the mappings and still
+          // triggers recompute of total_required_chs_manufacturing_days
+          await saveCHSMappings({
+            vendor_id: vendorId,
+            lead_id: leadId,
+            selection_id: selectionId,
+            items,
+            created_by: userId,
+          });
         }
       }
 
