@@ -843,7 +843,22 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                     disabled={isPending}
                     onClick={selectionForm.handleSubmit(onSaveSelections)}
                   >
-                    {isPending ? "Saving..." : "Save Design Selections"}
+                    {isPending
+                      ? "Saving..."
+                      : (existingSelections.carcas &&
+                          chsMappings.some(
+                            (m) => m.selection_id === existingSelections.carcas?.id,
+                          )) ||
+                        (existingSelections.shutter &&
+                          chsMappings.some(
+                            (m) => m.selection_id === existingSelections.shutter?.id,
+                          )) ||
+                        (existingSelections.handles &&
+                          chsMappings.some(
+                            (m) => m.selection_id === existingSelections.handles?.id,
+                          ))
+                      ? "Update Design Selections"
+                      : "Save Design Selections"}
                   </Button>
                 </div>
               )}
@@ -1190,7 +1205,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   }
 
   return (
-    <div className="space-y-6 pb-6 bg-[#fff] dark:bg-[#0a0a0a]">
+    <div className="space-y-6 pb-6 bg-white dark:bg-[#0a0a0a]">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
