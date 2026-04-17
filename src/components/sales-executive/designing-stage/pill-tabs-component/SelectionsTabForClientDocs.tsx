@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useEditSelectionData,
+  useGetCHSSelectionTypeMappings,
   useLeadStatus,
   useSelectionData,
   useSubmitSelection,
@@ -103,38 +104,7 @@ const instanceUploadSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 type InstanceUploadValues = z.infer<typeof instanceUploadSchema>;
 
-const splitSelectionValue = (value?: string) =>
-  (value || "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter((item) => {
-      const normalized = item.toUpperCase();
-      return Boolean(item) && normalized !== "NULL" && normalized !== "N/A";
-    });
-
 const DEFAULT_REMARK = "N/A";
-
-const parseSelectionDesc = (value?: string) => {
-  const raw = (value || "").trim();
-  if (!raw) {
-    return { selections: [] as string[], remark: DEFAULT_REMARK };
-  }
-
-  const selectionMatch = raw.match(/Selections:\s*([\s\S]*?)(?:\nRemark:|$)/i);
-  const remarkMatch = raw.match(/Remark:\s*([\s\S]*)$/i);
-
-  if (selectionMatch || remarkMatch) {
-    return {
-      selections: splitSelectionValue(selectionMatch?.[1] || ""),
-      remark: remarkMatch?.[1]?.trim() || DEFAULT_REMARK,
-    };
-  }
-
-  return {
-    selections: splitSelectionValue(raw),
-    remark: DEFAULT_REMARK,
-  };
-};
 
 const SelectionsTabForClientDocs: React.FC<Props> = ({
   leadId,
@@ -154,6 +124,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     useEditSelectionData();
   const { mutateAsync: saveCHSMappings } =
     useUpsertCHSSelectionTypeMapping();
+  const { data: chsMappingsData } = useGetCHSSelectionTypeMappings(
+    vendorId,
+    leadId,
+  );
+  const chsMappings: any[] = Array.isArray(chsMappingsData?.data)
+    ? chsMappingsData.data
+    : [];
   const {
     data: selectionsData,
     isLoading,
@@ -373,47 +350,55 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       handles,
     });
 
-    const parsedCarcas = parseSelectionDesc(carcas?.desc);
-    const parsedShutter = parseSelectionDesc(shutter?.desc);
-    const parsedHandles = parseSelectionDesc(handles?.desc);
-
     setExistingSelections({ carcas, shutter, handles });
     selectionForm.reset({
-      carcas: parsedCarcas.selections,
-      carcas_remark: parsedCarcas.remark,
-      shutter: parsedShutter.selections,
-      shutter_remark: parsedShutter.remark,
-      handles: parsedHandles.selections,
-      handles_remark: parsedHandles.remark,
+      carcas: chsMappingToOptionValues(carcas?.id, "Carcas"),
+      carcas_remark: carcas?.desc || DEFAULT_REMARK,
+      shutter: chsMappingToOptionValues(shutter?.id, "Shutter"),
+      shutter_remark: shutter?.desc || DEFAULT_REMARK,
+      handles: chsMappingToOptionValues(handles?.id, "Handles"),
+      handles_remark: handles?.desc || DEFAULT_REMARK,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeInstance?.id, selectionsData?.data]);
+  }, [activeInstance?.id, selectionsData?.data, chsMappings]);
 
   useEffect(() => {
     if (!uploadModalOpen) {
-      const parsedCarcas = parseSelectionDesc(existingSelections.carcas?.desc);
-      const parsedShutter = parseSelectionDesc(existingSelections.shutter?.desc);
-      const parsedHandles = parseSelectionDesc(existingSelections.handles?.desc);
-
       selectionForm.reset({
-        carcas: parsedCarcas.selections,
-        carcas_remark: parsedCarcas.remark,
-        shutter: parsedShutter.selections,
-        shutter_remark: parsedShutter.remark,
-        handles: parsedHandles.selections,
-        handles_remark: parsedHandles.remark,
+        carcas: chsMappingToOptionValues(existingSelections.carcas?.id, "Carcas"),
+        carcas_remark: existingSelections.carcas?.desc || DEFAULT_REMARK,
+        shutter: chsMappingToOptionValues(existingSelections.shutter?.id, "Shutter"),
+        shutter_remark: existingSelections.shutter?.desc || DEFAULT_REMARK,
+        handles: chsMappingToOptionValues(existingSelections.handles?.id, "Handles"),
+        handles_remark: existingSelections.handles?.desc || DEFAULT_REMARK,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadModalOpen]);
 
-  const normalizeValue = (values?: string[], remark?: string) => {
-    const normalized = (values || [])
-      .map((item) => item.trim())
-      .filter(Boolean);
-    const normalizedRemark = remark?.trim() || DEFAULT_REMARK;
-    const selectionText = normalized.length ? normalized.join(", ") : "N/A";
-    return `Selections: ${selectionText}\nRemark: ${normalizedRemark}`;
+  const chsMappingToOptionValues = (
+    selectionId: number | undefined,
+    type: "Carcas" | "Shutter" | "Handles",
+  ): string[] => {
+    if (!selectionId) return [];
+    return chsMappings
+      .filter((m) => m.selection_id === selectionId)
+      .flatMap((item) => {
+        if (type === "Carcas" && item.carcass_type_id)
+          return [`carcass-${item.carcass_type_id}`];
+        if (type === "Shutter" && item.shutter_type_id) {
+          if (item.shutter_sub_type_id)
+            return [`shutter-${item.shutter_type_id}-sub-${item.shutter_sub_type_id}`];
+          return [`shutter-${item.shutter_type_id}`];
+        }
+        if (type === "Handles" && item.handle_type_id)
+          return [`handle-${item.handle_type_id}`];
+        return [];
+      });
+  };
+
+  const normalizeValue = (_values?: string[], remark?: string) => {
+    return remark?.trim() || DEFAULT_REMARK;
   };
 
   const parseOptionValueToCHSItem = (
@@ -624,21 +609,28 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         grouped.set(key, { Carcas: false, Shutter: false, Handles: false });
       }
       const tracker = grouped.get(key)!;
-      const value = (row.desc || "").trim();
-      if (!value) continue;
-      const upper = value.toUpperCase();
-      if (upper === "NULL" || upper === "N/A") continue;
       if (
-        row.type === "Carcas" ||
-        row.type === "Shutter" ||
-        row.type === "Handles"
-      ) {
+        row.type !== "Carcas" &&
+        row.type !== "Shutter" &&
+        row.type !== "Handles"
+      )
+        continue;
+
+      // New records: check chs_selection_type_mapping
+      const hasCHSMappings = chsMappings.some((m) => m.selection_id === row.id);
+      // Legacy records: desc had "Selections: X\nRemark: Y" format
+      const hasLegacyDesc = (() => {
+        const upper = (row.desc || "").trim().toUpperCase();
+        return Boolean(upper) && upper !== "NULL" && upper !== "N/A" && upper.startsWith("SELECTIONS:");
+      })();
+
+      if (hasCHSMappings || hasLegacyDesc) {
         tracker[row.type] = true;
       }
     }
 
     return grouped;
-  }, [selectionsData?.data]);
+  }, [selectionsData?.data, chsMappings]);
 
   const allInstancesSelectionsReady =
     structureInstances.length > 1
