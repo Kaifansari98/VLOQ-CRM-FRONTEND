@@ -677,12 +677,30 @@ export function UniversalTable({
     return `${day} ${monthYear}`;
   };
 
-  const getPendingServicingLabel = (lead: any) => {
-    const pendingSchedules = Array.isArray(lead?.serviceSchedules)
+  // Returns the next pending (open) service for a lead, ordered as:
+  // Free 1 → Free 2 → Free 3 → AMC 1 (treated as 4th) → AMC 2 → …
+  const getNextPendingService = (lead: any) => {
+    const allSchedules = Array.isArray(lead?.serviceSchedules)
       ? lead.serviceSchedules
       : [];
 
-    const nextPending = pendingSchedules[0];
+    const openSchedules = allSchedules.filter(
+      (s: any) => s?.status === "open",
+    );
+
+    openSchedules.sort((a: any, b: any) => {
+      const getOrder = (s: any) => {
+        const isAmc = String(s?.service_type ?? "").toLowerCase() === "amc";
+        return isAmc ? 3 + (s?.service_no ?? 0) : (s?.service_no ?? 0);
+      };
+      return getOrder(a) - getOrder(b);
+    });
+
+    return openSchedules[0] ?? null;
+  };
+
+  const getPendingServicingLabel = (lead: any) => {
+    const nextPending = getNextPendingService(lead);
 
     if (!nextPending?.service_no || !nextPending?.service_type || !nextPending?.scheduled_for) {
       return "";
@@ -746,7 +764,7 @@ export function UniversalTable({
     accountId: lead.account?.id ?? lead.account_id ?? 0,
     priority: lead.priority ?? "",
     servicing: getPendingServicingLabel(lead),
-    scheduledAt: lead.serviceSchedules?.[0]?.scheduled_for ?? "",
+    scheduledAt: getNextPendingService(lead)?.scheduled_for ?? "",
   });
 
   // -------------------- TABLE DATA --------------------

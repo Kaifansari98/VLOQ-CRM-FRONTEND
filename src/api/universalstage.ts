@@ -207,6 +207,11 @@ export interface UniversalStagePostPayload {
   site_map_link: boolean | null;
 
   created_at: SortOrder;
+  global_search?: string;
+  date_range?: {
+    from: string;
+    to: string;
+  };
   production_status?: string;
   pending_services?: boolean;
 }
