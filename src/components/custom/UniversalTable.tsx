@@ -684,8 +684,10 @@ export function UniversalTable({
       ? lead.serviceSchedules
       : [];
 
+    // If the backend already pre-filters (pending_services: true), items may have
+    // no status field. Only exclude explicitly completed/rejected entries.
     const openSchedules = allSchedules.filter(
-      (s: any) => s?.status === "open",
+      (s: any) => !s?.status || s?.status === "open",
     );
 
     openSchedules.sort((a: any, b: any) => {
