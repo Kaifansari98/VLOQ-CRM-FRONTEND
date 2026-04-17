@@ -157,9 +157,9 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     !canAccessRestrictedTasks ||
     !isSiteSupervisorAssigned;
   const finalMeasurementsTooltip = bookingDoneLockInsLoading
-    ? "Checking super admin approval status"
+    ? "Checking accounts approval status"
     : hasPendingBookingDoneApproval
-      ? "Super Admin approval for Booking Done is pending"
+      ? "Accounts approval for Booking Done is pending"
       : !canAccessRestrictedTasks
         ? "You don't have permission to select this"
         : !isSiteSupervisorAssigned
@@ -273,7 +273,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         hasPendingBookingDoneApproval
       ) {
         toastManager.add({
-          title: "Super Admin approval for Booking Done is pending",
+          title: "Accounts approval for Booking Done is pending",
           type: "error",
         });
         return;

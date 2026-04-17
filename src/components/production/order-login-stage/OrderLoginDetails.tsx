@@ -104,8 +104,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const isOrderLoginLocked =
     orderLoginLockInsLoading || hasPendingOrderLoginApproval;
   const lockedTabsTooltip = orderLoginLockInsLoading
-    ? "Checking super admin approval status"
-    : "Super Admin approval for Order Login is still pending";
+    ? "Checking accounts approval status"
+    : "Accounts approval for Order Login is still pending";
   const safeDefaultTab =
     isOrderLoginLocked &&
     (activeTab === "order-login" || activeTab === "production-files")

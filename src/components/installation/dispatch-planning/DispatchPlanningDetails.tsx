@@ -425,9 +425,9 @@ export default function DispatchPlanningDetails({
   const isDispatchPlanningInfoLocked =
     dispatchPlanningLockInsLoading || hasPendingDispatchPlanningApproval;
   const dispatchPlanningInfoTooltip = dispatchPlanningLockInsLoading
-    ? "Checking super admin approval status"
+    ? "Checking accounts approval status"
     : hasPendingDispatchPlanningApproval
-      ? "Super Admin approval for Dispatch Planning is pending"
+      ? "Accounts approval for Dispatch Planning is pending"
       : "";
   const canEditDispatchPlanningInfo =
     canViewAndWork && !isDispatchPlanningInfoLocked;
