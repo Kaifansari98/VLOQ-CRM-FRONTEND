@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useEditSelectionData,
+  useGetCHSManufacturingDaysByInstance,
   useGetCHSSelectionTypeMappings,
   useLeadStatus,
   useSelectionData,
@@ -154,6 +155,17 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     leadId,
     vendorId,
   );
+  const { data: manufacturingDaysData } = useGetCHSManufacturingDaysByInstance(
+    vendorId,
+    leadId,
+  );
+  const manufacturingDaysByInstance: { instance_id: number | null; max_days: number | null }[] =
+    Array.isArray(manufacturingDaysData?.data) ? manufacturingDaysData.data : [];
+
+  const getManufacturingDaysForInstance = (instanceId: number | null) =>
+    manufacturingDaysByInstance.find((d) => d.instance_id === instanceId)
+      ?.max_days ?? null;
+
   const { data: docsDetails } = useClientDocumentationDetails(
     vendorId!,
     leadId,
@@ -534,6 +546,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         queryKey: ["chsSelectionMappings", vendorId, leadId],
       });
       queryClient.invalidateQueries({
+        queryKey: ["chsManufacturingDaysByInstance", vendorId, leadId],
+      });
+      queryClient.invalidateQueries({
         queryKey: ["getSelectionData", vendorId, leadId],
       });
     } catch (e: any) {
@@ -841,8 +856,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
               <h4 className="text-sm font-semibold">Design Selections</h4>
               {!canUpdateInput && <Badge variant="secondary">Read only</Badge>}
               {(() => {
-                const days = (leadData as any)
-                  ?.total_required_chs_manufacturing_days;
+                const days = getManufacturingDaysForInstance(instance_id);
                 return days != null ? (
                   <div className="flex items-center gap-2 mt-1.5">
                     <span className="text-xs text-muted-foreground">
@@ -855,7 +869,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                 ) : (
                   <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">
                     Save Carcas &amp; Shutter selections to auto-calculate the
-                    required CHS manufacturing timeline.
+                    manufacturing timeline for this instance.
                   </p>
                 );
               })()}

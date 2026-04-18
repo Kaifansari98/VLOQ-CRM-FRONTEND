@@ -336,6 +336,21 @@ export const updateCHSSelectionTypeMapping = async (
   return data;
 };
 
+export interface CHSManufacturingDaysByInstance {
+  instance_id: number | null;
+  max_days: number | null;
+}
+
+export const getCHSManufacturingDaysByInstance = async (
+  vendorId: number,
+  leadId: number,
+): Promise<{ data: CHSManufacturingDaysByInstance[] }> => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/chs-manufacturing-days-by-instance`,
+  );
+  return data;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const getDesigningStageCounts = async (

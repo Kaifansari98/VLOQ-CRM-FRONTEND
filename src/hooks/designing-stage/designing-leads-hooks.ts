@@ -7,6 +7,7 @@ import {
   getDesigningStageCounts,
   getDesignsDoc,
   getCHSSelectionTypeMappings,
+  getCHSManufacturingDaysByInstance,
   getInstanceStage,
   getLeadStatus,
   getLeadStatusNotification,
@@ -205,6 +206,18 @@ export const useUpdateCHSSelectionTypeMapping = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chsSelectionMappings"] });
     },
+  });
+};
+
+export const useGetCHSManufacturingDaysByInstance = (
+  vendorId?: number,
+  leadId?: number,
+) => {
+  return useQuery({
+    queryKey: ["chsManufacturingDaysByInstance", vendorId, leadId],
+    queryFn: () => getCHSManufacturingDaysByInstance(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+    staleTime: 0,
   });
 };
 
