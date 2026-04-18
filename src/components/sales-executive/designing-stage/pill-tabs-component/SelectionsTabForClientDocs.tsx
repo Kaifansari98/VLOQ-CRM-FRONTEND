@@ -259,7 +259,6 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         return distinctSubTypes.map((subType) => ({
           value: `shutter-${item.id}-sub-${subType.id}`,
           label: subType.name,
-          group: mainLabel,
         }));
       }),
     [shutterTypesData?.data],
