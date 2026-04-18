@@ -194,8 +194,12 @@ const data = {
         { title: "Dashboard", url: "/dashboard/track-trace" },
         { title: "Real Time", url: "/dashboard/track-trace/dashboard" },
         {
-          title: "Manage Projects",
+          title: "Projects",
           url: "/dashboard/track-trace/manage-project",
+        },
+        {
+          title: "Defects",
+          url: "/dashboard/track-trace/defect",
         },
         
         // { title: "Configure", url: "/dashboard/track-trace/configure" },
