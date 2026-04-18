@@ -25,7 +25,6 @@ export default function TrackTraceProjectsPage() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const router = useRouter();
 
-  // React Query Hook
   const {
     data: projects,
     isLoading,
@@ -34,17 +33,24 @@ export default function TrackTraceProjectsPage() {
 
   const [openModal, setOpenModal] = useState(false);
 
+  // Action 1 — Cut list & machine info (existing manage-project page)
+  const handleCutList = (row: TrackTraceProject) =>
+    router.push(`/dashboard/track-trace/manage-project/${row.unique_project_id}`);
+
+  // Action 2 — Full project detail with boxes
+  const handleProjectDetail = (row: TrackTraceProject) =>
+    router.push(`/dashboard/track-trace/manage-project/${row.unique_project_id}/details`);
+
+  // Keep double-click behaviour on cut list (existing default)
   const navigateTrackTraceProject = (row: TrackTraceProject) =>
-    router.push(
-      `/dashboard/track-trace/manage-project/${row.unique_project_id}`,
-    );
+    handleCutList(row);
+
   return (
     <>
       <header className="flex h-16 items-center justify-between gap-2 px-4 border-b">
         <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-4" />
-
           <Breadcrumb className="hidden md:block">
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -64,37 +70,34 @@ export default function TrackTraceProjectsPage() {
           <h1 className="text-lg font-semibold">
             Manage Track & Trace Projects
           </h1>
-
           <Button size="sm" onClick={() => setOpenModal(true)}>
             Create New Project
           </Button>
         </div>
 
-        {/* Loading State */}
         {isLoading && (
           <div className="px-4 pt-6 text-sm text-muted-foreground">
             Loading projects...
           </div>
         )}
 
-        {/* Error State */}
         {isError && (
           <div className="px-4 pt-6 text-sm text-red-500">
             Failed to load projects.
           </div>
         )}
 
-        {/* Data Table */}
         {!isLoading && !isError && (
           <TrackTraceProjectTable
             table={projects ?? []}
             onRowDoubleClick={navigateTrackTraceProject}
+            onCutListClick={handleCutList}
+            onProjectDetailClick={handleProjectDetail}
             className="pt-3 px-4"
           />
         )}
       </main>
 
-      {/* Create Project Modal */}
       <CreateProjectModal open={openModal} onOpenChange={setOpenModal} />
     </>
   );
