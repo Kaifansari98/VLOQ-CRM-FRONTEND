@@ -306,6 +306,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const lastNotifiedInstanceIdRef = React.useRef<number | null | undefined>(
     undefined,
   );
+  // Keep a stable ref to onInstanceChange so the effect doesn't re-fire when the
+  // parent passes a new function reference on every render.
+  const onInstanceChangeRef = React.useRef(onInstanceChange);
+  onInstanceChangeRef.current = onInstanceChange;
 
   useEffect(() => {
     if (!structureInstances.length) {
@@ -314,7 +318,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       }
       if (lastNotifiedInstanceIdRef.current !== null) {
         lastNotifiedInstanceIdRef.current = null;
-        onInstanceChange?.(null);
+        onInstanceChangeRef.current?.(null);
       }
       return;
     }
@@ -324,14 +328,23 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       (activeInstance &&
         structureInstances.find((item) => item.id === activeInstance.id)) ||
       fallback;
+
+    console.info("[SelectionsTabForClientDocs] instance sync", {
+      leadId,
+      activeInstanceId: activeInstance?.id ?? null,
+      selectedId: selected?.id ?? null,
+      instanceCount: structureInstances.length,
+    });
+
     if (!activeInstance || activeInstance.id !== selected.id) {
       setActiveInstance(selected);
     }
     if (lastNotifiedInstanceIdRef.current !== selected.id) {
       lastNotifiedInstanceIdRef.current = selected.id;
-      onInstanceChange?.(selected);
+      onInstanceChangeRef.current?.(selected);
     }
-  }, [structureInstances, activeInstance, onInstanceChange]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [structureInstances, activeInstance]);
 
   useEffect(() => {
     const rows = Array.isArray(selectionsData?.data) ? selectionsData.data : [];
@@ -813,6 +826,32 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     });
     return { images, nonImages };
   };
+
+  React.useEffect(() => {
+    console.info("[SelectionsTabForClientDocs] mounted", {
+      leadId,
+      accountId,
+      vendorId,
+      userId,
+      userType,
+      isClientDocumentationStage,
+      structureInstanceCount: structureInstances.length,
+      structureInstanceIds: structureInstances.map((i) => i.id),
+      isLoading,
+      isError,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadId]);
+
+  React.useEffect(() => {
+    if (!isError) return;
+    console.error("[SelectionsTabForClientDocs] selection data fetch failed", {
+      leadId,
+      accountId,
+      vendorId,
+      userId,
+    });
+  }, [isError, leadId, accountId, vendorId, userId]);
 
   const isPending = isCreating || isEditing;
 

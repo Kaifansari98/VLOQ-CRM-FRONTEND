@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
@@ -62,6 +62,15 @@ export default function ClientDocumentationDetails({
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [selectedInstanceId, setSelectedInstanceId] = useState<number | null>(
     null
+  );
+
+  const handleInstanceChange = useCallback(
+    (instance: { id?: number | null } | null) => {
+      const newId = instance?.id ?? null;
+      setSelectedInstanceId(newId);
+      console.info("[ClientDocumentationDetails] instance changed", { newId, leadId });
+    },
+    [leadId]
   );
 
   const { data: selectionsData } = useSelectionData(
@@ -226,9 +235,7 @@ export default function ClientDocumentationDetails({
           <SelectionsTabForClientDocs
             leadId={leadId}
             accountId={accountId}
-            onInstanceChange={(instance) =>
-              setSelectedInstanceId(instance?.id ?? null)
-            }
+            onInstanceChange={handleInstanceChange}
           />
         </div>
       </motion.section>

@@ -421,8 +421,26 @@ export default function ProductionLeadDetails() {
   }
 
   if (isError || !lead) {
+    console.error("[ProductionLeadDetails] Lead fetch failed or missing", {
+      leadIdNum,
+      vendorId,
+      userId,
+      isError,
+      hasLead: !!lead,
+    });
     return <p className="p-6">Failed to load lead details. Please try again.</p>;
   }
+
+  console.info("[ProductionLeadDetails] Rendering with lead data", {
+    leadIdNum,
+    accountId: lead?.account_id,
+    computedAccountId: Number(lead?.account_id),
+    validInstanceId,
+    instancesCount: instances.length,
+    instanceIds: instances.map((i: any) => i?.id),
+    leadStatus: lead?.status_id,
+    userType,
+  });
 
   const disabledReason = !canUpdateExpectedDate
     ? "You do not have permission to update this date."
