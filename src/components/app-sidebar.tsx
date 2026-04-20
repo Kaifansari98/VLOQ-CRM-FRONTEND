@@ -378,7 +378,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     // Track & Trace sirf STAGING mein dikhega
     const finalTrackTraceItems = showTrackTrace ? data.trackTraceNav : [];
-    const finalMastersItems = isSuperAdmin ? data.mastersNav : [];
+    const finalMastersItems = isSuperAdmin
+      ? data.mastersNav.map((section) => ({
+          ...section,
+          items:
+            environment === "PRODUCTION"
+              ? section.items.filter((item) => item.title !== "User Master")
+              : section.items,
+        }))
+      : [];
 
     return {
       navItems: finalNavItems,
