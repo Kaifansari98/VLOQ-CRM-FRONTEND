@@ -93,6 +93,9 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   data,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const isAccountLocInEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.IsAccountLocInEnabled ?? false,
+  );
   const userRole = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type
   );
@@ -151,14 +154,16 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const hasPendingBookingDoneApproval = bookingDoneLockIns.some(
     (lockIn) => !lockIn.is_approved
   );
+  const requiresBookingDoneApproval = isAccountLocInEnabled;
   const isFinalMeasurementsDisabled =
-    bookingDoneLockInsLoading ||
-    hasPendingBookingDoneApproval ||
+    (requiresBookingDoneApproval &&
+      (bookingDoneLockInsLoading || hasPendingBookingDoneApproval)) ||
     !canAccessRestrictedTasks ||
     !isSiteSupervisorAssigned;
-  const finalMeasurementsTooltip = bookingDoneLockInsLoading
+  const finalMeasurementsTooltip =
+    requiresBookingDoneApproval && bookingDoneLockInsLoading
     ? "Checking accounts approval status"
-    : hasPendingBookingDoneApproval
+    : requiresBookingDoneApproval && hasPendingBookingDoneApproval
       ? "Accounts approval for Booking Done is pending"
       : !canAccessRestrictedTasks
         ? "You don't have permission to select this"
@@ -270,6 +275,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       });
       if (
         values.task_type === "Final Measurements" &&
+        requiresBookingDoneApproval &&
         hasPendingBookingDoneApproval
       ) {
         toastManager.add({
