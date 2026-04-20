@@ -125,3 +125,75 @@ export const uploadMachineAssignApi = async (
 
   return response.data;
 };
+
+
+
+export interface ProjectDetailData {
+  project: {
+    id: number;
+    project_name: string;
+    project_status: string;
+    track_trace_status: string;
+    lead_id: number | null;
+    lead: { id: number; lead_name: string; lead_email: string; lead_phone: string; lead_address: string } | null;
+    details: {
+      total_items: number; total_packed: number; total_unpacked: number;
+      estimated_completion_date: string | null; start_date: string | null; room_name: string | null;
+    } | null;
+  };
+  stats: {
+    total_panels: number; total_items: number;
+    total_boxes: number; packed_boxes: number; unpacked_boxes: number;
+  };
+  machines: {
+    machine_id: number; machine_name: string; machine_type: string | null;
+    total: number; scanned: number; pending: number; pct: number;
+  }[];
+  boxes: {
+    id: number; box_name: string; box_status: string; items_count: number;
+    factory_out_at: string | null; factory_out_by: string | null;
+    site_in_at: string | null; site_in_by: string | null;
+  }[];
+  cutlist: {
+    id: number; item_name: string; unique_code: string; description: string;
+    qty: number; category: string; group: string;
+    length: string; width: string; thickness: string;
+    machines: {
+      mapping_id: number; machine_id: number; machine_name: string;
+      sequence_no: number; box_id: number | null;
+      scanned: boolean; scanned_at: string | null; scanned_by: string | null;
+    }[];
+  }[];
+}
+ 
+export const getProjectDetail = async (vendorId: number, projectId: string) => {
+  
+  const { data } = await apiClient.get(
+    `/track-trace/project-detail/${vendorId}/${projectId}`
+  );
+ 
+  return data.data as ProjectDetailData;
+};
+ 
+export const getBoxItems = async (vendorId: number, projectId: string, boxId: number) => {
+  const { data } = await apiClient.get(
+    `/track-trace/project-detail/${vendorId}/${projectId}/box/${boxId}`
+  );
+  return data.data as {
+    box: { id: number; box_name: string; box_status: string; factory_out_at: string | null; site_in_at: string | null };
+    items: {
+      id: number;
+      machine: { machine_name: string };
+      actual_in_at: string | null;
+      site_in_at: string | null;
+      inOperator: { id: number; name: string } | null;
+      siteInByUser: { id: number; name: string } | null;
+      cut_list: {
+        id: number; item_name: string; unique_code: string;
+        qty: number; category_name: string; group_name: string;
+        length: string; width: string; thickness: string;
+      };
+    }[];
+  };
+};
+ 
