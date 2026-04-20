@@ -42,16 +42,23 @@ interface StageRenderBoundaryProps {
 interface StageRenderBoundaryState {
   hasError: boolean;
   retryKey: number;
+  isRetrying: boolean;
 }
 
 class StageRenderBoundary extends React.Component<
   StageRenderBoundaryProps,
   StageRenderBoundaryState
 > {
-  state: StageRenderBoundaryState = { hasError: false, retryKey: 0 };
+  retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+  state: StageRenderBoundaryState = {
+    hasError: false,
+    retryKey: 0,
+    isRetrying: false,
+  };
 
   static getDerivedStateFromError(): Partial<StageRenderBoundaryState> {
-    return { hasError: true };
+    return { hasError: true, isRetrying: true };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
@@ -61,19 +68,56 @@ class StageRenderBoundary extends React.Component<
       error,
       componentStack: errorInfo.componentStack,
     });
+
+    this.clearRetryTimer();
+    this.retryTimer = setTimeout(() => {
+      this.setState((prev) => ({
+        hasError: false,
+        isRetrying: false,
+        retryKey: prev.retryKey + 1,
+      }));
+    }, 250);
   }
 
   componentDidUpdate(prevProps: StageRenderBoundaryProps) {
-    if (prevProps.activeTab !== this.props.activeTab && this.state.hasError) {
-      this.setState({ hasError: false });
+    if (
+      prevProps.activeTab !== this.props.activeTab &&
+      (this.state.hasError || this.state.isRetrying)
+    ) {
+      this.clearRetryTimer();
+      this.setState({ hasError: false, isRetrying: false });
     }
   }
 
+  componentWillUnmount() {
+    this.clearRetryTimer();
+  }
+
+  clearRetryTimer = () => {
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = null;
+    }
+  };
+
   handleRetry = () => {
-    this.setState((prev) => ({ hasError: false, retryKey: prev.retryKey + 1 }));
+    this.clearRetryTimer();
+    this.setState((prev) => ({
+      hasError: false,
+      isRetrying: false,
+      retryKey: prev.retryKey + 1,
+    }));
   };
 
   render() {
+    if (this.state.isRetrying) {
+      return (
+        <div className="rounded-xl border border-border bg-muted/30 p-6 text-sm text-muted-foreground">
+          Loading...
+        </div>
+      );
+    }
+
     if (this.state.hasError) {
       return (
         <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-6 text-sm text-destructive flex flex-col items-start gap-3">
