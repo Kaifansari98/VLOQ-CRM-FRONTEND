@@ -137,6 +137,9 @@ export default function DispatchPlanningDetails({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id) || 0;
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const isAccountLocInEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.IsAccountLocInEnabled ?? false,
+  );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
@@ -422,13 +425,16 @@ export default function DispatchPlanningDetails({
   const hasPendingDispatchPlanningApproval = dispatchPlanningLockIns.some(
     (lockIn) => !lockIn.is_approved,
   );
-  const isDispatchPlanningInfoLocked =
-    dispatchPlanningLockInsLoading || hasPendingDispatchPlanningApproval;
-  const dispatchPlanningInfoTooltip = dispatchPlanningLockInsLoading
-    ? "Checking accounts approval status"
-    : hasPendingDispatchPlanningApproval
-      ? "Accounts approval for Dispatch Planning is pending"
-      : "";
+  const isDispatchPlanningInfoLocked = isAccountLocInEnabled
+    ? dispatchPlanningLockInsLoading || hasPendingDispatchPlanningApproval
+    : false;
+  const dispatchPlanningInfoTooltip = !isAccountLocInEnabled
+    ? ""
+    : dispatchPlanningLockInsLoading
+      ? "Checking accounts approval status"
+      : hasPendingDispatchPlanningApproval
+        ? "Accounts approval for Dispatch Planning is pending"
+        : "";
   const canEditDispatchPlanningInfo =
     canViewAndWork && !isDispatchPlanningInfoLocked;
 

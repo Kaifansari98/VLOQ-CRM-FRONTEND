@@ -688,9 +688,13 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                 <FormLabel className="text-sm">Phone Number *</FormLabel>
                 <FormControl>
                   <PhoneInput
+                    defaultCountry="IN"
                     placeholder="Enter phone number"
                     className="text-sm"
-                    {...field}
+                    value={field.value}
+                    onChange={(val) => field.onChange(val)}
+                    onBlur={field.onBlur}
+                    validateIndianNumber={true}
                   />
                 </FormControl>
                 <FormMessage />
@@ -706,9 +710,13 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                 <FormLabel className="text-sm">Alt. Phone Number</FormLabel>
                 <FormControl>
                   <PhoneInput
+                    defaultCountry="IN"
                     placeholder="Enter alt number"
                     className="text-sm"
-                    {...field}
+                    value={field.value}
+                    onChange={(val) => field.onChange(val)}
+                    onBlur={field.onBlur}
+                    validateIndianNumber={true}
                   />
                 </FormControl>
                 <FormMessage />
