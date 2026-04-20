@@ -218,6 +218,12 @@ export interface LeadSuperAdminApprovalLockIn {
   approved_at: string | null;
   approved_by: number | null;
   approval_remark: string | null;
+  pending_tasks?: Array<{
+    id: number;
+    instance_id: number | null;
+    status: "open" | "in_progress" | "completed";
+    due_date: string | null;
+  }>;
 }
 
 export const useLeadSuperAdminApprovalLockIns = (

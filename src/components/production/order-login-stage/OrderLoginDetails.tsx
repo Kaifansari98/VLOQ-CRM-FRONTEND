@@ -98,9 +98,21 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
 
   const activeTab =
     tabMapping[tabParam || ""] || forceDefaultTab || "order-login";
-  const hasPendingOrderLoginApproval = orderLoginLockIns.some(
-    (lockIn) => !lockIn.is_approved,
-  );
+  const hasPendingOrderLoginApproval = orderLoginLockIns.some((lockIn) => {
+    const pendingTasks = Array.isArray(lockIn.pending_tasks)
+      ? lockIn.pending_tasks
+      : [];
+
+    if (scopedInstanceId) {
+      return pendingTasks.some((task) => task.instance_id === scopedInstanceId);
+    }
+
+    if (pendingTasks.length > 0) {
+      return true;
+    }
+
+    return !lockIn.is_approved;
+  });
   const isOrderLoginLocked =
     orderLoginLockInsLoading || hasPendingOrderLoginApproval;
   const lockedTabsTooltip = orderLoginLockInsLoading
