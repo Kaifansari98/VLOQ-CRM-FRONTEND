@@ -303,11 +303,19 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const [activeInstance, setActiveInstance] =
     React.useState<LeadProductStructureInstance | null>(null);
   const [confirmDelete, setConfirmDelete] = React.useState<null | number>(null);
+  const lastNotifiedInstanceIdRef = React.useRef<number | null | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     if (!structureInstances.length) {
-      setActiveInstance(null);
-      onInstanceChange?.(null);
+      if (activeInstance !== null) {
+        setActiveInstance(null);
+      }
+      if (lastNotifiedInstanceIdRef.current !== null) {
+        lastNotifiedInstanceIdRef.current = null;
+        onInstanceChange?.(null);
+      }
       return;
     }
 
@@ -319,7 +327,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     if (!activeInstance || activeInstance.id !== selected.id) {
       setActiveInstance(selected);
     }
-    onInstanceChange?.(selected);
+    if (lastNotifiedInstanceIdRef.current !== selected.id) {
+      lastNotifiedInstanceIdRef.current = selected.id;
+      onInstanceChange?.(selected);
+    }
   }, [structureInstances, activeInstance, onInstanceChange]);
 
   useEffect(() => {
