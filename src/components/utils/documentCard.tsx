@@ -159,6 +159,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
       default:         return null;
     }
   };
+  const hasStatus = Boolean(getStatusLabel());
 
   const getDotColor = () => {
     switch (status?.toUpperCase()) {
@@ -328,9 +329,11 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                     text-neutral-700 dark:text-neutral-300 text-xs font-medium
                     hover:bg-muted transition dark:hover:bg-neutral-700
                   "
+                  aria-label="Preview document"
+                  title="Preview"
                 >
                   <Eye className="w-4 h-4" />
-                  Preview
+                  {!hasStatus && "Preview"}
                 </button>
               )}
 
@@ -346,6 +349,8 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                   hover:bg-muted transition dark:hover:bg-neutral-700
                   disabled:opacity-60 disabled:cursor-not-allowed
                 "
+                aria-label="Download document"
+                title="Download"
               >
                 {isDownloading ? (
                   <>
@@ -355,14 +360,14 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                 ) : (
                   <>
                     <Download className="w-4 h-4" />
-                    Download
+                    {!hasStatus && "Download"}
                   </>
                 )}
               </button>
             </div>
 
             {/* Status */}
-            {getStatusLabel() && (
+            {hasStatus && (
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${getDotColor()}`} />
                 <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
