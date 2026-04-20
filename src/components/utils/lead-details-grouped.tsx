@@ -300,6 +300,40 @@ export default function LeadDetailsGrouped({
     return filtered;
   }, [defaultParentTab, status, showServicingTab]);
 
+  React.useEffect(() => {
+    if (status && !stageOrder.includes(status)) {
+      console.warn("[LeadDetailsGrouped] Status missing from stageOrder", {
+        status,
+        stageOrder,
+        leadId,
+        accountId,
+        pathname,
+      });
+    }
+
+    const visibleTabIds = Object.values(visibleGroups).flatMap((group) =>
+      group.map((item) => item.id),
+    );
+
+    console.info("[LeadDetailsGrouped] resolved tabs", {
+      leadId,
+      accountId,
+      pathname,
+      defaultTab,
+      status,
+      defaultParentTab,
+      visibleTabIds,
+    });
+  }, [
+    accountId,
+    defaultParentTab,
+    defaultTab,
+    leadId,
+    pathname,
+    status,
+    visibleGroups,
+  ]);
+
   const tabParam = searchParams.get("tab") as StageId | null;
   const resolvedTab =
     tabParam && stageOrder.includes(tabParam) ? tabParam : undefined;

@@ -44,7 +44,12 @@ export default function ClientDocumentationDetails({
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   // 🧩 API hooks
-  const { data: leadDetails, isLoading } = useClientDocumentationDetails(
+  const {
+    data: leadDetails,
+    isLoading,
+    isError,
+    error,
+  } = useClientDocumentationDetails(
     vendorId!,
     leadId,
     userId!,
@@ -64,6 +69,49 @@ export default function ClientDocumentationDetails({
     leadId,
     selectedInstanceId ?? undefined
   );
+
+  React.useEffect(() => {
+    console.info("[ClientDocumentationDetails] mounted", {
+      leadId,
+      accountId,
+      vendorId,
+      userId,
+      userType,
+    });
+  }, [accountId, leadId, userId, userType, vendorId]);
+
+  React.useEffect(() => {
+    if (!isError) return;
+
+    console.error("[ClientDocumentationDetails] query failed", {
+      leadId,
+      accountId,
+      vendorId,
+      userId,
+      selectedInstanceId,
+      error,
+    });
+  }, [
+    accountId,
+    error,
+    isError,
+    leadId,
+    selectedInstanceId,
+    userId,
+    vendorId,
+  ]);
+
+  React.useEffect(() => {
+    console.info("[ClientDocumentationDetails] data snapshot", {
+      leadId,
+      accountId,
+      selectedInstanceId,
+      instanceCount: leadDetails?.instance_count ?? 0,
+      groupedInstances: leadDetails?.documents_by_instance?.length ?? 0,
+      pptCount: leadDetails?.documents?.ppt?.length ?? 0,
+      pythaCount: leadDetails?.documents?.pytha?.length ?? 0,
+    });
+  }, [accountId, leadDetails, leadId, selectedInstanceId]);
 
   const selections = {
     carcas: selectionsData?.data?.find((s: any) => s.type === "Carcas")?.desc,
@@ -130,6 +178,15 @@ export default function ClientDocumentationDetails({
     return (
       <Loader fullScreen size={250} message="Loading Client Documentation..." />
     );
+
+  if (isError) {
+    return (
+      <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+        Failed to load Client Documentation. Check the browser console for
+        detailed logs.
+      </div>
+    );
+  }
 
   // 🧩 Animations
   const containerVariants = {

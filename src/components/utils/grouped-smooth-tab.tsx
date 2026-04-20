@@ -33,6 +33,57 @@ interface GroupedSmoothTabProps {
   maxVisibleStage?: StageId;
 }
 
+interface StageRenderBoundaryProps {
+  activeGroup: GroupKey;
+  activeTab: StageId;
+  children: React.ReactNode;
+}
+
+interface StageRenderBoundaryState {
+  hasError: boolean;
+}
+
+class StageRenderBoundary extends React.Component<
+  StageRenderBoundaryProps,
+  StageRenderBoundaryState
+> {
+  state: StageRenderBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): StageRenderBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("[GroupedSmoothTab] Stage render failed", {
+      activeGroup: this.props.activeGroup,
+      activeTab: this.props.activeTab,
+      error,
+      componentStack: errorInfo.componentStack,
+    });
+  }
+
+  componentDidUpdate(prevProps: StageRenderBoundaryProps) {
+    if (
+      prevProps.activeTab !== this.props.activeTab &&
+      this.state.hasError
+    ) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+          Failed to load this section. Check the browser console for stage logs.
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const groupLabels: Record<GroupKey, string> = {
   leads: "Leads",
   project: "Project",
@@ -116,6 +167,29 @@ export default function GroupedSmoothTab({
     () => allItems.find((i) => i.id === activeTab)?.component,
     [allItems, activeTab]
   );
+
+  React.useEffect(() => {
+    const activeItemExists = allItems.some((item) => item.id === activeTab);
+    if (!activeItemExists && allItems.length > 0) {
+      const fallbackItem = allItems[0];
+      const fallbackGroup = (Object.keys(visibleGroups) as GroupKey[]).find(
+        (group) => visibleGroups[group].some((item) => item.id === fallbackItem.id)
+      );
+
+      console.warn("[GroupedSmoothTab] Active tab missing from visible groups", {
+        activeTab,
+        defaultTabId,
+        availableTabs: allItems.map((item) => item.id),
+        fallbackTab: fallbackItem.id,
+      });
+
+      if (fallbackGroup) {
+        setActiveGroup(fallbackGroup);
+      }
+      setActiveTab(fallbackItem.id);
+      onChange?.(fallbackItem.id);
+    }
+  }, [activeTab, allItems, defaultTabId, onChange, visibleGroups]);
 
   const handleSelect = (g: GroupKey, id: StageId) => {
     setActiveGroup(g);
@@ -282,16 +356,26 @@ export default function GroupedSmoothTab({
       {/* Active content with smooth transitions */}
       <div className="relative flex-1 mt-4">
         <AnimatePresence mode="wait">
-          <motion.div
+          <StageRenderBoundary
             key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="h-full"
+            activeGroup={activeGroup}
+            activeTab={activeTab}
           >
-            {activeComponent}
-          </motion.div>
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="h-full"
+            >
+              {activeComponent ?? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  No content is available for tab <strong>{activeTab}</strong>.
+                </div>
+              )}
+            </motion.div>
+          </StageRenderBoundary>
         </AnimatePresence>
       </div>
     </div>
