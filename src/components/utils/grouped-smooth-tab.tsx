@@ -41,15 +41,16 @@ interface StageRenderBoundaryProps {
 
 interface StageRenderBoundaryState {
   hasError: boolean;
+  retryKey: number;
 }
 
 class StageRenderBoundary extends React.Component<
   StageRenderBoundaryProps,
   StageRenderBoundaryState
 > {
-  state: StageRenderBoundaryState = { hasError: false };
+  state: StageRenderBoundaryState = { hasError: false, retryKey: 0 };
 
-  static getDerivedStateFromError(): StageRenderBoundaryState {
+  static getDerivedStateFromError(): Partial<StageRenderBoundaryState> {
     return { hasError: true };
   }
 
@@ -63,24 +64,35 @@ class StageRenderBoundary extends React.Component<
   }
 
   componentDidUpdate(prevProps: StageRenderBoundaryProps) {
-    if (
-      prevProps.activeTab !== this.props.activeTab &&
-      this.state.hasError
-    ) {
+    if (prevProps.activeTab !== this.props.activeTab && this.state.hasError) {
       this.setState({ hasError: false });
     }
   }
 
+  handleRetry = () => {
+    this.setState((prev) => ({ hasError: false, retryKey: prev.retryKey + 1 }));
+  };
+
   render() {
     if (this.state.hasError) {
       return (
-        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
-          Failed to load this section. Check the browser console for stage logs.
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-6 text-sm text-destructive flex flex-col items-start gap-3">
+          <p>Failed to load this section. Check the browser console for stage logs.</p>
+          <button
+            onClick={this.handleRetry}
+            className="px-3 py-1.5 text-xs font-medium rounded-md bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 transition-colors"
+          >
+            Try again
+          </button>
         </div>
       );
     }
 
-    return this.props.children;
+    return (
+      <React.Fragment key={this.state.retryKey}>
+        {this.props.children}
+      </React.Fragment>
+    );
   }
 }
 

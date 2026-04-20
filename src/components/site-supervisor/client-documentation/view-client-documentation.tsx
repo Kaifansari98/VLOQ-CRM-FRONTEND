@@ -17,19 +17,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useDeleteDocument } from "@/api/leads";
-import { useSelectionData } from "@/hooks/designing-stage/designing-leads-hooks";
 import SelectionsTabForClientDocs from "@/components/sales-executive/designing-stage/pill-tabs-component/SelectionsTabForClientDocs";
 
 type Props = {
   leadId: number;
   accountId: number;
 };
-
-const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"];
-const DOC_EXTENSIONS = ["ppt", "pptx", "pdf", "doc", "docx"];
-
-const getFileExtension = (filename: string): string =>
-  filename?.split(".").pop()?.toLowerCase() ?? "";
 
 export default function ClientDocumentationDetails({
   leadId,
@@ -67,16 +60,10 @@ export default function ClientDocumentationDetails({
   const handleInstanceChange = useCallback(
     (instance: { id?: number | null } | null) => {
       const newId = instance?.id ?? null;
-      setSelectedInstanceId(newId);
+      setSelectedInstanceId((prev) => (prev === newId ? prev : newId));
       console.info("[ClientDocumentationDetails] instance changed", { newId, leadId });
     },
     [leadId]
-  );
-
-  const { data: selectionsData } = useSelectionData(
-    vendorId!,
-    leadId,
-    selectedInstanceId ?? undefined
   );
 
   React.useEffect(() => {
@@ -122,18 +109,12 @@ export default function ClientDocumentationDetails({
     });
   }, [accountId, leadDetails, leadId, selectedInstanceId]);
 
-  const selections = {
-    carcas: selectionsData?.data?.find((s: any) => s.type === "Carcas")?.desc,
-    shutter: selectionsData?.data?.find((s: any) => s.type === "Shutter")?.desc,
-    handles: selectionsData?.data?.find((s: any) => s.type === "Handles")?.desc,
-  };
-
   const hasMultipleInstances = (leadDetails?.instance_count ?? 0) > 1;
   const instanceGroups = leadDetails?.documents_by_instance || [];
 
   React.useEffect(() => {
     if (!hasMultipleInstances || instanceGroups.length === 0) {
-      setSelectedInstanceId(null);
+      setSelectedInstanceId((prev) => (prev === null ? prev : null));
       return;
     }
     if (
@@ -143,7 +124,10 @@ export default function ClientDocumentationDetails({
       return;
     }
     const firstWithId = instanceGroups.find((group) => group.instance_id);
-    setSelectedInstanceId(firstWithId?.instance_id ?? null);
+    const fallbackInstanceId = firstWithId?.instance_id ?? null;
+    setSelectedInstanceId((prev) =>
+      prev === fallbackInstanceId ? prev : fallbackInstanceId,
+    );
   }, [hasMultipleInstances, instanceGroups, selectedInstanceId]);
 
   const selectedInstanceDocs = hasMultipleInstances
@@ -156,20 +140,6 @@ export default function ClientDocumentationDetails({
   const pythaDocs = hasMultipleInstances
     ? selectedInstanceDocs?.documents?.pytha || []
     : leadDetails?.documents?.pytha || [];
-
-  // 🧩 File segregation logic
-  const imageDocs = pptDocs.filter((doc) =>
-    IMAGE_EXTENSIONS.includes(getFileExtension(doc.doc_sys_name))
-  );
-  const documentDocs = pptDocs.filter((doc) =>
-    DOC_EXTENSIONS.includes(getFileExtension(doc.doc_sys_name))
-  );
-
-  // 🧩 Permissions (kept for future use)
-  const canDelete =
-    userType === "admin" ||
-    userType === "super-admin" ||
-    userType === "super admin";
 
   // 🧩 Delete handler
   const handleConfirmDelete = () => {

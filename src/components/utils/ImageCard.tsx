@@ -117,12 +117,10 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
     }
   };
 
-
   const formatStatus = (status?: string) => {
     if (!status) return "";
     return status.toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
   };
-
 
   return (
     <>
@@ -174,11 +172,14 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
             </h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
               {doc.created_at
-                ? `Uploaded on ${new Date(doc.created_at).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}`
+                ? `Uploaded on ${new Date(doc.created_at).toLocaleDateString(
+                    "en-IN",
+                    {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    },
+                  )}`
                 : "Uploaded date not available"}
             </p>
           </div>
@@ -201,7 +202,9 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
             {status && (
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${getStatusColor()}`} />
-                <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400 capitalize">{formatStatus(status)}</span>
+                <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400 capitalize">
+                  {formatStatus(status)}
+                </span>
               </div>
             )}
           </div>
