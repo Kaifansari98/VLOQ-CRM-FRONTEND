@@ -200,16 +200,16 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
   const carcassOptions = React.useMemo<ClientDocsSelectionOption[]>(
     () =>
-      (carcassTypesData?.data || []).map((item) => ({
+      (Array.isArray(carcassTypesData?.data) ? carcassTypesData.data : []).map((item) => ({
         value: `carcass-${item.id}`,
-        label: item.name,
+        label: item.name ?? "",
       })),
     [carcassTypesData?.data],
   );
 
   const shutterOptions = React.useMemo<ClientDocsSelectionOption[]>(
     () =>
-      [...(shutterTypesData?.data || [])]
+      [...(Array.isArray(shutterTypesData?.data) ? shutterTypesData.data : [])]
         .sort((a, b) => {
           const aHasDistinctSubTypes = (a.subTypes || []).some((subType) => {
             const subLabel = subType.name?.trim() || "";
@@ -258,7 +258,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
         return distinctSubTypes.map((subType) => ({
           value: `shutter-${item.id}-sub-${subType.id}`,
-          label: subType.name,
+          label: subType.name ?? "",
         }));
       }),
     [shutterTypesData?.data],
@@ -266,9 +266,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
   const handleOptions = React.useMemo<ClientDocsSelectionOption[]>(
     () =>
-      (handleTypesData?.data || []).map((item) => ({
+      (Array.isArray(handleTypesData?.data) ? handleTypesData.data : []).map((item) => ({
         value: `handle-${item.id}`,
-        label: item.name,
+        label: item.name ?? "",
       })),
     [handleTypesData?.data],
   );

@@ -173,12 +173,13 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
               {doc.doc_og_name}
             </h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-              Uploaded on{" "}
-              {new Date(doc.created_at!).toLocaleDateString("en-IN", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
+              {doc.created_at
+                ? `Uploaded on ${new Date(doc.created_at).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}`
+                : "Uploaded date not available"}
             </p>
           </div>
 

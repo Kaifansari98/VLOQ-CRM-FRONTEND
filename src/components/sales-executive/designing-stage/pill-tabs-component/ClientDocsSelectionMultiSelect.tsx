@@ -15,7 +15,8 @@ interface ClientDocsSelectionMultiSelectProps {
   disabled?: boolean;
 }
 
-const normalize = (s: string) => s.trim().toLowerCase();
+const normalize = (s: string | null | undefined): string =>
+  s == null ? "" : s.trim().toLowerCase();
 
 export default function ClientDocsSelectionMultiSelect({
   value,
@@ -26,6 +27,13 @@ export default function ClientDocsSelectionMultiSelect({
 }: ClientDocsSelectionMultiSelectProps) {
   const selectedOptions = React.useMemo(() => {
     // value may contain option.value IDs (e.g. "carcass-5") OR legacy label strings
+    const nullLabelOptions = options.filter((o) => o.label == null);
+    if (nullLabelOptions.length > 0) {
+      console.warn("[ClientDocsSelectionMultiSelect] options with null/undefined label", {
+        placeholder,
+        nullLabelValues: nullLabelOptions.map((o) => o.value),
+      });
+    }
     const byValue = new Map(options.map((o) => [o.value, o]));
     const byLabel = new Map(options.map((o) => [normalize(o.label), o]));
 
