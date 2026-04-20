@@ -3,7 +3,10 @@
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import PreProductionDetails from "./PreProductionDetails";
 import PostProductionDetails from "./PostProductionDetails";
-import { useCheckPostProductionReady, useCheckPreProductionFilesReady } from "@/api/production/production-api";
+import {
+  useCheckPostProductionReady,
+  useCheckPreProductionFilesReady,
+} from "@/api/production/production-api";
 import { useAppSelector } from "@/redux/store";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -13,6 +16,7 @@ import PreProductionFilesSection from "./PreProductionFilesSection";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
 import { useTechCheckInstanceStatus } from "@/api/tech-check";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 
 interface LeadDetailsProductionUtilProps {
   leadId: number;
@@ -27,8 +31,7 @@ export default function LeadDetailsProductionUtil({
 }: LeadDetailsProductionUtilProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
-  const effectiveUserType =
-    userType === "admin" ? "sales-executive" : userType;
+  const effectiveUserType = userType === "admin" ? "sales-executive" : userType;
   const userId = useAppSelector((s) => s.auth.user?.id);
   const searchParams = useSearchParams();
   const instanceFromUrlRaw = searchParams.get("instance_id");
@@ -48,7 +51,7 @@ export default function LeadDetailsProductionUtil({
     userId!,
     instanceFromUrl!,
   );
-  const instances = clientDocs?.product_structure_instances ?? [];
+  const clientDocInstances = clientDocs?.product_structure_instances ?? [];
   const hasMultipleInstances = (clientDocs?.instance_count ?? 0) > 1;
   const [activeInstanceId, setActiveInstanceId] = useState<number | null>(
     resolvedInstanceId,
@@ -63,10 +66,15 @@ export default function LeadDetailsProductionUtil({
       setActiveInstanceId(resolvedInstanceId);
       return;
     }
-    if (!activeInstanceId && instances.length > 0) {
-      setActiveInstanceId(instances[0]?.id ?? null);
+    if (!activeInstanceId && clientDocInstances.length > 0) {
+      setActiveInstanceId(clientDocInstances[0]?.id ?? null);
     }
-  }, [hasMultipleInstances, resolvedInstanceId, instances, activeInstanceId]);
+  }, [
+    hasMultipleInstances,
+    resolvedInstanceId,
+    clientDocInstances,
+    activeInstanceId,
+  ]);
 
   const scopedInstanceId = hasMultipleInstances
     ? activeInstanceId
@@ -89,14 +97,31 @@ export default function LeadDetailsProductionUtil({
     leadId,
     scopedInstanceId ?? undefined,
   );
+  const { data: instancesResponse } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+  );
 
   const readyForPostProduction = data?.readyForPostProduction ?? false;
-  const readyForUnderProduction =
-    preProductionReadyData?.readyForUnderProduction ?? false;
+  const structureInstances: any[] = Array.isArray(instancesResponse?.data)
+    ? instancesResponse.data
+    : (instancesResponse?.data?.data ?? []);
+  const currentInstance = structureInstances.find(
+    (instance: any) => Number(instance.id) === scopedInstanceId,
+  );
+  const isPreProdDone = currentInstance?.is_pre_prod_done === true;
+  const readyForUnderProduction = scopedInstanceId
+    ? isPreProdDone
+    : (preProductionReadyData?.readyForUnderProduction ?? false);
 
-  const defaultTab = canViewDefaultSubTabProductionStage(effectiveUserType ?? "");
+  const defaultTab = canViewDefaultSubTabProductionStage(
+    effectiveUserType ?? "",
+  );
   const tabFromUrl = searchParams.get("tab");
-  const canAccessAllTabs = userType === "super-admin" || userType === "factory" || userType === "pre-prod";
+  const canAccessAllTabs =
+    userType === "super-admin" ||
+    userType === "factory" ||
+    userType === "pre-prod";
 
   const allTabs = [
     {
@@ -135,7 +160,7 @@ export default function LeadDetailsProductionUtil({
       disabled: !canAccessAllTabs || !readyForUnderProduction,
       disabledReason: !canAccessAllTabs
         ? "Only super-admin and factory can access this tab."
-        : "Upload pre-production files first to enable Under Production.",
+        : "Click Mark Pre Prod Done first to enable Under Production.",
       cardContent: (
         <PreProductionDetails
           leadId={leadId}
@@ -163,7 +188,7 @@ export default function LeadDetailsProductionUtil({
 
   const showInstanceTabs =
     hasMultipleInstances &&
-    instances.length > 0 &&
+    clientDocInstances.length > 0 &&
     techCheckInstanceStatus?.is_tech_check_completed === true &&
     techCheckInstanceStatus?.is_order_login_completed === true &&
     techCheckInstanceStatus?.is_production_completed === true &&
@@ -176,7 +201,7 @@ export default function LeadDetailsProductionUtil({
           <div className="border-b border-border">
             <ScrollArea className="w-full whitespace-nowrap">
               <div className="flex items-end gap-2 sm:flex-wrap">
-                {instances.map((instance: any) => {
+                {clientDocInstances.map((instance: any) => {
                   const isActive = scopedInstanceId === instance.id;
                   return (
                     <div
@@ -213,7 +238,12 @@ export default function LeadDetailsProductionUtil({
       )}
       <SmoothTab
         items={allTabs}
-        defaultTabId={canAccessAllTabs ? (tabFromUrl ?? (defaultTab ? "preProductionFiles" : "postProduction")) : "postProduction"}
+        defaultTabId={
+          canAccessAllTabs
+            ? (tabFromUrl ??
+              (defaultTab ? "preProductionFiles" : "postProduction"))
+            : "postProduction"
+        }
       />
     </div>
   );
