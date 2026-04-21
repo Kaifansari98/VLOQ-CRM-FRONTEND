@@ -14,8 +14,8 @@ import {
 } from "lucide-react";
 import { toastManager } from "@/components/ui/toast";
 import { useDispatch } from "react-redux";
-import { logout } from "@/redux/slices/authSlice";
 import { logoutActivityApi } from "@/api/auth";
+import { forceClientLogout } from "@/lib/sessionCleanup";
 
 import {
   Dialog,
@@ -127,9 +127,7 @@ export default function ChangePasswordModal({
       });
       toastManager.add({ title: "Password changed! Logging you out...", type: "success" });
       await logoutActivityApi().catch(() => {});
-      dispatch(logout());
-      localStorage.removeItem("token");
-      window.location.href = "/login";
+      forceClientLogout(dispatch);
     } catch (err: any) {
       toastManager.add({ title: err?.response?.data?.message || "Failed to change password", type: "error" });
     }

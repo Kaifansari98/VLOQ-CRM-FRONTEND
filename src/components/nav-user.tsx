@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronsUpDown, Eye, KeyRound, LogOut } from "lucide-react";
+import { ChevronsUpDown, KeyRound, LogOut, ShieldAlert } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -32,11 +32,11 @@ import {
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { toastManager } from "@/components/ui/toast";
-import { logout } from "@/redux/slices/authSlice";
 import { useAppSelector } from "@/redux/store";
 import { deactiveToken } from "@/api/notifications";
 import ChangePasswordModal from "@/components/auth/ChangePasswordModal";
-import { logoutActivityApi } from "@/api/auth";
+import { logoutActivityApi, logoutAllByVendorApi } from "@/api/auth";
+import { forceClientLogout } from "@/lib/sessionCleanup";
 export function NavUser({
   user,
 }: {
@@ -49,11 +49,16 @@ export function NavUser({
   const { isMobile } = useSidebar();
   const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
+  const [logoutAllOpen, setLogoutAllOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isLoggingOutAll, setIsLoggingOutAll] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const canLogoutAllDevices =
+    userType?.toLowerCase() === "admin" || userType?.toLowerCase() === "super-admin";
   const userInitials = user.name
     .trim()
     .split(/\s+/)
@@ -93,18 +98,36 @@ export function NavUser({
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
-      dispatch(logout());
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      localStorage.removeItem("pushDeviceId");
-      localStorage.removeItem("activeTheme");
-      if (tokenKey) localStorage.removeItem(tokenKey);
-
       setIsLoggingOut(false);
-      window.location.href = "/login";
+      forceClientLogout(dispatch);
     }
   };
 
+  const handleLogoutAll = async () => {
+    if (!vendorId) return;
+
+    try {
+      setIsLoggingOutAll(true);
+      setMenuOpen(false);
+      setLogoutAllOpen(false);
+
+      await logoutAllByVendorApi(vendorId);
+      toastManager.add({
+        title: "All active devices have been logged out",
+        type: "success",
+      });
+      forceClientLogout(dispatch);
+    } catch (error: any) {
+      toastManager.add({
+        title:
+          error?.response?.data?.message || "Failed to logout all devices",
+        type: "error",
+      });
+      console.error("Logout all devices failed:", error);
+    } finally {
+      setIsLoggingOutAll(false);
+    }
+  };
 
 
   return (
@@ -196,7 +219,23 @@ export function NavUser({
                 <KeyRound />
                 Change Password
               </DropdownMenuItem>
-                <DropdownMenuSeparator />
+              {canLogoutAllDevices && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setMenuOpen(false);
+                      setTimeout(() => setLogoutAllOpen(true), 0);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <ShieldAlert />
+                    Log out all devices
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={(e) => {
                   e.preventDefault();
@@ -232,6 +271,30 @@ export function NavUser({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleLogout} disabled={isLoggingOut}>
               {isLoggingOut ? "Logging out..." : "Log out"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={logoutAllOpen} onOpenChange={setLogoutAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Log out all devices?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will revoke every active session for your vendor, including
+              the current browser. You will be redirected to the login page
+              immediately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoggingOutAll}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogoutAll}
+              disabled={isLoggingOutAll}
+            >
+              {isLoggingOutAll ? "Logging out all..." : "Log out all"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
