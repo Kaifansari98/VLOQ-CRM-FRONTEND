@@ -3,7 +3,6 @@ import { apiClient } from "@/lib/apiClient"
 import { useDispatch } from "react-redux"
 import { setCredentials } from "@/redux/slices/authSlice"
 import { setActiveTheme } from "@/redux/slices/themeSlice"
-import { toastManager } from "@/components/ui/toast";
 
 interface LoginPayload {
   identifier: string,
@@ -20,8 +19,6 @@ export function useLogin() {
         const res = await apiClient.post("/auth/login", payload);
         return res.data;
       } catch (error: any) {
-        // ✅ Throw actual backend error message
-        toastManager.add({ title: error.response?.data?.message || "Login failed", type: "error" })
         throw new Error(error.response?.data?.message || "Login failed");
       }
     },

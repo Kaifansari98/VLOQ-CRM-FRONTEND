@@ -15,6 +15,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
+const getLoginErrorMessage = (message?: string) => {
+  if (!message) {
+    return "Unable to sign in. Please try again.";
+  }
+
+  const normalizedMessage = message.toLowerCase();
+
+  if (
+    normalizedMessage.includes("maximum 2 active devices") ||
+    normalizedMessage.includes("logout from another device first")
+  ) {
+    return "You have already reached the maximum of 2 active devices for this account. Please log out from one of your other devices and try again.";
+  }
+
+  return message;
+};
+
 export function LoginForm({
   className,
   ...props
@@ -58,6 +75,20 @@ export function LoginForm({
       router.push("/dashboard");
     }
   }, [loginMutation.isSuccess, loginMutation.data, dispatch, router]);
+
+  useEffect(() => {
+    if (loginMutation.isError) {
+      const errorMessage =
+        loginMutation.error instanceof Error
+          ? loginMutation.error.message
+          : undefined;
+
+      toastManager.add({
+        title: getLoginErrorMessage(errorMessage),
+        type: "error",
+      });
+    }
+  }, [loginMutation.isError, loginMutation.error]);
 
   return (
     <form
