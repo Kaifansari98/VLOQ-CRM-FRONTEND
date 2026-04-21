@@ -62,6 +62,7 @@ export function NavUser({
     .join("");
 
   const handleLogout = async () => {
+    let tokenKey: string | undefined;
     try {
       setIsLoggingOut(true);
       setMenuOpen(false);
@@ -69,7 +70,7 @@ export function NavUser({
 
       const deviceId = localStorage.getItem("pushDeviceId");
 
-      const tokenKey = Object.keys(localStorage).find((k) =>
+      tokenKey = Object.keys(localStorage).find((k) =>
         k.startsWith("pushToken:"),
       );
 
@@ -82,27 +83,25 @@ export function NavUser({
           user_id: userId,
           device_id: deviceId ?? undefined,
           token: token ?? "",
-        });
+        }).catch(() => {});
       }
 
       // 🔴 Log logout activity
-      await logoutActivityApi();
+      await logoutActivityApi().catch(() => {});
 
       toastManager.add({ title: "You have been logged out", type: "success" });
-
-      // Now destroy frontend session
-      dispatch(logout());
-
-      localStorage.removeItem("token");
-      localStorage.removeItem("pushDeviceId");
-      if (tokenKey) localStorage.removeItem(tokenKey);
-
-      // Redirect to login
-      window.location.href = '/login';
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
+      dispatch(logout());
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("pushDeviceId");
+      localStorage.removeItem("activeTheme");
+      if (tokenKey) localStorage.removeItem(tokenKey);
+
       setIsLoggingOut(false);
+      window.location.href = "/login";
     }
   };
 

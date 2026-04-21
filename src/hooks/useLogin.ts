@@ -6,8 +6,10 @@ import { setActiveTheme } from "@/redux/slices/themeSlice"
 
 interface LoginPayload {
   identifier: string,
-  // user_contact: string
   password: string
+  device_id?: string
+  device_name?: string
+  platform?: string
 }
 
 export function useLogin() {

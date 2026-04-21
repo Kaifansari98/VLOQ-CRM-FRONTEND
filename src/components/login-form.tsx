@@ -32,6 +32,43 @@ const getLoginErrorMessage = (message?: string) => {
   return message;
 };
 
+const getOrCreateAuthDeviceId = () => {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  const existingDeviceId = localStorage.getItem("authDeviceId");
+  if (existingDeviceId) {
+    return existingDeviceId;
+  }
+
+  const generatedDeviceId =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `device-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+  localStorage.setItem("authDeviceId", generatedDeviceId);
+  return generatedDeviceId;
+};
+
+const getNavigatorPlatform = () => {
+  if (typeof window === "undefined") {
+    return "unknown";
+  }
+
+  const navigatorWithUserAgentData = navigator as Navigator & {
+    userAgentData?: {
+      platform?: string;
+    };
+  };
+
+  return (
+    navigatorWithUserAgentData.userAgentData?.platform ||
+    navigator.platform ||
+    "unknown"
+  );
+};
+
 export function LoginForm({
   className,
   ...props
@@ -60,7 +97,21 @@ export function LoginForm({
       toastManager.add({ title: "Please enter your credentials", type: "error" });
       return;
     }
-    loginMutation.mutate({ identifier, password });
+
+    const deviceId = getOrCreateAuthDeviceId();
+    const deviceName =
+      typeof window !== "undefined"
+        ? `${navigator.userAgent.includes("Mobile") ? "Mobile" : "Browser"} Device`
+        : "Browser Device";
+    const platform = getNavigatorPlatform();
+
+    loginMutation.mutate({
+      identifier,
+      password,
+      device_id: deviceId,
+      device_name: deviceName,
+      platform,
+    });
   };
 
   useEffect(() => {
