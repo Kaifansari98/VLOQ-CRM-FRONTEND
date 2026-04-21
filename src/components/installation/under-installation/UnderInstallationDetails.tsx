@@ -200,7 +200,7 @@ export default function UnderInstallationDetails({
           value={endDate}
           onChange={() => {}}
           restriction="futureOnly"
-          disabledReason="Site Supervisor modify the expected installation date once it has been set."
+          disabledReason="Site Supervisor cannot modify the expected installation date once it has been set."
         />
       );
     }

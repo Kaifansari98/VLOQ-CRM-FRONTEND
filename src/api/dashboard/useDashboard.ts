@@ -8,7 +8,12 @@ import {
   getActiveFranchiseeCount,
   getLeadsThisMonth,
   getLeadsByFranchise,
+  getOverdueProjectsCount,
+  getFranchisePerformance,
+  getAvgDaysPerStage,
   FranchiseLeadCount,
+  FranchisePerformanceRow,
+  AvgDaysPerStage,
   UiLeadStatusCounts,
   UiPerformanceSnapshot,
   UiSalesExecutiveTaskStats,
@@ -219,6 +224,30 @@ export function useAdminTotalRevenue(vendorId?: number, franchiseId?: number) {
   return useQuery<AdminTotalRevenue>({
     queryKey: ["admin-total-revenue", vendorId, franchiseId],
     queryFn: () => getAdminTotalRevenue(vendorId!, franchiseId),
+    enabled: !!vendorId,
+  });
+}
+
+export function useAvgDaysPerStage(vendorId?: number, franchiseId?: number) {
+  return useQuery<AvgDaysPerStage>({
+    queryKey: ["avg-days-per-stage", vendorId, franchiseId],
+    queryFn: () => getAvgDaysPerStage(vendorId!, franchiseId),
+    enabled: !!vendorId,
+  });
+}
+
+export function useFranchisePerformance(vendorId?: number) {
+  return useQuery<FranchisePerformanceRow[]>({
+    queryKey: ["franchise-performance", vendorId],
+    queryFn: () => getFranchisePerformance(vendorId!),
+    enabled: !!vendorId,
+  });
+}
+
+export function useOverdueProjectsCount(vendorId?: number) {
+  return useQuery<{ count: number }>({
+    queryKey: ["overdue-projects-count", vendorId],
+    queryFn: () => getOverdueProjectsCount(vendorId!),
     enabled: !!vendorId,
   });
 }

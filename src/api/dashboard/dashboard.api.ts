@@ -251,6 +251,49 @@ export interface FranchiseLeadCount {
   leads: number;
 }
 
+export interface FranchisePerformanceRow {
+  franchise_id: number;
+  name: string;
+  leads: number;
+  closures: number;
+  revenue: number;
+}
+
+export interface AvgDaysPerStage {
+  lead: number;
+  project: number;
+  production: number;
+  installation: number;
+}
+
+export const getAvgDaysPerStage = async (
+  vendorId: number,
+  franchiseId?: number
+): Promise<AvgDaysPerStage> => {
+  const res = await apiClient.get("/dashboard/admin/avg-days-per-stage", {
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as AvgDaysPerStage;
+};
+
+export const getFranchisePerformance = async (
+  vendorId: number
+): Promise<FranchisePerformanceRow[]> => {
+  const res = await apiClient.get("/dashboard/admin/franchise-performance", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FranchisePerformanceRow[];
+};
+
+export const getOverdueProjectsCount = async (
+  vendorId: number
+): Promise<{ count: number }> => {
+  const res = await apiClient.get("/dashboard/admin/overdue-projects-count", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as { count: number };
+};
+
 export const getLeadsByFranchise = async (
   vendorId: number
 ): Promise<FranchiseLeadCount[]> => {

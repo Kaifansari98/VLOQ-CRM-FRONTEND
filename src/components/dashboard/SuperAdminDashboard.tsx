@@ -29,9 +29,9 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
-import { useAdminTotalRevenue, useActiveFranchiseeCount, useLeadsThisMonth, useLeadsByFranchise } from "@/api/dashboard/useDashboard";
-import type { FranchiseLeadCount } from "@/api/dashboard/dashboard.api";
-import type { AdminTotalRevenue } from "@/api/dashboard/dashboard.api";
+import { useAdminTotalRevenue, useActiveFranchiseeCount, useLeadsThisMonth, useLeadsByFranchise, useOverdueProjectsCount, useFranchisePerformance, useAvgDaysPerStage } from "@/api/dashboard/useDashboard";
+import type { FranchiseLeadCount, FranchisePerformanceRow } from "@/api/dashboard/dashboard.api";
+import { useFranchisesByVendorId, type FranchiseSummary } from "@/api/franchise";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -96,12 +96,15 @@ function StatCard({ title, value, sub, positive, icon: Icon, accent, dot, isLoad
 type Filter = "week" | "month" | "year";
 
 interface RevenueChartProps {
-  data?: AdminTotalRevenue;
-  isLoading?: boolean;
+  vendorId?: number;
+  franchises: FranchiseSummary[];
 }
 
-function RevenueChart({ data, isLoading }: RevenueChartProps) {
+function RevenueChart({ vendorId, franchises }: RevenueChartProps) {
   const [mode, setMode] = useState<Filter>("year");
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | undefined>(undefined);
+
+  const { data, isLoading } = useAdminTotalRevenue(vendorId, selectedFranchiseId);
 
   const chartData = useMemo(() => {
     if (!data) return [];
@@ -118,6 +121,10 @@ function RevenueChart({ data, isLoading }: RevenueChartProps) {
 
   const label = mode === "week" ? "This Week" : mode === "month" ? "This Month" : "This Year";
 
+  const selectedFranchiseName = selectedFranchiseId
+    ? franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ?? "Overall"
+    : "Overall";
+
   return (
     <Card className="w-full h-full border flex flex-col bg-[#fff] dark:bg-[#0a0a0a]">
       <CardHeader className="flex flex-row justify-between items-start pb-2 space-y-0">
@@ -133,19 +140,40 @@ function RevenueChart({ data, isLoading }: RevenueChartProps) {
           )}
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" disabled={isLoading}>
-              {mode === "week" ? "Week" : mode === "month" ? "Month" : "Year"}
-              <ChevronDown className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-32">
-            <DropdownMenuItem onClick={() => setMode("week")}>This Week</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setMode("month")}>This Month</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setMode("year")}>This Year</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2">
+          {/* Franchise filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 gap-1 text-xs max-w-[130px] truncate" disabled={isLoading}>
+                <span className="truncate">{selectedFranchiseName}</span>
+                <ChevronDown className="h-3 w-3 shrink-0" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44 max-h-60 overflow-y-auto">
+              <DropdownMenuItem onClick={() => setSelectedFranchiseId(undefined)}>Overall</DropdownMenuItem>
+              {franchises.map((f) => (
+                <DropdownMenuItem key={f.id} onClick={() => setSelectedFranchiseId(f.id)}>
+                  {f.franchise_name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Time filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" disabled={isLoading}>
+                {mode === "week" ? "Week" : mode === "month" ? "Month" : "Year"}
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-32">
+              <DropdownMenuItem onClick={() => setMode("week")}>This Week</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setMode("month")}>This Month</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setMode("year")}>This Year</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </CardHeader>
 
       <CardContent className="h-[220px]">
@@ -222,6 +250,175 @@ function FranchiseChart({ data = [], isLoading }: FranchiseChartProps) {
   );
 }
 
+// ─── Franchise Performance Table ─────────────────────────────────────────────
+
+interface FranchisePerformanceTableProps {
+  data?: FranchisePerformanceRow[];
+  isLoading?: boolean;
+}
+
+function FranchisePerformanceTable({ data = [], isLoading }: FranchisePerformanceTableProps) {
+  return (
+    <Card className="w-full border bg-[#fff] dark:bg-[#0a0a0a]">
+      <CardHeader className="pb-2 px-6 flex flex-row items-start justify-between space-y-0">
+        <div className="space-y-0.5">
+          <CardTitle className="text-sm font-medium">Franchisee-wise Performance</CardTitle>
+          <p className="text-xs text-muted-foreground">Leads, closures and revenue per franchise</p>
+        </div>
+      </CardHeader>
+
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/50">
+                <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3 w-[40%]">Franchise</th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-6 py-3">Leads</th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-6 py-3">Closures</th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-6 py-3">Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="border-b border-border/30 last:border-0">
+                    <td className="px-6 py-3"><div className="h-4 w-32 bg-muted animate-pulse rounded" /></td>
+                    <td className="px-6 py-3 text-right"><div className="h-4 w-8 bg-muted animate-pulse rounded ml-auto" /></td>
+                    <td className="px-6 py-3 text-right"><div className="h-4 w-8 bg-muted animate-pulse rounded ml-auto" /></td>
+                    <td className="px-6 py-3 text-right"><div className="h-4 w-16 bg-muted animate-pulse rounded ml-auto" /></td>
+                  </tr>
+                ))
+              ) : data.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-8 text-center text-xs text-muted-foreground">No franchise data available</td>
+                </tr>
+              ) : (
+                data.map((row, idx) => {
+                  const closureRate = row.leads > 0 ? ((row.closures / row.leads) * 100).toFixed(0) : "0";
+                  return (
+                    <tr key={row.franchise_id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-[10px] font-semibold shrink-0">
+                            {idx + 1}
+                          </span>
+                          <span className="font-medium text-foreground truncate">{row.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 text-right font-medium">{row.leads.toLocaleString("en-IN")}</td>
+                      <td className="px-6 py-3 text-right">
+                        <div className="flex flex-col items-end">
+                          <span className="font-medium">{row.closures.toLocaleString("en-IN")}</span>
+                          <span className="text-[10px] text-emerald-500">{closureRate}%</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 text-right font-medium">{formatRevenue(row.revenue)}</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Avg Days Per Stage ───────────────────────────────────────────────────────
+
+const STAGE_CONFIG = [
+  { key: "lead"         as const, label: "Lead",         range: "Type 1 → 4",  color: "bg-sky-500"     },
+  { key: "project"      as const, label: "Project",      range: "Type 5 → 7",  color: "bg-violet-500"  },
+  { key: "production"   as const, label: "Production",   range: "Type 8 → 11", color: "bg-amber-500"   },
+  { key: "installation" as const, label: "Installation", range: "Type 12 → 17", color: "bg-emerald-500" },
+];
+
+interface AvgDaysPerStageCardProps {
+  vendorId?: number;
+  franchises: FranchiseSummary[];
+}
+
+function AvgDaysPerStageCard({ vendorId, franchises }: AvgDaysPerStageCardProps) {
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | undefined>(undefined);
+
+  const { data, isLoading } = useAvgDaysPerStage(vendorId, selectedFranchiseId);
+
+  const selectedFranchiseName = selectedFranchiseId
+    ? franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ?? "Overall"
+    : "Overall";
+
+  const maxDays = data
+    ? Math.max(data.lead, data.project, data.production, data.installation, 1)
+    : 1;
+
+  return (
+    <Card className="w-full h-full border bg-[#fff] dark:bg-[#0a0a0a] flex flex-col justify-between">
+      <CardHeader className="pb-2 px-6 flex flex-row items-start justify-between space-y-0">
+        <div className="space-y-0.5">
+          <CardTitle className="text-sm font-medium">Avg Days Taken per Stage</CardTitle>
+          <p className="text-xs text-muted-foreground">Average time leads spend progressing through each pipeline stage</p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline" className="h-8 gap-1 text-xs max-w-[130px] shrink-0" disabled={isLoading}>
+              <span className="truncate">{selectedFranchiseName}</span>
+              <ChevronDown className="h-3 w-3 shrink-0" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44 max-h-60 overflow-y-auto">
+            <DropdownMenuItem onClick={() => setSelectedFranchiseId(undefined)}>Overall</DropdownMenuItem>
+            {franchises.map((f) => (
+              <DropdownMenuItem key={f.id} onClick={() => setSelectedFranchiseId(f.id)}>
+                {f.franchise_name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </CardHeader>
+
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+          {STAGE_CONFIG.map(({ key, label, range, color }) => {
+            const days = data?.[key] ?? 0;
+            const pct  = Math.round((days / maxDays) * 100);
+
+            return (
+              <div key={key} className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{label}</p>
+                    <p className="text-[10px] text-muted-foreground">{range}</p>
+                  </div>
+                  {isLoading ? (
+                    <div className="h-7 w-16 bg-muted animate-pulse rounded" />
+                  ) : (
+                    <span className="text-2xl font-semibold">
+                      {days > 0 ? days : "—"}
+                      {days > 0 && <span className="text-xs font-normal text-muted-foreground ml-1">days</span>}
+                    </span>
+                  )}
+                </div>
+
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  {isLoading ? (
+                    <div className="h-full w-1/2 bg-muted-foreground/20 animate-pulse rounded-full" />
+                  ) : (
+                    <div
+                      className={`h-full rounded-full ${color} transition-all duration-500`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuperAdminDashboard() {
@@ -232,6 +429,9 @@ export default function SuperAdminDashboard() {
   const { data: franchiseeData, isLoading: franchiseeLoading } = useActiveFranchiseeCount(vendorId);
   const { data: leadsThisMonthData, isLoading: leadsThisMonthLoading } = useLeadsThisMonth(vendorId);
   const { data: franchiseLeadsData, isLoading: franchiseLeadsLoading } = useLeadsByFranchise(vendorId);
+  const { data: overdueData, isLoading: overdueLoading } = useOverdueProjectsCount(vendorId);
+  const { data: franchisePerfData, isLoading: franchisePerfLoading } = useFranchisePerformance(vendorId);
+  const { data: franchisesData } = useFranchisesByVendorId(vendorId);
 
   const revenueValue = revenueData ? formatRevenue(revenueData.overall) : "—";
 
@@ -285,22 +485,33 @@ export default function SuperAdminDashboard() {
         />
         <StatCard
           title="Overdue Projects"
-          value="17"
-          sub="Needs immediate attention"
+          value={overdueData ? String(overdueData.count) : "—"}
+          sub="Completion exceeded deadline"
           positive={false}
           icon={AlertTriangle}
           accent="text-rose-500"
           dot="bg-rose-500"
+          isLoading={overdueLoading}
         />
       </div>
 
       {/* Charts row */}
       <div className="w-full flex flex-col lg:flex-row gap-4 items-stretch">
         <div className="lg:w-[60%]">
-          <RevenueChart data={revenueData} isLoading={revenueLoading} />
+          <RevenueChart vendorId={vendorId} franchises={franchisesData ?? []} />
         </div>
         <div className="lg:w-[40%]">
           <FranchiseChart data={franchiseLeadsData} isLoading={franchiseLeadsLoading} />
+        </div>
+      </div>
+
+      {/* Franchise performance + Avg days per stage */}
+      <div className="w-full flex flex-col lg:flex-row gap-4 items-stretch">
+        <div className="lg:w-[40%]">
+          <FranchisePerformanceTable data={franchisePerfData} isLoading={franchisePerfLoading} />
+        </div>
+        <div className="lg:w-[60%]">
+          <AvgDaysPerStageCard vendorId={vendorId} franchises={franchisesData ?? []} />
         </div>
       </div>
     </div>
