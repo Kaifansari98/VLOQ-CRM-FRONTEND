@@ -219,6 +219,7 @@ export interface AdminTotalRevenue {
   thisWeekTotal: number;
   thisMonthTotal: number;
   thisYearTotal: number;
+  lastSixMonthsAvg: number;
   overall: number;
 }
 
@@ -243,6 +244,39 @@ export interface AdminStageCounts {
   installation: number;
   installationAmount: number;
 }
+
+export interface FranchiseLeadCount {
+  franchise_id: number;
+  name: string;
+  leads: number;
+}
+
+export const getLeadsByFranchise = async (
+  vendorId: number
+): Promise<FranchiseLeadCount[]> => {
+  const res = await apiClient.get("/dashboard/admin/leads-by-franchise", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FranchiseLeadCount[];
+};
+
+export const getLeadsThisMonth = async (
+  vendorId: number
+): Promise<{ count: number }> => {
+  const res = await apiClient.get("/dashboard/admin/leads-this-month", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as { count: number };
+};
+
+export const getActiveFranchiseeCount = async (
+  vendorId: number
+): Promise<{ count: number }> => {
+  const res = await apiClient.get("/dashboard/admin/active-franchisee-count", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as { count: number };
+};
 
 export const getAdminStageCounts = async (
   vendorId: number,

@@ -31,6 +31,7 @@ import { setFranchiseId } from "@/redux/slices/authSlice";
 import { usePendingMiscellaneousCount } from "@/api/installation/useUnderInstallationStageLeads";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { useTheme } from "next-themes";
+import { sanitize } from "@/components/utils/sanitizeCapitalize";
 
 const data = {
   user: {
@@ -416,6 +417,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const activeFranchise = franchises.find(
       (franchise) => franchise.id === franchiseId,
     );
+    const userTypeLabel = sanitize(user?.user_type?.user_type || "");
 
     const fallbackTeam = {
       id: user.franchise_id ?? user.vendor_id,
@@ -424,7 +426,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         user.vendor?.vendor_name ||
         "Default Vendor",
       logo: GalleryVerticalEnd,
-      plan: user?.user_type?.user_type || "",
+      plan: userTypeLabel,
     };
 
     if (!isSuperAdmin) {

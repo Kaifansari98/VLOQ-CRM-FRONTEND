@@ -4,6 +4,7 @@ import { useAppSelector } from "@/redux/store";
 import SalesExecutiveDashboard from "./SalesExecutiveDashboard";
 import { FadeInProvider } from "../framer-motion/FadeInProvider";
 import AdminDashboard from "./AdminDashboard";
+import SuperAdminDashboard from "./SuperAdminDashboard";
 import ComingSoon from "../generics/ComingSoon";
 
 export default function DashboardWrapper() {
@@ -35,6 +36,14 @@ export default function DashboardWrapper() {
     return (
       <FadeInProvider>
         <AdminDashboard />
+      </FadeInProvider>
+    );
+  }
+
+  if (normalizedUserType === "super-admin") {
+    return (
+      <FadeInProvider>
+        <SuperAdminDashboard />
       </FadeInProvider>
     );
   }

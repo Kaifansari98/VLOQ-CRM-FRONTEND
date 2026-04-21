@@ -18,11 +18,13 @@ import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import GlobalLeadSearchModal from "@/components/dashboard/GlobalLeadSearchModal";
 import { Kbd } from "@/components/ui/kbd";
+import { sanitize } from "@/components/utils/sanitizeCapitalize";
 
 export default function Page() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type
   );
+  const userTypeLabel = sanitize(userType ?? "");
 
   const [openSearchModal, setOpenSearchModal] = useState(false);
   const [isMac, setIsMac] = useState(true); // <-- FIX
@@ -63,7 +65,7 @@ export default function Page() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>{userType}</BreadcrumbPage>
+                <BreadcrumbPage>{userTypeLabel || "Dashboard"}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>

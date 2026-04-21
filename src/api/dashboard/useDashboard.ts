@@ -5,6 +5,10 @@ import {
   getSalesExecutiveTaskStats,
   getPerformanceSnapshot,
   getLeadStatusWiseCounts,
+  getActiveFranchiseeCount,
+  getLeadsThisMonth,
+  getLeadsByFranchise,
+  FranchiseLeadCount,
   UiLeadStatusCounts,
   UiPerformanceSnapshot,
   UiSalesExecutiveTaskStats,
@@ -215,6 +219,30 @@ export function useAdminTotalRevenue(vendorId?: number, franchiseId?: number) {
   return useQuery<AdminTotalRevenue>({
     queryKey: ["admin-total-revenue", vendorId, franchiseId],
     queryFn: () => getAdminTotalRevenue(vendorId!, franchiseId),
+    enabled: !!vendorId,
+  });
+}
+
+export function useLeadsByFranchise(vendorId?: number) {
+  return useQuery<FranchiseLeadCount[]>({
+    queryKey: ["leads-by-franchise", vendorId],
+    queryFn: () => getLeadsByFranchise(vendorId!),
+    enabled: !!vendorId,
+  });
+}
+
+export function useLeadsThisMonth(vendorId?: number) {
+  return useQuery<{ count: number }>({
+    queryKey: ["leads-this-month", vendorId],
+    queryFn: () => getLeadsThisMonth(vendorId!),
+    enabled: !!vendorId,
+  });
+}
+
+export function useActiveFranchiseeCount(vendorId?: number) {
+  return useQuery<{ count: number }>({
+    queryKey: ["active-franchisee-count", vendorId],
+    queryFn: () => getActiveFranchiseeCount(vendorId!),
     enabled: !!vendorId,
   });
 }
