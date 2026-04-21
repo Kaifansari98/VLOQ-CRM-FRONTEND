@@ -57,8 +57,7 @@ export function NavUser({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
-  const canLogoutAllDevices =
-    userType?.toLowerCase() === "admin" || userType?.toLowerCase() === "super-admin";
+  const canLogoutAllDevices = userType?.toLowerCase() === "super-admin";
   const userInitials = user.name
     .trim()
     .split(/\s+/)
