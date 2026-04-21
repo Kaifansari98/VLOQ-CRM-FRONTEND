@@ -26,3 +26,8 @@ export const logoutAllByVendorApi = async (vendorId: number) => {
   const { data } = await apiClient.post(`/auth/logout-all/vendor/${vendorId}`);
   return data;
 };
+
+export const validateSessionApi = async () => {
+  const { data } = await apiClient.get("/auth/session");
+  return data;
+};
