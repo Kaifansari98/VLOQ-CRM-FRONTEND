@@ -531,3 +531,19 @@ export const getAdminDashboardAllLeads = async (
 
   return res.data.data;
 };
+
+export interface StageWiseCount {
+  tag: string;
+  type: string;
+  count: number;
+}
+
+export const getStageWiseCounts = async (
+  vendorId: number,
+  franchiseId?: number
+): Promise<StageWiseCount[]> => {
+  const res = await apiClient.get("/dashboard/admin/stage-wise-counts", {
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as StageWiseCount[];
+};

@@ -22,6 +22,7 @@ import {
   Area,
   BarChart,
   Bar,
+  Cell,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -37,7 +38,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
-import { useAdminTotalRevenue, useActiveFranchiseeCount, useLeadsThisMonth, useLeadsByFranchise, useOverdueProjectsCount, useFranchisePerformance, useAvgDaysPerStage, useOverdueInstallations } from "@/api/dashboard/useDashboard";
+import { useAdminTotalRevenue, useActiveFranchiseeCount, useLeadsThisMonth, useLeadsByFranchise, useOverdueProjectsCount, useFranchisePerformance, useAvgDaysPerStage, useOverdueInstallations, useStageWiseCounts } from "@/api/dashboard/useDashboard";
 import type { FranchiseLeadCount, FranchisePerformanceRow } from "@/api/dashboard/dashboard.api";
 import { useFranchisesByVendorId, type FranchiseSummary } from "@/api/franchise";
 
@@ -450,6 +451,154 @@ function AvgDaysPerStageCard({ vendorId, franchises }: AvgDaysPerStageCardProps)
   );
 }
 
+// ─── Stage-wise Bar Chart ─────────────────────────────────────────────────────
+
+const STAGE_LABEL: Record<string, string> = {
+  "Type 1":  "Leads",
+  "Type 2":  "ISM",
+  "Type 3":  "Designing",
+  "Type 4":  "Booking",
+  "Type 5":  "FM",
+  "Type 6":  "Client Docs",
+  "Type 7":  "Approval",
+  "Type 8":  "TC",
+  "Type 9":  "OL",
+  "Type 10": "Prod",
+  "Type 11": "RTD",
+  "Type 12": "SR",
+  "Type 13": "Dispatch P.",
+  "Type 14": "Dispatch",
+  "Type 15": "Inst.",
+  "Type 16": "FH",
+  "Type 17": "Completed",
+};
+
+// colour per stage group
+function stageColor(tag: string) {
+  const n = parseInt(tag.replace("Type ", ""));
+  if (n <= 4)  return "#6366f1"; // indigo  — leads
+  if (n <= 7)  return "#8b5cf6"; // violet  — project
+  if (n <= 11) return "#f59e0b"; // amber   — production
+  return               "#10b981"; // emerald — installation
+}
+
+interface StageWiseBarChartProps {
+  vendorId?: number;
+  franchises: FranchiseSummary[];
+}
+
+function StageWiseBarChart({ vendorId, franchises }: StageWiseBarChartProps) {
+  const router = useRouter();
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | undefined>(undefined);
+
+  const { data = [], isLoading, isError, error } = useStageWiseCounts(vendorId, selectedFranchiseId);
+
+  console.log("[StageWiseBarChart] vendorId:", vendorId, "franchiseId:", selectedFranchiseId, "isLoading:", isLoading, "isError:", isError, "data:", data, "error:", error);
+
+  const chartData = data.map((s) => ({
+    label: STAGE_LABEL[s.tag] ?? s.tag,
+    count: s.count,
+    tag:   s.tag,
+    fill:  stageColor(s.tag),
+  }));
+
+  console.log("[StageWiseBarChart] chartData:", chartData);
+
+  const selectedFranchiseName = selectedFranchiseId
+    ? (franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ?? "Overall")
+    : "Overall";
+
+  function handleBarClick(entry: { tag: string }) {
+    const base = STAGE_PATH_BY_TAG[entry.tag];
+    if (base) router.push(base);
+  }
+
+  return (
+    <Card className="w-full border flex flex-col bg-[#fff] dark:bg-[#0a0a0a]">
+      <CardHeader className="flex flex-row justify-between items-start pb-2 space-y-0">
+        <div className="space-y-1">
+          <CardTitle className="text-sm font-medium">Leads by Stage</CardTitle>
+          <p className="text-xs text-muted-foreground">Total projects across all 17 stages</p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline" className="h-8 gap-1 text-xs max-w-[160px]" disabled={isLoading}>
+              <span className="truncate">{selectedFranchiseName}</span>
+              <ChevronDown className="h-3 w-3 shrink-0" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48 max-h-60 overflow-y-auto">
+            <DropdownMenuItem onClick={() => setSelectedFranchiseId(undefined)}>Overall</DropdownMenuItem>
+            {franchises.map((f) => (
+              <DropdownMenuItem key={f.id} onClick={() => setSelectedFranchiseId(f.id)}>
+                {f.franchise_name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </CardHeader>
+
+      <CardContent className="h-[260px] px-2">
+        {isLoading ? (
+          <div className="h-full flex items-center justify-center">
+            <div className="h-10 w-10 border-4 border-muted border-t-primary rounded-full animate-spin" />
+          </div>
+        ) : isError ? (
+          <div className="h-full flex items-center justify-center text-xs text-rose-500">
+            Failed to load stage data. Check console for details.
+          </div>
+        ) : chartData.length === 0 ? (
+          <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+            No stage data found. vendorId: {vendorId ?? "undefined"}
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 4 }} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                cursor={{ fill: "hsl(var(--muted))", opacity: 0.5 }}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const d = payload[0].payload as typeof chartData[number];
+                  return (
+                    <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-md">
+                      <p className="font-medium">{d.label}</p>
+                      <p className="text-muted-foreground">{d.count} lead{d.count !== 1 ? "s" : ""}</p>
+                    </div>
+                  );
+                }}
+              />
+              <Bar
+                dataKey="count"
+                radius={[4, 4, 0, 0]}
+                cursor="pointer"
+                onClick={(data) => handleBarClick(data as unknown as typeof chartData[number])}
+              >
+                {chartData.map((entry, i) => (
+                  <Cell key={i} fill={entry.fill} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </CardContent>
+
+    </Card>
+  );
+}
+
 // ─── Overdue Installations Modal ─────────────────────────────────────────────
 
 interface OverdueInstallationsModalProps {
@@ -649,6 +798,9 @@ export default function SuperAdminDashboard() {
           <FranchiseChart data={franchiseLeadsData} isLoading={franchiseLeadsLoading} />
         </div>
       </div>
+
+      {/* Stage-wise bar chart */}
+      <StageWiseBarChart vendorId={vendorId} franchises={franchisesData ?? []} />
 
       {/* Franchise performance + Avg days per stage */}
       <div className="w-full flex flex-col lg:flex-row gap-4 items-stretch">

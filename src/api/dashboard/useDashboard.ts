@@ -41,6 +41,8 @@ import {
   AdminTotalRevenue,
   getAdminStageCounts,
   AdminStageCounts,
+  getStageWiseCounts,
+  StageWiseCount,
 } from "./dashboard.api";
 import { useCallback, useEffect, useState } from "react";
 import { logError } from "@/lib/utils";
@@ -413,6 +415,15 @@ export const useSalesExecutiveActivityStatusCounts = (
     queryKey: ["sales-executive-activity-status-counts", vendorId, userId],
     queryFn: () => getSalesExecutiveActivityStatusCounts(vendorId!, userId!),
     enabled: !!vendorId && !!userId,
-    staleTime: 1000 * 60, // 1 minute cache to avoid spamming
+    staleTime: 1000 * 60,
   });
 };
+
+export function useStageWiseCounts(vendorId?: number, franchiseId?: number) {
+  return useQuery<StageWiseCount[]>({
+    queryKey: ["stage-wise-counts", vendorId, franchiseId],
+    queryFn: () => getStageWiseCounts(vendorId!, franchiseId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
