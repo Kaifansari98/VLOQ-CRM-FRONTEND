@@ -363,10 +363,10 @@ function FranchisePerformanceTable({ data = [], isLoading }: FranchisePerformanc
 // ─── Avg Days Per Stage ───────────────────────────────────────────────────────
 
 const STAGE_CONFIG = [
-  { key: "lead"         as const, label: "Lead",         range: "Type 1 → 4",  color: "bg-sky-500"     },
-  { key: "project"      as const, label: "Project",      range: "Type 5 → 7",  color: "bg-violet-500"  },
-  { key: "production"   as const, label: "Production",   range: "Type 8 → 11", color: "bg-amber-500"   },
-  { key: "installation" as const, label: "Installation", range: "Type 12 → 17", color: "bg-emerald-500" },
+  { key: "lead"         as const, label: "Leads → Booking",                range: "Type 1 → 4",   color: "bg-sky-500"     },
+  { key: "project"      as const, label: "Final Measurement → Client Approval", range: "Type 5 → 7",   color: "bg-violet-500"  },
+  { key: "production"   as const, label: "Tech Check → Ready To Dispatch", range: "Type 8 → 11",  color: "bg-amber-500"   },
+  { key: "installation" as const, label: "Site Readiness → Final Handover", range: "Type 12 → 17", color: "bg-emerald-500" },
 ];
 
 interface AvgDaysPerStageCardProps {
