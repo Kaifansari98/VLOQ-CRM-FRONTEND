@@ -492,7 +492,7 @@ function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId
         <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
             <DialogTitle className="text-base font-semibold">Overdue Installations</DialogTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">Projects completed past their expected installation deadline</p>
+            <p className="text-xs text-muted-foreground">Projects completed past their expected installation deadline</p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -548,7 +548,7 @@ function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId
                     <td className="px-4 py-3 text-right text-xs text-muted-foreground">—</td>
                     <td className="px-4 py-3 text-right">
                       <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
-                        {row.days_overdue}d
+                        {row.days_overdue} Days
                       </span>
                     </td>
                   </tr>
