@@ -58,6 +58,8 @@ export function MiscellaneousTable({
   const userId = useAppSelector((s) => s.auth.user?.id);
   const franchiseId = useAppSelector((s) => s.auth.franchise_id);
   const isHoUser = useAppSelector((s) => s.auth.is_ho_user);
+  const userRole = useAppSelector((s) => s.auth.user?.user_role);
+  const skipFranchiseFilter = isHoUser || userRole?.toLowerCase() === "site-supervisor";
 
   const router = useRouter();
 
@@ -93,7 +95,7 @@ export function MiscellaneousTable({
     const mappedFilters = mapTableFiltersToPayload(columnFilters);
 
     return {
-      ...(!isHoUser && franchiseId ? { franchise_id: franchiseId } : {}),
+      ...(!skipFranchiseFilter && franchiseId ? { franchise_id: franchiseId } : {}),
       page: pagination.pageIndex + 1,
       limit: pagination.pageSize,
       global_search: globalFilter || "",
@@ -117,7 +119,7 @@ export function MiscellaneousTable({
       site_map_link: mappedFilters.site_map_link,
       date_range: mappedFilters.date_range,
     };
-  }, [userId, franchiseId, isHoUser, pagination, sorting, columnFilters, globalFilter]);
+  }, [userId, franchiseId, skipFranchiseFilter, pagination, sorting, columnFilters, globalFilter]);
 
   // -------------------- API CALL (SINGLE HOOK) --------------------
 
