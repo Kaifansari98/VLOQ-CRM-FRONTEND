@@ -234,10 +234,12 @@ function FranchiseChart({ data = [], isLoading }: FranchiseChartProps) {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ left: 0, right: 0, top: 5, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} vertical={false} />
-            <XAxis dataKey="name" tick={{ fill: "var(--foreground)", fontSize: 11 }} tickLine={false} axisLine={false} />
+            <XAxis dataKey="code" tick={{ fill: "var(--foreground)", fontSize: 11 }} tickLine={false} axisLine={false} />
             <YAxis tick={{ fill: "var(--foreground)", fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
             <Tooltip
+              formatter={(value, _name, props) => [value, props.payload?.name ?? "Leads"]}
               contentStyle={{ border: "1px solid hsl(var(--border))", borderRadius: "10px", boxShadow: "0px 4px 12px rgba(0,0,0,0.15)" }}
+              labelFormatter={(_label, payload) => payload?.[0]?.payload?.name ?? _label}
               labelStyle={{ fontSize: "12px", fontWeight: 500 }}
               itemStyle={{ fontSize: "12px" }}
             />
@@ -353,7 +355,7 @@ function AvgDaysPerStageCard({ vendorId, franchises }: AvgDaysPerStageCardProps)
     : 1;
 
   return (
-    <Card className="w-full h-full border bg-[#fff] dark:bg-[#0a0a0a] flex flex-col justify-between">
+    <Card className="w-full h-full border bg-[#fff] dark:bg-[#0a0a0a] flex flex-col">
       <CardHeader className="pb-2 px-6 flex flex-row items-start justify-between space-y-0">
         <div className="space-y-0.5">
           <CardTitle className="text-sm font-medium">Avg Days Taken per Stage</CardTitle>
@@ -377,29 +379,26 @@ function AvgDaysPerStageCard({ vendorId, franchises }: AvgDaysPerStageCardProps)
         </DropdownMenu>
       </CardHeader>
 
-      <CardContent>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+      <CardContent className="flex-1 flex items-center px-6 pb-6">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-x-6 gap-y-8 w-full">
           {STAGE_CONFIG.map(({ key, label, range, color }) => {
             const days = data?.[key] ?? 0;
             const pct  = Math.round((days / maxDays) * 100);
 
             return (
-              <div key={key} className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{label}</p>
-                    <p className="text-[10px] text-muted-foreground">{range}</p>
-                  </div>
-                  {isLoading ? (
-                    <div className="h-7 w-16 bg-muted animate-pulse rounded" />
-                  ) : (
-                    <span className="text-2xl font-semibold">
-                      {days > 0 ? days : "—"}
-                      {days > 0 && <span className="text-xs font-normal text-muted-foreground ml-1">days</span>}
-                    </span>
-                  )}
+              <div key={key} className="flex flex-col gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{label}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{range}</p>
                 </div>
-
+                {isLoading ? (
+                  <div className="h-8 w-20 bg-muted animate-pulse rounded" />
+                ) : (
+                  <span className="text-3xl font-semibold leading-none">
+                    {days > 0 ? days : "—"}
+                    {days > 0 && <span className="text-xs font-normal text-muted-foreground ml-1">days</span>}
+                  </span>
+                )}
                 <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                   {isLoading ? (
                     <div className="h-full w-1/2 bg-muted-foreground/20 animate-pulse rounded-full" />

@@ -248,6 +248,7 @@ export interface AdminStageCounts {
 export interface FranchiseLeadCount {
   franchise_id: number;
   name: string;
+  code: string;
   leads: number;
 }
 
