@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,26 @@ import { useFranchisesByVendorId, type FranchiseSummary } from "@/api/franchise"
 const WEEK_LABELS  = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTH_LABELS = ["Week 1", "Week 2", "Week 3", "Week 4"];
 const YEAR_LABELS  = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const STAGE_PATH_BY_TAG: Record<string, string> = {
+  "Type 1":  "/dashboard/leads/leadstable/details",
+  "Type 2":  "/dashboard/leads/initial-site-measurement/details",
+  "Type 3":  "/dashboard/leads/designing-stage/details",
+  "Type 4":  "/dashboard/leads/booking-stage/details",
+  "Type 5":  "/dashboard/project/final-measurement/details",
+  "Type 6":  "/dashboard/project/client-documentation/details",
+  "Type 7":  "/dashboard/project/client-approval/details",
+  "Type 8":  "/dashboard/production/tech-check/details",
+  "Type 9":  "/dashboard/production/order-login/details",
+  "Type 10": "/dashboard/production/pre-post-prod/details",
+  "Type 11": "/dashboard/production/ready-to-dispatch/details",
+  "Type 12": "/dashboard/installation/site-readiness/details",
+  "Type 13": "/dashboard/installation/dispatch-planning/details",
+  "Type 14": "/dashboard/installation/dispatch-stage/details",
+  "Type 15": "/dashboard/installation/under-installation/details",
+  "Type 16": "/dashboard/installation/final-handover/details",
+  "Type 17": "/dashboard/installation/final-handover/details",
+};
 
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -445,6 +466,7 @@ function formatDate(d: string | null | undefined) {
 }
 
 function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId, franchises }: OverdueInstallationsModalProps) {
+  const router = useRouter();
   const firstFranchiseId = franchises[0]?.id;
   const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | undefined>(
     defaultFranchiseId ?? firstFranchiseId ?? undefined
@@ -453,6 +475,16 @@ function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId
   const { data = [], isLoading } = useOverdueInstallations(vendorId, selectedFranchiseId);
 
   const selectedFranchiseName = franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ?? "Select Franchise";
+
+  function handleRowDoubleClick(row: typeof data[number]) {
+    const basePath = row.stage_tag && STAGE_PATH_BY_TAG[row.stage_tag]
+      ? `${STAGE_PATH_BY_TAG[row.stage_tag]}/${row.id}`
+      : `/dashboard/leads/leadstable/details/${row.id}`;
+    const params = new URLSearchParams();
+    if (row.account_id) params.set("accountId", String(row.account_id));
+    if (row.instance_id) params.set("instance_id", String(row.instance_id));
+    router.push(`${basePath}?${params.toString()}`);
+  }
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -487,6 +519,7 @@ function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Client</th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Franchise</th>
                 <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Expected End</th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Actual End</th>
                 <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Days Overdue</th>
               </tr>
             </thead>
@@ -494,24 +527,25 @@ function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/30">
-                    {Array.from({ length: 5 }).map((_, j) => (
+                    {Array.from({ length: 6 }).map((_, j) => (
                       <td key={j} className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded" /></td>
                     ))}
                   </tr>
                 ))
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
                     No overdue installations for this franchise
                   </td>
                 </tr>
               ) : (
                 data.map((row) => (
-                  <tr key={row.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
+                  <tr key={row.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none" onDoubleClick={() => handleRowDoubleClick(row)}>
                     <td className="px-4 py-3 font-mono text-xs font-medium">{row.lead_code ?? "—"}</td>
                     <td className="px-4 py-3 font-medium">{row.name}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{row.franchise_name ?? "—"}</td>
                     <td className="px-4 py-3 text-right text-xs text-muted-foreground">{formatDate(row.expected_end)}</td>
+                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">—</td>
                     <td className="px-4 py-3 text-right">
                       <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
                         {row.days_overdue}d

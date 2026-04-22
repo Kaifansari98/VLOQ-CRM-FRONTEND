@@ -317,9 +317,11 @@ export interface OverdueInstallation {
   id: number;
   lead_code: string | null;
   name: string;
+  account_id: number | null;
   franchise_name: string | null;
   expected_end: string;
-  actual_completion: string;
+  stage_tag: string | null;
+  instance_id: number | null;
   days_overdue: number;
 }
 
