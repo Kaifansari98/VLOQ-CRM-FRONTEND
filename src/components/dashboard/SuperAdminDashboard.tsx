@@ -427,7 +427,7 @@ function StageLeadsModal({ open, onClose, vendorId, tag, franchiseId }: StageLea
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl w-full">
+      <DialogContent className="min-w-4xl w-full">
         <DialogHeader className="pb-2 gap-0">
           <DialogTitle className="text-base font-semibold">
             {stageLabel} — Leads
