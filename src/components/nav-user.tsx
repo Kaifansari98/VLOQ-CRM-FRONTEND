@@ -230,7 +230,7 @@ export function NavUser({
                     className="cursor-pointer"
                   >
                     <ShieldAlert />
-                    Log out all devices
+                    Log out all users
                   </DropdownMenuItem>
                 </>
               )}
@@ -278,7 +278,7 @@ export function NavUser({
       <AlertDialog open={logoutAllOpen} onOpenChange={setLogoutAllOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Log out all devices?</AlertDialogTitle>
+            <AlertDialogTitle>Log out all users?</AlertDialogTitle>
             <AlertDialogDescription>
               This will revoke every active session for your vendor, including
               the current browser. You will be redirected to the login page
