@@ -22,11 +22,8 @@ const getLoginErrorMessage = (message?: string) => {
 
   const normalizedMessage = message.toLowerCase();
 
-  if (
-    normalizedMessage.includes("maximum 2 active devices") ||
-    normalizedMessage.includes("logout from another device first")
-  ) {
-    return "You have already reached the maximum of 2 active devices for this account. Please log out from one of your other devices and try again.";
+  if (normalizedMessage.includes("logout from another device first")) {
+    return "You have already reached the maximum of 10 active devices for this account. Please log out from one of your other devices and try again.";
   }
 
   return message;
