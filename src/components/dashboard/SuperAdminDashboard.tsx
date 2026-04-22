@@ -37,7 +37,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
-import { useAdminTotalRevenue, useActiveFranchiseeCount, useLeadsThisMonth, useLeadsByFranchise, useOverdueProjectsCount, useFranchisePerformance, useAvgDaysPerStage, useOverdueInstallations, useStageWiseCounts, useFranchiseLeads, useStageLeads } from "@/api/dashboard/useDashboard";
+import { useAdminTotalRevenue, useActiveFranchiseeCount, useLeadsThisMonth, useLeadsByFranchise, useOverdueProjectsCount, useFranchisePerformance, useAvgDaysPerStage, useOverdueInstallations, useStageWiseCounts, useFranchiseLeads, useStageLeads, useOverdueProductionCount, useOverdueProduction } from "@/api/dashboard/useDashboard";
+import type { OverdueProduction } from "@/api/dashboard/dashboard.api";
 import type { FranchiseLeadCount, FranchisePerformanceRow } from "@/api/dashboard/dashboard.api";
 import { useFranchisesByVendorId, type FranchiseSummary } from "@/api/franchise";
 
@@ -441,6 +442,9 @@ function StageLeadsModal({ open, onClose, vendorId, tag, franchiseId }: StageLea
               <tr className="border-b border-border/60">
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Lead Code</th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Client</th>
+                {!franchiseId && (
+                  <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Franchise</th>
+                )}
                 <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Stage</th>
               </tr>
             </thead>
@@ -448,14 +452,14 @@ function StageLeadsModal({ open, onClose, vendorId, tag, franchiseId }: StageLea
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/30">
-                    {Array.from({ length: 3 }).map((_, j) => (
+                    {Array.from({ length: franchiseId ? 3 : 4 }).map((_, j) => (
                       <td key={j} className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded" /></td>
                     ))}
                   </tr>
                 ))
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  <td colSpan={franchiseId ? 3 : 4} className="px-4 py-10 text-center text-sm text-muted-foreground">
                     No leads found for this stage
                   </td>
                 </tr>
@@ -468,6 +472,9 @@ function StageLeadsModal({ open, onClose, vendorId, tag, franchiseId }: StageLea
                   >
                     <td className="px-4 py-3 font-mono text-xs font-medium">{row.lead_code ?? "—"}</td>
                     <td className="px-4 py-3 font-medium">{row.name}</td>
+                    {!franchiseId && (
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{row.franchise_name ?? "—"}</td>
+                    )}
                     <td className="px-4 py-3 text-right">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
                         {row.stage_tag ? (STAGE_LABEL_FULL[row.stage_tag] ?? row.stage_tag) : "—"}
@@ -905,12 +912,180 @@ function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId
   );
 }
 
+// ─── Overdue Production Modal ────────────────────────────────────────────────
+
+interface OverdueProductionModalProps {
+  open: boolean;
+  onClose: () => void;
+  vendorId?: number;
+  franchises: FranchiseSummary[];
+}
+
+function OverdueProductionModal({ open, onClose, vendorId, franchises }: OverdueProductionModalProps) {
+  const router = useRouter();
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | undefined>(undefined);
+
+  const { data = [], isLoading } = useOverdueProduction(vendorId, selectedFranchiseId);
+
+  const selectedFranchiseName = selectedFranchiseId
+    ? (franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ?? "Select Franchise")
+    : "Overall";
+
+  function handleRowDoubleClick(row: OverdueProduction) {
+    const basePath = row.stage_tag && STAGE_PATH_BY_TAG[row.stage_tag]
+      ? `${STAGE_PATH_BY_TAG[row.stage_tag]}/${row.id}`
+      : `/dashboard/leads/leadstable/details/${row.id}`;
+    const params = new URLSearchParams();
+    if (row.account_id) params.set("accountId", String(row.account_id));
+    if (row.instance_id) params.set("instance_id", String(row.instance_id));
+    router.push(`${basePath}?${params.toString()}`);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="min-w-5xl w-full">
+        <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div>
+            <DialogTitle className="text-base font-semibold">Overdue Production</DialogTitle>
+            <p className="text-xs text-muted-foreground">Orders whose expected ready date exceeds the client required delivery date</p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 gap-1 text-xs max-w-[160px] shrink-0 mr-6">
+                <span className="truncate">{selectedFranchiseName}</span>
+                <ChevronDown className="h-3 w-3 shrink-0" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 max-h-60 overflow-y-auto">
+              <DropdownMenuItem onClick={() => setSelectedFranchiseId(undefined)}>Overall</DropdownMenuItem>
+              {franchises.map((f) => (
+                <DropdownMenuItem key={f.id} onClick={() => setSelectedFranchiseId(f.id)}>
+                  {f.franchise_name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </DialogHeader>
+
+        <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-background z-10">
+              <tr className="border-b border-border/60">
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Lead Code</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Client</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Franchise</th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Client Required By</th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Expected Ready</th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Days Overdue</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="border-b border-border/30">
+                    {Array.from({ length: 6 }).map((_, j) => (
+                      <td key={j} className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded" /></td>
+                    ))}
+                  </tr>
+                ))
+              ) : data.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                    No overdue production orders found
+                  </td>
+                </tr>
+              ) : (
+                data.map((row) => (
+                  <tr key={row.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none" onDoubleClick={() => handleRowDoubleClick(row)}>
+                    <td className="px-4 py-3 font-mono text-xs font-medium">{row.lead_code ?? "—"}</td>
+                    <td className="px-4 py-3 font-medium">{row.name}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{row.franchise_name ?? "—"}</td>
+                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">{formatDate(row.client_required_date)}</td>
+                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">{formatDate(row.expected_ready_date)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
+                        {row.days_overdue} Days
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Overdue Alerts Combined Card ─────────────────────────────────────────────
+
+interface OverdueAlertsCardProps {
+  installationCount: number;
+  productionCount: number;
+  isLoadingInstallation: boolean;
+  isLoadingProduction: boolean;
+  onInstallationClick: () => void;
+  onProductionClick: () => void;
+}
+
+function OverdueAlertsCard({
+  installationCount,
+  productionCount,
+  isLoadingInstallation,
+  isLoadingProduction,
+  onInstallationClick,
+  onProductionClick,
+}: OverdueAlertsCardProps) {
+  return (
+    <div className="border rounded-2xl py-4 px-5 flex flex-col justify-between gap-3 bg-background">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-foreground">Overdue Alerts</span>
+        <span className="flex items-center justify-center h-8 w-8 rounded-full border text-rose-500 bg-muted/40">
+          <AlertTriangle className="h-4 w-4" />
+        </span>
+      </div>
+      <div className="flex flex-col gap-2">
+        <button
+          onClick={onInstallationClick}
+          className="flex items-center justify-between rounded-xl px-3 py-2 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors group text-left"
+        >
+          <div className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
+            <span className="text-xs text-muted-foreground">Installation</span>
+          </div>
+          {isLoadingInstallation ? (
+            <div className="h-5 w-8 bg-muted animate-pulse rounded" />
+          ) : (
+            <span className="text-lg font-semibold text-rose-500">{installationCount}</span>
+          )}
+        </button>
+        <button
+          onClick={onProductionClick}
+          className="flex items-center justify-between rounded-xl px-3 py-2 hover:bg-orange-50 dark:hover:bg-orange-500/10 transition-colors group text-left"
+        >
+          <div className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
+            <span className="text-xs text-muted-foreground">Production</span>
+          </div>
+          {isLoadingProduction ? (
+            <div className="h-5 w-8 bg-muted animate-pulse rounded" />
+          ) : (
+            <span className="text-lg font-semibold text-orange-500">{productionCount}</span>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuperAdminDashboard() {
   const vendorId   = useAppSelector((s) => s.auth.user?.vendor_id);
   const franchiseId = useAppSelector((s) => s.auth.franchise_id) ?? undefined;
   const [showOverdueModal, setShowOverdueModal] = useState(false);
+  const [showOverdueProductionModal, setShowOverdueProductionModal] = useState(false);
   const [selectedFranchise, setSelectedFranchise] = useState<FranchiseLeadCount | null>(null);
 
   const { data: revenueData, isLoading: revenueLoading } = useAdminTotalRevenue(vendorId, franchiseId);
@@ -918,6 +1093,7 @@ export default function SuperAdminDashboard() {
   const { data: leadsThisMonthData, isLoading: leadsThisMonthLoading } = useLeadsThisMonth(vendorId);
   const { data: franchiseLeadsData, isLoading: franchiseLeadsLoading } = useLeadsByFranchise(vendorId);
   const { data: overdueData, isLoading: overdueLoading } = useOverdueProjectsCount(vendorId);
+  const { data: overdueProductionData, isLoading: overdueProductionLoading } = useOverdueProductionCount(vendorId);
   const { data: franchisePerfData, isLoading: franchisePerfLoading } = useFranchisePerformance(vendorId);
   const { data: franchisesData } = useFranchisesByVendorId(vendorId);
 
@@ -971,16 +1147,13 @@ export default function SuperAdminDashboard() {
           dot="bg-violet-500"
           isLoading={leadsThisMonthLoading}
         />
-        <StatCard
-          title="Overdue Installation"
-          value={overdueData ? String(overdueData.count) : "—"}
-          sub="Completion exceeded deadline"
-          positive={false}
-          icon={AlertTriangle}
-          accent="text-rose-500"
-          dot="bg-rose-500"
-          isLoading={overdueLoading}
-          onClick={() => setShowOverdueModal(true)}
+        <OverdueAlertsCard
+          installationCount={overdueData?.count ?? 0}
+          productionCount={overdueProductionData?.count ?? 0}
+          isLoadingInstallation={overdueLoading}
+          isLoadingProduction={overdueProductionLoading}
+          onInstallationClick={() => setShowOverdueModal(true)}
+          onProductionClick={() => setShowOverdueProductionModal(true)}
         />
       </div>
 
@@ -1023,6 +1196,13 @@ export default function SuperAdminDashboard() {
         onClose={() => setShowOverdueModal(false)}
         vendorId={vendorId}
         defaultFranchiseId={franchiseId ?? null}
+        franchises={franchisesData ?? []}
+      />
+
+      <OverdueProductionModal
+        open={showOverdueProductionModal}
+        onClose={() => setShowOverdueProductionModal(false)}
+        vendorId={vendorId}
         franchises={franchisesData ?? []}
       />
     </div>

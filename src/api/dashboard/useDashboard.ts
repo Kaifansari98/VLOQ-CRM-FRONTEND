@@ -46,6 +46,9 @@ import {
   getFranchiseLeads,
   FranchiseLead,
   getStageLeads,
+  getOverdueProductionCount,
+  getOverdueProduction,
+  OverdueProduction,
 } from "./dashboard.api";
 import { useCallback, useEffect, useState } from "react";
 import { logError } from "@/lib/utils";
@@ -445,6 +448,23 @@ export function useStageLeads(vendorId?: number, tag?: string, franchiseId?: num
     queryKey: ["stage-leads", vendorId, tag, franchiseId],
     queryFn: () => getStageLeads(vendorId!, tag!, franchiseId),
     enabled: !!vendorId && !!tag,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useOverdueProductionCount(vendorId?: number) {
+  return useQuery<{ count: number }>({
+    queryKey: ["overdue-production-count", vendorId],
+    queryFn: () => getOverdueProductionCount(vendorId!),
+    enabled: !!vendorId,
+  });
+}
+
+export function useOverdueProduction(vendorId?: number, franchiseId?: number) {
+  return useQuery<OverdueProduction[]>({
+    queryKey: ["overdue-production", vendorId, franchiseId],
+    queryFn: () => getOverdueProduction(vendorId!, franchiseId),
+    enabled: !!vendorId,
     staleTime: 1000 * 60 * 2,
   });
 }

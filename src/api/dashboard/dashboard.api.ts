@@ -335,6 +335,38 @@ export const getOverdueInstallations = async (
   return res.data.data as OverdueInstallation[];
 };
 
+export interface OverdueProduction {
+  id: number;
+  lead_code: string | null;
+  name: string;
+  account_id: number | null;
+  franchise_name: string | null;
+  client_required_date: string;
+  expected_ready_date: string;
+  stage_tag: string | null;
+  instance_id: number | null;
+  days_overdue: number;
+}
+
+export const getOverdueProductionCount = async (
+  vendorId: number
+): Promise<{ count: number }> => {
+  const res = await apiClient.get("/dashboard/admin/overdue-production-count", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as { count: number };
+};
+
+export const getOverdueProduction = async (
+  vendorId: number,
+  franchiseId?: number
+): Promise<OverdueProduction[]> => {
+  const res = await apiClient.get("/dashboard/admin/overdue-production", {
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as OverdueProduction[];
+};
+
 export const getActiveFranchiseeCount = async (
   vendorId: number
 ): Promise<{ count: number }> => {
@@ -552,6 +584,7 @@ export interface FranchiseLead {
   id: number;
   lead_code: string | null;
   name: string;
+  franchise_name?: string | null;
   account_id: number | null;
   stage_tag: string | null;
   instance_id: number | null;
