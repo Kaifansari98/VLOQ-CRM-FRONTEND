@@ -57,9 +57,8 @@ export function MiscellaneousTable({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const franchiseId = useAppSelector((s) => s.auth.franchise_id);
-  const isHoUser = useAppSelector((s) => s.auth.is_ho_user);
-  const userRole = useAppSelector((s) => s.auth.user?.user_role);
-  const skipFranchiseFilter = isHoUser || userRole?.toLowerCase() === "site-supervisor";
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type?.toLowerCase());
+  const skipFranchiseFilter = userType === "factory" || userType === "site-supervisor";
 
   const router = useRouter();
 
