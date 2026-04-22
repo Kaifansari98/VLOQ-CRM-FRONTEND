@@ -1677,12 +1677,12 @@ export interface PendingMiscellaneousCountResponse {
 
 export const getPendingMiscellaneousLeadCount = async (
   vendorId: number,
-  franchiseId: number,
+  franchiseId?: number,
 ): Promise<PendingMiscellaneousCountResponse> => {
   const { data } = await apiClient.get(
     `/miscellaneous-master/vendor/${vendorId}/pending-miscellaneous/count`,
     {
-      params: { franchise_id: franchiseId },
+      params: franchiseId ? { franchise_id: franchiseId } : {},
     },
   );
 
@@ -1691,16 +1691,13 @@ export const getPendingMiscellaneousLeadCount = async (
 
 export const usePendingMiscellaneousCount = (
   vendorId: number,
-  franchiseId: number,
+  franchiseId?: number,
 ) => {
   return useQuery<PendingMiscellaneousCountResponse>({
     queryKey: ["pendingMiscellaneousCount", vendorId, franchiseId],
-
     queryFn: () => getPendingMiscellaneousLeadCount(vendorId, franchiseId),
-
-    enabled: !!vendorId && !!franchiseId,
-
-    staleTime: 2 * 60 * 1000, // count should refresh more frequently
+    enabled: !!vendorId,
+    staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
 };

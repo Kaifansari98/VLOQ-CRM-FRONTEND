@@ -274,12 +274,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     userType === "backend" ||
     userType === "factory" ||
     userType === "site-supervisor";
+  const skipFranchiseFilter =
+    userType === "factory" || userType === "site-supervisor";
   const vendorId = user?.vendor_id;
   const franchiseId = selectedFranchiseId ?? user?.franchise_id ?? null;
   const dispatch = useAppDispatch();
 
   const { data: miscCountData, isLoading: isMiscLeadLoading } =
-    usePendingMiscellaneousCount(vendorId ?? 0, franchiseId ?? 0);
+    usePendingMiscellaneousCount(
+      vendorId ?? 0,
+      skipFranchiseFilter ? undefined : (franchiseId ?? undefined),
+    );
   const { data: franchises = [] } = useFranchisesByVendorId(
     vendorId ?? 0,
     !!vendorId,
