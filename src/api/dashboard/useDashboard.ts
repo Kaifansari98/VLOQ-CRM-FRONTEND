@@ -43,6 +43,9 @@ import {
   AdminStageCounts,
   getStageWiseCounts,
   StageWiseCount,
+  getFranchiseLeads,
+  FranchiseLead,
+  getStageLeads,
 } from "./dashboard.api";
 import { useCallback, useEffect, useState } from "react";
 import { logError } from "@/lib/utils";
@@ -424,6 +427,24 @@ export function useStageWiseCounts(vendorId?: number, franchiseId?: number) {
     queryKey: ["stage-wise-counts", vendorId, franchiseId],
     queryFn: () => getStageWiseCounts(vendorId!, franchiseId),
     enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useFranchiseLeads(vendorId?: number, franchiseId?: number) {
+  return useQuery<FranchiseLead[]>({
+    queryKey: ["franchise-leads", vendorId, franchiseId],
+    queryFn: () => getFranchiseLeads(vendorId!, franchiseId!),
+    enabled: !!vendorId && !!franchiseId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useStageLeads(vendorId?: number, tag?: string, franchiseId?: number) {
+  return useQuery<FranchiseLead[]>({
+    queryKey: ["stage-leads", vendorId, tag, franchiseId],
+    queryFn: () => getStageLeads(vendorId!, tag!, franchiseId),
+    enabled: !!vendorId && !!tag,
     staleTime: 1000 * 60 * 2,
   });
 }

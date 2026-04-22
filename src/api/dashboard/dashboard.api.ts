@@ -547,3 +547,33 @@ export const getStageWiseCounts = async (
   });
   return res.data.data as StageWiseCount[];
 };
+
+export interface FranchiseLead {
+  id: number;
+  lead_code: string | null;
+  name: string;
+  account_id: number | null;
+  stage_tag: string | null;
+  instance_id: number | null;
+}
+
+export const getFranchiseLeads = async (
+  vendorId: number,
+  franchiseId: number
+): Promise<FranchiseLead[]> => {
+  const res = await apiClient.get("/dashboard/admin/franchise-leads", {
+    params: { vendor_id: vendorId, franchise_id: franchiseId },
+  });
+  return res.data.data as FranchiseLead[];
+};
+
+export const getStageLeads = async (
+  vendorId: number,
+  tag: string,
+  franchiseId?: number
+): Promise<FranchiseLead[]> => {
+  const res = await apiClient.get("/dashboard/admin/stage-leads", {
+    params: { vendor_id: vendorId, tag, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as FranchiseLead[];
+};

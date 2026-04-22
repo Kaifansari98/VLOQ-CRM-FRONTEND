@@ -22,7 +22,6 @@ import {
   Area,
   BarChart,
   Bar,
-  Cell,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -38,7 +37,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
-import { useAdminTotalRevenue, useActiveFranchiseeCount, useLeadsThisMonth, useLeadsByFranchise, useOverdueProjectsCount, useFranchisePerformance, useAvgDaysPerStage, useOverdueInstallations, useStageWiseCounts } from "@/api/dashboard/useDashboard";
+import { useAdminTotalRevenue, useActiveFranchiseeCount, useLeadsThisMonth, useLeadsByFranchise, useOverdueProjectsCount, useFranchisePerformance, useAvgDaysPerStage, useOverdueInstallations, useStageWiseCounts, useFranchiseLeads, useStageLeads } from "@/api/dashboard/useDashboard";
 import type { FranchiseLeadCount, FranchisePerformanceRow } from "@/api/dashboard/dashboard.api";
 import { useFranchisesByVendorId, type FranchiseSummary } from "@/api/franchise";
 
@@ -246,16 +245,17 @@ function RevenueChart({ vendorId, franchises }: RevenueChartProps) {
 interface FranchiseChartProps {
   data?: FranchiseLeadCount[];
   isLoading?: boolean;
+  onBarDoubleClick?: (franchise: FranchiseLeadCount) => void;
 }
 
-function FranchiseChart({ data = [], isLoading }: FranchiseChartProps) {
+function FranchiseChart({ data = [], isLoading, onBarDoubleClick }: FranchiseChartProps) {
   const chartData = data.slice(0, 6);
 
   return (
     <Card className="w-full h-full border flex flex-col bg-[#fff] dark:bg-[#0a0a0a]">
-      <CardHeader className="pb-2 space-y-1">
+      <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">Leads by Franchise</CardTitle>
-        <p className="text-xs text-muted-foreground">Top {chartData.length} franchises</p>
+        <p className="text-xs text-muted-foreground">Top {chartData.length} franchises · Double-click a bar to view leads</p>
       </CardHeader>
 
       <CardContent className="h-[220px]">
@@ -276,12 +276,211 @@ function FranchiseChart({ data = [], isLoading }: FranchiseChartProps) {
               labelStyle={{ fontSize: "12px", fontWeight: 500 }}
               itemStyle={{ fontSize: "12px" }}
             />
-            <Bar dataKey="leads" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+            <Bar
+              dataKey="leads"
+              radius={[6, 6, 0, 0]}
+              shape={(props: any) => {
+                const { x, y, width, height, payload } = props;
+                return (
+                  <rect
+                    x={x} y={y} width={width} height={height}
+                    fill="var(--primary)" rx={6} ry={6}
+                    style={{ cursor: onBarDoubleClick ? "pointer" : "default" }}
+                    onDoubleClick={() => onBarDoubleClick?.(payload as FranchiseLeadCount)}
+                  />
+                );
+              }}
+            />
           </BarChart>
         </ResponsiveContainer>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ─── Franchise Leads Modal ────────────────────────────────────────────────────
+
+interface FranchiseLeadsModalProps {
+  open: boolean;
+  onClose: () => void;
+  vendorId?: number;
+  franchise: FranchiseLeadCount | null;
+}
+
+function FranchiseLeadsModal({ open, onClose, vendorId, franchise }: FranchiseLeadsModalProps) {
+  const router = useRouter();
+  const { data = [], isLoading } = useFranchiseLeads(vendorId, franchise?.franchise_id);
+
+  function handleRowDoubleClick(row: typeof data[number]) {
+    const basePath = row.stage_tag && STAGE_PATH_BY_TAG[row.stage_tag]
+      ? `${STAGE_PATH_BY_TAG[row.stage_tag]}/${row.id}`
+      : `/dashboard/leads/leadstable/details/${row.id}`;
+    const params = new URLSearchParams();
+    if (row.account_id) params.set("accountId", String(row.account_id));
+    if (row.instance_id) params.set("instance_id", String(row.instance_id));
+    router.push(`${basePath}?${params.toString()}`);
+  }
+
+  const STAGE_LABEL_FULL: Record<string, string> = {
+    "Type 1": "Open Lead", "Type 2": "ISM", "Type 3": "Designing",
+    "Type 4": "Booking", "Type 5": "Final Measurement", "Type 6": "Client Docs",
+    "Type 7": "Client Approval", "Type 8": "Tech Check", "Type 9": "Order Login",
+    "Type 10": "Production", "Type 11": "Ready to Dispatch", "Type 12": "Site Readiness",
+    "Type 13": "Dispatch Planning", "Type 14": "Dispatch", "Type 15": "Under Installation",
+    "Type 16": "Final Handover", "Type 17": "Completed",
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-3xl w-full">
+        <DialogHeader className="pb-2 space-y-0.5">
+          <DialogTitle className="text-base font-semibold">
+            {franchise?.name ?? "Franchise"} — Leads
+          </DialogTitle>
+          <p className="text-xs text-muted-foreground">Double-click a row to open lead details</p>
+        </DialogHeader>
+
+        <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-background z-10">
+              <tr className="border-b border-border/60">
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Lead Code</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Client</th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Stage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="border-b border-border/30">
+                    {Array.from({ length: 3 }).map((_, j) => (
+                      <td key={j} className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded" /></td>
+                    ))}
+                  </tr>
+                ))
+              ) : data.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                    No leads found for this franchise
+                  </td>
+                </tr>
+              ) : (
+                data.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
+                    onDoubleClick={() => handleRowDoubleClick(row)}
+                  >
+                    <td className="px-4 py-3 font-mono text-xs font-medium">{row.lead_code ?? "—"}</td>
+                    <td className="px-4 py-3 font-medium">{row.name}</td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                        {row.stage_tag ? (STAGE_LABEL_FULL[row.stage_tag] ?? row.stage_tag) : "—"}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Stage Leads Modal ───────────────────────────────────────────────────────
+
+interface StageLeadsModalProps {
+  open: boolean;
+  onClose: () => void;
+  vendorId?: number;
+  tag: string | null;
+  franchiseId?: number;
+}
+
+const STAGE_LABEL_FULL: Record<string, string> = {
+  "Type 1": "Open Lead", "Type 2": "ISM", "Type 3": "Designing",
+  "Type 4": "Booking", "Type 5": "Final Measurement", "Type 6": "Client Docs",
+  "Type 7": "Client Approval", "Type 8": "Tech Check", "Type 9": "Order Login",
+  "Type 10": "Production", "Type 11": "Ready to Dispatch", "Type 12": "Site Readiness",
+  "Type 13": "Dispatch Planning", "Type 14": "Dispatch", "Type 15": "Under Installation",
+  "Type 16": "Final Handover", "Type 17": "Completed",
+};
+
+function StageLeadsModal({ open, onClose, vendorId, tag, franchiseId }: StageLeadsModalProps) {
+  const router = useRouter();
+  const { data = [], isLoading } = useStageLeads(vendorId, tag ?? undefined, franchiseId);
+
+  function handleRowDoubleClick(row: typeof data[number]) {
+    const basePath = row.stage_tag && STAGE_PATH_BY_TAG[row.stage_tag]
+      ? `${STAGE_PATH_BY_TAG[row.stage_tag]}/${row.id}`
+      : `/dashboard/leads/leadstable/details/${row.id}`;
+    const params = new URLSearchParams();
+    if (row.account_id) params.set("accountId", String(row.account_id));
+    if (row.instance_id) params.set("instance_id", String(row.instance_id));
+    router.push(`${basePath}?${params.toString()}`);
+  }
+
+  const stageLabel = tag ? (STAGE_LABEL_FULL[tag] ?? tag) : "Stage";
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-3xl w-full">
+        <DialogHeader className="pb-2 space-y-0.5">
+          <DialogTitle className="text-base font-semibold">
+            {stageLabel} — Leads
+          </DialogTitle>
+          <p className="text-xs text-muted-foreground">Double-click a row to open lead details</p>
+        </DialogHeader>
+
+        <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-background z-10">
+              <tr className="border-b border-border/60">
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Lead Code</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Client</th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Stage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="border-b border-border/30">
+                    {Array.from({ length: 3 }).map((_, j) => (
+                      <td key={j} className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded" /></td>
+                    ))}
+                  </tr>
+                ))
+              ) : data.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                    No leads found for this stage
+                  </td>
+                </tr>
+              ) : (
+                data.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
+                    onDoubleClick={() => handleRowDoubleClick(row)}
+                  >
+                    <td className="px-4 py-3 font-mono text-xs font-medium">{row.lead_code ?? "—"}</td>
+                    <td className="px-4 py-3 font-medium">{row.name}</td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                        {row.stage_tag ? (STAGE_LABEL_FULL[row.stage_tag] ?? row.stage_tag) : "—"}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -472,14 +671,6 @@ const STAGE_LABEL: Record<string, string> = {
   "Type 17": "Completed",
 };
 
-// colour per stage group
-function stageColor(tag: string) {
-  const n = parseInt(tag.replace("Type ", ""));
-  if (n <= 4)  return "#6366f1"; // indigo  — leads
-  if (n <= 7)  return "#8b5cf6"; // violet  — project
-  if (n <= 11) return "#f59e0b"; // amber   — production
-  return               "#10b981"; // emerald — installation
-}
 
 interface StageWiseBarChartProps {
   vendorId?: number;
@@ -487,8 +678,8 @@ interface StageWiseBarChartProps {
 }
 
 function StageWiseBarChart({ vendorId, franchises }: StageWiseBarChartProps) {
-  const router = useRouter();
   const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | undefined>(undefined);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   const { data = [], isLoading, isError, error } = useStageWiseCounts(vendorId, selectedFranchiseId);
 
@@ -498,7 +689,6 @@ function StageWiseBarChart({ vendorId, franchises }: StageWiseBarChartProps) {
     label: STAGE_LABEL[s.tag] ?? s.tag,
     count: s.count,
     tag:   s.tag,
-    fill:  stageColor(s.tag),
   }));
 
   console.log("[StageWiseBarChart] chartData:", chartData);
@@ -508,14 +698,14 @@ function StageWiseBarChart({ vendorId, franchises }: StageWiseBarChartProps) {
     : "Overall";
 
   function handleBarClick(entry: { tag: string }) {
-    const base = STAGE_PATH_BY_TAG[entry.tag];
-    if (base) router.push(base);
+    setSelectedTag(entry.tag);
   }
 
   return (
+    <>
     <Card className="w-full border flex flex-col bg-[#fff] dark:bg-[#0a0a0a]">
       <CardHeader className="flex flex-row justify-between items-start pb-2 space-y-0">
-        <div className="space-y-1">
+        <div>
           <CardTitle className="text-sm font-medium">Leads by Stage</CardTitle>
           <p className="text-xs text-muted-foreground">Total projects across all 17 stages</p>
         </div>
@@ -583,18 +773,23 @@ function StageWiseBarChart({ vendorId, franchises }: StageWiseBarChartProps) {
                 dataKey="count"
                 radius={[4, 4, 0, 0]}
                 cursor="pointer"
+                fill="var(--primary)"
                 onClick={(data) => handleBarClick(data as unknown as typeof chartData[number])}
-              >
-                {chartData.map((entry, i) => (
-                  <Cell key={i} fill={entry.fill} />
-                ))}
-              </Bar>
+              />
             </BarChart>
           </ResponsiveContainer>
         )}
       </CardContent>
-
     </Card>
+
+    <StageLeadsModal
+      open={!!selectedTag}
+      onClose={() => setSelectedTag(null)}
+      vendorId={vendorId}
+      tag={selectedTag}
+      franchiseId={selectedFranchiseId}
+    />
+    </>
   );
 }
 
@@ -716,6 +911,7 @@ export default function SuperAdminDashboard() {
   const vendorId   = useAppSelector((s) => s.auth.user?.vendor_id);
   const franchiseId = useAppSelector((s) => s.auth.franchise_id) ?? undefined;
   const [showOverdueModal, setShowOverdueModal] = useState(false);
+  const [selectedFranchise, setSelectedFranchise] = useState<FranchiseLeadCount | null>(null);
 
   const { data: revenueData, isLoading: revenueLoading } = useAdminTotalRevenue(vendorId, franchiseId);
   const { data: franchiseeData, isLoading: franchiseeLoading } = useActiveFranchiseeCount(vendorId);
@@ -794,7 +990,11 @@ export default function SuperAdminDashboard() {
           <RevenueChart vendorId={vendorId} franchises={franchisesData ?? []} />
         </div>
         <div className="lg:w-[40%]">
-          <FranchiseChart data={franchiseLeadsData} isLoading={franchiseLeadsLoading} />
+          <FranchiseChart
+            data={franchiseLeadsData}
+            isLoading={franchiseLeadsLoading}
+            onBarDoubleClick={(f) => setSelectedFranchise(f)}
+          />
         </div>
       </div>
 
@@ -810,6 +1010,13 @@ export default function SuperAdminDashboard() {
           <AvgDaysPerStageCard vendorId={vendorId} franchises={franchisesData ?? []} />
         </div>
       </div>
+
+      <FranchiseLeadsModal
+        open={!!selectedFranchise}
+        onClose={() => setSelectedFranchise(null)}
+        vendorId={vendorId}
+        franchise={selectedFranchise}
+      />
 
       <OverdueInstallationsModal
         open={showOverdueModal}
