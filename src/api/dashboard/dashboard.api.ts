@@ -313,6 +313,26 @@ export const getLeadsThisMonth = async (
   return res.data.data as { count: number };
 };
 
+export interface OverdueInstallation {
+  id: number;
+  lead_code: string | null;
+  name: string;
+  franchise_name: string | null;
+  expected_end: string;
+  actual_completion: string;
+  days_overdue: number;
+}
+
+export const getOverdueInstallations = async (
+  vendorId: number,
+  franchiseId: number
+): Promise<OverdueInstallation[]> => {
+  const res = await apiClient.get("/dashboard/admin/overdue-installations", {
+    params: { vendor_id: vendorId, franchise_id: franchiseId },
+  });
+  return res.data.data as OverdueInstallation[];
+};
+
 export const getActiveFranchiseeCount = async (
   vendorId: number
 ): Promise<{ count: number }> => {

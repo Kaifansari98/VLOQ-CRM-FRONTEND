@@ -11,6 +11,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   AreaChart,
   Area,
   BarChart,
@@ -27,9 +33,10 @@ import {
   Users,
   ClipboardList,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
-import { useAdminTotalRevenue, useActiveFranchiseeCount, useLeadsThisMonth, useLeadsByFranchise, useOverdueProjectsCount, useFranchisePerformance, useAvgDaysPerStage } from "@/api/dashboard/useDashboard";
+import { useAdminTotalRevenue, useActiveFranchiseeCount, useLeadsThisMonth, useLeadsByFranchise, useOverdueProjectsCount, useFranchisePerformance, useAvgDaysPerStage, useOverdueInstallations } from "@/api/dashboard/useDashboard";
 import type { FranchiseLeadCount, FranchisePerformanceRow } from "@/api/dashboard/dashboard.api";
 import { useFranchisesByVendorId, type FranchiseSummary } from "@/api/franchise";
 
@@ -63,11 +70,15 @@ interface StatCardProps {
   accent: string;
   dot: string;
   isLoading?: boolean;
+  onClick?: () => void;
 }
 
-function StatCard({ title, value, sub, positive, icon: Icon, accent, dot, isLoading }: StatCardProps) {
+function StatCard({ title, value, sub, positive, icon: Icon, accent, dot, isLoading, onClick }: StatCardProps) {
   return (
-    <div className="border rounded-2xl py-4 px-5 flex flex-col justify-between gap-3 bg-background">
+    <div
+      className={`border rounded-2xl py-4 px-5 flex flex-col justify-between gap-3 bg-background ${onClick ? "cursor-pointer hover:shadow-md hover:border-foreground/20 transition-all duration-200" : ""}`}
+      onClick={onClick}
+    >
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-foreground">{title}</span>
         <span className={`flex items-center justify-center h-8 w-8 rounded-full border ${accent} bg-muted/40`}>
@@ -418,11 +429,111 @@ function AvgDaysPerStageCard({ vendorId, franchises }: AvgDaysPerStageCardProps)
   );
 }
 
+// ─── Overdue Installations Modal ─────────────────────────────────────────────
+
+interface OverdueInstallationsModalProps {
+  open: boolean;
+  onClose: () => void;
+  vendorId?: number;
+  defaultFranchiseId?: number | null;
+  franchises: FranchiseSummary[];
+}
+
+function formatDate(d: string | null | undefined) {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId, franchises }: OverdueInstallationsModalProps) {
+  const firstFranchiseId = franchises[0]?.id;
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | undefined>(
+    defaultFranchiseId ?? firstFranchiseId ?? undefined
+  );
+
+  const { data = [], isLoading } = useOverdueInstallations(vendorId, selectedFranchiseId);
+
+  const selectedFranchiseName = franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ?? "Select Franchise";
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="min-w-5xl w-full">
+        <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div>
+            <DialogTitle className="text-base font-semibold">Overdue Installations</DialogTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">Projects completed past their expected installation deadline</p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 gap-1 text-xs max-w-[160px] shrink-0 mr-6">
+                <span className="truncate">{selectedFranchiseName}</span>
+                <ChevronDown className="h-3 w-3 shrink-0" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 max-h-60 overflow-y-auto">
+              {franchises.map((f) => (
+                <DropdownMenuItem key={f.id} onClick={() => setSelectedFranchiseId(f.id)}>
+                  {f.franchise_name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </DialogHeader>
+
+        <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-background z-10">
+              <tr className="border-b border-border/60">
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Lead Code</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Client</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Franchise</th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Expected End</th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Days Overdue</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="border-b border-border/30">
+                    {Array.from({ length: 5 }).map((_, j) => (
+                      <td key={j} className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded" /></td>
+                    ))}
+                  </tr>
+                ))
+              ) : data.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                    No overdue installations for this franchise
+                  </td>
+                </tr>
+              ) : (
+                data.map((row) => (
+                  <tr key={row.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3 font-mono text-xs font-medium">{row.lead_code ?? "—"}</td>
+                    <td className="px-4 py-3 font-medium">{row.name}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{row.franchise_name ?? "—"}</td>
+                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">{formatDate(row.expected_end)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
+                        {row.days_overdue}d
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuperAdminDashboard() {
   const vendorId   = useAppSelector((s) => s.auth.user?.vendor_id);
   const franchiseId = useAppSelector((s) => s.auth.franchise_id) ?? undefined;
+  const [showOverdueModal, setShowOverdueModal] = useState(false);
 
   const { data: revenueData, isLoading: revenueLoading } = useAdminTotalRevenue(vendorId, franchiseId);
   const { data: franchiseeData, isLoading: franchiseeLoading } = useActiveFranchiseeCount(vendorId);
@@ -483,7 +594,7 @@ export default function SuperAdminDashboard() {
           isLoading={leadsThisMonthLoading}
         />
         <StatCard
-          title="Overdue Projects"
+          title="Overdue Installation"
           value={overdueData ? String(overdueData.count) : "—"}
           sub="Completion exceeded deadline"
           positive={false}
@@ -491,6 +602,7 @@ export default function SuperAdminDashboard() {
           accent="text-rose-500"
           dot="bg-rose-500"
           isLoading={overdueLoading}
+          onClick={() => setShowOverdueModal(true)}
         />
       </div>
 
@@ -513,6 +625,14 @@ export default function SuperAdminDashboard() {
           <AvgDaysPerStageCard vendorId={vendorId} franchises={franchisesData ?? []} />
         </div>
       </div>
+
+      <OverdueInstallationsModal
+        open={showOverdueModal}
+        onClose={() => setShowOverdueModal(false)}
+        vendorId={vendorId}
+        defaultFranchiseId={franchiseId ?? null}
+        franchises={franchisesData ?? []}
+      />
     </div>
   );
 }

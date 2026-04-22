@@ -2,6 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
+  getOverdueInstallations,
+  OverdueInstallation,
   getSalesExecutiveTaskStats,
   getPerformanceSnapshot,
   getLeadStatusWiseCounts,
@@ -265,6 +267,14 @@ export function useLeadsThisMonth(vendorId?: number) {
     queryKey: ["leads-this-month", vendorId],
     queryFn: () => getLeadsThisMonth(vendorId!),
     enabled: !!vendorId,
+  });
+}
+
+export function useOverdueInstallations(vendorId?: number, franchiseId?: number) {
+  return useQuery<OverdueInstallation[]>({
+    queryKey: ["overdue-installations", vendorId, franchiseId],
+    queryFn: () => getOverdueInstallations(vendorId!, franchiseId!),
+    enabled: !!vendorId && !!franchiseId,
   });
 }
 
