@@ -379,40 +379,40 @@ function AvgDaysPerStageCard({ vendorId, franchises }: AvgDaysPerStageCardProps)
         </DropdownMenu>
       </CardHeader>
 
-      <CardContent className="flex-1 flex items-center px-6 pb-6">
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-x-6 gap-y-8 w-full">
-          {STAGE_CONFIG.map(({ key, label, range, color }) => {
-            const days = data?.[key] ?? 0;
-            const pct  = Math.round((days / maxDays) * 100);
+      <CardContent className="flex-1 flex flex-col justify-between px-6 pb-5 pt-1 gap-3">
+        {STAGE_CONFIG.map(({ key, label, range, color }) => {
+          const days = data?.[key] ?? 0;
+          const pct  = Math.round((days / maxDays) * 100);
 
-            return (
-              <div key={key} className="flex flex-col gap-3">
+          return (
+            <div key={key} className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-foreground">{label}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{range}</p>
+                  <p className="text-[10px] text-muted-foreground">{range}</p>
                 </div>
                 {isLoading ? (
-                  <div className="h-8 w-20 bg-muted animate-pulse rounded" />
+                  <div className="h-6 w-16 bg-muted animate-pulse rounded" />
                 ) : (
-                  <span className="text-3xl font-semibold leading-none">
+                  <span className="text-xl font-semibold tabular-nums">
                     {days > 0 ? days : "—"}
                     {days > 0 && <span className="text-xs font-normal text-muted-foreground ml-1">days</span>}
                   </span>
                 )}
-                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                  {isLoading ? (
-                    <div className="h-full w-1/2 bg-muted-foreground/20 animate-pulse rounded-full" />
-                  ) : (
-                    <div
-                      className={`h-full rounded-full ${color} transition-all duration-500`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  )}
-                </div>
               </div>
-            );
-          })}
-        </div>
+              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                {isLoading ? (
+                  <div className="h-full w-1/2 bg-muted-foreground/20 animate-pulse rounded-full" />
+                ) : (
+                  <div
+                    className={`h-full rounded-full ${color} transition-all duration-500`}
+                    style={{ width: `${pct}%` }}
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );
