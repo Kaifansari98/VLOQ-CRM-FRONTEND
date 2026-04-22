@@ -92,7 +92,7 @@ export function MiscellaneousTable({
     const mappedFilters = mapTableFiltersToPayload(columnFilters);
 
     return {
-      franchise_id: franchiseId!,
+      ...(franchiseId ? { franchise_id: franchiseId } : {}),
       page: pagination.pageIndex + 1,
       limit: pagination.pageSize,
       global_search: globalFilter || "",

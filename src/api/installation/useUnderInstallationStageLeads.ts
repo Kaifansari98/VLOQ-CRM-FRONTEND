@@ -1664,7 +1664,7 @@ export const usePendingMiscellaneousLeads = (
   return useQuery<PendingMiscellaneousResponse>({
     queryKey: ["pendingMiscellaneousLeads", vendorId, payload],
     queryFn: () => postPendingMiscellaneousLeads(vendorId, payload),
-    enabled: !!vendorId && !!payload?.franchise_id,
+    enabled: !!vendorId,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
