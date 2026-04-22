@@ -413,7 +413,7 @@ function AvgDaysPerStageCard({ vendorId, franchises }: AvgDaysPerStageCardProps)
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col justify-between px-6 pb-5 pt-1 gap-3">
-        {STAGE_CONFIG.map(({ key, label, range, color }) => {
+        {STAGE_CONFIG.map(({ key, label, color }) => {
           const days = data?.[key] ?? 0;
           const pct  = Math.round((days / maxDays) * 100);
 
@@ -422,7 +422,6 @@ function AvgDaysPerStageCard({ vendorId, franchises }: AvgDaysPerStageCardProps)
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-foreground">{label}</p>
-                  <p className="text-[10px] text-muted-foreground">{range}</p>
                 </div>
                 {isLoading ? (
                   <div className="h-6 w-16 bg-muted animate-pulse rounded" />
