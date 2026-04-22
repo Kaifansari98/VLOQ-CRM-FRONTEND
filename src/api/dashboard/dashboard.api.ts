@@ -327,10 +327,10 @@ export interface OverdueInstallation {
 
 export const getOverdueInstallations = async (
   vendorId: number,
-  franchiseId: number
+  franchiseId?: number
 ): Promise<OverdueInstallation[]> => {
   const res = await apiClient.get("/dashboard/admin/overdue-installations", {
-    params: { vendor_id: vendorId, franchise_id: franchiseId },
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
   });
   return res.data.data as OverdueInstallation[];
 };

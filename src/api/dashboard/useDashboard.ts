@@ -281,8 +281,8 @@ export function useLeadsThisMonth(vendorId?: number) {
 export function useOverdueInstallations(vendorId?: number, franchiseId?: number) {
   return useQuery<OverdueInstallation[]>({
     queryKey: ["overdue-installations", vendorId, franchiseId],
-    queryFn: () => getOverdueInstallations(vendorId!, franchiseId!),
-    enabled: !!vendorId && !!franchiseId,
+    queryFn: () => getOverdueInstallations(vendorId!, franchiseId),
+    enabled: !!vendorId,
   });
 }
 

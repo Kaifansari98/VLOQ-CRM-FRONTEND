@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -817,14 +818,15 @@ function formatDate(d: string | null | undefined) {
 
 function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId, franchises }: OverdueInstallationsModalProps) {
   const router = useRouter();
-  const firstFranchiseId = franchises[0]?.id;
   const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | undefined>(
-    defaultFranchiseId ?? firstFranchiseId ?? undefined
+    defaultFranchiseId ?? undefined
   );
 
   const { data = [], isLoading } = useOverdueInstallations(vendorId, selectedFranchiseId);
 
-  const selectedFranchiseName = franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ?? "Select Franchise";
+  const selectedFranchiseName = selectedFranchiseId
+    ? (franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ?? "Overall")
+    : "Overall";
 
   function handleRowDoubleClick(row: typeof data[number]) {
     const basePath = row.stage_tag && STAGE_PATH_BY_TAG[row.stage_tag]
@@ -852,6 +854,7 @@ function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 max-h-60 overflow-y-auto">
+              <DropdownMenuItem onClick={() => setSelectedFranchiseId(undefined)}>Overall</DropdownMenuItem>
               {franchises.map((f) => (
                 <DropdownMenuItem key={f.id} onClick={() => setSelectedFranchiseId(f.id)}>
                   {f.franchise_name}
@@ -869,7 +872,6 @@ function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Client</th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Franchise</th>
                 <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Expected End</th>
-                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Actual End</th>
                 <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Days Overdue</th>
               </tr>
             </thead>
@@ -877,15 +879,15 @@ function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/30">
-                    {Array.from({ length: 6 }).map((_, j) => (
+                    {Array.from({ length: 5 }).map((_, j) => (
                       <td key={j} className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded" /></td>
                     ))}
                   </tr>
                 ))
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                    No overdue installations for this franchise
+                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                    No overdue installations found
                   </td>
                 </tr>
               ) : (
@@ -895,7 +897,6 @@ function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId
                     <td className="px-4 py-3 font-medium">{row.name}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{row.franchise_name ?? "—"}</td>
                     <td className="px-4 py-3 text-right text-xs text-muted-foreground">{formatDate(row.expected_end)}</td>
-                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">—</td>
                     <td className="px-4 py-3 text-right">
                       <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
                         {row.days_overdue} Days
@@ -924,11 +925,12 @@ interface OverdueProductionModalProps {
 function OverdueProductionModal({ open, onClose, vendorId, franchises }: OverdueProductionModalProps) {
   const router = useRouter();
   const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | undefined>(undefined);
+  const [activeTab, setActiveTab] = useState<"deadline-overrun" | "live-delay">("deadline-overrun");
 
   const { data = [], isLoading } = useOverdueProduction(vendorId, selectedFranchiseId);
 
   const selectedFranchiseName = selectedFranchiseId
-    ? (franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ?? "Select Franchise")
+    ? (franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ?? "Overall")
     : "Overall";
 
   function handleRowDoubleClick(row: OverdueProduction) {
@@ -940,6 +942,13 @@ function OverdueProductionModal({ open, onClose, vendorId, franchises }: Overdue
     if (row.instance_id) params.set("instance_id", String(row.instance_id));
     router.push(`${basePath}?${params.toString()}`);
   }
+
+  function getDaysFromToday(expectedReadyDate: string): number {
+    return Math.ceil((new Date(expectedReadyDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  }
+
+  const isDeadlineOverrun = activeTab === "deadline-overrun";
+  const colCount = isDeadlineOverrun ? 6 : 5;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -967,48 +976,80 @@ function OverdueProductionModal({ open, onClose, vendorId, franchises }: Overdue
           </DropdownMenu>
         </DialogHeader>
 
-        <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+          <TabsList className="h-8 p-0.5 w-full grid grid-cols-2">
+            <TabsTrigger value="deadline-overrun" className="h-7 text-xs">
+              Deadline Overrun
+            </TabsTrigger>
+            <TabsTrigger value="live-delay" className="h-7 text-xs">
+              Live Delay
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div className="overflow-x-auto max-h-[55vh] overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-background z-10">
               <tr className="border-b border-border/60">
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Lead Code</th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Client</th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Franchise</th>
-                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Client Required By</th>
+                {isDeadlineOverrun && (
+                  <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Client Required By</th>
+                )}
                 <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Expected Ready</th>
-                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Days Overdue</th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  {isDeadlineOverrun ? "Overrun" : "From Today"}
+                </th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/30">
-                    {Array.from({ length: 6 }).map((_, j) => (
+                    {Array.from({ length: colCount }).map((_, j) => (
                       <td key={j} className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded" /></td>
                     ))}
                   </tr>
                 ))
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  <td colSpan={colCount} className="px-4 py-10 text-center text-sm text-muted-foreground">
                     No overdue production orders found
                   </td>
                 </tr>
               ) : (
-                data.map((row) => (
-                  <tr key={row.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none" onDoubleClick={() => handleRowDoubleClick(row)}>
-                    <td className="px-4 py-3 font-mono text-xs font-medium">{row.lead_code ?? "—"}</td>
-                    <td className="px-4 py-3 font-medium">{row.name}</td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">{row.franchise_name ?? "—"}</td>
-                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">{formatDate(row.client_required_date)}</td>
-                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">{formatDate(row.expected_ready_date)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
-                        {row.days_overdue} Days
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                data.map((row) => {
+                  const daysFromToday = getDaysFromToday(row.expected_ready_date);
+                  const isPast = daysFromToday <= 0;
+                  return (
+                    <tr key={row.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none" onDoubleClick={() => handleRowDoubleClick(row)}>
+                      <td className="px-4 py-3 font-mono text-xs font-medium">{row.lead_code ?? "—"}</td>
+                      <td className="px-4 py-3 font-medium">{row.name}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{row.franchise_name ?? "—"}</td>
+                      {isDeadlineOverrun && (
+                        <td className="px-4 py-3 text-right text-xs text-muted-foreground">{formatDate(row.client_required_date)}</td>
+                      )}
+                      <td className="px-4 py-3 text-right text-xs text-muted-foreground">{formatDate(row.expected_ready_date)}</td>
+                      <td className="px-4 py-3 text-right">
+                        {isDeadlineOverrun ? (
+                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
+                            {row.days_overdue} Days
+                          </span>
+                        ) : isPast ? (
+                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
+                            {Math.abs(daysFromToday)} Days Past
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
+                            {daysFromToday} Days Left
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -1209,7 +1250,6 @@ export default function SuperAdminDashboard() {
         open={showOverdueModal}
         onClose={() => setShowOverdueModal(false)}
         vendorId={vendorId}
-        defaultFranchiseId={franchiseId ?? null}
         franchises={franchisesData ?? []}
       />
 
