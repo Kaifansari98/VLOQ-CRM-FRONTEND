@@ -5,7 +5,7 @@ import { useInView } from "react-intersection-observer";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { fetchLeadLogs } from "@/api/leads";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,12 +15,17 @@ import {
   CheckCircle2,
   Upload,
   Edit3,
+  FileSpreadsheet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { generateSiteHistoryReport } from "@/lib/reports/siteHistoryReport";
 
 interface SiteHistoryTabProps {
   leadId: number;
   vendorId: number;
+  leadCode?: string | null;
+  leadName?: string | null;
 }
 
 const getActionIcon = (actionType: string) => {
@@ -64,6 +69,8 @@ const parseActionMessage = (action: string) => {
 export default function SiteHistoryTab({
   leadId,
   vendorId,
+  leadCode,
+  leadName,
 }: SiteHistoryTabProps) {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
@@ -83,6 +90,21 @@ export default function SiteHistoryTab({
   useEffect(() => {
     console.log("🔍 Logs Data:", data?.pages);
   }, [data]);
+
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      await generateSiteHistoryReport({ leadId, vendorId, leadCode, leadName });
+      toast.success("Site history exported successfully.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to export.";
+      toast.error(msg);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const { ref, inView } = useInView({ threshold: 0.5 });
 
@@ -118,14 +140,30 @@ export default function SiteHistoryTab({
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
-        className="mb-8"
+        className="mb-8 flex items-start justify-between gap-4"
       >
-        <h2 className="text-2xl font-bold text-foreground">
-          Site History Timeline
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Track all activities and changes for this lead
-        </p>
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">
+            Site History Timeline
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Track all activities and changes for this lead
+          </p>
+        </div>
+        <Button
+          variant="default"
+          size="sm"
+          className="shrink-0 gap-2"
+          disabled={isExporting}  
+          onClick={handleExport}
+        >
+          {isExporting ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <FileSpreadsheet className="size-4" />
+          )}
+          {isExporting ? "Exporting..." : "Export Site History"}
+        </Button>
       </motion.div>
 
       <div className="relative">
