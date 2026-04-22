@@ -1038,40 +1038,54 @@ function OverdueAlertsCard({
   onProductionClick,
 }: OverdueAlertsCardProps) {
   return (
-    <div className="border rounded-2xl py-4 px-5 flex flex-col justify-between gap-3 bg-background">
+    <div className="border rounded-2xl py-4 px-5 flex flex-col gap-4 bg-background">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-foreground">Overdue Alerts</span>
-        <span className="flex items-center justify-center h-8 w-8 rounded-full border text-rose-500 bg-muted/40">
+        <span className="flex items-center justify-center h-8 w-8 rounded-full border border-rose-200 text-rose-500 bg-rose-50 dark:bg-rose-500/10 dark:border-rose-500/30">
           <AlertTriangle className="h-4 w-4" />
         </span>
       </div>
+
+      {/* Rows */}
       <div className="flex flex-col gap-2">
+        {/* Installation */}
         <button
           onClick={onInstallationClick}
-          className="flex items-center justify-between rounded-xl px-3 py-2 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors group text-left"
+          className="group flex items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 hover:border-rose-200 hover:bg-rose-50 dark:hover:bg-rose-500/10 dark:hover:border-rose-500/20 transition-all text-left"
         >
-          <div className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
-            <span className="text-xs text-muted-foreground">Installation</span>
+          <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-rose-100 dark:bg-rose-500/15 shrink-0">
+            <span className="h-2 w-2 rounded-full bg-rose-500" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-foreground">Installation</p>
+            <p className="text-[10px] text-muted-foreground leading-tight">Past expected end date</p>
           </div>
           {isLoadingInstallation ? (
-            <div className="h-5 w-8 bg-muted animate-pulse rounded" />
+            <div className="h-7 w-8 bg-muted animate-pulse rounded" />
           ) : (
-            <span className="text-lg font-semibold text-rose-500">{installationCount}</span>
+            <span className="text-xl font-bold text-rose-500 tabular-nums">{installationCount}</span>
           )}
         </button>
+
+        <div className="border-t border-border/40 mx-1" />
+
+        {/* Production */}
         <button
           onClick={onProductionClick}
-          className="flex items-center justify-between rounded-xl px-3 py-2 hover:bg-orange-50 dark:hover:bg-orange-500/10 transition-colors group text-left"
+          className="group flex items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 hover:border-orange-200 hover:bg-orange-50 dark:hover:bg-orange-500/10 dark:hover:border-orange-500/20 transition-all text-left"
         >
-          <div className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
-            <span className="text-xs text-muted-foreground">Production</span>
+          <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-orange-100 dark:bg-orange-500/15 shrink-0">
+            <span className="h-2 w-2 rounded-full bg-orange-500" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-foreground">Production</p>
+            <p className="text-[10px] text-muted-foreground leading-tight">Exceeds client delivery date</p>
           </div>
           {isLoadingProduction ? (
-            <div className="h-5 w-8 bg-muted animate-pulse rounded" />
+            <div className="h-7 w-8 bg-muted animate-pulse rounded" />
           ) : (
-            <span className="text-lg font-semibold text-orange-500">{productionCount}</span>
+            <span className="text-xl font-bold text-orange-500 tabular-nums">{productionCount}</span>
           )}
         </button>
       </div>
