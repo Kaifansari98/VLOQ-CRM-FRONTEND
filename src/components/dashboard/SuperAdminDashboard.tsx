@@ -1520,7 +1520,7 @@ function OverdueProductionModal({
                     ))}
                   </tr>
                 ))
-              ) : data.length === 0 ? (
+              ) : data.filter((row) => getDaysFromToday(row.expected_ready_date) <= 0).length === 0 ? (
                 <tr>
                   <td
                     colSpan={colCount}
