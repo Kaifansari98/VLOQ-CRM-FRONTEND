@@ -1020,9 +1020,8 @@ function OverdueProductionModal({ open, onClose, vendorId, franchises }: Overdue
                   </td>
                 </tr>
               ) : (
-                data.map((row) => {
+                data.filter((row) => getDaysFromToday(row.expected_ready_date) <= 0).map((row) => {
                   const daysFromToday = getDaysFromToday(row.expected_ready_date);
-                  const isPast = daysFromToday <= 0;
                   return (
                     <tr key={row.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none" onDoubleClick={() => handleRowDoubleClick(row)}>
                       <td className="px-4 py-3 font-mono text-xs font-medium">{row.lead_code ?? "—"}</td>
@@ -1037,13 +1036,9 @@ function OverdueProductionModal({ open, onClose, vendorId, franchises }: Overdue
                           <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
                             {row.days_overdue} Days
                           </span>
-                        ) : isPast ? (
+                        ) : (
                           <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
                             {Math.abs(daysFromToday)} Days Past
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
-                            {daysFromToday} Days Left
                           </span>
                         )}
                       </td>
