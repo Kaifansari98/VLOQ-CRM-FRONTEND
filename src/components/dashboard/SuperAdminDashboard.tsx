@@ -38,27 +38,60 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
-import { useAdminTotalRevenue, useActiveFranchiseeCount, useLeadsThisMonth, useLeadsByFranchise, useOverdueProjectsCount, useFranchisePerformance, useAvgDaysPerStage, useOverdueInstallations, useStageWiseCounts, useFranchiseLeads, useStageLeads, useOverdueProductionCount, useOverdueProduction } from "@/api/dashboard/useDashboard";
+import {
+  useAdminTotalRevenue,
+  useActiveFranchiseeCount,
+  useLeadsThisMonth,
+  useLeadsByFranchise,
+  useOverdueProjectsCount,
+  useFranchisePerformance,
+  useAvgDaysPerStage,
+  useOverdueInstallations,
+  useStageWiseCounts,
+  useFranchiseLeads,
+  useStageLeads,
+  useOverdueProductionCount,
+  useOverdueProduction,
+} from "@/api/dashboard/useDashboard";
 import type { OverdueProduction } from "@/api/dashboard/dashboard.api";
-import type { FranchiseLeadCount, FranchisePerformanceRow } from "@/api/dashboard/dashboard.api";
-import { useFranchisesByVendorId, type FranchiseSummary } from "@/api/franchise";
+import type {
+  FranchiseLeadCount,
+  FranchisePerformanceRow,
+} from "@/api/dashboard/dashboard.api";
+import {
+  useFranchisesByVendorId,
+  type FranchiseSummary,
+} from "@/api/franchise";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const WEEK_LABELS  = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const WEEK_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTH_LABELS = ["Week 1", "Week 2", "Week 3", "Week 4"];
-const YEAR_LABELS  = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const YEAR_LABELS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 const STAGE_PATH_BY_TAG: Record<string, string> = {
-  "Type 1":  "/dashboard/leads/leadstable/details",
-  "Type 2":  "/dashboard/leads/initial-site-measurement/details",
-  "Type 3":  "/dashboard/leads/designing-stage/details",
-  "Type 4":  "/dashboard/leads/booking-stage/details",
-  "Type 5":  "/dashboard/project/final-measurement/details",
-  "Type 6":  "/dashboard/project/client-documentation/details",
-  "Type 7":  "/dashboard/project/client-approval/details",
-  "Type 8":  "/dashboard/production/tech-check/details",
-  "Type 9":  "/dashboard/production/order-login/details",
+  "Type 1": "/dashboard/leads/leadstable/details",
+  "Type 2": "/dashboard/leads/initial-site-measurement/details",
+  "Type 3": "/dashboard/leads/designing-stage/details",
+  "Type 4": "/dashboard/leads/booking-stage/details",
+  "Type 5": "/dashboard/project/final-measurement/details",
+  "Type 6": "/dashboard/project/client-documentation/details",
+  "Type 7": "/dashboard/project/client-approval/details",
+  "Type 8": "/dashboard/production/tech-check/details",
+  "Type 9": "/dashboard/production/order-login/details",
   "Type 10": "/dashboard/production/pre-post-prod/details",
   "Type 11": "/dashboard/production/ready-to-dispatch/details",
   "Type 12": "/dashboard/installation/site-readiness/details",
@@ -69,12 +102,11 @@ const STAGE_PATH_BY_TAG: Record<string, string> = {
   "Type 17": "/dashboard/installation/final-handover/details",
 };
 
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatRevenue(v: number) {
   if (v >= 10000000) return `₹${(v / 10000000).toFixed(1)} Cr`;
-  if (v >= 100000)   return `₹${(v / 100000).toFixed(1)} L`;
+  if (v >= 100000) return `₹${(v / 100000).toFixed(1)} L`;
   return `₹${v.toLocaleString("en-IN")}`;
 }
 
@@ -96,7 +128,17 @@ interface StatCardProps {
   onClick?: () => void;
 }
 
-function StatCard({ title, value, sub, positive, icon: Icon, accent, dot, isLoading, onClick }: StatCardProps) {
+function StatCard({
+  title,
+  value,
+  sub,
+  positive,
+  icon: Icon,
+  accent,
+  dot,
+  isLoading,
+  onClick,
+}: StatCardProps) {
   return (
     <div
       className={`border rounded-2xl py-4 px-5 flex flex-col justify-between gap-3 bg-background ${onClick ? "cursor-pointer hover:shadow-md hover:border-foreground/20 transition-all duration-200" : ""}`}
@@ -104,7 +146,9 @@ function StatCard({ title, value, sub, positive, icon: Icon, accent, dot, isLoad
     >
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-foreground">{title}</span>
-        <span className={`flex items-center justify-center h-8 w-8 rounded-full border ${accent} bg-muted/40`}>
+        <span
+          className={`flex items-center justify-center h-8 w-8 rounded-full border ${accent} bg-muted/40`}
+        >
           <Icon className="h-4 w-4" />
         </span>
       </div>
@@ -116,7 +160,9 @@ function StatCard({ title, value, sub, positive, icon: Icon, accent, dot, isLoad
         )}
         <div className="flex items-center gap-1.5 mt-1">
           <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-          <span className={`text-xs ${positive ? "text-muted-foreground" : "text-rose-500"}`}>
+          <span
+            className={`text-xs ${positive ? "text-muted-foreground" : "text-rose-500"}`}
+          >
             {sub}
           </span>
         </div>
@@ -136,27 +182,39 @@ interface RevenueChartProps {
 
 function RevenueChart({ vendorId, franchises }: RevenueChartProps) {
   const [mode, setMode] = useState<Filter>("year");
-  const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | undefined>(undefined);
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<
+    number | undefined
+  >(undefined);
 
-  const { data, isLoading } = useAdminTotalRevenue(vendorId, selectedFranchiseId);
+  const { data, isLoading } = useAdminTotalRevenue(
+    vendorId,
+    selectedFranchiseId,
+  );
 
   const chartData = useMemo(() => {
     if (!data) return [];
-    if (mode === "week")  return toChartData(data.thisWeekArray,  WEEK_LABELS);
+    if (mode === "week") return toChartData(data.thisWeekArray, WEEK_LABELS);
     if (mode === "month") return toChartData(data.thisMonthArray, MONTH_LABELS);
     return toChartData(data.thisYearArray, YEAR_LABELS);
   }, [mode, data]);
 
-  const total = mode === "week"
-    ? (data?.thisWeekTotal  ?? 0)
-    : mode === "month"
-    ? (data?.thisMonthTotal ?? 0)
-    : (data?.thisYearTotal  ?? 0);
+  const total =
+    mode === "week"
+      ? (data?.thisWeekTotal ?? 0)
+      : mode === "month"
+        ? (data?.thisMonthTotal ?? 0)
+        : (data?.thisYearTotal ?? 0);
 
-  const label = mode === "week" ? "This Week" : mode === "month" ? "This Month" : "This Year";
+  const label =
+    mode === "week"
+      ? "This Week"
+      : mode === "month"
+        ? "This Month"
+        : "This Year";
 
   const selectedFranchiseName = selectedFranchiseId
-    ? franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ?? "Overall"
+    ? (franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ??
+      "Overall")
     : "Overall";
 
   return (
@@ -168,7 +226,9 @@ function RevenueChart({ vendorId, franchises }: RevenueChartProps) {
             <div className="h-8 w-32 bg-muted animate-pulse rounded" />
           ) : (
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-semibold">{formatRevenue(total)}</span>
+              <span className="text-2xl font-semibold">
+                {formatRevenue(total)}
+              </span>
               <span className="text-xs text-muted-foreground">{label}</span>
             </div>
           )}
@@ -178,15 +238,30 @@ function RevenueChart({ vendorId, franchises }: RevenueChartProps) {
           {/* Franchise filter */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="h-8 gap-1 text-xs max-w-[130px] truncate" disabled={isLoading}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1 text-xs max-w-[130px] truncate"
+                disabled={isLoading}
+              >
                 <span className="truncate">{selectedFranchiseName}</span>
                 <ChevronDown className="h-3 w-3 shrink-0" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44 max-h-60 overflow-y-auto">
-              <DropdownMenuItem onClick={() => setSelectedFranchiseId(undefined)}>Overall</DropdownMenuItem>
+            <DropdownMenuContent
+              align="end"
+              className="w-44 max-h-60 overflow-y-auto"
+            >
+              <DropdownMenuItem
+                onClick={() => setSelectedFranchiseId(undefined)}
+              >
+                Overall
+              </DropdownMenuItem>
               {franchises.map((f) => (
-                <DropdownMenuItem key={f.id} onClick={() => setSelectedFranchiseId(f.id)}>
+                <DropdownMenuItem
+                  key={f.id}
+                  onClick={() => setSelectedFranchiseId(f.id)}
+                >
                   {f.franchise_name}
                 </DropdownMenuItem>
               ))}
@@ -196,15 +271,26 @@ function RevenueChart({ vendorId, franchises }: RevenueChartProps) {
           {/* Time filter */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" disabled={isLoading}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1 text-xs"
+                disabled={isLoading}
+              >
                 {mode === "week" ? "Week" : mode === "month" ? "Month" : "Year"}
                 <ChevronDown className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-32">
-              <DropdownMenuItem onClick={() => setMode("week")}>This Week</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setMode("month")}>This Month</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setMode("year")}>This Year</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setMode("week")}>
+                This Week
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setMode("month")}>
+                This Month
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setMode("year")}>
+                This Year
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -217,23 +303,64 @@ function RevenueChart({ vendorId, franchises }: RevenueChartProps) {
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ left: 0, right: 0, top: 5, bottom: 0 }}>
+            <AreaChart
+              data={chartData}
+              margin={{ left: 0, right: 0, top: 5, bottom: 0 }}
+            >
               <defs>
                 <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="var(--primary)" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
+                  <stop
+                    offset="5%"
+                    stopColor="var(--primary)"
+                    stopOpacity={0.25}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor="var(--primary)"
+                    stopOpacity={0}
+                  />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: "var(--foreground)", fontSize: 12 }} tickLine={false} axisLine={false} />
-              <YAxis tickFormatter={(v) => formatRevenue(v)} tick={{ fill: "var(--foreground)", fontSize: 10 }} tickLine={false} axisLine={false} width={52} />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(var(--border))"
+                opacity={0.3}
+                vertical={false}
+              />
+              <XAxis
+                dataKey="name"
+                tick={{ fill: "var(--foreground)", fontSize: 12 }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                tickFormatter={(v) => formatRevenue(v)}
+                tick={{ fill: "var(--foreground)", fontSize: 10 }}
+                tickLine={false}
+                axisLine={false}
+                width={52}
+              />
               <Tooltip
-                formatter={(v) => typeof v === "number" ? formatRevenue(v) : v}
-                contentStyle={{ border: "1px solid hsl(var(--border))", borderRadius: "10px", boxShadow: "0px 4px 12px rgba(0,0,0,0.15)" }}
+                formatter={(v) =>
+                  typeof v === "number" ? formatRevenue(v) : v
+                }
+                contentStyle={{
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "10px",
+                  boxShadow: "0px 4px 12px rgba(0,0,0,0.15)",
+                }}
                 labelStyle={{ fontSize: "12px", fontWeight: 500 }}
                 itemStyle={{ fontSize: "12px" }}
               />
-              <Area type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={2.5} fill="url(#revenueGrad)" dot={false} activeDot={{ r: 5 }} />
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="var(--primary)"
+                strokeWidth={2.5}
+                fill="url(#revenueGrad)"
+                dot={false}
+                activeDot={{ r: 5 }}
+              />
             </AreaChart>
           </ResponsiveContainer>
         )}
@@ -250,14 +377,22 @@ interface FranchiseChartProps {
   onBarDoubleClick?: (franchise: FranchiseLeadCount) => void;
 }
 
-function FranchiseChart({ data = [], isLoading, onBarDoubleClick }: FranchiseChartProps) {
+function FranchiseChart({
+  data = [],
+  isLoading,
+  onBarDoubleClick,
+}: FranchiseChartProps) {
   const chartData = data.slice(0, 6);
 
   return (
     <Card className="w-full h-full border flex flex-col bg-[#fff] dark:bg-[#0a0a0a]">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Leads by Franchise</CardTitle>
-        <p className="text-xs text-muted-foreground">Top {chartData.length} franchises · Double-click a bar to view leads</p>
+        <CardTitle className="text-sm font-medium">
+          Leads by Franchise
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Top {chartData.length} franchises · Double-click a bar to view leads
+        </p>
       </CardHeader>
 
       <CardContent className="h-[220px]">
@@ -266,35 +401,71 @@ function FranchiseChart({ data = [], isLoading, onBarDoubleClick }: FranchiseCha
             <div className="h-10 w-10 border-4 border-muted border-t-primary rounded-full animate-spin" />
           </div>
         ) : (
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ left: 0, right: 0, top: 5, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} vertical={false} />
-            <XAxis dataKey="code" tick={{ fill: "var(--foreground)", fontSize: 11 }} tickLine={false} axisLine={false} />
-            <YAxis tick={{ fill: "var(--foreground)", fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
-            <Tooltip
-              formatter={(value, _name, props) => [value, props.payload?.name ?? "Leads"]}
-              contentStyle={{ border: "1px solid hsl(var(--border))", borderRadius: "10px", boxShadow: "0px 4px 12px rgba(0,0,0,0.15)" }}
-              labelFormatter={(_label, payload) => payload?.[0]?.payload?.name ?? _label}
-              labelStyle={{ fontSize: "12px", fontWeight: 500 }}
-              itemStyle={{ fontSize: "12px" }}
-            />
-            <Bar
-              dataKey="leads"
-              radius={[6, 6, 0, 0]}
-              shape={(props: any) => {
-                const { x, y, width, height, payload } = props;
-                return (
-                  <rect
-                    x={x} y={y} width={width} height={height}
-                    fill="var(--primary)" rx={6} ry={6}
-                    style={{ cursor: onBarDoubleClick ? "pointer" : "default" }}
-                    onDoubleClick={() => onBarDoubleClick?.(payload as FranchiseLeadCount)}
-                  />
-                );
-              }}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={chartData}
+              margin={{ left: 0, right: 0, top: 5, bottom: 0 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(var(--border))"
+                opacity={0.3}
+                vertical={false}
+              />
+              <XAxis
+                dataKey="code"
+                tick={{ fill: "var(--foreground)", fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                tick={{ fill: "var(--foreground)", fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
+              />
+              <Tooltip
+                formatter={(value, _name, props) => [
+                  value,
+                  props.payload?.name ?? "Leads",
+                ]}
+                contentStyle={{
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "10px",
+                  boxShadow: "0px 4px 12px rgba(0,0,0,0.15)",
+                }}
+                labelFormatter={(_label, payload) =>
+                  payload?.[0]?.payload?.name ?? _label
+                }
+                labelStyle={{ fontSize: "12px", fontWeight: 500 }}
+                itemStyle={{ fontSize: "12px" }}
+              />
+              <Bar
+                dataKey="leads"
+                radius={[6, 6, 0, 0]}
+                shape={(props: any) => {
+                  const { x, y, width, height, payload } = props;
+                  return (
+                    <rect
+                      x={x}
+                      y={y}
+                      width={width}
+                      height={height}
+                      fill="var(--primary)"
+                      rx={6}
+                      ry={6}
+                      style={{
+                        cursor: onBarDoubleClick ? "pointer" : "default",
+                      }}
+                      onDoubleClick={() =>
+                        onBarDoubleClick?.(payload as FranchiseLeadCount)
+                      }
+                    />
+                  );
+                }}
+              />
+            </BarChart>
+          </ResponsiveContainer>
         )}
       </CardContent>
     </Card>
@@ -310,14 +481,23 @@ interface FranchiseLeadsModalProps {
   franchise: FranchiseLeadCount | null;
 }
 
-function FranchiseLeadsModal({ open, onClose, vendorId, franchise }: FranchiseLeadsModalProps) {
+function FranchiseLeadsModal({
+  open,
+  onClose,
+  vendorId,
+  franchise,
+}: FranchiseLeadsModalProps) {
   const router = useRouter();
-  const { data = [], isLoading } = useFranchiseLeads(vendorId, franchise?.franchise_id);
+  const { data = [], isLoading } = useFranchiseLeads(
+    vendorId,
+    franchise?.franchise_id,
+  );
 
-  function handleRowDoubleClick(row: typeof data[number]) {
-    const basePath = row.stage_tag && STAGE_PATH_BY_TAG[row.stage_tag]
-      ? `${STAGE_PATH_BY_TAG[row.stage_tag]}/${row.id}`
-      : `/dashboard/leads/leadstable/details/${row.id}`;
+  function handleRowDoubleClick(row: (typeof data)[number]) {
+    const basePath =
+      row.stage_tag && STAGE_PATH_BY_TAG[row.stage_tag]
+        ? `${STAGE_PATH_BY_TAG[row.stage_tag]}/${row.id}`
+        : `/dashboard/leads/leadstable/details/${row.id}`;
     const params = new URLSearchParams();
     if (row.account_id) params.set("accountId", String(row.account_id));
     if (row.instance_id) params.set("instance_id", String(row.instance_id));
@@ -325,12 +505,23 @@ function FranchiseLeadsModal({ open, onClose, vendorId, franchise }: FranchiseLe
   }
 
   const STAGE_LABEL_FULL: Record<string, string> = {
-    "Type 1": "Open Lead", "Type 2": "ISM", "Type 3": "Designing",
-    "Type 4": "Booking", "Type 5": "Final Measurement", "Type 6": "Client Docs",
-    "Type 7": "Client Approval", "Type 8": "Tech Check", "Type 9": "Order Login",
-    "Type 10": "Production", "Type 11": "Ready to Dispatch", "Type 12": "Site Readiness",
-    "Type 13": "Dispatch Planning", "Type 14": "Dispatch", "Type 15": "Under Installation",
-    "Type 16": "Final Handover", "Type 17": "Completed",
+    "Type 1": "Open Lead",
+    "Type 2": "ISM",
+    "Type 3": "Designing",
+    "Type 4": "Booking",
+    "Type 5": "Final Measurement",
+    "Type 6": "Client Docs",
+    "Type 7": "Client Approval",
+    "Type 8": "Tech Check",
+    "Type 9": "Order Login",
+    "Type 10": "Production",
+    "Type 11": "Ready to Dispatch",
+    "Type 12": "Site Readiness",
+    "Type 13": "Dispatch Planning",
+    "Type 14": "Dispatch",
+    "Type 15": "Under Installation",
+    "Type 16": "Final Handover",
+    "Type 17": "Completed",
   };
 
   return (
@@ -340,16 +531,24 @@ function FranchiseLeadsModal({ open, onClose, vendorId, franchise }: FranchiseLe
           <DialogTitle className="text-base font-semibold">
             {franchise?.name ?? "Franchise"} — Leads
           </DialogTitle>
-          <p className="text-xs text-muted-foreground">Double-click a row to open lead details</p>
+          <p className="text-xs text-muted-foreground">
+            Double-click a row to open lead details
+          </p>
         </DialogHeader>
 
         <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-background z-10">
               <tr className="border-b border-border/60">
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Lead Code</th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Client</th>
-                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Stage</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Lead Code
+                </th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Client
+                </th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Stage
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -357,13 +556,18 @@ function FranchiseLeadsModal({ open, onClose, vendorId, franchise }: FranchiseLe
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/30">
                     {Array.from({ length: 3 }).map((_, j) => (
-                      <td key={j} className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded" /></td>
+                      <td key={j} className="px-4 py-3">
+                        <div className="h-4 bg-muted animate-pulse rounded" />
+                      </td>
                     ))}
                   </tr>
                 ))
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  <td
+                    colSpan={3}
+                    className="px-4 py-10 text-center text-sm text-muted-foreground"
+                  >
                     No leads found for this franchise
                   </td>
                 </tr>
@@ -374,11 +578,15 @@ function FranchiseLeadsModal({ open, onClose, vendorId, franchise }: FranchiseLe
                     className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
                     onDoubleClick={() => handleRowDoubleClick(row)}
                   >
-                    <td className="px-4 py-3 font-mono text-xs font-medium">{row.lead_code ?? "—"}</td>
+                    <td className="px-4 py-3 font-mono text-xs font-medium">
+                      {row.lead_code ?? "—"}
+                    </td>
                     <td className="px-4 py-3 font-medium">{row.name}</td>
                     <td className="px-4 py-3 text-right">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                        {row.stage_tag ? (STAGE_LABEL_FULL[row.stage_tag] ?? row.stage_tag) : "—"}
+                        {row.stage_tag
+                          ? (STAGE_LABEL_FULL[row.stage_tag] ?? row.stage_tag)
+                          : "—"}
                       </span>
                     </td>
                   </tr>
@@ -403,22 +611,44 @@ interface StageLeadsModalProps {
 }
 
 const STAGE_LABEL_FULL: Record<string, string> = {
-  "Type 1": "Open Lead", "Type 2": "ISM", "Type 3": "Designing",
-  "Type 4": "Booking", "Type 5": "Final Measurement", "Type 6": "Client Docs",
-  "Type 7": "Client Approval", "Type 8": "Tech Check", "Type 9": "Order Login",
-  "Type 10": "Production", "Type 11": "Ready to Dispatch", "Type 12": "Site Readiness",
-  "Type 13": "Dispatch Planning", "Type 14": "Dispatch", "Type 15": "Under Installation",
-  "Type 16": "Final Handover", "Type 17": "Completed",
+  "Type 1": "Open Lead",
+  "Type 2": "ISM",
+  "Type 3": "Designing",
+  "Type 4": "Booking",
+  "Type 5": "Final Measurement",
+  "Type 6": "Client Docs",
+  "Type 7": "Client Approval",
+  "Type 8": "Tech Check",
+  "Type 9": "Order Login",
+  "Type 10": "Production",
+  "Type 11": "Ready to Dispatch",
+  "Type 12": "Site Readiness",
+  "Type 13": "Dispatch Planning",
+  "Type 14": "Dispatch",
+  "Type 15": "Under Installation",
+  "Type 16": "Final Handover",
+  "Type 17": "Completed",
 };
 
-function StageLeadsModal({ open, onClose, vendorId, tag, franchiseId }: StageLeadsModalProps) {
+function StageLeadsModal({
+  open,
+  onClose,
+  vendorId,
+  tag,
+  franchiseId,
+}: StageLeadsModalProps) {
   const router = useRouter();
-  const { data = [], isLoading } = useStageLeads(vendorId, tag ?? undefined, franchiseId);
+  const { data = [], isLoading } = useStageLeads(
+    vendorId,
+    tag ?? undefined,
+    franchiseId,
+  );
 
-  function handleRowDoubleClick(row: typeof data[number]) {
-    const basePath = row.stage_tag && STAGE_PATH_BY_TAG[row.stage_tag]
-      ? `${STAGE_PATH_BY_TAG[row.stage_tag]}/${row.id}`
-      : `/dashboard/leads/leadstable/details/${row.id}`;
+  function handleRowDoubleClick(row: (typeof data)[number]) {
+    const basePath =
+      row.stage_tag && STAGE_PATH_BY_TAG[row.stage_tag]
+        ? `${STAGE_PATH_BY_TAG[row.stage_tag]}/${row.id}`
+        : `/dashboard/leads/leadstable/details/${row.id}`;
     const params = new URLSearchParams();
     if (row.account_id) params.set("accountId", String(row.account_id));
     if (row.instance_id) params.set("instance_id", String(row.instance_id));
@@ -434,19 +664,29 @@ function StageLeadsModal({ open, onClose, vendorId, tag, franchiseId }: StageLea
           <DialogTitle className="text-base font-semibold">
             {stageLabel} — Leads
           </DialogTitle>
-          <p className="text-xs text-muted-foreground">Double-click a row to open lead details</p>
+          <p className="text-xs text-muted-foreground">
+            Double-click a row to open lead details
+          </p>
         </DialogHeader>
 
         <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-background z-10">
               <tr className="border-b border-border/60">
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Lead Code</th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Client</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Lead Code
+                </th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Client
+                </th>
                 {!franchiseId && (
-                  <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Franchise</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                    Franchise
+                  </th>
                 )}
-                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Stage</th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Stage
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -454,13 +694,18 @@ function StageLeadsModal({ open, onClose, vendorId, tag, franchiseId }: StageLea
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/30">
                     {Array.from({ length: franchiseId ? 3 : 4 }).map((_, j) => (
-                      <td key={j} className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded" /></td>
+                      <td key={j} className="px-4 py-3">
+                        <div className="h-4 bg-muted animate-pulse rounded" />
+                      </td>
                     ))}
                   </tr>
                 ))
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={franchiseId ? 3 : 4} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  <td
+                    colSpan={franchiseId ? 3 : 4}
+                    className="px-4 py-10 text-center text-sm text-muted-foreground"
+                  >
                     No leads found for this stage
                   </td>
                 </tr>
@@ -471,14 +716,20 @@ function StageLeadsModal({ open, onClose, vendorId, tag, franchiseId }: StageLea
                     className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
                     onDoubleClick={() => handleRowDoubleClick(row)}
                   >
-                    <td className="px-4 py-3 font-mono text-xs font-medium">{row.lead_code ?? "—"}</td>
+                    <td className="px-4 py-3 font-mono text-xs font-medium">
+                      {row.lead_code ?? "—"}
+                    </td>
                     <td className="px-4 py-3 font-medium">{row.name}</td>
                     {!franchiseId && (
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{row.franchise_name ?? "—"}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {row.franchise_name ?? "—"}
+                      </td>
                     )}
                     <td className="px-4 py-3 text-right">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                        {row.stage_tag ? (STAGE_LABEL_FULL[row.stage_tag] ?? row.stage_tag) : "—"}
+                        {row.stage_tag
+                          ? (STAGE_LABEL_FULL[row.stage_tag] ?? row.stage_tag)
+                          : "—"}
                       </span>
                     </td>
                   </tr>
@@ -499,13 +750,20 @@ interface FranchisePerformanceTableProps {
   isLoading?: boolean;
 }
 
-function FranchisePerformanceTable({ data = [], isLoading }: FranchisePerformanceTableProps) {
+function FranchisePerformanceTable({
+  data = [],
+  isLoading,
+}: FranchisePerformanceTableProps) {
   return (
     <Card className="w-full border bg-[#fff] dark:bg-[#0a0a0a]">
       <CardHeader className="pb-2 px-6 flex flex-row items-start justify-between space-y-0">
         <div className="space-y-0.5">
-          <CardTitle className="text-sm font-medium">Franchisee-wise Performance</CardTitle>
-          <p className="text-xs text-muted-foreground">Leads, closures and revenue per franchise</p>
+          <CardTitle className="text-sm font-medium">
+            Franchisee-wise Performance
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Leads, closures and revenue per franchise
+          </p>
         </div>
       </CardHeader>
 
@@ -514,47 +772,87 @@ function FranchisePerformanceTable({ data = [], isLoading }: FranchisePerformanc
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border/50">
-                <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3 w-[40%]">Franchise</th>
-                <th className="text-right text-xs font-medium text-muted-foreground px-6 py-3">Leads</th>
-                <th className="text-right text-xs font-medium text-muted-foreground px-6 py-3">Closures</th>
-                <th className="text-right text-xs font-medium text-muted-foreground px-6 py-3">Revenue</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3 w-[40%]">
+                  Franchise
+                </th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-6 py-3">
+                  Leads
+                </th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-6 py-3">
+                  Closures
+                </th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-6 py-3">
+                  Revenue
+                </th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-b border-border/30 last:border-0">
-                    <td className="px-6 py-3"><div className="h-4 w-32 bg-muted animate-pulse rounded" /></td>
-                    <td className="px-6 py-3 text-right"><div className="h-4 w-8 bg-muted animate-pulse rounded ml-auto" /></td>
-                    <td className="px-6 py-3 text-right"><div className="h-4 w-8 bg-muted animate-pulse rounded ml-auto" /></td>
-                    <td className="px-6 py-3 text-right"><div className="h-4 w-16 bg-muted animate-pulse rounded ml-auto" /></td>
+                  <tr
+                    key={i}
+                    className="border-b border-border/30 last:border-0"
+                  >
+                    <td className="px-6 py-3">
+                      <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+                    </td>
+                    <td className="px-6 py-3 text-right">
+                      <div className="h-4 w-8 bg-muted animate-pulse rounded ml-auto" />
+                    </td>
+                    <td className="px-6 py-3 text-right">
+                      <div className="h-4 w-8 bg-muted animate-pulse rounded ml-auto" />
+                    </td>
+                    <td className="px-6 py-3 text-right">
+                      <div className="h-4 w-16 bg-muted animate-pulse rounded ml-auto" />
+                    </td>
                   </tr>
                 ))
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-xs text-muted-foreground">No franchise data available</td>
+                  <td
+                    colSpan={4}
+                    className="px-6 py-8 text-center text-xs text-muted-foreground"
+                  >
+                    No franchise data available
+                  </td>
                 </tr>
               ) : (
                 data.map((row, idx) => {
-                  const closureRate = row.leads > 0 ? ((row.closures / row.leads) * 100).toFixed(0) : "0";
+                  const closureRate =
+                    row.leads > 0
+                      ? ((row.closures / row.leads) * 100).toFixed(0)
+                      : "0";
                   return (
-                    <tr key={row.franchise_id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
+                    <tr
+                      key={row.franchise_id}
+                      className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
+                    >
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-2.5">
                           <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-[10px] font-semibold shrink-0">
                             {idx + 1}
                           </span>
-                          <span className="font-medium text-foreground truncate">{row.name}</span>
+                          <span className="font-medium text-foreground truncate">
+                            {row.name}
+                          </span>
                         </div>
                       </td>
-                      <td className="px-6 py-3 text-right font-medium">{row.leads.toLocaleString("en-IN")}</td>
+                      <td className="px-6 py-3 text-right font-medium">
+                        {row.leads.toLocaleString("en-IN")}
+                      </td>
                       <td className="px-6 py-3 text-right">
                         <div className="flex flex-col items-end">
-                          <span className="font-medium">{row.closures.toLocaleString("en-IN")}</span>
-                          <span className="text-[10px] text-emerald-500">{closureRate}%</span>
+                          <span className="font-medium">
+                            {row.closures.toLocaleString("en-IN")}
+                          </span>
+                          <span className="text-[10px] text-emerald-500">
+                            {closureRate}%
+                          </span>
                         </div>
                       </td>
-                      <td className="px-6 py-3 text-right font-medium">{formatRevenue(row.revenue)}</td>
+                      <td className="px-6 py-3 text-right font-medium">
+                        {formatRevenue(row.revenue)}
+                      </td>
                     </tr>
                   );
                 })
@@ -570,10 +868,30 @@ function FranchisePerformanceTable({ data = [], isLoading }: FranchisePerformanc
 // ─── Avg Days Per Stage ───────────────────────────────────────────────────────
 
 const STAGE_CONFIG = [
-  { key: "lead"         as const, label: "Leads → Booking",                range: "Type 1 → 4",   color: "bg-sky-500"     },
-  { key: "project"      as const, label: "Final Measurement → Client Approval", range: "Type 5 → 7",   color: "bg-violet-500"  },
-  { key: "production"   as const, label: "Tech Check → Ready To Dispatch", range: "Type 8 → 11",  color: "bg-amber-500"   },
-  { key: "installation" as const, label: "Site Readiness → Final Handover", range: "Type 12 → 17", color: "bg-emerald-500" },
+  {
+    key: "lead" as const,
+    label: "Leads → Booking",
+    range: "Type 1 → 4",
+    color: "bg-sky-500",
+  },
+  {
+    key: "project" as const,
+    label: "Final Measurement → Client Approval",
+    range: "Type 5 → 7",
+    color: "bg-violet-500",
+  },
+  {
+    key: "production" as const,
+    label: "Tech Check → Ready To Dispatch",
+    range: "Type 8 → 11",
+    color: "bg-amber-500",
+  },
+  {
+    key: "installation" as const,
+    label: "Site Readiness → Final Handover",
+    range: "Type 12 → 17",
+    color: "bg-emerald-500",
+  },
 ];
 
 interface AvgDaysPerStageCardProps {
@@ -581,13 +899,19 @@ interface AvgDaysPerStageCardProps {
   franchises: FranchiseSummary[];
 }
 
-function AvgDaysPerStageCard({ vendorId, franchises }: AvgDaysPerStageCardProps) {
-  const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | undefined>(undefined);
+function AvgDaysPerStageCard({
+  vendorId,
+  franchises,
+}: AvgDaysPerStageCardProps) {
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<
+    number | undefined
+  >(undefined);
 
   const { data, isLoading } = useAvgDaysPerStage(vendorId, selectedFranchiseId);
 
   const selectedFranchiseName = selectedFranchiseId
-    ? franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ?? "Overall"
+    ? (franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ??
+      "Overall")
     : "Overall";
 
   const maxDays = data
@@ -598,20 +922,37 @@ function AvgDaysPerStageCard({ vendorId, franchises }: AvgDaysPerStageCardProps)
     <Card className="w-full h-full border bg-[#fff] dark:bg-[#0a0a0a] flex flex-col">
       <CardHeader className="pb-2 px-6 flex flex-row items-start justify-between space-y-0">
         <div className="space-y-0.5">
-          <CardTitle className="text-sm font-medium">Avg Days Taken per Stage</CardTitle>
-          <p className="text-xs text-muted-foreground">Average time leads spend progressing through each pipeline stage</p>
+          <CardTitle className="text-sm font-medium">
+            Avg Days Taken per Stage
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Average time leads spend progressing through each pipeline stage
+          </p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" className="h-8 gap-1 text-xs max-w-[130px] shrink-0" disabled={isLoading}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1 text-xs max-w-[130px] shrink-0"
+              disabled={isLoading}
+            >
               <span className="truncate">{selectedFranchiseName}</span>
               <ChevronDown className="h-3 w-3 shrink-0" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44 max-h-60 overflow-y-auto">
-            <DropdownMenuItem onClick={() => setSelectedFranchiseId(undefined)}>Overall</DropdownMenuItem>
+          <DropdownMenuContent
+            align="end"
+            className="w-44 max-h-60 overflow-y-auto"
+          >
+            <DropdownMenuItem onClick={() => setSelectedFranchiseId(undefined)}>
+              Overall
+            </DropdownMenuItem>
             {franchises.map((f) => (
-              <DropdownMenuItem key={f.id} onClick={() => setSelectedFranchiseId(f.id)}>
+              <DropdownMenuItem
+                key={f.id}
+                onClick={() => setSelectedFranchiseId(f.id)}
+              >
                 {f.franchise_name}
               </DropdownMenuItem>
             ))}
@@ -622,7 +963,7 @@ function AvgDaysPerStageCard({ vendorId, franchises }: AvgDaysPerStageCardProps)
       <CardContent className="flex-1 flex flex-col justify-between px-6 pb-5 pt-1 gap-3">
         {STAGE_CONFIG.map(({ key, label, color }) => {
           const days = data?.[key] ?? 0;
-          const pct  = Math.round((days / maxDays) * 100);
+          const pct = Math.round((days / maxDays) * 100);
 
           return (
             <div key={key} className="flex flex-col gap-1.5">
@@ -635,7 +976,11 @@ function AvgDaysPerStageCard({ vendorId, franchises }: AvgDaysPerStageCardProps)
                 ) : (
                   <span className="text-xl font-semibold tabular-nums">
                     {days > 0 ? days : "—"}
-                    {days > 0 && <span className="text-xs font-normal text-muted-foreground ml-1">days</span>}
+                    {days > 0 && (
+                      <span className="text-xs font-normal text-muted-foreground ml-1">
+                        days
+                      </span>
+                    )}
                   </span>
                 )}
               </div>
@@ -660,15 +1005,15 @@ function AvgDaysPerStageCard({ vendorId, franchises }: AvgDaysPerStageCardProps)
 // ─── Stage-wise Bar Chart ─────────────────────────────────────────────────────
 
 const STAGE_LABEL: Record<string, string> = {
-  "Type 1":  "Leads",
-  "Type 2":  "ISM",
-  "Type 3":  "Designing",
-  "Type 4":  "Booking",
-  "Type 5":  "FM",
-  "Type 6":  "Client Docs",
-  "Type 7":  "Approval",
-  "Type 8":  "TC",
-  "Type 9":  "OL",
+  "Type 1": "Leads",
+  "Type 2": "ISM",
+  "Type 3": "Designing",
+  "Type 4": "Booking",
+  "Type 5": "FM",
+  "Type 6": "Client Docs",
+  "Type 7": "Approval",
+  "Type 8": "TC",
+  "Type 9": "OL",
   "Type 10": "Prod",
   "Type 11": "RTD",
   "Type 12": "SR",
@@ -679,30 +1024,50 @@ const STAGE_LABEL: Record<string, string> = {
   "Type 17": "Completed",
 };
 
-
 interface StageWiseBarChartProps {
   vendorId?: number;
   franchises: FranchiseSummary[];
 }
 
 function StageWiseBarChart({ vendorId, franchises }: StageWiseBarChartProps) {
-  const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | undefined>(undefined);
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<
+    number | undefined
+  >(undefined);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
-  const { data = [], isLoading, isError, error } = useStageWiseCounts(vendorId, selectedFranchiseId);
+  const {
+    data = [],
+    isLoading,
+    isError,
+    error,
+  } = useStageWiseCounts(vendorId, selectedFranchiseId);
 
-  console.log("[StageWiseBarChart] vendorId:", vendorId, "franchiseId:", selectedFranchiseId, "isLoading:", isLoading, "isError:", isError, "data:", data, "error:", error);
+  console.log(
+    "[StageWiseBarChart] vendorId:",
+    vendorId,
+    "franchiseId:",
+    selectedFranchiseId,
+    "isLoading:",
+    isLoading,
+    "isError:",
+    isError,
+    "data:",
+    data,
+    "error:",
+    error,
+  );
 
   const chartData = data.map((s) => ({
     label: STAGE_LABEL[s.tag] ?? s.tag,
     count: s.count,
-    tag:   s.tag,
+    tag: s.tag,
   }));
 
   console.log("[StageWiseBarChart] chartData:", chartData);
 
   const selectedFranchiseName = selectedFranchiseId
-    ? (franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ?? "Overall")
+    ? (franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ??
+      "Overall")
     : "Overall";
 
   function handleBarClick(entry: { tag: string }) {
@@ -711,92 +1076,125 @@ function StageWiseBarChart({ vendorId, franchises }: StageWiseBarChartProps) {
 
   return (
     <>
-    <Card className="w-full border flex flex-col bg-[#fff] dark:bg-[#0a0a0a]">
-      <CardHeader className="flex flex-row justify-between items-start pb-2 space-y-0">
-        <div>
-          <CardTitle className="text-sm font-medium">Leads by Stage</CardTitle>
-          <p className="text-xs text-muted-foreground">Total projects across all 17 stages</p>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" className="h-8 gap-1 text-xs max-w-[160px]" disabled={isLoading}>
-              <span className="truncate">{selectedFranchiseName}</span>
-              <ChevronDown className="h-3 w-3 shrink-0" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 max-h-60 overflow-y-auto">
-            <DropdownMenuItem onClick={() => setSelectedFranchiseId(undefined)}>Overall</DropdownMenuItem>
-            {franchises.map((f) => (
-              <DropdownMenuItem key={f.id} onClick={() => setSelectedFranchiseId(f.id)}>
-                {f.franchise_name}
+      <Card className="w-full border flex flex-col bg-[#fff] dark:bg-[#0a0a0a]">
+        <CardHeader className="flex flex-row justify-between items-start pb-2 space-y-0">
+          <div>
+            <CardTitle className="text-sm font-medium">
+              Leads by Stage
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Total projects across all 17 stages
+            </p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1 text-xs max-w-[160px]"
+                disabled={isLoading}
+              >
+                <span className="truncate">{selectedFranchiseName}</span>
+                <ChevronDown className="h-3 w-3 shrink-0" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-48 max-h-60 overflow-y-auto"
+            >
+              <DropdownMenuItem
+                onClick={() => setSelectedFranchiseId(undefined)}
+              >
+                Overall
               </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </CardHeader>
+              {franchises.map((f) => (
+                <DropdownMenuItem
+                  key={f.id}
+                  onClick={() => setSelectedFranchiseId(f.id)}
+                >
+                  {f.franchise_name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </CardHeader>
 
-      <CardContent className="h-[260px] px-2">
-        {isLoading ? (
-          <div className="h-full flex items-center justify-center">
-            <div className="h-10 w-10 border-4 border-muted border-t-primary rounded-full animate-spin" />
-          </div>
-        ) : isError ? (
-          <div className="h-full flex items-center justify-center text-xs text-rose-500">
-            Failed to load stage data. Check console for details.
-          </div>
-        ) : chartData.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
-            No stage data found. vendorId: {vendorId ?? "undefined"}
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 4 }} barCategoryGap="20%">
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                allowDecimals={false}
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                cursor={{ fill: "hsl(var(--muted))", opacity: 0.5 }}
-                content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null;
-                  const d = payload[0].payload as typeof chartData[number];
-                  return (
-                    <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-md">
-                      <p className="font-medium">{d.label}</p>
-                      <p className="text-muted-foreground">{d.count} lead{d.count !== 1 ? "s" : ""}</p>
-                    </div>
-                  );
-                }}
-              />
-              <Bar
-                dataKey="count"
-                radius={[4, 4, 0, 0]}
-                cursor="pointer"
-                fill="var(--primary)"
-                onClick={(data) => handleBarClick(data as unknown as typeof chartData[number])}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        )}
-      </CardContent>
-    </Card>
+        <CardContent className="h-[260px] px-2">
+          {isLoading ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="h-10 w-10 border-4 border-muted border-t-primary rounded-full animate-spin" />
+            </div>
+          ) : isError ? (
+            <div className="h-full flex items-center justify-center text-xs text-rose-500">
+              Failed to load stage data. Check console for details.
+            </div>
+          ) : chartData.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+              No stage data found. vendorId: {vendorId ?? "undefined"}
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={chartData}
+                margin={{ top: 8, right: 8, left: -16, bottom: 4 }}
+                barCategoryGap="20%"
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="hsl(var(--border))"
+                />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  cursor={{ fill: "hsl(var(--muted))", opacity: 0.5 }}
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null;
+                    const d = payload[0].payload as (typeof chartData)[number];
+                    return (
+                      <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-md">
+                        <p className="font-medium">{d.label}</p>
+                        <p className="text-muted-foreground">
+                          {d.count} lead{d.count !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    );
+                  }}
+                />
+                <Bar
+                  dataKey="count"
+                  radius={[4, 4, 0, 0]}
+                  cursor="pointer"
+                  fill="var(--primary)"
+                  onClick={(data) =>
+                    handleBarClick(
+                      data as unknown as (typeof chartData)[number],
+                    )
+                  }
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
 
-    <StageLeadsModal
-      open={!!selectedTag}
-      onClose={() => setSelectedTag(null)}
-      vendorId={vendorId}
-      tag={selectedTag}
-      franchiseId={selectedFranchiseId}
-    />
+      <StageLeadsModal
+        open={!!selectedTag}
+        onClose={() => setSelectedTag(null)}
+        vendorId={vendorId}
+        tag={selectedTag}
+        franchiseId={selectedFranchiseId}
+      />
     </>
   );
 }
@@ -813,25 +1211,40 @@ interface OverdueInstallationsModalProps {
 
 function formatDate(d: string | null | undefined) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(d).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
-function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId, franchises }: OverdueInstallationsModalProps) {
+function OverdueInstallationsModal({
+  open,
+  onClose,
+  vendorId,
+  defaultFranchiseId,
+  franchises,
+}: OverdueInstallationsModalProps) {
   const router = useRouter();
-  const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | undefined>(
-    defaultFranchiseId ?? undefined
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<
+    number | undefined
+  >(defaultFranchiseId ?? undefined);
+
+  const { data = [], isLoading } = useOverdueInstallations(
+    vendorId,
+    selectedFranchiseId,
   );
 
-  const { data = [], isLoading } = useOverdueInstallations(vendorId, selectedFranchiseId);
-
   const selectedFranchiseName = selectedFranchiseId
-    ? (franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ?? "Overall")
+    ? (franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ??
+      "Overall")
     : "Overall";
 
-  function handleRowDoubleClick(row: typeof data[number]) {
-    const basePath = row.stage_tag && STAGE_PATH_BY_TAG[row.stage_tag]
-      ? `${STAGE_PATH_BY_TAG[row.stage_tag]}/${row.id}`
-      : `/dashboard/leads/leadstable/details/${row.id}`;
+  function handleRowDoubleClick(row: (typeof data)[number]) {
+    const basePath =
+      row.stage_tag && STAGE_PATH_BY_TAG[row.stage_tag]
+        ? `${STAGE_PATH_BY_TAG[row.stage_tag]}/${row.id}`
+        : `/dashboard/leads/leadstable/details/${row.id}`;
     const params = new URLSearchParams();
     if (row.account_id) params.set("accountId", String(row.account_id));
     if (row.instance_id) params.set("instance_id", String(row.instance_id));
@@ -843,20 +1256,38 @@ function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId
       <DialogContent className="min-w-5xl w-full">
         <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
-            <DialogTitle className="text-base font-semibold">Overdue Installations</DialogTitle>
-            <p className="text-xs text-muted-foreground">Projects completed past their expected installation deadline</p>
+            <DialogTitle className="text-base font-semibold">
+              Overdue Installations
+            </DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              Projects completed past their expected installation deadline
+            </p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="h-8 gap-1 text-xs max-w-[160px] shrink-0 mr-6">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1 text-xs max-w-[160px] shrink-0 mr-6"
+              >
                 <span className="truncate">{selectedFranchiseName}</span>
                 <ChevronDown className="h-3 w-3 shrink-0" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 max-h-60 overflow-y-auto">
-              <DropdownMenuItem onClick={() => setSelectedFranchiseId(undefined)}>Overall</DropdownMenuItem>
+            <DropdownMenuContent
+              align="end"
+              className="w-48 max-h-60 overflow-y-auto"
+            >
+              <DropdownMenuItem
+                onClick={() => setSelectedFranchiseId(undefined)}
+              >
+                Overall
+              </DropdownMenuItem>
               {franchises.map((f) => (
-                <DropdownMenuItem key={f.id} onClick={() => setSelectedFranchiseId(f.id)}>
+                <DropdownMenuItem
+                  key={f.id}
+                  onClick={() => setSelectedFranchiseId(f.id)}
+                >
                   {f.franchise_name}
                 </DropdownMenuItem>
               ))}
@@ -868,11 +1299,21 @@ function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-background z-10">
               <tr className="border-b border-border/60">
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Lead Code</th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Client</th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Franchise</th>
-                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Expected End</th>
-                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Days Overdue</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Lead Code
+                </th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Client
+                </th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Franchise
+                </th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Expected End
+                </th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Days Overdue
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -880,23 +1321,38 @@ function OverdueInstallationsModal({ open, onClose, vendorId, defaultFranchiseId
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/30">
                     {Array.from({ length: 5 }).map((_, j) => (
-                      <td key={j} className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded" /></td>
+                      <td key={j} className="px-4 py-3">
+                        <div className="h-4 bg-muted animate-pulse rounded" />
+                      </td>
                     ))}
                   </tr>
                 ))
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  <td
+                    colSpan={5}
+                    className="px-4 py-10 text-center text-sm text-muted-foreground"
+                  >
                     No overdue installations found
                   </td>
                 </tr>
               ) : (
                 data.map((row) => (
-                  <tr key={row.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none" onDoubleClick={() => handleRowDoubleClick(row)}>
-                    <td className="px-4 py-3 font-mono text-xs font-medium">{row.lead_code ?? "—"}</td>
+                  <tr
+                    key={row.id}
+                    className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
+                    onDoubleClick={() => handleRowDoubleClick(row)}
+                  >
+                    <td className="px-4 py-3 font-mono text-xs font-medium">
+                      {row.lead_code ?? "—"}
+                    </td>
                     <td className="px-4 py-3 font-medium">{row.name}</td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">{row.franchise_name ?? "—"}</td>
-                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">{formatDate(row.expected_end)}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">
+                      {row.franchise_name ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">
+                      {formatDate(row.expected_end)}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
                         {row.days_overdue} Days
@@ -922,21 +1378,35 @@ interface OverdueProductionModalProps {
   franchises: FranchiseSummary[];
 }
 
-function OverdueProductionModal({ open, onClose, vendorId, franchises }: OverdueProductionModalProps) {
+function OverdueProductionModal({
+  open,
+  onClose,
+  vendorId,
+  franchises,
+}: OverdueProductionModalProps) {
   const router = useRouter();
-  const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | undefined>(undefined);
-  const [activeTab, setActiveTab] = useState<"deadline-overrun" | "live-delay">("deadline-overrun");
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<
+    number | undefined
+  >(undefined);
+  const [activeTab, setActiveTab] = useState<"deadline-overrun" | "live-delay">(
+    "deadline-overrun",
+  );
 
-  const { data = [], isLoading } = useOverdueProduction(vendorId, selectedFranchiseId);
+  const { data = [], isLoading } = useOverdueProduction(
+    vendorId,
+    selectedFranchiseId,
+  );
 
   const selectedFranchiseName = selectedFranchiseId
-    ? (franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ?? "Overall")
+    ? (franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ??
+      "Overall")
     : "Overall";
 
   function handleRowDoubleClick(row: OverdueProduction) {
-    const basePath = row.stage_tag && STAGE_PATH_BY_TAG[row.stage_tag]
-      ? `${STAGE_PATH_BY_TAG[row.stage_tag]}/${row.id}`
-      : `/dashboard/leads/leadstable/details/${row.id}`;
+    const basePath =
+      row.stage_tag && STAGE_PATH_BY_TAG[row.stage_tag]
+        ? `${STAGE_PATH_BY_TAG[row.stage_tag]}/${row.id}`
+        : `/dashboard/leads/leadstable/details/${row.id}`;
     const params = new URLSearchParams();
     if (row.account_id) params.set("accountId", String(row.account_id));
     if (row.instance_id) params.set("instance_id", String(row.instance_id));
@@ -944,7 +1414,10 @@ function OverdueProductionModal({ open, onClose, vendorId, franchises }: Overdue
   }
 
   function getDaysFromToday(expectedReadyDate: string): number {
-    return Math.ceil((new Date(expectedReadyDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    return Math.ceil(
+      (new Date(expectedReadyDate).getTime() - Date.now()) /
+        (1000 * 60 * 60 * 24),
+    );
   }
 
   const isDeadlineOverrun = activeTab === "deadline-overrun";
@@ -955,20 +1428,39 @@ function OverdueProductionModal({ open, onClose, vendorId, franchises }: Overdue
       <DialogContent className="min-w-5xl w-full">
         <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
-            <DialogTitle className="text-base font-semibold">Overdue Production</DialogTitle>
-            <p className="text-xs text-muted-foreground">Orders whose expected ready date exceeds the client required delivery date</p>
+            <DialogTitle className="text-base font-semibold">
+              Overdue Production
+            </DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              Orders whose expected ready date exceeds the client required
+              delivery date
+            </p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="h-8 gap-1 text-xs max-w-[160px] shrink-0 mr-6">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1 text-xs max-w-[160px] shrink-0 mr-6"
+              >
                 <span className="truncate">{selectedFranchiseName}</span>
                 <ChevronDown className="h-3 w-3 shrink-0" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 max-h-60 overflow-y-auto">
-              <DropdownMenuItem onClick={() => setSelectedFranchiseId(undefined)}>Overall</DropdownMenuItem>
+            <DropdownMenuContent
+              align="end"
+              className="w-48 max-h-60 overflow-y-auto"
+            >
+              <DropdownMenuItem
+                onClick={() => setSelectedFranchiseId(undefined)}
+              >
+                Overall
+              </DropdownMenuItem>
               {franchises.map((f) => (
-                <DropdownMenuItem key={f.id} onClick={() => setSelectedFranchiseId(f.id)}>
+                <DropdownMenuItem
+                  key={f.id}
+                  onClick={() => setSelectedFranchiseId(f.id)}
+                >
                   {f.franchise_name}
                 </DropdownMenuItem>
               ))}
@@ -977,7 +1469,10 @@ function OverdueProductionModal({ open, onClose, vendorId, franchises }: Overdue
         </DialogHeader>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as typeof activeTab)}
+        >
           <TabsList className="h-8 p-0.5 w-full grid grid-cols-2">
             <TabsTrigger value="deadline-overrun" className="h-7 text-xs">
               Deadline Overrun
@@ -992,13 +1487,23 @@ function OverdueProductionModal({ open, onClose, vendorId, franchises }: Overdue
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-background z-10">
               <tr className="border-b border-border/60">
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Lead Code</th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Client</th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Franchise</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Lead Code
+                </th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Client
+                </th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Franchise
+                </th>
                 {isDeadlineOverrun && (
-                  <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Client Required By</th>
+                  <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">
+                    Client Required By
+                  </th>
                 )}
-                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">Expected Ready</th>
+                <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Expected Ready
+                </th>
                 <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2.5">
                   {isDeadlineOverrun ? "Overrun" : "From Today"}
                 </th>
@@ -1009,42 +1514,65 @@ function OverdueProductionModal({ open, onClose, vendorId, franchises }: Overdue
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/30">
                     {Array.from({ length: colCount }).map((_, j) => (
-                      <td key={j} className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded" /></td>
+                      <td key={j} className="px-4 py-3">
+                        <div className="h-4 bg-muted animate-pulse rounded" />
+                      </td>
                     ))}
                   </tr>
                 ))
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={colCount} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  <td
+                    colSpan={colCount}
+                    className="px-4 py-10 text-center text-sm text-muted-foreground"
+                  >
                     No overdue production orders found
                   </td>
                 </tr>
               ) : (
-                data.filter((row) => getDaysFromToday(row.expected_ready_date) <= 0).map((row) => {
-                  const daysFromToday = getDaysFromToday(row.expected_ready_date);
-                  return (
-                    <tr key={row.id} className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none" onDoubleClick={() => handleRowDoubleClick(row)}>
-                      <td className="px-4 py-3 font-mono text-xs font-medium">{row.lead_code ?? "—"}</td>
-                      <td className="px-4 py-3 font-medium">{row.name}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{row.franchise_name ?? "—"}</td>
-                      {isDeadlineOverrun && (
-                        <td className="px-4 py-3 text-right text-xs text-muted-foreground">{formatDate(row.client_required_date)}</td>
-                      )}
-                      <td className="px-4 py-3 text-right text-xs text-muted-foreground">{formatDate(row.expected_ready_date)}</td>
-                      <td className="px-4 py-3 text-right">
-                        {isDeadlineOverrun ? (
-                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
-                            {row.days_overdue} Days
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
-                            {Math.abs(daysFromToday)} Days Past
-                          </span>
+                data
+                  .filter(
+                    (row) => getDaysFromToday(row.expected_ready_date) <= 0,
+                  )
+                  .map((row) => {
+                    const daysFromToday = getDaysFromToday(
+                      row.expected_ready_date,
+                    );
+                    return (
+                      <tr
+                        key={row.id}
+                        className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
+                        onDoubleClick={() => handleRowDoubleClick(row)}
+                      >
+                        <td className="px-4 py-3 font-mono text-xs font-medium">
+                          {row.lead_code ?? "—"}
+                        </td>
+                        <td className="px-4 py-3 font-medium">{row.name}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">
+                          {row.franchise_name ?? "—"}
+                        </td>
+                        {isDeadlineOverrun && (
+                          <td className="px-4 py-3 text-right text-xs text-muted-foreground">
+                            {formatDate(row.client_required_date)}
+                          </td>
                         )}
-                      </td>
-                    </tr>
-                  );
-                })
+                        <td className="px-4 py-3 text-right text-xs text-muted-foreground">
+                          {formatDate(row.expected_ready_date)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {isDeadlineOverrun ? (
+                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
+                              {row.days_overdue} Days
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
+                              {Math.abs(daysFromToday)} Days Past
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
               )}
             </tbody>
           </table>
@@ -1077,7 +1605,9 @@ function OverdueAlertsCard({
     <div className="border rounded-2xl py-4 px-5 flex flex-col gap-4 bg-background">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-foreground">Overdue Alerts</span>
+        <span className="text-sm font-medium text-foreground">
+          Overdue Alerts
+        </span>
         <span className="flex items-center justify-center h-8 w-8 rounded-full border border-rose-200 text-rose-500 bg-rose-50 dark:bg-rose-500/10 dark:border-rose-500/30">
           <AlertTriangle className="h-4 w-4" />
         </span>
@@ -1095,12 +1625,16 @@ function OverdueAlertsCard({
           </span>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-foreground">Installation</p>
-            <p className="text-[10px] text-muted-foreground leading-tight">Past expected end date</p>
+            <p className="text-[10px] text-muted-foreground leading-tight">
+              Past expected end date
+            </p>
           </div>
           {isLoadingInstallation ? (
             <div className="h-7 w-8 bg-muted animate-pulse rounded" />
           ) : (
-            <span className="text-xl font-bold text-rose-500 tabular-nums">{installationCount}</span>
+            <span className="text-xl font-bold text-rose-500 tabular-nums">
+              {installationCount}
+            </span>
           )}
         </button>
 
@@ -1116,12 +1650,16 @@ function OverdueAlertsCard({
           </span>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-foreground">Production</p>
-            <p className="text-[10px] text-muted-foreground leading-tight">Exceeds client delivery date</p>
+            <p className="text-[10px] text-muted-foreground leading-tight">
+              Exceeds client delivery date
+            </p>
           </div>
           {isLoadingProduction ? (
             <div className="h-7 w-8 bg-muted animate-pulse rounded" />
           ) : (
-            <span className="text-xl font-bold text-orange-500 tabular-nums">{productionCount}</span>
+            <span className="text-xl font-bold text-orange-500 tabular-nums">
+              {productionCount}
+            </span>
           )}
         </button>
       </div>
@@ -1132,19 +1670,30 @@ function OverdueAlertsCard({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuperAdminDashboard() {
-  const vendorId   = useAppSelector((s) => s.auth.user?.vendor_id);
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const franchiseId = useAppSelector((s) => s.auth.franchise_id) ?? undefined;
   const [showOverdueModal, setShowOverdueModal] = useState(false);
-  const [showOverdueProductionModal, setShowOverdueProductionModal] = useState(false);
-  const [selectedFranchise, setSelectedFranchise] = useState<FranchiseLeadCount | null>(null);
+  const [showOverdueProductionModal, setShowOverdueProductionModal] =
+    useState(false);
+  const [selectedFranchise, setSelectedFranchise] =
+    useState<FranchiseLeadCount | null>(null);
 
-  const { data: revenueData, isLoading: revenueLoading } = useAdminTotalRevenue(vendorId, franchiseId);
-  const { data: franchiseeData, isLoading: franchiseeLoading } = useActiveFranchiseeCount(vendorId);
-  const { data: leadsThisMonthData, isLoading: leadsThisMonthLoading } = useLeadsThisMonth(vendorId);
-  const { data: franchiseLeadsData, isLoading: franchiseLeadsLoading } = useLeadsByFranchise(vendorId);
-  const { data: overdueData, isLoading: overdueLoading } = useOverdueProjectsCount(vendorId);
-  const { data: overdueProductionData, isLoading: overdueProductionLoading } = useOverdueProductionCount(vendorId);
-  const { data: franchisePerfData, isLoading: franchisePerfLoading } = useFranchisePerformance(vendorId);
+  const { data: revenueData, isLoading: revenueLoading } = useAdminTotalRevenue(
+    vendorId,
+    franchiseId,
+  );
+  const { data: franchiseeData, isLoading: franchiseeLoading } =
+    useActiveFranchiseeCount(vendorId);
+  const { data: leadsThisMonthData, isLoading: leadsThisMonthLoading } =
+    useLeadsThisMonth(vendorId);
+  const { data: franchiseLeadsData, isLoading: franchiseLeadsLoading } =
+    useLeadsByFranchise(vendorId);
+  const { data: overdueData, isLoading: overdueLoading } =
+    useOverdueProjectsCount(vendorId);
+  const { data: overdueProductionData, isLoading: overdueProductionLoading } =
+    useOverdueProductionCount(vendorId);
+  const { data: franchisePerfData, isLoading: franchisePerfLoading } =
+    useFranchisePerformance(vendorId);
   const { data: franchisesData } = useFranchisesByVendorId(vendorId);
 
   const revenueValue = revenueData ? formatRevenue(revenueData.overall) : "—";
@@ -1189,7 +1738,11 @@ export default function SuperAdminDashboard() {
         />
         <StatCard
           title="Leads This Month"
-          value={leadsThisMonthData ? leadsThisMonthData.count.toLocaleString("en-IN") : "—"}
+          value={
+            leadsThisMonthData
+              ? leadsThisMonthData.count.toLocaleString("en-IN")
+              : "—"
+          }
           sub="New leads created this month"
           positive
           icon={ClipboardList}
@@ -1222,15 +1775,24 @@ export default function SuperAdminDashboard() {
       </div>
 
       {/* Stage-wise bar chart */}
-      <StageWiseBarChart vendorId={vendorId} franchises={franchisesData ?? []} />
+      <StageWiseBarChart
+        vendorId={vendorId}
+        franchises={franchisesData ?? []}
+      />
 
       {/* Franchise performance + Avg days per stage */}
       <div className="w-full flex flex-col lg:flex-row gap-4 items-stretch">
         <div className="lg:w-[40%]">
-          <FranchisePerformanceTable data={franchisePerfData} isLoading={franchisePerfLoading} />
+          <FranchisePerformanceTable
+            data={franchisePerfData}
+            isLoading={franchisePerfLoading}
+          />
         </div>
         <div className="lg:w-[60%]">
-          <AvgDaysPerStageCard vendorId={vendorId} franchises={franchisesData ?? []} />
+          <AvgDaysPerStageCard
+            vendorId={vendorId}
+            franchises={franchisesData ?? []}
+          />
         </div>
       </div>
 
