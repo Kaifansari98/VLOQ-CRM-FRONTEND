@@ -1422,6 +1422,9 @@ function OverdueProductionModal({
 
   const isDeadlineOverrun = activeTab === "deadline-overrun";
   const colCount = isDeadlineOverrun ? 6 : 5;
+  const filteredData = isDeadlineOverrun
+    ? data
+    : data.filter((row) => getDaysFromToday(row.expected_ready_date) <= 0);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -1520,59 +1523,55 @@ function OverdueProductionModal({
                     ))}
                   </tr>
                 ))
-              ) : data.filter((row) => getDaysFromToday(row.expected_ready_date) <= 0).length === 0 ? (
+              ) : filteredData.length === 0 ? (
                 <tr>
                   <td
                     colSpan={colCount}
                     className="px-4 py-10 text-center text-sm text-muted-foreground"
                   >
-                    No overdue production orders found
+                    {isDeadlineOverrun
+                      ? "No production orders exceeding client delivery date found"
+                      : "No overdue production orders found"}
                   </td>
                 </tr>
               ) : (
-                data
-                  .filter(
-                    (row) => getDaysFromToday(row.expected_ready_date) <= 0,
-                  )
-                  .map((row) => {
-                    const daysFromToday = getDaysFromToday(
-                      row.expected_ready_date,
-                    );
-                    return (
-                      <tr
-                        key={row.id}
-                        className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
-                        onDoubleClick={() => handleRowDoubleClick(row)}
-                      >
-                        <td className="px-4 py-3 font-mono text-xs font-medium">
-                          {row.lead_code ?? "—"}
-                        </td>
-                        <td className="px-4 py-3 font-medium">{row.name}</td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">
-                          {row.franchise_name ?? "—"}
-                        </td>
-                        {isDeadlineOverrun && (
-                          <td className="px-4 py-3 text-right text-xs text-muted-foreground">
-                            {formatDate(row.client_required_date)}
-                          </td>
-                        )}
+                filteredData.map((row) => {
+                  const daysFromToday = getDaysFromToday(row.expected_ready_date);
+                  return (
+                    <tr
+                      key={row.id}
+                      className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
+                      onDoubleClick={() => handleRowDoubleClick(row)}
+                    >
+                      <td className="px-4 py-3 font-mono text-xs font-medium">
+                        {row.lead_code ?? "—"}
+                      </td>
+                      <td className="px-4 py-3 font-medium">{row.name}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">
+                        {row.franchise_name ?? "—"}
+                      </td>
+                      {isDeadlineOverrun && (
                         <td className="px-4 py-3 text-right text-xs text-muted-foreground">
-                          {formatDate(row.expected_ready_date)}
+                          {formatDate(row.client_required_date)}
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          {isDeadlineOverrun ? (
-                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
-                              {row.days_overdue} Days
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
-                              {Math.abs(daysFromToday)} Days Past
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
+                      )}
+                      <td className="px-4 py-3 text-right text-xs text-muted-foreground">
+                        {formatDate(row.expected_ready_date)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {isDeadlineOverrun ? (
+                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
+                            {row.days_overdue} Days
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
+                            {Math.abs(daysFromToday)} Days Past
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
