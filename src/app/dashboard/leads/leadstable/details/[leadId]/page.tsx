@@ -371,7 +371,7 @@ export default function LeadDetails() {
             {canViewPayment && (
               <TabsTrigger value="team" disabled={uiDisabled}>
                 <IndianRupee size={16} className="mr-1 opacity-60" />
-                Payment Information
+                Payment
               </TabsTrigger>
             )}
             <TabsTrigger value="chats" disabled={uiDisabled}>

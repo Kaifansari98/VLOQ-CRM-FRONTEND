@@ -400,7 +400,7 @@ export default function FinalHandoverLeadDetails() {
                   {canViewPayment && (
                     <TabsTrigger value="payment">
                       <IndianRupee size={16} className="mr-1 opacity-60" />
-                      Payment Information
+                      Payment
                     </TabsTrigger>
                   )}
                   <TabsTrigger value="chats">

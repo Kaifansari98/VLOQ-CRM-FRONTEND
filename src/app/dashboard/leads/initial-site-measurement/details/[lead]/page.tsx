@@ -351,7 +351,7 @@ export default function SiteMeasurementLead() {
             {canViewPayment && (
               <TabsTrigger value="payments">
                 <IndianRupee size={16} className="mr-1 opacity-60" />
-                Payment Information
+                Payment
               </TabsTrigger>
             )}
             <TabsTrigger value="chats">
