@@ -1224,14 +1224,20 @@ function getDisplayLeadCode(
   hasMultipleInstances: boolean,
 ) {
   if (!leadCode) return "—";
+  const normalizedLeadCode =
+    quantityIndex !== null &&
+    quantityIndex !== undefined &&
+    leadCode.endsWith(`.${quantityIndex}`)
+      ? leadCode.slice(0, -(`.${quantityIndex}`.length))
+      : leadCode;
   if (
     hasMultipleInstances &&
     quantityIndex !== null &&
     quantityIndex !== undefined
   ) {
-    return `${leadCode}.${quantityIndex}`;
+    return `${normalizedLeadCode}.${quantityIndex}`;
   }
-  return leadCode;
+  return normalizedLeadCode;
 }
 
 function OverdueInstallationsModal({
@@ -1458,7 +1464,9 @@ function OverdueProductionModal({
 
   const isDeadlineOverrun = activeTab === "deadline-overrun";
   const colCount = isDeadlineOverrun ? 6 : 5;
-  const filteredData = data;
+  const filteredData = isDeadlineOverrun
+    ? data
+    : data.filter((row) => getDaysFromToday(row.expected_ready_date) < 0);
   const instanceCountByLeadId = useMemo(() => {
     const counts = new Map<number, number>();
     data.forEach((row) => {
