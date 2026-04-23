@@ -1430,7 +1430,7 @@ function OverdueProductionModal({
   }
 
   const isDeadlineOverrun = activeTab === "deadline-overrun";
-  const colCount = isDeadlineOverrun ? 7 : 6;
+  const colCount = isDeadlineOverrun ? 6 : 5;
   const filteredData = data;
 
   return (
@@ -1501,9 +1501,6 @@ function OverdueProductionModal({
                   Lead Code
                 </th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
-                  Instance
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
                   Client
                 </th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
@@ -1555,12 +1552,6 @@ function OverdueProductionModal({
                     >
                       <td className="px-4 py-3 font-mono text-xs font-medium">
                         {row.lead_code ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {row.instance_title?.trim() ||
-                          (row.quantity_index
-                            ? `Instance ${row.quantity_index}`
-                            : "—")}
                       </td>
                       <td className="px-4 py-3 font-medium">{row.name}</td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">
