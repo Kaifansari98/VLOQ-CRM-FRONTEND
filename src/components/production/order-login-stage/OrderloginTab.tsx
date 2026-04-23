@@ -310,7 +310,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       title,
       updatedValues,
       existingData,
-      `✅ Vendor assigned for "${title}" successfully!`,
+      `Vendor assigned for "${title}" successfully!`,
     );
   };
 
