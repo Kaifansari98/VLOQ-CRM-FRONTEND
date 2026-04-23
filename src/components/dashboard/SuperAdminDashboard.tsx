@@ -1218,6 +1218,22 @@ function formatDate(d: string | null | undefined) {
   });
 }
 
+function getDisplayLeadCode(
+  leadCode: string | null | undefined,
+  quantityIndex: number | null | undefined,
+  hasMultipleInstances: boolean,
+) {
+  if (!leadCode) return "—";
+  if (
+    hasMultipleInstances &&
+    quantityIndex !== null &&
+    quantityIndex !== undefined
+  ) {
+    return `${leadCode}.${quantityIndex}`;
+  }
+  return leadCode;
+}
+
 function OverdueInstallationsModal({
   open,
   onClose,
@@ -1239,6 +1255,13 @@ function OverdueInstallationsModal({
     ? (franchises.find((f) => f.id === selectedFranchiseId)?.franchise_name ??
       "Overall")
     : "Overall";
+  const instanceCountByLeadId = useMemo(() => {
+    const counts = new Map<number, number>();
+    data.forEach((row) => {
+      counts.set(row.id, (counts.get(row.id) ?? 0) + 1);
+    });
+    return counts;
+  }, [data]);
 
   function handleRowDoubleClick(row: (typeof data)[number]) {
     const basePath =
@@ -1347,7 +1370,11 @@ function OverdueInstallationsModal({
                     onDoubleClick={() => handleRowDoubleClick(row)}
                   >
                     <td className="px-4 py-3 font-mono text-xs font-medium">
-                      {row.lead_code ?? "—"}
+                      {getDisplayLeadCode(
+                        row.lead_code,
+                        row.quantity_index,
+                        (instanceCountByLeadId.get(row.id) ?? 0) > 1,
+                      )}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
                       {row.instance_title?.trim() ||
@@ -1432,6 +1459,13 @@ function OverdueProductionModal({
   const isDeadlineOverrun = activeTab === "deadline-overrun";
   const colCount = isDeadlineOverrun ? 6 : 5;
   const filteredData = data;
+  const instanceCountByLeadId = useMemo(() => {
+    const counts = new Map<number, number>();
+    data.forEach((row) => {
+      counts.set(row.id, (counts.get(row.id) ?? 0) + 1);
+    });
+    return counts;
+  }, [data]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -1551,7 +1585,11 @@ function OverdueProductionModal({
                       onDoubleClick={() => handleRowDoubleClick(row)}
                     >
                       <td className="px-4 py-3 font-mono text-xs font-medium">
-                        {row.lead_code ?? "—"}
+                        {getDisplayLeadCode(
+                          row.lead_code,
+                          row.quantity_index,
+                          (instanceCountByLeadId.get(row.id) ?? 0) > 1,
+                        )}
                       </td>
                       <td className="px-4 py-3 font-medium">{row.name}</td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">
