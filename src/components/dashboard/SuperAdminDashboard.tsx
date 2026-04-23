@@ -574,7 +574,7 @@ function FranchiseLeadsModal({
               ) : (
                 data.map((row) => (
                   <tr
-                    key={row.id}
+                    key={`${row.id}-${row.instance_id ?? "lead"}`}
                     className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
                     onDoubleClick={() => handleRowDoubleClick(row)}
                   >
@@ -1303,6 +1303,9 @@ function OverdueInstallationsModal({
                   Lead Code
                 </th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Instance
+                </th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
                   Client
                 </th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
@@ -1320,7 +1323,7 @@ function OverdueInstallationsModal({
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/30">
-                    {Array.from({ length: 5 }).map((_, j) => (
+                    {Array.from({ length: 6 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
                         <div className="h-4 bg-muted animate-pulse rounded" />
                       </td>
@@ -1330,7 +1333,7 @@ function OverdueInstallationsModal({
               ) : data.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-4 py-10 text-center text-sm text-muted-foreground"
                   >
                     No overdue installations found
@@ -1345,6 +1348,12 @@ function OverdueInstallationsModal({
                   >
                     <td className="px-4 py-3 font-mono text-xs font-medium">
                       {row.lead_code ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {row.instance_title?.trim() ||
+                        (row.quantity_index
+                          ? `Instance ${row.quantity_index}`
+                          : "—")}
                     </td>
                     <td className="px-4 py-3 font-medium">{row.name}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">
@@ -1421,10 +1430,8 @@ function OverdueProductionModal({
   }
 
   const isDeadlineOverrun = activeTab === "deadline-overrun";
-  const colCount = isDeadlineOverrun ? 6 : 5;
-  const filteredData = isDeadlineOverrun
-    ? data
-    : data.filter((row) => getDaysFromToday(row.expected_ready_date) <= 0);
+  const colCount = isDeadlineOverrun ? 7 : 6;
+  const filteredData = data;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -1494,6 +1501,9 @@ function OverdueProductionModal({
                   Lead Code
                 </th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
+                  Instance
+                </th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
                   Client
                 </th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
@@ -1539,12 +1549,18 @@ function OverdueProductionModal({
                   const daysFromToday = getDaysFromToday(row.expected_ready_date);
                   return (
                     <tr
-                      key={row.id}
+                      key={`${row.id}-${row.instance_id ?? "lead"}`}
                       className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
                       onDoubleClick={() => handleRowDoubleClick(row)}
                     >
                       <td className="px-4 py-3 font-mono text-xs font-medium">
                         {row.lead_code ?? "—"}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {row.instance_title?.trim() ||
+                          (row.quantity_index
+                            ? `Instance ${row.quantity_index}`
+                            : "—")}
                       </td>
                       <td className="px-4 py-3 font-medium">{row.name}</td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">
@@ -1565,7 +1581,11 @@ function OverdueProductionModal({
                           </span>
                         ) : (
                           <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
-                            {Math.abs(daysFromToday)} Days Past
+                            {daysFromToday > 0
+                              ? `${daysFromToday} Days Left`
+                              : daysFromToday < 0
+                                ? `${Math.abs(daysFromToday)} Days Past`
+                                : "Today"}
                           </span>
                         )}
                       </td>
@@ -1602,15 +1622,6 @@ function OverdueAlertsCard({
 }: OverdueAlertsCardProps) {
   return (
     <div className="border rounded-2xl py-4 px-5 flex flex-col gap-4 bg-background">
-      {/* Header */}
-      {/* <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-foreground">
-          Overdue Alerts
-        </span>
-        <span className="flex items-center justify-center h-8 w-8 rounded-full border border-rose-200 text-rose-500 bg-rose-50 dark:bg-rose-500/10 dark:border-rose-500/30">
-          <AlertTriangle className="h-4 w-4" />
-        </span>
-      </div> */}
 
       {/* Rows */}
       <div className="flex flex-col gap-2">

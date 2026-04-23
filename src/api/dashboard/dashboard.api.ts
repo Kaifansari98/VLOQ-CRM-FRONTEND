@@ -322,6 +322,8 @@ export interface OverdueInstallation {
   expected_end: string;
   stage_tag: string | null;
   instance_id: number | null;
+  instance_title: string | null;
+  quantity_index: number | null;
   days_overdue: number;
 }
 
@@ -345,6 +347,8 @@ export interface OverdueProduction {
   expected_ready_date: string;
   stage_tag: string | null;
   instance_id: number | null;
+  instance_title: string | null;
+  quantity_index: number | null;
   days_overdue: number;
 }
 
