@@ -1604,14 +1604,14 @@ function OverdueAlertsCard({
   return (
     <div className="border rounded-2xl py-4 px-5 flex flex-col gap-4 bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-foreground">
           Overdue Alerts
         </span>
         <span className="flex items-center justify-center h-8 w-8 rounded-full border border-rose-200 text-rose-500 bg-rose-50 dark:bg-rose-500/10 dark:border-rose-500/30">
           <AlertTriangle className="h-4 w-4" />
         </span>
-      </div>
+      </div> */}
 
       {/* Rows */}
       <div className="flex flex-col gap-2">
