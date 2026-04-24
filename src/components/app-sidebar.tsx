@@ -275,7 +275,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     userType === "factory" ||
     userType === "site-supervisor";
   const skipFranchiseFilter =
-    userType === "factory" || userType === "site-supervisor";
+    userType === "factory" ||
+    userType === "site-supervisor" ||
+    userType === "backend";
   const vendorId = user?.vendor_id;
   const franchiseId = selectedFranchiseId ?? user?.franchise_id ?? null;
   const dispatch = useAppDispatch();
@@ -284,6 +286,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     usePendingMiscellaneousCount(
       vendorId ?? 0,
       skipFranchiseFilter ? undefined : (franchiseId ?? undefined),
+      userType,
     );
   const { data: franchises = [] } = useFranchisesByVendorId(
     vendorId ?? 0,

@@ -58,7 +58,10 @@ export function MiscellaneousTable({
   const userId = useAppSelector((s) => s.auth.user?.id);
   const franchiseId = useAppSelector((s) => s.auth.franchise_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type?.toLowerCase());
-  const skipFranchiseFilter = userType === "factory" || userType === "site-supervisor";
+  const skipFranchiseFilter =
+    userType === "factory" ||
+    userType === "site-supervisor" ||
+    userType === "backend";
 
   const router = useRouter();
 
@@ -95,6 +98,7 @@ export function MiscellaneousTable({
 
     return {
       ...(!skipFranchiseFilter && franchiseId ? { franchise_id: franchiseId } : {}),
+      ...(userType ? { user_type: userType } : {}),
       page: pagination.pageIndex + 1,
       limit: pagination.pageSize,
       global_search: globalFilter || "",
