@@ -250,6 +250,16 @@ export default function OrderLoginModal({
   const canWorkAndView =
     !isPreProd &&
     canViewAndWorkProductionStage(userType, leadStatusIns ?? leadStatus);
+  const vendorTooltipMessage =
+    canWorkAndView && !isCompleted
+      ? undefined
+      : isPreProd
+        ? "Pre-prod users can only view this section."
+        : !canWorkAndView && userType === "factory"
+          ? "This lead stage has progressed. Factory users cannot modify this section."
+          : !canWorkAndView
+            ? "You do not have access to assign or change vendors."
+            : "You cannot change the vendor after this order-login is marked as ready.";
 
   return (
     <>
@@ -369,17 +379,7 @@ export default function OrderLoginModal({
                   />
                 </div>
               }
-              value={
-                isPreProd
-                  ? "Pre-prod users can only view this section."
-                  : !canWorkAndView && userType === "factory"
-                    ? "This lead stage has progressed. Factory users cannot modify this section."
-                    : !canWorkAndView
-                      ? "You do not have access to assign or change vendors."
-                      : isCompleted
-                        ? "You cannot change the vendor after this order-login is marked as ready."
-                        : "Select a factory vendor."
-              }
+              value={vendorTooltipMessage}
             />
 
             <p className="text-xs text-muted-foreground leading-relaxed">
