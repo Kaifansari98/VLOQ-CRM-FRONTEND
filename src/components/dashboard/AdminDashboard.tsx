@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,8 +17,15 @@ import {
   useAdminStageCounts,
   useAdminTotalRevenue,
   usePriorityLeadCounts,
+  useAdminLostApprovalLeads,
 } from "@/api/dashboard/useDashboard";
 import type { PriorityLeadCounts } from "@/api/dashboard/dashboard.api";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { AdminTaskTable } from "@/components/dashboard/AdminTaskTable";
 import { useAppSelector } from "@/redux/store";
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from "recharts";
@@ -65,6 +73,7 @@ interface StatCardProps {
   weekData: number[];
   monthData: number[];
   yearData: number[];
+  onClick?: () => void;
 }
 
 function StatCard({
@@ -81,6 +90,7 @@ function StatCard({
   weekData,
   monthData,
   yearData,
+  onClick,
 }: StatCardProps) {
   const [timeframe, setTimeframe] = useState<Timeframe>("year");
 
@@ -95,7 +105,10 @@ function StatCard({
   const sparkData = sparkline.map((v, i) => ({ i, v }));
 
   return (
-    <div className="border rounded-2xl py-4 px-5 flex flex-col gap-3 bg-background">
+    <div
+      className={`border rounded-2xl py-4 px-5 flex flex-col gap-3 bg-background ${onClick ? "cursor-pointer hover:shadow-md hover:border-foreground/20 transition-all duration-200" : ""}`}
+      onClick={onClick}
+    >
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-foreground">{displayTitle}</span>
         <div className="flex items-center gap-2">
@@ -298,6 +311,111 @@ function PriorityLeadsCard({
   );
 }
 
+// ─── Lost Approval Modal ─────────────────────────────────────────────────────
+
+const PRIORITY_BADGE: Record<string, string> = {
+  High:   "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400",
+  Medium: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
+  Low:    "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
+};
+
+function LostApprovalModal({
+  open,
+  onClose,
+  vendorId,
+  franchiseId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  vendorId?: number;
+  franchiseId?: number;
+}) {
+  const router = useRouter();
+  const { data = [], isLoading, refetch } = useAdminLostApprovalLeads(vendorId, franchiseId);
+
+  // Fetch on first open
+  const [fetched, setFetched] = useState(false);
+  if (open && !fetched) {
+    setFetched(true);
+    refetch();
+  }
+  if (!open && fetched) setFetched(false);
+
+  function handleRowDoubleClick(row: (typeof data)[number]) {
+    router.push(
+      `/dashboard/leads/leadstable/pendingleaddetails/${row.id}?accountId=${row.account_id}&tab=lostApproval`
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="min-w-4xl w-full">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-base font-semibold">Lost Approval — Leads</DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            {!isLoading && `${data.length} lead${data.length !== 1 ? "s" : ""} currently in lost-approval`}
+          </p>
+        </DialogHeader>
+
+        <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-background z-10">
+              <tr className="border-b border-border/60">
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Lead Code</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Client</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Contact</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Furniture Type</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Sales Executive</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">Priority</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="border-b border-border/30">
+                      {Array.from({ length: 6 }).map((__, j) => (
+                        <td key={j} className="px-4 py-3">
+                          <div className="h-4 bg-muted animate-pulse rounded" />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                : data.length === 0
+                ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                        No lost-approval leads found
+                      </td>
+                    </tr>
+                  )
+                : data.map((row) => (
+                    <tr
+                      key={row.id}
+                      className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
+                      onDoubleClick={() => handleRowDoubleClick(row)}
+                    >
+                      <td className="px-4 py-3 font-mono text-xs font-medium">{row.lead_code}</td>
+                      <td className="px-4 py-3 font-medium text-sm">{row.name || "—"}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{row.contact || "—"}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{row.furniture_type || "—"}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{row.sales_executive || "—"}</td>
+                      <td className="px-4 py-3">
+                        {row.priority ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${PRIORITY_BADGE[row.priority] ?? "bg-muted text-muted-foreground"}`}>
+                            {row.priority}
+                          </span>
+                        ) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+            </tbody>
+          </table>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
@@ -334,6 +452,8 @@ export default function AdminDashboard() {
     data: priorityData,
     isLoading: isPriorityLoading,
   } = usePriorityLeadCounts(vendorId, franchiseId ?? undefined);
+
+  const [showLostApprovalModal, setShowLostApprovalModal] = useState(false);
 
   const errorMessage =
     projectsError || revenueError || completedError || lostApprovalError || stageCountsError
@@ -456,6 +576,7 @@ export default function AdminDashboard() {
           weekData={lostApprovalOverview?.thisWeekArray ?? []}
           monthData={lostApprovalOverview?.thisMonthArray ?? []}
           yearData={lostApprovalOverview?.thisYearArray ?? []}
+          onClick={() => setShowLostApprovalModal(true)}
         />
       </div>
 
@@ -470,6 +591,13 @@ export default function AdminDashboard() {
       </div>
 
       <AdminTaskTable />
+
+      <LostApprovalModal
+        open={showLostApprovalModal}
+        onClose={() => setShowLostApprovalModal(false)}
+        vendorId={vendorId}
+        franchiseId={franchiseId ?? undefined}
+      />
 
       {errorMessage && (
         <div className="p-4 border border-destructive/50 bg-destructive/10 rounded-xl text-sm text-destructive">

@@ -2,6 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
+  getAdminLostApprovalLeads,
+  LostApprovalLead,
   getAdminTaskOverview,
   AdminTaskOverviewResponse,
   AdminTaskOverviewParams,
@@ -498,6 +500,15 @@ export function useOverdueProduction(vendorId?: number, franchiseId?: number) {
     queryKey: ["overdue-production", vendorId, franchiseId],
     queryFn: () => getOverdueProduction(vendorId!, franchiseId),
     enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useAdminLostApprovalLeads(vendorId?: number, franchiseId?: number) {
+  return useQuery<LostApprovalLead[]>({
+    queryKey: ["admin-lost-approval-leads", vendorId, franchiseId],
+    queryFn: () => getAdminLostApprovalLeads(vendorId!, franchiseId),
+    enabled: false,
     staleTime: 1000 * 60 * 2,
   });
 }

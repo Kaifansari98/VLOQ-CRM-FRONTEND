@@ -446,6 +446,27 @@ export const getPriorityLeadCounts = async (
   return res.data.data as PriorityLeadCounts;
 };
 
+export interface LostApprovalLead {
+  id: number;
+  lead_code: string;
+  name: string;
+  contact: string;
+  furniture_type: string;
+  sales_executive: string;
+  priority: string;
+  account_id: number;
+}
+
+export const getAdminLostApprovalLeads = async (
+  vendorId: number,
+  franchiseId?: number
+): Promise<LostApprovalLead[]> => {
+  const res = await apiClient.get("/dashboard/admin/lost-approval-leads", {
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as LostApprovalLead[];
+};
+
 export interface AdminTaskOverviewRow {
   id: number;
   lead_code: string;
