@@ -18,6 +18,7 @@ import {
   usePriorityLeadCounts,
 } from "@/api/dashboard/useDashboard";
 import type { PriorityLeadCounts } from "@/api/dashboard/dashboard.api";
+import { AdminTaskTable } from "@/components/dashboard/AdminTaskTable";
 import { useAppSelector } from "@/redux/store";
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from "recharts";
 import {
@@ -467,6 +468,8 @@ export default function AdminDashboard() {
           <PipelineSummaryCard items={pipelineItems} isLoading={isStageCountsLoading} />
         </div>
       </div>
+
+      <AdminTaskTable />
 
       {errorMessage && (
         <div className="p-4 border border-destructive/50 bg-destructive/10 rounded-xl text-sm text-destructive">

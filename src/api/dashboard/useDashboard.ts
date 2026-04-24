@@ -2,6 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
+  getAdminTaskOverview,
+  AdminTaskOverviewResponse,
+  AdminTaskOverviewParams,
   getOverdueInstallations,
   OverdueInstallation,
   getSalesExecutiveTaskStats,
@@ -494,6 +497,15 @@ export function useOverdueProduction(vendorId?: number, franchiseId?: number) {
   return useQuery<OverdueProduction[]>({
     queryKey: ["overdue-production", vendorId, franchiseId],
     queryFn: () => getOverdueProduction(vendorId!, franchiseId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useAdminTaskOverview(vendorId?: number, params: AdminTaskOverviewParams = {}) {
+  return useQuery<AdminTaskOverviewResponse>({
+    queryKey: ["admin-task-overview", vendorId, params],
+    queryFn: () => getAdminTaskOverview(vendorId!, params),
     enabled: !!vendorId,
     staleTime: 1000 * 60 * 2,
   });

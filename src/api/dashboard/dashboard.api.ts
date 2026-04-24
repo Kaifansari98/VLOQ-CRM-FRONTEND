@@ -446,6 +446,45 @@ export const getPriorityLeadCounts = async (
   return res.data.data as PriorityLeadCounts;
 };
 
+export interface AdminTaskOverviewRow {
+  id: number;
+  lead_code: string;
+  sales_executive: string;
+  task_type: string;
+  status: "open" | "in_progress" | "completed";
+  due_date: string;
+}
+
+export interface AdminTaskOverviewResponse {
+  data: AdminTaskOverviewRow[];
+  pagination: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export interface AdminTaskOverviewParams {
+  franchiseId?: number;
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+}
+
+export const getAdminTaskOverview = async (
+  vendorId: number,
+  params: AdminTaskOverviewParams = {}
+): Promise<AdminTaskOverviewResponse> => {
+  const res = await apiClient.get("/dashboard/admin/task-overview", {
+    params: {
+      vendor_id: vendorId,
+      ...(params.franchiseId ? { franchise_id: params.franchiseId } : {}),
+      ...(params.page ? { page: params.page } : {}),
+      ...(params.limit ? { limit: params.limit } : {}),
+      ...(params.search ? { search: params.search } : {}),
+      ...(params.status && params.status !== "all" ? { status: params.status } : {}),
+    },
+  });
+  return res.data.data as AdminTaskOverviewResponse;
+};
+
 // -------------------------------
 // 📌 EXPORT AS SINGLE OBJECT (Optional)
 // -------------------------------
