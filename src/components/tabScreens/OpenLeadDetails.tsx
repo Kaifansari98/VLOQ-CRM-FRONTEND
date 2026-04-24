@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useMemo, useState } from "react";
 import { ImageComponent } from "../utils/ImageCard";
+import DocumentCard from "../utils/documentCard";
 import { Button } from "@/components/ui/button";
 import BaseModal from "@/components/utils/baseModal";
 import { FileUploadField } from "@/components/custom/file-upload";
@@ -105,6 +106,13 @@ const InfoRow = ({ icon: Icon, label, value }: any) => (
     </div>
   </div>
 );
+
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"];
+
+const isImageDocument = (fileName?: string | null) => {
+  const ext = fileName?.split(".").pop()?.toLowerCase();
+  return !!ext && IMAGE_EXTENSIONS.includes(ext);
+};
 
 export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   // ✅ 1. REDUX STATE
@@ -269,6 +277,13 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   // ✅ 6. DERIVED VALUES (non-hook)
   const lead = data?.data?.lead;
   const structureInstances = structureInstancesData?.data || [];
+  const leadDocuments = lead?.documents || [];
+  const imageDocuments = leadDocuments.filter((doc: any) =>
+    isImageDocument(doc.doc_og_name || doc.originalName),
+  );
+  const fileDocuments = leadDocuments.filter(
+    (doc: any) => !isImageDocument(doc.doc_og_name || doc.originalName),
+  );
   const leadStage = lead?.statusType?.type;
   const isBookingStage = leadStage?.toLowerCase() === "booking-stage";
   const leadStatusTag = lead?.statusType?.tag;
@@ -886,26 +901,45 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
             {/* Body */}
             <motion.div variants={itemVariants} className="p-6">
-              {lead.documents && lead.documents.length > 0 ? (
+              {leadDocuments.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {lead.documents.map((doc: any, index: number) =>
-                    doc.signedUrl ? (
-                      <motion.div key={doc.id} variants={itemVariants}>
-                        <ImageComponent
-                          key={doc.id}
-                          doc={doc}
-                          index={index}
-                          canDelete={
-                            userType === "admin" ||
-                            userType === "super-admin" ||
-                            (userType === "sales-executive" &&
-                              leadStage === "open")
-                          }
-                          onDelete={(id) => setConfirmDelete(Number(id))}
-                        />
-                      </motion.div>
-                    ) : null,
-                  )}
+                  {imageDocuments.map((doc: any, index: number) => (
+                    <motion.div key={doc.id} variants={itemVariants}>
+                      <ImageComponent
+                        doc={{
+                          id: doc.id,
+                          doc_og_name: doc.doc_og_name || doc.originalName,
+                          signedUrl: doc.signedUrl,
+                          created_at: doc.created_at,
+                        }}
+                        index={index}
+                        canDelete={
+                          userType === "admin" ||
+                          userType === "super-admin" ||
+                          (userType === "sales-executive" && leadStage === "open")
+                        }
+                        onDelete={(id) => setConfirmDelete(Number(id))}
+                      />
+                    </motion.div>
+                  ))}
+                  {fileDocuments.map((doc: any) => (
+                    <motion.div key={doc.id} variants={itemVariants}>
+                      <DocumentCard
+                        doc={{
+                          id: doc.id,
+                          originalName: doc.doc_og_name || doc.originalName,
+                          signedUrl: doc.signedUrl,
+                          created_at: doc.created_at,
+                        }}
+                        canDelete={
+                          userType === "admin" ||
+                          userType === "super-admin" ||
+                          (userType === "sales-executive" && leadStage === "open")
+                        }
+                        onDelete={(id) => setConfirmDelete(Number(id))}
+                      />
+                    </motion.div>
+                  ))}
                   {canUploadSitePhotos && (
                     <button
                       type="button"
