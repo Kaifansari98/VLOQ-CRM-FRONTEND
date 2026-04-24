@@ -197,9 +197,10 @@ function StageCountsCard({
 }
 
 export default function AdminDashboard() {
-  const userId = useAppSelector((state) => state.auth.user?.id);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const franchiseId = useAppSelector((state) => state.auth.franchise_id);
+  const [timeframe, setTimeframe] = useState<"week" | "month" | "year">("year");
+
   const {
     data: projectsOverview,
     isLoading: isProjectsLoading,
@@ -215,17 +216,11 @@ export default function AdminDashboard() {
     isLoading: isStageCountsLoading,
     error: stageCountsError,
   } = useAdminStageCounts(vendorId, franchiseId ?? undefined);
+
   const errorMessage =
     projectsError || revenueError || stageCountsError
       ? "Failed to load admin stats."
       : null;
-  const [timeframe, setTimeframe] = useState<"week" | "month" | "year">("year");
-
-  console.log("[AdminDashboard] ids", {
-    user_id: userId,
-    franchise_id: franchiseId,
-    vendor_id: vendorId,
-  });
 
   const formatCompact = (value: number) => {
     const absValue = Math.abs(value);
