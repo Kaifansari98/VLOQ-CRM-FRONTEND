@@ -58,7 +58,6 @@ interface StatCardProps {
   sub: string;
   icon: React.ElementType;
   accent: string;
-  dot: string;
   strokeColor: string;
   gradientColor: string;
   isLoading: boolean;
@@ -75,7 +74,6 @@ function StatCard({
   sub,
   icon: Icon,
   accent,
-  dot,
   strokeColor,
   gradientColor,
   isLoading,
@@ -118,9 +116,6 @@ function StatCard({
               <DropdownMenuItem onClick={() => setTimeframe("year")}>This Year</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <span className={`flex items-center justify-center h-8 w-8 rounded-full border ${accent} bg-muted/40`}>
-            <Icon className="h-4 w-4" />
-          </span>
         </div>
       </div>
 
@@ -131,7 +126,7 @@ function StatCard({
           <div className="text-3xl font-semibold">{displayValue}</div>
         )}
         <div className="flex items-center gap-1.5 mt-1">
-          <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+          <Icon className={`h-3 w-3 ${accent}`} />
           <span className="text-xs text-muted-foreground">{sub}</span>
         </div>
       </div>
@@ -391,7 +386,7 @@ export default function AdminDashboard() {
           sub="Excludes lost / on-hold"
           icon={TrendingUp}
           accent="text-emerald-500 border-emerald-200 dark:border-emerald-500/30"
-          dot="bg-emerald-500"
+
           strokeColor="hsl(142, 71%, 45%)"
           gradientColor="hsl(142, 71%, 45%)"
           isLoading={isRevenueLoading}
@@ -405,7 +400,7 @@ export default function AdminDashboard() {
           sub="Booking → Under Installation"
           icon={Activity}
           accent="text-sky-500 border-sky-200 dark:border-sky-500/30"
-          dot="bg-sky-500"
+
           strokeColor="hsl(200, 98%, 39%)"
           gradientColor="hsl(200, 98%, 39%)"
           isLoading={isProjectsLoading}
@@ -429,7 +424,7 @@ export default function AdminDashboard() {
           sub="Type 17 completed leads"
           icon={CheckCircle2}
           accent="text-teal-500 border-teal-200 dark:border-teal-500/30"
-          dot="bg-teal-500"
+
           strokeColor="hsl(174, 72%, 40%)"
           gradientColor="hsl(174, 72%, 40%)"
           isLoading={isCompletedLoading}
@@ -453,7 +448,7 @@ export default function AdminDashboard() {
           sub="Current lost-approval leads"
           icon={XCircle}
           accent="text-rose-500 border-rose-200 dark:border-rose-500/30"
-          dot="bg-rose-500"
+
           strokeColor="hsl(346, 87%, 54%)"
           gradientColor="hsl(346, 87%, 54%)"
           isLoading={isLostApprovalLoading}
