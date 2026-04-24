@@ -409,7 +409,7 @@ export default function DesigningStageLead() {
                 {canViewSiteHistory && (
                   <TabsTrigger value="history">
                     <History size={16} className="mr-1 opacity-60" />
-                    Site History
+                    History
                   </TabsTrigger>
                 )}
                 {canViewPayment && (

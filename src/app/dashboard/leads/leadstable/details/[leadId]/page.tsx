@@ -365,7 +365,7 @@ export default function LeadDetails() {
             {canViewSiteHistory && (
               <TabsTrigger value="history" disabled={uiDisabled}>
                 <History size={16} className="mr-1 opacity-60" />
-                Site History
+                History
               </TabsTrigger>
             )}
             {canViewPayment && (
