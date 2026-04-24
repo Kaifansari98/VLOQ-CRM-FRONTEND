@@ -64,7 +64,7 @@ export default function AssignToPicker({
 
   return (
     <div className="relative *:not-first:mt-2 group">
-      <Popover modal={false} open={open && !disabled} onOpenChange={setOpen}>
+      <Popover open={open && !disabled} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             id={id}
@@ -97,10 +97,11 @@ export default function AssignToPicker({
 
         {!disabled && (
           <PopoverContent
+            portalled={false}
             className="border-input w-full min-w-[var(--radix-popper-anchor-width)] p-0"
             align="start"
           >
-            <Command>
+            <Command className="max-h-[320px] overflow-hidden">
               <CommandInput placeholder={placeholder} />
               <CommandList>
                 <CommandEmpty>No options found.</CommandEmpty>
