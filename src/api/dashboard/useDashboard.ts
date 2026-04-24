@@ -35,6 +35,10 @@ import {
   SalesExecutiveActivityStatusCounts,
   getAdminProjectsOverview,
   AdminProjectsOverview,
+  getAdminCompletedOverview,
+  AdminCompletedOverview,
+  getAdminLostApprovalOverview,
+  AdminLostApprovalOverview,
   getAdminOrdersInPipeline,
   AdminOrdersInPipeline,
   getAdminTotalRevenue,
@@ -49,6 +53,8 @@ import {
   getOverdueProductionCount,
   getOverdueProduction,
   OverdueProduction,
+  getPriorityLeadCounts,
+  PriorityLeadCounts,
 } from "./dashboard.api";
 import { useCallback, useEffect, useState } from "react";
 import { logError } from "@/lib/utils";
@@ -222,6 +228,22 @@ export function useAdminProjectsOverview(vendorId?: number, franchiseId?: number
   });
 }
 
+export function useAdminCompletedOverview(vendorId?: number, franchiseId?: number) {
+  return useQuery<AdminCompletedOverview>({
+    queryKey: ["admin-completed-overview", vendorId, franchiseId],
+    queryFn: () => getAdminCompletedOverview(vendorId!, franchiseId),
+    enabled: !!vendorId,
+  });
+}
+
+export function useAdminLostApprovalOverview(vendorId?: number, franchiseId?: number) {
+  return useQuery<AdminLostApprovalOverview>({
+    queryKey: ["admin-lost-approval-overview", vendorId, franchiseId],
+    queryFn: () => getAdminLostApprovalOverview(vendorId!, franchiseId),
+    enabled: !!vendorId,
+  });
+}
+
 export function useAdminOrdersInPipeline(vendorId?: number) {
   return useQuery<AdminOrdersInPipeline>({
     queryKey: ["admin-orders-in-pipeline", vendorId],
@@ -298,6 +320,14 @@ export function useAdminStageCounts(vendorId?: number, franchiseId?: number) {
   return useQuery<AdminStageCounts>({
     queryKey: ["admin-stage-counts", vendorId, franchiseId],
     queryFn: () => getAdminStageCounts(vendorId!, franchiseId),
+    enabled: !!vendorId,
+  });
+}
+
+export function usePriorityLeadCounts(vendorId?: number, franchiseId?: number) {
+  return useQuery<PriorityLeadCounts>({
+    queryKey: ["priority-lead-counts", vendorId, franchiseId],
+    queryFn: () => getPriorityLeadCounts(vendorId!, franchiseId),
     enabled: !!vendorId,
   });
 }

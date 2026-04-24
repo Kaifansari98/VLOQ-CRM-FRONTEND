@@ -187,6 +187,46 @@ export const getAdminProjectsOverview = async (
   return res.data.data as AdminProjectsOverview;
 };
 
+export interface AdminCompletedOverview {
+  thisWeekArray: number[];
+  thisMonthArray: number[];
+  thisYearArray: number[];
+  thisWeekTotal: number;
+  thisMonthTotal: number;
+  thisYearTotal: number;
+  overall: number;
+}
+
+export const getAdminCompletedOverview = async (
+  vendorId: number,
+  franchiseId?: number
+): Promise<AdminCompletedOverview> => {
+  const res = await apiClient.get("/dashboard/admin/completed-overview", {
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as AdminCompletedOverview;
+};
+
+export interface AdminLostApprovalOverview {
+  thisWeekArray: number[];
+  thisMonthArray: number[];
+  thisYearArray: number[];
+  thisWeekTotal: number;
+  thisMonthTotal: number;
+  thisYearTotal: number;
+  overall: number;
+}
+
+export const getAdminLostApprovalOverview = async (
+  vendorId: number,
+  franchiseId?: number
+): Promise<AdminLostApprovalOverview> => {
+  const res = await apiClient.get("/dashboard/admin/lost-approval-overview", {
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as AdminLostApprovalOverview;
+};
+
 // Admin orders in pipeline
 export interface OrdersInPipelineBucket {
   thisWeek: number;
@@ -388,6 +428,22 @@ export const getAdminStageCounts = async (
     params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
   });
   return res.data.data as AdminStageCounts;
+};
+
+export interface PriorityLeadCounts {
+  open:      { high: number; medium: number; low: number };
+  ism:       { high: number; medium: number; low: number };
+  designing: { high: number; medium: number; low: number };
+}
+
+export const getPriorityLeadCounts = async (
+  vendorId: number,
+  franchiseId?: number
+): Promise<PriorityLeadCounts> => {
+  const res = await apiClient.get("/dashboard/admin/priority-leads", {
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as PriorityLeadCounts;
 };
 
 // -------------------------------

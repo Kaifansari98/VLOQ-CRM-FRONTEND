@@ -11,9 +11,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   useAdminProjectsOverview,
+  useAdminCompletedOverview,
+  useAdminLostApprovalOverview,
   useAdminStageCounts,
   useAdminTotalRevenue,
+  usePriorityLeadCounts,
 } from "@/api/dashboard/useDashboard";
+import type { PriorityLeadCounts } from "@/api/dashboard/dashboard.api";
 import { useAppSelector } from "@/redux/store";
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from "recharts";
 import {
@@ -24,6 +28,8 @@ import {
   Layers,
   Cpu,
   Wrench,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 
 type Timeframe = "week" | "month" | "year";
@@ -46,7 +52,9 @@ function formatCount(v: number) {
 
 interface StatCardProps {
   title: string;
+  timeframeTitles?: Partial<Record<Timeframe, string>>;
   value: string;
+  timeframeValues?: Partial<Record<Timeframe, string>>;
   sub: string;
   icon: React.ElementType;
   accent: string;
@@ -61,7 +69,9 @@ interface StatCardProps {
 
 function StatCard({
   title,
+  timeframeTitles,
   value,
+  timeframeValues,
   sub,
   icon: Icon,
   accent,
@@ -79,6 +89,8 @@ function StatCard({
     timeframe === "week" ? weekData : timeframe === "month" ? monthData : yearData;
   const timeframeLabel =
     timeframe === "week" ? "Week" : timeframe === "month" ? "Month" : "Year";
+  const displayTitle = timeframeTitles?.[timeframe] ?? title;
+  const displayValue = timeframeValues?.[timeframe] ?? value;
 
   const gradientId = `grad-${title.replace(/\s+/g, "-").toLowerCase()}`;
   const sparkData = sparkline.map((v, i) => ({ i, v }));
@@ -86,7 +98,7 @@ function StatCard({
   return (
     <div className="border rounded-2xl py-4 px-5 flex flex-col gap-3 bg-background">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-foreground">{title}</span>
+        <span className="text-sm font-medium text-foreground">{displayTitle}</span>
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -116,7 +128,7 @@ function StatCard({
         {isLoading ? (
           <div className="h-8 w-24 bg-muted animate-pulse rounded" />
         ) : (
-          <div className="text-3xl font-semibold">{value}</div>
+          <div className="text-3xl font-semibold">{displayValue}</div>
         )}
         <div className="flex items-center gap-1.5 mt-1">
           <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
@@ -183,13 +195,13 @@ interface PipelineSummaryCardProps {
 
 function PipelineSummaryCard({ items, isLoading }: PipelineSummaryCardProps) {
   return (
-    <div className="border rounded-2xl py-4 px-5 bg-background h-full flex flex-col gap-4">
+    <div className="border rounded-2xl py-4 px-5 bg-background h-full flex flex-col gap-4 justify-between">
       <div>
         <p className="text-sm font-medium text-foreground">Pipeline Summary</p>
         <p className="text-xs text-muted-foreground">Lead stages grouped across teams</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-3 flex-1">
+      <div className="grid grid-cols-4 gap-3">
         {isLoading
           ? Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-full min-h-[80px] rounded-xl bg-muted animate-pulse" />
@@ -220,6 +232,76 @@ function PipelineSummaryCard({ items, isLoading }: PipelineSummaryCardProps) {
   );
 }
 
+// ─── Priority Leads Card ─────────────────────────────────────────────────────
+
+const PRIORITY_CONFIG = [
+  { key: "high",   label: "High",   badge: "bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400",   dot: "bg-rose-500" },
+  { key: "medium", label: "Medium", badge: "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400", dot: "bg-amber-500" },
+  { key: "low",    label: "Low",    badge: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400", dot: "bg-emerald-500" },
+] as const;
+
+const STAGE_COLS = [
+  { key: "open",      label: "Open",      accent: "border-violet-200 dark:border-violet-500/30", header: "bg-violet-50 dark:bg-violet-500/10" },
+  { key: "ism",       label: "ISM",       accent: "border-sky-200 dark:border-sky-500/30",    header: "bg-sky-50 dark:bg-sky-500/10" },
+  { key: "designing", label: "Designing", accent: "border-amber-200 dark:border-amber-500/30",  header: "bg-amber-50 dark:bg-amber-500/10" },
+] as const;
+
+function PriorityLeadsCard({
+  data,
+  isLoading,
+}: {
+  data?: PriorityLeadCounts;
+  isLoading: boolean;
+}) {
+  return (
+    <div className="border rounded-2xl py-4 px-5 bg-background flex flex-col gap-4 h-full">
+      <div>
+        <p className="text-sm font-medium text-foreground">Priority Leads</p>
+        <p className="text-xs text-muted-foreground">Open · ISM · Designing — by priority</p>
+      </div>
+
+      <table className="w-full text-sm border-collapse">
+        <thead>
+          <tr>
+            <th className="text-left text-xs text-muted-foreground font-medium py-2 pr-4 w-[30%]" />
+            {PRIORITY_CONFIG.map((p) => (
+              <th key={p.key} className="text-center text-xs font-medium py-2 px-3">
+                <span className={`inline-flex items-center gap-1.5`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${p.dot}`} />
+                  <span className="text-muted-foreground">{p.label}</span>
+                </span>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/40">
+          {STAGE_COLS.map((stage) => (
+            <tr key={stage.key}>
+              <td className="py-3 pr-4">
+                <span className="text-xs font-semibold text-foreground">{stage.label}</span>
+              </td>
+              {PRIORITY_CONFIG.map((p) => {
+                const count = data?.[stage.key]?.[p.key] ?? 0;
+                return (
+                  <td key={p.key} className="text-center py-3 px-3">
+                    {isLoading ? (
+                      <div className="h-5 w-8 bg-muted animate-pulse rounded mx-auto" />
+                    ) : (
+                      <span className={`inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-md text-xs font-semibold ${p.badge}`}>
+                        {count}
+                      </span>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
@@ -237,13 +319,28 @@ export default function AdminDashboard() {
     error: revenueError,
   } = useAdminTotalRevenue(vendorId, franchiseId ?? undefined);
   const {
+    data: completedOverview,
+    isLoading: isCompletedLoading,
+    error: completedError,
+  } = useAdminCompletedOverview(vendorId, franchiseId ?? undefined);
+  const {
     data: stageCounts,
     isLoading: isStageCountsLoading,
     error: stageCountsError,
   } = useAdminStageCounts(vendorId, franchiseId ?? undefined);
+  const {
+    data: lostApprovalOverview,
+    isLoading: isLostApprovalLoading,
+    error: lostApprovalError,
+  } = useAdminLostApprovalOverview(vendorId, franchiseId ?? undefined);
+
+  const {
+    data: priorityData,
+    isLoading: isPriorityLoading,
+  } = usePriorityLeadCounts(vendorId, franchiseId ?? undefined);
 
   const errorMessage =
-    projectsError || revenueError || stageCountsError
+    projectsError || revenueError || completedError || lostApprovalError || stageCountsError
       ? "Failed to load admin stats."
       : null;
 
@@ -286,7 +383,7 @@ export default function AdminDashboard() {
     <div className="flex flex-col gap-4 p-4 px-6">
       <DashboardHeader />
 
-      {/* Single row: stat cards + pipeline */}
+      {/* Top row: 4 stat cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Revenue"
@@ -316,7 +413,62 @@ export default function AdminDashboard() {
           monthData={projectsOverview?.thisMonthArray ?? []}
           yearData={projectsOverview?.thisYearArray ?? []}
         />
-        <div className="lg:col-span-2 h-full">
+        <StatCard
+          title="Completed This Month"
+          timeframeTitles={{
+            week: "Completed This Week",
+            month: "Completed This Month",
+            year: "Completed This Year",
+          }}
+          value={formatCount(completedOverview?.thisYearTotal ?? 0)}
+          timeframeValues={{
+            week: formatCount(completedOverview?.thisWeekTotal ?? 0),
+            month: formatCount(completedOverview?.thisMonthTotal ?? 0),
+            year: formatCount(completedOverview?.thisYearTotal ?? 0),
+          }}
+          sub="Type 17 completed leads"
+          icon={CheckCircle2}
+          accent="text-teal-500 border-teal-200 dark:border-teal-500/30"
+          dot="bg-teal-500"
+          strokeColor="hsl(174, 72%, 40%)"
+          gradientColor="hsl(174, 72%, 40%)"
+          isLoading={isCompletedLoading}
+          weekData={completedOverview?.thisWeekArray ?? []}
+          monthData={completedOverview?.thisMonthArray ?? []}
+          yearData={completedOverview?.thisYearArray ?? []}
+        />
+        <StatCard
+          title="Lost Approval"
+          timeframeTitles={{
+            week: "Lost Approval This Week",
+            month: "Lost Approval This Month",
+            year: "Lost Approval This Year",
+          }}
+          value={formatCount(lostApprovalOverview?.thisYearTotal ?? 0)}
+          timeframeValues={{
+            week: formatCount(lostApprovalOverview?.thisWeekTotal ?? 0),
+            month: formatCount(lostApprovalOverview?.thisMonthTotal ?? 0),
+            year: formatCount(lostApprovalOverview?.thisYearTotal ?? 0),
+          }}
+          sub="Current lost-approval leads"
+          icon={XCircle}
+          accent="text-rose-500 border-rose-200 dark:border-rose-500/30"
+          dot="bg-rose-500"
+          strokeColor="hsl(346, 87%, 54%)"
+          gradientColor="hsl(346, 87%, 54%)"
+          isLoading={isLostApprovalLoading}
+          weekData={lostApprovalOverview?.thisWeekArray ?? []}
+          monthData={lostApprovalOverview?.thisMonthArray ?? []}
+          yearData={lostApprovalOverview?.thisYearArray ?? []}
+        />
+      </div>
+
+      {/* Bottom row: Priority Leads + Pipeline Summary */}
+      <div className="flex gap-4">
+        <div className="w-1/2">
+          <PriorityLeadsCard data={priorityData} isLoading={isPriorityLoading} />
+        </div>
+        <div className="w-1/2">
           <PipelineSummaryCard items={pipelineItems} isLoading={isStageCountsLoading} />
         </div>
       </div>
