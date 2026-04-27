@@ -18,23 +18,30 @@ interface SiteSupervisorMiscTableProps {
   isLoading?: boolean;
 }
 
-const STATUS_CONFIG = {
-  pending: {
-    label: "Pending",
-    className:
-      "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  },
-  approved: {
-    label: "Approved",
-    className:
-      "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-  },
-  rejected: {
-    label: "Rejected",
-    className:
-      "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  },
-} as const;
+function getMiscStatus(item: SiteSupervisorMiscItem): {
+  label: string;
+  className: string;
+} {
+  const hasDispatchDocs = item.delivery_task_status === "completed";
+
+  if (item.misc_approved === false) {
+    return { label: "REJECTED", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" };
+  } else if (item.is_resolved) {
+    return { label: "RESOLVED", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" };
+  } else if (hasDispatchDocs) {
+    return { label: "DISPATCHED", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" };
+  } else if (item.required_delivery_date) {
+    return { label: "DISPATCH SCHEDULED", className: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400" };
+  } else if (item.task_status === "completed") {
+    return { label: "RTD", className: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400" };
+  } else if (item.misc_approved === true && item.expected_ready_date) {
+    return { label: "UNDER PROCESS", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" };
+  } else if (item.misc_approved === true) {
+    return { label: "MISCL APPROVED", className: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400" };
+  } else {
+    return { label: "AWAITING APPROVAL", className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" };
+  }
+}
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "—";
@@ -89,7 +96,7 @@ export default function SiteSupervisorMiscTable({
               </TableHeader>
               <TableBody>
                 {data.map((item) => {
-                  const status = STATUS_CONFIG[item.status];
+                  const status = getMiscStatus(item);
                   return (
                     <TableRow
                       key={item.id}

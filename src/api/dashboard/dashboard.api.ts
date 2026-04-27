@@ -556,7 +556,11 @@ export interface SiteSupervisorMiscItem {
   client: string;
   misc_type: string;
   expected_ready_date: string | null;
-  status: "pending" | "approved" | "rejected";
+  required_delivery_date: string | null;
+  misc_approved: boolean | null;
+  is_resolved: boolean;
+  task_status: string | null;
+  delivery_task_status: string | null;
 }
 
 export const getSiteSupervisorMiscItems = async (
