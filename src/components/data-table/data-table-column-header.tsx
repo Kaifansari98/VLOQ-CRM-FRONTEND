@@ -44,7 +44,7 @@ export function DataTableColumnHeader<TData, TValue>({
   title,
   className,
 }: DataTableColumnHeaderProps<TData, TValue>) {
-  const meta = (column.table.options.meta as any) ?? {};
+  const meta = ((column as any).table?.options?.meta ?? {}) as any;
   const isFurnitureColumn = column.id === "furnitureType";
   const isSalesColumn =
     column.id === "assign_to" || column.id === "assignedToName";
