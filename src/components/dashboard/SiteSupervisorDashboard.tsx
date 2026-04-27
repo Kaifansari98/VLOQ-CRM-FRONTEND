@@ -67,16 +67,16 @@ export default function SiteSupervisorDashboard() {
         </div>
       </div>
 
-      {/* Upcoming Sites (left) + Unresolved Misc (right) */}
+      {/* Unresolved Misc (left) + Upcoming Sites (right) */}
       <div className="w-full flex flex-col lg:flex-row gap-4">
+        <div className="w-full lg:w-1/2">
+          <SiteSupervisorMiscTable data={miscItems} isLoading={isLoadingMisc} />
+        </div>
         <div className="w-full lg:w-1/2">
           <SiteSupervisorUpcomingSitesTable
             data={upcomingSites}
             isLoading={isLoadingUpcomingSites}
           />
-        </div>
-        <div className="w-full lg:w-1/2">
-          <SiteSupervisorMiscTable data={miscItems} isLoading={isLoadingMisc} />
         </div>
       </div>
     </div>
