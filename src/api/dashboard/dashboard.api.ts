@@ -487,6 +487,7 @@ export interface AdminTaskOverviewParams {
   limit?: number;
   search?: string;
   status?: string;
+  overview?: string;
 }
 
 export const getAdminTaskOverview = async (
@@ -501,6 +502,7 @@ export const getAdminTaskOverview = async (
       ...(params.limit ? { limit: params.limit } : {}),
       ...(params.search ? { search: params.search } : {}),
       ...(params.status && params.status !== "all" ? { status: params.status } : {}),
+      ...(params.overview && params.overview !== "all" ? { overview: params.overview } : {}),
     },
   });
   return res.data.data as AdminTaskOverviewResponse;

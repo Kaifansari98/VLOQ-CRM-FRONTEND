@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   ColumnDef,
   getCoreRowModel,
@@ -27,12 +27,19 @@ import { ChevronDown } from "lucide-react";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type StatusFilter = "all" | AdminTaskOverviewRow["status"];
+type OverviewFilter = "all" | "today" | "upcoming" | "overdue";
 
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "all",         label: "All"         },
   { value: "open",        label: "Open"        },
-  { value: "in_progress", label: "In Progress" },
   { value: "completed",   label: "Completed"   },
+];
+
+const OVERVIEW_OPTIONS: { value: OverviewFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "today", label: "Today" },
+  { value: "upcoming", label: "Upcoming" },
+  { value: "overdue", label: "Overdue" },
 ];
 
 const STATUS_BADGE: Record<AdminTaskOverviewRow["status"], string> = {
@@ -149,6 +156,7 @@ export function AdminTaskTable() {
   const [search, setSearch]         = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter]   = useState<StatusFilter>("open");
+  const [overviewFilter, setOverviewFilter] = useState<OverviewFilter>("all");
   const [sorting, setSorting]       = useState<SortingState>([]);
 
   const PAGE_SIZE = 20;
@@ -168,6 +176,7 @@ export function AdminTaskTable() {
     limit: PAGE_SIZE,
     search: debouncedSearch,
     status: statusFilter,
+    overview: overviewFilter,
   });
 
   const rows        = result?.data ?? [];
@@ -196,6 +205,8 @@ export function AdminTaskTable() {
   });
 
   const activeStatusLabel = STATUS_OPTIONS.find((o) => o.value === statusFilter)?.label ?? "Open";
+  const activeOverviewLabel =
+    OVERVIEW_OPTIONS.find((o) => o.value === overviewFilter)?.label ?? "All";
 
   return (
     <div className="border rounded-2xl bg-background overflow-hidden">
@@ -227,6 +238,24 @@ export function AdminTaskTable() {
                 <DropdownMenuItem
                   key={o.value}
                   onClick={() => { setStatusFilter(o.value); setPage(1); }}
+                >
+                  {o.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 px-2 gap-1 text-xs text-muted-foreground">
+                Overview: {activeOverviewLabel}
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-36">
+              {OVERVIEW_OPTIONS.map((o) => (
+                <DropdownMenuItem
+                  key={o.value}
+                  onClick={() => { setOverviewFilter(o.value); setPage(1); }}
                 >
                   {o.label}
                 </DropdownMenuItem>
