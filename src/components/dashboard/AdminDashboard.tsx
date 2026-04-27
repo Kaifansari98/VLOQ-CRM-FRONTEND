@@ -503,7 +503,17 @@ export default function AdminDashboard() {
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Revenue"
-          value={formatRevenue(totalRevenue?.overall ?? 0)}
+          timeframeTitles={{
+            week: "Revenue This Week",
+            month: "Revenue This Month",
+            year: "Total Revenue",
+          }}
+          value={formatRevenue(totalRevenue?.thisYearTotal ?? 0)}
+          timeframeValues={{
+            week: formatRevenue(totalRevenue?.thisWeekTotal ?? 0),
+            month: formatRevenue(totalRevenue?.thisMonthTotal ?? 0),
+            year: formatRevenue(totalRevenue?.thisYearTotal ?? 0),
+          }}
           sub="Excludes lost / on-hold"
           icon={TrendingUp}
           accent="text-emerald-500 border-emerald-200 dark:border-emerald-500/30"
@@ -517,7 +527,17 @@ export default function AdminDashboard() {
         />
         <StatCard
           title="Active Projects"
-          value={formatCount(projectsOverview?.overall ?? 0)}
+          timeframeTitles={{
+            week: "Active Projects This Week",
+            month: "Active Projects This Month",
+            year: "Active Projects",
+          }}
+          value={formatCount(projectsOverview?.thisYearTotal ?? 0)}
+          timeframeValues={{
+            week: formatCount(projectsOverview?.thisWeekTotal ?? 0),
+            month: formatCount(projectsOverview?.thisMonthTotal ?? 0),
+            year: formatCount(projectsOverview?.thisYearTotal ?? 0),
+          }}
           sub="Booking → Under Installation"
           icon={Activity}
           accent="text-sky-500 border-sky-200 dark:border-sky-500/30"
