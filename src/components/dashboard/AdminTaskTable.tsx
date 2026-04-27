@@ -27,7 +27,7 @@ import { ChevronDown } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type StatusFilter = "open" | "completed";
+type StatusFilter = "all" | "open" | "completed";
 type OverviewFilter = "all" | "today" | "upcoming" | "overdue";
 type SalesExecutiveFilter = "all" | number;
 
@@ -211,6 +211,58 @@ export function AdminTaskTable() {
     columns,
     manualPagination: true,
     pageCount: totalPages,
+    meta: {
+      adminTaskStatusFilter: {
+        value: statusFilter === "all" ? [] : [statusFilter],
+        onChange: (values: (string | number)[]) => {
+          const normalized = values.map(String).filter((value) =>
+            value === "open" || value === "completed"
+          );
+
+          if (normalized.length === 0) {
+            setStatusFilter("all");
+            setPage(1);
+            return;
+          }
+
+          const nextValue =
+            normalized.find((value) => value !== statusFilter) ?? normalized[0];
+          setStatusFilter(nextValue as StatusFilter);
+          setPage(1);
+        },
+        onClear: () => {
+          setStatusFilter("all");
+          setPage(1);
+        },
+      },
+      adminTaskSalesExecutiveFilter: {
+        value:
+          salesExecutiveFilter === "all" ? [] : [salesExecutiveFilter],
+        onChange: (values: (string | number)[]) => {
+          const normalized = values
+            .map((value) => Number(value))
+            .filter((value) => Number.isFinite(value) && value > 0);
+
+          if (normalized.length === 0) {
+            setSalesExecutiveFilter("all");
+            setPage(1);
+            return;
+          }
+
+          const currentValue =
+            salesExecutiveFilter === "all" ? null : Number(salesExecutiveFilter);
+          const nextValue =
+            normalized.find((value) => value !== currentValue) ?? normalized[0];
+
+          setSalesExecutiveFilter(nextValue);
+          setPage(1);
+        },
+        onClear: () => {
+          setSalesExecutiveFilter("all");
+          setPage(1);
+        },
+      },
+    },
     state: {
       sorting,
       pagination: { pageIndex: page - 1, pageSize: PAGE_SIZE },
@@ -227,7 +279,8 @@ export function AdminTaskTable() {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  const activeStatusLabel = STATUS_OPTIONS.find((o) => o.value === statusFilter)?.label ?? "Open";
+  const activeStatusLabel =
+    STATUS_OPTIONS.find((o) => o.value === statusFilter)?.label ?? "All";
   const activeOverviewLabel =
     OVERVIEW_OPTIONS.find((o) => o.value === overviewFilter)?.label ?? "All";
   const activeSalesExecutiveLabel =

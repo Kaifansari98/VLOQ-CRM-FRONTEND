@@ -44,6 +44,7 @@ export function DataTableColumnHeader<TData, TValue>({
   title,
   className,
 }: DataTableColumnHeaderProps<TData, TValue>) {
+  const meta = (column.table.options.meta as any) ?? {};
   const isFurnitureColumn = column.id === "furnitureType";
   const isSalesColumn =
     column.id === "assign_to" || column.id === "assignedToName";
@@ -56,6 +57,12 @@ export function DataTableColumnHeader<TData, TValue>({
   const isStageColumn = column.id === "status";
   const isTastTypeColumn = column.id === "taskType";
   const isPriorityColumn = column.id === "priority";
+  const adminTaskStatusFilter = meta.adminTaskStatusFilter as
+    | { onClear?: () => void }
+    | undefined;
+  const adminTaskSalesExecutiveFilter = meta.adminTaskSalesExecutiveFilter as
+    | { onClear?: () => void }
+    | undefined;
 
   const filterValue = column.getFilterValue();
   const hasActiveFilter = Array.isArray(filterValue)
@@ -221,7 +228,18 @@ export function DataTableColumnHeader<TData, TValue>({
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => column.setFilterValue([])}
+                onClick={() => {
+                  if (isStageColumn && adminTaskStatusFilter?.onClear) {
+                    adminTaskStatusFilter.onClear();
+                  } else if (
+                    isSalesExecutiveColumn &&
+                    adminTaskSalesExecutiveFilter?.onClear
+                  ) {
+                    adminTaskSalesExecutiveFilter.onClear();
+                  }
+
+                  column.setFilterValue([]);
+                }}
                 className="m-1"
               >
                 <X className="mr-2 size-4" />

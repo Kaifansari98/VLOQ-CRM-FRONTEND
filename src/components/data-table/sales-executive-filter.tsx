@@ -38,12 +38,23 @@ interface Props {
 =========================== */
 
 export default function SalesExecutiveFilter({ column }: Props) {
+  const adminTaskSalesExecutiveFilter = (column.table.options.meta as any)
+    ?.adminTaskSalesExecutiveFilter as
+    | {
+        value: (string | number)[];
+        onChange: (values: (string | number)[]) => void;
+      }
+    | undefined;
+
   const vendorId = useAppSelector(
     (state) => state.auth.user?.vendor_id,
   ) as number;
+  const franchiseId = useAppSelector(
+    (state) => state.auth.franchise_id,
+  ) as number | undefined;
 
   const { data: vendorUsers, isLoading } =
-    useVendorSalesExecutiveUsers(vendorId);
+    useVendorSalesExecutiveUsers(vendorId, franchiseId);
 
   const salesOptions: FilterOption[] = useMemo(() => {
     if (!vendorUsers?.data?.sales_executives?.length) return [];
@@ -56,9 +67,17 @@ export default function SalesExecutiveFilter({ column }: Props) {
 
   // ✅ Table filter now stores IDs directly
   type IDType = string | number;
-  const selectedIds: IDType[] = (column.getFilterValue() as IDType[]) ?? [];
+  const selectedIds: IDType[] = adminTaskSalesExecutiveFilter
+    ? (adminTaskSalesExecutiveFilter.value as IDType[])
+    : ((column.getFilterValue() as IDType[]) ?? []);
 
   const handleChange = (ids: IDType[]): void => {
+    if (adminTaskSalesExecutiveFilter) {
+      adminTaskSalesExecutiveFilter.onChange(ids);
+      column.setFilterValue(ids);
+      return;
+    }
+
     column.setFilterValue(ids);
   };
 
