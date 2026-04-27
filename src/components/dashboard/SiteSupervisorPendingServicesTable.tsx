@@ -43,7 +43,7 @@ export default function SiteSupervisorPendingServicesTable() {
 
   return (
     <Card className="w-full border flex flex-col bg-background">
-      <div className="flex items-start justify-between pl-4 pr-3 pt-3 pb-1">
+      <div className="flex items-start justify-between pl-4 pr-3 pb-1">
         <p className="flex flex-col">
           <span className="text-sm font-medium">Pending Services</span>
           <span className="text-xs text-muted-foreground">
