@@ -37,7 +37,7 @@ export default function SiteSupervisorPendingServicesTable() {
   const vendorId = user?.vendor_id ?? 0;
   const userId = user?.id ?? 0;
 
-  const [filter, setFilter] = useState<Filter>("month");
+  const [filter, setFilter] = useState<Filter>("year");
 
   const { data, isLoading } = useSiteSupervisorPendingServices(vendorId, userId, filter);
 
