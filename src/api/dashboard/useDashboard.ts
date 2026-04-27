@@ -3,6 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   getSiteSupervisorAvgDaysToInstallation,
+  getSiteSupervisorMiscItems,
+  SiteSupervisorMiscItem,
+  getSiteSupervisorUpcomingSites,
+  SiteSupervisorUpcomingSite,
+  getSiteSupervisorServiceCounts,
+  SiteSupervisorServiceCounts,
   getAdminLostApprovalLeads,
   LostApprovalLead,
   getAdminTaskOverview,
@@ -484,6 +490,33 @@ export function useStageLeads(vendorId?: number, tag?: string, franchiseId?: num
     queryKey: ["stage-leads", vendorId, tag, franchiseId],
     queryFn: () => getStageLeads(vendorId!, tag!, franchiseId),
     enabled: !!vendorId && !!tag,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useSiteSupervisorServiceCounts(vendorId: number, userId: number) {
+  return useQuery<SiteSupervisorServiceCounts>({
+    queryKey: ["site-supervisor-service-counts", vendorId, userId],
+    queryFn: () => getSiteSupervisorServiceCounts(vendorId, userId),
+    enabled: !!vendorId && !!userId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useSiteSupervisorUpcomingSites(vendorId: number, userId: number) {
+  return useQuery<SiteSupervisorUpcomingSite[]>({
+    queryKey: ["site-supervisor-upcoming-sites", vendorId, userId],
+    queryFn: () => getSiteSupervisorUpcomingSites(vendorId, userId),
+    enabled: !!vendorId && !!userId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useSiteSupervisorMiscItems(vendorId: number, userId: number) {
+  return useQuery<SiteSupervisorMiscItem[]>({
+    queryKey: ["site-supervisor-misc-items", vendorId, userId],
+    queryFn: () => getSiteSupervisorMiscItems(vendorId, userId),
+    enabled: !!vendorId && !!userId,
     staleTime: 1000 * 60 * 2,
   });
 }

@@ -5,12 +5,16 @@ import { AssignedTaskCard } from "@/components/dashboard/AssignedTaskCard";
 import { useAppSelector } from "@/redux/store";
 import {
   useLeadStatusWiseCounts,
-  usePerformanceSnapshot,
   useAvgDaysToInstallation,
+  useSiteSupervisorMiscItems,
+  useSiteSupervisorUpcomingSites,
+  useSiteSupervisorServiceCounts,
 } from "@/api/dashboard/useDashboard";
 import SiteSupervisorPipelineCard from "./SiteSupervisorPipelineCard";
-import LeadsSummaryCard from "./LeadsSummaryCard";
+import SiteSupervisorServicesCard from "./SiteSupervisorServicesCard";
 import AvgDaysToInstallationCard from "./AvgDaysToInstallationCard";
+import SiteSupervisorMiscTable from "./SiteSupervisorMiscTable";
+import SiteSupervisorUpcomingSitesTable from "./SiteSupervisorUpcomingSitesTable";
 
 export default function SiteSupervisorDashboard() {
   const user = useAppSelector((s) => s.auth.user);
@@ -20,13 +24,17 @@ export default function SiteSupervisorDashboard() {
   const { data: leadCounts, isLoading: isLoadingCounts } =
     useLeadStatusWiseCounts(vendorId, userId);
 
-  const { data: perfData, isLoading: isLoadingPerf } = usePerformanceSnapshot(
-    vendorId,
-    userId
-  );
+  const { data: serviceCounts, isLoading: isLoadingServices } =
+    useSiteSupervisorServiceCounts(vendorId, userId);
 
   const { data: installationData, isLoading: isLoadingInstallation } =
     useAvgDaysToInstallation(vendorId, userId);
+
+  const { data: miscItems, isLoading: isLoadingMisc } =
+    useSiteSupervisorMiscItems(vendorId, userId);
+
+  const { data: upcomingSites, isLoading: isLoadingUpcomingSites } =
+    useSiteSupervisorUpcomingSites(vendorId, userId);
 
   return (
     <div className="flex flex-col gap-4 p-4 px-6">
@@ -42,11 +50,11 @@ export default function SiteSupervisorDashboard() {
         <div className="lg:w-[40%] flex flex-col">
           <AssignedTaskCard />
           <div className="flex flex-col w-full sm:flex-row sm:gap-4">
-            <LeadsSummaryCard
-              assigned={perfData?.totalLeadsAssigned || 0}
-              completed={perfData?.totalCompletedLeads || 0}
-              pending={perfData?.totalPendingLeads || 0}
-              isLoading={isLoadingPerf}
+            <SiteSupervisorServicesCard
+              total={serviceCounts?.total || 0}
+              completed={serviceCounts?.completed || 0}
+              pending={serviceCounts?.pending || 0}
+              isLoading={isLoadingServices}
             />
             <AvgDaysToInstallationCard
               avgDays={installationData?.avgDays || 0}
@@ -56,6 +64,19 @@ export default function SiteSupervisorDashboard() {
               isLoading={isLoadingInstallation}
             />
           </div>
+        </div>
+      </div>
+
+      {/* Upcoming Sites (left) + Unresolved Misc (right) */}
+      <div className="w-full flex flex-col lg:flex-row gap-4">
+        <div className="w-full lg:w-1/2">
+          <SiteSupervisorUpcomingSitesTable
+            data={upcomingSites}
+            isLoading={isLoadingUpcomingSites}
+          />
+        </div>
+        <div className="w-full lg:w-1/2">
+          <SiteSupervisorMiscTable data={miscItems} isLoading={isLoadingMisc} />
         </div>
       </div>
     </div>

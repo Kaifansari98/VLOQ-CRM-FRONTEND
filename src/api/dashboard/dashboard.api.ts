@@ -513,6 +513,62 @@ export const getAdminTaskOverview = async (
 // -------------------------------
 // 📌 EXPORT AS SINGLE OBJECT (Optional)
 // -------------------------------
+export interface SiteSupervisorServiceCounts {
+  total: number;
+  completed: number;
+  pending: number;
+}
+
+export const getSiteSupervisorServiceCounts = async (
+  vendorId: number,
+  userId: number
+): Promise<SiteSupervisorServiceCounts> => {
+  const res = await apiClient.get("/dashboard/site-supervisor/service-counts", {
+    params: { vendor_id: vendorId, user_id: userId },
+  });
+  return res.data.data as SiteSupervisorServiceCounts;
+};
+
+export interface SiteSupervisorUpcomingSite {
+  id: number;
+  account_id: number | null;
+  lead_code: string;
+  client: string;
+  dispatch_date: string | null;
+  furniture_type: string;
+}
+
+export const getSiteSupervisorUpcomingSites = async (
+  vendorId: number,
+  userId: number
+): Promise<SiteSupervisorUpcomingSite[]> => {
+  const res = await apiClient.get("/dashboard/site-supervisor/upcoming-sites", {
+    params: { vendor_id: vendorId, user_id: userId },
+  });
+  return res.data.data as SiteSupervisorUpcomingSite[];
+};
+
+export interface SiteSupervisorMiscItem {
+  id: number;
+  lead_id: number;
+  account_id: number | null;
+  lead_code: string;
+  client: string;
+  misc_type: string;
+  expected_ready_date: string | null;
+  status: "pending" | "approved" | "rejected";
+}
+
+export const getSiteSupervisorMiscItems = async (
+  vendorId: number,
+  userId: number
+): Promise<SiteSupervisorMiscItem[]> => {
+  const res = await apiClient.get("/dashboard/site-supervisor/misc-items", {
+    params: { vendor_id: vendorId, user_id: userId },
+  });
+  return res.data.data as SiteSupervisorMiscItem[];
+};
+
 export const getSiteSupervisorAvgDaysToInstallation = async (
   vendorId: number,
   userId: number
