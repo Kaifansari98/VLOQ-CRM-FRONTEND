@@ -483,6 +483,7 @@ export interface AdminTaskOverviewResponse {
 
 export interface AdminTaskOverviewParams {
   franchiseId?: number;
+  salesExecutiveId?: number;
   page?: number;
   limit?: number;
   search?: string;
@@ -498,6 +499,7 @@ export const getAdminTaskOverview = async (
     params: {
       vendor_id: vendorId,
       ...(params.franchiseId ? { franchise_id: params.franchiseId } : {}),
+      ...(params.salesExecutiveId ? { sales_executive_id: params.salesExecutiveId } : {}),
       ...(params.page ? { page: params.page } : {}),
       ...(params.limit ? { limit: params.limit } : {}),
       ...(params.search ? { search: params.search } : {}),

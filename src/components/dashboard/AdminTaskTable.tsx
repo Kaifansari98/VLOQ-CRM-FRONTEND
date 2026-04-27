@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   ColumnDef,
   getCoreRowModel,
@@ -15,6 +15,7 @@ import type { AdminTaskOverviewRow } from "@/api/dashboard/dashboard.api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Button } from "@/components/ui/button";
+import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,11 +27,11 @@ import { ChevronDown } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type StatusFilter = "all" | AdminTaskOverviewRow["status"];
+type StatusFilter = "open" | "completed";
 type OverviewFilter = "all" | "today" | "upcoming" | "overdue";
+type SalesExecutiveFilter = "all" | number;
 
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: "all",         label: "All"         },
   { value: "open",        label: "Open"        },
   { value: "completed",   label: "Completed"   },
 ];
@@ -52,6 +53,11 @@ const STATUS_LABEL: Record<AdminTaskOverviewRow["status"], string> = {
   open:        "Open",
   in_progress: "In Progress",
   completed:   "Completed",
+};
+
+type SalesExecutiveOption = {
+  id: number;
+  user_name: string;
 };
 
 // ─── Overview badge ───────────────────────────────────────────────────────────
@@ -157,9 +163,24 @@ export function AdminTaskTable() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter]   = useState<StatusFilter>("open");
   const [overviewFilter, setOverviewFilter] = useState<OverviewFilter>("all");
+  const [salesExecutiveFilter, setSalesExecutiveFilter] =
+    useState<SalesExecutiveFilter>("all");
   const [sorting, setSorting]       = useState<SortingState>([]);
 
   const PAGE_SIZE = 20;
+
+  const { data: salesExecutivesResult, isLoading: isSalesExecutivesLoading } =
+    useVendorSalesExecutiveUsers(vendorId as number, franchiseId ?? undefined);
+
+  const salesExecutiveOptions = useMemo(() => {
+    const executives = salesExecutivesResult?.data?.sales_executives;
+    if (!Array.isArray(executives)) return [];
+
+    return executives.map((executive: SalesExecutiveOption) => ({
+      value: executive.id,
+      label: executive.user_name,
+    }));
+  }, [salesExecutivesResult]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearch(value);
@@ -177,6 +198,8 @@ export function AdminTaskTable() {
     search: debouncedSearch,
     status: statusFilter,
     overview: overviewFilter,
+    salesExecutiveId:
+      salesExecutiveFilter === "all" ? undefined : salesExecutiveFilter,
   });
 
   const rows        = result?.data ?? [];
@@ -207,6 +230,10 @@ export function AdminTaskTable() {
   const activeStatusLabel = STATUS_OPTIONS.find((o) => o.value === statusFilter)?.label ?? "Open";
   const activeOverviewLabel =
     OVERVIEW_OPTIONS.find((o) => o.value === overviewFilter)?.label ?? "All";
+  const activeSalesExecutiveLabel =
+    salesExecutiveFilter === "all"
+      ? "All"
+      : salesExecutiveOptions.find((o) => o.value === salesExecutiveFilter)?.label ?? "All";
 
   return (
     <div className="border rounded-2xl bg-background overflow-hidden">
@@ -238,6 +265,40 @@ export function AdminTaskTable() {
                 <DropdownMenuItem
                   key={o.value}
                   onClick={() => { setStatusFilter(o.value); setPage(1); }}
+                >
+                  {o.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2 gap-1 text-xs text-muted-foreground"
+                disabled={isSalesExecutivesLoading}
+              >
+                Sales Executive: {activeSalesExecutiveLabel}
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem
+                onClick={() => {
+                  setSalesExecutiveFilter("all");
+                  setPage(1);
+                }}
+              >
+                All
+              </DropdownMenuItem>
+              {salesExecutiveOptions.map((o) => (
+                <DropdownMenuItem
+                  key={o.value}
+                  onClick={() => {
+                    setSalesExecutiveFilter(o.value);
+                    setPage(1);
+                  }}
                 >
                   {o.label}
                 </DropdownMenuItem>
