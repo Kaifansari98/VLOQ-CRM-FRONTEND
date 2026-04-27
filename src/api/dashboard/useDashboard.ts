@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
+  getSiteSupervisorAvgDaysToInstallation,
   getAdminLostApprovalLeads,
   LostApprovalLead,
   getAdminTaskOverview,
@@ -484,6 +485,15 @@ export function useStageLeads(vendorId?: number, tag?: string, franchiseId?: num
     queryFn: () => getStageLeads(vendorId!, tag!, franchiseId),
     enabled: !!vendorId && !!tag,
     staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useAvgDaysToInstallation(vendorId: number, userId: number) {
+  return useQuery<UiAvgDaysToBooking>({
+    queryKey: ["avg-days-to-installation", vendorId, userId],
+    queryFn: () => getSiteSupervisorAvgDaysToInstallation(vendorId, userId),
+    enabled: !!vendorId && !!userId,
+    staleTime: 1000 * 60 * 5,
   });
 }
 

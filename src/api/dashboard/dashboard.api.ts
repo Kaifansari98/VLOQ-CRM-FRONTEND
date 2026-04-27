@@ -513,6 +513,16 @@ export const getAdminTaskOverview = async (
 // -------------------------------
 // 📌 EXPORT AS SINGLE OBJECT (Optional)
 // -------------------------------
+export const getSiteSupervisorAvgDaysToInstallation = async (
+  vendorId: number,
+  userId: number
+): Promise<UiAvgDaysToBooking> => {
+  const res = await apiClient.get("/dashboard/site-supervisor/avg-days-to-installation", {
+    params: { vendor_id: vendorId, user_id: userId },
+  });
+  return res.data.data as UiAvgDaysToBooking;
+};
+
 export const DashboardApi = {
   getSalesExecutiveTaskStats,
   getPerformanceSnapshot,
