@@ -38,7 +38,7 @@ interface Props {
 =========================== */
 
 export default function SalesExecutiveFilter({ column }: Props) {
-  const adminTaskSalesExecutiveFilter = (column.table.options.meta as any)
+  const adminTaskSalesExecutiveFilter = ((column as any).table?.options?.meta as any)
     ?.adminTaskSalesExecutiveFilter as
     | {
         value: (string | number)[];

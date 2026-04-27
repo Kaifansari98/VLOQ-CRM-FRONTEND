@@ -27,7 +27,7 @@ interface Props {
 =========================== */
 
 export default function StageTypeFilter({ column }: Props) {
-  const adminTaskStatusFilter = (column.table.options.meta as any)
+  const adminTaskStatusFilter = ((column as any).table?.options?.meta as any)
     ?.adminTaskStatusFilter as
     | {
         value: (string | number)[];
