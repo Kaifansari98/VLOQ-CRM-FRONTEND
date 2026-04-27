@@ -9,6 +9,8 @@ import {
   SiteSupervisorUpcomingSite,
   getSiteSupervisorServiceCounts,
   SiteSupervisorServiceCounts,
+  getSiteSupervisorPendingServices,
+  SiteSupervisorPendingService,
   getAdminLostApprovalLeads,
   LostApprovalLead,
   getAdminTaskOverview,
@@ -516,6 +518,19 @@ export function useSiteSupervisorMiscItems(vendorId: number, userId: number) {
   return useQuery<SiteSupervisorMiscItem[]>({
     queryKey: ["site-supervisor-misc-items", vendorId, userId],
     queryFn: () => getSiteSupervisorMiscItems(vendorId, userId),
+    enabled: !!vendorId && !!userId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useSiteSupervisorPendingServices(
+  vendorId: number,
+  userId: number,
+  filter: "month" | "year"
+) {
+  return useQuery<SiteSupervisorPendingService[]>({
+    queryKey: ["site-supervisor-pending-services", vendorId, userId, filter],
+    queryFn: () => getSiteSupervisorPendingServices(vendorId, userId, filter),
     enabled: !!vendorId && !!userId,
     staleTime: 1000 * 60 * 2,
   });

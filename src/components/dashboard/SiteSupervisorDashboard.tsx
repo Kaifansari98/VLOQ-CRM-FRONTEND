@@ -7,14 +7,13 @@ import {
   useLeadStatusWiseCounts,
   useAvgDaysToInstallation,
   useSiteSupervisorMiscItems,
-  useSiteSupervisorUpcomingSites,
   useSiteSupervisorServiceCounts,
 } from "@/api/dashboard/useDashboard";
 import SiteSupervisorPipelineCard from "./SiteSupervisorPipelineCard";
 import SiteSupervisorServicesCard from "./SiteSupervisorServicesCard";
 import AvgDaysToInstallationCard from "./AvgDaysToInstallationCard";
 import SiteSupervisorMiscTable from "./SiteSupervisorMiscTable";
-import SiteSupervisorUpcomingSitesTable from "./SiteSupervisorUpcomingSitesTable";
+import SiteSupervisorPendingServicesTable from "./SiteSupervisorPendingServicesTable";
 
 export default function SiteSupervisorDashboard() {
   const user = useAppSelector((s) => s.auth.user);
@@ -33,9 +32,6 @@ export default function SiteSupervisorDashboard() {
   const { data: miscItems, isLoading: isLoadingMisc } =
     useSiteSupervisorMiscItems(vendorId, userId);
 
-  const { data: upcomingSites, isLoading: isLoadingUpcomingSites } =
-    useSiteSupervisorUpcomingSites(vendorId, userId);
-
   return (
     <div className="flex flex-col gap-4 p-4 px-6">
       <DashboardHeader />
@@ -51,9 +47,7 @@ export default function SiteSupervisorDashboard() {
           <AssignedTaskCard />
           <div className="flex flex-col w-full sm:flex-row sm:gap-4">
             <SiteSupervisorServicesCard
-              total={serviceCounts?.total || 0}
-              completed={serviceCounts?.completed || 0}
-              pending={serviceCounts?.pending || 0}
+              count={serviceCounts?.count ?? 0}
               isLoading={isLoadingServices}
             />
             <AvgDaysToInstallationCard
@@ -67,16 +61,13 @@ export default function SiteSupervisorDashboard() {
         </div>
       </div>
 
-      {/* Unresolved Misc (left) + Upcoming Sites (right) */}
+      {/* On Going Misc (left) + Pending Services table (right) */}
       <div className="w-full flex flex-col lg:flex-row gap-4">
         <div className="w-full lg:w-1/2">
           <SiteSupervisorMiscTable data={miscItems} isLoading={isLoadingMisc} />
         </div>
         <div className="w-full lg:w-1/2">
-          <SiteSupervisorUpcomingSitesTable
-            data={upcomingSites}
-            isLoading={isLoadingUpcomingSites}
-          />
+          <SiteSupervisorPendingServicesTable />
         </div>
       </div>
     </div>

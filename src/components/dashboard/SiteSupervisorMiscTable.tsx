@@ -67,7 +67,7 @@ export default function SiteSupervisorMiscTable({
   return (
     <Card className="w-full border flex flex-col bg-background">
       <p className="flex flex-col pl-4">
-        <span className="text-sm font-medium">Unresolved Misc</span>
+        <span className="text-sm font-medium">On Going Miscellaneous</span>
         <span className="text-xs text-muted-foreground">
           Open miscellaneous items on your assigned leads
         </span>

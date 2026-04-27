@@ -514,9 +514,7 @@ export const getAdminTaskOverview = async (
 // 📌 EXPORT AS SINGLE OBJECT (Optional)
 // -------------------------------
 export interface SiteSupervisorServiceCounts {
-  total: number;
-  completed: number;
-  pending: number;
+  count: number;
 }
 
 export const getSiteSupervisorServiceCounts = async (
@@ -527,6 +525,29 @@ export const getSiteSupervisorServiceCounts = async (
     params: { vendor_id: vendorId, user_id: userId },
   });
   return res.data.data as SiteSupervisorServiceCounts;
+};
+
+export interface SiteSupervisorPendingService {
+  id: number;
+  lead_id: number;
+  account_id: number | null;
+  lead_code: string;
+  client: string;
+  service_no: number;
+  service_type: "free" | "amc";
+  scheduled_for: string;
+  status: string;
+}
+
+export const getSiteSupervisorPendingServices = async (
+  vendorId: number,
+  userId: number,
+  filter: "month" | "year"
+): Promise<SiteSupervisorPendingService[]> => {
+  const res = await apiClient.get("/dashboard/site-supervisor/pending-services", {
+    params: { vendor_id: vendorId, user_id: userId, filter },
+  });
+  return res.data.data as SiteSupervisorPendingService[];
 };
 
 export interface SiteSupervisorUpcomingSite {
