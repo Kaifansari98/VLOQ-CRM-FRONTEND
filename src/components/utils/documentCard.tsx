@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface DocumentData {
   id: number;
@@ -31,6 +32,7 @@ interface DocumentCardProps {
 }
 
 const PREVIEWABLE_EXTENSIONS = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"];
+const OFFICE_EXTENSIONS = ["doc", "docx", "xls", "xlsx", "ppt", "pptx"];
 
 const getFileIcon = (ext: string) => {
   switch (ext) {
@@ -56,13 +58,8 @@ const getFileIcon = (ext: string) => {
   }
 };
 
-const getPreviewUrl = (signedUrl: string, ext: string): string => {
-  if (ext === "pdf") {
-    return signedUrl;
-  }
-  // For Office files (docx, xlsx, pptx, doc, xls, ppt) use Google Docs Viewer
-  return `https://docs.google.com/gview?url=${encodeURIComponent(signedUrl)}&embedded=true`;
-};
+const getOfficePreviewUrl = (signedUrl: string): string =>
+  `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(signedUrl)}`;
 
 // ─── Preview Modal ────────────────────────────────────────────────────────────
 
@@ -75,7 +72,8 @@ interface PreviewModalProps {
 
 const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onClose }) => {
   const [iframeLoaded, setIframeLoaded] = useState(false);
-  const previewUrl = getPreviewUrl(url, fileExt);
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -83,6 +81,53 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onC
       document.body.style.overflow = "auto";
     };
   }, []);
+
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    let cancelled = false;
+
+    const preparePreview = async () => {
+      try {
+        setIframeLoaded(false);
+        setPreviewError(null);
+
+        if (fileExt === "pdf") {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error("Unable to load PDF preview.");
+          }
+
+          const blob = await response.blob();
+          objectUrl = URL.createObjectURL(blob);
+
+          if (!cancelled) {
+            setPreviewUrl(objectUrl);
+          }
+          return;
+        }
+
+        if (OFFICE_EXTENSIONS.includes(fileExt)) {
+          setPreviewUrl(getOfficePreviewUrl(url));
+          return;
+        }
+
+        setPreviewError("Preview is not available for this file type.");
+      } catch (error: any) {
+        if (!cancelled) {
+          setPreviewError(error?.message || "Failed to load preview.");
+        }
+      }
+    };
+
+    preparePreview();
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [fileExt, url]);
 
   return createPortal(
     <div
@@ -114,19 +159,34 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onC
 
         {/* Iframe area */}
         <div className="relative flex-1 min-h-0">
-          {!iframeLoaded && (
+          {!previewError && (!previewUrl || !iframeLoaded) && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-neutral-400 dark:text-neutral-500 bg-white dark:bg-neutral-900">
               <Loader2 className="w-6 h-6 animate-spin" />
               <span className="text-xs">Loading preview…</span>
             </div>
           )}
-          <iframe
-            src={previewUrl}
-            title={`Preview — ${fileName}`}
-            className="w-full h-full border-0"
-            onLoad={() => setIframeLoaded(true)}
-            allow="fullscreen"
-          />
+          {previewError ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-white px-6 text-center dark:bg-neutral-900">
+              <p className="text-sm text-neutral-600 dark:text-neutral-300">
+                {previewError}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+              >
+                Open File In New Tab
+              </Button>
+            </div>
+          ) : previewUrl ? (
+            <iframe
+              src={previewUrl}
+              title={`Preview — ${fileName}`}
+              className="w-full h-full border-0"
+              onLoad={() => setIframeLoaded(true)}
+              allow="fullscreen"
+            />
+          ) : null}
         </div>
       </div>
     </div>,
@@ -321,7 +381,12 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
               {/* Preview Button — only for previewable types */}
               {canPreview && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); setShowPreview(true); }}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowPreview(true);
+                  }}
                   className="
                     flex items-center gap-1.5 px-3 py-1.5 rounded-md 
                     border border-border 
