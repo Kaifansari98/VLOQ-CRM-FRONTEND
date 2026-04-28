@@ -22,6 +22,8 @@ interface LeadTrackingReportRow {
   client_name: string;
   franchise_store: string;
   designer: string;
+  current_stage?: string | null;
+  status_type?: string | null;
   furniture_type: string;
   furniture_structure: string;
   lead_creation_date: string | null;
@@ -45,6 +47,18 @@ interface LeadTrackingReportRow {
   usable_handover_date: string | null;
   full_installation_completion_date: string | null;
   final_handover_date: string | null;
+}
+
+function sanitizeStageText(value: string | null | undefined): string {
+  if (!value) return "-";
+
+  return value
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
 }
 
 async function fetchReportData(
@@ -98,6 +112,7 @@ function buildLeadTrackingSheet(
     "Client Name",
     "Franchise Name",
     "Designer",
+    "Current Stage",
     "Furniture Type",
     "Furniture Structure",
     "Lead Creation Date",
@@ -129,6 +144,7 @@ function buildLeadTrackingSheet(
     { key: "clientName", width: 24 },
     { key: "franchiseName", width: 24 },
     { key: "designer", width: 22 },
+    { key: "currentStage", width: 20 },
     { key: "furnitureType", width: 20 },
     { key: "furnitureStructure", width: 24 },
     { key: "leadCreationDate", width: 18 },
@@ -197,6 +213,7 @@ function buildLeadTrackingSheet(
       entry.client_name,
       entry.franchise_store,
       entry.designer,
+      sanitizeStageText(entry.current_stage ?? entry.status_type),
       entry.furniture_type,
       entry.furniture_structure,
       formatDate(entry.lead_creation_date),
@@ -224,7 +241,7 @@ function buildLeadTrackingSheet(
 
     row.height = 18;
     row.eachCell({ includeEmpty: true }, (cell, colNum) => {
-      const isCenter = colNum === 1 || colNum >= 8;
+      const isCenter = colNum === 1 || colNum >= 9;
       cell.alignment = {
         horizontal: isCenter ? "center" : "left",
         vertical: "middle",

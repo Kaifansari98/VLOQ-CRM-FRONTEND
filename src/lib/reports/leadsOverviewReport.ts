@@ -20,6 +20,8 @@ interface LeadsOverviewRow {
   franchise_store: string;
   client_number: string;
   address: string;
+  current_stage?: string | null;
+  status_type?: string | null;
   site_type: string;
   source: string;
   furniture_type: string;
@@ -31,6 +33,18 @@ interface LeadsOverviewRow {
   handle_selection: string;
   designer_assigned: string;
   supervisor_assigned: string;
+}
+
+function sanitizeStageText(value: string | null | undefined): string {
+  if (!value) return "-";
+
+  return value
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
 }
 
 async function fetchReportData(
@@ -68,6 +82,7 @@ function buildLeadsOverviewSheet(
     { key: "franchiseStore", width: 24 },
     { key: "clientNumber", width: 18 },
     { key: "address", width: 28 },
+    { key: "currentStage", width: 20 },
     { key: "siteType", width: 16 },
     { key: "source", width: 18 },
     { key: "furnitureType", width: 22 },
@@ -88,6 +103,7 @@ function buildLeadsOverviewSheet(
     "Franchise Store",
     "Client Number",
     "Address",
+    "Current Stage",
     "Site Type",
     "Source",
     "Furniture Type",
@@ -145,6 +161,7 @@ function buildLeadsOverviewSheet(
       entry.franchise_store,
       entry.client_number,
       entry.address,
+      sanitizeStageText(entry.current_stage ?? entry.status_type),
       entry.site_type,
       entry.source,
       entry.furniture_type,
