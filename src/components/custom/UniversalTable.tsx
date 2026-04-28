@@ -82,6 +82,15 @@ const PRIORITY_FILTER_OPTIONS = [
   { value: "Low", label: "Low", dot: "bg-yellow-500" },
 ];
 
+function toTitleCase(value: string) {
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 function ProductionStatusFilter({
   value,
   onChange,
@@ -735,7 +744,7 @@ export function UniversalTable({
     id: lead.id,
     srNo: index + 1,
     lead_code: `${lead.lead_code ?? ""}${options?.leadCodeSuffix ?? ""}`,
-    name: `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim(),
+    name: toTitleCase(`${lead.firstname ?? ""} ${lead.lastname ?? ""}`),
     email: lead.email ?? "",
     contact: `${lead.country_code ?? ""}${lead.contact_no ?? ""}`,
     siteAddress: lead.site_address ?? "",

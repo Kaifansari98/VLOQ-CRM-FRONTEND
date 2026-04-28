@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -13,8 +13,20 @@ import {
 } from "@/components/ui/table";
 import { useAppSelector } from "@/redux/store";
 import { useSiteSupervisorPendingServices } from "@/api/dashboard/useDashboard";
+import { DataTableMonthFilter } from "@/components/data-table/data-table-month-filter";
 
-type Filter = "month" | "year";
+type MonthFilterValue = {
+  month: number;
+  year: number;
+};
+
+function getCurrentMonthFilter(): MonthFilterValue {
+  const now = new Date();
+  return {
+    month: now.getMonth(),
+    year: now.getFullYear(),
+  };
+}
 
 function formatServiceOrdinal(n: number) {
   if (n === 1) return "1st";
@@ -36,42 +48,45 @@ export default function SiteSupervisorPendingServicesTable() {
   const user = useAppSelector((s) => s.auth.user);
   const vendorId = user?.vendor_id ?? 0;
   const userId = user?.id ?? 0;
+  const [serviceMonthFilter, setServiceMonthFilter] =
+    useState<MonthFilterValue>(getCurrentMonthFilter);
 
-  const [filter, setFilter] = useState<Filter>("year");
+  const { data, isLoading } = useSiteSupervisorPendingServices(
+    vendorId,
+    userId,
+    "year"
+  );
 
-  const { data, isLoading } = useSiteSupervisorPendingServices(vendorId, userId, filter);
+  const filteredData = useMemo(() => {
+    if (!data) return [];
+
+    return data.filter((item) => {
+      const scheduledDate = new Date(item.scheduled_for);
+      if (Number.isNaN(scheduledDate.getTime())) return false;
+
+      return (
+        scheduledDate.getMonth() === serviceMonthFilter.month &&
+        scheduledDate.getFullYear() === serviceMonthFilter.year
+      );
+    });
+  }, [data, serviceMonthFilter]);
 
   return (
     <Card className="w-full border flex flex-col bg-background">
-      <div className="flex items-start justify-between pl-4 pr-3 pb-1">
+      <div className="flex items-start justify-between gap-3 pl-4 pr-3 pb-1">
         <p className="flex flex-col">
-          <span className="text-sm font-medium">Pending Services</span>
+          <span className="text-sm font-medium">Due/Upcoming Services</span>
           <span className="text-xs text-muted-foreground">
             Scheduled services not yet completed
           </span>
         </p>
-        <div className="flex items-center gap-1 rounded-md border p-0.5 text-xs">
-          <button
-            onClick={() => setFilter("month")}
-            className={`px-2 py-0.5 rounded transition-colors ${
-              filter === "month"
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            This Month
-          </button>
-          <button
-            onClick={() => setFilter("year")}
-            className={`px-2 py-0.5 rounded transition-colors ${
-              filter === "year"
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            This Year
-          </button>
-        </div>
+        <DataTableMonthFilter
+          title="Filter By Month"
+          value={serviceMonthFilter}
+          onChange={(value) => {
+            setServiceMonthFilter(value ?? getCurrentMonthFilter());
+          }}
+        />
       </div>
 
       <CardContent className="p-0 flex-1 px-4">
@@ -79,7 +94,7 @@ export default function SiteSupervisorPendingServicesTable() {
           <div className="flex items-center justify-center h-40">
             <div className="h-8 w-8 border-4 border-muted border-t-primary rounded-full animate-spin" />
           </div>
-        ) : !data || data.length === 0 ? (
+        ) : filteredData.length === 0 ? (
           <div className="flex items-center justify-center h-40 text-sm text-muted-foreground">
             No pending services
           </div>
@@ -96,7 +111,7 @@ export default function SiteSupervisorPendingServicesTable() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.map((item) => (
+                {filteredData.map((item) => (
                   <TableRow
                     key={item.id}
                     className="text-xs cursor-pointer select-none"

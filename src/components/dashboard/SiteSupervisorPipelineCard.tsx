@@ -13,7 +13,11 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import type { UiLeadStatusCounts, LeadStageItem } from "@/api/dashboard/dashboard.api";
+import type {
+  UiLeadStatusCounts,
+  LeadStageItem,
+  SiteSupervisorMiscItem,
+} from "@/api/dashboard/dashboard.api";
 import { useGetDashboardAllLeads } from "@/api/dashboard/useDashboard";
 import { useAppSelector } from "@/redux/store";
 import { cn, getInitials } from "@/lib/utils";
@@ -21,6 +25,7 @@ import { cn, getInitials } from "@/lib/utils";
 interface SiteSupervisorPipelineCardProps {
   data?: UiLeadStatusCounts | null;
   isLoading?: boolean;
+  miscItems?: SiteSupervisorMiscItem[];
 }
 
 const STAGES = [
@@ -58,6 +63,8 @@ const STAGES = [
   },
 ];
 
+const MISC_STAGE_KEY = "unresolvedMisc";
+
 interface ModalState {
   open: boolean;
   stageDataKey: string | null;
@@ -68,6 +75,7 @@ interface ModalState {
 export default function SiteSupervisorPipelineCard({
   data,
   isLoading,
+  miscItems,
 }: SiteSupervisorPipelineCardProps) {
   const router = useRouter();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
@@ -85,7 +93,26 @@ export default function SiteSupervisorPipelineCard({
     stagePath: null,
   });
 
-  const pieData = STAGES.map((s) => ({
+  // Unique leads with at least one unresolved misc item
+  const uniqueMiscLeads = useMemo<LeadStageItem[]>(() => {
+    if (!miscItems) return [];
+    const seen = new Set<number>();
+    const leads: LeadStageItem[] = [];
+    for (const m of miscItems) {
+      if (!seen.has(m.lead_id)) {
+        seen.add(m.lead_id);
+        leads.push({
+          id: m.lead_id,
+          account_id: m.account_id ?? 0,
+          lead_code: m.lead_code,
+          name: m.client,
+        });
+      }
+    }
+    return leads;
+  }, [miscItems]);
+
+  const stagesPieData = STAGES.map((s) => ({
     name: s.label,
     type: s.type,
     value: (data?.[s.key] as number) ?? 0,
@@ -94,7 +121,17 @@ export default function SiteSupervisorPipelineCard({
     path: s.path,
   }));
 
-  const total = pieData.reduce((sum, d) => sum + d.value, 0);
+  const miscPieEntry = {
+    name: "Unresolved Misc",
+    type: "",
+    value: uniqueMiscLeads.length,
+    fill: "var(--stage-rtd)",
+    stageDataKey: MISC_STAGE_KEY,
+    path: "/dashboard/installation/under-installation/details",
+  };
+
+  const pieData = [...stagesPieData, miscPieEntry];
+  const total = stagesPieData.reduce((sum, d) => sum + d.value, 0);
 
   const handleDoubleClick = (entry: {
     name: string;
@@ -110,13 +147,19 @@ export default function SiteSupervisorPipelineCard({
   };
 
   const modalLeads: LeadStageItem[] = useMemo(() => {
-    if (!modal.stageDataKey || !allLeads) return [];
-    return (allLeads[modal.stageDataKey as keyof typeof allLeads] as LeadStageItem[]) ?? [];
-  }, [allLeads, modal.stageDataKey]);
+    if (!modal.stageDataKey) return [];
+    if (modal.stageDataKey === MISC_STAGE_KEY) return uniqueMiscLeads;
+    return (allLeads?.[modal.stageDataKey as keyof typeof allLeads] as LeadStageItem[]) ?? [];
+  }, [allLeads, modal.stageDataKey, uniqueMiscLeads]);
 
   const handleLeadClick = (lead: LeadStageItem) => {
-    if (!modal.stagePath) return;
-    router.push(`${modal.stagePath}/${lead.id}?accountId=${lead.account_id}`);
+    if (modal.stageDataKey === MISC_STAGE_KEY) {
+      router.push(
+        `/dashboard/installation/under-installation/details/${lead.id}?accountId=${lead.account_id}&tab=misc`
+      );
+    } else if (modal.stagePath) {
+      router.push(`${modal.stagePath}/${lead.id}?accountId=${lead.account_id}`);
+    }
     setModal((prev) => ({ ...prev, open: false }));
   };
 
@@ -126,16 +169,15 @@ export default function SiteSupervisorPipelineCard({
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <CardTitle className="text-sm font-medium">
-              Sales Pipeline Breakdown
+              Sites Pipeline Breakdown
             </CardTitle>
             <p className="text-xs text-muted-foreground">
               Active projects across installation stages
             </p>
           </div>
           <div className="flex items-end gap-2">
-            {/* <span className="text-xs text-muted-foreground">Total</span>/ */}
             <span className="text-3xl font-semibold text-gray-500">
-              {total.toLocaleString()} 
+              {total.toLocaleString()}
             </span>
             <span className="text-xl font-semibold text-gray-500">Leads in Total</span>
           </div>
@@ -233,12 +275,12 @@ export default function SiteSupervisorPipelineCard({
             <CommandInput placeholder="Search leads..." />
             <CommandList>
               <CommandGroup heading={modal.stageName ?? "Stage"}>
-                {isLoadingLeads && (
+                {isLoadingLeads && modal.stageDataKey !== MISC_STAGE_KEY && (
                   <div className="p-4 text-sm text-muted-foreground">
                     Loading leads...
                   </div>
                 )}
-                {!isLoadingLeads && modalLeads.length > 0
+                {modalLeads.length > 0
                   ? modalLeads.map((lead) => (
                       <CommandItem
                         key={lead.id}

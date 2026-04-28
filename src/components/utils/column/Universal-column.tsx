@@ -34,6 +34,15 @@ interface UniversalColumnOptions {
   showServicingColumn?: boolean;
 }
 
+function toTitleCase(value: string) {
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 export function getUniversalTableColumns(
   options: UniversalColumnOptions = {},
 ): ColumnDef<LeadColumn>[] {
@@ -72,7 +81,7 @@ export function getUniversalTableColumns(
       enableHiding: true,
       enableColumnFilter: true,
       cell: ({ row }) => {
-        const name = row.getValue("name") as string;
+        const name = toTitleCase((row.getValue("name") as string) ?? "");
         const maxLength = 25;
 
         if (name.length <= maxLength) return <span>{name}</span>;

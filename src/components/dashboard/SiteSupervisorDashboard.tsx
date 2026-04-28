@@ -41,6 +41,7 @@ export default function SiteSupervisorDashboard() {
           <SiteSupervisorPipelineCard
             data={leadCounts}
             isLoading={isLoadingCounts}
+            miscItems={miscItems}
           />
         </div>
         <div className="lg:w-[40%] flex flex-col">
