@@ -5,6 +5,7 @@ import { useOrderLoginByLead } from "@/api/production/order-login";
 import OrderLoginCard from "./OrderLoginCard";
 import ComingSoon from "@/components/generics/ComingSoon";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 
 interface PreProductionDetailsProps {
   leadId?: number;
@@ -44,7 +45,19 @@ export default function PreProductionDetails({
     leadId,
     instanceId ?? undefined
   );
+  const { data: instancesResponse } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+  );
   console.log("Under production Data: ", data);
+
+  const structureInstances: any[] = Array.isArray(instancesResponse?.data)
+    ? instancesResponse.data
+    : (instancesResponse?.data?.data ?? []);
+  const currentInstance = structureInstances.find(
+    (instance: any) => Number(instance.id) === Number(instanceId),
+  );
+  const isOrderLoginFilled = currentInstance?.is_order_login_filled === true;
 
   if (isLoading) {
     return (
@@ -62,11 +75,20 @@ export default function PreProductionDetails({
     );
   }
 
+  if (!isOrderLoginFilled) {
+    return (
+      <ComingSoon
+        heading="Order Login Is Still Pending"
+        description="The backend user has not marked Order Login as completed for this instance yet. Once the instance is marked with is_order_login_filled = true, the Order Login cards and Under Production details will appear here."
+      />
+    );
+  }
+
   if (!data || data.length === 0) {
     return (
       <ComingSoon
-        heading="Order Login Not Available"
-        description="This lead does not have any order login entries yet. Please initiate the order login process to continue."
+        heading="Order Login Is Still Pending"
+        description="Order Login has not been completed for this instance yet. The backend user must finish and mark Order Login as completed before these cards become available."
       />
     );
   }

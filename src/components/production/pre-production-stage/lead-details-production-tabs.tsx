@@ -17,6 +17,7 @@ import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-
 import { useTechCheckInstanceStatus } from "@/api/tech-check";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import ComingSoon from "@/components/generics/ComingSoon";
 
 interface LeadDetailsProductionUtilProps {
   leadId: number;
@@ -109,6 +110,7 @@ export default function LeadDetailsProductionUtil({
   const currentInstance = structureInstances.find(
     (instance: any) => Number(instance.id) === scopedInstanceId,
   );
+  const isOrderLoginFilled = currentInstance?.is_order_login_filled === true;
   const isPreProdDone = currentInstance?.is_pre_prod_done === true;
   const readyForUnderProduction = scopedInstanceId
     ? isPreProdDone
@@ -161,11 +163,16 @@ export default function LeadDetailsProductionUtil({
       disabledReason: !canAccessAllTabs
         ? "Only super-admin and factory can access this tab."
         : "Click Mark Pre Prod Done first to enable Under Production.",
-      cardContent: (
+      cardContent: isOrderLoginFilled ? (
         <PreProductionDetails
           leadId={leadId}
           accountId={accountId}
           instanceId={scopedInstanceId}
+        />
+      ) : (
+        <ComingSoon
+          heading="Order Login Is Still Pending"
+          description="The backend user has not marked Order Login as completed for this instance yet. Once the instance is marked with is_order_login_filled = true, the Order Login cards and Under Production details will appear here."
         />
       ),
     },

@@ -628,8 +628,13 @@ export const useMarkOrderLoginFilled = (
     },
 
     onError: (error: any) => {
-      // (Recommended) Error visibility for better UX
-      toastManager.add({ title: error?.message || "Failed to update order login.", type: "error" });
+      toastManager.add({
+        title:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Failed to update order login.",
+        type: "error",
+      });
     },
   });
 };

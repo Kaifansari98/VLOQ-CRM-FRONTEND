@@ -39,6 +39,13 @@ import CustomeTooltip from "@/components/custom-tooltip";
 import { useAssignedSiteSupervisor } from "@/api/installation/useSiteReadinessLeads";
 import { useFollowUpUsers } from "@/hooks/useFollowUpUsers";
 
+function formatLocalDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 // ✅ Validation schema
 const formSchema = z
   .object({
@@ -85,6 +92,9 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   userType,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const loggedInUserType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
   const franchiseId = useAppSelector(
     (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id
   );
@@ -94,6 +104,18 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const mutation = useAssignToSiteReadiness(leadId);
   const queryClient = useQueryClient();
   const isAllowedToAssignSR = canAssignSR(userType);
+  const normalizedUserType = (loggedInUserType ?? userType ?? "").toLowerCase();
+  const dueDateMinDate = React.useMemo(() => {
+    const minDate = new Date();
+    minDate.setHours(0, 0, 0, 0);
+
+    if (normalizedUserType === "super-admin") {
+      return formatLocalDate(minDate);
+    }
+
+    minDate.setDate(minDate.getDate() + 2);
+    return formatLocalDate(minDate);
+  }, [normalizedUserType]);
 
   const { data: assignedSiteSupervisor } = useAssignedSiteSupervisor(
     vendorId,
@@ -343,6 +365,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                         value={field.value}
                         onChange={field.onChange}
                         restriction="futureOnly"
+                        minDate={dueDateMinDate}
                       />
                     </FormControl>
                     <FormMessage />

@@ -75,6 +75,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     const current = instances.find((inst: any) => inst.id === instanceId);
     return current?.is_order_login_filled === true;
   }, [instancesResponse, instanceId]);
+  const hasValidInstanceId = typeof instanceId === "number" && instanceId > 0;
 
   // Mutations
   const { mutateAsync: updateSingle } = useUpdateOrderLogin(
@@ -242,6 +243,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   // Completed button is visible only when role can access AND mandatory fields filled
   const canShowCompletedButton =
     (isAdmin || isBackend) &&
+    hasValidInstanceId &&
     (isOrderLoginStage || isProductionStage) &&
     mandatoryValidation.isValid;
 
@@ -339,6 +341,15 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   // ─────────────────────────────────────────────────────────
   const handleConfirmComplete = () => {
     setConfirmComplete(false);
+
+    if (!hasValidInstanceId) {
+      toastManager.add({
+        title: "instance_id is required to mark order login as completed.",
+        type: "error",
+      });
+      return;
+    }
+
     markFilled({ updated_by: userId! });
   };
 
