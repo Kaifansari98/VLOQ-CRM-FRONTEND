@@ -6,6 +6,7 @@ import { FadeInProvider } from "../framer-motion/FadeInProvider";
 import AdminDashboard from "./AdminDashboard";
 import SuperAdminDashboard from "./SuperAdminDashboard";
 import SiteSupervisorDashboard from "./SiteSupervisorDashboard";
+import HeadSiteSupervisorDashboard from "./HeadSiteSupervisorDashboard";
 import ComingSoon from "../generics/ComingSoon";
 
 export default function DashboardWrapper() {
@@ -53,6 +54,14 @@ export default function DashboardWrapper() {
     return (
       <FadeInProvider>
         <SiteSupervisorDashboard />
+      </FadeInProvider>
+    );
+  }
+
+  if (normalizedUserType === "head-site-supervisor") {
+    return (
+      <FadeInProvider>
+        <HeadSiteSupervisorDashboard />
       </FadeInProvider>
     );
   }
