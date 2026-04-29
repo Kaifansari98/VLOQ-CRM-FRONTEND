@@ -79,7 +79,7 @@ export default function PreProductionDetails({
     return (
       <ComingSoon
         heading="Order Login Is Still Pending"
-        description="The backend user has not marked Order Login as completed for this instance yet. Once the instance is marked with is_order_login_filled = true, the Order Login cards and Under Production details will appear here."
+        description="The backend user has not marked Order Login as completed for this instance yet."
       />
     );
   }
