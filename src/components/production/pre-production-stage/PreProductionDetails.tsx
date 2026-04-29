@@ -35,10 +35,6 @@ export interface OrderLoginItem {
   updated_at?: string;
 }
 
-const hasCompletedOrderLogin = (instance: any) =>
-  instance?.is_order_login_completed === true ||
-  instance?.is_order_login_filled === true;
-
 export default function PreProductionDetails({
   leadId,
   instanceId,
@@ -61,9 +57,8 @@ export default function PreProductionDetails({
         ? structureInstances[0]
         : null;
   const effectiveInstanceId = resolvedCurrentInstance?.id ?? instanceId;
-  const isOrderLoginCompleted = hasCompletedOrderLogin(
-    resolvedCurrentInstance,
-  );
+  const isOrderLoginFilled =
+    resolvedCurrentInstance?.is_order_login_filled === true;
   const { data, isLoading, isError } = useOrderLoginByLead(
     vendorId,
     leadId,
@@ -86,11 +81,11 @@ export default function PreProductionDetails({
     );
   }
 
-  if (!isOrderLoginCompleted) {
+  if (!isOrderLoginFilled) {
     return (
       <ComingSoon
         heading="Order Login Is Still Pending"
-        description="The backend user has not marked Order Login as completed for this instance yet."
+        description="The backend user has not marked Order Login as filled for this instance yet."
       />
     );
   }
@@ -99,7 +94,7 @@ export default function PreProductionDetails({
     return (
       <ComingSoon
         heading="Order Login Is Still Pending"
-        description="Order Login has not been completed for this instance yet. The backend user must finish and mark Order Login as completed before these cards become available."
+        description="Order Login has not been filled for this instance yet. The backend user must finish and mark Order Login as filled before these cards become available."
       />
     );
   }

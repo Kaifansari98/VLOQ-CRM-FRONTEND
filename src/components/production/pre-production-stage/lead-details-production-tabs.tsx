@@ -25,10 +25,6 @@ interface LeadDetailsProductionUtilProps {
   instanceId?: number | null;
 }
 
-const hasCompletedOrderLogin = (instance: any) =>
-  instance?.is_order_login_completed === true ||
-  instance?.is_order_login_filled === true;
-
 export default function LeadDetailsProductionUtil({
   leadId,
   accountId,
@@ -120,9 +116,8 @@ export default function LeadDetailsProductionUtil({
         ? structureInstances[0]
         : null;
   const effectiveInstanceId = resolvedCurrentInstance?.id ?? scopedInstanceId;
-  const isOrderLoginCompleted = hasCompletedOrderLogin(
-    resolvedCurrentInstance,
-  );
+  const isOrderLoginFilled =
+    resolvedCurrentInstance?.is_order_login_filled === true;
   const isPreProdDone = resolvedCurrentInstance?.is_pre_prod_done === true;
   const readyForUnderProduction = effectiveInstanceId
     ? isPreProdDone
@@ -175,7 +170,7 @@ export default function LeadDetailsProductionUtil({
       disabledReason: !canAccessAllTabs
         ? "Only super-admin and factory can access this tab."
         : "Click Mark Pre Prod Done first to enable Under Production.",
-      cardContent: isOrderLoginCompleted ? (
+      cardContent: isOrderLoginFilled ? (
         <PreProductionDetails
           leadId={leadId}
           accountId={accountId}
@@ -184,7 +179,7 @@ export default function LeadDetailsProductionUtil({
       ) : (
         <ComingSoon
           heading="Order Login Is Still Pending"
-          description="The backend user has not marked Order Login as completed for this instance yet."
+          description="The backend user has not marked Order Login as filled for this instance yet."
         />
       ),
     },
