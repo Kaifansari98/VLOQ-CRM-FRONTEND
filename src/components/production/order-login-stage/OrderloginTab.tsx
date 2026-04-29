@@ -40,8 +40,7 @@ interface OrderLoginTabProps {
 }
 
 const hasCompletedOrderLogin = (instance: any) =>
-  instance?.is_order_login_completed === true ||
-  instance?.is_order_login_filled === true;
+  instance?.is_order_login_completed === true;
 
 const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   leadId,
