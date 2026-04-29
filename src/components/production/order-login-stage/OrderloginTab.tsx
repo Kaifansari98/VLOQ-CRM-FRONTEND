@@ -40,8 +40,7 @@ interface OrderLoginTabProps {
 }
 
 const isOrderLoginMarkedInBackend = (instance: any) =>
-  instance?.is_order_login_filled === true ||
-  instance?.is_order_login_completed === true;
+  instance?.is_order_login_filled === true;
 
 const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   leadId,
@@ -76,7 +75,9 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     const instances = Array.isArray(instancesResponse?.data)
       ? instancesResponse.data
       : instancesResponse?.data?.data ?? [];
-    const current = instances.find((inst: any) => inst.id === instanceId);
+    const current = instances.find(
+      (inst: any) => Number(inst.id) === Number(instanceId),
+    );
     return isOrderLoginMarkedInBackend(current);
   }, [instancesResponse, instanceId]);
   const hasValidInstanceId = typeof instanceId === "number" && instanceId > 0;
