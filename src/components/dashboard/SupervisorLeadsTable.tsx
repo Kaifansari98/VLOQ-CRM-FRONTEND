@@ -181,7 +181,7 @@ export default function SupervisorLeadsTable({
                       <td className="px-4 py-3 font-mono text-xs font-medium">
                         {lead.lead_code || "—"}
                       </td>
-                      <td className="px-4 py-3 font-medium text-sm">
+                      <td className="px-4 py-3 font-medium text-xs">
                         {lead.client || "—"}
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
