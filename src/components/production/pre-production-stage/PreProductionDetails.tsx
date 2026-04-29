@@ -35,6 +35,10 @@ export interface OrderLoginItem {
   updated_at?: string;
 }
 
+const hasCompletedOrderLogin = (instance: any) =>
+  instance?.is_order_login_completed === true ||
+  instance?.is_order_login_filled === true;
+
 export default function PreProductionDetails({
   leadId,
   instanceId,
@@ -57,8 +61,9 @@ export default function PreProductionDetails({
         ? structureInstances[0]
         : null;
   const effectiveInstanceId = resolvedCurrentInstance?.id ?? instanceId;
-  const isOrderLoginFilled =
-    resolvedCurrentInstance?.is_order_login_filled === true;
+  const isOrderLoginCompleted = hasCompletedOrderLogin(
+    resolvedCurrentInstance,
+  );
   const { data, isLoading, isError } = useOrderLoginByLead(
     vendorId,
     leadId,
@@ -81,7 +86,7 @@ export default function PreProductionDetails({
     );
   }
 
-  if (!isOrderLoginFilled) {
+  if (!isOrderLoginCompleted) {
     return (
       <ComingSoon
         heading="Order Login Is Still Pending"

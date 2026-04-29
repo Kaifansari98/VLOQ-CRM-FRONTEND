@@ -39,6 +39,10 @@ interface OrderLoginTabProps {
   instanceId?: number | null;
 }
 
+const hasCompletedOrderLogin = (instance: any) =>
+  instance?.is_order_login_completed === true ||
+  instance?.is_order_login_filled === true;
+
 const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   leadId,
   accountId,
@@ -73,7 +77,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       ? instancesResponse.data
       : instancesResponse?.data?.data ?? [];
     const current = instances.find((inst: any) => inst.id === instanceId);
-    return current?.is_order_login_filled === true;
+    return hasCompletedOrderLogin(current);
   }, [instancesResponse, instanceId]);
   const hasValidInstanceId = typeof instanceId === "number" && instanceId > 0;
 

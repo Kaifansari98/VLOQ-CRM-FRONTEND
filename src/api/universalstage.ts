@@ -36,6 +36,7 @@ export interface ProductStructureInstance {
   product_structure_id: number;
   is_tech_check_completed?: boolean | null;
   tech_check_completed_at?: string | null;
+  is_order_login_filled?: boolean | null;
   is_order_login_completed?: boolean | null;
   order_login_completed_at?: string | null;
   is_pre_prod_done?: boolean | null;
