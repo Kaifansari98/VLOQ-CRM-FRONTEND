@@ -39,7 +39,8 @@ interface OrderLoginTabProps {
   instanceId?: number | null;
 }
 
-const hasCompletedOrderLogin = (instance: any) =>
+const isOrderLoginMarkedInBackend = (instance: any) =>
+  instance?.is_order_login_filled === true ||
   instance?.is_order_login_completed === true;
 
 const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
@@ -71,12 +72,12 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const { data: instancesResponse } = useLeadProductStructureInstances(leadId, vendorId);
 
-  const isOrderLoginFilled = useMemo(() => {
+  const isOrderLoginMarked = useMemo(() => {
     const instances = Array.isArray(instancesResponse?.data)
       ? instancesResponse.data
       : instancesResponse?.data?.data ?? [];
     const current = instances.find((inst: any) => inst.id === instanceId);
-    return hasCompletedOrderLogin(current);
+    return isOrderLoginMarkedInBackend(current);
   }, [instancesResponse, instanceId]);
   const hasValidInstanceId = typeof instanceId === "number" && instanceId > 0;
 
@@ -441,7 +442,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
         </div>
 
         {/* ✅ Badge when already marked complete */}
-        {isOrderLoginFilled ? (
+        {isOrderLoginMarked ? (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400 shrink-0">
             <BadgeCheck className="w-4 h-4" />
             <span className="text-sm font-medium">Order Login Completed</span>
