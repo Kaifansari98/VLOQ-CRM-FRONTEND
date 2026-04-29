@@ -122,6 +122,16 @@ export default function LeadDetailsProductionUtil({
   const readyForUnderProduction = effectiveInstanceId
     ? isPreProdDone
     : (preProductionReadyData?.readyForUnderProduction ?? false);
+  console.log("[LeadDetailsProductionUtil] under production gate", {
+    leadId,
+    scopedInstanceId,
+    effectiveInstanceId,
+    resolvedCurrentInstance,
+    is_order_login_filled: resolvedCurrentInstance?.is_order_login_filled,
+    isOrderLoginFilled,
+    is_pre_prod_done: resolvedCurrentInstance?.is_pre_prod_done,
+    readyForUnderProduction,
+  });
 
   const defaultTab = canViewDefaultSubTabProductionStage(
     effectiveUserType ?? "",

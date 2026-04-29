@@ -59,6 +59,14 @@ export default function PreProductionDetails({
   const effectiveInstanceId = resolvedCurrentInstance?.id ?? instanceId;
   const isOrderLoginFilled =
     resolvedCurrentInstance?.is_order_login_filled === true;
+  console.log("[PreProductionDetails] order login gate", {
+    leadId,
+    instanceId,
+    effectiveInstanceId,
+    resolvedCurrentInstance,
+    is_order_login_filled: resolvedCurrentInstance?.is_order_login_filled,
+    isOrderLoginFilled,
+  });
   const { data, isLoading, isError } = useOrderLoginByLead(
     vendorId,
     leadId,
