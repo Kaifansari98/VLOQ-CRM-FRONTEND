@@ -41,8 +41,7 @@ export default function HeadSiteSupervisorDashboard() {
         </div>
         <div className="lg:w-[40%] flex flex-col">
           <AssignedTaskCard />
-          <div className="flex flex-col w-full sm:flex-row sm:gap-4">
-            <div className="sm:w-1/2 mt-4" aria-hidden="true" />
+          <div className="flex flex-col w-full">
             <AvgDaysToInstallationCard
               avgDays={installationData?.avgDays || 0}
               readable={
