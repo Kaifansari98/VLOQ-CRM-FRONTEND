@@ -40,24 +40,30 @@ export default function PreProductionDetails({
   instanceId,
 }: PreProductionDetailsProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
-  const { data, isLoading, isError } = useOrderLoginByLead(
-    vendorId,
-    leadId,
-    instanceId ?? undefined
-  );
   const { data: instancesResponse } = useLeadProductStructureInstances(
     leadId,
     vendorId,
   );
-  console.log("Under production Data: ", data);
 
   const structureInstances: any[] = Array.isArray(instancesResponse?.data)
     ? instancesResponse.data
     : (instancesResponse?.data?.data ?? []);
-  const currentInstance = structureInstances.find(
-    (instance: any) => Number(instance.id) === Number(instanceId),
+  const resolvedCurrentInstance =
+    instanceId != null
+      ? structureInstances.find(
+          (instance: any) => Number(instance.id) === Number(instanceId),
+        )
+      : structureInstances.length === 1
+        ? structureInstances[0]
+        : null;
+  const effectiveInstanceId = resolvedCurrentInstance?.id ?? instanceId;
+  const isOrderLoginFilled =
+    resolvedCurrentInstance?.is_order_login_filled === true;
+  const { data, isLoading, isError } = useOrderLoginByLead(
+    vendorId,
+    leadId,
+    effectiveInstanceId ?? undefined
   );
-  const isOrderLoginFilled = currentInstance?.is_order_login_filled === true;
 
   if (isLoading) {
     return (

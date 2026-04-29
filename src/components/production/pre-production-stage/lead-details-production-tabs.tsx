@@ -107,12 +107,19 @@ export default function LeadDetailsProductionUtil({
   const structureInstances: any[] = Array.isArray(instancesResponse?.data)
     ? instancesResponse.data
     : (instancesResponse?.data?.data ?? []);
-  const currentInstance = structureInstances.find(
-    (instance: any) => Number(instance.id) === scopedInstanceId,
-  );
-  const isOrderLoginFilled = currentInstance?.is_order_login_filled === true;
-  const isPreProdDone = currentInstance?.is_pre_prod_done === true;
-  const readyForUnderProduction = scopedInstanceId
+  const resolvedCurrentInstance =
+    scopedInstanceId != null
+      ? structureInstances.find(
+          (instance: any) => Number(instance.id) === Number(scopedInstanceId),
+        )
+      : structureInstances.length === 1
+        ? structureInstances[0]
+        : null;
+  const effectiveInstanceId = resolvedCurrentInstance?.id ?? scopedInstanceId;
+  const isOrderLoginFilled =
+    resolvedCurrentInstance?.is_order_login_filled === true;
+  const isPreProdDone = resolvedCurrentInstance?.is_pre_prod_done === true;
+  const readyForUnderProduction = effectiveInstanceId
     ? isPreProdDone
     : (preProductionReadyData?.readyForUnderProduction ?? false);
 
@@ -136,7 +143,7 @@ export default function LeadDetailsProductionUtil({
         <ProductionFilesSection
           leadId={leadId}
           accountId={accountId ?? null}
-          instanceId={scopedInstanceId}
+          instanceId={effectiveInstanceId}
           readOnly
         />
       ),
@@ -151,7 +158,7 @@ export default function LeadDetailsProductionUtil({
         <PreProductionFilesSection
           leadId={leadId}
           accountId={accountId ?? null}
-          instanceId={scopedInstanceId}
+          instanceId={effectiveInstanceId}
         />
       ),
     },
@@ -167,7 +174,7 @@ export default function LeadDetailsProductionUtil({
         <PreProductionDetails
           leadId={leadId}
           accountId={accountId}
-          instanceId={scopedInstanceId}
+          instanceId={effectiveInstanceId}
         />
       ) : (
         <ComingSoon
@@ -187,7 +194,7 @@ export default function LeadDetailsProductionUtil({
         <PostProductionDetails
           leadId={leadId}
           accountId={accountId}
-          instanceId={scopedInstanceId}
+          instanceId={effectiveInstanceId}
         />
       ),
     },
