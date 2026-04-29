@@ -5,10 +5,10 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useSiteSupervisors } from "@/hooks/booking-stage/use-booking";
 import {
-  postUniversalStageLeads,
-  type UniversalStageLead,
-  type UniversalStageLeadResponse,
-} from "@/api/universalstage";
+  getSupervisorLeads,
+  type SupervisorLeadRow,
+  type SupervisorLeadsResponse,
+} from "@/api/dashboard/dashboard.api";
 import {
   Select,
   SelectContent,
@@ -19,7 +19,6 @@ import {
 
 interface SupervisorLeadsTableProps {
   vendorId: number;
-  userId: number;
 }
 
 type SupervisorOption = {
@@ -42,18 +41,8 @@ function getSupervisorOptions(source: any): SupervisorOption[] {
     .filter((row: SupervisorOption) => row.id > 0 && row.user_name);
 }
 
-function getClientName(lead: UniversalStageLead) {
-  const fullName = `${lead.firstname ?? ""} ${lead.lastname ?? ""}`.trim();
-  return fullName || lead.account?.name || "—";
-}
-
-function getLeadStage(lead: UniversalStageLead & { statusType?: { type?: string | null } }) {
-  return lead.statusType?.type || "—";
-}
-
 export default function SupervisorLeadsTable({
   vendorId,
-  userId,
 }: SupervisorLeadsTableProps) {
   const [selectedSupervisor, setSelectedSupervisor] = useState<string>(ALL_SUPERVISORS);
   const { data: supervisorData, isLoading: isLoadingSupervisors } =
@@ -71,49 +60,32 @@ export default function SupervisorLeadsTable({
     hasNextPage,
     fetchNextPage,
   } = useInfiniteQuery({
-    queryKey: ["dashboard-supervisor-leads", vendorId, userId, selectedSupervisor],
+    queryKey: ["dashboard-supervisor-leads", vendorId, selectedSupervisor],
     initialPageParam: 1,
     queryFn: async ({ pageParam }) =>
-      postUniversalStageLeads(vendorId, {
-        userId,
+      getSupervisorLeads(vendorId, {
+        siteSupervisorId:
+          selectedSupervisor === ALL_SUPERVISORS
+            ? undefined
+            : Number(selectedSupervisor),
         page: pageParam,
         limit: PAGE_SIZE,
-        filter_name: "",
-        filter_lead_code: "",
-        contact: "",
-        alt_contact_no: "",
-        email: "",
-        site_address: "",
-        archetech_name: "",
-        designer_remark: "",
-        furniture_type: [],
-        furniture_structure: [],
-        site_type: [],
-        source: [],
-        assign_to:
-          selectedSupervisor === ALL_SUPERVISORS
-            ? []
-            : [Number(selectedSupervisor)],
-        created_at: "desc",
-        global_search: "",
-        site_map_link: null,
       }),
-    getNextPageParam: (lastPage: UniversalStageLeadResponse) =>
+    getNextPageParam: (lastPage: SupervisorLeadsResponse) =>
       lastPage?.pagination?.hasNext
-        ? lastPage.pagination.currentPage + 1
+        ? lastPage.pagination.page + 1
         : undefined,
-    enabled: !!vendorId && !!userId,
+    enabled: !!vendorId,
     staleTime: 1000 * 60 * 2,
   });
 
   const rows = useMemo(
-    () => data?.pages.flatMap((page) => page.data ?? []) ?? [],
+    () => data?.pages.flatMap((page) => page.rows ?? []) ?? [],
     [data],
   );
 
   const totalCount =
-    data?.pages?.[0]?.pagination?.totalRecoards ??
-    data?.pages?.[0]?.count ??
+    data?.pages?.[0]?.pagination?.total ??
     rows.length;
 
   const selectedSupervisorName =
@@ -201,7 +173,7 @@ export default function SupervisorLeadsTable({
                       </td>
                     </tr>
                   )
-                : rows.map((lead) => (
+                : rows.map((lead: SupervisorLeadRow) => (
                     <tr
                       key={lead.id}
                       className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
@@ -210,12 +182,10 @@ export default function SupervisorLeadsTable({
                         {lead.lead_code || "—"}
                       </td>
                       <td className="px-4 py-3 font-medium text-sm">
-                        {getClientName(lead)}
+                        {lead.client || "—"}
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {getLeadStage(lead as UniversalStageLead & {
-                          statusType?: { type?: string | null };
-                        })}
+                        {lead.stage || "—"}
                       </td>
                     </tr>
                   ))}

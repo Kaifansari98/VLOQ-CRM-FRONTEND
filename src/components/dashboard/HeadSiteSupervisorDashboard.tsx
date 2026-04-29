@@ -41,7 +41,7 @@ export default function HeadSiteSupervisorDashboard() {
           />
         </div>
         <div className="lg:w-[40%]">
-          <SupervisorLeadsTable vendorId={vendorId} userId={userId} />
+          <SupervisorLeadsTable vendorId={vendorId} />
         </div>
       </div>
 

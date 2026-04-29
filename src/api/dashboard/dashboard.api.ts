@@ -517,6 +517,46 @@ export interface SiteSupervisorServiceCounts {
   count: number;
 }
 
+export interface SupervisorLeadRow {
+  id: number;
+  lead_id: number;
+  account_id: number | null;
+  lead_code: string;
+  client: string;
+  stage: string;
+}
+
+export interface SupervisorLeadsResponse {
+  rows: SupervisorLeadRow[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+  };
+}
+
+export const getSupervisorLeads = async (
+  vendorId: number,
+  params: {
+    siteSupervisorId?: number;
+    page?: number;
+    limit?: number;
+  } = {},
+): Promise<SupervisorLeadsResponse> => {
+  const res = await apiClient.get("/dashboard/site-supervisor/supervisor-leads", {
+    params: {
+      vendor_id: vendorId,
+      ...(params.siteSupervisorId ? { site_supervisor_id: params.siteSupervisorId } : {}),
+      ...(params.page ? { page: params.page } : {}),
+      ...(params.limit ? { limit: params.limit } : {}),
+    },
+  });
+
+  return res.data.data as SupervisorLeadsResponse;
+};
+
 export const getSiteSupervisorServiceCounts = async (
   vendorId: number,
   userId: number
