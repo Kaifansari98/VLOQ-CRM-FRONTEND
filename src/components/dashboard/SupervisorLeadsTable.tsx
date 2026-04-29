@@ -9,6 +9,15 @@ import {
   type SupervisorLeadRow,
   type SupervisorLeadsResponse,
 } from "@/api/dashboard/dashboard.api";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -119,9 +128,18 @@ export default function SupervisorLeadsTable({
 
   const selectedSupervisorName =
     selectedSupervisor === ALL_SUPERVISORS
-      ? "all supervisors"
+      ? ""
       : supervisorOptions.find((option) => String(option.id) === selectedSupervisor)
-          ?.user_name?.toLowerCase() ?? "selected supervisor";
+          ?.user_name ?? "";
+
+  const subtitle = useMemo(() => {
+    if (isLoading) return "Loading supervisor leads...";
+
+    const leadText = `${totalCount} Lead${totalCount === 1 ? "" : "s"}`;
+    return selectedSupervisorName
+      ? `${leadText} - ${selectedSupervisorName}`
+      : leadText;
+  }, [isLoading, totalCount, selectedSupervisorName]);
 
   const handleTableScroll = (event: React.UIEvent<HTMLDivElement>) => {
     const element = event.currentTarget;
@@ -134,14 +152,12 @@ export default function SupervisorLeadsTable({
   };
 
   return (
-    <div className="h-full min-h-[420px] rounded-2xl border bg-background p-4 flex flex-col">
-      <div className="flex items-start justify-between gap-3 pb-3">
-        <div>
-          <p className="text-sm font-medium">Supervisor Leads</p>
-          <p className="text-xs text-muted-foreground">
-            No. of site under each supervisor
-          </p>
-        </div>
+    <Card className="w-full border flex flex-col bg-background min-h-[420px]">
+      <div className="flex items-start justify-between gap-3 pl-4 pr-4">
+        <p className="flex flex-col">
+          <span className="text-sm font-medium">Supervisor Leads</span>
+          <span className="text-xs text-muted-foreground">{subtitle}</span>
+        </p>
 
         <Select
           value={selectedSupervisor}
@@ -162,71 +178,57 @@ export default function SupervisorLeadsTable({
         </Select>
       </div>
 
-      <div
-        className="overflow-x-auto overflow-y-auto max-h-[340px] flex-1"
-        onScroll={handleTableScroll}
-      >
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-background z-10">
-            <tr className="border-b border-border/60">
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
-                Lead Code
-              </th>
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
-                Client
-              </th>
-              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
-                Stage
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading
-              ? Array.from({ length: 6 }).map((_, index) => (
-                  <tr key={index} className="border-b border-border/30">
-                    {Array.from({ length: 3 }).map((__, cellIndex) => (
-                      <td key={cellIndex} className="px-4 py-3">
-                        <div className="h-4 bg-muted animate-pulse rounded" />
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              : rows.length === 0
-                ? (
-                    <tr>
-                      <td
-                        colSpan={3}
-                        className="px-4 py-10 text-center text-sm text-muted-foreground"
-                      >
-                        No supervisor leads found
-                      </td>
-                    </tr>
-                  )
-                : rows.map((lead: SupervisorLeadRow) => (
-                    <tr
-                      key={lead.id}
-                      className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
-                    >
-                      <td className="px-4 py-3 font-mono text-xs font-medium">
-                        {lead.lead_code || "—"}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-xs">
-                        {formatClientName(lead.client)}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {formatStage(lead.stage)}
-                      </td>
-                    </tr>
-                  ))}
-          </tbody>
-        </table>
+      <CardContent className="p-0 flex-1 px-4">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-40">
+            <div className="h-8 w-8 border-4 border-muted border-t-primary rounded-full animate-spin" />
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="flex items-center justify-center h-40 text-sm text-muted-foreground">
+            No supervisor leads found
+          </div>
+        ) : (
+          <div
+            className="overflow-y-auto"
+            style={{ maxHeight: "340px" }}
+            onScroll={handleTableScroll}
+          >
+            <Table>
+              <TableHeader className="sticky top-0 bg-background z-10">
+                <TableRow>
+                  <TableHead className="text-xs">Lead Code</TableHead>
+                  <TableHead className="text-xs">Client</TableHead>
+                  <TableHead className="text-xs">Stage</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((lead: SupervisorLeadRow) => (
+                  <TableRow
+                    key={lead.id}
+                    className="text-xs hover:bg-muted/30 transition-colors"
+                  >
+                    <TableCell className="font-medium text-[11px]">
+                      {lead.lead_code || "—"}
+                    </TableCell>
+                    <TableCell className="max-w-[120px] truncate">
+                      {formatClientName(lead.client)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatStage(lead.stage)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
 
-        {isFetchingNextPage && (
-          <div className="flex items-center justify-center py-4">
-            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+            {isFetchingNextPage && (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+              </div>
+            )}
           </div>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
