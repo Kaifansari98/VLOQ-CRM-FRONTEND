@@ -41,6 +41,35 @@ function getSupervisorOptions(source: any): SupervisorOption[] {
     .filter((row: SupervisorOption) => row.id > 0 && row.user_name);
 }
 
+function toTitleCase(value: string) {
+  return value
+    .toLowerCase()
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function formatClientName(client: string) {
+  const limitedWords = String(client || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+
+  return limitedWords.length > 0
+    ? toTitleCase(limitedWords.join(" "))
+    : "—";
+}
+
+function formatStage(stage: string) {
+  const normalized = String(stage || "")
+    .trim()
+    .replace(/[-_]+/g, " ");
+
+  return normalized ? toTitleCase(normalized) : "—";
+}
+
 export default function SupervisorLeadsTable({
   vendorId,
 }: SupervisorLeadsTableProps) {
@@ -182,10 +211,10 @@ export default function SupervisorLeadsTable({
                         {lead.lead_code || "—"}
                       </td>
                       <td className="px-4 py-3 font-medium text-xs">
-                        {lead.client || "—"}
+                        {formatClientName(lead.client)}
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {lead.stage || "—"}
+                        {formatStage(lead.stage)}
                       </td>
                     </tr>
                   ))}
