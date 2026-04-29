@@ -125,6 +125,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   const role = userType?.toLowerCase() ?? "";
   const isAdmin = role === "admin" || role === "super-admin";
   const isBackend = role === "backend";
+  const isBackendLockedAfterOrderLogin = isBackend && isOrderLoginMarked;
 
   const normalizedStage = leadStatus.toLowerCase().replace(/_/g, "-");
   const isOrderLoginStage = normalizedStage.includes("order-login-stage");
@@ -136,10 +137,13 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   const canAccessButtons = canAccessAddNewSectionButton(userType, leadStatus);
 
   const canAddCustomSection: boolean =
-    isAdmin || (isBackend && (isOrderLoginStage || isProductionStage));
+    isAdmin ||
+    (isBackend &&
+      !isBackendLockedAfterOrderLogin &&
+      (isOrderLoginStage || isProductionStage));
 
   const canEditOrDeleteCustomSection: boolean =
-    isAdmin || (isBackend && isOrderLoginStage);
+    isAdmin || (isBackend && !isBackendLockedAfterOrderLogin && isOrderLoginStage);
 
   // ─────────────────────────────────────────────────────────
   // EDIT PERMISSIONS
@@ -150,6 +154,8 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   // Other             → never editable
   // ─────────────────────────────────────────────────────────
   const getItemEditPermissions = (item: any) => {
+    if (isBackendLockedAfterOrderLogin) return { canEdit: false };
+
     if (isOrderLoginStage && (isAdmin || isBackend)) return { canEdit: true };
 
     if (isProductionStage && (isAdmin || isBackend)) {
@@ -503,6 +509,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
               orderLoginId={existingData?.id}
               userId={userId}
               showPoUpload
+              disablePoDelete={isBackendLockedAfterOrderLogin}
             />
           );
         })}
@@ -542,6 +549,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
               orderLoginId={item.id}
               userId={userId}
               showPoUpload
+              disablePoDelete={isBackendLockedAfterOrderLogin}
             />
           );
         })}

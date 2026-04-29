@@ -62,6 +62,7 @@ export interface FileBreakUpFieldProps {
   showPoUpload?: boolean;
   leadStage?: string;
   userRole?: string;
+  disablePoDelete?: boolean;
 }
 
 const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
@@ -81,6 +82,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   orderLoginId,
   userId,
   showPoUpload = false,
+  disablePoDelete = false,
 }) => {
   const searchParams = useSearchParams();
   const instanceFromUrlRaw = searchParams.get("instance_id");
@@ -120,7 +122,8 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
 
   const leadStatus = instanceStageData?.derived_stage;
 
-  const canDeletePO = canDeletePODocument(userType, leadStatus!);
+  const canDeletePO =
+    canDeletePODocument(userType, leadStatus!) && !disablePoDelete;
 
   useEffect(() => {
     setTitleDraft(title);
