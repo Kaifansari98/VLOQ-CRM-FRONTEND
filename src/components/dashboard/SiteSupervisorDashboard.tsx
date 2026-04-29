@@ -47,17 +47,21 @@ export default function SiteSupervisorDashboard() {
         <div className="lg:w-[40%] flex flex-col">
           <AssignedTaskCard />
           <div className="flex flex-col w-full sm:flex-row sm:gap-4">
-            <SiteSupervisorServicesCard
-              count={serviceCounts?.count ?? 0}
-              isLoading={isLoadingServices}
-            />
-            <AvgDaysToInstallationCard
-              avgDays={installationData?.avgDays || 0}
-              readable={
-                installationData?.readable || { days: 0, hours: 0, minutes: 0 }
-              }
-              isLoading={isLoadingInstallation}
-            />
+            <div className="w-full sm:w-1/2">
+              <SiteSupervisorServicesCard
+                count={serviceCounts?.count ?? 0}
+                isLoading={isLoadingServices}
+              />
+            </div>
+            <div className="w-full sm:w-1/2">
+              <AvgDaysToInstallationCard
+                avgDays={installationData?.avgDays || 0}
+                readable={
+                  installationData?.readable || { days: 0, hours: 0, minutes: 0 }
+                }
+                isLoading={isLoadingInstallation}
+              />
+            </div>
           </div>
         </div>
       </div>

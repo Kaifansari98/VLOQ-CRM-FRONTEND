@@ -16,7 +16,7 @@ export default function SiteSupervisorServicesCard({
 
   return (
     <div
-      className="border py-4 sm:w-1/2 rounded-2xl mt-4 flex flex-col justify-between cursor-pointer hover:bg-muted/30 transition-colors"
+      className="w-full border py-4 rounded-2xl mt-4 flex flex-col justify-between cursor-pointer hover:bg-muted/30 transition-colors"
       onClick={() => router.push("/dashboard/installation/dispatch-stage")}
     >
       <div className="px-5">

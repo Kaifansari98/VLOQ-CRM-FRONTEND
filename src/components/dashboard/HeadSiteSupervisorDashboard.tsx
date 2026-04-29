@@ -12,6 +12,7 @@ import SiteSupervisorPipelineCard from "./SiteSupervisorPipelineCard";
 import AvgDaysToInstallationCard from "./AvgDaysToInstallationCard";
 import SiteSupervisorMiscTable from "./SiteSupervisorMiscTable";
 import SiteSupervisorPendingServicesTable from "./SiteSupervisorPendingServicesTable";
+import SupervisorLeadsTable from "./SupervisorLeadsTable";
 
 export default function HeadSiteSupervisorDashboard() {
   const user = useAppSelector((s) => s.auth.user);
@@ -39,17 +40,24 @@ export default function HeadSiteSupervisorDashboard() {
             miscItems={miscItems}
           />
         </div>
-        <div className="lg:w-[40%] flex flex-col">
-          <AssignedTaskCard />
-          <div className="flex flex-col w-full">
-            <AvgDaysToInstallationCard
-              avgDays={installationData?.avgDays || 0}
-              readable={
-                installationData?.readable || { days: 0, hours: 0, minutes: 0 }
-              }
-              isLoading={isLoadingInstallation}
-            />
-          </div>
+        <div className="lg:w-[40%]">
+          <SupervisorLeadsTable vendorId={vendorId} userId={userId} />
+        </div>
+      </div>
+
+      <div className="w-full flex flex-col lg:flex-row gap-4">
+        <div className="w-full lg:w-1/2">
+          <AssignedTaskCard className="h-full min-h-[150px] flex flex-col" />
+        </div>
+        <div className="w-full lg:w-1/2">
+          <AvgDaysToInstallationCard
+            avgDays={installationData?.avgDays || 0}
+            readable={
+              installationData?.readable || { days: 0, hours: 0, minutes: 0 }
+            }
+            isLoading={isLoadingInstallation}
+            className="h-full min-h-[150px]"
+          />
         </div>
       </div>
 

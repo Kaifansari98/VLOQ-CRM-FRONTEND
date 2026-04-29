@@ -1,22 +1,30 @@
 "use client";
 
 import { CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface AvgDaysToInstallationCardProps {
   avgDays: number;
   readable: { days: number; hours: number; minutes: number };
   isLoading?: boolean;
+  className?: string;
 }
 
 export default function AvgDaysToInstallationCard({
   avgDays,
   readable,
   isLoading = false,
+  className,
 }: AvgDaysToInstallationCardProps) {
   const readableLabel = `${readable?.days ?? 0}d ${readable?.hours ?? 0}h ${readable?.minutes ?? 0}m`;
 
   return (
-    <div className="flex border py-4 rounded-2xl mt-4 flex-col justify-between">
+    <div
+      className={cn(
+        "flex border py-4 rounded-2xl flex-col justify-between",
+        className,
+      )}
+    >
       <div className="flex flex-row justify-between items-start px-5">
         <div>
           <CardTitle className="text-sm font-medium">

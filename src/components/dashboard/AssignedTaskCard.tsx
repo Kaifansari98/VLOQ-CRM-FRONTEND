@@ -5,8 +5,13 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useAppSelector } from "@/redux/store";
 import { useSalesExecutiveTaskStats } from "@/api/dashboard/useDashboard";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
-export function AssignedTaskCard() {
+interface AssignedTaskCardProps {
+  className?: string;
+}
+
+export function AssignedTaskCard({ className }: AssignedTaskCardProps) {
   const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
 
@@ -26,7 +31,12 @@ export function AssignedTaskCard() {
   }
 
   return (
-    <div className="w-full h-fit md:w-full border py-4 rounded-2xl">
+    <div
+      className={cn(
+        "w-full md:w-full border py-4 rounded-2xl",
+        className,
+      )}
+    >
       {/* Header */}
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
