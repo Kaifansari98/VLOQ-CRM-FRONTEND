@@ -644,6 +644,20 @@ export const getSiteSupervisorAvgDaysToInstallation = async (
   return res.data.data as UiAvgDaysToBooking;
 };
 
+export interface FactoryLeadBifurcation {
+  preProdCount: number;
+  underProdCount: number;
+}
+
+export const getFactoryLeadBifurcation = async (
+  vendorId: number
+): Promise<FactoryLeadBifurcation> => {
+  const res = await apiClient.get("/dashboard/factory/lead-bifurcation", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FactoryLeadBifurcation;
+};
+
 export const DashboardApi = {
   getSalesExecutiveTaskStats,
   getPerformanceSnapshot,

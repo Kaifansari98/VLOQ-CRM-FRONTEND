@@ -7,6 +7,7 @@ import AdminDashboard from "./AdminDashboard";
 import SuperAdminDashboard from "./SuperAdminDashboard";
 import SiteSupervisorDashboard from "./SiteSupervisorDashboard";
 import HeadSiteSupervisorDashboard from "./HeadSiteSupervisorDashboard";
+import FactoryDashboard from "./FactoryDashboard";
 import ComingSoon from "../generics/ComingSoon";
 
 export default function DashboardWrapper() {
@@ -62,6 +63,14 @@ export default function DashboardWrapper() {
     return (
       <FadeInProvider>
         <HeadSiteSupervisorDashboard />
+      </FadeInProvider>
+    );
+  }
+
+  if (normalizedUserType === "factory") {
+    return (
+      <FadeInProvider>
+        <FactoryDashboard />
       </FadeInProvider>
     );
   }

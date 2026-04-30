@@ -69,6 +69,8 @@ import {
   OverdueProduction,
   getPriorityLeadCounts,
   PriorityLeadCounts,
+  getFactoryLeadBifurcation,
+  FactoryLeadBifurcation,
 } from "./dashboard.api";
 import { useCallback, useEffect, useState } from "react";
 import { logError } from "@/lib/utils";
@@ -575,6 +577,15 @@ export function useAdminTaskOverview(vendorId?: number, params: AdminTaskOvervie
   return useQuery<AdminTaskOverviewResponse>({
     queryKey: ["admin-task-overview", vendorId, params],
     queryFn: () => getAdminTaskOverview(vendorId!, params),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useFactoryLeadBifurcation(vendorId: number) {
+  return useQuery<FactoryLeadBifurcation>({
+    queryKey: ["factory-lead-bifurcation", vendorId],
+    queryFn: () => getFactoryLeadBifurcation(vendorId),
     enabled: !!vendorId,
     staleTime: 1000 * 60 * 2,
   });
