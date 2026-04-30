@@ -62,7 +62,7 @@ export default function FactoryLeadBifurcationCard({
   const router = useRouter();
 
   return (
-    <Card className="w-full border bg-background">
+    <Card className="w-full h-full border bg-background flex flex-col justify-between">
       <div className="pb-3 pl-6">
         <p className="text-sm font-medium">Lead Bifurcation</p>
         <p className="text-xs text-muted-foreground">
@@ -74,13 +74,13 @@ export default function FactoryLeadBifurcationCard({
         <div className="flex gap-3">
           <StatBlock
             label="Pre-Production"
-            sublabel="Order logged, yet to start pre-prod"
+            sublabel="Order logged in, yet to start pre-production stage."
             count={preProdCount}
             isLoading={isLoading}
             accent="bg-amber-50 dark:bg-amber-950/30"
             dot="bg-amber-400"
             onClick={() =>
-              router.push("/dashboard/production/pre-post-prod?productionStatus=Pending")
+              router.push("/dashboard/production/pre-post-prod?productionStatus=Pre%20Prod%20Done")
             }
           />
           <StatBlock
