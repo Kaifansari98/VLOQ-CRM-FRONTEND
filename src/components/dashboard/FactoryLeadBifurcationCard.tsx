@@ -51,12 +51,12 @@ export default function FactoryLeadBifurcationCard({
 }: FactoryLeadBifurcationCardProps) {
   return (
     <Card className="w-full border bg-background">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium">Lead Bifurcation</CardTitle>
+      <div className="pb-3 pl-6">
+        <p className="text-sm font-medium">Lead Bifurcation</p>
         <p className="text-xs text-muted-foreground">
           Production stage breakdown across active leads
         </p>
-      </CardHeader>
+      </div>
 
       <CardContent>
         <div className="flex gap-3">
@@ -70,7 +70,7 @@ export default function FactoryLeadBifurcationCard({
           />
           <StatBlock
             label="Under Production"
-            sublabel="Pre-prod pending, currently in production"
+            sublabel="Pre-prod done, currently in under production"
             count={underProdCount}
             isLoading={isLoading}
             accent="bg-blue-50 dark:bg-blue-950/30"
