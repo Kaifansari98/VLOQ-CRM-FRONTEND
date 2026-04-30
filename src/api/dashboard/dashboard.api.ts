@@ -649,6 +649,24 @@ export interface FactoryLeadBifurcation {
   underProdCount: number;
 }
 
+export interface BackendNewOrderLoginLeads {
+  count: number;
+}
+
+export const getBackendNewOrderLoginLeads = async (vendorId: number): Promise<BackendNewOrderLoginLeads> => {
+  const res = await apiClient.get("/dashboard/backend/new-order-login-leads", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as BackendNewOrderLoginLeads;
+};
+
+export const getBackendAvgOLToProduction = async (vendorId: number): Promise<FactoryAvgProductionToRTD> => {
+  const res = await apiClient.get("/dashboard/backend/avg-ol-to-production", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FactoryAvgProductionToRTD;
+};
+
 export interface PreProdNewSites {
   count: number;
 }

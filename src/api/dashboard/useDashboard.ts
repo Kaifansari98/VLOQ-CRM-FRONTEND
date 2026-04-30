@@ -80,6 +80,9 @@ import {
   getPreProdNewSites,
   PreProdNewSites,
   getPreProdAvgTimeline,
+  getBackendNewOrderLoginLeads,
+  BackendNewOrderLoginLeads,
+  getBackendAvgOLToProduction,
 } from "./dashboard.api";
 import { useCallback, useEffect, useState } from "react";
 import { logError } from "@/lib/utils";
@@ -595,6 +598,24 @@ export function useFactoryLeadBifurcation(vendorId: number) {
   return useQuery<FactoryLeadBifurcation>({
     queryKey: ["factory-lead-bifurcation", vendorId],
     queryFn: () => getFactoryLeadBifurcation(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useBackendNewOrderLoginLeads(vendorId: number) {
+  return useQuery<BackendNewOrderLoginLeads>({
+    queryKey: ["backend-new-order-login-leads", vendorId],
+    queryFn: () => getBackendNewOrderLoginLeads(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useBackendAvgOLToProduction(vendorId: number) {
+  return useQuery<FactoryAvgProductionToRTD>({
+    queryKey: ["backend-avg-ol-to-production", vendorId],
+    queryFn: () => getBackendAvgOLToProduction(vendorId),
     enabled: !!vendorId,
     staleTime: 1000 * 60 * 2,
   });
