@@ -649,6 +649,24 @@ export interface FactoryLeadBifurcation {
   underProdCount: number;
 }
 
+export interface FactoryERDCalendarItem {
+  id: number;
+  lead_id: number;
+  account_id: number;
+  lead_code: string;
+  name: string;
+  production_erd_date: string | null;
+}
+
+export const getFactoryERDCalendar = async (
+  vendorId: number
+): Promise<FactoryERDCalendarItem[]> => {
+  const res = await apiClient.get("/dashboard/factory/erd-calendar", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FactoryERDCalendarItem[];
+};
+
 export interface FactoryAvgProductionToRTD {
   avgDays: number;
   readable: { days: number; hours: number; minutes: number };
