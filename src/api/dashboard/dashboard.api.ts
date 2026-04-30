@@ -649,6 +649,24 @@ export interface FactoryLeadBifurcation {
   underProdCount: number;
 }
 
+export interface PreProdNewSites {
+  count: number;
+}
+
+export const getPreProdNewSites = async (vendorId: number): Promise<PreProdNewSites> => {
+  const res = await apiClient.get("/dashboard/pre-prod/new-sites", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as PreProdNewSites;
+};
+
+export const getPreProdAvgTimeline = async (vendorId: number): Promise<FactoryAvgProductionToRTD> => {
+  const res = await apiClient.get("/dashboard/pre-prod/avg-timeline", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FactoryAvgProductionToRTD;
+};
+
 export interface FactoryERDCalendarItem {
   id: number;
   lead_id: number;

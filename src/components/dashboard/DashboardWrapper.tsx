@@ -8,6 +8,7 @@ import SuperAdminDashboard from "./SuperAdminDashboard";
 import SiteSupervisorDashboard from "./SiteSupervisorDashboard";
 import HeadSiteSupervisorDashboard from "./HeadSiteSupervisorDashboard";
 import FactoryDashboard from "./FactoryDashboard";
+import PreProdDashboard from "./PreProdDashboard";
 import ComingSoon from "../generics/ComingSoon";
 
 export default function DashboardWrapper() {
@@ -71,6 +72,14 @@ export default function DashboardWrapper() {
     return (
       <FadeInProvider>
         <FactoryDashboard />
+      </FadeInProvider>
+    );
+  }
+
+  if (normalizedUserType === "pre-prod") {
+    return (
+      <FadeInProvider>
+        <PreProdDashboard />
       </FadeInProvider>
     );
   }

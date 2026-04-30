@@ -77,6 +77,9 @@ import {
   FactoryERDCalendarItem,
   getFactoryUpcomingDispatches,
   FactoryUpcomingDispatch,
+  getPreProdNewSites,
+  PreProdNewSites,
+  getPreProdAvgTimeline,
 } from "./dashboard.api";
 import { useCallback, useEffect, useState } from "react";
 import { logError } from "@/lib/utils";
@@ -592,6 +595,24 @@ export function useFactoryLeadBifurcation(vendorId: number) {
   return useQuery<FactoryLeadBifurcation>({
     queryKey: ["factory-lead-bifurcation", vendorId],
     queryFn: () => getFactoryLeadBifurcation(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function usePreProdNewSites(vendorId: number) {
+  return useQuery<PreProdNewSites>({
+    queryKey: ["pre-prod-new-sites", vendorId],
+    queryFn: () => getPreProdNewSites(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function usePreProdAvgTimeline(vendorId: number) {
+  return useQuery<FactoryAvgProductionToRTD>({
+    queryKey: ["pre-prod-avg-timeline", vendorId],
+    queryFn: () => getPreProdAvgTimeline(vendorId),
     enabled: !!vendorId,
     staleTime: 1000 * 60 * 2,
   });
