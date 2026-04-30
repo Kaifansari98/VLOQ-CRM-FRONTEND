@@ -660,6 +660,13 @@ export const getTechCheckNewLeads = async (vendorId: number): Promise<TechCheckN
   return res.data.data as TechCheckNewLeads;
 };
 
+export const getTechCheckAvgApprovalTimeline = async (vendorId: number): Promise<FactoryAvgProductionToRTD> => {
+  const res = await apiClient.get("/dashboard/tech-check/avg-approval-timeline", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FactoryAvgProductionToRTD;
+};
+
 export interface BackendNewOrderLoginLeads {
   count: number;
 }

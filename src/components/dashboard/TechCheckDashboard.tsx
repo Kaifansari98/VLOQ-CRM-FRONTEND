@@ -1,7 +1,8 @@
 "use client";
 
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { useTechCheckNewLeads } from "@/api/dashboard/useDashboard";
+import AvgDaysToInstallationCard from "@/components/dashboard/AvgDaysToInstallationCard";
+import { useTechCheckNewLeads, useTechCheckAvgApprovalTimeline } from "@/api/dashboard/useDashboard";
 import { useAppSelector } from "@/redux/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -9,6 +10,7 @@ export default function TechCheckDashboard() {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) ?? 0;
 
   const { data, isLoading } = useTechCheckNewLeads(vendorId);
+  const { data: avgData, isLoading: isLoadingAvg } = useTechCheckAvgApprovalTimeline(vendorId);
 
   return (
     <div className="flex flex-col gap-4 p-4 px-6">
@@ -40,6 +42,17 @@ export default function TechCheckDashboard() {
               )}
             </CardContent>
           </Card>
+        </div>
+
+        <div className="w-full sm:w-1/2">
+          <AvgDaysToInstallationCard
+            avgDays={avgData?.avgDays ?? 0}
+            readable={avgData?.readable ?? { days: 0, hours: 0, minutes: 0 }}
+            isLoading={isLoadingAvg}
+            title="Avg Timeline to Approve a Site"
+            subtitle="Type 7 entry → Tech Check completed"
+            className="h-full"
+          />
         </div>
       </div>
     </div>

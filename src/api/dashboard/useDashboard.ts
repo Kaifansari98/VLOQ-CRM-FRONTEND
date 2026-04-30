@@ -85,6 +85,7 @@ import {
   getBackendAvgOLToProduction,
   getTechCheckNewLeads,
   TechCheckNewLeads,
+  getTechCheckAvgApprovalTimeline,
 } from "./dashboard.api";
 import { useCallback, useEffect, useState } from "react";
 import { logError } from "@/lib/utils";
@@ -609,6 +610,15 @@ export function useTechCheckNewLeads(vendorId: number) {
   return useQuery<TechCheckNewLeads>({
     queryKey: ["tech-check-new-leads", vendorId],
     queryFn: () => getTechCheckNewLeads(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useTechCheckAvgApprovalTimeline(vendorId: number) {
+  return useQuery<FactoryAvgProductionToRTD>({
+    queryKey: ["tech-check-avg-approval-timeline", vendorId],
+    queryFn: () => getTechCheckAvgApprovalTimeline(vendorId),
     enabled: !!vendorId,
     staleTime: 1000 * 60 * 2,
   });
