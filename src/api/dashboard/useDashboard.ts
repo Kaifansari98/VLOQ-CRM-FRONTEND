@@ -75,6 +75,8 @@ import {
   FactoryAvgProductionToRTD,
   getFactoryERDCalendar,
   FactoryERDCalendarItem,
+  getFactoryUpcomingDispatches,
+  FactoryUpcomingDispatch,
 } from "./dashboard.api";
 import { useCallback, useEffect, useState } from "react";
 import { logError } from "@/lib/utils";
@@ -590,6 +592,15 @@ export function useFactoryLeadBifurcation(vendorId: number) {
   return useQuery<FactoryLeadBifurcation>({
     queryKey: ["factory-lead-bifurcation", vendorId],
     queryFn: () => getFactoryLeadBifurcation(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useFactoryUpcomingDispatches(vendorId: number) {
+  return useQuery<FactoryUpcomingDispatch[]>({
+    queryKey: ["factory-upcoming-dispatches", vendorId],
+    queryFn: () => getFactoryUpcomingDispatches(vendorId),
     enabled: !!vendorId,
     staleTime: 1000 * 60 * 2,
   });

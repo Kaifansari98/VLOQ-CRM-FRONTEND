@@ -667,6 +667,24 @@ export const getFactoryERDCalendar = async (
   return res.data.data as FactoryERDCalendarItem[];
 };
 
+export interface FactoryUpcomingDispatch {
+  id: number;
+  lead_id: number;
+  account_id: number;
+  lead_code: string;
+  name: string;
+  dispatch_date: string | null;
+}
+
+export const getFactoryUpcomingDispatches = async (
+  vendorId: number
+): Promise<FactoryUpcomingDispatch[]> => {
+  const res = await apiClient.get("/dashboard/factory/upcoming-dispatches", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FactoryUpcomingDispatch[];
+};
+
 export interface FactoryAvgProductionToRTD {
   avgDays: number;
   readable: { days: number; hours: number; minutes: number };

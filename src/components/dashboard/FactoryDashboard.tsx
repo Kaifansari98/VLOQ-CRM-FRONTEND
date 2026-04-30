@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import FactoryLeadBifurcationCard from "@/components/dashboard/FactoryLeadBifurcationCard";
 import AvgDaysToInstallationCard from "@/components/dashboard/AvgDaysToInstallationCard";
-import { useFactoryAvgProductionToRTD, useSiteSupervisorMiscItems, useFactoryERDCalendar } from "@/api/dashboard/useDashboard";
+import { useFactoryAvgProductionToRTD, useSiteSupervisorMiscItems, useFactoryERDCalendar, useFactoryUpcomingDispatches } from "@/api/dashboard/useDashboard";
 import { useAppSelector } from "@/redux/store";
 import SiteSupervisorMiscTable from "@/components/dashboard/SiteSupervisorMiscTable";
 import FactoryERDCalendarTable from "@/components/dashboard/FactoryERDCalendarTable";
@@ -83,6 +83,9 @@ export default function FactoryDashboard() {
   const { data: erdItems, isLoading: isLoadingERD } =
     useFactoryERDCalendar(vendorId);
 
+  const { data: dispatchItems, isLoading: isLoadingDispatches } =
+    useFactoryUpcomingDispatches(vendorId);
+
   return (
     <div className="flex flex-col gap-4 p-4 px-6">
       <DashboardHeader />
@@ -112,7 +115,12 @@ export default function FactoryDashboard() {
           <SiteSupervisorMiscTable data={miscItems} isLoading={isLoadingMisc} />
         </div>
         <div className="w-full lg:w-1/2">
-          <FactoryERDCalendarTable data={erdItems} isLoading={isLoadingERD} />
+          <FactoryERDCalendarTable
+            erdData={erdItems}
+            dispatchData={dispatchItems}
+            isLoadingERD={isLoadingERD}
+            isLoadingDispatches={isLoadingDispatches}
+          />
         </div>
       </div>
     </div>
