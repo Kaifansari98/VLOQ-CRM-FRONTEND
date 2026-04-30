@@ -18,12 +18,21 @@ interface StatBlockProps {
   dot: string;
 }
 
-function StatBlock({ label, sublabel, count, isLoading, accent, dot }: StatBlockProps) {
+function StatBlock({
+  label,
+  sublabel,
+  count,
+  isLoading,
+  accent,
+  dot,
+}: StatBlockProps) {
   return (
     <div className={cn("flex-1 rounded-xl p-4 flex flex-col gap-2", accent)}>
       <div className="flex items-center gap-2">
         <span className={cn("h-2 w-2 rounded-full shrink-0", dot)} />
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <span className="text-xs font-medium text-muted-foreground">
+          {label}
+        </span>
       </div>
       {isLoading ? (
         <div className="h-9 w-16 bg-muted animate-pulse rounded" />
@@ -68,26 +77,6 @@ export default function FactoryLeadBifurcationCard({
             dot="bg-blue-500"
           />
         </div>
-
-        {!isLoading && (
-          <div className="mt-4 flex items-center gap-2">
-            <div className="h-1.5 flex-1 rounded-full overflow-hidden bg-muted">
-              {(preProdCount + underProdCount) > 0 && (
-                <div
-                  className="h-full bg-amber-400 rounded-full transition-all"
-                  style={{
-                    width: `${Math.round(
-                      (preProdCount / (preProdCount + underProdCount)) * 100
-                    )}%`,
-                  }}
-                />
-              )}
-            </div>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {preProdCount + underProdCount} total
-            </span>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
