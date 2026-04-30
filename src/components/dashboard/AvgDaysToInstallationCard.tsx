@@ -8,6 +8,8 @@ interface AvgDaysToInstallationCardProps {
   readable: { days: number; hours: number; minutes: number };
   isLoading?: boolean;
   className?: string;
+  title?: string;
+  subtitle?: string;
 }
 
 export default function AvgDaysToInstallationCard({
@@ -15,6 +17,8 @@ export default function AvgDaysToInstallationCard({
   readable,
   isLoading = false,
   className,
+  title = "Avg Days to Installation",
+  subtitle = "Start → Completion",
 }: AvgDaysToInstallationCardProps) {
   const readableLabel = `${readable?.days ?? 0}d ${readable?.hours ?? 0}h ${readable?.minutes ?? 0}m`;
 
@@ -27,10 +31,8 @@ export default function AvgDaysToInstallationCard({
     >
       <div className="flex flex-row justify-between items-start px-5">
         <div>
-          <CardTitle className="text-sm font-medium">
-            Avg Days to Installation
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">Start → Completion</p>
+          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
         </div>
       </div>
 

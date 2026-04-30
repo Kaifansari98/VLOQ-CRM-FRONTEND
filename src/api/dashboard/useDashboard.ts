@@ -71,6 +71,8 @@ import {
   PriorityLeadCounts,
   getFactoryLeadBifurcation,
   FactoryLeadBifurcation,
+  getFactoryAvgProductionToRTD,
+  FactoryAvgProductionToRTD,
 } from "./dashboard.api";
 import { useCallback, useEffect, useState } from "react";
 import { logError } from "@/lib/utils";
@@ -586,6 +588,15 @@ export function useFactoryLeadBifurcation(vendorId: number) {
   return useQuery<FactoryLeadBifurcation>({
     queryKey: ["factory-lead-bifurcation", vendorId],
     queryFn: () => getFactoryLeadBifurcation(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useFactoryAvgProductionToRTD(vendorId: number) {
+  return useQuery<FactoryAvgProductionToRTD>({
+    queryKey: ["factory-avg-production-to-rtd", vendorId],
+    queryFn: () => getFactoryAvgProductionToRTD(vendorId),
     enabled: !!vendorId,
     staleTime: 1000 * 60 * 2,
   });

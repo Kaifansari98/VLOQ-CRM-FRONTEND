@@ -91,6 +91,22 @@ function toTitleCase(value: string) {
     .join(" ");
 }
 
+function getProductionStatusFromInstance(instance: any) {
+  if (instance?.is_production_completed) return "Completed";
+  if (instance?.is_post_production) return "Post Production";
+  if (instance?.is_under_production) return "Under Production";
+  if (instance?.is_pre_prod_done) return "Pre Prod Done";
+  return "Pending";
+}
+
+function matchesProductionStatusFilter(
+  status: string | undefined,
+  filterValue: string,
+) {
+  if (filterValue === "all") return true;
+  return (status ?? "").trim().toLowerCase() === filterValue.trim().toLowerCase();
+}
+
 function ProductionStatusFilter({
   value,
   onChange,
@@ -838,15 +854,7 @@ export function UniversalTable({
             leadCodeSuffix: suffix,
             furnitureStructureOverride: structureType,
             productionStatus: isType10
-              ? onlyInstance?.is_production_completed
-                ? "Completed"
-                : onlyInstance?.is_post_production
-                  ? "Post Production"
-                : onlyInstance?.is_under_production
-                  ? "Under Production"
-                  : onlyInstance?.is_pre_prod_done
-                    ? "Pre Prod Done"
-                    : "Pending"
+              ? getProductionStatusFromInstance(onlyInstance)
               : undefined,
             instanceTitle: onlyInstance?.title ?? undefined,
             instanceDescription: onlyInstance?.description ?? undefined,
@@ -872,15 +880,7 @@ export function UniversalTable({
             leadCodeSuffix: instances.length > 1 ? `.${suffixIndex}` : "",
             furnitureStructureOverride: structureType,
             productionStatus: isType10
-              ? instance?.is_production_completed
-                ? "Completed"
-                : instance?.is_post_production
-                  ? "Post Production"
-                : instance?.is_under_production
-                  ? "Under Production"
-                  : instance?.is_pre_prod_done
-                    ? "Pre Prod Done"
-                    : "Pending"
+              ? getProductionStatusFromInstance(instance)
               : undefined,
             instanceTitle: instance?.title ?? undefined,
             instanceDescription: instance?.description ?? undefined,
@@ -890,6 +890,12 @@ export function UniversalTable({
     });
 
       rows = expanded;
+    }
+
+    if (isType10 && productionStatusFilter !== "all") {
+      rows = rows.filter((row) =>
+        matchesProductionStatusFilter(row.productionStatus, productionStatusFilter),
+      );
     }
 
     // Client-side month filter for the servicing table.
@@ -908,7 +914,14 @@ export function UniversalTable({
     }
 
     return rows;
-  }, [activeData, normalizedType, showServicingColumn, pendingServicesOnly, servicingMonthFilter]);
+  }, [
+    activeData,
+    normalizedType,
+    pendingServicesOnly,
+    productionStatusFilter,
+    servicingMonthFilter,
+    showServicingColumn,
+  ]);
 
   React.useEffect(() => {
     // console.log("[UniversalTable] data pipeline", {
@@ -1017,6 +1030,16 @@ export function UniversalTable({
     }
   };
 
+  const handleProductionStatusFilterChange = (value: string) => {
+    setProductionStatusFilter(value);
+
+    if (effectiveViewType === "my") {
+      setMyPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    } else {
+      setOverallPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }
+  };
+
   // -------------------- ROW NAVIGATION --------------------
   const withInstanceId = (path: string, instanceId?: number) => {
     if (!instanceId) return path;
@@ -1108,7 +1131,7 @@ export function UniversalTable({
           {normalizedType === "type 10" && (
             <ProductionStatusFilter
               value={productionStatusFilter}
-              onChange={setProductionStatusFilter}
+              onChange={handleProductionStatusFilterChange}
             />
           )}
           {/* <DataTableSortList table={table} />
@@ -1180,7 +1203,7 @@ export function UniversalTable({
             {normalizedType === "type 10" && (
               <ProductionStatusFilter
                 value={productionStatusFilter}
-                onChange={setProductionStatusFilter}
+                onChange={handleProductionStatusFilterChange}
               />
             )}
           </div>

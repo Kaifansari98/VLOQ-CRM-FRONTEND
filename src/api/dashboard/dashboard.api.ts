@@ -649,6 +649,20 @@ export interface FactoryLeadBifurcation {
   underProdCount: number;
 }
 
+export interface FactoryAvgProductionToRTD {
+  avgDays: number;
+  readable: { days: number; hours: number; minutes: number };
+}
+
+export const getFactoryAvgProductionToRTD = async (
+  vendorId: number
+): Promise<FactoryAvgProductionToRTD> => {
+  const res = await apiClient.get("/dashboard/factory/avg-production-to-rtd", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FactoryAvgProductionToRTD;
+};
+
 export const getFactoryLeadBifurcation = async (
   vendorId: number
 ): Promise<FactoryLeadBifurcation> => {
