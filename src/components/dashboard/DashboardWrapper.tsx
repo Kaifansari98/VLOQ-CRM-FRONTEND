@@ -10,6 +10,7 @@ import HeadSiteSupervisorDashboard from "./HeadSiteSupervisorDashboard";
 import FactoryDashboard from "./FactoryDashboard";
 import PreProdDashboard from "./PreProdDashboard";
 import BackendDashboard from "./BackendDashboard";
+import TechCheckDashboard from "./TechCheckDashboard";
 import ComingSoon from "../generics/ComingSoon";
 
 export default function DashboardWrapper() {
@@ -73,6 +74,14 @@ export default function DashboardWrapper() {
     return (
       <FadeInProvider>
         <FactoryDashboard />
+      </FadeInProvider>
+    );
+  }
+
+  if (normalizedUserType === "tech-check") {
+    return (
+      <FadeInProvider>
+        <TechCheckDashboard />
       </FadeInProvider>
     );
   }

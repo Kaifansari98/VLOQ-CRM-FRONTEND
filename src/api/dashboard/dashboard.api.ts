@@ -649,6 +649,17 @@ export interface FactoryLeadBifurcation {
   underProdCount: number;
 }
 
+export interface TechCheckNewLeads {
+  count: number;
+}
+
+export const getTechCheckNewLeads = async (vendorId: number): Promise<TechCheckNewLeads> => {
+  const res = await apiClient.get("/dashboard/tech-check/new-leads", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as TechCheckNewLeads;
+};
+
 export interface BackendNewOrderLoginLeads {
   count: number;
 }

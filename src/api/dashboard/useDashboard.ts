@@ -83,6 +83,8 @@ import {
   getBackendNewOrderLoginLeads,
   BackendNewOrderLoginLeads,
   getBackendAvgOLToProduction,
+  getTechCheckNewLeads,
+  TechCheckNewLeads,
 } from "./dashboard.api";
 import { useCallback, useEffect, useState } from "react";
 import { logError } from "@/lib/utils";
@@ -598,6 +600,15 @@ export function useFactoryLeadBifurcation(vendorId: number) {
   return useQuery<FactoryLeadBifurcation>({
     queryKey: ["factory-lead-bifurcation", vendorId],
     queryFn: () => getFactoryLeadBifurcation(vendorId),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useTechCheckNewLeads(vendorId: number) {
+  return useQuery<TechCheckNewLeads>({
+    queryKey: ["tech-check-new-leads", vendorId],
+    queryFn: () => getTechCheckNewLeads(vendorId),
     enabled: !!vendorId,
     staleTime: 1000 * 60 * 2,
   });
