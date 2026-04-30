@@ -60,6 +60,7 @@ export interface UniversalTableProps {
   activityStatus?: string;
   pendingServicesOnly?: boolean;
   showServicingColumn?: boolean;
+  initialProductionStatusFilter?: string;
 }
 
 // -------------------------------------------------------
@@ -273,6 +274,7 @@ export function UniversalTable({
   activityStatus,
   pendingServicesOnly = false,
   showServicingColumn = false,
+  initialProductionStatusFilter,
 }: UniversalTableProps) {
   // -------------------- GLOBAL STATE --------------------
 
@@ -335,8 +337,22 @@ export function UniversalTable({
   const [overallColumnFilters, setOverallColumnFilters] =
     useState<ColumnFiltersState>([]);
 
+  const resolvedInitialProductionStatusFilter = useMemo(() => {
+    const requestedValue = String(initialProductionStatusFilter ?? "all").trim();
+    const matchedOption = PRODUCTION_STATUS_OPTIONS.find(
+      (option) =>
+        option.value.trim().toLowerCase() === requestedValue.toLowerCase(),
+    );
+
+    if (normalizedUserType === "pre-prod" && requestedValue.toLowerCase() === "all") {
+      return "Pending";
+    }
+
+    return matchedOption?.value ?? "all";
+  }, [initialProductionStatusFilter, normalizedUserType]);
+
   const [productionStatusFilter, setProductionStatusFilter] =
-    useState<string>(normalizedUserType === "pre-prod" ? "Pending" : "all");
+    useState<string>(resolvedInitialProductionStatusFilter);
   const [servicingMonthFilter, setServicingMonthFilter] = useState<
     { month: number; year: number } | undefined
   >(undefined);
@@ -1039,6 +1055,10 @@ export function UniversalTable({
       setOverallPagination((prev) => ({ ...prev, pageIndex: 0 }));
     }
   };
+
+  React.useEffect(() => {
+    setProductionStatusFilter(resolvedInitialProductionStatusFilter);
+  }, [resolvedInitialProductionStatusFilter]);
 
   // -------------------- ROW NAVIGATION --------------------
   const withInstanceId = (path: string, instanceId?: number) => {

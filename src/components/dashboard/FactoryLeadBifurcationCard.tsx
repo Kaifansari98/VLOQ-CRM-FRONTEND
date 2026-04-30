@@ -1,7 +1,8 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 interface FactoryLeadBifurcationCardProps {
   preProdCount: number;
@@ -16,6 +17,7 @@ interface StatBlockProps {
   isLoading: boolean;
   accent: string;
   dot: string;
+  onClick?: () => void;
 }
 
 function StatBlock({
@@ -25,9 +27,17 @@ function StatBlock({
   isLoading,
   accent,
   dot,
+  onClick,
 }: StatBlockProps) {
   return (
-    <div className={cn("flex-1 rounded-xl p-4 flex flex-col gap-2", accent)}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex-1 rounded-xl p-4 flex flex-col gap-2 text-left transition-opacity hover:opacity-90",
+        accent,
+      )}
+    >
       <div className="flex items-center gap-2">
         <span className={cn("h-2 w-2 rounded-full shrink-0", dot)} />
         <span className="text-xs font-medium text-muted-foreground">
@@ -40,7 +50,7 @@ function StatBlock({
         <span className="text-4xl font-semibold tracking-tight">{count}</span>
       )}
       <p className="text-xs text-muted-foreground leading-snug">{sublabel}</p>
-    </div>
+    </button>
   );
 }
 
@@ -49,6 +59,8 @@ export default function FactoryLeadBifurcationCard({
   underProdCount,
   isLoading = false,
 }: FactoryLeadBifurcationCardProps) {
+  const router = useRouter();
+
   return (
     <Card className="w-full border bg-background">
       <div className="pb-3 pl-6">
@@ -67,6 +79,9 @@ export default function FactoryLeadBifurcationCard({
             isLoading={isLoading}
             accent="bg-amber-50 dark:bg-amber-950/30"
             dot="bg-amber-400"
+            onClick={() =>
+              router.push("/dashboard/production/pre-post-prod?productionStatus=Pending")
+            }
           />
           <StatBlock
             label="Under Production"
@@ -75,6 +90,11 @@ export default function FactoryLeadBifurcationCard({
             isLoading={isLoading}
             accent="bg-blue-50 dark:bg-blue-950/30"
             dot="bg-blue-500"
+            onClick={() =>
+              router.push(
+                "/dashboard/production/pre-post-prod?productionStatus=Under%20Production",
+              )
+            }
           />
         </div>
       </CardContent>

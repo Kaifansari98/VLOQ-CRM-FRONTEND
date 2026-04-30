@@ -11,6 +11,7 @@ import {
   BreadcrumbLink,
 } from "@/components/ui/breadcrumb";
 import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
@@ -22,6 +23,9 @@ const navigateProductionStage = (row: any) =>
   `/dashboard/production/pre-post-prod/details/${row.id}?accountId=${row.accountId}`;
 
 export default function ProductionPage() {
+  const searchParams = useSearchParams();
+  const productionStatusFilter = searchParams.get("productionStatus") ?? "all";
+
   return (
     <>
       {/* ---------------- HEADER ---------------- */}
@@ -64,6 +68,7 @@ export default function ProductionPage() {
             enableAdminTabs={false}
             enableOverallData={false}
             onRowNavigate={navigateProductionStage}
+            initialProductionStatusFilter={productionStatusFilter}
           />
         </Suspense>
       </main>
