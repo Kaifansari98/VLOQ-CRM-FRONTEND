@@ -18,6 +18,17 @@ export interface AssignToFinalMeasurementPayload {
   created_by: number;
 }
 
+export interface RestrictedTaskConflict {
+  id: number;
+  task_type: "BookingDone - ISM" | "Final Measurements";
+  status: string;
+  due_date: string;
+  assignee: {
+    id: number;
+    user_name: string;
+  } | null;
+}
+
 export const assignToFinalMeasurement = async (
   leadId: number,
   payload: AssignToFinalMeasurementPayload
@@ -28,6 +39,14 @@ export const assignToFinalMeasurement = async (
   );
 
   return data;
+};
+
+export const getRestrictedTaskConflicts = async (leadId: number) => {
+  const { data } = await apiClient.get(
+    `/leads/final-measurement/leadId/${leadId}/task-conflicts`
+  );
+
+  return (data?.data?.conflicts ?? []) as RestrictedTaskConflict[];
 };
 
 export const UploadFinalMeasurement = async (

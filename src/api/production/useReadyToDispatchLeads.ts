@@ -117,6 +117,17 @@ export interface AssignToSiteReadinessPayload {
   created_by: number;
 }
 
+export interface SiteReadinessTaskConflict {
+  id: number;
+  task_type: "Site Readiness";
+  status: string;
+  due_date: string;
+  assignee: {
+    id: number;
+    user_name: string;
+  } | null;
+}
+
 /**
  * ✅ Assign Site Readiness Task (POST)
  * @route POST /leads/production/ready-to-dispatch/leadId/:leadId/tasks/assign-site-readiness
@@ -157,6 +168,14 @@ export const useAssignToSiteReadiness = (leadId: number) => {
   return useAssignSiteReadinessTask(leadId);
 };
 
+export const getSiteReadinessTaskConflicts = async (leadId: number) => {
+  const { data } = await apiClient.get(
+    `/leads/production/ready-to-dispatch/leadId/${leadId}/task-conflicts`
+  );
+
+  return (data?.data?.conflicts ?? []) as SiteReadinessTaskConflict[];
+};
+
 // ✅ --- Get Current Site Photos COUNT + Flag (Ready-To-Dispatch)
 export const getCurrentSitePhotosCount = async (
   vendorId: number,
@@ -178,5 +197,15 @@ export const useCurrentSitePhotosCount = (
     queryKey: ["currentSitePhotosCount", vendorId, leadId],
     queryFn: () => getCurrentSitePhotosCount(vendorId!, leadId!),
     enabled: !!vendorId && !!leadId,
+  });
+};
+
+export const useSiteReadinessTaskConflicts = (leadId?: number) => {
+  return useQuery<SiteReadinessTaskConflict[]>({
+    queryKey: ["siteReadinessTaskConflicts", leadId],
+    queryFn: () => getSiteReadinessTaskConflicts(leadId!),
+    enabled: !!leadId,
+    staleTime: 1000 * 30,
+    refetchOnWindowFocus: false,
   });
 };

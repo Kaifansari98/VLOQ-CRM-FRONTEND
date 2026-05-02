@@ -32,6 +32,7 @@ import { useAssignToSiteReadiness } from "@/api/production/useReadyToDispatchLea
 import {
   AssignToSiteReadinessPayload,
   useCurrentSitePhotosCount,
+  useSiteReadinessTaskConflicts,
 } from "@/api/production/useReadyToDispatchLeads";
 import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUsers"; // ✅ now using supervisors
 import { canAssignSR } from "@/components/utils/privileges";
@@ -126,8 +127,16 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     data: currentSitePhotosCount,
     isLoading: isLoadingCurrentSitePhotosCount,
   } = useCurrentSitePhotosCount(vendorId, leadId);
+  const {
+    data: siteReadinessTaskConflicts = [],
+    isLoading: isLoadingSiteReadinessTaskConflicts,
+  } = useSiteReadinessTaskConflicts(leadId);
 
   const hasCurrentSitePhotos = currentSitePhotosCount?.hasPhotos === true;
+  const siteReadinessConflict = siteReadinessTaskConflicts.find(
+    (task) => task.task_type === "Site Readiness",
+  );
+  const isSiteReadinessConflictLocked = !!siteReadinessConflict;
 
   // ✅ Fetch vendor site supervisors
   const {
@@ -173,6 +182,15 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   )?.id;
   const isSiteReadinessTask = taskType === "Site Readiness";
   const shouldLockAssignee = isSiteReadinessTask && !!matchedSupervisorId;
+  const isSiteReadinessSelectionDisabled =
+    isLoadingSiteReadinessTaskConflicts ||
+    isSiteReadinessConflictLocked ||
+    !hasCurrentSitePhotos;
+  const siteReadinessDisabledTooltip = isLoadingSiteReadinessTaskConflicts
+    ? "Checking existing tasks"
+    : isSiteReadinessConflictLocked
+      ? "Site Readiness task already created and not completed"
+      : "Please upload current site photos before moving this lead to Site Readiness.";
 
   // ✅ Auto-select "Follow Up" if Site Readiness is disabled
   React.useEffect(() => {
@@ -180,12 +198,12 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
 
     form.setValue(
       "task_type",
-      hasCurrentSitePhotos ? "Site Readiness" : "Follow Up"
+      !isSiteReadinessSelectionDisabled ? "Site Readiness" : "Follow Up"
     );
   }, [
     isAllowedToAssignSR,
-    hasCurrentSitePhotos,
     isLoadingCurrentSitePhotosCount,
+    isSiteReadinessSelectionDisabled,
     form,
   ]);
 
@@ -200,6 +218,17 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   }, [isSiteReadinessTask, shouldLockAssignee, matchedSupervisorId, form]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    if (
+      values.task_type === "Site Readiness" &&
+      isSiteReadinessConflictLocked
+    ) {
+      toastManager.add({
+        title: "Site Readiness task already created and not completed",
+        type: "error",
+      });
+      return;
+    }
+
     const payload: AssignToSiteReadinessPayload = {
       task_type: values.task_type,
       due_date: values.due_date,
@@ -300,13 +329,13 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                       {isAllowedToAssignSR ? (
                         <>
                           {/* 🔹 If API says site photos missing → disable + tooltip */}
-                          {hasCurrentSitePhotos ? (
+                          {!isSiteReadinessSelectionDisabled ? (
                             <SelectItem value="Site Readiness">
                               Site Readiness
                             </SelectItem>
                           ) : (
                             <CustomeTooltip
-                              value="Please upload current site photos before moving this lead to Site Readiness."
+                              value={siteReadinessDisabledTooltip}
                               truncateValue={
                                 <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
                                   <span>Site Readiness</span>

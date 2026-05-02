@@ -26,6 +26,8 @@ import {
 import {
   assignToFinalMeasurement,
   AssignToFinalMeasurementPayload,
+  getRestrictedTaskConflicts,
+  RestrictedTaskConflict,
 } from "@/api/final-measurement";
 import { apiClient } from "@/lib/apiClient";
 
@@ -166,6 +168,16 @@ export const useAssignToFinalMeasurement = (leadId: number) => {
   return useMutation({
     mutationFn: (payload: AssignToFinalMeasurementPayload) =>
       assignToFinalMeasurement(leadId, payload),
+  });
+};
+
+export const useRestrictedTaskConflicts = (leadId?: number) => {
+  return useQuery<RestrictedTaskConflict[]>({
+    queryKey: ["restrictedTaskConflicts", leadId],
+    queryFn: () => getRestrictedTaskConflicts(leadId!),
+    enabled: !!leadId,
+    staleTime: 1000 * 30,
+    refetchOnWindowFocus: false,
   });
 };
 

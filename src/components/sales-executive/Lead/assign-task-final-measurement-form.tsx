@@ -27,6 +27,7 @@ import {
   useAssignToFinalMeasurement,
   useCheckSiteSupervisorAssigned,
   useLeadSuperAdminApprovalLockIns,
+  useRestrictedTaskConflicts,
 } from "@/hooks/useLeadsQueries";
 import { AssignToFinalMeasurementPayload } from "@/api/final-measurement";
 import { toastManager } from "@/components/ui/toast";
@@ -139,6 +140,10 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data: siteSupervisorCheck } = useCheckSiteSupervisorAssigned(vendorId, leadId);
   const isSiteSupervisorAssigned = siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
+  const {
+    data: restrictedTaskConflicts = [],
+    isLoading: restrictedTaskConflictsLoading,
+  } = useRestrictedTaskConflicts(leadId);
   const { data: bookingDoneLockIns = [], isLoading: bookingDoneLockInsLoading } =
     useLeadSuperAdminApprovalLockIns(vendorId, leadId, "booking_done");
   const mutation = useAssignToFinalMeasurement(leadId);
@@ -170,17 +175,35 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const hasUserChangedTaskTypeRef = React.useRef(false);
 
   const taskType = form.watch("task_type");
+  const finalMeasurementsConflict = restrictedTaskConflicts.find(
+    (task) => task.task_type === "Final Measurements",
+  );
+  const bookingDoneConflict = restrictedTaskConflicts.find(
+    (task) => task.task_type === "BookingDone - ISM",
+  );
   const hasPendingBookingDoneApproval = bookingDoneLockIns.some(
     (lockIn) => !lockIn.is_approved
   );
   const requiresBookingDoneApproval = isAccountLocInEnabled;
+  const finalMeasurementsConflictTooltip = finalMeasurementsConflict
+    ? "Final Measurements task already created and not completed"
+    : null;
+  const bookingDoneConflictTooltip = bookingDoneConflict
+    ? "BookingDone - ISM task already created and not completed"
+    : null;
   const isFinalMeasurementsDisabled =
+    restrictedTaskConflictsLoading ||
+    !!finalMeasurementsConflict ||
     (requiresBookingDoneApproval &&
       (bookingDoneLockInsLoading || hasPendingBookingDoneApproval)) ||
     !canAccessRestrictedTasks ||
     !isSiteSupervisorAssigned;
   const finalMeasurementsTooltip =
-    requiresBookingDoneApproval && bookingDoneLockInsLoading
+    restrictedTaskConflictsLoading
+    ? "Checking existing tasks"
+    : finalMeasurementsConflictTooltip
+      ? finalMeasurementsConflictTooltip
+    : requiresBookingDoneApproval && bookingDoneLockInsLoading
     ? "Checking accounts approval status"
     : requiresBookingDoneApproval && hasPendingBookingDoneApproval
       ? "Accounts approval for Booking Done is pending"
@@ -188,6 +211,18 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         ? "You don't have permission to select this"
         : !isSiteSupervisorAssigned
           ? "Site supervisor is not assigned yet"
+          : null;
+  const isBookingDoneDisabled =
+    restrictedTaskConflictsLoading ||
+    !!bookingDoneConflict ||
+    !canAccessRestrictedTasks;
+  const bookingDoneTooltip =
+    restrictedTaskConflictsLoading
+      ? "Checking existing tasks"
+      : bookingDoneConflictTooltip
+        ? bookingDoneConflictTooltip
+        : !canAccessRestrictedTasks
+          ? "You don't have permission to select this"
           : null;
 
   const { data: followUpUsersData } = useFollowUpUsers(
@@ -276,6 +311,15 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     }
   }, [form, isFinalMeasurementsDisabled]);
 
+  React.useEffect(() => {
+    if (
+      form.getValues("task_type") === "BookingDone - ISM" &&
+      isBookingDoneDisabled
+    ) {
+      form.setValue("task_type", "Follow Up");
+    }
+  }, [form, isBookingDoneDisabled]);
+
   console.log("[AssignFM] site_map_link", {
     value: lead?.site_map_link ?? null,
     hasValue: Boolean(lead?.site_map_link?.trim()),
@@ -292,6 +336,28 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         value: lead?.site_map_link ?? null,
         hasValue: Boolean(lead?.site_map_link?.trim()),
       });
+      if (
+        values.task_type === "Final Measurements" &&
+        finalMeasurementsConflict
+      ) {
+        toastManager.add({
+          title: "Final Measurements task already created and not completed",
+          type: "error",
+        });
+        return;
+      }
+
+      if (
+        values.task_type === "BookingDone - ISM" &&
+        bookingDoneConflict
+      ) {
+        toastManager.add({
+          title: "BookingDone - ISM task already created and not completed",
+          type: "error",
+        });
+        return;
+      }
+
       if (
         values.task_type === "Final Measurements" &&
         requiresBookingDoneApproval &&
@@ -454,15 +520,15 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                             <span>
                               <SelectItem
                                 value="BookingDone - ISM"
-                                disabled={!canAccessRestrictedTasks}
+                                disabled={isBookingDoneDisabled}
                               >
                                 BookingDone - ISM
                               </SelectItem>
                             </span>
                           </TooltipTrigger>
-                          {!canAccessRestrictedTasks && (
+                          {bookingDoneTooltip && (
                             <TooltipContent>
-                              You don&apos;t have permission to select this
+                              {bookingDoneTooltip}
                             </TooltipContent>
                           )}
                         </Tooltip>
