@@ -93,7 +93,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const mutation = useAssignToSiteMeasurement(leadId);
   const queryClient = useQueryClient();
   const {
-    data: initialSiteMeasurementTaskConflicts = [],
+    data: taskConflicts,
     isLoading: isLoadingInitialSiteMeasurementTaskConflicts,
   } = useInitialSiteMeasurementTaskConflicts(leadId);
 
@@ -107,6 +107,9 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     },
   });
 
+  const initialSiteMeasurementTaskConflicts =
+    taskConflicts?.restrictedTaskConflicts ?? [];
+  const followUpConflicts = taskConflicts?.followUpConflicts ?? [];
   const taskType = form.watch("task_type");
   const isFollowUp = taskType === "Follow Up" || !!onlyFollowUp;
   const initialSiteMeasurementConflict = initialSiteMeasurementTaskConflicts.find(
@@ -127,11 +130,21 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     leadId,
     franchiseId
   );
+  const followUpTooltip =
+    "A Follow Up Task is already assigned to this user, which is not yet completed.";
 
   const mappedData = isFollowUp
     ? (followUpUsersData?.data?.users ?? []).map((u: any) => ({
         id: u.id,
         label: u.user_name,
+        disabled:
+          u.id !== userId &&
+          followUpConflicts.some((task) => task.assignee?.id === u.id),
+        tooltip:
+          u.id !== userId &&
+          followUpConflicts.some((task) => task.assignee?.id === u.id)
+            ? followUpTooltip
+            : undefined,
       }))
     : vendorUsers?.data?.sales_executives?.map((user: any) => ({
         id: user.id,
@@ -147,6 +160,19 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     }
   }, [form, isInitialSiteMeasurementDisabled]);
 
+  React.useEffect(() => {
+    if (taskType !== "Follow Up") return;
+
+    const selectedUserId = form.getValues("assign_lead_to");
+    if (
+      selectedUserId &&
+      selectedUserId !== userId &&
+      followUpConflicts.some((task) => task.assignee?.id === selectedUserId)
+    ) {
+      form.resetField("assign_lead_to");
+    }
+  }, [form, taskType, followUpConflicts, userId]);
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (
       values.task_type === "Initial Site Measurement" &&
@@ -154,6 +180,20 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     ) {
       toastManager.add({
         title: "Initial Site Measurement task already created and not completed",
+        type: "error",
+      });
+      return;
+    }
+
+    if (
+      values.task_type === "Follow Up" &&
+      values.assign_lead_to !== userId &&
+      followUpConflicts.some(
+        (task) => task.assignee?.id === values.assign_lead_to,
+      )
+    ) {
+      toastManager.add({
+        title: followUpTooltip,
         type: "error",
       });
       return;

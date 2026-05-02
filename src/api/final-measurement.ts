@@ -29,6 +29,17 @@ export interface RestrictedTaskConflict {
   } | null;
 }
 
+export interface FollowUpTaskConflict {
+  id: number;
+  task_type: "Follow Up";
+  status: string;
+  due_date: string;
+  assignee: {
+    id: number;
+    user_name: string;
+  } | null;
+}
+
 export const assignToFinalMeasurement = async (
   leadId: number,
   payload: AssignToFinalMeasurementPayload
@@ -46,7 +57,12 @@ export const getRestrictedTaskConflicts = async (leadId: number) => {
     `/leads/final-measurement/leadId/${leadId}/task-conflicts`
   );
 
-  return (data?.data?.conflicts ?? []) as RestrictedTaskConflict[];
+  return {
+    restrictedTaskConflicts: (data?.data?.conflicts?.restrictedTaskConflicts ??
+      []) as RestrictedTaskConflict[],
+    followUpConflicts: (data?.data?.conflicts?.followUpConflicts ??
+      []) as FollowUpTaskConflict[],
+  };
 };
 
 export const UploadFinalMeasurement = async (

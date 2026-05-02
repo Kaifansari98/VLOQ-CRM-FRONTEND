@@ -141,7 +141,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const { data: siteSupervisorCheck } = useCheckSiteSupervisorAssigned(vendorId, leadId);
   const isSiteSupervisorAssigned = siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
   const {
-    data: restrictedTaskConflicts = [],
+    data: taskConflicts,
     isLoading: restrictedTaskConflictsLoading,
   } = useRestrictedTaskConflicts(leadId);
   const { data: bookingDoneLockIns = [], isLoading: bookingDoneLockInsLoading } =
@@ -175,6 +175,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const hasUserChangedTaskTypeRef = React.useRef(false);
 
   const taskType = form.watch("task_type");
+  const restrictedTaskConflicts = taskConflicts?.restrictedTaskConflicts ?? [];
+  const followUpConflicts = taskConflicts?.followUpConflicts ?? [];
   const finalMeasurementsConflict = restrictedTaskConflicts.find(
     (task) => task.task_type === "Final Measurements",
   );
@@ -230,12 +232,22 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     leadId,
     franchiseId
   );
+  const followUpTooltip =
+    "A Follow Up Task is already assigned to this user, which is not yet completed.";
 
   const mappedData = React.useMemo(() => {
     if (taskType === "Follow Up") {
       return (followUpUsersData?.data?.users ?? []).map((u: any) => ({
         id: u.id,
         label: u.user_name,
+        disabled:
+          u.id !== userId &&
+          followUpConflicts.some((task) => task.assignee?.id === u.id),
+        tooltip:
+          u.id !== userId &&
+          followUpConflicts.some((task) => task.assignee?.id === u.id)
+            ? followUpTooltip
+            : undefined,
       }));
     }
 
@@ -269,7 +281,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         label: user.user_name,
       })) ?? []
     );
-  }, [taskType, siteSupervisors, salesExecutives, assignedSiteSupervisorId, followUpUsersData]);
+  }, [taskType, siteSupervisors, salesExecutives, assignedSiteSupervisorId, followUpUsersData, followUpConflicts, userId]);
 
   React.useEffect(() => {
     if (taskType === "Final Measurements" && assignedSiteSupervisorId) {
@@ -331,6 +343,19 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     }
   }, [form, isBookingDoneDisabled]);
 
+  React.useEffect(() => {
+    if (taskType !== "Follow Up") return;
+
+    const selectedUserId = form.getValues("assign_lead_to");
+    if (
+      selectedUserId &&
+      selectedUserId !== userId &&
+      followUpConflicts.some((task) => task.assignee?.id === selectedUserId)
+    ) {
+      form.resetField("assign_lead_to");
+    }
+  }, [form, taskType, followUpConflicts, userId]);
+
   console.log("[AssignFM] site_map_link", {
     value: lead?.site_map_link ?? null,
     hasValue: Boolean(lead?.site_map_link?.trim()),
@@ -364,6 +389,20 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       ) {
         toastManager.add({
           title: "BookingDone - ISM task already created and not completed",
+          type: "error",
+        });
+        return;
+      }
+
+      if (
+        values.task_type === "Follow Up" &&
+        values.assign_lead_to !== userId &&
+        followUpConflicts.some(
+          (task) => task.assignee?.id === values.assign_lead_to,
+        )
+      ) {
+        toastManager.add({
+          title: followUpTooltip,
           type: "error",
         });
         return;

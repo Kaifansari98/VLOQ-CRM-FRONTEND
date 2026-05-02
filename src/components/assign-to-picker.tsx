@@ -17,10 +17,18 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface SelectData {
   id: number;
   label: string;
+  disabled?: boolean;
+  tooltip?: string;
 }
 
 interface SelectGroup {
@@ -62,6 +70,37 @@ export default function AssignToPicker({
     value !== undefined && value !== null ? String(value) : "";
   const selectedItem = groupedData.find((item) => item.id === value);
 
+  const renderItem = (item: SelectData) => {
+    const itemNode = (
+      <CommandItem
+        key={item.id}
+        value={item.label.toLowerCase()}
+        disabled={item.disabled}
+        onSelect={() => {
+          if (item.disabled) return;
+          setOpen(false);
+          onChange?.(value === item.id ? null : item.id);
+        }}
+      >
+        {item.label}
+        {value === item.id && <CheckIcon size={16} className="ml-auto" />}
+      </CommandItem>
+    );
+
+    if (!item.disabled || !item.tooltip) {
+      return itemNode;
+    }
+
+    return (
+      <Tooltip key={item.id}>
+        <TooltipTrigger asChild>
+          <div>{itemNode}</div>
+        </TooltipTrigger>
+        <TooltipContent>{item.tooltip}</TooltipContent>
+      </Tooltip>
+    );
+  };
+
   return (
     <div className="relative *:not-first:mt-2 group">
       <Popover open={open && !disabled} onOpenChange={setOpen}>
@@ -101,55 +140,26 @@ export default function AssignToPicker({
             className="border-input w-full min-w-[var(--radix-popper-anchor-width)] p-0"
             align="start"
           >
-            <Command className="max-h-[320px] overflow-hidden">
-              <CommandInput placeholder={placeholder} />
-              <CommandList>
-                <CommandEmpty>No options found.</CommandEmpty>
-                <CommandGroup>
-                </CommandGroup>
-                {groups && groups.length > 0 ? (
-                  groups
-                    .filter((group) => group.items.length > 0)
-                    .map((group) => (
-                      <CommandGroup key={group.label} heading={group.label}>
-                        {group.items.map((item) => (
-                          <CommandItem
-                            key={item.id}
-                            value={item.label.toLowerCase()}
-                            onSelect={() => {
-                              setOpen(false);
-                              onChange?.(value === item.id ? null : item.id);
-                            }}
-                          >
-                            {item.label}
-                            {value === item.id && (
-                              <CheckIcon size={16} className="ml-auto" />
-                            )}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    ))
-                ) : (
-                  <CommandGroup>
-                    {data.map((item) => (
-                      <CommandItem
-                        key={item.id}
-                        value={item.label.toLowerCase()}
-                        onSelect={() => {
-                          setOpen(false);
-                          onChange?.(value === item.id ? null : item.id);
-                        }}
-                      >
-                        {item.label}
-                        {value === item.id && (
-                          <CheckIcon size={16} className="ml-auto" />
-                        )}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                )}
-              </CommandList>
-            </Command>
+            <TooltipProvider>
+              <Command className="max-h-[320px] overflow-hidden">
+                <CommandInput placeholder={placeholder} />
+                <CommandList>
+                  <CommandEmpty>No options found.</CommandEmpty>
+                  <CommandGroup></CommandGroup>
+                  {groups && groups.length > 0 ? (
+                    groups
+                      .filter((group) => group.items.length > 0)
+                      .map((group) => (
+                        <CommandGroup key={group.label} heading={group.label}>
+                          {group.items.map(renderItem)}
+                        </CommandGroup>
+                      ))
+                  ) : (
+                    <CommandGroup>{data.map(renderItem)}</CommandGroup>
+                  )}
+                </CommandList>
+              </Command>
+            </TooltipProvider>
           </PopoverContent>
         )}
       </Popover>

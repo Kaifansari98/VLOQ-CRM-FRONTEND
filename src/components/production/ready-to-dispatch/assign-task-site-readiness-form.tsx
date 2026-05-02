@@ -128,11 +128,14 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     isLoading: isLoadingCurrentSitePhotosCount,
   } = useCurrentSitePhotosCount(vendorId, leadId);
   const {
-    data: siteReadinessTaskConflicts = [],
+    data: taskConflicts,
     isLoading: isLoadingSiteReadinessTaskConflicts,
   } = useSiteReadinessTaskConflicts(leadId);
 
   const hasCurrentSitePhotos = currentSitePhotosCount?.hasPhotos === true;
+  const siteReadinessTaskConflicts =
+    taskConflicts?.restrictedTaskConflicts ?? [];
+  const followUpConflicts = taskConflicts?.followUpConflicts ?? [];
   const siteReadinessConflict = siteReadinessTaskConflicts.find(
     (task) => task.task_type === "Site Readiness",
   );
@@ -164,12 +167,22 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       id: user.id,
       label: user.user_name,
     })) ?? [];
+  const followUpTooltip =
+    "A Follow Up Task is already assigned to this user, which is not yet completed.";
 
   const mappedData =
     taskType === "Follow Up"
       ? (followUpUsersData?.data?.users ?? []).map((u: any) => ({
           id: u.id,
           label: u.user_name,
+          disabled:
+            u.id !== userId &&
+            followUpConflicts.some((task) => task.assignee?.id === u.id),
+          tooltip:
+            u.id !== userId &&
+            followUpConflicts.some((task) => task.assignee?.id === u.id)
+              ? followUpTooltip
+              : undefined,
         }))
       : siteSupervisorList;
 
@@ -217,6 +230,19 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     }
   }, [isSiteReadinessTask, shouldLockAssignee, matchedSupervisorId, form]);
 
+  React.useEffect(() => {
+    if (taskType !== "Follow Up") return;
+
+    const selectedUserId = form.getValues("assign_lead_to");
+    if (
+      selectedUserId &&
+      selectedUserId !== userId &&
+      followUpConflicts.some((task) => task.assignee?.id === selectedUserId)
+    ) {
+      form.resetField("assign_lead_to");
+    }
+  }, [form, taskType, followUpConflicts, userId]);
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (
       values.task_type === "Site Readiness" &&
@@ -224,6 +250,20 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     ) {
       toastManager.add({
         title: "Site Readiness task already created and not completed",
+        type: "error",
+      });
+      return;
+    }
+
+    if (
+      values.task_type === "Follow Up" &&
+      values.assign_lead_to !== userId &&
+      followUpConflicts.some(
+        (task) => task.assignee?.id === values.assign_lead_to,
+      )
+    ) {
+      toastManager.add({
+        title: followUpTooltip,
         type: "error",
       });
       return;

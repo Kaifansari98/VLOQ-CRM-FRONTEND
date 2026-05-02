@@ -10,6 +10,7 @@ import {
   assignToSiteMeasurement,
   AssignToSiteMeasurementPayload,
   getInitialSiteMeasurementTaskConflicts,
+  InitialSiteMeasurementFollowUpTaskConflict,
   InitialSiteMeasurementTaskConflict,
   fetchLeadLogs,
   getLeadById,
@@ -28,6 +29,7 @@ import {
 import {
   assignToFinalMeasurement,
   AssignToFinalMeasurementPayload,
+  FollowUpTaskConflict,
   getRestrictedTaskConflicts,
   RestrictedTaskConflict,
 } from "@/api/final-measurement";
@@ -167,7 +169,10 @@ export const useAssignToSiteMeasurement = (leadId: number) => {
 };
 
 export const useInitialSiteMeasurementTaskConflicts = (leadId?: number) => {
-  return useQuery<InitialSiteMeasurementTaskConflict[]>({
+  return useQuery<{
+    restrictedTaskConflicts: InitialSiteMeasurementTaskConflict[];
+    followUpConflicts: InitialSiteMeasurementFollowUpTaskConflict[];
+  }>({
     queryKey: ["initialSiteMeasurementTaskConflicts", leadId],
     queryFn: () => getInitialSiteMeasurementTaskConflicts(leadId!),
     enabled: !!leadId,
@@ -184,7 +189,10 @@ export const useAssignToFinalMeasurement = (leadId: number) => {
 };
 
 export const useRestrictedTaskConflicts = (leadId?: number) => {
-  return useQuery<RestrictedTaskConflict[]>({
+  return useQuery<{
+    restrictedTaskConflicts: RestrictedTaskConflict[];
+    followUpConflicts: FollowUpTaskConflict[];
+  }>({
     queryKey: ["restrictedTaskConflicts", leadId],
     queryFn: () => getRestrictedTaskConflicts(leadId!),
     enabled: !!leadId,
