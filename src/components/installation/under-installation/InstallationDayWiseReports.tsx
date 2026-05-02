@@ -71,6 +71,7 @@ export default function InstallationDayWiseReports({
   accountId,
   accessBtn,
 }: InstallationDayWiseReportsProps) {
+  const MAX_REPORT_FILES = 20;
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
 
@@ -126,6 +127,14 @@ export default function InstallationDayWiseReports({
       });
       return;
     }
+    if (files.length > MAX_REPORT_FILES) {
+      toastManager.add({
+        title: `You can upload up to ${MAX_REPORT_FILES} files only`,
+        type: "error",
+      });
+      setFiles((prev) => prev.slice(0, MAX_REPORT_FILES));
+      return;
+    }
 
     uploadMutation.mutate(
       {
@@ -143,10 +152,7 @@ export default function InstallationDayWiseReports({
             title: "Day-wise report uploaded successfully",
             type: "success",
           });
-          setIsAddModalOpen(false);
-          setSelectedDate(undefined);
-          setRemark("");
-          setFiles([]);
+          handleAddModalChange(false);
           refetch();
         },
         onError: (error) => {
@@ -257,6 +263,38 @@ export default function InstallationDayWiseReports({
     userType === "super-admin" ||
     (userType === "site-supervisor" &&
       leadStatus === "under-installation-stage");
+
+  const resetAddReportForm = React.useCallback(() => {
+    setSelectedDate(undefined);
+    setRemark("");
+    setFiles([]);
+  }, []);
+
+  const handleAddModalChange = React.useCallback(
+    (open: boolean) => {
+      setIsAddModalOpen(open);
+      if (!open) {
+        resetAddReportForm();
+      }
+    },
+    [resetAddReportForm],
+  );
+
+  const handleFilesChange = React.useCallback(
+    (nextFiles: File[]) => {
+      if (nextFiles.length > MAX_REPORT_FILES) {
+        toastManager.add({
+          title: `You can upload up to ${MAX_REPORT_FILES} files only`,
+          type: "error",
+        });
+        setFiles(nextFiles.slice(0, MAX_REPORT_FILES));
+        return;
+      }
+
+      setFiles(nextFiles);
+    },
+    [MAX_REPORT_FILES],
+  );
 
   return (
     <div className="mt-10 border-t pt-6">
@@ -395,7 +433,7 @@ export default function InstallationDayWiseReports({
       {/* Add Report Modal */}
       <BaseModal
         open={isAddModalOpen}
-        onOpenChange={setIsAddModalOpen}
+        onOpenChange={handleAddModalChange}
         title="Add Day-Wise Installation Report"
         description="Track installation progress with daily updates and documentation"
         size="lg"
@@ -430,9 +468,10 @@ export default function InstallationDayWiseReports({
             <label className="text-sm font-medium">Upload Documents *</label>
             <FileUploadField
               value={files}
-              onChange={setFiles}
+              onChange={handleFilesChange}
               accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.avi,.mkv,.webm"
               multiple
+              maxFiles={MAX_REPORT_FILES}
             />
           </div>
 
@@ -440,7 +479,7 @@ export default function InstallationDayWiseReports({
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button
               variant="outline"
-              onClick={() => setIsAddModalOpen(false)}
+              onClick={() => handleAddModalChange(false)}
               disabled={uploadMutation.isPending}
             >
               Cancel

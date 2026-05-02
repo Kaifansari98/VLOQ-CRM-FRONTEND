@@ -42,6 +42,7 @@ const documentMimeTypes = [
 const documentAccept = ".pdf,.png,.jpg,.jpeg,.gif";
 const imageMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
 const imageAccept = ".png,.jpg,.jpeg,.gif";
+const MAX_FINAL_MEASUREMENT_FILES = 20;
 
 const formSchema = z.object({
   finalMeasurementDocs: z
@@ -55,7 +56,9 @@ const formSchema = z.object({
         message: "Only PDF or image files are allowed",
       },
     )
-    .max(20, { message: "You can upload up to 20 files only" }),
+    .max(MAX_FINAL_MEASUREMENT_FILES, {
+      message: `You can upload up to ${MAX_FINAL_MEASUREMENT_FILES} files only`,
+    }),
 
   currentSitePhotos: z
     .array(z.instanceof(File))
@@ -63,7 +66,10 @@ const formSchema = z.object({
     .refine(
       (files) => files.every((file) => imageMimeTypes.includes(file.type)),
       { message: "Only JPG, JPEG, PNG, or GIF images are allowed" },
-    ),
+    )
+    .max(MAX_FINAL_MEASUREMENT_FILES, {
+      message: `You can upload up to ${MAX_FINAL_MEASUREMENT_FILES} files only`,
+    }),
 
   criticalDiscussion: z.string().optional(),
 });
@@ -87,6 +93,58 @@ const FinalMeasurementModal = ({
   });
 
   const finalMeasurementMutation = useFinalMeasurement();
+
+  const resetForm = React.useCallback(() => {
+    form.reset({
+      finalMeasurementDocs: [],
+      currentSitePhotos: [],
+      criticalDiscussion: "N/A",
+    });
+  }, [form]);
+
+  const handleModalChange = React.useCallback(
+    (nextOpen: boolean) => {
+      onOpenChange(nextOpen);
+      if (!nextOpen) {
+        resetForm();
+      }
+    },
+    [onOpenChange, resetForm],
+  );
+
+  const handleFilesChange = React.useCallback(
+    (
+      fieldName: "finalMeasurementDocs" | "currentSitePhotos",
+      nextFiles: File[],
+      allowedTypes: string[],
+    ) => {
+      const validFiles = nextFiles.filter((file) => allowedTypes.includes(file.type));
+
+      if (validFiles.length !== nextFiles.length) {
+        toastManager.add({
+          title:
+            fieldName === "finalMeasurementDocs"
+              ? "Only PDF or image files are allowed"
+              : "Only JPG, JPEG, PNG, or GIF images are allowed",
+          type: "error",
+        });
+      }
+
+      if (validFiles.length > MAX_FINAL_MEASUREMENT_FILES) {
+        toastManager.add({
+          title: `You can upload up to ${MAX_FINAL_MEASUREMENT_FILES} files only`,
+          type: "error",
+        });
+      }
+
+      form.setValue(
+        fieldName,
+        validFiles.slice(0, MAX_FINAL_MEASUREMENT_FILES),
+        { shouldDirty: true, shouldValidate: true },
+      );
+    },
+    [form],
+  );
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!data) return;
@@ -119,8 +177,7 @@ const FinalMeasurementModal = ({
             queryKey: ["allLeadDocuments"],
           });
 
-          form.reset();
-          onOpenChange(false);
+          handleModalChange(false);
 
           // 👇 redirect to client documentation page
           router.push("/dashboard/project/client-documentation");
@@ -138,7 +195,7 @@ const FinalMeasurementModal = ({
   return (
     <BaseModal
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleModalChange}
       title={`Final Measurement for ${data?.name || "Customer"}`}
       size="lg"
       description="Submit final measurement details with optional notes and attachments."
@@ -152,14 +209,21 @@ const FinalMeasurementModal = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-sm">
-                  Final Measurement Documents (max 10) *
+                  Final Measurement Documents (max 20) *
                 </FormLabel>
                 <FormControl>
                   <FileUploadField
                     value={field.value}
-                    onChange={field.onChange}
+                    onChange={(files) =>
+                      handleFilesChange(
+                        "finalMeasurementDocs",
+                        files,
+                        documentMimeTypes,
+                      )
+                    }
                     accept={documentAccept}
-                    multiple // ✅ allow multiple PDFs
+                    multiple
+                    maxFiles={MAX_FINAL_MEASUREMENT_FILES}
                   />
                 </FormControl>
                 <FormMessage />
@@ -177,8 +241,16 @@ const FinalMeasurementModal = ({
                 <FormControl>
                   <FileUploadField
                     value={field.value}
-                    onChange={field.onChange}
+                    onChange={(files) =>
+                      handleFilesChange(
+                        "currentSitePhotos",
+                        files,
+                        imageMimeTypes,
+                      )
+                    }
                     accept={imageAccept}
+                    multiple
+                    maxFiles={MAX_FINAL_MEASUREMENT_FILES}
                   />
                 </FormControl>
                 <FormMessage />
@@ -208,13 +280,7 @@ const FinalMeasurementModal = ({
             <Button
               type="button"
               variant="outline"
-              onClick={() =>
-                form.reset({
-                  finalMeasurementDocs: [],
-                  currentSitePhotos: [],
-                  criticalDiscussion: "",
-                })
-              }
+              onClick={resetForm}
             >
               Reset
             </Button>
