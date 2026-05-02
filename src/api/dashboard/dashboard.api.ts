@@ -645,8 +645,10 @@ export const getSiteSupervisorAvgDaysToInstallation = async (
 };
 
 export interface FactoryLeadBifurcation {
-  preProdCount: number;
+  pendingCount: number;
+  preProdDoneCount: number;
   underProdCount: number;
+  completedCount: number;
 }
 
 export interface TechCheckNewLeads {

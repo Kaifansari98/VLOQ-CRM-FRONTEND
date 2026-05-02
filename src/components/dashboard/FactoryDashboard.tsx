@@ -1,5 +1,4 @@
 "use client";
-
 import { useMemo } from "react";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import FactoryLeadBifurcationCard from "@/components/dashboard/FactoryLeadBifurcationCard";
@@ -10,8 +9,8 @@ import SiteSupervisorMiscTable from "@/components/dashboard/SiteSupervisorMiscTa
 import FactoryERDCalendarTable from "@/components/dashboard/FactoryERDCalendarTable";
 import { AssignedTaskCard } from "@/components/dashboard/AssignedTaskCard";
 import {
-  type VendorLeadsByTagPostPayload,
-  useVendorLeadsByTagPost,
+  type UniversalStagePostPayload,
+  useUniversalStageLeadsPost,
 } from "@/api/universalstage";
 
 export default function FactoryDashboard() {
@@ -28,51 +27,77 @@ export default function FactoryDashboard() {
     normalizedUserType === "sales-executive" ||
     normalizedUserType === "head-site-supervisor";
 
-  const baseBifurcationPayload = useMemo<VendorLeadsByTagPostPayload>(
+  const productionSummaryPayload = useMemo<UniversalStagePostPayload>(
     () => ({
+      userId,
       franchise_id:
         shouldIncludeFranchise && franchiseId != null ? franchiseId : undefined,
       tag: "Type 10",
       page: 1,
-      limit: 20,
+      limit: 5000,
+      filter_name: "",
+      filter_lead_code: "",
+      contact: "",
+      alt_contact_no: "",
+      email: "",
+      site_address: "",
+      archetech_name: "",
+      designer_remark: "",
+      furniture_type: [],
+      furniture_structure: [],
+      site_type: [],
+      source: [],
+      assign_to: [],
+      site_map_link: null,
+      created_at: "desc",
       global_search: "",
-      created_at: "desc" as const,
     }),
-    [franchiseId, shouldIncludeFranchise],
+    [franchiseId, shouldIncludeFranchise, userId],
   );
 
-  const preProdDonePayload = useMemo<VendorLeadsByTagPostPayload>(
-    () => ({
-      ...baseBifurcationPayload,
-      production_status: "Pre Prod Done",
-    }),
-    [baseBifurcationPayload],
-  );
+  const { data: productionSummaryData, isLoading: isLoadingBifurcation } =
+    useUniversalStageLeadsPost(vendorId, productionSummaryPayload);
 
-  const underProductionPayload = useMemo<VendorLeadsByTagPostPayload>(
-    () => ({
-      ...baseBifurcationPayload,
-      production_status: "Under Production",
-    }),
-    [baseBifurcationPayload],
-  );
+  const bifurcation = useMemo(() => {
+    const counts = {
+      pendingCount: 0,
+      preProdDoneCount: 0,
+      underProdCount: 0,
+      completedCount: 0,
+    };
 
-  const { data: preProdDoneData, isLoading: isLoadingPreProdDone } =
-    useVendorLeadsByTagPost(vendorId, preProdDonePayload);
+    const leads = productionSummaryData?.data ?? [];
 
-  const { data: underProductionData, isLoading: isLoadingUnderProduction } =
-    useVendorLeadsByTagPost(vendorId, underProductionPayload);
+    leads.forEach((lead) => {
+      const instances = lead.productStructureInstances ?? [];
+      const productionInstances = instances.filter(
+        (instance) =>
+          instance?.is_tech_check_completed === true &&
+          instance?.is_order_login_completed === true,
+      );
 
-  const isLoadingBifurcation =
-    isLoadingPreProdDone || isLoadingUnderProduction;
+      productionInstances.forEach((instance) => {
+        if (instance?.is_production_completed) {
+          counts.completedCount += 1;
+          return;
+        }
 
-  const bifurcation = useMemo(
-    () => ({
-      preProdCount: preProdDoneData?.count ?? 0,
-      underProdCount: underProductionData?.count ?? 0,
-    }),
-    [preProdDoneData?.count, underProductionData?.count],
-  );
+        if (instance?.is_under_production) {
+          counts.underProdCount += 1;
+          return;
+        }
+
+        if (instance?.is_pre_prod_done) {
+          counts.preProdDoneCount += 1;
+          return;
+        }
+
+        counts.pendingCount += 1;
+      });
+    });
+
+    return counts;
+  }, [productionSummaryData?.data]);
 
   const { data: avgRTD, isLoading: isLoadingAvgRTD } =
     useFactoryAvgProductionToRTD(vendorId);
@@ -93,8 +118,10 @@ export default function FactoryDashboard() {
       <div className="w-full flex flex-col sm:flex-row gap-4">
         <div className="w-full sm:w-1/2">
           <FactoryLeadBifurcationCard
-            preProdCount={bifurcation?.preProdCount ?? 0}
+            pendingCount={bifurcation?.pendingCount ?? 0}
+            preProdDoneCount={bifurcation?.preProdDoneCount ?? 0}
             underProdCount={bifurcation?.underProdCount ?? 0}
+            completedCount={bifurcation?.completedCount ?? 0}
             isLoading={isLoadingBifurcation}
           />
         </div>
