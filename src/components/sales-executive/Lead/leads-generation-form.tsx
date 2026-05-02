@@ -55,6 +55,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import StructureQuantityCards from "@/components/sales-executive/Lead/structure-quantity-cards";
+import { getErrorMessage } from "@/lib/utils";
 
 const priorityOptions = [
   { id: 1, label: "High", value: "High" },
@@ -68,8 +69,8 @@ const createFormSchema = (userType: string | undefined) => {
     userType === "admin" || userType === "super-admin";
 
   return z.object({
-    firstname: z.string().min(1, "First name is required").max(300),
-    lastname: z.string().min(1, "Last name is required").max(300),
+    firstname: z.string().trim().min(1, "First name is required").max(300),
+    lastname: z.string().trim().min(1, "Last name is required").max(300),
     contact_no: z.string().min(1, "This Contact number isn't valid").max(20),
     alt_contact_no: z.string().optional().or(z.literal("")),
     email: z
@@ -106,8 +107,8 @@ const draftFormSchema = (userType: string | undefined) => {
     userType === "admin" || userType === "super-admin";
 
   return z.object({
-    firstname: z.string().min(1, "First name is required").max(300),
-    lastname: z.string().min(1, "Last name is required").max(300),
+    firstname: z.string().trim().min(1, "First name is required").max(300),
+    lastname: z.string().trim().min(1, "Last name is required").max(300),
     contact_no: z.string().min(1, "Contact number is required").max(20),
     // Admin must assign even in draft
     assign_to: isAdminOrSuperAdmin
@@ -381,11 +382,7 @@ export default function LeadsGenerationForm({
     },
     onError: (error: any) => {
       console.error("Form submission error:", error);
-      const errorMessage =
-        error?.response?.data?.details ||
-        error?.response?.data?.error ||
-        "Failed to create lead";
-      toastManager.add({ title: errorMessage, type: "error" });
+      toastManager.add({ title: getErrorMessage(error), type: "error" });
     },
   });
 
@@ -410,11 +407,7 @@ export default function LeadsGenerationForm({
     },
     onError: (error: any) => {
       console.error("Draft save error:", error);
-      const errorMessage =
-        error?.response?.data?.details ||
-        error?.response?.data?.error ||
-        "Failed to save draft";
-      toastManager.add({ title: errorMessage, type: "error" });
+      toastManager.add({ title: getErrorMessage(error), type: "error" });
     },
   });
 

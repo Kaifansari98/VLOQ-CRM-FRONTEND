@@ -13,10 +13,12 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { toastManager } from "@/components/ui/toast";
+import { getErrorMessage } from "@/lib/utils";
 
 interface ApiErrorResponse {
   message?: string;
   error?: string;
+  details?: unknown;
 }
 export interface CreateLeadPayload {
   firstname: string;
@@ -223,7 +225,7 @@ export const createLead = async (
     return response.data;
   } catch (error: unknown) {
     const err = error as AxiosError<ApiErrorResponse>;
-    console.error("Failed to create lead:", err.response?.data?.error);
+    console.error("Failed to create lead:", getErrorMessage(err));
     throw err;
   }
 };

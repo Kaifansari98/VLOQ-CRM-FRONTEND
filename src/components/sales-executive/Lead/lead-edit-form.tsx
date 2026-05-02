@@ -77,8 +77,8 @@ const priorityOptions = [
 // Form validation schema
 const formSchema = z.object({
   // Required fields
-  firstname: z.string().min(1, "First name is required").max(300),
-  lastname: z.string().min(1, "Last name is required").max(300),
+  firstname: z.string().trim().min(1, "First name is required").max(300),
+  lastname: z.string().trim().min(1, "Last name is required").max(300),
 
   contact_no: z
     .string()

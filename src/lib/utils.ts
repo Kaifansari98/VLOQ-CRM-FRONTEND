@@ -13,10 +13,38 @@ export function cn(...inputs: ClassValue[]) {
 export function getErrorMessage(error: unknown): string {
   if (!error) return "Something went wrong";
 
+  const responseData = (error as any)?.response?.data;
+  const details = responseData?.details;
+
+  if (Array.isArray(details) && details.length > 0) {
+    const detailMessage = details
+      .map((detail) => {
+        if (typeof detail === "string") return detail;
+        if (detail?.field && detail?.message) {
+          return `${detail.field}: ${detail.message}`;
+        }
+        if (detail?.message) return detail.message;
+        return "";
+      })
+      .filter(Boolean)
+      .join(", ");
+
+    if (detailMessage) return detailMessage;
+  }
+
+  if (details && typeof details === "object" && "message" in details) {
+    const detailMessage = (details as { message?: unknown }).message;
+    if (typeof detailMessage === "string" && detailMessage.trim()) {
+      return detailMessage;
+    }
+  }
+
+  if (typeof details === "string" && details.trim()) {
+    return details;
+  }
+
   // Axios error message
-  const axiosMessage =
-    (error as any)?.response?.data?.message ||
-    (error as any)?.response?.data?.error;
+  const axiosMessage = responseData?.message || responseData?.error;
 
   if (axiosMessage) return axiosMessage;
 
