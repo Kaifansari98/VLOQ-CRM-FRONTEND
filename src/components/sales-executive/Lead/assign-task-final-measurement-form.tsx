@@ -292,6 +292,17 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     }
 
     if (
+      isFinalMeasurementsDisabled &&
+      !hasUserChangedTaskTypeRef.current &&
+      form.getValues("task_type") !== "Follow Up"
+    ) {
+      form.setValue("task_type", "Follow Up", {
+        shouldValidate: true,
+      });
+      return;
+    }
+
+    if (
       !isFinalMeasurementsDisabled &&
       !hasUserChangedTaskTypeRef.current &&
       form.getValues("task_type") !== "Final Measurements"
