@@ -9,6 +9,8 @@ import {
 import {
   assignToSiteMeasurement,
   AssignToSiteMeasurementPayload,
+  getInitialSiteMeasurementTaskConflicts,
+  InitialSiteMeasurementTaskConflict,
   fetchLeadLogs,
   getLeadById,
   getVendorLeads,
@@ -161,6 +163,16 @@ export const useAssignToSiteMeasurement = (leadId: number) => {
   return useMutation({
     mutationFn: (payload: AssignToSiteMeasurementPayload) =>
       assignToSiteMeasurement(leadId, payload),
+  });
+};
+
+export const useInitialSiteMeasurementTaskConflicts = (leadId?: number) => {
+  return useQuery<InitialSiteMeasurementTaskConflict[]>({
+    queryKey: ["initialSiteMeasurementTaskConflicts", leadId],
+    queryFn: () => getInitialSiteMeasurementTaskConflicts(leadId!),
+    enabled: !!leadId,
+    staleTime: 1000 * 30,
+    refetchOnWindowFocus: false,
   });
 };
 

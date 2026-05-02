@@ -474,6 +474,17 @@ export interface AssignToSiteMeasurementPayload {
   created_by: number;
 }
 
+export interface InitialSiteMeasurementTaskConflict {
+  id: number;
+  task_type: "Initial Site Measurement";
+  status: string;
+  due_date: string;
+  assignee: {
+    id: number;
+    user_name: string;
+  } | null;
+}
+
 export const assignToSiteMeasurement = async (
   leadId: number,
   payload: AssignToSiteMeasurementPayload,
@@ -484,6 +495,14 @@ export const assignToSiteMeasurement = async (
   );
 
   return data;
+};
+
+export const getInitialSiteMeasurementTaskConflicts = async (leadId: number) => {
+  const { data } = await apiClient.get(
+    `/leads/initial-site-measurement/leadId/${leadId}/task-conflicts`
+  );
+
+  return (data?.data?.conflicts ?? []) as InitialSiteMeasurementTaskConflict[];
 };
 
 export const fetchLeadLogs = async ({

@@ -24,12 +24,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
 import z from "zod";
-import { useAssignToSiteMeasurement } from "@/hooks/useLeadsQueries";
+import {
+  useAssignToSiteMeasurement,
+  useInitialSiteMeasurementTaskConflicts,
+} from "@/hooks/useLeadsQueries";
 import { AssignToSiteMeasurementPayload } from "@/api/leads";
 import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useFollowUpUsers } from "@/hooks/useFollowUpUsers";
+import CustomeTooltip from "@/components/custom-tooltip";
 
 interface Props {
   open: boolean;
@@ -88,6 +92,10 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const userId = useAppSelector((state) => state.auth.user?.id);
   const mutation = useAssignToSiteMeasurement(leadId);
   const queryClient = useQueryClient();
+  const {
+    data: initialSiteMeasurementTaskConflicts = [],
+    isLoading: isLoadingInitialSiteMeasurementTaskConflicts,
+  } = useInitialSiteMeasurementTaskConflicts(leadId);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -101,6 +109,18 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
 
   const taskType = form.watch("task_type");
   const isFollowUp = taskType === "Follow Up" || !!onlyFollowUp;
+  const initialSiteMeasurementConflict = initialSiteMeasurementTaskConflicts.find(
+    (task) => task.task_type === "Initial Site Measurement",
+  );
+  const isInitialSiteMeasurementDisabled =
+    isLoadingInitialSiteMeasurementTaskConflicts ||
+    !!initialSiteMeasurementConflict ||
+    !!onlyFollowUp;
+  const initialSiteMeasurementTooltip = isLoadingInitialSiteMeasurementTaskConflicts
+    ? "Checking existing tasks"
+    : initialSiteMeasurementConflict
+      ? "Initial Site Measurement task already created and not completed"
+      : "Initial Site Measurement is not available here";
 
   const { data: followUpUsersData } = useFollowUpUsers(
     vendorId,
@@ -118,7 +138,27 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
         label: user.user_name,
       })) ?? [];
 
+  React.useEffect(() => {
+    if (
+      form.getValues("task_type") === "Initial Site Measurement" &&
+      isInitialSiteMeasurementDisabled
+    ) {
+      form.setValue("task_type", "Follow Up");
+    }
+  }, [form, isInitialSiteMeasurementDisabled]);
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    if (
+      values.task_type === "Initial Site Measurement" &&
+      initialSiteMeasurementConflict
+    ) {
+      toastManager.add({
+        title: "Initial Site Measurement task already created and not completed",
+        type: "error",
+      });
+      return;
+    }
+
     const payload: AssignToSiteMeasurementPayload = {
       task_type: values.task_type,
       due_date: values.due_date,
@@ -218,10 +258,22 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                     </FormControl>
                     <SelectContent>
                       {/* ✅ Only show "Initial Site Measurement" if not restricted */}
-                      {!onlyFollowUp && (
+                      {!isInitialSiteMeasurementDisabled ? (
                         <SelectItem value="Initial Site Measurement">
                           Initial Site Measurement
                         </SelectItem>
+                      ) : (
+                        <CustomeTooltip
+                          value={initialSiteMeasurementTooltip}
+                          truncateValue={
+                            <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                              <span>Initial Site Measurement</span>
+                              <span className="text-xs italic text-muted-foreground ml-1">
+                                (locked)
+                              </span>
+                            </div>
+                          }
+                        />
                       )}
                       <SelectItem value="Follow Up">Follow Up</SelectItem>
                     </SelectContent>
