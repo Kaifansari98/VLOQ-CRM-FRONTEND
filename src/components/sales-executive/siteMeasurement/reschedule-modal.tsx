@@ -27,6 +27,9 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRescheduleSuccess?: (open: boolean) => void;
+  title?: string;
+  description?: string;
+  successTitle?: string;
   data?: {
     id: number;
     taskId?: number;
@@ -50,6 +53,9 @@ const RescheduleModal: React.FC<Props> = ({
   onOpenChange,
   data,
   onRescheduleSuccess,
+  title = "Reschedule Lead",
+  description = "Set a new date and time for this lead follow-up.",
+  successTitle = "Lead rescheduled successfully!",
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -77,9 +83,9 @@ const RescheduleModal: React.FC<Props> = ({
     if (!data) return;
 
     const payload: ReschedulePayload = {
-      updated_by: 1,
+      updated_by: userId || 0,
       closed_at: new Date().toISOString(),
-      closed_by: 1,
+      closed_by: userId || 0,
       due_date: values.date,
       remark: values.remark,
     };
@@ -92,13 +98,16 @@ const RescheduleModal: React.FC<Props> = ({
       },
       {
         onSuccess: () => {
-          toastManager.add({ title: "Lead rescheduled successfully!", type: "success" });
+          toastManager.add({ title: successTitle, type: "success" });
           if (vendorId) {
             queryClient.invalidateQueries({
               queryKey: ["siteMeasurementLeads", vendorId],
             });
             queryClient.invalidateQueries({
               queryKey: ["vendorUserTasks", vendorId, userId],
+            });
+            queryClient.invalidateQueries({
+              queryKey: ["vendorAllTasks"],
             });
           }
 
@@ -117,8 +126,8 @@ const RescheduleModal: React.FC<Props> = ({
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Reschedule Lead"
-      description="Set a new date and time for this lead follow-up."
+      title={title}
+      description={description}
       size="md"
     >
       <div className="p-6 flex flex-col gap-4">

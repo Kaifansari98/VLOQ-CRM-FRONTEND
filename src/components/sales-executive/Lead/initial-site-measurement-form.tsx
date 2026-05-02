@@ -150,6 +150,12 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
         queryKey: ["universal-stage-leads"],
         exact: false,
       });
+      queryClient.invalidateQueries({
+        queryKey: ["vendorUserTasks"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["vendorAllTasks"],
+      });
       handleReset();
       onOpenChange(false);
 

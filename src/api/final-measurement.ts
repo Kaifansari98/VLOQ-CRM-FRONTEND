@@ -40,12 +40,31 @@ export interface FollowUpTaskConflict {
   } | null;
 }
 
+export interface RescheduleFinalMeasurementPayload {
+  updated_by: number;
+  due_date: string;
+  remark: string;
+}
+
 export const assignToFinalMeasurement = async (
   leadId: number,
   payload: AssignToFinalMeasurementPayload
 ) => {
   const { data } = await apiClient.post(
     `/leads/final-measurement/leadId/${leadId}/tasks/assign-fm`,
+    payload
+  );
+
+  return data;
+};
+
+export const rescheduleFinalMeasurementTask = async (
+  leadId: number,
+  taskId: number,
+  payload: RescheduleFinalMeasurementPayload
+) => {
+  const { data } = await apiClient.patch(
+    `/leads/final-measurement/leadId/${leadId}/taskId/${taskId}/reschedule`,
     payload
   );
 

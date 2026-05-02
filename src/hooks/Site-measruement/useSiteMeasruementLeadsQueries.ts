@@ -6,7 +6,9 @@ import {
   CompletedUpdateTheTaskIsmAndFollowUp,
   getInitialSiteMeasurement,
   getSiteMeasurmentLeadById,
+  RescheduleInitialSiteMeasurementPayload,
   ReschedulePayload,
+  rescheduleInitialSiteMeasurementTask,
   RescheduleTaskFollowUp,
 } from "@/api/measurment-leads";
 import { getBookingDoneIsmDetails, uploadBookingDoneIsm } from "@/api/leads";
@@ -68,6 +70,20 @@ export const useRescheduleTask = () => {
       taskId: number;
       payload: ReschedulePayload;
     }) => RescheduleTaskFollowUp(leadId, taskId, payload),
+  });
+};
+
+export const useRescheduleInitialSiteMeasurementTask = () => {
+  return useMutation({
+    mutationFn: ({
+      leadId,
+      taskId,
+      payload,
+    }: {
+      leadId: number;
+      taskId: number;
+      payload: RescheduleInitialSiteMeasurementPayload;
+    }) => rescheduleInitialSiteMeasurementTask(leadId, taskId, payload),
   });
 };
 

@@ -176,6 +176,12 @@ const FinalMeasurementModal = ({
           queryClient.invalidateQueries({
             queryKey: ["allLeadDocuments"],
           });
+          queryClient.invalidateQueries({
+            queryKey: ["vendorUserTasks"],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["vendorAllTasks"],
+          });
 
           handleModalChange(false);
 

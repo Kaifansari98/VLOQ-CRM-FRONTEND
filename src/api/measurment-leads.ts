@@ -88,6 +88,12 @@ export interface ReschedulePayload {
   remark: string;
 }
 
+export interface RescheduleInitialSiteMeasurementPayload {
+  updated_by: number;
+  due_date: string;
+  remark: string;
+}
+
 export const RescheduleTaskFollowUp = async (
   leadId: number,
   taskId: number,
@@ -101,6 +107,23 @@ export const RescheduleTaskFollowUp = async (
     return data;
   } catch (error) {
     console.error("Error updating cancelled task:", error);
+    throw error;
+  }
+};
+
+export const rescheduleInitialSiteMeasurementTask = async (
+  leadId: number,
+  taskId: number,
+  payload: RescheduleInitialSiteMeasurementPayload
+) => {
+  try {
+    const { data } = await apiClient.patch(
+      `/leads/leadId/${leadId}/taskId/${taskId}/reschedule-initial-site-measurement`,
+      payload
+    );
+    return data;
+  } catch (error) {
+    console.error("Error rescheduling Initial Site Measurement task:", error);
     throw error;
   }
 };

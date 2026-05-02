@@ -49,6 +49,8 @@ export interface DataTableRowAction<TData> {
     | "booking"
     | "move"
     | "measurement-modal"
+    | "initialsitemeasurementtask"
+    | "finalmeasurementtask"
     | "uploadmeasurement"
     | "uploadfinalmeasurement"
     | "Follow Up"

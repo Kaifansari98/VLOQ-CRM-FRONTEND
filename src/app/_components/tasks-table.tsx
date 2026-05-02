@@ -50,6 +50,8 @@ import { extractTitleText, mapTaskTableFiltersToPayload } from "@/lib/utils";
 import TaskTypeFilter from "@/components/data-table/data-table-task-filter";
 import OrderLoginApprovalModal from "@/components/tasks/OrderLoginApprovalModal";
 import DispatchPlanningApprovalModal from "@/components/tasks/DispatchPlanningApprovalModal";
+import InitialSiteMeasurementTaskModal from "@/components/tasks/InitialSiteMeasurementTaskModal";
+import FinalMeasurementTaskModal from "@/components/tasks/FinalMeasurementTaskModal";
 
 const MyTaskTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -63,6 +65,10 @@ const MyTaskTable = () => {
     userType?.toLowerCase() === "super-admin";
 
   const [openMeasurement, setOpenMeasurement] = useState(false);
+  const [openMeasurementTaskModal, setOpenMeasurementTaskModal] =
+    useState(false);
+  const [openFinalMeasurementTaskModal, setOpenFinalMeasurementTaskModal] =
+    useState(false);
   const [openFinalMeasurement, setOpenFinalMeasurement] = useState(false);
   const [openBookingDoneIsm, setOpenBookingDoneIsm] = useState(false);
   const [openBookingDoneApproval, setOpenBookingDoneApproval] = useState(false);
@@ -238,9 +244,9 @@ const MyTaskTable = () => {
       if (row.taskType === "Initial Site Measurement") {
         setRowAction({
           row: { original: row } as any,
-          variant: "uploadmeasurement",
+          variant: "initialsitemeasurementtask",
         });
-        setOpenMeasurement(true);
+        setOpenMeasurementTaskModal(true);
       } else if (row.taskType === "BookingDone - ISM") {
         setRowAction({
           row: { original: row } as any,
@@ -268,9 +274,9 @@ const MyTaskTable = () => {
       } else if (row.taskType === "Final Measurements") {
         setRowAction({
           row: { original: row } as any,
-          variant: "uploadfinalmeasurement",
+          variant: "finalmeasurementtask",
         });
-        setOpenFinalMeasurement(true);
+        setOpenFinalMeasurementTaskModal(true);
       } else if (row.taskType === "Follow Up") {
         setRowAction({
           row: { original: row } as any,
@@ -722,6 +728,18 @@ const MyTaskTable = () => {
         }}
       />
 
+      <InitialSiteMeasurementTaskModal
+        open={openMeasurementTaskModal}
+        onOpenChange={setOpenMeasurementTaskModal}
+        onComplete={() => setOpenMeasurement(true)}
+        data={{
+          leadId: rowAction?.row.original.leadId || 0,
+          taskId: rowAction?.row.original.id || 0,
+          dueDate: rowAction?.row.original.dueDate,
+          remark: rowAction?.row.original.remark,
+        }}
+      />
+
       <MiscTaskModal
         open={openMiscTaskModal}
         onOpenChange={setOpenMiscTaskModal}
@@ -745,6 +763,18 @@ const MyTaskTable = () => {
           id: rowAction?.row.original.leadId || 0,
           accountId: rowAction?.row.original.accountId || 0,
           name: rowAction?.row.original.name,
+        }}
+      />
+
+      <FinalMeasurementTaskModal
+        open={openFinalMeasurementTaskModal}
+        onOpenChange={setOpenFinalMeasurementTaskModal}
+        onComplete={() => setOpenFinalMeasurement(true)}
+        data={{
+          leadId: rowAction?.row.original.leadId || 0,
+          taskId: rowAction?.row.original.id || 0,
+          dueDate: rowAction?.row.original.dueDate,
+          remark: rowAction?.row.original.remark,
         }}
       />
 

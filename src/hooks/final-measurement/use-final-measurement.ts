@@ -10,6 +10,8 @@ import {
   FinalMeasurementPayload,
   getAllFinalMeasurementLeads,
   getFinalMeasurmentLeadById,
+  RescheduleFinalMeasurementPayload,
+  rescheduleFinalMeasurementTask,
   UpdateNotes,
   uploadClientDocPayload,
   UploadClientDocumantation,
@@ -25,6 +27,20 @@ export const useFinalMeasurement = () => {
   return useMutation({
     mutationFn: (payload: FinalMeasurementPayload) =>
       UploadFinalMeasurement(payload),
+  });
+};
+
+export const useRescheduleFinalMeasurementTask = () => {
+  return useMutation({
+    mutationFn: ({
+      leadId,
+      taskId,
+      payload,
+    }: {
+      leadId: number;
+      taskId: number;
+      payload: RescheduleFinalMeasurementPayload;
+    }) => rescheduleFinalMeasurementTask(leadId, taskId, payload),
   });
 };
 
