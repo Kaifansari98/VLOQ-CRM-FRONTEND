@@ -291,6 +291,7 @@ function TitleCard({ group }: { group: DocGroup }) {
         onOpenChange={setModalOpen}
         title={group.title}
         description={`${total} file${total !== 1 ? "s" : ""} uploaded`}
+        modal={false}
         icon={
           <div
             className="p-2.5 rounded-lg"

@@ -18,6 +18,7 @@ interface BaseModalProps {
   children: ReactNode;
   size?: "sm" | "md" | "lg" | "xl" | "smd";
   icon?: ReactNode; // icon is optional
+  modal?: boolean;
 }
 
 const sizeClasses = {
@@ -37,9 +38,10 @@ const BaseModal: React.FC<BaseModalProps> = ({
   children,
   size = "lg",
   icon,
+  modal = true,
 }) => {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} modal={modal}>
       <DialogContent
         className={`${sizeClasses[size]} max-h-[90vh] p-0 gap-0 overflow-hidden`}
         onPointerDownOutside={(event) => event.preventDefault()}
