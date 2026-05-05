@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import { apiClient } from "@/lib/apiClient"
 import { useDispatch } from "react-redux"
 import { setCredentials } from "@/redux/slices/authSlice"
+import { setCustomPrivileges } from "@/redux/slices/customPrivilegesSlice"
 import { setActiveTheme } from "@/redux/slices/themeSlice"
 
 interface LoginPayload {
@@ -26,6 +27,11 @@ export function useLogin() {
     },
     onSuccess: async (data) => {
       dispatch(setCredentials({ user: data.user, token: data.token }));
+      dispatch(
+        setCustomPrivileges(
+          Array.isArray(data.customPrivileges) ? data.customPrivileges : [],
+        ),
+      );
 
       // Fetch and store active theme for this vendor
       try {

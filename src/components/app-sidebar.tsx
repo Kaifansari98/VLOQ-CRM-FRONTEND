@@ -260,6 +260,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const badgeText = themeColor("sidebar_badge_text");
 
   const user = useAppSelector((state) => state.auth.user);
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const selectedFranchiseId = useAppSelector(
     (state) => state.auth.franchise_id,
   );
@@ -362,6 +365,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           )
         : adminOnlyItems;
 
+    const customFilteredItems =
+      userType === "custom"
+        ? filteredItems.map((item) =>
+            item.title === "Leads"
+              ? {
+                  ...item,
+                  items: item.items?.filter((subItem) =>
+                    subItem.title === "Open Leads"
+                      ? customPrivilegeCodes.includes(
+                          "leads.open_leads.details_of_lead.view",
+                        )
+                      : subItem.title === "ISM Leads"
+                        ? customPrivilegeCodes.includes(
+                            "leads.ism_leads.ism_details.view",
+                          )
+                      : true,
+                  ),
+                }
+              : item,
+          )
+        : filteredItems;
+
     const miscItem = {
       title: "Miscellaneous",
       url: "/dashboard/installation/under-installation/miscellaneous-leads",
@@ -373,7 +398,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         : undefined,
     };
 
-    const finalNavItems = filteredItems.map((item) => {
+    const finalNavItems = customFilteredItems.map((item) => {
       if (item.title === "Installation" && item.items) {
         const underInstallationIndex = item.items.findIndex(
           (subItem) => subItem.title === "Under Installation",
@@ -417,6 +442,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     miscLeadsCount,
     isMiscLeadLoading,
     userType,
+    customPrivilegeCodes,
   ]);
 
   const teams = React.useMemo(() => {

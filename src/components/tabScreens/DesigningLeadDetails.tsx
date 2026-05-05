@@ -1,12 +1,13 @@
 "use client";
 
+import * as React from "react";
 import { motion } from "framer-motion";
 import { DetailsProvider } from "../sales-executive/designing-stage/pill-tabs-component/details-context";
 import PillTabs from "../sales-executive/designing-stage/pill-tabs";
 import QuotationTab from "../sales-executive/designing-stage/pill-tabs-component/quotation";
 import MeetingsTab from "../sales-executive/designing-stage/pill-tabs-component/meetings";
 import DesigningTab from "../sales-executive/designing-stage/pill-tabs-component/designs";
-import SelectionsTab from "../sales-executive/designing-stage/pill-tabs-component/selection";
+import { useAppSelector } from "@/redux/store";
 
 type props = {
   leadId: number;
@@ -25,6 +26,43 @@ const containerVariants = {
 
 export default function DesigningLeadsDetails({ leadId }: props) {
   const accountId = leadId;
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type?.toLowerCase(),
+  );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
+
+  const tabs = React.useMemo(() => {
+    const baseTabs = [
+      {
+        id: "quotation",
+        label: "Quotation",
+        content: <QuotationTab />,
+        customPrivilegeCode: "leads.designing_stage.quotation.view",
+      },
+      {
+        id: "meetings",
+        label: "Meetings",
+        content: <MeetingsTab />,
+        customPrivilegeCode: "leads.designing_stage.meetings.view",
+      },
+      {
+        id: "designs",
+        label: "Designs",
+        content: <DesigningTab />,
+        customPrivilegeCode: "leads.designing_stage.designs.view",
+      },
+    ];
+
+    if (userType !== "custom") {
+      return baseTabs.map(({ customPrivilegeCode, ...tab }) => tab);
+    }
+
+    return baseTabs
+      .filter((tab) => customPrivilegeCodes.includes(tab.customPrivilegeCode))
+      .map(({ customPrivilegeCode, ...tab }) => tab);
+  }, [customPrivilegeCodes, userType]);
 
   return (
     <motion.div
@@ -36,19 +74,7 @@ export default function DesigningLeadsDetails({ leadId }: props) {
       <DetailsProvider value={{ leadId, accountId }}>
         <PillTabs
           bookingBtn={false}
-          tabs={[
-            {
-              id: "quotation",
-              label: "Quotation",
-              content: <QuotationTab />,
-            },
-            { id: "meetings", label: "Meetings", content: <MeetingsTab /> },
-            {
-              id: "designs",
-              label: "Designs",
-              content: <DesigningTab />,
-            },
-          ]}
+          tabs={tabs}
         />
       </DetailsProvider>
     </motion.div>

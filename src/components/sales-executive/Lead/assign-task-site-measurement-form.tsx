@@ -80,7 +80,13 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const franchiseId = useAppSelector(
-    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id,
+  );
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
   );
   const {
     data: vendorUsers,
@@ -101,11 +107,24 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       assign_lead_to: undefined,
-      task_type: onlyFollowUp ? "Follow Up" : "Initial Site Measurement", // ✅
+      task_type: onlyFollowUp ? "Follow Up" : "Initial Site Measurement",
       due_date: "",
       remark: "N/A",
     },
   });
+
+  const normalizedUserType = (userType || "").toLowerCase();
+  const canAssignInitialSiteMeasurementForCustomUser =
+    customPrivilegeCodes.includes("leads.open_leads.assign_task.ism_assign_task");
+  const canAssignFollowUpForCustomUser = customPrivilegeCodes.includes(
+    "leads.open_leads.assign_task.follow_up_task",
+  );
+  const canShowInitialSiteMeasurementOption =
+    normalizedUserType === "custom"
+      ? canAssignInitialSiteMeasurementForCustomUser
+      : true;
+  const canShowFollowUpOption =
+    normalizedUserType === "custom" ? canAssignFollowUpForCustomUser : true;
 
   const initialSiteMeasurementTaskConflicts =
     taskConflicts?.restrictedTaskConflicts ?? [];
@@ -118,12 +137,15 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const isInitialSiteMeasurementDisabled =
     isLoadingInitialSiteMeasurementTaskConflicts ||
     !!initialSiteMeasurementConflict ||
-    !!onlyFollowUp;
+    !!onlyFollowUp ||
+    !canShowInitialSiteMeasurementOption;
   const initialSiteMeasurementTooltip = isLoadingInitialSiteMeasurementTaskConflicts
     ? "Checking existing tasks"
     : initialSiteMeasurementConflict
       ? "Initial Site Measurement task already created and not completed"
-      : "Initial Site Measurement is not available here";
+      : !canShowInitialSiteMeasurementOption
+        ? "You don’t have permission to assign Initial Site Measurement."
+        : "Initial Site Measurement is not available here";
 
   const { data: followUpUsersData } = useFollowUpUsers(
     vendorId,
@@ -154,11 +176,29 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   React.useEffect(() => {
     if (
       form.getValues("task_type") === "Initial Site Measurement" &&
-      isInitialSiteMeasurementDisabled
+      isInitialSiteMeasurementDisabled &&
+      canShowFollowUpOption
     ) {
       form.setValue("task_type", "Follow Up");
     }
-  }, [form, isInitialSiteMeasurementDisabled]);
+  }, [form, isInitialSiteMeasurementDisabled, canShowFollowUpOption]);
+
+  React.useEffect(() => {
+    const currentTaskType = form.getValues("task_type");
+
+    if (currentTaskType === "Initial Site Measurement" && !canShowInitialSiteMeasurementOption) {
+      form.setValue("task_type", "Follow Up");
+      return;
+    }
+
+    if (currentTaskType === "Follow Up" && !canShowFollowUpOption && canShowInitialSiteMeasurementOption) {
+      form.setValue("task_type", "Initial Site Measurement");
+    }
+  }, [
+    form,
+    canShowFollowUpOption,
+    canShowInitialSiteMeasurementOption,
+  ]);
 
   React.useEffect(() => {
     if (taskType !== "Follow Up") return;
@@ -315,7 +355,9 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                           }
                         />
                       )}
-                      <SelectItem value="Follow Up">Follow Up</SelectItem>
+                      {canShowFollowUpOption && (
+                        <SelectItem value="Follow Up">Follow Up</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />

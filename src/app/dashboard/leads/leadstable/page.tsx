@@ -43,10 +43,13 @@ export default function LeadsGenerationPage() {
   const searchParams = useSearchParams();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const franchiseId = useAppSelector(
-    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id,
   );
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type as string | undefined
+    (state) => state.auth.user?.user_type.user_type as string | undefined,
+  );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
   );
 
   const [openCreateLead, setOpenCreateLead] = useState(false);
@@ -56,28 +59,52 @@ export default function LeadsGenerationPage() {
     userType === "admin" || userType === "super-admin";
 
   const privileged = isPrivilegedUser(userType);
+  const normalizedUserType = userType?.trim().toLowerCase();
+  const canShowOnHoldTab =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.mark_on_hold",
+        )
+      : true;
+  const canShowLostTabs =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.mark_as_lost",
+        )
+      : privileged;
+  const canShowAddNewLeadButton =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.add_lead",
+        )
+      : canCreateLead(userType);
+
   // --- Read tab from URL initially ---
   const initialTab = useMemo<LeadTab>(() => {
     const urlParam = searchParams.get("tab") as LeadTab | null;
-    if (!privileged && (urlParam === "lost" || urlParam === "lostApproval")) {
+    if (!canShowLostTabs && (urlParam === "lost" || urlParam === "lostApproval")) {
+      return "open"; // restrict access
+    }
+    if (!canShowOnHoldTab && urlParam === "onHold") {
       return "open"; // restrict access
     }
     return urlParam || "open";
-  }, [searchParams, privileged]);
+  }, [searchParams, canShowLostTabs, canShowOnHoldTab]);
 
   const [tab, setTab] = useState<LeadTab>(initialTab);
 
   // Sync tab state with URL when privilege changes or URL changes
   useEffect(() => {
     if (
-      !privileged &&
-      (initialTab === "lostApproval" || initialTab === "lost")
+      ((!canShowLostTabs &&
+        (initialTab === "lostApproval" || initialTab === "lost")) ||
+        (!canShowOnHoldTab && initialTab === "onHold"))
     ) {
       handleTabChange("open");
       return;
     }
     setTab(initialTab);
-  }, [initialTab, privileged]);
+  }, [initialTab, canShowLostTabs, canShowOnHoldTab]);
 
   // Handle tab changes + update URL
   const handleTabChange = (newTab: LeadTab) => {
@@ -95,16 +122,19 @@ export default function LeadsGenerationPage() {
       count: counts?.open ?? 0,
       dotColor: "#3b82f6",
     },
-    {
-      value: "onHold",
-      label: "On Hold",
-      count: counts?.onHold ?? 0,
-      dotColor: "#facc15",
-    },
+    ...(canShowOnHoldTab
+      ? [
+          {
+            value: "onHold" as LeadTab,
+            label: "On Hold",
+            count: counts?.onHold ?? 0,
+            dotColor: "#facc15",
+          },
+        ]
+      : []),
   ];
 
-  // Append privileged tabs ONLY for admin / super-admin
-  if (privileged) {
+  if (canShowLostTabs) {
     tabItems.push(
       {
         value: "lostApproval",
@@ -117,11 +147,13 @@ export default function LeadsGenerationPage() {
         label: "Lost",
         count: counts?.lost ?? 0,
         dotColor: "#ef4444",
-      }
+      },
     );
   }
-  // Forcefully prevent non-admin users from seeing restricted tabs
-  if (!privileged && (tab === "lostApproval" || tab === "lost")) {
+  if (
+    (!canShowLostTabs && (tab === "lostApproval" || tab === "lost")) ||
+    (!canShowOnHoldTab && tab === "onHold")
+  ) {
     setTab("open");
   }
 
@@ -180,7 +212,7 @@ export default function LeadsGenerationPage() {
                     "hover:bg-muted",
                     item.value === tab
                       ? "bg-muted font-semibold"
-                      : "text-muted-foreground"
+                      : "text-muted-foreground",
                   )}
                 >
                   <span
@@ -231,7 +263,7 @@ export default function LeadsGenerationPage() {
                       }}
                       className={clsx(
                         "flex justify-between items-center px-3 py-2 rounded-md text-sm hover:bg-muted transition",
-                        item.value === tab && "bg-muted font-semibold"
+                        item.value === tab && "bg-muted font-semibold",
                       )}
                     >
                       <span className="flex items-center gap-2 truncate">
@@ -250,7 +282,7 @@ export default function LeadsGenerationPage() {
             </Popover>
 
             {/* ✅ Show only for admin, super-admin, sales-executive */}
-            {canCreateLead(userType) && (
+            {canShowAddNewLeadButton && (
               <>
                 <Button size="sm" onClick={() => setOpenCreateLead(true)}>
                   Add New Lead
@@ -264,7 +296,7 @@ export default function LeadsGenerationPage() {
             )}
 
             <NotificationBell />
-          <AnimatedThemeToggler />
+            <AnimatedThemeToggler />
           </div>
         </div>
       </header>
@@ -281,7 +313,7 @@ export default function LeadsGenerationPage() {
               />
             )}
 
-            {privileged && tab === "lostApproval" && (
+            {canShowLostTabs && tab === "lostApproval" && (
               <PendingLeadsTable
                 tab="lostApproval"
                 stageTitle={tabInfo.lostApproval.title}
@@ -289,7 +321,7 @@ export default function LeadsGenerationPage() {
               />
             )}
 
-            {privileged && tab === "lost" && (
+            {canShowLostTabs && tab === "lost" && (
               <PendingLeadsTable
                 tab="lost"
                 stageTitle={tabInfo.lost.title}

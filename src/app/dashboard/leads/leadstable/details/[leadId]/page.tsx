@@ -100,6 +100,9 @@ export default function LeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   const [openDelete, setOpenDelete] = useState(false);
   const deleteLeadMutation = useDeleteLead();
@@ -125,9 +128,42 @@ export default function LeadDetails() {
     "onHold",
   );
 
-  const canReassign = canReassignLeadButton(userType);
-  const canDelete = canDeleteLedForSalesExecutiveButton(userType);
-  const canEdit = canEditLeadForSalesExecutiveButton(userType);
+  const normalizedUserType = userType?.trim().toLowerCase();
+  const canReassign =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.reassign_lead",
+        )
+      : canReassignLeadButton(userType);
+  const canAccessAssignTask =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.assign_task.ism_assign_task",
+        ) ||
+        customPrivilegeCodes.includes(
+          "leads.open_leads.assign_task.follow_up_task",
+        )
+      : canAssignISM(userType);
+  const canDelete =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes("leads.open_leads.details_of_lead.delete")
+      : canDeleteLedForSalesExecutiveButton(userType);
+  const canMarkOnHold =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.mark_on_hold",
+        )
+      : true;
+  const canMarkAsLost =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.mark_as_lost",
+        )
+      : true;
+  const canEdit =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes("leads.open_leads.details_of_lead.edit")
+      : canEditLeadForSalesExecutiveButton(userType);
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory =
     canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
@@ -182,7 +218,7 @@ export default function LeadDetails() {
 
     if (
       !lead.is_draft &&
-      canAssignISM(userType) &&
+      canAccessAssignTask &&
       userType?.toLowerCase() !== "admin" &&
       userType?.toLowerCase() !== "super-admin"
     ) {
@@ -190,14 +226,14 @@ export default function LeadDetails() {
       setAssignOpen(true);
       setActiveTab("projects");
     }
-  }, [isChatNotification, lead?.id, userType]);
+  }, [isChatNotification, lead?.id, userType, canAccessAssignTask]);
 
   // 🔹 Tabs state
   const [activeTab, setActiveTab] = useState("details");
   useChatTabFromUrl(setActiveTab);
 
   return (
-    <>
+    <>  
       {/* Header */}
       <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b bg-background">
         <div className="flex items-center gap-2">
@@ -217,25 +253,26 @@ export default function LeadDetails() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
-          {isDraftLead ? (
-            <CustomeTooltip
-              truncateValue={
-                <Button size="sm" disabled>
-                  Assign Task
-                </Button>
-              }
-              value="This action cannot be performed because the lead is still in Draft mode."
-            />
-          ) : (
-            <Button
-              size="sm"
-              className="hidden sm:flex"
-              onClick={() => setAssignOpen(true)}
-              disabled={uiDisabled}
-            >
-              Assign Task
-            </Button>
-          )}
+          {canAccessAssignTask &&
+            (isDraftLead ? (
+              <CustomeTooltip
+                truncateValue={
+                  <Button size="sm" disabled>
+                    Assign Task
+                  </Button>
+                }
+                value="This action cannot be performed because the lead is still in Draft mode."
+              />
+            ) : (
+              <Button
+                size="sm"
+                className="hidden sm:flex"
+                onClick={() => setAssignOpen(true)}
+                disabled={uiDisabled}
+              >
+                Assign Task
+              </Button>
+            ))}
 
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           <NotificationBell />
@@ -253,10 +290,15 @@ export default function LeadDetails() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem className="sm:hidden">
-                <UserPlus size={20} />
-                Assign Task
-              </DropdownMenuItem>
+              {canAccessAssignTask && (
+                <DropdownMenuItem
+                  className="sm:hidden"
+                  onClick={() => setAssignOpen(true)}
+                >
+                  <UserPlus size={20} />
+                  Assign Task
+                </DropdownMenuItem>
+              )}
 
               {canEdit && (
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
@@ -280,25 +322,29 @@ export default function LeadDetails() {
 
                 {!uiDisabled && (
                   <DropdownMenuSubContent>
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        setActivityType("onHold");
-                        setActivityModalOpen(true);
-                      }}
-                    >
-                      <Clock className="h-4 w-4 mr-2" />
-                      Mark On Hold
-                    </DropdownMenuItem>
+                    {canMarkOnHold && (
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          setActivityType("onHold");
+                          setActivityModalOpen(true);
+                        }}
+                      >
+                        <Clock className="h-4 w-4 mr-2" />
+                        Mark On Hold
+                      </DropdownMenuItem>
+                    )}
 
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        setActivityType("lostApproval");
-                        setActivityModalOpen(true);
-                      }}
-                    >
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Mark As Lost
-                    </DropdownMenuItem>
+                    {canMarkAsLost && (
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          setActivityType("lostApproval");
+                          setActivityModalOpen(true);
+                        }}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Mark As Lost
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuSubContent>
                 )}
               </DropdownMenuSub>
@@ -345,22 +391,23 @@ export default function LeadDetails() {
               Lead Details
             </TabsTrigger>
 
-            {isDraftLead ? (
-              <CustomeTooltip
-                truncateValue={
-                  <TabsTrigger value="projects" disabled>
-                    <PencilLine size={16} className="mr-1 opacity-60" />
-                    To-Do Task
-                  </TabsTrigger>
-                }
-                value="This action cannot be performed because the lead is still in Draft mode."
-              />
-            ) : (
-              <TabsTrigger value="projects" disabled={uiDisabled}>
-                <PencilLine size={16} className="mr-1 opacity-60" />
-                To-Do Task
-              </TabsTrigger>
-            )}
+            {canAccessAssignTask &&
+              (isDraftLead ? (
+                <CustomeTooltip
+                  truncateValue={
+                    <TabsTrigger value="projects" disabled>
+                      <PencilLine size={16} className="mr-1 opacity-60" />
+                      To-Do Task
+                    </TabsTrigger>
+                  }
+                  value="This action cannot be performed because the lead is still in Draft mode."
+                />
+              ) : (
+                <TabsTrigger value="projects" disabled={uiDisabled}>
+                  <PencilLine size={16} className="mr-1 opacity-60" />
+                  To-Do Task
+                </TabsTrigger>
+              ))}
 
             {canViewSiteHistory && (
               <TabsTrigger value="history" disabled={uiDisabled}>

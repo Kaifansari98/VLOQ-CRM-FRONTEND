@@ -122,6 +122,24 @@ export interface UserMasterResponse {
   };
 }
 
+export interface PrivilegeMasterEntry {
+  id: number;
+  vendor_id: number;
+  code: string;
+  parent_module: string;
+  child_module: string;
+  action: string;
+  label: string;
+  description?: string | null;
+  is_active: boolean;
+  is_selected: boolean;
+}
+
+export interface PrivilegeMasterResponse {
+  success: boolean;
+  data: PrivilegeMasterEntry[];
+}
+
 export interface CarcassTypeMasterEntry {
   id: number;
   name: string;
@@ -642,6 +660,26 @@ export const fetchUserTypes = async () => {
   };
 }
 
+export const fetchPrivilegeMasters = async (
+  vendorId: number,
+  search?: string,
+  userId?: number | null,
+) => {
+  const res = await apiClient.get<PrivilegeMasterResponse>(
+    `/users/vendor/${vendorId}/privilege-masters`,
+    {
+      params: {
+        search: search ?? "",
+        ...(userId ? { userId } : {}),
+      },
+    },
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
 export const createUser = async (payload: CreateUserMasterPayload) => {
   const res = await apiClient.post(`/users/create-user`, payload);
   return res.data;
@@ -660,5 +698,21 @@ export interface UpdateUserMasterPayload {
 
 export const updateUser = async (userId: number, payload: UpdateUserMasterPayload) => {
   const res = await apiClient.patch(`/users/update-user/${userId}`, payload);
+  return res.data;
+}
+
+export interface UpdateUserPrivilegesPayload {
+  vendor_id: number;
+  privilege_ids: number[];
+}
+
+export const updateUserPrivileges = async (
+  userId: number,
+  payload: UpdateUserPrivilegesPayload,
+) => {
+  const res = await apiClient.patch(
+    `/users/update-user/${userId}/privileges`,
+    payload,
+  );
   return res.data;
 }

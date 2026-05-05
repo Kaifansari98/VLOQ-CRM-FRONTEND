@@ -44,6 +44,9 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
     const userType = useAppSelector(
       (state) => state.auth.user?.user_type.user_type
     );
+    const customPrivilegeCodes = useAppSelector(
+      (state) => state.customPrivileges.codes,
+    );
     const { data: leadStatus } = useLeadStatus(leadId, vendorId);
     const [activeTab, setActiveTab] = React.useState(defaultActiveId);
     const [openQuotationModal, setOpenQuotationModal] = useState(false);
@@ -58,6 +61,20 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
       userType?.toLowerCase() === "admin" ||
       userType?.toLowerCase() === "super-admin";
     const canShowButtons = isAdmin || leadCurrentStatus === "Type 3";
+    const canUploadQuotation =
+      userType?.toLowerCase() === "custom"
+        ? customPrivilegeCodes.includes(
+            "leads.designing_stage.quotation.upload",
+          )
+        : true;
+    const canUploadMeetings =
+      userType?.toLowerCase() === "custom"
+        ? customPrivilegeCodes.includes("leads.designing_stage.meetings.upload")
+        : true;
+    const canUploadDesigns =
+      userType?.toLowerCase() === "custom"
+        ? customPrivilegeCodes.includes("leads.designing_stage.designs.upload")
+        : true;
 
     const handleClick = (id: string) => {
       setActiveTab(id);
@@ -112,7 +129,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
           <div className="flex justify-start gap-2">
             {canShowButtons && (
               <>
-                {activeTab === "quotation" && (
+                {activeTab === "quotation" && canUploadQuotation && (
                   <Button
                     size="sm"
                     variant="default"
@@ -123,7 +140,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                     <span>Upload Quotations</span>
                   </Button>
                 )}
-                {activeTab === "meetings" && (
+                {activeTab === "meetings" && canUploadMeetings && (
                   <Button
                     size="sm"
                     className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
@@ -133,7 +150,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                     <span>Add Meetings</span>
                   </Button>
                 )}
-                {activeTab === "designs" && (
+                {activeTab === "designs" && canUploadDesigns && (
                   <Button
                     size="sm"
                     className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"

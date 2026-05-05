@@ -6,6 +6,7 @@ import {
   createIssueLogType,
   fetchInstallerUsersForMaster,
   fetchUsersForMaster,
+  fetchPrivilegeMasters,
   fetchCompanyVendorsForMaster,
   fetchCarcassTypes,
   fetchShutterTypes,
@@ -39,6 +40,7 @@ import {
   fetchUserTypes,
   createUser,
   updateUser,
+  updateUserPrivileges,
   type UpdateUserMasterPayload,
 } from "@/api/typesMasterApi"
 import { useAppSelector } from "@/redux/store" // assuming you have typed hooks
@@ -54,6 +56,16 @@ const getMiscellaneousTeamsQueryKey = (vendorId?: number) => ["miscellaneousTeam
 const getInstallerUsersMasterQueryKey = (vendorId?: number) => ["installerUsersMaster", vendorId];
 const getCompanyVendorsMasterQueryKey = (vendorId?: number) => ["companyVendorsMaster", vendorId];
 const getUsersMasterQueryKey = (vendorId?: number) => ["usersMaster", vendorId];
+const getPrivilegeMastersQueryKey = (
+  vendorId?: number,
+  search?: string,
+  userId?: number | null,
+) => [
+  "privilegeMasters",
+  vendorId,
+  search ?? "",
+  userId ?? null,
+];
 const getCarcassTypesQueryKey = (vendorId?: number) => ["carcassTypes", vendorId];
 const getShutterTypesQueryKey = (vendorId?: number) => ["shutterTypes", vendorId];
 const getHandleTypesQueryKey = (vendorId?: number) => ["handleTypes", vendorId];
@@ -88,6 +100,25 @@ export const useUsersForMaster = (params: {
     retry: false,
     refetchOnWindowFocus: false,
   })
+}
+
+export const usePrivilegeMasters = ({
+  enabled = true,
+  search = "",
+  userId,
+}: {
+  enabled?: boolean;
+  search?: string;
+  userId?: number | null;
+} = {}) => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getPrivilegeMastersQueryKey(vendorId, search, userId),
+    queryFn: () => fetchPrivilegeMasters(vendorId!, search, userId),
+    enabled: !!vendorId && enabled,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
 }
 
 export const useCreateCompanyVendor = () => {
@@ -771,6 +802,38 @@ export const useUpdateUser = () => {
     onError: (error: any) => {
       toastManager.add({
         title: error?.response?.data?.message || "Failed to update user.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateUserPrivileges = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: ({
+      userId,
+      payload,
+    }: {
+      userId: number;
+      payload: { vendor_id: number; privilege_ids: number[] };
+    }) => updateUserPrivileges(userId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["privilegeMasters", vendorId],
+      });
+      toastManager.add({
+        title: "User privileges updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.message ||
+          "Failed to update user privileges.",
         type: "error",
       });
     },

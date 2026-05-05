@@ -36,6 +36,9 @@ const DesigningTab = () => {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   // ✅ Fetch lead status
@@ -95,9 +98,11 @@ const DesigningTab = () => {
 
   // ✅ Permission Logic (same as QuotationTab)
   const canDelete =
-    userType === "admin" ||
-    userType === "super-admin" ||
-    (userType === "sales-executive" && leadStatus === "designing-stage");
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.designing_stage.designs.delete")
+      : userType === "admin" ||
+        userType === "super-admin" ||
+        (userType === "sales-executive" && leadStatus === "designing-stage");
 
   // ✅ Render Design Documents using DocumentCard
   return (

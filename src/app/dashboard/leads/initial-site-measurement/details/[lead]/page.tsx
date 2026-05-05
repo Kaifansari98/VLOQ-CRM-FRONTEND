@@ -102,6 +102,9 @@ export default function SiteMeasurementLead() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   const [openDelete, setOpenDelete] = useState(false);
   // Modals
@@ -177,12 +180,36 @@ export default function SiteMeasurementLead() {
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
 
-  const canReassign = canReassignLeadButton(userType);
+  const canReassign =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.ism_leads.ism_details.reassign_lead",
+        )
+      : canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadForSalesExecutiveButton(userType);
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory =
     canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
+  const canAccessTodoTask =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.ism_leads.ism_details.upload_measurement",
+        )
+      : true;
+  const canMarkOnHold =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.ism_leads.ism_details.mark_on_hold",
+        )
+      : true;
+  const canMarkAsLost =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.ism_leads.ism_details.mark_as_lost",
+        )
+      : true;
+  const canSeeLeadStatusMenu = canMarkOnHold || canMarkAsLost;
 
   console.log("assigned to", lead?.assignedTo?.id);
 
@@ -240,7 +267,7 @@ export default function SiteMeasurementLead() {
                 <UserPlus size={20} />
                 Assign Task
               </DropdownMenuItem>
-              {canUploadISM(userType) && !lead?.is_draft ? (
+              {canUploadISM(userType) && !lead?.is_draft && canAccessTodoTask ? (
                 <DropdownMenuItem onSelect={() => setOpenMeasurement(true)}>
                   <ClipboardCheck size={20} />
                   Upload Measurement
@@ -261,34 +288,40 @@ export default function SiteMeasurementLead() {
               )}
 
               {/* Lead Status */}
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger className="flex items-center gap-2">
-                  <CircleArrowOutUpRight className="h-4 w-4" />
-                  <span>Lead Status</span>
-                </DropdownMenuSubTrigger>
+              {canSeeLeadStatusMenu && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="flex items-center gap-2">
+                    <CircleArrowOutUpRight className="h-4 w-4" />
+                    <span>Lead Status</span>
+                  </DropdownMenuSubTrigger>
 
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setActivityType("onHold");
-                      setActivityModalOpen(true);
-                    }}
-                  >
-                    <Clock className="h-4 w-4 " />
-                    Mark On Hold
-                  </DropdownMenuItem>
+                  <DropdownMenuSubContent>
+                    {canMarkOnHold && (
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          setActivityType("onHold");
+                          setActivityModalOpen(true);
+                        }}
+                      >
+                        <Clock className="h-4 w-4 " />
+                        Mark On Hold
+                      </DropdownMenuItem>
+                    )}
 
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setActivityType("lostApproval");
-                      setActivityModalOpen(true);
-                    }}
-                  >
-                    <XCircle className="h-4 w-4" />
-                    Mark As Lost
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
+                    {canMarkAsLost && (
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          setActivityType("lostApproval");
+                          setActivityModalOpen(true);
+                        }}
+                      >
+                        <XCircle className="h-4 w-4" />
+                        Mark As Lost
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
 
               {/* Edit */}
               {canEdit && (
@@ -338,10 +371,12 @@ export default function SiteMeasurementLead() {
               <HouseIcon size={16} className="mr-1 opacity-60" />
               Lead Details
             </TabsTrigger>
-            <TabsTrigger value="tasks">
-              <PencilLine size={16} className="mr-1 opacity-60" />
-              To-Do Task
-            </TabsTrigger>
+            {canAccessTodoTask && (
+              <TabsTrigger value="tasks">
+                <PencilLine size={16} className="mr-1 opacity-60" />
+                To-Do Task
+              </TabsTrigger>
+            )}
             {canViewSiteHistory && (
               <TabsTrigger value="history">
                 <History size={16} className="mr-1 opacity-60" />

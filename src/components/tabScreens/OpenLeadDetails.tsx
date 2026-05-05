@@ -121,6 +121,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   // ✅ 2. QUERY HOOKS
   const { data, isLoading, isPlaceholderData } = useLeadById(
@@ -287,13 +290,20 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const leadStage = lead?.statusType?.type;
   const isBookingStage = leadStage?.toLowerCase() === "booking-stage";
   const leadStatusTag = lead?.statusType?.tag;
-  const canEditStructures =
-    isBookingStage || ["admin", "super-admin"].includes(userType || "");
   const normalizedUserType = (userType || "").toLowerCase();
+  const canEditLeadDetailsForCustomUser = customPrivilegeCodes.includes(
+    "leads.open_leads.details_of_lead.edit",
+  );
+  const canEditStructures =
+    normalizedUserType === "custom"
+      ? canEditLeadDetailsForCustomUser
+      : isBookingStage || ["admin", "super-admin"].includes(userType || "");
   const canEditProductType =
-    normalizedUserType === "admin" ||
-    normalizedUserType === "super-admin" ||
-    (normalizedUserType === "sales-executive" && isBookingStage);
+    normalizedUserType === "custom"
+      ? canEditLeadDetailsForCustomUser
+      : normalizedUserType === "admin" ||
+        normalizedUserType === "super-admin" ||
+        (normalizedUserType === "sales-executive" && isBookingStage);
   const currentProductTypeId =
     lead?.productMappings?.[0]?.product_type_id ||
     lead?.productMappings?.[0]?.productType?.id ||
@@ -413,9 +423,13 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   console.log("Lead Stage In Lead Details: ", leadStage);
 
   const canUploadSitePhotos =
-    userType === "admin" ||
-    userType === "super-admin" ||
-    (userType === "sales-executive" && leadStage === "open");
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.add_current_site_photos",
+        )
+      : userType === "admin" ||
+        userType === "super-admin" ||
+        (userType === "sales-executive" && leadStage === "open");
 
   // ✅ 11. EVENT HANDLERS
   const handleOpenProductTypeEdit = () => {
@@ -913,11 +927,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                           created_at: doc.created_at,
                         }}
                         index={index}
-                        canDelete={
-                          userType === "admin" ||
-                          userType === "super-admin" ||
-                          (userType === "sales-executive" && leadStage === "open")
-                        }
+                        canDelete={canUploadSitePhotos}
                         onDelete={(id) => setConfirmDelete(Number(id))}
                       />
                     </motion.div>
@@ -931,11 +941,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                           signedUrl: doc.signedUrl,
                           created_at: doc.created_at,
                         }}
-                        canDelete={
-                          userType === "admin" ||
-                          userType === "super-admin" ||
-                          (userType === "sales-executive" && leadStage === "open")
-                        }
+                        canDelete={canUploadSitePhotos}
                         onDelete={(id) => setConfirmDelete(Number(id))}
                       />
                     </motion.div>

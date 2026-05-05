@@ -107,6 +107,10 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const userRole = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
+  const isCustomUser = (userRole ?? "").toLowerCase() === "custom";
   const canAccessRestrictedTasks = ["super-admin", "admin", "sales-executive"].includes(userRole ?? "");
   const normalizedUserRole = (userRole ?? "").toLowerCase();
   const dueDateMinDate = React.useMemo(() => {
@@ -226,6 +230,32 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         : !canAccessRestrictedTasks
           ? "You don't have permission to select this"
           : null;
+  const hasFinalMeasurementPrivilege = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "leads.booking_done.assign_task.final_measurement",
+      )
+    : true;
+  const hasFollowUpPrivilege = isCustomUser
+    ? customPrivilegeCodes.includes("leads.booking_done.assign_task.follow_up")
+    : true;
+  const hasBookingDoneIsmPrivilege = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "leads.booking_done.assign_task.bookingdone_ism",
+      )
+    : true;
+  const availableTaskTypes = React.useMemo(() => {
+    return [
+      hasFinalMeasurementPrivilege ? "Final Measurements" : null,
+      hasFollowUpPrivilege ? "Follow Up" : null,
+      hasBookingDoneIsmPrivilege ? "BookingDone - ISM" : null,
+    ].filter(Boolean) as Array<
+      "Final Measurements" | "Follow Up" | "BookingDone - ISM"
+    >;
+  }, [
+    hasBookingDoneIsmPrivilege,
+    hasFinalMeasurementPrivilege,
+    hasFollowUpPrivilege,
+  ]);
 
   const { data: followUpUsersData } = useFollowUpUsers(
     vendorId,
@@ -295,7 +325,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     if (siteSupervisorCheck !== undefined && !isSiteSupervisorAssigned) {
       form.setValue("task_type", "Follow Up");
     }
-  }, [siteSupervisorCheck, isSiteSupervisorAssigned, form]);
+  }, [siteSupervisorCheck, isSiteSupervisorAssigned, form, hasFollowUpPrivilege]);
 
   React.useEffect(() => {
     if (!open) {
@@ -303,18 +333,36 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       return;
     }
 
-    if (
-      isFinalMeasurementsDisabled &&
-      !hasUserChangedTaskTypeRef.current &&
-      form.getValues("task_type") !== "Follow Up"
-    ) {
-      form.setValue("task_type", "Follow Up", {
+    const currentTaskType = form.getValues("task_type");
+    if (!availableTaskTypes.includes(currentTaskType)) {
+      const fallbackTaskType =
+        availableTaskTypes[0] ??
+        (canAccessRestrictedTasks ? "Final Measurements" : "Follow Up");
+      form.setValue("task_type", fallbackTaskType, {
         shouldValidate: true,
       });
       return;
     }
 
     if (
+      hasFinalMeasurementPrivilege &&
+      isFinalMeasurementsDisabled &&
+      !hasUserChangedTaskTypeRef.current &&
+      form.getValues("task_type") !== "Follow Up"
+    ) {
+      const fallbackTaskType = hasFollowUpPrivilege
+        ? "Follow Up"
+        : hasBookingDoneIsmPrivilege
+          ? "BookingDone - ISM"
+          : currentTaskType;
+      form.setValue("task_type", fallbackTaskType, {
+        shouldValidate: true,
+      });
+      return;
+    }
+
+    if (
+      hasFinalMeasurementPrivilege &&
       !isFinalMeasurementsDisabled &&
       !hasUserChangedTaskTypeRef.current &&
       form.getValues("task_type") !== "Final Measurements"
@@ -323,25 +371,48 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         shouldValidate: true,
       });
     }
-  }, [open, form, isFinalMeasurementsDisabled]);
+  }, [
+    availableTaskTypes,
+    canAccessRestrictedTasks,
+    form,
+    hasBookingDoneIsmPrivilege,
+    hasFinalMeasurementPrivilege,
+    hasFollowUpPrivilege,
+    isFinalMeasurementsDisabled,
+    open,
+  ]);
 
   React.useEffect(() => {
     if (
       form.getValues("task_type") === "Final Measurements" &&
       isFinalMeasurementsDisabled
     ) {
-      form.setValue("task_type", "Follow Up");
+      if (hasFollowUpPrivilege) {
+        form.setValue("task_type", "Follow Up");
+      } else if (hasBookingDoneIsmPrivilege) {
+        form.setValue("task_type", "BookingDone - ISM");
+      }
     }
-  }, [form, isFinalMeasurementsDisabled]);
+  }, [form, hasBookingDoneIsmPrivilege, hasFollowUpPrivilege, isFinalMeasurementsDisabled]);
 
   React.useEffect(() => {
     if (
       form.getValues("task_type") === "BookingDone - ISM" &&
       isBookingDoneDisabled
     ) {
-      form.setValue("task_type", "Follow Up");
+      if (hasFollowUpPrivilege) {
+        form.setValue("task_type", "Follow Up");
+      } else if (hasFinalMeasurementPrivilege && !isFinalMeasurementsDisabled) {
+        form.setValue("task_type", "Final Measurements");
+      }
     }
-  }, [form, isBookingDoneDisabled]);
+  }, [
+    form,
+    hasFinalMeasurementPrivilege,
+    hasFollowUpPrivilege,
+    isBookingDoneDisabled,
+    isFinalMeasurementsDisabled,
+  ]);
 
   React.useEffect(() => {
     if (taskType !== "Follow Up") return;
@@ -543,45 +614,51 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                     <SelectContent>
                       <TooltipProvider>
                         {/* Final Measurements */}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              <SelectItem
-                                value="Final Measurements"
-                                disabled={isFinalMeasurementsDisabled}
-                              >
-                                Final Measurements
-                              </SelectItem>
-                            </span>
-                          </TooltipTrigger>
-                          {finalMeasurementsTooltip ? (
-                            <TooltipContent>
-                              {finalMeasurementsTooltip}
-                            </TooltipContent>
-                          ) : null}
-                        </Tooltip>
+                        {hasFinalMeasurementPrivilege && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <SelectItem
+                                  value="Final Measurements"
+                                  disabled={isFinalMeasurementsDisabled}
+                                >
+                                  Final Measurements
+                                </SelectItem>
+                              </span>
+                            </TooltipTrigger>
+                            {finalMeasurementsTooltip ? (
+                              <TooltipContent>
+                                {finalMeasurementsTooltip}
+                              </TooltipContent>
+                            ) : null}
+                          </Tooltip>
+                        )}
 
                         {/* Follow Up */}
-                        <SelectItem value="Follow Up">Follow Up</SelectItem>
+                        {hasFollowUpPrivilege && (
+                          <SelectItem value="Follow Up">Follow Up</SelectItem>
+                        )}
 
                         {/* BookingDone - ISM */}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              <SelectItem
-                                value="BookingDone - ISM"
-                                disabled={isBookingDoneDisabled}
-                              >
-                                BookingDone - ISM
-                              </SelectItem>
-                            </span>
-                          </TooltipTrigger>
-                          {bookingDoneTooltip && (
-                            <TooltipContent>
-                              {bookingDoneTooltip}
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
+                        {hasBookingDoneIsmPrivilege && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <SelectItem
+                                  value="BookingDone - ISM"
+                                  disabled={isBookingDoneDisabled}
+                                >
+                                  BookingDone - ISM
+                                </SelectItem>
+                              </span>
+                            </TooltipTrigger>
+                            {bookingDoneTooltip && (
+                              <TooltipContent>
+                                {bookingDoneTooltip}
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        )}
                       </TooltipProvider>
                     </SelectContent>
                   </Select>

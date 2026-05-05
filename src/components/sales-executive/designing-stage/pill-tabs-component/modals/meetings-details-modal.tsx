@@ -42,6 +42,9 @@ const MeetingDetailsModal = ({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const [meetingDocs, setMeetingDocs] = useState(
     meeting.designMeetingDocsMapping,
   );
@@ -93,9 +96,17 @@ const MeetingDetailsModal = ({
 
   // 🧩 Permission logic
   const canDelete =
-    userType === "admin" ||
-    userType === "super-admin" ||
-    (userType === "sales-executive" && leadStatus === "designing-stage");
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.designing_stage.meetings.delete")
+      : userType === "admin" ||
+        userType === "super-admin" ||
+        (userType === "sales-executive" && leadStatus === "designing-stage");
+  const canEditMeetingFiles =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.designing_stage.meetings.edit")
+      : userType === "admin" ||
+        userType === "super-admin" ||
+        (userType === "sales-executive" && leadStatus === "designing-stage");
 
   // 🧩 Delete confirmation
   const handleConfirmDelete = () => {
@@ -225,16 +236,18 @@ const MeetingDetailsModal = ({
                 </p>
               </div>
 
-              <Button
-                onClick={() => setOpenAddFilesModal(true)}
-                className="
+              {canEditMeetingFiles && (
+                <Button
+                  onClick={() => setOpenAddFilesModal(true)}
+                  className="
             gap-2 rounded-lg 
             h-9 
           "
-              >
-                <Plus className="h-4 w-4" />
-                Add More Files
-              </Button>
+                >
+                  <Plus className="h-4 w-4" />
+                  Add More Files
+                </Button>
+              )}
             </div>
 
             {/* --- IMAGES --- */}

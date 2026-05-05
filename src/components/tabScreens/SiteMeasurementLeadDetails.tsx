@@ -64,6 +64,9 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   // 🧩 --- Hooks ---
   const { data } = useSiteMeasurementLeadById(leadId);
@@ -110,16 +113,20 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
 
   // 🧩 --- Permissions ---
   const canEditOrUpload =
-    userType === "admin" ||
-    userType === "super-admin" ||
-    (userType === "sales-executive" &&
-      leadStatus === "initial-site-measurement");
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.ism_leads.ism_details.edit")
+      : userType === "admin" ||
+        userType === "super-admin" ||
+        (userType === "sales-executive" &&
+          leadStatus === "initial-site-measurement");
 
   const canDelete =
-    userType === "admin" ||
-    userType === "super-admin" ||
-    (userType === "sales-executive" &&
-      leadStatus === "initial-site-measurement");
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.ism_leads.ism_details.delete")
+      : userType === "admin" ||
+        userType === "super-admin" ||
+        (userType === "sales-executive" &&
+          leadStatus === "initial-site-measurement");
 
   // 🧩 --- Handlers ---
   const handleConfirmDelete = () => {
@@ -508,7 +515,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                     created_at: doc.uploadedAt,
                   }}
                   index={index}
-                  canDelete={false}
+                  canDelete={canDelete}
+                  onDelete={(id) => setConfirmDelete(Number(id))}
                 />
               ))}
             </div>
@@ -600,7 +608,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                         created_at: doc.createdAt,
                         signedUrl: doc.signedUrl,
                       }}
-                      canDelete={false}
+                      canDelete={canDelete}
+                      onDelete={(id) => setConfirmDelete(id)}
                     />
                   ))}
                 </div>
@@ -628,7 +637,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                           created_at: doc.createdAt,
                         }}
                         index={index}
-                        canDelete={false}
+                        canDelete={canDelete}
+                        onDelete={(id) => setConfirmDelete(Number(id))}
                       />
                     )
                   )}
@@ -655,7 +665,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                         created_at: doc.createdAt,
                       }}
                       index={index}
-                      canDelete={false}
+                      canDelete={canDelete}
+                      onDelete={(id) => setConfirmDelete(Number(id))}
                     />
                   ))}
                 </div>

@@ -10,13 +10,27 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { CheckIcon, EyeIcon, EyeOffIcon, ListFilter, Pencil, Plus, UserCog, UserPlus, XCircle, XIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ChevronDown,
+  EyeIcon,
+  EyeOffIcon,
+  ListFilter,
+  Pencil,
+  Plus,
+  UserCog,
+  UserPlus,
+  XCircle,
+  XIcon,
+} from "lucide-react";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 import { cn } from "@/lib/utils";
 import {
   useUsersForMaster,
   useCreateUser,
+  usePrivilegeMasters,
+  useUpdateUserPrivileges,
   useUpdateUser,
   useUserTypes,
 } from "@/hooks/useTypesMaster";
@@ -69,13 +83,25 @@ function formatUserTypeLabel(value?: string | null) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function areNumberArraysEqual(left: number[], right: number[]) {
+  if (left.length !== right.length) return false;
+
+  return left.every((value, index) => value === right[index]);
+}
+
+function normalizeNumberArray(values: number[]) {
+  return Array.from(new Set(values)).sort((left, right) => left - right);
+}
+
 const columns: ColumnDef<UserMasterRow>[] = [
   {
     accessorKey: "srNo",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Sr. No." />
     ),
-    cell: ({ row }) => <span className="font-medium">{row.getValue("srNo")}</span>,
+    cell: ({ row }) => (
+      <span className="font-medium">{row.getValue("srNo")}</span>
+    ),
     enableSorting: false,
     enableHiding: false,
   },
@@ -220,7 +246,9 @@ function FilterByStores({
             key={fr.id}
             onClick={() => onChange(fr.id)}
             className={`w-full text-left px-3 py-1.5 text-sm rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
-              value === fr.id ? "bg-accent text-accent-foreground font-medium" : ""
+              value === fr.id
+                ? "bg-accent text-accent-foreground font-medium"
+                : ""
             }`}
           >
             {fr.franchise_name}
@@ -265,6 +293,58 @@ const defaultForm = {
   status: "active" as "active" | "inactive",
 };
 
+const customPrivilegeSections = [
+  {
+    id: "leads",
+    title: "Leads",
+    description:
+      "Manage access to lead viewing, status updates, reassignment, and task actions.",
+    children: [
+      {
+        id: "open",
+        title: "Open Leads",
+        childModuleIncludes: ["Open Leads"],
+      },
+      {
+        id: "initial_site_measurement",
+        title: "Initial Site Measurement",
+        childModuleIncludes: ["ISM Leads"],
+      },
+      {
+        id: "designing_stage",
+        title: "Desiging Stage",
+        childModuleIncludes: ["Designing Stage"],
+      },
+      {
+        id: "booking_stage",
+        title: "Booking Stage",
+        childModuleIncludes: ["Booking Done"],
+      },
+    ],
+  },
+  {
+    id: "projects",
+    title: "Projects",
+    description:
+      "Manage access to project milestones, files, approvals, and project updates.",
+    children: [],
+  },
+  {
+    id: "productions",
+    title: "Productions",
+    description:
+      "Manage access to production stages, planning flows, and execution actions.",
+    children: [],
+  },
+  {
+    id: "installations",
+    title: "Installations",
+    description:
+      "Manage access to installation progress, readiness, documents, and handover actions.",
+    children: [],
+  },
+] as const;
+
 export default function UserMastersTable() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
 
@@ -277,10 +357,26 @@ export default function UserMastersTable() {
   const [openCreateModal, setOpenCreateModal] = React.useState(false);
   const [modalMode, setModalMode] = React.useState<"create" | "edit">("create");
   const [editingUserId, setEditingUserId] = React.useState<number | null>(null);
-  const [franchiseFilter, setFranchiseFilter] = React.useState<number | undefined>(undefined);
+  const [editingUserType, setEditingUserType] = React.useState<string | null>(
+    null,
+  );
+  const [franchiseFilter, setFranchiseFilter] = React.useState<
+    number | undefined
+  >(undefined);
   const [form, setForm] = React.useState(defaultForm);
   const [originalForm, setOriginalForm] = React.useState(defaultForm);
   const [showPassword, setShowPassword] = React.useState(false);
+  const [openPrivilegesModal, setOpenPrivilegesModal] = React.useState(false);
+  const [openPrivilegeSection, setOpenPrivilegeSection] = React.useState<
+    string | null
+  >(customPrivilegeSections[0]?.id ?? null);
+  const [openLeadPrivilegeSection, setOpenLeadPrivilegeSection] =
+    React.useState<string | null>(null);
+  const [selectedPrivilegeIds, setSelectedPrivilegeIds] = React.useState<
+    number[]
+  >([]);
+  const [privilegeSearch, setPrivilegeSearch] = React.useState("");
+  const deferredPrivilegeSearch = React.useDeferredValue(privilegeSearch);
 
   const { data, isLoading, isError, error } = useUsersForMaster({
     page: pagination.pageIndex + 1,
@@ -288,10 +384,23 @@ export default function UserMastersTable() {
     search: globalFilter,
     franchise_id: franchiseFilter,
   });
-  const { data: franchisesData = [] } = useFranchisesByVendorId(vendorId, !!vendorId);
+  const { data: franchisesData = [] } = useFranchisesByVendorId(
+    vendorId,
+    !!vendorId,
+  );
   const { data: userTypesData } = useUserTypes();
+  const {
+    data: privilegeMastersData,
+    isLoading: isLoadingPrivilegeMasters,
+    isError: isPrivilegeMastersError,
+  } = usePrivilegeMasters({
+    enabled: openPrivilegesModal,
+    search: deferredPrivilegeSearch,
+    userId: editingUserId,
+  });
   const createUserMutation = useCreateUser();
   const updateUserMutation = useUpdateUser();
+  const updateUserPrivilegesMutation = useUpdateUserPrivileges();
 
   const tableData = React.useMemo<UserMasterRow[]>(
     () =>
@@ -306,7 +415,9 @@ export default function UserMastersTable() {
         status: item.status,
         franchise_id: item.franchise_id ?? null,
         user_type_id:
-          userTypesData?.data?.find((ut) => ut.user_type === item.user_type?.user_type)?.id ?? null,
+          userTypesData?.data?.find(
+            (ut) => ut.user_type === item.user_type?.user_type,
+          )?.id ?? null,
       })),
     [data, pagination.pageIndex, pagination.pageSize],
   );
@@ -337,6 +448,72 @@ export default function UserMastersTable() {
     () => passwordStrength.filter((r) => r.met).length,
     [form.password],
   );
+  const privilegeMasters = React.useMemo(
+    () => privilegeMastersData?.data ?? [],
+    [privilegeMastersData?.data],
+  );
+  const serverSelectedPrivilegeIds = React.useMemo(
+    () =>
+      normalizeNumberArray(
+        privilegeMasters
+          .filter((privilege) => privilege.is_selected)
+          .map((privilege) => privilege.id),
+      ),
+    [privilegeMasters],
+  );
+  const normalizedSelectedPrivilegeIds = React.useMemo(
+    () => normalizeNumberArray(selectedPrivilegeIds),
+    [selectedPrivilegeIds],
+  );
+  const hasPrivilegeSelectionChanged = !areNumberArraysEqual(
+    normalizedSelectedPrivilegeIds,
+    serverSelectedPrivilegeIds,
+  );
+
+  React.useEffect(() => {
+    if (!openPrivilegesModal || deferredPrivilegeSearch.trim()) return;
+
+    setSelectedPrivilegeIds((current) =>
+      areNumberArraysEqual(current, serverSelectedPrivilegeIds)
+        ? current
+        : serverSelectedPrivilegeIds,
+    );
+  }, [
+    openPrivilegesModal,
+    serverSelectedPrivilegeIds,
+    deferredPrivilegeSearch,
+  ]);
+
+  const getLeadChildPrivileges = React.useCallback(
+    (childModuleIncludes: readonly string[]) => {
+      const normalizedKeywords = childModuleIncludes.map((value) =>
+        value.toLowerCase(),
+      );
+
+      return privilegeMasters.filter((privilege) => {
+        const parentModule = privilege.parent_module.toLowerCase();
+        const childModule = privilege.child_module.toLowerCase();
+
+        return (
+          parentModule === "leads" &&
+          normalizedKeywords.some((keyword) => childModule.includes(keyword))
+        );
+      });
+    },
+    [privilegeMasters],
+  );
+
+  const handleSaveUserPrivileges = () => {
+    if (!editingUserId || !vendorId) return;
+
+    updateUserPrivilegesMutation.mutate({
+      userId: editingUserId,
+      payload: {
+        vendor_id: vendorId,
+        privilege_ids: normalizedSelectedPrivilegeIds,
+      },
+    });
+  };
 
   const resetForm = () => {
     setForm(defaultForm);
@@ -344,7 +521,16 @@ export default function UserMastersTable() {
     setShowPassword(false);
     setModalMode("create");
     setEditingUserId(null);
+    setEditingUserType(null);
+    setOpenPrivilegesModal(false);
+    setOpenPrivilegeSection(customPrivilegeSections[0]?.id ?? null);
+    setOpenLeadPrivilegeSection(null);
+    setSelectedPrivilegeIds([]);
+    setPrivilegeSearch("");
   };
+
+  const isEditingCustomUser =
+    modalMode === "edit" && editingUserType?.toLowerCase() === "custom";
 
   const isFormValid =
     form.user_name.trim() &&
@@ -362,11 +548,14 @@ export default function UserMastersTable() {
       password: "",
       franchise_id: row.franchise_id ? String(row.franchise_id) : "",
       user_type_id: row.user_type_id ? String(row.user_type_id) : "",
-      status: (row.status === "active" || row.status === "inactive" ? row.status : "active") as "active" | "inactive",
+      status: (row.status === "active" || row.status === "inactive"
+        ? row.status
+        : "active") as "active" | "inactive",
     };
     setForm(prefilled);
     setOriginalForm(prefilled);
     setEditingUserId(row.id);
+    setEditingUserType(row.user_type);
     setModalMode("edit");
     setOpenCreateModal(true);
   };
@@ -424,7 +613,8 @@ export default function UserMastersTable() {
     if (!isFormValid || !vendorId) return;
 
     const parsed = parsePhoneNumberFromString(form.user_contact);
-    const contactNumber = parsed?.nationalNumber || form.user_contact.replace(/\D/g, "");
+    const contactNumber =
+      parsed?.nationalNumber || form.user_contact.replace(/\D/g, "");
 
     createUserMutation.mutate(
       {
@@ -483,11 +673,15 @@ export default function UserMastersTable() {
             </div>
           ) : isError ? (
             <div className="rounded-lg border bg-background p-6 text-sm text-destructive">
-              {(error as any)?.response?.data?.message || "Failed to load users."}
+              {(error as any)?.response?.data?.message ||
+                "Failed to load users."}
             </div>
           ) : (
             <div className="select-none">
-              <DataTable table={table} onRowDoubleClick={handleRowDoubleClick} />
+              <DataTable
+                table={table}
+                onRowDoubleClick={handleRowDoubleClick}
+              />
             </div>
           )}
         </CardContent>
@@ -524,194 +718,473 @@ export default function UserMastersTable() {
           <div className="mx-6 border-b" />
 
           <div className="px-6 pb-5 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            {/* Row 1: User Name | Contact No. */}
-            <div className="space-y-2">
-              <Label htmlFor="user-name">User Name</Label>
-              <Input
-                id="user-name"
-                value={form.user_name}
-                onChange={(e) => setForm((f) => ({ ...f, user_name: e.target.value }))}
-                placeholder="Enter user name"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Contact No.</Label>
-              <PhoneInput
-                defaultCountry="IN"
-                placeholder="Enter contact number"
-                value={form.user_contact}
-                onChange={(val) => setForm((f) => ({ ...f, user_contact: val }))}
-                validateIndianNumber={true}
-              />
-            </div>
-
-            {/* Row 2: Email | Status */}
-            <div className="space-y-2">
-              <Label htmlFor="user-email">Email</Label>
-              <Input
-                id="user-email"
-                type="email"
-                value={form.user_email}
-                onChange={(e) => setForm((f) => ({ ...f, user_email: e.target.value }))}
-                placeholder="Enter email"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <div className="flex h-9 items-center gap-4 rounded-md border px-3">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={form.status === "active"}
-                    onCheckedChange={(checked) =>
-                      setForm((f) => ({ ...f, status: checked ? "active" : "inactive" }))
-                    }
-                  />
-                  <span className="text-sm">Active</span>
-                </label>
-                <span className="text-xs text-muted-foreground">
-                  {form.status === "active" ? "User will be active" : "User will be inactive"}
-                </span>
-              </div>
-            </div>
-
-            {/* Row 3: User Type | Franchise */}
-            <div className="space-y-2">
-              <Label>User Type</Label>
-              <AssignToPicker
-                data={(userTypesData?.data ?? []).map((ut) => ({
-                  id: ut.id,
-                  label: formatUserTypeLabel(ut.user_type),
-                }))}
-                value={form.user_type_id ? Number(form.user_type_id) : undefined}
-                onChange={(selectedId) =>
-                  setForm((f) => ({ ...f, user_type_id: selectedId ? String(selectedId) : "" }))
-                }
-                placeholder="Select user type..."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Franchise</Label>
-              <AssignToPicker
-                data={franchisesData.map((fr) => ({
-                  id: fr.id,
-                  label: fr.franchise_name,
-                }))}
-                value={form.franchise_id ? Number(form.franchise_id) : undefined}
-                onChange={(selectedId) =>
-                  setForm((f) => ({ ...f, franchise_id: selectedId ? String(selectedId) : "" }))
-                }
-                placeholder="Select franchise..."
-              />
-            </div>
-
-            {/* Row 4: Password (full width) */}
-            <div className="col-span-2 space-y-2">
-              <Label htmlFor="user-password">
-                Password{modalMode === "edit" && (
-                  <span className="ml-1 text-xs font-normal text-muted-foreground">(leave blank to keep current)</span>
-                )}
-              </Label>
-              <div className="relative">
+            <div className="grid grid-cols-2 gap-4">
+              {/* Row 1: User Name | Contact No. */}
+              <div className="space-y-2">
+                <Label htmlFor="user-name">User Name</Label>
                 <Input
-                  id="user-password"
-                  type={showPassword ? "text" : "password"}
-                  value={form.password}
-                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                  placeholder={modalMode === "edit" ? "Leave blank to keep current password" : "Enter password"}
-                  className="pe-9 h-9"
+                  id="user-name"
+                  value={form.user_name}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, user_name: e.target.value }))
+                  }
+                  placeholder="Enter user name"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute inset-y-0 end-0 flex h-full w-9 items-center justify-center text-muted-foreground/70 hover:text-foreground transition-colors"
-                >
-                  {showPassword ? <EyeOffIcon size={15} /> : <EyeIcon size={15} />}
-                </button>
               </div>
 
-              {/* Strength bar — always shown in create, only shown when typing in edit */}
-              {(modalMode === "create" || form.password.length > 0) && (
-                <>
-                  <div
-                    role="progressbar"
-                    aria-valuemin={0}
-                    aria-valuemax={5}
-                    aria-valuenow={passwordStrengthScore}
-                    aria-label="Password strength"
-                    className="mt-2 mb-2 h-1 w-full overflow-hidden rounded-full bg-border"
-                  >
-                    <div
-                      className={`h-full transition-all duration-500 ease-out ${getStrengthColor(passwordStrengthScore)}`}
-                      style={{ width: `${(passwordStrengthScore / 5) * 100}%` }}
+              <div className="space-y-2">
+                <Label>Contact No.</Label>
+                <PhoneInput
+                  defaultCountry="IN"
+                  placeholder="Enter contact number"
+                  value={form.user_contact}
+                  onChange={(val) =>
+                    setForm((f) => ({ ...f, user_contact: val }))
+                  }
+                  validateIndianNumber={true}
+                />
+              </div>
+
+              {/* Row 2: Email | Status */}
+              <div className="space-y-2">
+                <Label htmlFor="user-email">Email</Label>
+                <Input
+                  id="user-email"
+                  type="email"
+                  value={form.user_email}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, user_email: e.target.value }))
+                  }
+                  placeholder="Enter email"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <div className="flex h-9 items-center gap-4 rounded-md border px-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox
+                      checked={form.status === "active"}
+                      onCheckedChange={(checked) =>
+                        setForm((f) => ({
+                          ...f,
+                          status: checked ? "active" : "inactive",
+                        }))
+                      }
                     />
-                  </div>
+                    <span className="text-sm">Active</span>
+                  </label>
+                  <span className="text-xs text-muted-foreground">
+                    {form.status === "active"
+                      ? "User will be active"
+                      : "User will be inactive"}
+                  </span>
+                </div>
+              </div>
 
-                  <p className="text-xs font-medium text-foreground mb-1.5">
-                    {getStrengthText(passwordStrengthScore)}
-                  </p>
-
-                  <ul className="space-y-1">
-                    {passwordStrength.map((req) => (
-                      <li key={req.text} className="flex items-center gap-2">
-                        {req.met ? (
-                          <CheckIcon size={13} className="text-emerald-500 shrink-0" />
-                        ) : (
-                          <XIcon size={13} className="text-muted-foreground/60 shrink-0" />
-                        )}
-                        <span className={`text-xs ${req.met ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
-                          {req.text}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </>
+              {/* Row 3: User Type | Franchise */}
+              {!isEditingCustomUser && (
+                <div className="space-y-2">
+                  <Label>User Type</Label>
+                  <AssignToPicker
+                    data={(userTypesData?.data ?? []).map((ut) => ({
+                      id: ut.id,
+                      label: formatUserTypeLabel(ut.user_type),
+                    }))}
+                    value={
+                      form.user_type_id ? Number(form.user_type_id) : undefined
+                    }
+                    onChange={(selectedId) =>
+                      setForm((f) => ({
+                        ...f,
+                        user_type_id: selectedId ? String(selectedId) : "",
+                      }))
+                    }
+                    placeholder="Select user type..."
+                  />
+                </div>
               )}
+
+              <div className="space-y-2">
+                <Label>Franchise</Label>
+                <AssignToPicker
+                  data={franchisesData.map((fr) => ({
+                    id: fr.id,
+                    label: fr.franchise_name,
+                  }))}
+                  value={
+                    form.franchise_id ? Number(form.franchise_id) : undefined
+                  }
+                  onChange={(selectedId) =>
+                    setForm((f) => ({
+                      ...f,
+                      franchise_id: selectedId ? String(selectedId) : "",
+                    }))
+                  }
+                  placeholder="Select franchise..."
+                />
+              </div>
+
+              {/* Row 4: Password (full width) */}
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="user-password">
+                  Password
+                  {modalMode === "edit" && (
+                    <span className="ml-1 text-xs font-normal text-muted-foreground">
+                      (leave blank to keep current)
+                    </span>
+                  )}
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="user-password"
+                    type={showPassword ? "text" : "password"}
+                    value={form.password}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, password: e.target.value }))
+                    }
+                    placeholder={
+                      modalMode === "edit"
+                        ? "Leave blank to keep current password"
+                        : "Enter password"
+                    }
+                    className="pe-9 h-9"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                    className="absolute inset-y-0 end-0 flex h-full w-9 items-center justify-center text-muted-foreground/70 hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOffIcon size={15} />
+                    ) : (
+                      <EyeIcon size={15} />
+                    )}
+                  </button>
+                </div>
+
+                {/* Strength bar — always shown in create, only shown when typing in edit */}
+                {(modalMode === "create" || form.password.length > 0) && (
+                  <>
+                    <div
+                      role="progressbar"
+                      aria-valuemin={0}
+                      aria-valuemax={5}
+                      aria-valuenow={passwordStrengthScore}
+                      aria-label="Password strength"
+                      className="mt-2 mb-2 h-1 w-full overflow-hidden rounded-full bg-border"
+                    >
+                      <div
+                        className={`h-full transition-all duration-500 ease-out ${getStrengthColor(passwordStrengthScore)}`}
+                        style={{
+                          width: `${(passwordStrengthScore / 5) * 100}%`,
+                        }}
+                      />
+                    </div>
+
+                    <p className="text-xs font-medium text-foreground mb-1.5">
+                      {getStrengthText(passwordStrengthScore)}
+                    </p>
+
+                    <ul className="space-y-1">
+                      {passwordStrength.map((req) => (
+                        <li key={req.text} className="flex items-center gap-2">
+                          {req.met ? (
+                            <CheckIcon
+                              size={13}
+                              className="text-emerald-500 shrink-0"
+                            />
+                          ) : (
+                            <XIcon
+                              size={13}
+                              className="text-muted-foreground/60 shrink-0"
+                            />
+                          )}
+                          <span
+                            className={`text-xs ${req.met ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}
+                          >
+                            {req.text}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-4 border-t mt-2">
+              <div className="w-fit h-auto">
+                {isEditingCustomUser && (
+                  <Button
+                    size="sm"
+                    onClick={() => setOpenPrivilegesModal(true)}
+                  >
+                    User Privileges
+                  </Button>
+                )}
+              </div>
+              <div className="w-fit h-auto flex items-center justify-between gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setOpenCreateModal(false);
+                    resetForm();
+                  }}
+                  disabled={
+                    createUserMutation.isPending || updateUserMutation.isPending
+                  }
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={modalMode === "edit" ? handleSave : handleCreate}
+                  disabled={
+                    !isFormValid ||
+                    !vendorId ||
+                    createUserMutation.isPending ||
+                    updateUserMutation.isPending
+                  }
+                >
+                  {modalMode === "edit" ? (
+                    updateUserMutation.isPending ? (
+                      "Saving..."
+                    ) : (
+                      <>
+                        <Pencil size={13} className="mr-1.5" />
+                        Save Changes
+                      </>
+                    )
+                  ) : createUserMutation.isPending ? (
+                    "Creating..."
+                  ) : (
+                    "Create User"
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
 
-          <div className="flex items-center justify-end gap-2 pt-4 border-t mt-2">
+      <Dialog
+        open={openPrivilegesModal}
+        onOpenChange={(open) => {
+          setOpenPrivilegesModal(open);
+          if (!open) {
+            setOpenPrivilegeSection(customPrivilegeSections[0]?.id ?? null);
+            setOpenLeadPrivilegeSection(null);
+            setSelectedPrivilegeIds([]);
+            setPrivilegeSearch("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[760px] h-[80vh] max-h-[80vh] p-0 overflow-hidden flex flex-col">
+          <div className="flex items-start justify-between gap-4 px-6 py-5 border-b">
+            <div className="space-y-1">
+              <DialogTitle className="text-base font-semibold leading-tight">
+                User Privileges
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                Manage custom privilege access for this user from here.
+              </DialogDescription>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-3">
+            {customPrivilegeSections.map((section) => {
+              const isOpen = openPrivilegeSection === section.id;
+
+              return (
+                <div
+                  key={section.id}
+                  className="overflow-hidden rounded-xl border bg-background"
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOpenPrivilegeSection((current) =>
+                        current === section.id ? null : section.id,
+                      )
+                    }
+                    className="flex w-full items-start justify-between gap-4 px-4 py-4 text-left transition-colors hover:bg-muted/40"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">
+                        {section.title}
+                      </p>
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        {section.description}
+                      </p>
+                    </div>
+                    <ChevronDown
+                      className={cn(
+                        "mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                        isOpen && "rotate-180",
+                      )}
+                    />
+                  </button>
+
+                  {isOpen && (
+                    <div className="border-t bg-muted/20 px-4 py-3">
+                      {section.id === "leads" ? (
+                        <div className="space-y-2">
+                          {section.children.map((child) => {
+                            const isLeadSectionOpen =
+                              openLeadPrivilegeSection === child.id;
+                            const childPrivileges = getLeadChildPrivileges(
+                              child.childModuleIncludes,
+                            );
+
+                            return (
+                              <div
+                                key={child.id}
+                                className="overflow-hidden rounded-lg border bg-background"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setOpenLeadPrivilegeSection((current) =>
+                                      current === child.id ? null : child.id,
+                                    )
+                                  }
+                                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40"
+                                >
+                                  <p className="text-sm font-medium text-foreground">
+                                    {child.title}
+                                  </p>
+                                  <ChevronDown
+                                    className={cn(
+                                      "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                                      isLeadSectionOpen && "rotate-180",
+                                    )}
+                                  />
+                                </button>
+
+                                {isLeadSectionOpen && (
+                                  <div className="border-t bg-muted/20 px-4 py-3">
+                                    <div className="mb-3">
+                                      <Input
+                                        value={privilegeSearch}
+                                        onChange={(e) =>
+                                          setPrivilegeSearch(e.target.value)
+                                        }
+                                        placeholder="Search by code or action..."
+                                        className="h-9 bg-background"
+                                        disabled={
+                                          updateUserPrivilegesMutation.isPending
+                                        }
+                                      />
+                                    </div>
+                                    {isLoadingPrivilegeMasters ? (
+                                      <div className="text-xs text-muted-foreground">
+                                        Loading privilege actions...
+                                      </div>
+                                    ) : isPrivilegeMastersError ? (
+                                      <div className="text-xs text-destructive">
+                                        Failed to load privilege actions.
+                                      </div>
+                                    ) : childPrivileges.length === 0 ? (
+                                      <div className="text-xs text-muted-foreground">
+                                        No privilege actions found for this
+                                        section.
+                                      </div>
+                                    ) : (
+                                      <div className="space-y-2">
+                                        {childPrivileges.map((privilege) => {
+                                          const isChecked =
+                                            selectedPrivilegeIds.includes(
+                                              privilege.id,
+                                            );
+
+                                          return (
+                                            <label
+                                              key={privilege.id}
+                                              className="flex items-center gap-3 rounded-md border bg-background px-3 py-2"
+                                            >
+                                              <Checkbox
+                                                checked={isChecked}
+                                                disabled={
+                                                  updateUserPrivilegesMutation.isPending
+                                                }
+                                                onCheckedChange={(checked) =>
+                                                  setSelectedPrivilegeIds(
+                                                    (current) => {
+                                                      if (checked) {
+                                                        return current.includes(
+                                                          privilege.id,
+                                                        )
+                                                          ? current
+                                                          : [
+                                                              ...current,
+                                                              privilege.id,
+                                                            ];
+                                                      }
+
+                                                      return current.filter(
+                                                        (id) =>
+                                                          id !== privilege.id,
+                                                      );
+                                                    },
+                                                  )
+                                                }
+                                              />
+                                              <div className="space-y-0.5">
+                                                <p className="text-sm font-medium text-foreground">
+                                                  {privilege.action}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                  {privilege.code}
+                                                </p>
+                                              </div>
+                                            </label>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground">
+                          Privilege options for {section.title.toLowerCase()}{" "}
+                          will be added here next.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center justify-end gap-2 border-t px-6 py-4">
             <Button
               variant="outline"
-              size="sm"
-              onClick={() => {
-                setOpenCreateModal(false);
-                resetForm();
-              }}
-              disabled={createUserMutation.isPending || updateUserMutation.isPending}
+              onClick={() => setOpenPrivilegesModal(false)}
+              disabled={updateUserPrivilegesMutation.isPending}
             >
-              Cancel
+              Close
             </Button>
             <Button
-              size="sm"
-              onClick={modalMode === "edit" ? handleSave : handleCreate}
+              onClick={handleSaveUserPrivileges}
               disabled={
-                !isFormValid ||
+                !editingUserId ||
                 !vendorId ||
-                createUserMutation.isPending ||
-                updateUserMutation.isPending
+                !hasPrivilegeSelectionChanged ||
+                updateUserPrivilegesMutation.isPending
               }
             >
-              {modalMode === "edit" ? (
-                updateUserMutation.isPending ? (
-                  "Saving..."
-                ) : (
-                  <>
-                    <Pencil size={13} className="mr-1.5" />
-                    Save Changes
-                  </>
-                )
-              ) : createUserMutation.isPending ? (
-                "Creating..."
-              ) : (
-                "Create User"
-              )}
+              {updateUserPrivilegesMutation.isPending
+                ? "Saving..."
+                : "Save Privileges"}
             </Button>
-          </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -172,6 +172,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   // 🧩 States
   const [openFinalDocModal, setOpenFinalDocModal] = useState<boolean>(false);
@@ -273,7 +276,17 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   console.log("super visor :- ", currentSupervisor)
   const { data: siteSupervisorCheck } = useCheckSiteSupervisorAssigned(vendorId, leadId);
   const canAssignSiteSupervisor =
-    userType === "head-site-supervisor" || userType === "super-admin";
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.assign_site_supervisor.assign",
+        )
+      : userType === "head-site-supervisor" || userType === "super-admin";
+  const canReassignSiteSupervisor =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.assign_site_supervisor.reassign",
+        )
+      : userType === "head-site-supervisor" || userType === "super-admin";
   const isSupervisorAssigned = siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
 
   const lead = data?.data?.lead;
@@ -298,6 +311,152 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     userType === "admin" ||
     userType === "super-admin" ||
     (userType === "sales-executive" && status === "booking-stage");
+  const canViewMrpValue =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.booking_done.mrp_value.view")
+      : true;
+  const canEditMrpValue =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.booking_done.mrp_value.edit")
+      : canEditBookingValues;
+  const canViewTotalBookingValue =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.total_booking_value.view",
+        )
+      : true;
+  const canEditTotalBookingValue =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.total_booking_value.edit",
+        )
+      : canEditBookingValues;
+  const canViewBookingAmount =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.booking_done.booking_amount.view")
+      : true;
+  const canEditBookingAmount =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.booking_done.booking_amount.edit")
+      : canEditBookingValues;
+  const canViewBookingStageCurrentSitePhotos =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.current_site_photos.view",
+        )
+      : true;
+  const canUploadBookingStageCurrentSitePhotos =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.current_site_photos.upload",
+        )
+      : canEditBookingValues;
+  const canDeleteBookingStageCurrentSitePhotos =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.current_site_photos.delete",
+        )
+      : canDelete;
+  const canViewBookingDocuments =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.booking_done.booking_documents.view")
+      : true;
+  const canUploadBookingDocuments =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.booking_documents.upload",
+        )
+      : canDelete;
+  const canDeleteBookingDocuments =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.booking_documents.delete",
+        )
+      : canDelete;
+  const canViewBookingPaymentProofs =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.booking_payment_proofs.view",
+        )
+      : true;
+  const canDeleteBookingPaymentProofs =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.booking_payment_proofs.delete",
+        )
+      : canDelete;
+  const canViewConsolidatedIsmPhotos =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.consolidated_view.ism_photos_view",
+        )
+      : true;
+  const canDeleteConsolidatedIsmPhotos =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.consolidated_view.ism_photos_delete",
+        )
+      : canDelete;
+  const canUploadConsolidatedIsmPhotos =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.consolidated_view.ism_photos_upload",
+        )
+      : canEditBookingValues;
+  const canViewConsolidatedIsmMeasurementDocs =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.consolidated_view.ism_measurement_document_view",
+        )
+      : true;
+  const canDeleteConsolidatedIsmMeasurementDocs =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.consolidated_view.ism_measurement_document_delete",
+        )
+      : canDelete;
+  const canUploadConsolidatedIsmMeasurementDocs =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.consolidated_view.ism_measurement_document_upload",
+        )
+      : canEditBookingValues;
+  const canViewConsolidatedDesignDocuments =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.consolidated_view.design_document_view",
+        )
+      : true;
+  const canDeleteConsolidatedDesignDocuments =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.consolidated_view.design_document_delete",
+        )
+      : canDelete;
+  const canUploadConsolidatedDesignDocuments =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.consolidated_view.design_document_upload",
+        )
+      : canEditBookingValues;
+  const canViewConsolidatedFinalMeasurementAssignmentDocs =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.consolidated_view.final_measurement_assignement_docs_view",
+        )
+      : true;
+  const canDeleteConsolidatedFinalMeasurementAssignmentDocs =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.consolidated_view.final_measurement_assignement_docs_delete",
+        )
+      : canDelete;
+  const canUploadConsolidatedFinalMeasurementAssignmentDocs =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.consolidated_view.final_measurement_assignement_docs_upload",
+        )
+      : canEditBookingValues;
 
   console.log("Lead Status: ", status);
 
@@ -640,7 +799,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 )}
               </div>
 
-              {isSupervisorAssigned && canAssignSiteSupervisor && (
+              {isSupervisorAssigned && canReassignSiteSupervisor && (
                 <Button
                   type="button"
                   variant="outline"
@@ -653,7 +812,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
             </div>
 
             {/* MRP Value */}
-            <div
+            {canViewMrpValue && (
+              <div
               className="
     bg-white dark:bg-neutral-900
     border border-border rounded-2xl 
@@ -684,7 +844,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 </div>
               </div>
 
-              {canEditBookingValues && (
+              {canEditMrpValue && (
                 <Button
                   type="button"
                   variant="outline"
@@ -694,10 +854,12 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                   <UserPen className="w-4 h-4" />
                 </Button>
               )}
-            </div>
+              </div>
+            )}
 
             {/* Total Booking Value */}
-            <div
+            {canViewTotalBookingValue && (
+              <div
               className="
     bg-white dark:bg-neutral-900
     border border-border rounded-2xl 
@@ -730,7 +892,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 </div>
               </div>
 
-              {canEditBookingValues && (
+              {canEditTotalBookingValue && (
                 <Button
                   type="button"
                   variant="outline"
@@ -740,10 +902,12 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                   <UserPen className="w-4 h-4" />
                 </Button>
               )}
-            </div>
+              </div>
+            )}
 
             {/* Amount Received */}
-            <div
+            {canViewBookingAmount && (
+              <div
               className="
     bg-white dark:bg-neutral-900
     border border-border rounded-2xl 
@@ -774,7 +938,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 </div>
               </div>
 
-              {canEditBookingValues && (
+              {canEditBookingAmount && (
                 <Button
                   type="button"
                   variant="outline"
@@ -784,12 +948,15 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                   <UserPen className="w-4 h-4" />
                 </Button>
               )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* -------- Booking Stage – Current Site Photos -------- */}
             {!cspLoading &&
-              (bookingStagePhotos.length > 0 || canEditBookingValues) && (
+              canViewBookingStageCurrentSitePhotos &&
+              (bookingStagePhotos.length > 0 ||
+                canUploadBookingStageCurrentSitePhotos) && (
               <div
                 className="
       bg-white dark:bg-neutral-900
@@ -816,10 +983,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                         }}
                         index={index}
                          onDelete={(id) => setConfirmDelete(Number(id))}
-                        canDelete={canDelete}
+                        canDelete={canDeleteBookingStageCurrentSitePhotos}
                       />
                     ))}
-                    {canEditBookingValues && (
+                    {canUploadBookingStageCurrentSitePhotos && (
                       <div
                         onClick={() => setCspUploadOpen(true)}
                         className="
@@ -863,8 +1030,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
           </div>
 
           {/* -------- Booking Documents Section -------- */}
-          <div className="space-y-6 mb-6">
-            {/* ----- Booking Documents Card ----- */}
+          {canViewBookingDocuments && (
             <div
               className="
       bg-[#fff] dark:bg-[#0a0a0a]
@@ -897,13 +1063,13 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                     <DocumentCard
                       key={doc.id}
                       doc={doc}
-                      canDelete={canDelete}
+                      canDelete={canDeleteBookingDocuments}
                       onDelete={(id) => setConfirmDelete(Number(id))}
                     />
                   ))}
 
                   {/* Add File Button */}
-                  {canDelete && (
+                  {canUploadBookingDocuments && (
                     <div
                       onClick={() => setOpenFinalDocModal(true)}
                       className="
@@ -925,7 +1091,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 </div>
               </div>
             </div>
+          )}
 
+          {canViewBookingPaymentProofs && (
+            <>
             {/* ----- Payment Proofs Card ----- */}
             <div
               className="
@@ -965,7 +1134,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                           signedUrl: doc.signedUrl,
                         }}
                         index={index}
-                        canDelete={canDelete}
+                        canDelete={canDeleteBookingPaymentProofs}
                         onDelete={(id) => setConfirmDelete(Number(id))}
                       />
                     ))}
@@ -986,8 +1155,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 )}
               </div>
             </div>
-          </div>
-        </div>
+            </>
+          )}
         {/* -------- Consolidated Documents -------- */}
         {(initialMeasurementDocs.length > 0 ||
           initialCurrentSitePhotos.length > 0 ||
@@ -1011,8 +1180,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
               />
 
               <div className="p-6 space-y-8">
-                {(initialMeasurementDocs.length > 0 ||
-                  initialCurrentSitePhotos.length > 0) && (
+                {((canViewConsolidatedIsmMeasurementDocs &&
+                  initialMeasurementDocs.length > 0) ||
+                  (canViewConsolidatedIsmPhotos &&
+                    initialCurrentSitePhotos.length > 0)) && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <FileText size={18} />
@@ -1021,7 +1192,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                       </h2>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
-                      {initialCurrentSitePhotos.length > 0 && (
+                      {canViewConsolidatedIsmPhotos &&
+                        initialCurrentSitePhotos.length > 0 && (
                         <div className="space-y-2">
                           <p className="text-sm font-medium text-muted-foreground">
                             Current Site Photos (
@@ -1039,12 +1211,12 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                     created_at: photo.uploadedAt,
                                   }}
                                   index={index}
-                                  canDelete={canDelete}
+                                  canDelete={canDeleteConsolidatedIsmPhotos}
                                    onDelete={(id) => setConfirmDelete(Number(id))}
                                 />
                               ),
                             )}
-                            {canEditBookingValues && (
+                            {canUploadConsolidatedIsmPhotos && (
                               <div
                                 onClick={() => setInitialSitePhotosOpen(true)}
                                 className="
@@ -1069,7 +1241,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                         </div>
                       )}
 
-                      {initialMeasurementDocs.length > 0 && (
+                      {canViewConsolidatedIsmMeasurementDocs &&
+                        initialMeasurementDocs.length > 0 && (
                         <div className="space-y-2">
                           <p className="text-sm font-medium text-muted-foreground">
                             Measurement Documents (
@@ -1087,12 +1260,12 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                   signedUrl: doc.signedUrl,
                                   created_at: doc.uploadedAt,
                                 }}
-                               canDelete={canDelete}
+                               canDelete={canDeleteConsolidatedIsmMeasurementDocs}
                                 onDelete={(id) => setConfirmDelete(Number(id))}
                               />
                             ))}
                           </div>
-                            {canEditBookingValues && (
+                            {canUploadConsolidatedIsmMeasurementDocs && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1214,7 +1387,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                   </div>
                 )}
 
-                {designDocs.length > 0 && (
+                {canViewConsolidatedDesignDocuments && designDocs.length > 0 && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <FileText size={18} />
@@ -1235,11 +1408,11 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                               doc.doc_sys_name,
                             created_at: doc.created_at,
                           }}
-                          canDelete={canDelete}
+                          canDelete={canDeleteConsolidatedDesignDocuments}
                            onDelete={(id) => setConfirmDelete(Number(id))}
                         />
                       ))}
-                      {canEditBookingValues && (
+                      {canUploadConsolidatedDesignDocuments && (
                         <button
                           type="button"
                           onClick={() => setDesignsModalOpen(true)}
@@ -1262,7 +1435,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                   </div>
                 )}
 
-                  {bookingStagePhotos.length > 0 && (
+                  {canViewConsolidatedFinalMeasurementAssignmentDocs &&
+                    bookingStagePhotos.length > 0 && (
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
                         <Images size={18} />
@@ -1282,11 +1456,13 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                               created_at: photo.createdAt,
                             }}
                             index={index}
-                            canDelete={canDelete}
+                            canDelete={
+                              canDeleteConsolidatedFinalMeasurementAssignmentDocs
+                            }
                              onDelete={(id) => setConfirmDelete(Number(id))}
                           />
                         ))}
-                        {canEditBookingValues && (
+                        {canUploadConsolidatedFinalMeasurementAssignmentDocs && (
                           <div
                             onClick={() => setCspUploadOpen(true)}
                             className="
@@ -1311,6 +1487,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
             </div>
           </div>
         )}
+
+        </div>
 
         {/* -------- Upload Modal -------- */}
         <UploadFinalDoc

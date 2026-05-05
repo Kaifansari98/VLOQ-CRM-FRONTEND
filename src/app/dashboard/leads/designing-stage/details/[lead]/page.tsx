@@ -106,12 +106,34 @@ export default function DesigningStageLead() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   const canAccessTodoTab = canAccessDessingTodoTab(userType);
   const canMoveToBooking =
     countsData?.QuotationDoc > 0 && countsData?.DesignsDoc > 0;
   const canViewSiteHistory =
     canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
+  const canPerformMoveToBooking =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.designing_stage.move_to_booking.action",
+        )
+      : canMoveToBookingStage(userType);
+  const canMarkOnHold =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.designing_stage.details.mark_on_hold",
+        )
+      : true;
+  const canMarkAsLost =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.designing_stage.details.mark_as_lost",
+        )
+      : true;
+  const canSeeLeadStatusMenu = canMarkOnHold || canMarkAsLost;
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -122,18 +144,35 @@ export default function DesigningStageLead() {
 
     // ✅ Only auto-open if user can move to booking, but not admin/super-admin
     if (
-      canMoveToBookingStage(userType) &&
+      canPerformMoveToBooking &&
       canMoveToBooking &&
       userType?.toLowerCase() !== "admin" &&
       userType?.toLowerCase() !== "super-admin"
     ) {
       setBookingOpenLead(true);
     }
-  }, [isLoading, isChatNotification, userType, canMoveToBooking]);
+  }, [
+    isLoading,
+    isChatNotification,
+    userType,
+    canMoveToBooking,
+    canPerformMoveToBooking,
+  ]);
 
-  const canReassign = canReassignLeadButton(userType);
-  const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadForSalesExecutiveButton(userType);
+  const canReassign =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.designing_stage.details.reassign_lead",
+        )
+      : canReassignLeadButton(userType);
+  const canDelete =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.designing_stage.details.delete")
+      : canDeleteLeadButton(userType);
+  const canEdit =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.designing_stage.details.edit")
+      : canEditLeadForSalesExecutiveButton(userType);
   const canViewPayment = canViewPaymentTab(userType);
 
   const leadCode = lead?.lead_code ?? "";
@@ -242,7 +281,7 @@ export default function DesigningStageLead() {
                 }
                 value="Requires at least 1 Quotation and 1 Design"
               />
-            ) : (
+            ) : canPerformMoveToBooking ? (
               <Button
                 size="sm"
                 className="hidden md:block"
@@ -250,6 +289,16 @@ export default function DesigningStageLead() {
               >
                 Move To Booking
               </Button>
+            ) : (
+              <CustomeTooltip
+                truncateValue={
+                  <div className="hidden md:flex items-center opacity-50 cursor-not-allowed px-2">
+                    <ClipboardCheck className="mr-2 h-4 w-4" />
+                    Move To Booking
+                  </div>
+                }
+                value="You don't have permission to move this lead to booking stage"
+              />
             )}
           </div>
           <Button
@@ -283,7 +332,7 @@ export default function DesigningStageLead() {
                 Assign Task
               </DropdownMenuItem>
               {/* Move to Booking */}
-              {canMoveToBookingStage(userType) && canMoveToBooking ? (
+              {canPerformMoveToBooking && canMoveToBooking ? (
                 <DropdownMenuItem onClick={() => setBookingOpenLead(true)}>
                   <ClipboardCheck className="h-4 w-4" />
                   Move To Booking
@@ -305,32 +354,38 @@ export default function DesigningStageLead() {
               )}
 
               {/* Lead Status submenu */}
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <CircleArrowOutUpRight className="mr-2 h-4 w-4" />
-                  Lead Status
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setActivityType("onHold");
-                      setActivityModalOpen(true);
-                    }}
-                  >
-                    <Clock className="h-4 w-4" />
-                    Mark On Hold
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setActivityType("lostApproval");
-                      setActivityModalOpen(true);
-                    }}
-                  >
-                    <XCircle className="h-4 w-4" />
-                    Mark As Lost
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
+              {canSeeLeadStatusMenu && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <CircleArrowOutUpRight className="mr-2 h-4 w-4" />
+                    Lead Status
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {canMarkOnHold && (
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          setActivityType("onHold");
+                          setActivityModalOpen(true);
+                        }}
+                      >
+                        <Clock className="h-4 w-4" />
+                        Mark On Hold
+                      </DropdownMenuItem>
+                    )}
+                    {canMarkAsLost && (
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          setActivityType("lostApproval");
+                          setActivityModalOpen(true);
+                        }}
+                      >
+                        <XCircle className="h-4 w-4" />
+                        Mark As Lost
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
 
               {canReassign && (
                 <DropdownMenuItem onSelect={() => setAssignOpenLead(true)}>

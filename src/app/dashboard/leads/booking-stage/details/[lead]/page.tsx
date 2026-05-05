@@ -98,6 +98,9 @@ export default function BookingStageLeadsDetails() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const isChatNotification = useIsChatNotification();
@@ -167,6 +170,34 @@ export default function BookingStageLeadsDetails() {
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory =
     canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
+  const canAccessMarkOnHold =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.booking_done.details.mark_on_hold")
+      : true;
+  const canAccessEditLead =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.booking_done.details.edit")
+      : canEdit;
+  const canAccessReassignLead =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.booking_done.details.reassign_lead")
+      : canReassign;
+  const canAccessDeleteLead =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.booking_done.details.delete")
+      : canDelete;
+  const canAccessAssignTask =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.assign_task.final_measurement",
+        ) ||
+        customPrivilegeCodes.includes(
+          "leads.booking_done.assign_task.follow_up",
+        ) ||
+        customPrivilegeCodes.includes(
+          "leads.booking_done.assign_task.bookingdone_ism",
+        )
+      : canAssignFM(userType);
   return (
     <>
       {/* Header */}
@@ -188,7 +219,7 @@ export default function BookingStageLeadsDetails() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
-          {canAssignFM(userType) ? (
+          {canAccessAssignTask ? (
             <Button
               className="hidden md:block"
               size="sm"
@@ -222,7 +253,7 @@ export default function BookingStageLeadsDetails() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
-              {canAssignFM(userType) ? (
+              {canAccessAssignTask ? (
                 <DropdownMenuItem
                   className="flex md:hidden"
                   onClick={() => setAssignOpen(true)}
@@ -242,31 +273,33 @@ export default function BookingStageLeadsDetails() {
                 />
               )}
               {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
-              <DropdownMenuItem
-                onSelect={() => {
-                  setActivityType("onHold");
-                  setActivityModalOpen(true);
-                }}
-              >
-                <Clock className=" h-4 w-4" />
-                Mark On Hold
-              </DropdownMenuItem>
+              {canAccessMarkOnHold && (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setActivityType("onHold");
+                    setActivityModalOpen(true);
+                  }}
+                >
+                  <Clock className=" h-4 w-4" />
+                  Mark On Hold
+                </DropdownMenuItem>
+              )}
 
-              {canEdit && (
+              {canAccessEditLead && (
                 <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
                   <SquarePen size={20} />
                   Edit
                 </DropdownMenuItem>
               )}
 
-              {canReassign && (
+              {canAccessReassignLead && (
                 <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
                   <Users size={20} />
                   Reassign Lead
                 </DropdownMenuItem>
               )}
 
-              {canDelete && (
+              {canAccessDeleteLead && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setOpenDelete(true)}>
@@ -299,10 +332,12 @@ export default function BookingStageLeadsDetails() {
               <HouseIcon size={16} className="mr-1 opacity-60" />
               Lead Details
             </TabsTrigger>
-            <TabsTrigger value="projects">
-              <PencilLine size={16} className="mr-1 opacity-60" />
-              To-Do Task
-            </TabsTrigger>
+            {canAccessAssignTask && (
+              <TabsTrigger value="projects">
+                <PencilLine size={16} className="mr-1 opacity-60" />
+                To-Do Task
+              </TabsTrigger>
+            )}
             {canViewSiteHistory && (
               <TabsTrigger value="history">
                 <History size={16} className="mr-1 opacity-60" />

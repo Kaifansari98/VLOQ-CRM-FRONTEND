@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useLogin } from "@/hooks/useLogin";
-import { useDispatch, useSelector } from "react-redux";
-import { setCredentials } from "@/redux/slices/authSlice";
+import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 import { toastManager } from "@/components/ui/toast";
 import { RootState } from "@/redux/store";
@@ -76,7 +75,6 @@ export function LoginForm({
   const [password, setPassword] = useState("");
 
   const loginMutation = useLogin();
-  const dispatch = useDispatch();
   const router = useRouter();
 
   const { user, token } = useSelector((state: RootState) => state.auth);
@@ -113,16 +111,10 @@ export function LoginForm({
 
   useEffect(() => {
     if (loginMutation.isSuccess && loginMutation.data) {
-      dispatch(
-        setCredentials({
-          user: loginMutation.data.user,
-          token: loginMutation.data.token,
-        })
-      );
       toastManager.add({ title: "Login successful!", type: "success" });
       router.push("/dashboard");
     }
-  }, [loginMutation.isSuccess, loginMutation.data, dispatch, router]);
+  }, [loginMutation.isSuccess, loginMutation.data, router]);
 
   useEffect(() => {
     if (loginMutation.isError) {
