@@ -97,6 +97,9 @@ export default function FinalMeasurementLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const effectiveUserType = userType;
 
   // UI STATES
@@ -181,6 +184,12 @@ export default function FinalMeasurementLeadDetails() {
   const canViewSiteHistory =
     canViewSiteHistoryTab(effectiveUserType ?? "") &&
     effectiveUserType?.toLowerCase() !== "admin";
+  const canAccessFinalMeasurementTodo =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.final_measurement.fm_action_upload_of_fm.enable_disable",
+        )
+      : canUploadFinalMeasurements(effectiveUserType ?? "");
 
   return (
     <>
@@ -256,7 +265,7 @@ export default function FinalMeasurementLeadDetails() {
               )}
 
               {/* Final Documentation */}
-              {canUploadFinalMeasurements(effectiveUserType ?? "") ? (
+              {canAccessFinalMeasurementTodo ? (
                 <DropdownMenuItem onClick={() => setOpenFinalDocModal(true)}>
                   <FileText size={20} />
                   Final Documentation
@@ -308,7 +317,7 @@ export default function FinalMeasurementLeadDetails() {
               Lead Details
             </TabsTrigger>
 
-            {canUploadFinalMeasurements(effectiveUserType ?? "") ? (
+            {canAccessFinalMeasurementTodo ? (
               <TabsTrigger value="todo">
                 <PencilLine size={16} className="mr-1 opacity-60" />
                 To-Do Task
@@ -398,7 +407,7 @@ export default function FinalMeasurementLeadDetails() {
         leadData={{ id: leadIdNum }}
       />
 
-      {canUploadFinalMeasurements(effectiveUserType ?? "") && (
+      {canAccessFinalMeasurementTodo && (
         <FinalMeasurementModal
           open={openFinalDocModal}
           onOpenChange={(open) => {

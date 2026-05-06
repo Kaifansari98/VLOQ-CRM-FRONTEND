@@ -100,6 +100,9 @@ export default function ClientDocumentationLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   // UI STATES
   const [assignOpenLead, setAssignOpenLead] = useState(false);
@@ -176,6 +179,12 @@ export default function ClientDocumentationLeadDetails() {
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory =
     canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
+  const canAccessClientDocumentation =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_documentation.client_documentation_form.enable_disable",
+        )
+      : canUploadClientDocumentation(userType);
   return (
     <>
       {/* HEADER */}
@@ -242,7 +251,7 @@ export default function ClientDocumentationLeadDetails() {
               </DropdownMenuItem>
 
               {/* CLIENT DOCUMENTATION */}
-              {canUploadClientDocumentation(userType) ? (
+              {canAccessClientDocumentation ? (
                 <DropdownMenuItem onClick={() => setOpenClientDocModal(true)}>
                   <FileText size={20} />
                   Client Documentation
@@ -311,7 +320,7 @@ export default function ClientDocumentationLeadDetails() {
               Lead Details
             </TabsTrigger>
 
-            {canUploadClientDocumentation(userType) ? (
+            {canAccessClientDocumentation ? (
               <TabsTrigger value="todo">
                 <PencilLine size={16} className="mr-1 opacity-60" />
                 To-Do Task

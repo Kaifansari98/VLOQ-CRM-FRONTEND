@@ -64,6 +64,9 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type?.user_type
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const effectiveUserType =
     userType === "admin" ? "sales-executive" : userType;
 
@@ -90,6 +93,42 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   // 🧩 --- Permissions ---
   const canDelete = effectiveUserType === "admin" || effectiveUserType === "super-admin";
   const canUpload = effectiveUserType === "admin" || effectiveUserType === "super-admin";
+  const canViewCurrentSitePhotos =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.final_measurement.current_site_photos.view",
+        )
+      : true;
+  const canDeleteCurrentSitePhotos =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.final_measurement.current_site_photos.delete",
+        )
+      : canDelete;
+  const canUploadCurrentSitePhotos =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.final_measurement.current_site_photos.upload",
+        )
+      : canUpload;
+  const canViewMeasurementDocuments =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.final_measurement.measurement_documents.view",
+        )
+      : true;
+  const canDeleteMeasurementDocuments =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.final_measurement.measurement_documents.delete",
+        )
+      : canDelete;
+  const canUploadMeasurementDocuments =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.final_measurement.measurement_documents.upload",
+        )
+      : canUpload;
 
   // 🧩 --- Delete Handler ---
   const handleConfirmDelete = () => {
@@ -240,6 +279,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   "
     >
       {/* -------- Current Site Photos -------- */}
+      {canViewCurrentSitePhotos && (
       <div
         className="
       bg-white dark:bg-neutral-900
@@ -276,7 +316,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
                         created_at: photo.created_at,
                       }}
                       index={index}
-                      canDelete={canDelete}
+                      canDelete={canDeleteCurrentSitePhotos}
                       onDelete={(id) => setConfirmDelete(Number(id))}
                     />
                   ) : (
@@ -288,12 +328,12 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
                         signedUrl: photo.signedUrl,
                         created_at: photo.created_at,
                       }}
-                      canDelete={canDelete}
+                      canDelete={canDeleteCurrentSitePhotos}
                       onDelete={(id) => setConfirmDelete(Number(id))}
                     />
                   );
                 })}
-                {canUpload && (
+                {canUploadCurrentSitePhotos && (
                   <button
                     type="button"
                     onClick={() => setAddSitePhotosOpen(true)}
@@ -322,7 +362,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
                 <p className="text-sm text-muted-foreground">
                   No site photos uploaded yet.
                 </p>
-                {canUpload && (
+                {canUploadCurrentSitePhotos && (
                   <Button
                     type="button"
                     variant="outline"
@@ -338,9 +378,11 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
           </div>
         </motion.div>
       </div>
+      )}
 
       {/* -------- Measurement Documents -------- */}
-      {measurementDocs.length > 0 && (
+      {canViewMeasurementDocuments &&
+        (measurementDocs.length > 0 || canUploadMeasurementDocuments) && (
         <div
           className="
         bg-white dark:bg-neutral-900
@@ -368,11 +410,11 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
                     created_at: doc.created_at,
                     signedUrl: doc.signedUrl,
                   }}
-                  canDelete={canDelete}
+                  canDelete={canDeleteMeasurementDocuments}
                   onDelete={(id) => setConfirmDelete(id)}
                 />
               ))}
-              {canUpload && (
+              {canUploadMeasurementDocuments && (
                 <button
                   type="button"
                   onClick={() => setAddFilesOpen(true)}
@@ -393,6 +435,14 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
                     Upload up to 10 files
                   </p>
                 </button>
+              )}
+              {measurementDocs.length === 0 && !canUploadMeasurementDocuments && (
+                <div className="col-span-full flex flex-col items-center justify-center py-14">
+                  <FileText size={42} className="text-muted-foreground mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    No measurement documents uploaded yet.
+                  </p>
+                </div>
               )}
             </div>
           </motion.div>

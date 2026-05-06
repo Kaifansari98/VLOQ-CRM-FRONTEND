@@ -85,17 +85,11 @@ interface Props {
 }
 
 const formSchema = z.object({
-  carcas: z
-    .array(z.string())
-    .min(1, "Select at least one carcass type"),
+  carcas: z.array(z.string()).min(1, "Select at least one carcass type"),
   carcas_remark: z.string().optional(),
-  shutter: z
-    .array(z.string())
-    .min(1, "Select at least one shutter type"),
+  shutter: z.array(z.string()).min(1, "Select at least one shutter type"),
   shutter_remark: z.string().optional(),
-  handles: z
-    .array(z.string())
-    .min(1, "Select at least one handle type"),
+  handles: z.array(z.string()).min(1, "Select at least one handle type"),
   handles_remark: z.string().optional(),
 });
 
@@ -122,6 +116,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const userId = useAppSelector((s) => s.auth.user?.id);
   const rawUserType = useAppSelector((s) => s.auth.user?.user_type.user_type);
   const userType = rawUserType?.toLowerCase() ?? "";
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -129,8 +126,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     useSubmitSelection();
   const { mutateAsync: editSelectionAsync, isPending: isEditing } =
     useEditSelectionData();
-  const { mutateAsync: saveCHSMappings } =
-    useUpsertCHSSelectionTypeMapping();
+  const { mutateAsync: saveCHSMappings } = useUpsertCHSSelectionTypeMapping();
   const { data: chsMappingsData } = useGetCHSSelectionTypeMappings(
     vendorId,
     leadId,
@@ -159,8 +155,12 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     vendorId,
     leadId,
   );
-  const manufacturingDaysByInstance: { instance_id: number | null; max_days: number | null }[] =
-    Array.isArray(manufacturingDaysData?.data) ? manufacturingDaysData.data : [];
+  const manufacturingDaysByInstance: {
+    instance_id: number | null;
+    max_days: number | null;
+  }[] = Array.isArray(manufacturingDaysData?.data)
+    ? manufacturingDaysData.data
+    : [];
 
   const getManufacturingDaysForInstance = (instanceId: number | null) =>
     manufacturingDaysByInstance.find((d) => d.instance_id === instanceId)
@@ -191,6 +191,54 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     userType,
     leadStatus,
   );
+  const canViewSelectionInstances =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_documentation.design_selections_and_instance_documents.view",
+        )
+      : true;
+  const canEditSelectionInstances =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_documentation.design_selections_and_instance_documents.edit_update",
+        )
+      : canUpdateInput;
+  const canViewProjectFiles =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_documentation.project_files.view",
+        )
+      : true;
+  const canUploadProjectFiles =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_documentation.project_files.upload",
+        )
+      : canUpdateInput;
+  const canDeleteProjectFiles =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_documentation.project_files.delete",
+        )
+      : canUpdateInput;
+  const canViewDesignFiles =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_documentation.design_file.view",
+        )
+      : true;
+  const canUploadDesignFiles =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_documentation.design_file.upload",
+        )
+      : canUpdateInput;
+  const canDeleteDesignFiles =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_documentation.design_file.delete",
+        )
+      : canUpdateInput;
 
   const structureInstances: LeadProductStructureInstance[] = Array.isArray(
     structureInstancesData?.data,
@@ -200,10 +248,12 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
   const carcassOptions = React.useMemo<ClientDocsSelectionOption[]>(
     () =>
-      (Array.isArray(carcassTypesData?.data) ? carcassTypesData.data : []).map((item) => ({
-        value: `carcass-${item.id}`,
-        label: item.name ?? "",
-      })),
+      (Array.isArray(carcassTypesData?.data) ? carcassTypesData.data : []).map(
+        (item) => ({
+          value: `carcass-${item.id}`,
+          label: item.name ?? "",
+        }),
+      ),
     [carcassTypesData?.data],
   );
 
@@ -235,41 +285,43 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           return (a.name || "").localeCompare(b.name || "");
         })
         .flatMap((item) => {
-        const mainLabel = item.name?.trim() || "";
-        const subTypes = Array.isArray(item.subTypes) ? item.subTypes : [];
-        const distinctSubTypes = subTypes.filter((subType) => {
-          const subLabel = subType.name?.trim() || "";
-          return (
-            subLabel.length > 0 &&
-            subLabel.toLowerCase() !== mainLabel.toLowerCase()
-          );
-        });
+          const mainLabel = item.name?.trim() || "";
+          const subTypes = Array.isArray(item.subTypes) ? item.subTypes : [];
+          const distinctSubTypes = subTypes.filter((subType) => {
+            const subLabel = subType.name?.trim() || "";
+            return (
+              subLabel.length > 0 &&
+              subLabel.toLowerCase() !== mainLabel.toLowerCase()
+            );
+          });
 
-        if (distinctSubTypes.length === 0) {
-          return mainLabel
-            ? [
-                {
-                  value: `shutter-${item.id}`,
-                  label: mainLabel,
-                },
-              ]
-            : [];
-        }
+          if (distinctSubTypes.length === 0) {
+            return mainLabel
+              ? [
+                  {
+                    value: `shutter-${item.id}`,
+                    label: mainLabel,
+                  },
+                ]
+              : [];
+          }
 
-        return distinctSubTypes.map((subType) => ({
-          value: `shutter-${item.id}-sub-${subType.id}`,
-          label: subType.name ?? "",
-        }));
-      }),
+          return distinctSubTypes.map((subType) => ({
+            value: `shutter-${item.id}-sub-${subType.id}`,
+            label: subType.name ?? "",
+          }));
+        }),
     [shutterTypesData?.data],
   );
 
   const handleOptions = React.useMemo<ClientDocsSelectionOption[]>(
     () =>
-      (Array.isArray(handleTypesData?.data) ? handleTypesData.data : []).map((item) => ({
-        value: `handle-${item.id}`,
-        label: item.name ?? "",
-      })),
+      (Array.isArray(handleTypesData?.data) ? handleTypesData.data : []).map(
+        (item) => ({
+          value: `handle-${item.id}`,
+          label: item.name ?? "",
+        }),
+      ),
     [handleTypesData?.data],
   );
 
@@ -343,7 +395,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       lastNotifiedInstanceIdRef.current = selected.id;
       onInstanceChangeRef.current?.(selected);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [structureInstances, activeInstance]);
 
   useEffect(() => {
@@ -406,11 +458,20 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   useEffect(() => {
     if (!uploadModalOpen) {
       selectionForm.reset({
-        carcas: chsMappingToOptionValues(existingSelections.carcas?.id, "Carcas"),
+        carcas: chsMappingToOptionValues(
+          existingSelections.carcas?.id,
+          "Carcas",
+        ),
         carcas_remark: existingSelections.carcas?.desc || DEFAULT_REMARK,
-        shutter: chsMappingToOptionValues(existingSelections.shutter?.id, "Shutter"),
+        shutter: chsMappingToOptionValues(
+          existingSelections.shutter?.id,
+          "Shutter",
+        ),
         shutter_remark: existingSelections.shutter?.desc || DEFAULT_REMARK,
-        handles: chsMappingToOptionValues(existingSelections.handles?.id, "Handles"),
+        handles: chsMappingToOptionValues(
+          existingSelections.handles?.id,
+          "Handles",
+        ),
         handles_remark: existingSelections.handles?.desc || DEFAULT_REMARK,
       });
     }
@@ -429,7 +490,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           return [`carcass-${item.carcass_type_id}`];
         if (type === "Shutter" && item.shutter_type_id) {
           if (item.shutter_sub_type_id)
-            return [`shutter-${item.shutter_type_id}-sub-${item.shutter_sub_type_id}`];
+            return [
+              `shutter-${item.shutter_type_id}-sub-${item.shutter_sub_type_id}`,
+            ];
           return [`shutter-${item.shutter_type_id}`];
         }
         if (type === "Handles" && item.handle_type_id)
@@ -510,7 +573,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const onSaveSelections = async (values: FormValues) => {
     const dirtyFields = selectionForm.formState.dirtyFields;
 
-    if (!canUpdateInput) {
+    if (!canEditSelectionInstances) {
       toastManager.add({
         title: "You do not have permission to update selections.",
         type: "error",
@@ -525,11 +588,23 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     }> = [];
 
     if (dirtyFields.carcas || dirtyFields.carcas_remark)
-      dirty.push({ type: "Carcas", vals: values.carcas, remark: values.carcas_remark });
+      dirty.push({
+        type: "Carcas",
+        vals: values.carcas,
+        remark: values.carcas_remark,
+      });
     if (dirtyFields.shutter || dirtyFields.shutter_remark)
-      dirty.push({ type: "Shutter", vals: values.shutter, remark: values.shutter_remark });
+      dirty.push({
+        type: "Shutter",
+        vals: values.shutter,
+        remark: values.shutter_remark,
+      });
     if (dirtyFields.handles || dirtyFields.handles_remark)
-      dirty.push({ type: "Handles", vals: values.handles, remark: values.handles_remark });
+      dirty.push({
+        type: "Handles",
+        vals: values.handles,
+        remark: values.handles_remark,
+      });
 
     if (!dirty.length) {
       toastManager.add({ title: "No changes detected", type: "info" });
@@ -671,7 +746,12 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       // Legacy records: desc had "Selections: X\nRemark: Y" format
       const hasLegacyDesc = (() => {
         const upper = (row.desc || "").trim().toUpperCase();
-        return Boolean(upper) && upper !== "NULL" && upper !== "N/A" && upper.startsWith("SELECTIONS:");
+        return (
+          Boolean(upper) &&
+          upper !== "NULL" &&
+          upper !== "N/A" &&
+          upper.startsWith("SELECTIONS:")
+        );
       })();
 
       if (hasCHSMappings || hasLegacyDesc) {
@@ -704,7 +784,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             ? selectionsByInstance.get(activeInstance.id)
             : undefined;
           return Boolean(
-            (firstInstanceBucket?.Carcas && firstInstanceBucket?.Shutter && firstInstanceBucket?.Handles) ||
+            (firstInstanceBucket?.Carcas &&
+              firstInstanceBucket?.Shutter &&
+              firstInstanceBucket?.Handles) ||
             (nullBucket?.Carcas && nullBucket?.Shutter && nullBucket?.Handles),
           );
         })();
@@ -767,7 +849,6 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       queryClient.invalidateQueries({
         queryKey: ["allLeadDocuments"],
       });
-      
     } catch (e: any) {
       toastManager.add({
         title: e?.response?.data?.message || "Failed to upload files",
@@ -840,7 +921,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       isLoading,
       isError,
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadId]);
 
   React.useEffect(() => {
@@ -903,7 +984,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           <div className="flex items-center justify-between w-full">
             <div>
               <h4 className="text-sm font-semibold">Design Selections</h4>
-              {!canUpdateInput && <Badge variant="secondary">Read only</Badge>}
+              {!canEditSelectionInstances && (
+                <Badge variant="secondary">Read only</Badge>
+              )}
               {(() => {
                 const days = getManufacturingDaysForInstance(instance_id);
                 return days != null ? (
@@ -924,7 +1007,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
               })()}
             </div>
             <div>
-              {canUpdateInput && (
+              {canEditSelectionInstances && (
                 <div className="flex justify-end">
                   <Button
                     type="button"
@@ -934,19 +1017,25 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                     {isPending
                       ? "Saving..."
                       : (existingSelections.carcas &&
-                          chsMappings.some(
-                            (m) => m.selection_id === existingSelections.carcas?.id,
-                          )) ||
-                        (existingSelections.shutter &&
-                          chsMappings.some(
-                            (m) => m.selection_id === existingSelections.shutter?.id,
-                          )) ||
-                        (existingSelections.handles &&
-                          chsMappings.some(
-                            (m) => m.selection_id === existingSelections.handles?.id,
-                          ))
-                      ? "Update Design Selections"
-                      : "Save Design Selections"}
+                            chsMappings.some(
+                              (m) =>
+                                m.selection_id ===
+                                existingSelections.carcas?.id,
+                            )) ||
+                          (existingSelections.shutter &&
+                            chsMappings.some(
+                              (m) =>
+                                m.selection_id ===
+                                existingSelections.shutter?.id,
+                            )) ||
+                          (existingSelections.handles &&
+                            chsMappings.some(
+                              (m) =>
+                                m.selection_id ===
+                                existingSelections.handles?.id,
+                            ))
+                        ? "Update Design Selections"
+                        : "Save Design Selections"}
                   </Button>
                 </div>
               )}
@@ -971,7 +1060,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                           options={carcassOptions}
                           placeholder="Select carcass options"
                           disabled={
-                            isPending || !canUpdateInput || isSelectionMastersLoading
+                            isPending ||
+                            !canEditSelectionInstances ||
+                            isSelectionMastersLoading
                           }
                         />
                       </FormControl>
@@ -985,7 +1076,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                 value={remarkField.value ?? DEFAULT_REMARK}
                                 onChange={remarkField.onChange}
                                 placeholder="Enter carcas remark..."
-                                disabled={isPending || !canUpdateInput}
+                                disabled={isPending || !canEditSelectionInstances}
                                 className="h-24"
                               />
                             </FormControl>
@@ -1011,7 +1102,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                           options={handleOptions}
                           placeholder="Select handle options"
                           disabled={
-                            isPending || !canUpdateInput || isSelectionMastersLoading
+                            isPending ||
+                            !canEditSelectionInstances ||
+                            isSelectionMastersLoading
                           }
                         />
                       </FormControl>
@@ -1025,7 +1118,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                 value={remarkField.value ?? DEFAULT_REMARK}
                                 onChange={remarkField.onChange}
                                 placeholder="Enter handles remark..."
-                                disabled={isPending || !canUpdateInput}
+                                disabled={isPending || !canEditSelectionInstances}
                                 className="h-24"
                               />
                             </FormControl>
@@ -1051,7 +1144,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                           options={shutterOptions}
                           placeholder="Select shutter options"
                           disabled={
-                            isPending || !canUpdateInput || isSelectionMastersLoading
+                            isPending ||
+                            !canEditSelectionInstances ||
+                            isSelectionMastersLoading
                           }
                         />
                       </FormControl>
@@ -1065,7 +1160,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                 value={remarkField.value ?? DEFAULT_REMARK}
                                 onChange={remarkField.onChange}
                                 placeholder="Enter shutter remark..."
-                                disabled={isPending || !canUpdateInput}
+                                disabled={isPending || !canEditSelectionInstances}
                                 className="h-24"
                               />
                             </FormControl>
@@ -1082,7 +1177,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           </Form>
         </div>
 
-        {canUpdateInput && (
+        {(canUploadProjectFiles || canUploadDesignFiles) && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1108,6 +1203,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                               value={field.value}
                               onChange={field.onChange}
                               accept=".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx"
+                              disabled={!canUploadProjectFiles}
                             />
                           </FormControl>
                           <FormMessage />
@@ -1130,6 +1226,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                               value={field.value}
                               onChange={field.onChange}
                               accept=".pdf,.zip,.pytha,.pyo"
+                              disabled={!canUploadDesignFiles}
                             />
                           </FormControl>
                           <FormMessage />
@@ -1160,7 +1257,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                     >
                       <Button
                         type="submit"
-                        disabled={isUploadingDocs}
+                        disabled={
+                          isUploadingDocs ||
+                          (!canUploadProjectFiles && !canUploadDesignFiles)
+                        }
                         className="gap-2"
                       >
                         {isUploadingDocs ? (
@@ -1195,10 +1295,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
           {(() => {
             const docs = getDocs(instance_id);
-            const allDocs = [...docs.ppt, ...docs.pytha];
-            const { images, nonImages } = separateImageAndDocs(allDocs);
+            const totalDocs = docs.ppt.length + docs.pytha.length;
 
-            if (allDocs.length === 0) {
+            if (
+              totalDocs === 0 ||
+              ((!canViewProjectFiles || docs.ppt.length === 0) &&
+                (!canViewDesignFiles || docs.pytha.length === 0))
+            ) {
               return (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -1218,47 +1321,93 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
             return (
               <ScrollArea className="max-h-[400px]">
-                <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 gap-3">
-                  {images.map((doc: any, index: number) => (
-                    <motion.div
-                      key={doc.id}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: index * 0.05 }}
-                    >
-                      <ImageComponent
-                        doc={{
-                          id: doc.id,
-                          doc_og_name: doc.doc_og_name,
-                          signedUrl: doc.signed_url,
-                          created_at: doc.created_at,
-                        }}
-                        index={index}
-                        canDelete={canUpdateInput}
-                        onDelete={(id) => setConfirmDelete(Number(id))}
-                      />
-                    </motion.div>
-                  ))}
+                <div className="space-y-6">
+                  {canViewProjectFiles && docs.ppt.length > 0 && (
+                    <div className="space-y-3">
+                      <h5 className="text-sm font-medium">
+                        Client Documentation - Project Files
+                      </h5>
+                      <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 gap-3">
+                        {(() => {
+                          const { images, nonImages } = separateImageAndDocs(
+                            docs.ppt,
+                          );
+                          return (
+                            <>
+                              {images.map((doc: any, index: number) => (
+                                <motion.div
+                                  key={doc.id}
+                                  initial={{ opacity: 0, scale: 0.9 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ delay: index * 0.05 }}
+                                >
+                                  <ImageComponent
+                                    doc={{
+                                      id: doc.id,
+                                      doc_og_name: doc.doc_og_name,
+                                      signedUrl: doc.signed_url,
+                                      created_at: doc.created_at,
+                                    }}
+                                    index={index}
+                                    canDelete={canDeleteProjectFiles}
+                                    onDelete={(id) => setConfirmDelete(Number(id))}
+                                  />
+                                </motion.div>
+                              ))}
+                              {nonImages.map((doc: any, index: number) => (
+                                <motion.div
+                                  key={doc.id}
+                                  initial={{ opacity: 0, scale: 0.9 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ delay: (images.length + index) * 0.05 }}
+                                >
+                                  <DocumentCard
+                                    doc={{
+                                      id: doc.id,
+                                      originalName: doc.doc_og_name,
+                                      signedUrl: doc.signed_url,
+                                      created_at: doc.created_at,
+                                    }}
+                                    canDelete={canDeleteProjectFiles}
+                                    onDelete={(id) => setConfirmDelete(id)}
+                                  />
+                                </motion.div>
+                              ))}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
 
-                  {nonImages.map((doc: any, index: number) => (
-                    <motion.div
-                      key={doc.id}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: (images.length + index) * 0.05 }}
-                    >
-                      <DocumentCard
-                        doc={{
-                          id: doc.id,
-                          originalName: doc.doc_og_name,
-                          signedUrl: doc.signed_url,
-                          created_at: doc.created_at,
-                        }}
-                        canDelete={canUpdateInput}
-                        onDelete={(id) => setConfirmDelete(id)}
-                      />
-                    </motion.div>
-                  ))}
+                  {canViewDesignFiles && docs.pytha.length > 0 && (
+                    <div className="space-y-3">
+                      <h5 className="text-sm font-medium">
+                        Client Documentation - Pytha Design Files
+                      </h5>
+                      <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 gap-3">
+                        {docs.pytha.map((doc: any, index: number) => (
+                          <motion.div
+                            key={doc.id}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: index * 0.05 }}
+                          >
+                            <DocumentCard
+                              doc={{
+                                id: doc.id,
+                                originalName: doc.doc_og_name,
+                                signedUrl: doc.signed_url,
+                                created_at: doc.created_at,
+                              }}
+                              canDelete={canDeleteDesignFiles}
+                              onDelete={(id) => setConfirmDelete(id)}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             );
@@ -1295,20 +1444,22 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   return (
     <div className="space-y-6 pb-6 bg-white dark:bg-[#0a0a0a]">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">
-            Design Selections & Instance Documents
-          </h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Open each product instance card to upload docs and save design
-            selections
-          </p>
+      {canViewSelectionInstances && (
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">
+              Design Selections & Instance Documents
+            </h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Open each product instance card to upload docs and save design
+              selections
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Product Instances Cards */}
-      {structureInstances.length > 1 && (
+      {canViewSelectionInstances && structureInstances.length > 1 && (
         <div className="space-y-4">
           <h3 className="text-sm font-semibold">Product Instances</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
@@ -1420,7 +1571,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         </div>
       )}
 
-      {isSingleInstance && activeInstance && (
+      {canViewSelectionInstances && isSingleInstance && activeInstance && (
         <div className="space-y-4">
           <h3 className="text-sm font-semibold">{activeInstance.title}</h3>
           <div className="rounded-2xl border bg-white dark:bg-neutral-900">
@@ -1437,7 +1588,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             if (!allInstancesSelectionsReady)
               missing.push("Save Carcas, Shutter & Handles for all instances");
             if (!allInstancesDocsReady)
-              missing.push("Upload Project Files & Pytha Files for all instances");
+              missing.push(
+                "Upload Project Files & Pytha Files for all instances",
+              );
             if (selectionForm.formState.isDirty)
               missing.push("Save unsaved Design Selection changes");
 
@@ -1464,10 +1617,14 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                   </TooltipTrigger>
                   {missing.length > 0 && (
                     <TooltipContent side="top" className="max-w-xs">
-                      <p className="font-medium mb-1">Complete the following:</p>
+                      <p className="font-medium mb-1">
+                        Complete the following:
+                      </p>
                       <ul className="list-disc pl-4 space-y-0.5">
                         {missing.map((item) => (
-                          <li key={item} className="text-xs">{item}</li>
+                          <li key={item} className="text-xs">
+                            {item}
+                          </li>
                         ))}
                       </ul>
                     </TooltipContent>

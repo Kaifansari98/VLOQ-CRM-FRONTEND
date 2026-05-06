@@ -327,7 +327,23 @@ const customPrivilegeSections = [
     title: "Projects",
     description:
       "Manage access to project milestones, files, approvals, and project updates.",
-    children: [],
+    children: [
+      {
+        id: "final_measurements",
+        title: "Final Measurements",
+        childModuleIncludes: ["Final Measurement"],
+      },
+      {
+        id: "client_documentations",
+        title: "Client Documentations",
+        childModuleIncludes: ["Client Documentation"],
+      },
+      {
+        id: "client_approvals",
+        title: "Client Approvals",
+        childModuleIncludes: ["Client Approval"],
+      },
+    ],
   },
   {
     id: "productions",
@@ -484,8 +500,11 @@ export default function UserMastersTable() {
     deferredPrivilegeSearch,
   ]);
 
-  const getLeadChildPrivileges = React.useCallback(
-    (childModuleIncludes: readonly string[]) => {
+  const getSectionChildPrivileges = React.useCallback(
+    (
+      parentModuleName: string,
+      childModuleIncludes: readonly string[],
+    ) => {
       const normalizedKeywords = childModuleIncludes.map((value) =>
         value.toLowerCase(),
       );
@@ -495,7 +514,7 @@ export default function UserMastersTable() {
         const childModule = privilege.child_module.toLowerCase();
 
         return (
-          parentModule === "leads" &&
+          parentModule === parentModuleName.toLowerCase() &&
           normalizedKeywords.some((keyword) => childModule.includes(keyword))
         );
       });
@@ -1031,12 +1050,13 @@ export default function UserMastersTable() {
 
                   {isOpen && (
                     <div className="border-t bg-muted/20 px-4 py-3">
-                      {section.id === "leads" ? (
+                      {section.children.length > 0 ? (
                         <div className="space-y-2">
                           {section.children.map((child) => {
                             const isLeadSectionOpen =
                               openLeadPrivilegeSection === child.id;
-                            const childPrivileges = getLeadChildPrivileges(
+                            const childPrivileges = getSectionChildPrivileges(
+                              section.title,
                               child.childModuleIncludes,
                             );
 

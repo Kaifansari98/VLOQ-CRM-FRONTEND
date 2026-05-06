@@ -397,6 +397,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       : true,
                   ),
                 }
+              : item.title === "Project"
+                ? {
+                    ...item,
+                    items: item.items?.filter((subItem) =>
+                      subItem.title === "FM Sites"
+                        ? customPrivilegeCodes.some((code) =>
+                            code.startsWith("project.final_measurement."),
+                          )
+                        : true,
+                    ),
+                  }
               : item,
           )
         : filteredItems;
