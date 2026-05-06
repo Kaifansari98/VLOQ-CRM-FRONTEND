@@ -237,6 +237,12 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           "project.client_documentation.design_file.delete",
         )
       : canUpdateInput;
+  const canMoveToClientApproval =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_documentation.move_to_client_approval.enable_disable",
+        )
+      : true;
 
   const structureInstances: LeadProductStructureInstance[] = Array.isArray(
     structureInstancesData?.data,
@@ -1589,7 +1595,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       )}
 
       {/* Move to Client Approval */}
-      {isClientDocumentationStage && (
+      {isClientDocumentationStage && canMoveToClientApproval && (
         <div className="pt-2">
           {(() => {
             const missing: string[] = [];
