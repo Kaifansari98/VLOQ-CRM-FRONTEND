@@ -367,10 +367,23 @@ export const deleteLead = async (leadId: number, userId: number) => {
 export const getVendorSalesExecutiveUsers = async (
   vendorId: number,
   franchiseId?: number,
+  options?: {
+    assigneeUserType?: string;
+    requiredPrivilegeCode?: string;
+  },
 ) => {
+  const params: Record<string, string | number> = {};
+  if (franchiseId) params.franchise_id = franchiseId;
+  if (options?.assigneeUserType) {
+    params.assignee_user_type = options.assigneeUserType;
+  }
+  if (options?.requiredPrivilegeCode) {
+    params.required_privilege_code = options.requiredPrivilegeCode;
+  }
+
   const response = await apiClient.get(
     `/leads/sales-executives/vendor/${vendorId}`,
-    franchiseId ? { params: { franchise_id: franchiseId } } : undefined,
+    Object.keys(params).length > 0 ? { params } : undefined,
   );
   return response.data;
 };

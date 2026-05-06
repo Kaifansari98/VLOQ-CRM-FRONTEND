@@ -88,11 +88,22 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
+  const isCustomUser = (userType || "").toLowerCase() === "custom";
   const {
     data: vendorUsers,
     isLoading: loadingUsers,
     error,
-  } = useVendorSalesExecutiveUsers(vendorId!, franchiseId!);
+  } = useVendorSalesExecutiveUsers(
+    vendorId!,
+    franchiseId!,
+    isCustomUser
+      ? {
+          assigneeUserType: "custom",
+          requiredPrivilegeCode:
+            "leads.ism_leads.ism_details.upload_measurement",
+        }
+      : undefined,
+  );
   const router = useRouter();
   const leadId = data?.id!;
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -155,8 +166,12 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const followUpTooltip =
     "A Follow Up Task is already assigned to this user, which is not yet completed.";
 
+  const eligibleCustomUsers = vendorUsers?.data?.sales_executives ?? [];
   const mappedData = isFollowUp
-    ? (followUpUsersData?.data?.users ?? []).map((u: any) => ({
+    ? (isCustomUser
+        ? eligibleCustomUsers
+        : (followUpUsersData?.data?.users ?? [])
+      ).map((u: any) => ({
         id: u.id,
         label: u.user_name,
         disabled:
@@ -168,10 +183,10 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
             ? followUpTooltip
             : undefined,
       }))
-    : vendorUsers?.data?.sales_executives?.map((user: any) => ({
+    : eligibleCustomUsers.map((user: any) => ({
         id: user.id,
         label: user.user_name,
-      })) ?? [];
+      }));
 
   React.useEffect(() => {
     if (

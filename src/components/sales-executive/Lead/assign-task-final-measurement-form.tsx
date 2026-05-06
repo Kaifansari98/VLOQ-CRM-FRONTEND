@@ -133,7 +133,17 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     data: salesExecutives,
     isLoading: loadingSalesExecs,
     error: salesExecError,
-  } = useVendorSalesExecutiveUsers(vendorId!);
+  } = useVendorSalesExecutiveUsers(
+    vendorId!,
+    undefined,
+    isCustomUser
+      ? {
+          assigneeUserType: "custom",
+          requiredPrivilegeCode:
+            "leads.booking_done.assign_task.final_measurement",
+        }
+      : undefined,
+  );
   const router = useRouter();
   const leadId = data?.id!;
   const accountId = data?.accountId!;
@@ -197,12 +207,14 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const bookingDoneConflictTooltip = bookingDoneConflict
     ? "BookingDone - ISM task already created and not completed"
     : null;
+  const canUseRestrictedTaskAssignments =
+    canAccessRestrictedTasks || isCustomUser;
   const isFinalMeasurementsDisabled =
     restrictedTaskConflictsLoading ||
     !!finalMeasurementsConflict ||
     (requiresBookingDoneApproval &&
       (bookingDoneLockInsLoading || hasPendingBookingDoneApproval)) ||
-    !canAccessRestrictedTasks ||
+    !canUseRestrictedTaskAssignments ||
     !isSiteSupervisorAssigned;
   const finalMeasurementsTooltip =
     restrictedTaskConflictsLoading
@@ -213,7 +225,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     ? "Checking accounts approval status"
     : requiresBookingDoneApproval && hasPendingBookingDoneApproval
       ? "Accounts approval for Booking Done is pending"
-      : !canAccessRestrictedTasks
+      : !canUseRestrictedTaskAssignments
         ? "You don't have permission to select this"
         : !isSiteSupervisorAssigned
           ? "Site supervisor is not assigned yet"
@@ -221,13 +233,13 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const isBookingDoneDisabled =
     restrictedTaskConflictsLoading ||
     !!bookingDoneConflict ||
-    !canAccessRestrictedTasks;
+    !canUseRestrictedTaskAssignments;
   const bookingDoneTooltip =
     restrictedTaskConflictsLoading
       ? "Checking existing tasks"
       : bookingDoneConflictTooltip
         ? bookingDoneConflictTooltip
-        : !canAccessRestrictedTasks
+        : !canUseRestrictedTaskAssignments
           ? "You don't have permission to select this"
           : null;
   const hasFinalMeasurementPrivilege = isCustomUser
@@ -264,8 +276,26 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   );
   const followUpTooltip =
     "A Follow Up Task is already assigned to this user, which is not yet completed.";
+  const eligibleCustomUsers = salesExecutives?.data?.sales_executives ?? [];
 
   const mappedData = React.useMemo(() => {
+    if (isCustomUser) {
+      return eligibleCustomUsers.map((user: any) => ({
+        id: user.id,
+        label: user.user_name,
+        disabled:
+          taskType === "Follow Up" &&
+          user.id !== userId &&
+          followUpConflicts.some((task) => task.assignee?.id === user.id),
+        tooltip:
+          taskType === "Follow Up" &&
+          user.id !== userId &&
+          followUpConflicts.some((task) => task.assignee?.id === user.id)
+            ? followUpTooltip
+            : undefined,
+      }));
+    }
+
     if (taskType === "Follow Up") {
       return (followUpUsersData?.data?.users ?? []).map((u: any) => ({
         id: u.id,
@@ -311,15 +341,28 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         label: user.user_name,
       })) ?? []
     );
-  }, [taskType, siteSupervisors, salesExecutives, assignedSiteSupervisorId, followUpUsersData, followUpConflicts, userId]);
+  }, [
+    assignedSiteSupervisorId,
+    eligibleCustomUsers,
+    followUpConflicts,
+    followUpTooltip,
+    followUpUsersData,
+    isCustomUser,
+    salesExecutives,
+    siteSupervisors,
+    taskType,
+    userId,
+  ]);
 
   React.useEffect(() => {
+    if (isCustomUser) return;
+
     if (taskType === "Final Measurements" && assignedSiteSupervisorId) {
       form.setValue("assign_lead_to", assignedSiteSupervisorId, {
         shouldValidate: true,
       });
     }
-  }, [taskType, assignedSiteSupervisorId, form]);
+  }, [taskType, assignedSiteSupervisorId, form, isCustomUser]);
 
   React.useEffect(() => {
     if (siteSupervisorCheck !== undefined && !isSiteSupervisorAssigned) {
