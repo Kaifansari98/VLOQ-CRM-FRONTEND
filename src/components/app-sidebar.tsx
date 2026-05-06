@@ -390,6 +390,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           customPrivilegeCodes.includes(
                             "leads.designing_stage.designs.view",
                           )
+                      : subItem.title === "Booking Done"
+                        ? customPrivilegeCodes.some((code) =>
+                            code.startsWith("leads.booking_done."),
+                          )
                       : true,
                   ),
                 }
