@@ -116,9 +116,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const userId = useAppSelector((s) => s.auth.user?.id);
   const rawUserType = useAppSelector((s) => s.auth.user?.user_type.user_type);
   const userType = rawUserType?.toLowerCase() ?? "";
-  const customPrivilegeCodes = useAppSelector(
-    (s) => s.customPrivileges.codes,
-  );
+  const customPrivilegeCodes = useAppSelector((s) => s.customPrivileges.codes);
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -1076,7 +1074,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                 value={remarkField.value ?? DEFAULT_REMARK}
                                 onChange={remarkField.onChange}
                                 placeholder="Enter carcas remark..."
-                                disabled={isPending || !canEditSelectionInstances}
+                                disabled={
+                                  isPending || !canEditSelectionInstances
+                                }
                                 className="h-24"
                               />
                             </FormControl>
@@ -1118,7 +1118,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                 value={remarkField.value ?? DEFAULT_REMARK}
                                 onChange={remarkField.onChange}
                                 placeholder="Enter handles remark..."
-                                disabled={isPending || !canEditSelectionInstances}
+                                disabled={
+                                  isPending || !canEditSelectionInstances
+                                }
                                 className="h-24"
                               />
                             </FormControl>
@@ -1160,7 +1162,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                 value={remarkField.value ?? DEFAULT_REMARK}
                                 onChange={remarkField.onChange}
                                 placeholder="Enter shutter remark..."
-                                disabled={isPending || !canEditSelectionInstances}
+                                disabled={
+                                  isPending || !canEditSelectionInstances
+                                }
                                 className="h-24"
                               />
                             </FormControl>
@@ -1350,7 +1354,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                     }}
                                     index={index}
                                     canDelete={canDeleteProjectFiles}
-                                    onDelete={(id) => setConfirmDelete(Number(id))}
+                                    onDelete={(id) =>
+                                      setConfirmDelete(Number(id))
+                                    }
                                   />
                                 </motion.div>
                               ))}
@@ -1359,7 +1365,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                   key={doc.id}
                                   initial={{ opacity: 0, scale: 0.9 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  transition={{ delay: (images.length + index) * 0.05 }}
+                                  transition={{
+                                    delay: (images.length + index) * 0.05,
+                                  }}
                                 >
                                   <DocumentCard
                                     doc={{

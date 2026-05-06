@@ -297,6 +297,7 @@ const customPrivilegeSections = [
   {
     id: "leads",
     title: "Leads",
+    parentModule: "Leads",
     description:
       "Manage access to lead viewing, status updates, reassignment, and task actions.",
     children: [
@@ -325,6 +326,7 @@ const customPrivilegeSections = [
   {
     id: "projects",
     title: "Projects",
+    parentModule: "Project",
     description:
       "Manage access to project milestones, files, approvals, and project updates.",
     children: [
@@ -348,6 +350,7 @@ const customPrivilegeSections = [
   {
     id: "productions",
     title: "Productions",
+    parentModule: "Production",
     description:
       "Manage access to production stages, planning flows, and execution actions.",
     children: [],
@@ -355,6 +358,7 @@ const customPrivilegeSections = [
   {
     id: "installations",
     title: "Installations",
+    parentModule: "Installation",
     description:
       "Manage access to installation progress, readiness, documents, and handover actions.",
     children: [],
@@ -1056,7 +1060,7 @@ export default function UserMastersTable() {
                             const isLeadSectionOpen =
                               openLeadPrivilegeSection === child.id;
                             const childPrivileges = getSectionChildPrivileges(
-                              section.title,
+                              section.parentModule,
                               child.childModuleIncludes,
                             );
 
