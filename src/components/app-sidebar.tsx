@@ -380,6 +380,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         ? customPrivilegeCodes.includes(
                             "leads.ism_leads.ism_details.view",
                           )
+                      : subItem.title === "Designing Stage"
+                        ? customPrivilegeCodes.includes(
+                            "leads.designing_stage.quotation.view",
+                          ) ||
+                          customPrivilegeCodes.includes(
+                            "leads.designing_stage.meetings.view",
+                          ) ||
+                          customPrivilegeCodes.includes(
+                            "leads.designing_stage.designs.view",
+                          )
                       : true,
                   ),
                 }
