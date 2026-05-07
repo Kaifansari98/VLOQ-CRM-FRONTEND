@@ -104,6 +104,13 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const isAccountLocInEnabled = useAppSelector(
     (state) => state.auth.user?.vendor?.IsAccountLocInEnabled ?? false,
   );
+  const vendorCustomUserTypeMode = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only as
+        | boolean
+        | null
+        | undefined,
+  );
   const userRole = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type
   );
@@ -144,6 +151,15 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         }
       : undefined,
   );
+  const {
+    data: customFinalMeasurementUsers,
+    isLoading: loadingCustomFinalMeasurementUsers,
+    error: customFinalMeasurementUsersError,
+  } = useVendorSalesExecutiveUsers(vendorId!, undefined, {
+    assigneeUserType: "custom",
+    requiredPrivilegeCode:
+      "leads.booking_done.assign_task.final_measurement",
+  });
   const router = useRouter();
   const leadId = data?.id!;
   const accountId = data?.accountId!;
@@ -277,6 +293,43 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const followUpTooltip =
     "A Follow Up Task is already assigned to this user, which is not yet completed.";
   const eligibleCustomUsers = salesExecutives?.data?.sales_executives ?? [];
+  const eligibleFinalMeasurementCustomUsers =
+    customFinalMeasurementUsers?.data?.sales_executives ?? [];
+
+  const baseFinalMeasurementUsers = React.useMemo(() => {
+    if (assignedSiteSupervisorId) {
+      const assigned = siteSupervisors?.data?.site_supervisors?.find(
+        (user: any) => user.id === assignedSiteSupervisorId
+      );
+      return assigned ? [assigned] : [];
+    }
+
+    return siteSupervisors?.data?.site_supervisors ?? [];
+  }, [assignedSiteSupervisorId, siteSupervisors]);
+
+  const finalMeasurementUsers = React.useMemo(() => {
+    if (vendorCustomUserTypeMode === true) {
+      return eligibleFinalMeasurementCustomUsers;
+    }
+
+    if (vendorCustomUserTypeMode === false) {
+      const mergedUsers = [
+        ...baseFinalMeasurementUsers,
+        ...eligibleFinalMeasurementCustomUsers,
+      ];
+
+      return mergedUsers.filter(
+        (user: any, index: number, array: any[]) =>
+          array.findIndex((candidate: any) => candidate.id === user.id) === index,
+      );
+    }
+
+    return baseFinalMeasurementUsers;
+  }, [
+    baseFinalMeasurementUsers,
+    eligibleFinalMeasurementCustomUsers,
+    vendorCustomUserTypeMode,
+  ]);
 
   const mappedData = React.useMemo(() => {
     if (isCustomUser) {
@@ -321,48 +374,41 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     }
 
     // Default → Site Supervisors
-    if (taskType === "Final Measurements" && assignedSiteSupervisorId) {
-      const assigned = siteSupervisors?.data?.site_supervisors?.find(
-        (user: any) => user.id === assignedSiteSupervisorId
-      );
-      return assigned
-        ? [
-            {
-              id: assigned.id,
-              label: assigned.user_name,
-            },
-          ]
-        : [];
-    }
-
     return (
-      siteSupervisors?.data?.site_supervisors?.map((user: any) => ({
+      finalMeasurementUsers.map((user: any) => ({
         id: user.id,
         label: user.user_name,
       })) ?? []
     );
   }, [
-    assignedSiteSupervisorId,
     eligibleCustomUsers,
+    finalMeasurementUsers,
     followUpConflicts,
     followUpTooltip,
     followUpUsersData,
     isCustomUser,
     salesExecutives,
-    siteSupervisors,
     taskType,
     userId,
   ]);
 
   React.useEffect(() => {
-    if (isCustomUser) return;
+    if (isCustomUser || vendorCustomUserTypeMode !== null && vendorCustomUserTypeMode !== undefined) {
+      return;
+    }
 
     if (taskType === "Final Measurements" && assignedSiteSupervisorId) {
       form.setValue("assign_lead_to", assignedSiteSupervisorId, {
         shouldValidate: true,
       });
     }
-  }, [taskType, assignedSiteSupervisorId, form, isCustomUser]);
+  }, [
+    taskType,
+    assignedSiteSupervisorId,
+    form,
+    isCustomUser,
+    vendorCustomUserTypeMode,
+  ]);
 
   React.useEffect(() => {
     if (siteSupervisorCheck !== undefined && !isSiteSupervisorAssigned) {
@@ -469,6 +515,19 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       form.resetField("assign_lead_to");
     }
   }, [form, taskType, followUpConflicts, userId]);
+
+  React.useEffect(() => {
+    const selectedUserId = form.getValues("assign_lead_to");
+    if (!selectedUserId) return;
+
+    const isSelectedUserStillAvailable = mappedData.some(
+      (user: any) => user.id === selectedUserId,
+    );
+
+    if (!isSelectedUserStillAvailable) {
+      form.resetField("assign_lead_to");
+    }
+  }, [form, mappedData]);
 
   console.log("[AssignFM] site_map_link", {
     value: lead?.site_map_link ?? null,
@@ -590,7 +649,11 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     }
   };
 
-  if (loadingSupervisors || loadingSalesExecs) {
+  if (
+    loadingSupervisors ||
+    loadingSalesExecs ||
+    loadingCustomFinalMeasurementUsers
+  ) {
     return (
       <BaseModal
         open={open}
@@ -603,7 +666,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     );
   }
 
-  if (supervisorError || salesExecError) {
+  if (supervisorError || salesExecError || customFinalMeasurementUsersError) {
     return (
       <BaseModal
         open={open}
@@ -725,7 +788,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                         onChange={field.onChange}
                         disabled={
                           taskType === "Final Measurements" &&
-                          !!assignedSiteSupervisorId
+                          !!assignedSiteSupervisorId &&
+                          vendorCustomUserTypeMode == null
                         }
                       />
                     </FormControl>

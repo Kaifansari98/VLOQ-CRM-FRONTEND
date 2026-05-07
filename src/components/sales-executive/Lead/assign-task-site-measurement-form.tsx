@@ -79,6 +79,13 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   onlyFollowUp,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorCustomUserTypeMode = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only as
+        | boolean
+        | null
+        | undefined,
+  );
   const franchiseId = useAppSelector(
     (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id,
   );
@@ -90,20 +97,19 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   );
   const isCustomUser = (userType || "").toLowerCase() === "custom";
   const {
-    data: vendorUsers,
-    isLoading: loadingUsers,
-    error,
-  } = useVendorSalesExecutiveUsers(
-    vendorId!,
-    franchiseId!,
-    isCustomUser
-      ? {
-          assigneeUserType: "custom",
-          requiredPrivilegeCode:
-            "leads.ism_leads.ism_details.upload_measurement",
-        }
-      : undefined,
-  );
+    data: salesExecutiveUsers,
+    isLoading: loadingSalesExecutiveUsers,
+    error: salesExecutiveUsersError,
+  } = useVendorSalesExecutiveUsers(vendorId!, franchiseId!);
+  const {
+    data: customPrivilegeUsers,
+    isLoading: loadingCustomPrivilegeUsers,
+    error: customPrivilegeUsersError,
+  } = useVendorSalesExecutiveUsers(vendorId!, franchiseId!, {
+    assigneeUserType: "custom",
+    requiredPrivilegeCode:
+      "leads.ism_leads.ism_details.upload_measurement",
+  });
   const router = useRouter();
   const leadId = data?.id!;
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -166,7 +172,35 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const followUpTooltip =
     "A Follow Up Task is already assigned to this user, which is not yet completed.";
 
-  const eligibleCustomUsers = vendorUsers?.data?.sales_executives ?? [];
+  const franchiseSalesExecutives =
+    salesExecutiveUsers?.data?.sales_executives ?? [];
+  const eligibleCustomUsers =
+    customPrivilegeUsers?.data?.sales_executives ?? [];
+
+  const initialSiteMeasurementUsers = React.useMemo(() => {
+    if (vendorCustomUserTypeMode === true) {
+      return eligibleCustomUsers;
+    }
+
+    if (vendorCustomUserTypeMode === false) {
+      const mergedUsers = [
+        ...franchiseSalesExecutives,
+        ...eligibleCustomUsers,
+      ];
+
+      return mergedUsers.filter(
+        (user: any, index: number, array: any[]) =>
+          array.findIndex((candidate: any) => candidate.id === user.id) === index,
+      );
+    }
+
+    return franchiseSalesExecutives;
+  }, [
+    eligibleCustomUsers,
+    franchiseSalesExecutives,
+    vendorCustomUserTypeMode,
+  ]);
+
   const mappedData = isFollowUp
     ? (isCustomUser
         ? eligibleCustomUsers
@@ -183,10 +217,14 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
             ? followUpTooltip
             : undefined,
       }))
-    : eligibleCustomUsers.map((user: any) => ({
+    : initialSiteMeasurementUsers.map((user: any) => ({
         id: user.id,
         label: user.user_name,
       }));
+
+  const loadingUsers =
+    loadingSalesExecutiveUsers || loadingCustomPrivilegeUsers;
+  const error = salesExecutiveUsersError || customPrivilegeUsersError;
 
   React.useEffect(() => {
     if (
@@ -227,6 +265,19 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       form.resetField("assign_lead_to");
     }
   }, [form, taskType, followUpConflicts, userId]);
+
+  React.useEffect(() => {
+    const selectedUserId = form.getValues("assign_lead_to");
+    if (!selectedUserId) return;
+
+    const isSelectedUserStillAvailable = mappedData.some(
+      (user: any) => user.id === selectedUserId,
+    );
+
+    if (!isSelectedUserStillAvailable) {
+      form.resetField("assign_lead_to");
+    }
+  }, [form, mappedData]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (
