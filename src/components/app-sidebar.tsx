@@ -405,6 +405,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         ? customPrivilegeCodes.some((code) =>
                             code.startsWith("project.final_measurement."),
                           )
+                        : subItem.title === "Client Approval"
+                          ? customPrivilegeCodes.some((code) =>
+                              code.startsWith("project.client_approval."),
+                            )
                         : true,
                     ),
                   }
