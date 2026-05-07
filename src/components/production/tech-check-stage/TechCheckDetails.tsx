@@ -64,6 +64,9 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
   );
   const userId = useAppSelector((state) => state.auth.user?.id);
   const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const searchParams = useSearchParams();
   const instanceIdFromUrlRaw = searchParams.get("instance_id");
   const instanceIdFromUrl = instanceIdFromUrlRaw
@@ -282,6 +285,12 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
   const canDelete =
     userType === "super-admin" ||
     (userType === "tech-check" && leadStatus === "tech-check-stage");
+  const canDeleteTechCheckDocs =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.tech_check.tech_check_details.delete",
+        )
+      : canDelete;
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {
@@ -645,7 +654,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                         }}
                         index={index}
                         status={doc.tech_check_status ?? "PENDING"}
-                        canDelete={canDelete}
+                        canDelete={canDeleteTechCheckDocs}
                         onDelete={(id) => setConfirmDelete(Number(id))}
                       />
                     </div>
@@ -666,7 +675,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                           signedUrl: doc.signed_url,
                           created_at: doc.created_at,
                         }}
-                        canDelete={canDelete}
+                        canDelete={canDeleteTechCheckDocs}
                         status={doc.tech_check_status ?? "PENDING"}
                         onDelete={(id) => setConfirmDelete(id)}
                       />
@@ -732,7 +741,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                           signedUrl: doc.signed_url,
                           created_at: doc.created_at,
                         }}
-                        canDelete={canDelete}
+                        canDelete={canDeleteTechCheckDocs}
                         status={doc.tech_check_status ?? "PENDING"}
                         onDelete={(id) => setConfirmDelete(id)}
                       />
@@ -861,7 +870,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                         signedUrl: doc.signedUrl,
                         created_at: doc.created_at,
                       }}
-                      canDelete={canDelete}
+                      canDelete={canDeleteTechCheckDocs}
                       status={doc.tech_check_status}
                       onDelete={(id) => setConfirmDelete(id)}
                     />
@@ -933,7 +942,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                         created_at: doc.created_at,
                         signedUrl: doc.signedUrl,
                       }}
-                      canDelete={canDelete}
+                      canDelete={canDeleteTechCheckDocs}
                       status={doc.tech_check_status}
                       onDelete={(id) => setConfirmDelete(id)}
                     />

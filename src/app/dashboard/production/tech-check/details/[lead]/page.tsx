@@ -118,6 +118,9 @@ export default function ClientApprovalLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const effectiveUserType = userType;
 
   const { mutate: approveTechCheckMutate, isPending: approving } =
@@ -239,6 +242,24 @@ export default function ClientApprovalLeadDetails() {
 
   const validInstanceId =
     instanceIdNum && !Number.isNaN(instanceIdNum) ? instanceIdNum : null;
+  const canAccessTechCheckWorkflow =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.tech_check.tech_check_action.tech_check_workflow_action",
+        )
+      : canTechCheck(effectiveUserType);
+  const canAccessUploadRevisedDocs =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.tech_check.tech_check_action.upload_revised_docs_action",
+        )
+      : canUploadRevisedClientDocumentationFiles(effectiveUserType);
+  const canAccessMoveToOrderLogin =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.tech_check.tech_check_action.move_to_order_login_action",
+        )
+      : canMoveToOrderLogin(effectiveUserType);
   const groupedDocs = clientDocsData?.documents_by_instance ?? [];
   const scopedGroup = validInstanceId
     ? groupedDocs.find((group: any) => group?.instance_id === validInstanceId)
@@ -450,7 +471,7 @@ export default function ClientApprovalLeadDetails() {
 
           {/* ✅ Move To Order Login Button (Role & Status Based) */}
           <div className="hidden lg:flex">
-            {canMoveToOrderLogin(effectiveUserType) &&
+            {canAccessMoveToOrderLogin &&
               (() => {
                 if (isMoveToOrderLoginDisabled) {
                   let tooltipMsg = "";
@@ -534,7 +555,7 @@ export default function ClientApprovalLeadDetails() {
                 </DropdownMenuItem>
               )}
 
-              {canMoveToOrderLogin(effectiveUserType) &&
+              {canAccessMoveToOrderLogin &&
                 (() => {
                   if (isMoveToOrderLoginDisabled) {
                     let tooltipMsg = "";
@@ -687,7 +708,7 @@ export default function ClientApprovalLeadDetails() {
 
           {/* ---------------- Actions ---------------- */}
           <div className="flex sm:flex-row gap-2">
-            {canTechCheck(effectiveUserType) && (
+            {canAccessTechCheckWorkflow ? (
               <Button
                 variant="outline"
                 onClick={() => setOpenRejectDocsModal(true)}
@@ -696,11 +717,20 @@ export default function ClientApprovalLeadDetails() {
                 <Settings2 className="mr-1" size={16} />
                 Tech-Check Workflow
               </Button>
+            ) : (
+              <CustomeTooltip
+                truncateValue={
+                  <Button disabled variant="outline" className="w-max">
+                    <Settings2 className="mr-1" size={16} />
+                    Tech-Check Workflow
+                  </Button>
+                }
+                value="You don’t have permission to access Tech-Check Workflow."
+              />
             )}
 
             {(() => {
-              const canUpload =
-                canUploadRevisedClientDocumentationFiles(effectiveUserType);
+              const canUpload = canAccessUploadRevisedDocs;
 
               if (!canUpload || !hasRejectedDocs) {
                 return (
@@ -713,7 +743,7 @@ export default function ClientApprovalLeadDetails() {
                     }
                     value={
                       !canUpload
-                        ? "You don’t have permission to upload revised client documentation."
+                        ? "You don’t have permission to upload revised docs."
                         : "No rejected client documentation found."
                     }
                   />

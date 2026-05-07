@@ -412,6 +412,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         : true,
                     ),
                   }
+              : item.title === "Production"
+                ? {
+                    ...item,
+                    items: item.items?.filter((subItem) =>
+                      subItem.title === "Tech Check"
+                        ? customPrivilegeCodes.includes(
+                            "production.tech_check.tech_check_details.view",
+                          )
+                        : true,
+                    ),
+                  }
               : item,
           )
         : filteredItems;

@@ -161,6 +161,9 @@ export default function GroupedSmoothTab({
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type as string | undefined
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const effectiveUserType =
     userType === "admin" ? "sales-executive" : userType;
 
@@ -312,14 +315,24 @@ export default function GroupedSmoothTab({
                             canViewToOrderLoginDetails(effectiveUserType ?? "");
                           const canViewProduction =
                             canViewAndWorkProductionDetails(effectiveUserType ?? "");
+                          const canViewTechCheckForCustomUser =
+                            userType === "custom"
+                              ? customPrivilegeCodes.includes(
+                                  "production.tech_check.tech_check_details.view",
+                                )
+                              : true;
 
                           // 👇 Compute disabled state and tooltip dynamically
                           const isDisabled =
+                            (item.id === "techcheck" &&
+                              !canViewTechCheckForCustomUser) ||
                             (item.id === "orderLogin" && !canViewOrderLogin) ||
                             (item.id === "production" && !canViewProduction);
 
                           const tooltipText = isDisabled
-                            ? item.id === "orderLogin"
+                            ? item.id === "techcheck"
+                              ? "You don’t have permission to access Tech Check"
+                              : item.id === "orderLogin"
                               ? "You don’t have permission to access Order Login"
                               : "You don’t have permission to access Production Stage"
                             : null;
