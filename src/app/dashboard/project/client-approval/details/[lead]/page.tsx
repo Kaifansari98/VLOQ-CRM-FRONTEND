@@ -103,6 +103,9 @@ export default function ClientApprovalLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   // UI States
   const [assignOpenLead, setAssignOpenLead] = useState(false);
@@ -192,6 +195,12 @@ export default function ClientApprovalLeadDetails() {
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory =
     canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
+  const canAccessClientApprovalForm =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_approval.client_approval_form.enable_disable",
+        )
+      : canUploadClientApproval(userType);
 
   return (
     <>
@@ -296,7 +305,7 @@ export default function ClientApprovalLeadDetails() {
 
               {/* CLIENT APPROVAL */}
               {!is_client_approval_submitted ? (
-                canUploadClientApproval(userType) ? (
+                canAccessClientApprovalForm ? (
                   <DropdownMenuItem
                     onClick={() => setOpenClientApprovalModal(true)}
                   >
@@ -404,7 +413,7 @@ export default function ClientApprovalLeadDetails() {
               Lead Details
             </TabsTrigger>
 
-            {canUploadClientApproval(userType) ? (
+            {canAccessClientApprovalForm ? (
               <TabsTrigger value="todo">
                 <PencilLine size={16} className="mr-1 opacity-60" />
                 To-Do Task

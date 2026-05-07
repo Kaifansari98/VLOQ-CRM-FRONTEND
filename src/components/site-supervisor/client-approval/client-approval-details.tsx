@@ -41,6 +41,9 @@ export default function ClientApprovalDetails({ leadId }: Props) {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   // 🧩 Hooks
   const { data, isLoading, isError, refetch } = useClientApprovalDetails(
@@ -67,6 +70,36 @@ export default function ClientApprovalDetails({ leadId }: Props) {
     userType === "super-admin" ||
     (userType === "sales-executive" && leadStatus === "client-approval-stage");
   const canUpload = canUploadClientApproval(userType);
+  const canViewPaymentProof =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_approval.client_payment_details.payment_proof.view",
+        )
+      : true;
+  const canDeletePaymentProof =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_approval.client_payment_details.payment_proof.delete",
+        )
+      : canDelete;
+  const canViewClientApprovalScreenshots =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_approval.client_approval_screenshots.view",
+        )
+      : true;
+  const canUploadClientApprovalScreenshots =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_approval.client_approval_screenshots.upload",
+        )
+      : canUpload;
+  const canDeleteClientApprovalScreenshots =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_approval.client_approval_screenshots.delete",
+        )
+      : canDelete;
   const accountId =
     leadDetails?.data?.lead?.account_id ||
     leadDetails?.data?.lead?.account?.id ||
@@ -220,7 +253,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
           {/* Content */}
           <div className="p-6 space-y-6 bg-[#fff] dark:bg-[#0a0a0a]">
             {/* Payment Proof */}
-            {paymentFile && (
+            {paymentFile && canViewPaymentProof && (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground tracking-wide">
                   Payment Proof
@@ -239,7 +272,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
                       created_at: paymentFile.created_at,
                     }}
                     index={0}
-                    canDelete={canDelete}
+                    canDelete={canDeletePaymentProof}
                     onDelete={(id) => setConfirmDelete(Number(id))}
                   />
                 </div>
@@ -268,85 +301,87 @@ export default function ClientApprovalDetails({ leadId }: Props) {
       )}
 
       {/* -------- Approval Screenshots Section -------- */}
-      <div
-        className="
+      {canViewClientApprovalScreenshots && (
+        <div
+          className="
     bg-[#fff] dark:bg-[#0a0a0a]
     rounded-2xl border border-border 
     overflow-hidden shadow-soft
   "
-      >
-        {/* Header */}
-        <div
-          className="
+        >
+          {/* Header */}
+          <div
+            className="
       flex items-center justify-between 
       px-5 py-3 
       border-b border-border 
       bg-[#fff] dark:bg-[#0a0a0a]
     "
-        >
-          <div className="flex items-center gap-2">
-            <FileText size={20} />
-            <h1 className="text-lg font-semibold tracking-tight">
-              Client Approval Screenshots
-            </h1>
-          </div>
+          >
+            <div className="flex items-center gap-2">
+              <FileText size={20} />
+              <h1 className="text-lg font-semibold tracking-tight">
+                Client Approval Screenshots
+              </h1>
+            </div>
 
-          {canUpload && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setOpenUploadMore(true)}
-              className="
+            {canUploadClientApprovalScreenshots && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOpenUploadMore(true)}
+                className="
           rounded-lg border-border 
           bg-[#fff] dark:bg-[#0a0a0a]
           dark:border-neutral-700
         "
-            >
-              Add More Screenshots
-            </Button>
-          )}
-        </div>
+              >
+                Add More Screenshots
+              </Button>
+            )}
+          </div>
 
-        {/* Body */}
-        <div className="p-6">
-          {screenshots && screenshots.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {screenshots.map((img: any, index: any) => (
-                <ImageComponent
-                  key={img.id}
-                  doc={{
-                    id: img.id,
-                    doc_og_name:
-                      img.doc_original_name || img.doc_og_name || "Screenshot",
-                    signedUrl: img.signedUrl || img.doc_sys_name,
-                    created_at: img.created_at,
-                  }}
-                  index={index}
-                  canDelete={canDelete}
-                  onDelete={(id) => setConfirmDelete(Number(id))}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <Images size={42} className="text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground">
-                No approval screenshots uploaded yet.
-              </p>
-              {canUpload && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={() => setOpenUploadMore(true)}
-                >
-                  Add More Screenshots
-                </Button>
-              )}
-            </div>
-          )}
+          {/* Body */}
+          <div className="p-6">
+            {screenshots && screenshots.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {screenshots.map((img: any, index: any) => (
+                  <ImageComponent
+                    key={img.id}
+                    doc={{
+                      id: img.id,
+                      doc_og_name:
+                        img.doc_original_name || img.doc_og_name || "Screenshot",
+                      signedUrl: img.signedUrl || img.doc_sys_name,
+                      created_at: img.created_at,
+                    }}
+                    index={index}
+                    canDelete={canDeleteClientApprovalScreenshots}
+                    onDelete={(id) => setConfirmDelete(Number(id))}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <Images size={42} className="text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  No approval screenshots uploaded yet.
+                </p>
+                {canUploadClientApprovalScreenshots && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-4"
+                    onClick={() => setOpenUploadMore(true)}
+                  >
+                    Add More Screenshots
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* -------- Delete Confirmation Dialog -------- */}
       <AlertDialog
@@ -373,7 +408,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {canUpload && accountId ? (
+      {canUploadClientApprovalScreenshots && accountId ? (
         <BaseModal
           open={openUploadMore}
           onOpenChange={(open) => {

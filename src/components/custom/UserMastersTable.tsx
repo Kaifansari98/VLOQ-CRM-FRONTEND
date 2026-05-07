@@ -343,7 +343,12 @@ const customPrivilegeSections = [
       {
         id: "client_approvals",
         title: "Client Approvals",
-        childModuleIncludes: ["Client Approval"],
+        childModuleIncludes: [
+          "Client Approval",
+          "Client Approval Form",
+          "Client Payment Details",
+          "Client Approval Screenshots",
+        ],
       },
     ],
   },
@@ -505,10 +510,7 @@ export default function UserMastersTable() {
   ]);
 
   const getSectionChildPrivileges = React.useCallback(
-    (
-      parentModuleName: string,
-      childModuleIncludes: readonly string[],
-    ) => {
+    (parentModuleName: string, childModuleIncludes: readonly string[]) => {
       const normalizedKeywords = childModuleIncludes.map((value) =>
         value.toLowerCase(),
       );
