@@ -358,7 +358,28 @@ const customPrivilegeSections = [
     parentModule: "Production",
     description:
       "Manage access to production stages, planning flows, and execution actions.",
-    children: [],
+    children: [
+      {
+        id: "tech_check_stage",
+        title: "Tech Check Stage",
+        childModuleIncludes: ["Tech Check"],
+      },
+      {
+        id: "order_login_stage",
+        title: "Order Login Stage",
+        childModuleIncludes: ["Order Login"],
+      },
+      {
+        id: "production_stage",
+        title: "Production Stage",
+        childModuleIncludes: ["Production"],
+      },
+      {
+        id: "ready_to_dispatch",
+        title: "Ready To Dispatch",
+        childModuleIncludes: ["Ready To Dispatch"],
+      },
+    ],
   },
   {
     id: "installations",
