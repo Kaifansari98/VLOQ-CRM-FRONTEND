@@ -114,6 +114,9 @@ export default function ProductionLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const effectiveUserType = userType;
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
@@ -153,12 +156,20 @@ export default function ProductionLeadDetails() {
   );
 
   const canMoveReadyToDispatchStage =
-    canMoveToReadyToDispatch(effectiveUserType);
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.ready_to_dispatch.enable_disable",
+        )
+      : canMoveToReadyToDispatch(effectiveUserType);
   const canUpdateExpectedDate =
     canViewAndWorkEditProcutionExpectedDate(effectiveUserType);
   const canViewMarkCompletedButton =
-    effectiveUserType?.toLowerCase() === "factory" ||
-    effectiveUserType?.toLowerCase() === "super-admin";
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.mark_as_completed.enable_disable",
+        )
+      : effectiveUserType?.toLowerCase() === "factory" ||
+        effectiveUserType?.toLowerCase() === "super-admin";
 
   const canShowTodoTab = canAccessTodoTaskTabProductionStage(effectiveUserType);
 

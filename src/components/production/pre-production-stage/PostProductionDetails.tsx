@@ -111,8 +111,12 @@ export default function PostProductionDetails({
 
   const canViewAndWork = canViewAndWorkProductionStage(effectiveUserType ?? "", leadStatusIns ?? leadStatus);
   const canEditBoxes =
-    canViewAndWork &&
-    userType?.toLowerCase() !== "pre-prod";
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.set_no_of_boxes.update_edit",
+        )
+      : canViewAndWork &&
+        userType?.toLowerCase() !== "pre-prod";
   const canViewWoodwork =
     userType === "custom"
       ? customPrivilegeCodes.includes(
