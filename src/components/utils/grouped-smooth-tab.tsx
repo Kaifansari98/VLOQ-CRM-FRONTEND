@@ -320,7 +320,13 @@ export default function GroupedSmoothTab({
                                   effectiveUserType ?? "",
                                 );
                           const canViewProduction =
-                            canViewAndWorkProductionDetails(effectiveUserType ?? "");
+                            userType === "custom"
+                              ? customPrivilegeCodes.some((code) =>
+                                  code.startsWith("production.production."),
+                                )
+                              : canViewAndWorkProductionDetails(
+                                  effectiveUserType ?? "",
+                                );
                           const canViewTechCheckForCustomUser =
                             userType === "custom"
                               ? customPrivilegeCodes.includes(
