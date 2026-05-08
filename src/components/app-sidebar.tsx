@@ -420,6 +420,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         ? customPrivilegeCodes.includes(
                             "production.tech_check.tech_check_details.view",
                           )
+                        : subItem.title === "Order Login"
+                          ? customPrivilegeCodes.some((code) =>
+                              code.startsWith("production.order_login."),
+                            )
+                        : subItem.title === "Production"
+                          ? customPrivilegeCodes.some((code) =>
+                              code.startsWith("production.production."),
+                            )
                         : true,
                     ),
                   }

@@ -96,6 +96,9 @@ export default function OrderLoginLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const effectiveUserType = userType;
 
   const { data: readiness, isLoading: readinessLoading } =
@@ -108,7 +111,12 @@ export default function OrderLoginLeadDetails() {
   // derive convenience flags & message
   const lacksProdFiles = readiness ? !readiness.productionFiles?.hasAny : false;
   const canMove = readiness?.readyForProduction === true;
-  const canMoveToProductionStage = canMoveToProduction(effectiveUserType);
+  const canMoveToProductionStage =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.order_login.move_to_production.enable_disable",
+        )
+      : canMoveToProduction(effectiveUserType);
   const canViewTodoTask = canWorkTodoTaskOrderLoginStage(effectiveUserType);
   const canViewSiteHistory =
     canViewSiteHistoryTab(effectiveUserType) &&

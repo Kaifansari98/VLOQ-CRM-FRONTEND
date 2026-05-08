@@ -42,6 +42,12 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       : (instanceId ?? null);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const {
     data: orderLoginLockIns = [],
     isLoading: orderLoginLockInsLoading,
@@ -118,6 +124,24 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const lockedTabsTooltip = orderLoginLockInsLoading
     ? "Checking accounts approval status"
     : "Accounts approval for Order Login is still pending";
+  const canViewApprovedDocuments =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.order_login.approved_documents.view",
+        )
+      : true;
+  const canViewProductionFiles =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.order_login.production_files.view",
+        )
+      : true;
+  const canAccessOrderLoginDetails =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.order_login.order_login_details.enable_disable",
+        )
+      : true;
   const safeDefaultTab =
     isOrderLoginLocked &&
     (activeTab === "order-login" || activeTab === "production-files")
@@ -197,6 +221,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             id: "approved-docs",
             title: "Approved Documents",
             color: "bg-zinc-800 hover:bg-zinc-900",
+            disabled: !canViewApprovedDocuments,
+            disabledReason: "You don’t have permission to access Approved Documents.",
             cardContent: (
               <ApprovedDocsSection
                 leadId={leadId}
@@ -208,8 +234,10 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             id: "production-files",
             title: "Production Files",
             color: "bg-zinc-800 hover:bg-zinc-900",
-            disabled: isOrderLoginLocked,
-            disabledReason: lockedTabsTooltip,
+            disabled: isOrderLoginLocked || !canViewProductionFiles,
+            disabledReason: !canViewProductionFiles
+              ? "You don’t have permission to access Production Files."
+              : lockedTabsTooltip,
             cardContent: (
               <ProductionFilesSection
                 leadId={leadId}
@@ -222,8 +250,10 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             id: "order-login",
             title: "Order Login",
             color: "bg-zinc-800 hover:bg-zinc-900",
-            disabled: isOrderLoginLocked,
-            disabledReason: lockedTabsTooltip,
+            disabled: isOrderLoginLocked || !canAccessOrderLoginDetails,
+            disabledReason: !canAccessOrderLoginDetails
+              ? "You don’t have permission to access Order Login."
+              : lockedTabsTooltip,
             cardContent: (
               <OrderLoginTab
                 leadId={leadId}

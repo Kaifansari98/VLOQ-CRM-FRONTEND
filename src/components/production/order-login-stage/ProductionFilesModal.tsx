@@ -59,6 +59,9 @@ export default function ProductionFilesSection({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const { data, isLoading: instanceLoading } = useInstanceStage(
     vendorId,
@@ -155,9 +158,21 @@ export default function ProductionFilesSection({
   console.log("Lead Status data with istance id ", data);
   const effectiveStage =
     data?.derived_stage ?? leadStatusData?.status ?? "";
-  const canDelete =
+  const canManageProductionFiles =
     !readOnly &&
     canUploadOrDeleteOrderLogin(userType ?? "", effectiveStage);
+  const canUploadProductionFiles =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.order_login.production_files.upload",
+        )
+      : canManageProductionFiles;
+  const canDeleteProductionFiles =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.order_login.production_files.delete",
+        )
+      : canManageProductionFiles;
 
   return (
     <div className="space-y-4">
@@ -187,7 +202,7 @@ export default function ProductionFilesSection({
       </div>
 
       {/* -------------------------------- UPLOAD AREA -------------------------------- */}
-      {canDelete && (
+      {canUploadProductionFiles && (
         <div className="p-6 border-b space-y-4">
           <FileUploadField
             value={selectedFiles}
@@ -228,13 +243,15 @@ export default function ProductionFilesSection({
           maxLength={500}
           placeholder="Add any notes related to production files..."
           className="h-[130px] bg-muted/20 rounded-lg"
-          disabled={!canDelete}
+          disabled={!canUploadProductionFiles}
         />
         <div className="flex justify-end">
           <Button
             size="sm"
             onClick={handleRemarkSave}
-            disabled={!remark.trim() || !canDelete || savingRemark}
+            disabled={
+              !remark.trim() || !canUploadProductionFiles || savingRemark
+            }
             className="flex items-center gap-2"
           >
             {savingRemark ? (
@@ -291,7 +308,7 @@ export default function ProductionFilesSection({
                       signedUrl: doc.signedUrl ?? doc.signed_url,
                       created_at: doc.created_at,
                     }}
-                    canDelete={canDelete}
+                    canDelete={canDeleteProductionFiles}
                     onDelete={(id) =>
                       setConfirmDelete(typeof id === "string" ? Number(id) : id)
                     }
@@ -307,7 +324,7 @@ export default function ProductionFilesSection({
                       signedUrl: doc.signedUrl ?? doc.signed_url,
                       created_at: doc.created_at,
                     }}
-                    canDelete={canDelete}
+                    canDelete={canDeleteProductionFiles}
                     onDelete={(id) => setConfirmDelete(id)}
                   />
                 );

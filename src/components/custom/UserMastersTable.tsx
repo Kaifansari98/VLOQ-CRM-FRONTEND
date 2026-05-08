@@ -367,12 +367,29 @@ const customPrivilegeSections = [
       {
         id: "order_login_stage",
         title: "Order Login Stage",
-        childModuleIncludes: ["Order Login"],
+        childModuleIncludes: [
+          "Order Login",
+          "Approved Documents",
+          "Payment Lockin",
+          "Production Files",
+          "Order Login Details",
+          "Move to Production",
+        ],
       },
       {
         id: "production_stage",
         title: "Production Stage",
-        childModuleIncludes: ["Production"],
+        childModuleIncludes: [
+          "Production Files",
+          "Pre Production Files",
+          "Under Production",
+          "Post Production - Woodwork",
+          "Post Production - Hardware",
+          "Post Production - QC Photos",
+          "Set no. of boxes",
+          "Mark as Completed",
+          "Ready to Dispatch",
+        ],
       },
       {
         id: "ready_to_dispatch",
