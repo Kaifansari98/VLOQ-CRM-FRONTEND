@@ -312,7 +312,13 @@ export default function GroupedSmoothTab({
                         {items.map((item) => {
                           // 🔍 Role-based permission checks
                           const canViewOrderLogin =
-                            canViewToOrderLoginDetails(effectiveUserType ?? "");
+                            userType === "custom"
+                              ? customPrivilegeCodes.some((code) =>
+                                  code.startsWith("production.order_login."),
+                                )
+                              : canViewToOrderLoginDetails(
+                                  effectiveUserType ?? "",
+                                );
                           const canViewProduction =
                             canViewAndWorkProductionDetails(effectiveUserType ?? "");
                           const canViewTechCheckForCustomUser =

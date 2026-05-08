@@ -138,8 +138,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       : true;
   const canAccessOrderLoginDetails =
     userType === "custom"
-      ? customPrivilegeCodes.some((code) =>
-          code.startsWith("production.order_login."),
+      ? customPrivilegeCodes.includes(
+          "production.order_login.order_login_details.enable_disable",
         )
       : true;
   const safeDefaultTab =

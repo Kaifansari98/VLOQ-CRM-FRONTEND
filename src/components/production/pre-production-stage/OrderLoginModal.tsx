@@ -65,6 +65,9 @@ export default function OrderLoginModal({
   markedAsCompletedDate,
 }: OrderLoginModalProps) {
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
   const searchParams = useSearchParams();
 
   const instanceFromUrl = searchParams.get("instance_id");
@@ -250,6 +253,12 @@ export default function OrderLoginModal({
   const canWorkAndView =
     !isPreProd &&
     canViewAndWorkProductionStage(userType, leadStatusIns ?? leadStatus);
+  const canTakeUnderProductionAction =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.under_production.expected_ready_date_of_order_action",
+        )
+      : canWorkAndView;
   const vendorTooltipMessage =
     canWorkAndView && !isCompleted
       ? undefined
@@ -411,7 +420,7 @@ export default function OrderLoginModal({
                 truncateValue={
                   <div
                     className={
-                      isCompleted || !canWorkAndView
+                      isCompleted || !canTakeUnderProductionAction
                         ? "opacity-70 pointer-events-none w-full"
                         : "w-full"
                     }
@@ -419,7 +428,7 @@ export default function OrderLoginModal({
                     <CustomeDatePicker
                       value={productionReadyDate}
                       onChange={
-                        isCompleted || !canWorkAndView
+                        isCompleted || !canTakeUnderProductionAction
                           ? () => {}
                           : handleDateChange
                       }
@@ -428,11 +437,13 @@ export default function OrderLoginModal({
                   </div>
                 }
                 value={
-                  isPreProd
+                  !canTakeUnderProductionAction
+                    ? "You do not have permission to take action on this."
+                    : isPreProd
                     ? "Pre-prod users can only view this section."
                     : !canWorkAndView && userType === "factory"
                       ? "This lead stage has progressed. Factory users cannot modify this section."
-                      : !canWorkAndView
+                    : !canWorkAndView
                         ? "You do not have access to change or set production-ready dates."
                         : isCompleted
                           ? "You cannot change the date after this order-login is marked as ready."
@@ -455,7 +466,9 @@ export default function OrderLoginModal({
                 truncateValue={
                   <div
                     className={`w-full ${
-                      isCompleted || !productionReadyDate
+                      isCompleted ||
+                      !productionReadyDate ||
+                      !canTakeUnderProductionAction
                         ? "opacity-70 pointer-events-none"
                         : ""
                     }`}
@@ -466,7 +479,7 @@ export default function OrderLoginModal({
                         isCompleted ||
                         !productionReadyDate ||
                         !isProductionDateReached ||
-                        !canWorkAndView
+                        !canTakeUnderProductionAction
                       }
                       className={`w-full flex items-center justify-center gap-2 ${
                         isCompleted ? "" : ""
@@ -478,7 +491,9 @@ export default function OrderLoginModal({
                   </div>
                 }
                 value={
-                  isPreProd
+                  !canTakeUnderProductionAction
+                    ? "You do not have permission to take action on this."
+                    : isPreProd
                     ? "Pre-prod users can only view this section."
                     : !canWorkAndView && userType === "factory"
                       ? "This lead stage has progressed. Factory users cannot modify this section."
