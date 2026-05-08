@@ -52,6 +52,86 @@ import OrderLoginApprovalModal from "@/components/tasks/OrderLoginApprovalModal"
 import DispatchPlanningApprovalModal from "@/components/tasks/DispatchPlanningApprovalModal";
 import InitialSiteMeasurementTaskModal from "@/components/tasks/InitialSiteMeasurementTaskModal";
 import FinalMeasurementTaskModal from "@/components/tasks/FinalMeasurementTaskModal";
+import { useFranchisesByVendorId } from "@/api/franchise";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ListFilter, XCircle } from "lucide-react";
+
+function FranchiseFilter({
+  value,
+  defaultValue,
+  options,
+  onChange,
+}: {
+  value?: number;
+  defaultValue?: number;
+  options: { id: number; label: string }[];
+  onChange: (value: number) => void;
+}) {
+  const selectedOption = options.find((option) => option.id === value);
+  const isFiltered =
+    value != null && defaultValue != null && value !== defaultValue;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="border-dashed">
+          {isFiltered ? (
+            <div
+              role="button"
+              aria-label="Reset franchise filter"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (defaultValue != null) onChange(defaultValue);
+              }}
+              className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0"
+            >
+              <XCircle className="h-4 w-4" />
+            </div>
+          ) : (
+            <ListFilter className="h-4 w-4 shrink-0" />
+          )}
+          <span className="flex items-center gap-1.5 truncate">
+            <span className="truncate">Filter by Franchaise</span>
+            {selectedOption && (
+              <>
+                <Separator
+                  orientation="vertical"
+                  className="mx-0.5 data-[orientation=vertical]:h-4"
+                />
+                <Badge
+                  variant="secondary"
+                  className="font-normal px-1.5 py-0 h-5 text-xs truncate max-w-[140px]"
+                >
+                  {selectedOption.label}
+                </Badge>
+              </>
+            )}
+          </span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-1" align="start">
+        {options.map((option) => (
+          <button
+            key={option.id}
+            onClick={() => onChange(option.id)}
+            className={`w-full text-left px-3 py-1.5 text-sm rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
+              value === option.id ? "bg-accent text-accent-foreground font-medium" : ""
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const MyTaskTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -63,6 +143,41 @@ const MyTaskTable = () => {
   const isAdminUser =
     userType?.toLowerCase() === "admin" ||
     userType?.toLowerCase() === "super-admin";
+  const isSuperAdmin = userType?.toLowerCase() === "super-admin";
+  const { data: franchises = [] } = useFranchisesByVendorId(
+    vendorId ?? 0,
+    !!vendorId && isSuperAdmin,
+  );
+  const franchiseOptions = useMemo(
+    () =>
+      franchises.map((franchise) => ({
+        id: franchise.id,
+        label: franchise.franchise_name,
+        isHeadOffice: franchise.is_head_office === true,
+      })),
+    [franchises],
+  );
+  const defaultFranchiseId = useMemo(() => {
+    if (!isSuperAdmin) return franchiseId ?? undefined;
+    return (
+      franchiseOptions.find((franchise) => franchise.isHeadOffice)?.id ??
+      franchiseOptions[0]?.id ??
+      franchiseId ??
+      undefined
+    );
+  }, [franchiseId, franchiseOptions, isSuperAdmin]);
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<
+    number | undefined
+  >(franchiseId ?? undefined);
+  const showFranchiseFilter =
+    isSuperAdmin && franchiseOptions.length > 1;
+
+  useEffect(() => {
+    if (defaultFranchiseId == null) return;
+    setSelectedFranchiseId((current) =>
+      current === defaultFranchiseId ? current : defaultFranchiseId,
+    );
+  }, [defaultFranchiseId]);
 
   const [openMeasurement, setOpenMeasurement] = useState(false);
   const [openMeasurementTaskModal, setOpenMeasurementTaskModal] =
@@ -147,7 +262,7 @@ const MyTaskTable = () => {
       limit: myPagination.pageSize,
       created_at: sortOrder,
       global_search: myGlobalFilter || "",
-      franchise_id: franchiseId!,
+      franchise_id: selectedFranchiseId!,
 
       // ✅ FIX: Add task_type from state
       task_type: mappedFilters.task_type,
@@ -168,7 +283,7 @@ const MyTaskTable = () => {
     myGlobalFilter,
     myColumnFilters,
     myTaskTypeFilter, // ✅ ADD DEPENDENCY
-    franchiseId,
+    selectedFranchiseId,
   ]);
 
   // ✅ OVERALL TASKS PAYLOAD - FIXED
@@ -181,7 +296,7 @@ const MyTaskTable = () => {
       limit: overallPagination.pageSize,
       created_at: sortOrder,
       global_search: overallGlobalFilter || "",
-      franchise_id: franchiseId!,
+      franchise_id: selectedFranchiseId!,
 
       // ✅ FIX: Add task_type from state
       task_type: mappedFilters.task_type,
@@ -202,7 +317,7 @@ const MyTaskTable = () => {
     overallGlobalFilter,
     overallColumnFilters,
     overallTaskTypeFilter, // ✅ ADD DEPENDENCY
-    franchiseId,
+    selectedFranchiseId,
   ]);
 
   console.log("My Task Payload:", myTaskPayload);
@@ -639,6 +754,17 @@ const MyTaskTable = () => {
                 title="AssignedAt"
                 multiple
               />
+              {showFranchiseFilter && (
+                <FranchiseFilter
+                  value={selectedFranchiseId}
+                  defaultValue={defaultFranchiseId}
+                  options={franchiseOptions.map(({ id, label }) => ({
+                    id,
+                    label,
+                  }))}
+                  onChange={setSelectedFranchiseId}
+                />
+              )}
               {/* <DataTableFilterList table={table} /> */}
               <DataTableViewOptions table={table} />
             </div>
@@ -688,6 +814,17 @@ const MyTaskTable = () => {
                 title="AssignedAt"
                 multiple
               />
+              {showFranchiseFilter && (
+                <FranchiseFilter
+                  value={selectedFranchiseId}
+                  defaultValue={defaultFranchiseId}
+                  options={franchiseOptions.map(({ id, label }) => ({
+                    id,
+                    label,
+                  }))}
+                  onChange={setSelectedFranchiseId}
+                />
+              )}
             </div>
 
             {/* Right: Table controls */}

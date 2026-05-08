@@ -37,6 +37,7 @@ export interface CompletedPayload {
   updated_by: number;
   closed_at: string;
   closed_by: number;
+  remark?: string;
 }
 
 export const CompletedUpdateTheTaskIsmAndFollowUp = async (

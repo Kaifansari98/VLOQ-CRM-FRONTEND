@@ -21,6 +21,7 @@ import {
 } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import { useQueryClient } from "@tanstack/react-query";
 import RescheduleModal from "./sales-executive/siteMeasurement/reschedule-modal";
+import TextAreaInput from "./origin-text-area";
 
 interface Props {
   open: boolean;
@@ -51,6 +52,7 @@ const FollowUpModal: React.FC<Props> = ({
   const [openCancelModal, setOpenCancelModal] = useState<boolean>(false);
   const [openRescheduleModal, setOpenRescheduleModal] =
     useState<boolean>(false);
+  const [completionRemark, setCompletionRemark] = useState("");
   const completedUpdateMutation = useCompletedUpdateTask();
   const cancelledUpdateMutation = useCancelledUpdateTask();
   const queryClient = useQueryClient();
@@ -58,6 +60,15 @@ const FollowUpModal: React.FC<Props> = ({
   console.log("Reschedule Remark :- ", data?.remark);
   console.log("Reschedule DueDate :- ", data?.dueDate);
   const handleMarkCompleted = () => {
+    const trimmedRemark = completionRemark.trim();
+    if (variant === "Follow Up" && !trimmedRemark) {
+      toastManager.add({
+        title: "Remark is required to complete this follow up task.",
+        type: "error",
+      });
+      return;
+    }
+
     completedUpdateMutation.mutate(
       {
         leadId: leadId || 0,
@@ -67,12 +78,14 @@ const FollowUpModal: React.FC<Props> = ({
           updated_by: userId || 0,
           closed_at: new Date().toISOString(),
           closed_by: userId || 0,
+          ...(variant === "Follow Up" ? { remark: trimmedRemark } : {}),
         },
       },
       {
         onSuccess: () => {
           toastManager.add({ title: "Lead marked as completed!", type: "success" });
           setOpenCompletedModal(false);
+          setCompletionRemark("");
 
           // Invalidate query to refresh data
           if (vendorId) {
@@ -226,7 +239,10 @@ const FollowUpModal: React.FC<Props> = ({
       {/* Completed Modal */}
       <AlertDialog
         open={openCompletedModal}
-        onOpenChange={setOpenCompletedModal}
+        onOpenChange={(nextOpen) => {
+          setOpenCompletedModal(nextOpen);
+          if (!nextOpen) setCompletionRemark("");
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -249,11 +265,26 @@ const FollowUpModal: React.FC<Props> = ({
               as completed? This action can’t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {variant === "Follow Up" && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Remark</p>
+              <TextAreaInput
+                value={completionRemark}
+                onChange={setCompletionRemark}
+                maxLength={500}
+                placeholder="Enter the completion remark..."
+                className="min-h-[120px]"
+              />
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleMarkCompleted}
-              disabled={completedUpdateMutation.isPending}
+              disabled={
+                completedUpdateMutation.isPending ||
+                (variant === "Follow Up" && !completionRemark.trim())
+              }
             >
               {completedUpdateMutation.isPending ? "Processing..." : "Confirm"}
             </AlertDialogAction>
