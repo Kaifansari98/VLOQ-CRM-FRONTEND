@@ -56,6 +56,9 @@ export default function PostProductionQcPhotosSection({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
 
   const queryClient = useQueryClient();
 
@@ -163,6 +166,18 @@ export default function PostProductionQcPhotosSection({
   const canViewAndWork =
     !isPreProd &&
     canViewAndWorkProductionStage(effectiveUserType, leadStatusIns ?? leadStatus);
+  const canUploadQcPhotos =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.post_production_qc_photos.upload",
+        )
+      : canViewAndWork;
+  const canDeleteQcPhotos =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.post_production_qc_photos.delete",
+        )
+      : canDelete;
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {
@@ -197,7 +212,7 @@ export default function PostProductionQcPhotosSection({
       </div>
 
       {/* -------------------------------- UPLOAD AREA -------------------------------- */}
-      {canViewAndWork && (
+      {canUploadQcPhotos && (
         <div className="p-6 border-b space-y-4">
           <FileUploadField
             value={selectedFiles}
@@ -264,7 +279,7 @@ export default function PostProductionQcPhotosSection({
                   created_at: doc.created_at,
                 }}
                 index={index}
-                canDelete={canDelete}
+                canDelete={canDeleteQcPhotos}
                 onDelete={(id) => setConfirmDelete(Number(id))}
               />
             ))}
@@ -278,7 +293,7 @@ export default function PostProductionQcPhotosSection({
                   signedUrl: doc.signedUrl,
                   created_at: doc.created_at,
                 }}
-                canDelete={canDelete}
+                canDelete={canDeleteQcPhotos}
                 onDelete={(id) => setConfirmDelete(id)}
               />
             ))}

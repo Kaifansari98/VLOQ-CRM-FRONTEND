@@ -125,6 +125,12 @@ export default function PostProductionDetails({
           "production.production.post_production_hardware.view",
         )
       : true;
+  const canViewQcPhotos =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.post_production_qc_photos.view",
+        )
+      : true;
 
   // ✅ Submit handler (fully validated)
   const onSubmit = async (values: BoxFormValues) => {
@@ -196,6 +202,8 @@ export default function PostProductionDetails({
         </div>
       ),
       color: "bg-zinc-900 hover:bg-zinc-900",
+      disabled: !canViewQcPhotos,
+      disabledReason: "You don’t have permission to access QC Photos.",
       cardContent: (
         <PostProductionQcPhotosSection
           leadId={leadId}
