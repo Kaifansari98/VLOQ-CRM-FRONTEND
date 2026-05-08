@@ -32,6 +32,9 @@ export default function LeadDetailsProductionUtil({
 }: LeadDetailsProductionUtilProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
   const effectiveUserType = userType === "admin" ? "sales-executive" : userType;
   const userId = useAppSelector((s) => s.auth.user?.id);
   const searchParams = useSearchParams();
@@ -141,14 +144,35 @@ export default function LeadDetailsProductionUtil({
     userType === "super-admin" ||
     userType === "factory" ||
     userType === "pre-prod";
+  const canViewProductionFiles =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.production_files.view_download",
+        )
+      : canAccessAllTabs;
+  const canViewPreProductionFiles =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.pre_production_files.view",
+        )
+      : canAccessAllTabs;
+  const canAccessUnderProduction =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.under_production.enable_disable",
+        )
+      : canAccessAllTabs;
 
   const allTabs = [
     {
       id: "productionFiles",
       title: "Production Files",
       color: "bg-zinc-900 hover:bg-zinc-900",
-      disabled: !canAccessAllTabs,
-      disabledReason: "Only super-admin and factory can access this tab.",
+      disabled: !canViewProductionFiles,
+      disabledReason:
+        userType === "custom"
+          ? "You don’t have permission to access Production Files."
+          : "Only super-admin and factory can access this tab.",
       cardContent: (
         <ProductionFilesSection
           leadId={leadId}
@@ -162,8 +186,11 @@ export default function LeadDetailsProductionUtil({
       id: "preProductionFiles",
       title: "Pre Production",
       color: "bg-zinc-900 hover:bg-zinc-900",
-      disabled: !canAccessAllTabs,
-      disabledReason: "Only super-admin and factory can access this tab.",
+      disabled: !canViewPreProductionFiles,
+      disabledReason:
+        userType === "custom"
+          ? "You don’t have permission to access Pre Production."
+          : "Only super-admin and factory can access this tab.",
       cardContent: (
         <PreProductionFilesSection
           leadId={leadId}
@@ -176,9 +203,11 @@ export default function LeadDetailsProductionUtil({
       id: "preProduction",
       title: "Under Production",
       color: "bg-zinc-900 hover:bg-zinc-900",
-      disabled: !canAccessAllTabs || !readyForUnderProduction,
-      disabledReason: !canAccessAllTabs
-        ? "Only super-admin and factory can access this tab."
+      disabled: !canAccessUnderProduction || !readyForUnderProduction,
+      disabledReason: !canAccessUnderProduction
+        ? userType === "custom"
+          ? "You don’t have permission to access Under Production."
+          : "Only super-admin and factory can access this tab."
         : "Click Mark Pre Prod Done first to enable Under Production.",
       cardContent: isOrderLoginFilled ? (
         <PreProductionDetails

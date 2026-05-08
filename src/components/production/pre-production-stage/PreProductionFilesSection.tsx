@@ -62,6 +62,9 @@ export default function PreProductionFilesSection({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
 
   const queryClient = useQueryClient();
 
@@ -121,6 +124,24 @@ export default function PreProductionFilesSection({
     userType === "super-admin" || (userType === "pre-prod" && !isPreProdDone);
 
   const canViewAndWork = userType === "super-admin" || userType === "pre-prod";
+  const canUploadPreProductionFiles =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.pre_production_files.upload",
+        )
+      : canViewAndWork;
+  const canDeletePreProductionFiles =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.pre_production_files.delete",
+        )
+      : canDelete;
+  const canMarkPreProdDone =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.pre_production_files.mark_pre_prod_done_action",
+        )
+      : canViewAndWork;
 
   const handleMarkPreProdDone = async () => {
     if (!effectiveInstanceId || !userId) return;
@@ -240,7 +261,7 @@ export default function PreProductionFilesSection({
                 Pre Prod Completed
               </span>
             ) : (
-              canViewAndWork &&
+              canMarkPreProdDone &&
               effectiveInstanceId && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -274,7 +295,7 @@ export default function PreProductionFilesSection({
         </div>
 
         {/* -------------------------------- UPLOAD AREA -------------------------------- */}
-        {canViewAndWork && (
+        {canUploadPreProductionFiles && (
           <div className="p-6 border-b space-y-4">
             <FileUploadField
               value={selectedFiles}
@@ -342,7 +363,7 @@ export default function PreProductionFilesSection({
                     created_at: doc.created_at,
                   }}
                   index={index}
-                  canDelete={canDelete}
+                  canDelete={canDeletePreProductionFiles}
                   onDelete={(id) => setConfirmDelete(Number(id))}
                 />
               ))}
@@ -356,7 +377,7 @@ export default function PreProductionFilesSection({
                     signedUrl: doc.signed_url,
                     created_at: doc.created_at,
                   }}
-                  canDelete={canDelete}
+                  canDelete={canDeletePreProductionFiles}
                   onDelete={(id) => setConfirmDelete(id)}
                 />
               ))}
