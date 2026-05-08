@@ -57,6 +57,9 @@ export default function HardwarePackingDetailsSection({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
   const queryClient = useQueryClient();
 
   const { data: packingDetails, isLoading } = useGetHardwarePackingDetails(
@@ -108,6 +111,18 @@ export default function HardwarePackingDetailsSection({
     (userType === "super-admin" ||
       (userType === "factory" &&
         (leadStatusIns ?? leadStatus) === "production-stage"));
+  const canUploadHardwarePackingDetails =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.post_production_hardware.upload",
+        )
+      : canViewAndWork;
+  const canDeleteHardwarePackingDetails =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.post_production_hardware.delete",
+        )
+      : canDelete;
 
   useEffect(() => {
     if (normalizedRemark) setRemark(normalizedRemark);
@@ -235,7 +250,7 @@ export default function HardwarePackingDetailsSection({
 
       {/* ---------- UPLOAD AREA ---------- */}
       <div className="p-6 border-b space-y-6">
-        {canViewAndWork && (
+        {canUploadHardwarePackingDetails && (
           <div className="space-y-3">
             <FileUploadField
               value={selectedFiles}
@@ -282,7 +297,7 @@ export default function HardwarePackingDetailsSection({
             <Button
               size="sm"
               onClick={handleRemarkUpdate}
-              disabled={!remark.trim() || !canViewAndWork}
+              disabled={!remark.trim() || !canUploadHardwarePackingDetails}
               className="flex items-center gap-2"
             >
               <Paperclip size={16} />
@@ -329,7 +344,7 @@ export default function HardwarePackingDetailsSection({
                     created_at: doc.created_at,
                   }}
                   index={index}
-                  canDelete={canDelete}
+                  canDelete={canDeleteHardwarePackingDetails}
                   onDelete={(id) => setConfirmDelete(Number(id))}
                 />
               ))}
@@ -343,7 +358,7 @@ export default function HardwarePackingDetailsSection({
                     signedUrl: doc.signed_url,
                     created_at: doc.created_at,
                   }}
-                  canDelete={canDelete}
+                  canDelete={canDeleteHardwarePackingDetails}
                   onDelete={(id) => setConfirmDelete(id)}
                 />
               ))}

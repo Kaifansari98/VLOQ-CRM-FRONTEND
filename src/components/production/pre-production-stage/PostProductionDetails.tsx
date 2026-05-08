@@ -66,6 +66,9 @@ export default function PostProductionDetails({
 }: PostProductionDetailsProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
   const effectiveUserType =
     userType === "admin" || userType === "head-site-supervisor"
       ? "sales-executive"
@@ -110,6 +113,18 @@ export default function PostProductionDetails({
   const canEditBoxes =
     canViewAndWork &&
     userType?.toLowerCase() !== "pre-prod";
+  const canViewWoodwork =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.post_production_woodwork.view",
+        )
+      : true;
+  const canViewHardware =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.post_production_hardware.view",
+        )
+      : true;
 
   // ✅ Submit handler (fully validated)
   const onSubmit = async (values: BoxFormValues) => {
@@ -145,6 +160,8 @@ export default function PostProductionDetails({
         </div>
       ),
       color: "bg-zinc-900 hover:bg-zinc-900",
+      disabled: !canViewWoodwork,
+      disabledReason: "You don’t have permission to access Woodwork.",
       cardContent: (
         <WoodworkPackingDetailsSection
           leadId={leadId}
@@ -161,6 +178,8 @@ export default function PostProductionDetails({
         </div>
       ),
       color: "bg-zinc-900 hover:bg-zinc-900",
+      disabled: !canViewHardware,
+      disabledReason: "You don’t have permission to access Hardware.",
       cardContent: (
         <HardwarePackingDetailsSection
           leadId={leadId}

@@ -60,6 +60,9 @@ export default function WoodworkPackingDetailsSection({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
 
   const queryClient = useQueryClient();
 
@@ -114,6 +117,18 @@ export default function WoodworkPackingDetailsSection({
     (userType === "super-admin" ||
       (userType === "factory" &&
         (leadStatusIns ?? leadStatus) === "production-stage"));
+  const canUploadWoodworkPackingDetails =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.post_production_woodwork.upload",
+        )
+      : canViewAndWork;
+  const canDeleteWoodworkPackingDetails =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.post_production_woodwork.delete",
+        )
+      : canDelete;
 
   useEffect(() => {
     if (normalizedRemark) setRemark(normalizedRemark);
@@ -245,7 +260,7 @@ export default function WoodworkPackingDetailsSection({
 
       {/* ---------- UPLOAD AREA ---------- */}
       <div className="p-6 border-b space-y-6">
-        {canViewAndWork && (
+        {canUploadWoodworkPackingDetails && (
           <div className="space-y-3">
             <FileUploadField
               value={selectedFiles}
@@ -294,7 +309,7 @@ export default function WoodworkPackingDetailsSection({
             <Button
               size="sm"
               onClick={handleRemarkUpdate}
-              disabled={!remark.trim() || !canViewAndWork}
+              disabled={!remark.trim() || !canUploadWoodworkPackingDetails}
               className="flex items-center gap-2"
             >
               <Paperclip size={16} />
@@ -340,7 +355,7 @@ export default function WoodworkPackingDetailsSection({
                   created_at: doc.created_at,
                 }}
                 index={index}
-                canDelete={canDelete}
+                canDelete={canDeleteWoodworkPackingDetails}
                 onDelete={(id) => setConfirmDelete(Number(id))}
               />
             ))}
@@ -354,7 +369,7 @@ export default function WoodworkPackingDetailsSection({
                   signedUrl: doc.signed_url,
                   created_at: doc.created_at,
                 }}
-                canDelete={canDelete}
+                canDelete={canDeleteWoodworkPackingDetails}
                 onDelete={(id) => setConfirmDelete(id)}
               />
             ))}
