@@ -96,9 +96,11 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
   const [showSingleUserConfirm, setShowSingleUserConfirm] = useState(false);
   const [singleUserDate, setSingleUserDate] = useState<string | undefined>("");
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
+  const activeUsers = techCheckUsers ?? [];
+  const isUsersLoading = isLoading;
 
   const mappedUsers =
-    techCheckUsers?.map((user: any) => ({
+    activeUsers?.map((user: any) => ({
       id: user.id,
       label: user.user_name,
     })) ?? [];
@@ -113,16 +115,17 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
 
   // Check if single user and show confirmation directly
   useEffect(() => {
-    if (open && techCheckUsers && techCheckUsers.length === 1) {
-      const singleUser = techCheckUsers[0];
+    if (open && activeUsers && activeUsers.length === 1) {
+      const singleUser = activeUsers[0];
       form.setValue("assign_to_user_id", singleUser.id);
       setSelectedUserName(singleUser.user_name);
       setShowSingleUserConfirm(true);
     } else if (open) {
       setShowSingleUserConfirm(false);
       setSingleUserDate("");
+      form.setValue("assign_to_user_id", 0);
     }
-  }, [open, techCheckUsers, form]);
+  }, [open, activeUsers, form]);
 
   // Handle single user confirmation with date
   const handleSingleUserSubmit = () => {
@@ -201,7 +204,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
   };
 
   // Single user confirmation dialog
-  if (showSingleUserConfirm && techCheckUsers?.length === 1) {
+  if (showSingleUserConfirm && activeUsers?.length === 1) {
     return (
       <AlertDialog
         open={showSingleUserConfirm}
@@ -275,9 +278,9 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
         </DialogHeader>
 
         <ScrollArea className="pt-4 max-h-[60vh]">
-          {isLoading ? (
+          {isUsersLoading ? (
             <div className="p-6 text-center text-muted-foreground">
-              Loading tech check users...
+              Loading users...
             </div>
           ) : (
             <Form {...form}>
@@ -291,7 +294,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm">
-                        Assign To Tech Check User
+                        Assign User for Tech Check
                       </FormLabel>
                       <FormControl>
                         <AssignToPicker

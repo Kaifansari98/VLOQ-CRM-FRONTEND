@@ -69,6 +69,13 @@ export default function MoveToProductionModal({
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const vendorCustomUserTypeMode = useAppSelector(
+    (s) =>
+      s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only as
+        | boolean
+        | null
+        | undefined,
+  );
 
   const { data: factoryUsers, isLoading } = useFactoryUsers(vendorId!);
   const { mutate, isPending } = useRequestToProduction();
@@ -179,7 +186,9 @@ export default function MoveToProductionModal({
             <ScrollArea className="pt-4 max-h-[60vh]">
               {isLoading ? (
                 <div className="p-6 text-center text-muted-foreground">
-                  Loading factory users...
+                  {vendorCustomUserTypeMode === true
+                    ? "Loading users..."
+                    : "Loading factory users..."}
                 </div>
               ) : (
                 <Form {...form}>
@@ -193,7 +202,9 @@ export default function MoveToProductionModal({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm">
-                            Assign To Factory User
+                            {vendorCustomUserTypeMode === true
+                              ? "Assign User for Production"
+                              : "Assign To Factory User"}
                           </FormLabel>
                           <FormControl>
                             <AssignToPicker

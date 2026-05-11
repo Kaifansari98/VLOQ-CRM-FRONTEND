@@ -67,6 +67,13 @@ export default function MoveToOrderLoginModal({
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const vendorCustomUserTypeMode = useAppSelector(
+    (s) =>
+      s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only as
+        | boolean
+        | null
+        | undefined,
+  );
 
   const { data: backendUsers, isLoading } = useBackendUsers(vendorId!);
   const { mutate: approveTechCheck, isPending } = useApproveTechCheck();
@@ -157,13 +164,19 @@ export default function MoveToOrderLoginModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
           <DialogContent className="max-w-md w-full">
             <DialogHeader>
-              <DialogTitle>Assign Backend User</DialogTitle>
+              <DialogTitle>
+                {vendorCustomUserTypeMode === true
+                  ? "Assign User for Order Login"
+                  : "Assign Backend User"}
+              </DialogTitle>
             </DialogHeader>
 
             <ScrollArea className="pt-4 max-h-[60vh]">
               {isLoading ? (
                 <div className="p-6 text-center text-muted-foreground">
-                  Loading backend users...
+                  {vendorCustomUserTypeMode === true
+                    ? "Loading users..."
+                    : "Loading backend users..."}
                 </div>
               ) : (
                 <Form {...form}>
@@ -177,7 +190,9 @@ export default function MoveToOrderLoginModal({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm">
-                            Assign To Backend User
+                            {vendorCustomUserTypeMode === true
+                              ? "Assign User for Order Login"
+                              : "Assign To Backend User"}
                           </FormLabel>
                           <FormControl>
                             <AssignToPicker

@@ -71,7 +71,11 @@ const PRODUCTION_STATUS_OPTIONS = [
   { value: "all", label: "All Leads", dot: null },
   { value: "Pending", label: "Pending", dot: "bg-blue-500" },
   { value: "Pre Prod Done", label: "Pre Prod Done", dot: "bg-yellow-400" },
-  { value: "Under Production", label: "Under Production", dot: "bg-orange-500" },
+  {
+    value: "Under Production",
+    label: "Under Production",
+    dot: "bg-orange-500",
+  },
   { value: "Post Production", label: "Post Production", dot: "bg-violet-500" },
   { value: "Completed", label: "Completed", dot: "bg-green-500" },
 ];
@@ -126,10 +130,7 @@ function compareOrderLoginCompletedAtDesc(
   return bTime - aTime;
 }
 
-function compareTechCheckCompletedAtDesc(
-  a?: string | null,
-  b?: string | null,
-) {
+function compareTechCheckCompletedAtDesc(a?: string | null, b?: string | null) {
   const aTime = a ? new Date(a).getTime() : Number.NEGATIVE_INFINITY;
   const bTime = b ? new Date(b).getTime() : Number.NEGATIVE_INFINITY;
   return bTime - aTime;
@@ -169,10 +170,7 @@ function extractLatestStatusLogCreatedAtForTag(lead: any, tag: string) {
   }, null);
 }
 
-function compareType8StatusLoggedAtDesc(
-  a?: string | null,
-  b?: string | null,
-) {
+function compareType8StatusLoggedAtDesc(a?: string | null, b?: string | null) {
   const aTime = a ? new Date(a).getTime() : Number.NEGATIVE_INFINITY;
   const bTime = b ? new Date(b).getTime() : Number.NEGATIVE_INFINITY;
   return bTime - aTime;
@@ -183,7 +181,9 @@ function matchesProductionStatusFilter(
   filterValue: string,
 ) {
   if (filterValue === "all") return true;
-  return (status ?? "").trim().toLowerCase() === filterValue.trim().toLowerCase();
+  return (
+    (status ?? "").trim().toLowerCase() === filterValue.trim().toLowerCase()
+  );
 }
 
 function ProductionStatusFilter({
@@ -194,7 +194,9 @@ function ProductionStatusFilter({
   onChange: (v: string) => void;
 }) {
   const isFiltered = value !== "all";
-  const selectedOption = PRODUCTION_STATUS_OPTIONS.find((o) => o.value === value);
+  const selectedOption = PRODUCTION_STATUS_OPTIONS.find(
+    (o) => o.value === value,
+  );
   const selectedLabel = selectedOption?.label;
   const selectedDot = selectedOption?.dot ?? null;
 
@@ -231,7 +233,9 @@ function ProductionStatusFilter({
                   className="font-normal px-1.5 py-0 h-5 text-xs truncate max-w-[110px] flex items-center gap-1"
                 >
                   {selectedDot && (
-                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${selectedDot}`} />
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full shrink-0 ${selectedDot}`}
+                    />
                   )}
                   {selectedLabel}
                 </Badge>
@@ -246,7 +250,9 @@ function ProductionStatusFilter({
             key={option.value}
             onClick={() => onChange(option.value)}
             className={`w-full text-left px-3 py-1.5 text-sm rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground flex items-center gap-2 ${
-              value === option.value ? "bg-accent text-accent-foreground font-medium" : ""
+              value === option.value
+                ? "bg-accent text-accent-foreground font-medium"
+                : ""
             }`}
           >
             {option.dot && (
@@ -305,7 +311,9 @@ function PriorityQuickFilter({
                   className="font-normal px-1.5 py-0 h-5 text-xs truncate max-w-[110px] flex items-center gap-1"
                 >
                   {selectedDot && (
-                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${selectedDot}`} />
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full shrink-0 ${selectedDot}`}
+                    />
                   )}
                   {selectedLabel}
                 </Badge>
@@ -320,7 +328,9 @@ function PriorityQuickFilter({
             key={option.value}
             onClick={() => onChange(option.value)}
             className={`w-full text-left px-3 py-1.5 text-sm rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground flex items-center gap-2 ${
-              value === option.value ? "bg-accent text-accent-foreground font-medium" : ""
+              value === option.value
+                ? "bg-accent text-accent-foreground font-medium"
+                : ""
             }`}
           >
             {option.dot && (
@@ -358,7 +368,7 @@ export function UniversalTable({
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const franchiseId = useAppSelector(
-    (s) => s.auth.franchise_id ?? s.auth.user?.franchise_id
+    (s) => s.auth.franchise_id ?? s.auth.user?.franchise_id,
   );
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
@@ -372,7 +382,9 @@ export function UniversalTable({
     normalizedUserType === "super-admin" ||
     normalizedUserType === "sales-executive" ||
     normalizedUserType === "head-site-supervisor";
-  const normalizedType = String(type || "").trim().toLowerCase();
+  const normalizedType = String(type || "")
+    .trim()
+    .toLowerCase();
   const canSeeMyOverallTabs = normalizedUserType === "sales-executive";
   const hideOverallToggle =
     !canSeeMyOverallTabs ||
@@ -382,7 +394,6 @@ export function UniversalTable({
 
   const [viewType, setViewType] = useState<"my" | "overall">(defaultViewType);
   const effectiveViewType = isAdmin ? "overall" : viewType;
-  
 
   // ✅ SEPARATE PAGINATION FOR BOTH VIEWS
   const [myPagination, setMyPagination] = useState({
@@ -401,15 +412,15 @@ export function UniversalTable({
 
   // ✅ SEPARATE SORTING FOR BOTH VIEWS
   const [mySorting, setMySorting] = useState<SortingState>([
-    ...((STATUS_LOG_SORTED_STAGE_TYPES.has(normalizedType) ||
-      ["type 9", "type 10"].includes(normalizedType))
+    ...(STATUS_LOG_SORTED_STAGE_TYPES.has(normalizedType) ||
+    ["type 9", "type 10"].includes(normalizedType)
       ? []
       : [{ id: "createdAt", desc: true }]),
   ]);
 
   const [overallSorting, setOverallSorting] = useState<SortingState>([
-    ...((STATUS_LOG_SORTED_STAGE_TYPES.has(normalizedType) ||
-      ["type 9", "type 10"].includes(normalizedType))
+    ...(STATUS_LOG_SORTED_STAGE_TYPES.has(normalizedType) ||
+    ["type 9", "type 10"].includes(normalizedType)
       ? []
       : [{ id: "createdAt", desc: true }]),
   ]);
@@ -422,21 +433,27 @@ export function UniversalTable({
     useState<ColumnFiltersState>([]);
 
   const resolvedInitialProductionStatusFilter = useMemo(() => {
-    const requestedValue = String(initialProductionStatusFilter ?? "all").trim();
+    const requestedValue = String(
+      initialProductionStatusFilter ?? "all",
+    ).trim();
     const matchedOption = PRODUCTION_STATUS_OPTIONS.find(
       (option) =>
         option.value.trim().toLowerCase() === requestedValue.toLowerCase(),
     );
 
-    if (normalizedUserType === "pre-prod" && requestedValue.toLowerCase() === "all") {
+    if (
+      normalizedUserType === "pre-prod" &&
+      requestedValue.toLowerCase() === "all"
+    ) {
       return "Pending";
     }
 
     return matchedOption?.value ?? "all";
   }, [initialProductionStatusFilter, normalizedUserType]);
 
-  const [productionStatusFilter, setProductionStatusFilter] =
-    useState<string>(resolvedInitialProductionStatusFilter);
+  const [productionStatusFilter, setProductionStatusFilter] = useState<string>(
+    resolvedInitialProductionStatusFilter,
+  );
   const [servicingMonthFilter, setServicingMonthFilter] = useState<
     { month: number; year: number } | undefined
   >(undefined);
@@ -456,8 +473,7 @@ export function UniversalTable({
     effectiveViewType === "my" ? myPagination : overallPagination;
   const activeGlobalFilter =
     effectiveViewType === "my" ? myGlobalFilter : overallGlobalFilter;
-  const activeSorting =
-    effectiveViewType === "my" ? mySorting : overallSorting;
+  const activeSorting = effectiveViewType === "my" ? mySorting : overallSorting;
   const activeColumnFilters =
     effectiveViewType === "my" ? myColumnFilters : overallColumnFilters;
 
@@ -495,14 +511,16 @@ export function UniversalTable({
   const myPostPayload: UniversalStagePostPayload = useMemo(() => {
     const sortOrder: "asc" | "desc" = mySorting[0]?.desc ? "desc" : "asc";
     const mappedFilters = mapTableFiltersToPayload(myColumnFilters);
-    const normalizedType = String(type || "").trim().toLowerCase();
+    const normalizedType = String(type || "")
+      .trim()
+      .toLowerCase();
     const enforceAssignedToForTechCheckSales =
       normalizedType === "type 8" &&
       userType?.toLowerCase() === "sales-executive";
     const assignTo =
       enforceAssignedToForTechCheckSales && userId
         ? [userId]
-        : mappedFilters.assign_to ?? [];
+        : (mappedFilters.assign_to ?? []);
     const assignToFilter = assignTo.length > 0 ? assignTo : [];
 
     return {
@@ -523,7 +541,8 @@ export function UniversalTable({
       status: mappedFilters.status,
       assign_to: assignToFilter,
       priority:
-        Array.isArray(mappedFilters.priority) && mappedFilters.priority.length > 0
+        Array.isArray(mappedFilters.priority) &&
+        mappedFilters.priority.length > 0
           ? mappedFilters.priority
           : undefined,
       siteType: mappedFilters.siteType,
@@ -566,14 +585,16 @@ export function UniversalTable({
   const overallPostPayload: VendorLeadsByTagPostPayload = useMemo(() => {
     const sortOrder: "asc" | "desc" = overallSorting[0]?.desc ? "desc" : "asc";
     const mappedFilters = mapTableFiltersToPayload(overallColumnFilters);
-    const normalizedType = String(type || "").trim().toLowerCase();
+    const normalizedType = String(type || "")
+      .trim()
+      .toLowerCase();
     const enforceAssignedToForTechCheckSales =
       normalizedType === "type 8" &&
       userType?.toLowerCase() === "sales-executive";
     const assignTo =
       enforceAssignedToForTechCheckSales && userId
         ? [userId]
-        : mappedFilters.assign_to ?? [];
+        : (mappedFilters.assign_to ?? []);
     const assignToFilter = assignTo.length > 0 ? assignTo : undefined;
     const overallUserId = isAdmin ? undefined : userId;
 
@@ -597,7 +618,8 @@ export function UniversalTable({
 
       assign_to: assignToFilter,
       priority:
-        Array.isArray(mappedFilters.priority) && mappedFilters.priority.length > 0
+        Array.isArray(mappedFilters.priority) &&
+        mappedFilters.priority.length > 0
           ? mappedFilters.priority
           : undefined,
       site_address: mappedFilters.site_address,
@@ -672,7 +694,8 @@ export function UniversalTable({
         ? mappedFilters.assign_to
         : [],
       priority:
-        Array.isArray(mappedFilters.priority) && mappedFilters.priority.length > 0
+        Array.isArray(mappedFilters.priority) &&
+        mappedFilters.priority.length > 0
           ? mappedFilters.priority
           : undefined,
       site_address: mappedFilters.site_address,
@@ -829,7 +852,11 @@ export function UniversalTable({
   const getPendingServicingLabel = (lead: any) => {
     const nextPending = getNextPendingService(lead);
 
-    if (!nextPending?.service_no || !nextPending?.service_type || !nextPending?.scheduled_for) {
+    if (
+      !nextPending?.service_no ||
+      !nextPending?.service_type ||
+      !nextPending?.scheduled_for
+    ) {
       return "";
     }
 
@@ -873,12 +900,11 @@ export function UniversalTable({
     furnitureType:
       lead.productMappings?.map((p: any) => p.productType?.type).join(", ") ??
       "",
-    furnitueStructures:
-  options?.furnitureStructureOverride
-    ? [options.furnitureStructureOverride]
-    : lead.leadProductStructureMapping?.map(
-        (p: any) => p.productStructure?.type
-      ) ?? [],
+    furnitueStructures: options?.furnitureStructureOverride
+      ? [options.furnitureStructureOverride]
+      : (lead.leadProductStructureMapping?.map(
+          (p: any) => p.productStructure?.type,
+        ) ?? []),
     productionStatus: options?.productionStatus,
     type8StatusLoggedAt: options?.type8StatusLoggedAt,
     techCheckCompletedAt: options?.techCheckCompletedAt,
@@ -917,99 +943,103 @@ export function UniversalTable({
       const expanded: LeadColumn[] = [];
 
       activeData.forEach((lead) => {
-      const type8StatusLoggedAt = STATUS_LOG_SORTED_STAGE_TYPES.has(normalizedType)
-        ? extractLatestStatusLogCreatedAtForTag(lead, type)
-        : null;
-      const instances = Array.isArray(lead?.productStructureInstances)
-        ? lead.productStructureInstances
-        : [];
-      let instanceRows = instances;
-      if (isType8) {
-        instanceRows = instances.filter(
-          (instance: any) => instance?.is_tech_check_completed !== true,
-        );
-      } else if (isType9) {
-        instanceRows = instances.filter(
-          (instance: any) =>
-            instance?.is_tech_check_completed === true &&
-            instance?.is_order_login_completed !== true,
-        );
-      } else if (isType10) {
-        instanceRows = instances.filter(
-          (instance: any) =>
-            instance?.is_tech_check_completed === true &&
-            instance?.is_order_login_completed === true,
-        );
-      }
+        const type8StatusLoggedAt = STATUS_LOG_SORTED_STAGE_TYPES.has(
+          normalizedType,
+        )
+          ? extractLatestStatusLogCreatedAtForTag(lead, type)
+          : null;
+        const instances = Array.isArray(lead?.productStructureInstances)
+          ? lead.productStructureInstances
+          : [];
+        let instanceRows = instances;
+        if (isType8) {
+          instanceRows = instances.filter(
+            (instance: any) => instance?.is_tech_check_completed !== true,
+          );
+        } else if (isType9) {
+          instanceRows = instances.filter(
+            (instance: any) =>
+              instance?.is_tech_check_completed === true &&
+              instance?.is_order_login_completed !== true,
+          );
+        } else if (isType10) {
+          instanceRows = instances.filter(
+            (instance: any) =>
+              instance?.is_tech_check_completed === true &&
+              instance?.is_order_login_completed === true,
+          );
+        }
 
-      if (instanceRows.length === 0) {
-        return;
-      }
+        if (instanceRows.length === 0) {
+          return;
+        }
 
-      if (instanceRows.length <= 1) {
-        const onlyInstance = instanceRows[0];
-        const structureType =
-          onlyInstance?.productStructure?.type ??
-          lead.leadProductStructureMapping?.[0]?.productStructure?.type ??
-          "";
-        const suffix =
-          instances.length > 1
-            ? `.${onlyInstance?.quantity_index ?? 1}`
-            : "";
-        expanded.push(
-          mapUniversalRow(lead, expanded.length, {
-            rowKey: String(lead.id),
-            instanceId: onlyInstance?.id,
-            leadCodeSuffix: suffix,
-            furnitureStructureOverride: structureType,
-            type8StatusLoggedAt,
-            productionStatus: isType10
-              ? getProductionStatusFromInstance(onlyInstance)
-              : undefined,
-            techCheckCompletedAt: onlyInstance?.tech_check_completed_at ?? null,
-            orderLoginCompletedAt: onlyInstance?.order_login_completed_at ?? null,
-            instanceTitle: onlyInstance?.title ?? undefined,
-            instanceDescription: onlyInstance?.description ?? undefined,
-          }),
-        );
-        return;
-      }
+        if (instanceRows.length <= 1) {
+          const onlyInstance = instanceRows[0];
+          const structureType =
+            onlyInstance?.productStructure?.type ??
+            lead.leadProductStructureMapping?.[0]?.productStructure?.type ??
+            "";
+          const suffix =
+            instances.length > 1 ? `.${onlyInstance?.quantity_index ?? 1}` : "";
+          expanded.push(
+            mapUniversalRow(lead, expanded.length, {
+              rowKey: String(lead.id),
+              instanceId: onlyInstance?.id,
+              leadCodeSuffix: suffix,
+              furnitureStructureOverride: structureType,
+              type8StatusLoggedAt,
+              productionStatus: isType10
+                ? getProductionStatusFromInstance(onlyInstance)
+                : undefined,
+              techCheckCompletedAt:
+                onlyInstance?.tech_check_completed_at ?? null,
+              orderLoginCompletedAt:
+                onlyInstance?.order_login_completed_at ?? null,
+              instanceTitle: onlyInstance?.title ?? undefined,
+              instanceDescription: onlyInstance?.description ?? undefined,
+            }),
+          );
+          return;
+        }
 
-      instanceRows.forEach((instance: any, instanceIndex: number) => {
-     
-        const structureType =
-          instance?.productStructure?.type ??
-          lead.leadProductStructureMapping?.find(
-            (item: any) =>
-              item?.productStructure?.id === instance?.product_structure_id
-          )?.productStructure?.type ??
-          "";
-        const suffixIndex = instance?.quantity_index ?? instanceIndex + 1;
-        expanded.push(
-          mapUniversalRow(lead, expanded.length, {
-            rowKey: `${lead.id}-${instance?.id ?? instanceIndex + 1}`,
-            instanceId: instance?.id,
-            leadCodeSuffix: instances.length > 1 ? `.${suffixIndex}` : "",
-            furnitureStructureOverride: structureType,
-            type8StatusLoggedAt,
-            productionStatus: isType10
-              ? getProductionStatusFromInstance(instance)
-              : undefined,
-            techCheckCompletedAt: instance?.tech_check_completed_at ?? null,
-            orderLoginCompletedAt: instance?.order_login_completed_at ?? null,
-            instanceTitle: instance?.title ?? undefined,
-            instanceDescription: instance?.description ?? undefined,
-          }),
-        );
+        instanceRows.forEach((instance: any, instanceIndex: number) => {
+          const structureType =
+            instance?.productStructure?.type ??
+            lead.leadProductStructureMapping?.find(
+              (item: any) =>
+                item?.productStructure?.id === instance?.product_structure_id,
+            )?.productStructure?.type ??
+            "";
+          const suffixIndex = instance?.quantity_index ?? instanceIndex + 1;
+          expanded.push(
+            mapUniversalRow(lead, expanded.length, {
+              rowKey: `${lead.id}-${instance?.id ?? instanceIndex + 1}`,
+              instanceId: instance?.id,
+              leadCodeSuffix: instances.length > 1 ? `.${suffixIndex}` : "",
+              furnitureStructureOverride: structureType,
+              type8StatusLoggedAt,
+              productionStatus: isType10
+                ? getProductionStatusFromInstance(instance)
+                : undefined,
+              techCheckCompletedAt: instance?.tech_check_completed_at ?? null,
+              orderLoginCompletedAt: instance?.order_login_completed_at ?? null,
+              instanceTitle: instance?.title ?? undefined,
+              instanceDescription: instance?.description ?? undefined,
+            }),
+          );
+        });
       });
-    });
 
       rows = expanded;
     }
 
     if (isType10 && productionStatusFilter !== "all") {
       rows = rows.filter((row) =>
-        matchesProductionStatusFilter(row.productionStatus, productionStatusFilter),
+        matchesProductionStatusFilter(
+          row.productionStatus,
+          productionStatusFilter,
+        ),
       );
     }
 
@@ -1224,7 +1254,9 @@ export function UniversalTable({
         <div className="flex flex-col gap-2 md:flex-row items-start justify-between">
           <div>
             <h1 className="text-lg font-semibold">{title}</h1>
-            <p className="text-sm text-muted-foreground hidden md:block">{description}</p>
+            <p className="text-sm text-muted-foreground hidden md:block">
+              {description}
+            </p>
           </div>
 
           {/* My Leads / Overall Leads Buttons */}
