@@ -96,6 +96,9 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const loggedInUserType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const franchiseId = useAppSelector(
     (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id
   );
@@ -106,6 +109,14 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const queryClient = useQueryClient();
   const isAllowedToAssignSR = canAssignSR(userType);
   const normalizedUserType = (loggedInUserType ?? userType ?? "").toLowerCase();
+  const canAssignSiteReadinessForCustomUser =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.ready_to_dispatch.assign_site_readiness_task.action",
+        )
+      : true;
+  const canShowSiteReadinessTaskType =
+    isAllowedToAssignSR && canAssignSiteReadinessForCustomUser;
   const dueDateMinDate = React.useMemo(() => {
     const minDate = new Date();
     minDate.setHours(0, 0, 0, 0);
@@ -154,7 +165,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       assign_lead_to: undefined,
-      task_type: isAllowedToAssignSR ? "Site Readiness" : "Follow Up",
+      task_type: canShowSiteReadinessTaskType ? "Site Readiness" : "Follow Up",
       due_date: "",
       remark: "N/A",
     },
@@ -207,14 +218,14 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
 
   // ✅ Auto-select "Follow Up" if Site Readiness is disabled
   React.useEffect(() => {
-    if (isLoadingCurrentSitePhotosCount || !isAllowedToAssignSR) return;
+    if (isLoadingCurrentSitePhotosCount || !canShowSiteReadinessTaskType) return;
 
     form.setValue(
       "task_type",
       !isSiteReadinessSelectionDisabled ? "Site Readiness" : "Follow Up"
     );
   }, [
-    isAllowedToAssignSR,
+    canShowSiteReadinessTaskType,
     isLoadingCurrentSitePhotosCount,
     isSiteReadinessSelectionDisabled,
     form,
@@ -338,12 +349,12 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       open={open}
       onOpenChange={onOpenChange}
       title={
-        form.watch("task_type") === "Follow Up" || !isAllowedToAssignSR
+        form.watch("task_type") === "Follow Up" || !canShowSiteReadinessTaskType
           ? "Assign Task for Follow Up"
           : "Assign Task for Site Readiness"
       }
       description={
-        form.watch("task_type") === "Follow Up" || !isAllowedToAssignSR
+        form.watch("task_type") === "Follow Up" || !canShowSiteReadinessTaskType
           ? "Use this form to assign a follow up task."
           : "Use this form to assign a task to a Site Supervisor for Site Readiness."
       }
@@ -366,7 +377,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {isAllowedToAssignSR ? (
+                      {canShowSiteReadinessTaskType ? (
                         <>
                           {/* 🔹 If API says site photos missing → disable + tooltip */}
                           {!isSiteReadinessSelectionDisabled ? (

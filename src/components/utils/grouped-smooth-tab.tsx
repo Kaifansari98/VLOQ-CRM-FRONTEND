@@ -327,6 +327,12 @@ export default function GroupedSmoothTab({
                               : canViewAndWorkProductionDetails(
                                   effectiveUserType ?? "",
                                 );
+                          const canViewReadyToDispatch =
+                            userType === "custom"
+                              ? customPrivilegeCodes.includes(
+                                  "production.production.ready_to_dispatch.enable_disable",
+                                )
+                              : true;
                           const canViewTechCheckForCustomUser =
                             userType === "custom"
                               ? customPrivilegeCodes.includes(
@@ -339,13 +345,17 @@ export default function GroupedSmoothTab({
                             (item.id === "techcheck" &&
                               !canViewTechCheckForCustomUser) ||
                             (item.id === "orderLogin" && !canViewOrderLogin) ||
-                            (item.id === "production" && !canViewProduction);
+                            (item.id === "production" && !canViewProduction) ||
+                            (item.id === "readyToDispatch" &&
+                              !canViewReadyToDispatch);
 
                           const tooltipText = isDisabled
                             ? item.id === "techcheck"
                               ? "You don’t have permission to access Tech Check"
                               : item.id === "orderLogin"
                               ? "You don’t have permission to access Order Login"
+                              : item.id === "readyToDispatch"
+                                ? "You don’t have permission to access Ready To Dispatch"
                               : "You don’t have permission to access Production Stage"
                             : null;
 

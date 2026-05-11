@@ -428,6 +428,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           ? customPrivilegeCodes.some((code) =>
                               code.startsWith("production.production."),
                             )
+                        : subItem.title === "RTD Sites"
+                          ? customPrivilegeCodes.includes(
+                              "production.production.ready_to_dispatch.enable_disable",
+                            )
                         : true,
                     ),
                   }

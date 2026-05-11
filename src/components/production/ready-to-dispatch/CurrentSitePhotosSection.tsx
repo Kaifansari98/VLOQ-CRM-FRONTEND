@@ -40,6 +40,9 @@ export default function CurrentSitePhotosSection({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
@@ -67,7 +70,24 @@ export default function CurrentSitePhotosSection({
     (userType === "sales-executive" &&
       leadStatus === "ready-to-dispatch-stage");
 
-  const canUploadDocuments = canUploadReadyToDispatchDocuments(userType);
+  const canViewDocuments =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.ready_to_dispatch.current_site_photos.view",
+        )
+      : true;
+  const canUploadDocuments =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.ready_to_dispatch.current_site_photos.upload",
+        )
+      : canUploadReadyToDispatchDocuments(userType);
+  const canDeleteDocuments =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.ready_to_dispatch.current_site_photos.delete",
+        )
+      : canDelete;
 
   const hasFiles = Array.isArray(sitePhotos) && sitePhotos.length > 0;
 
@@ -128,6 +148,32 @@ export default function CurrentSitePhotosSection({
 
     setConfirmDelete(null);
   };
+
+  if (!canViewDocuments) {
+    return (
+      <div className="border h-full rounded-xl bg-background">
+        <div className="flex flex-col space-y-2 px-6 py-4 border-b bg-muted/30 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-0">
+            <div className="flex items-center gap-2">
+              <FolderOpen className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold tracking-tight">
+                Current Site Photos
+              </h2>
+            </div>
+            <p className="text-xs text-muted-foreground ml-7">
+              Upload and manage photos for Ready-To-Dispatch stage.
+            </p>
+          </div>
+        </div>
+        <div className="p-10 border border-dashed rounded-xl m-6 flex flex-col items-center justify-center text-center bg-muted/40">
+          <FolderOpen className="w-10 h-10 text-muted-foreground mb-3" />
+          <p className="text-sm font-medium text-muted-foreground">
+            You don’t have permission to view Current Site Photos.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="border h-full rounded-xl bg-background">
@@ -225,7 +271,7 @@ export default function CurrentSitePhotosSection({
                   created_at: doc.created_at,
                 }}
                 index={index}
-                canDelete={canDelete}
+                canDelete={canDeleteDocuments}
                 onDelete={(id) => setConfirmDelete(Number(id))}
               />
             ))}
@@ -239,7 +285,7 @@ export default function CurrentSitePhotosSection({
                   signedUrl: doc.signed_url,
                   created_at: doc.created_at,
                 }}
-                canDelete={canDelete}
+                canDelete={canDeleteDocuments}
                 onDelete={(id) => setConfirmDelete(id)}
               />
             ))}
