@@ -84,7 +84,6 @@ const PRIORITY_FILTER_OPTIONS = [
 ];
 
 const STATUS_LOG_SORTED_STAGE_TYPES = new Set([
-  "type 1",
   "type 2",
   "type 3",
   "type 4",
