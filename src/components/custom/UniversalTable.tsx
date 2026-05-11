@@ -83,6 +83,24 @@ const PRIORITY_FILTER_OPTIONS = [
   { value: "Low", label: "Low", dot: "bg-yellow-500" },
 ];
 
+const STATUS_LOG_SORTED_STAGE_TYPES = new Set([
+  "type 1",
+  "type 2",
+  "type 3",
+  "type 4",
+  "type 5",
+  "type 6",
+  "type 7",
+  "type 8",
+  "type 11",
+  "type 12",
+  "type 13",
+  "type 14",
+  "type 15",
+  "type 16",
+  "type 17",
+]);
+
 function toTitleCase(value: string) {
   return value
     .trim()
@@ -101,6 +119,58 @@ function getProductionStatusFromInstance(instance: any) {
 }
 
 function compareOrderLoginCompletedAtDesc(
+  a?: string | null,
+  b?: string | null,
+) {
+  const aTime = a ? new Date(a).getTime() : Number.NEGATIVE_INFINITY;
+  const bTime = b ? new Date(b).getTime() : Number.NEGATIVE_INFINITY;
+  return bTime - aTime;
+}
+
+function compareTechCheckCompletedAtDesc(
+  a?: string | null,
+  b?: string | null,
+) {
+  const aTime = a ? new Date(a).getTime() : Number.NEGATIVE_INFINITY;
+  const bTime = b ? new Date(b).getTime() : Number.NEGATIVE_INFINITY;
+  return bTime - aTime;
+}
+
+function extractLatestStatusLogCreatedAtForTag(lead: any, tag: string) {
+  const statusLogs = Array.isArray(lead?.leadStatusLogs)
+    ? lead.leadStatusLogs
+    : Array.isArray(lead?.statusLogs)
+      ? lead.statusLogs
+      : Array.isArray(lead?.lead_status_logs)
+        ? lead.lead_status_logs
+        : [];
+
+  const targetTag = tag.trim().toLowerCase();
+
+  const matchingLogs = statusLogs.filter((log: any) => {
+    const logTag =
+      log?.statusTypeMaster?.tag ??
+      log?.statusType?.tag ??
+      log?.status_type_master?.tag ??
+      log?.status_type?.tag ??
+      "";
+
+    return String(logTag).trim().toLowerCase() === targetTag;
+  });
+
+  if (matchingLogs.length === 0) return null;
+
+  return matchingLogs.reduce((latest: string | null, log: any) => {
+    const createdAt = log?.created_at ?? null;
+    if (!createdAt) return latest;
+    if (!latest) return createdAt;
+    return new Date(createdAt).getTime() > new Date(latest).getTime()
+      ? createdAt
+      : latest;
+  }, null);
+}
+
+function compareType8StatusLoggedAtDesc(
   a?: string | null,
   b?: string | null,
 ) {
@@ -332,11 +402,17 @@ export function UniversalTable({
 
   // ✅ SEPARATE SORTING FOR BOTH VIEWS
   const [mySorting, setMySorting] = useState<SortingState>([
-    ...(normalizedType === "type 10" ? [] : [{ id: "createdAt", desc: true }]),
+    ...((STATUS_LOG_SORTED_STAGE_TYPES.has(normalizedType) ||
+      ["type 9", "type 10"].includes(normalizedType))
+      ? []
+      : [{ id: "createdAt", desc: true }]),
   ]);
 
   const [overallSorting, setOverallSorting] = useState<SortingState>([
-    ...(normalizedType === "type 10" ? [] : [{ id: "createdAt", desc: true }]),
+    ...((STATUS_LOG_SORTED_STAGE_TYPES.has(normalizedType) ||
+      ["type 9", "type 10"].includes(normalizedType))
+      ? []
+      : [{ id: "createdAt", desc: true }]),
   ]);
 
   // ✅ SEPARATE COLUMN FILTERS FOR BOTH VIEWS
@@ -776,6 +852,8 @@ export function UniversalTable({
       leadCodeSuffix?: string;
       furnitureStructureOverride?: string;
       productionStatus?: string;
+      type8StatusLoggedAt?: string | null;
+      techCheckCompletedAt?: string | null;
       orderLoginCompletedAt?: string | null;
       instanceTitle?: string;
       instanceDescription?: string;
@@ -803,6 +881,8 @@ export function UniversalTable({
         (p: any) => p.productStructure?.type
       ) ?? [],
     productionStatus: options?.productionStatus,
+    type8StatusLoggedAt: options?.type8StatusLoggedAt,
+    techCheckCompletedAt: options?.techCheckCompletedAt,
     orderLoginCompletedAt: options?.orderLoginCompletedAt,
     instanceTitle: options?.instanceTitle,
     instanceDescription: options?.instanceDescription,
@@ -838,6 +918,9 @@ export function UniversalTable({
       const expanded: LeadColumn[] = [];
 
       activeData.forEach((lead) => {
+      const type8StatusLoggedAt = STATUS_LOG_SORTED_STAGE_TYPES.has(normalizedType)
+        ? extractLatestStatusLogCreatedAtForTag(lead, type)
+        : null;
       const instances = Array.isArray(lead?.productStructureInstances)
         ? lead.productStructureInstances
         : [];
@@ -880,9 +963,11 @@ export function UniversalTable({
             instanceId: onlyInstance?.id,
             leadCodeSuffix: suffix,
             furnitureStructureOverride: structureType,
+            type8StatusLoggedAt,
             productionStatus: isType10
               ? getProductionStatusFromInstance(onlyInstance)
               : undefined,
+            techCheckCompletedAt: onlyInstance?.tech_check_completed_at ?? null,
             orderLoginCompletedAt: onlyInstance?.order_login_completed_at ?? null,
             instanceTitle: onlyInstance?.title ?? undefined,
             instanceDescription: onlyInstance?.description ?? undefined,
@@ -907,9 +992,11 @@ export function UniversalTable({
             instanceId: instance?.id,
             leadCodeSuffix: instances.length > 1 ? `.${suffixIndex}` : "",
             furnitureStructureOverride: structureType,
+            type8StatusLoggedAt,
             productionStatus: isType10
               ? getProductionStatusFromInstance(instance)
               : undefined,
+            techCheckCompletedAt: instance?.tech_check_completed_at ?? null,
             orderLoginCompletedAt: instance?.order_login_completed_at ?? null,
             instanceTitle: instance?.title ?? undefined,
             instanceDescription: instance?.description ?? undefined,
@@ -924,6 +1011,24 @@ export function UniversalTable({
     if (isType10 && productionStatusFilter !== "all") {
       rows = rows.filter((row) =>
         matchesProductionStatusFilter(row.productionStatus, productionStatusFilter),
+      );
+    }
+
+    if (STATUS_LOG_SORTED_STAGE_TYPES.has(normalizedType)) {
+      rows = [...rows].sort((a, b) =>
+        compareType8StatusLoggedAtDesc(
+          a.type8StatusLoggedAt,
+          b.type8StatusLoggedAt,
+        ),
+      );
+    }
+
+    if (isType9) {
+      rows = [...rows].sort((a, b) =>
+        compareTechCheckCompletedAtDesc(
+          a.techCheckCompletedAt,
+          b.techCheckCompletedAt,
+        ),
       );
     }
 

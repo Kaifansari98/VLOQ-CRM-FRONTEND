@@ -23,6 +23,8 @@ export type LeadColumn = {
   instanceTitle?: string;
   instanceDescription?: string;
   productionStatus?: string;
+  type8StatusLoggedAt?: string | null;
+  techCheckCompletedAt?: string | null;
   orderLoginCompletedAt?: string | null;
   designerRemark: string;
   accountId: number; // n
