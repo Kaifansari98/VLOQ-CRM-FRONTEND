@@ -293,7 +293,22 @@ const defaultForm = {
   status: "active" as "active" | "inactive",
 };
 
-const customPrivilegeSections = [
+type CustomPrivilegeSectionChild = {
+  id: string;
+  title: string;
+  childModuleIncludes: readonly string[];
+  codePrefixes?: readonly string[];
+};
+
+type CustomPrivilegeSection = {
+  id: string;
+  title: string;
+  parentModule: string;
+  description: string;
+  children: readonly CustomPrivilegeSectionChild[];
+};
+
+const customPrivilegeSections: readonly CustomPrivilegeSection[] = [
   {
     id: "leads",
     title: "Leads",
@@ -375,6 +390,7 @@ const customPrivilegeSections = [
           "Order Login Details",
           "Move to Production",
         ],
+        codePrefixes: ["production.order_login."],
       },
       {
         id: "production_stage",
@@ -390,6 +406,7 @@ const customPrivilegeSections = [
           "Mark as Completed",
           "Ready to Dispatch",
         ],
+        codePrefixes: ["production.production."],
       },
       {
         id: "ready_to_dispatch",
@@ -548,14 +565,30 @@ export default function UserMastersTable() {
   ]);
 
   const getSectionChildPrivileges = React.useCallback(
-    (parentModuleName: string, childModuleIncludes: readonly string[]) => {
+    (
+      parentModuleName: string,
+      childModuleIncludes: readonly string[],
+      codePrefixes?: readonly string[],
+    ) => {
       const normalizedKeywords = childModuleIncludes.map((value) =>
         value.toLowerCase(),
       );
+      const normalizedCodePrefixes =
+        codePrefixes?.map((value) => value.toLowerCase()) ?? [];
 
       return privilegeMasters.filter((privilege) => {
         const parentModule = privilege.parent_module.toLowerCase();
         const childModule = privilege.child_module.toLowerCase();
+        const privilegeCode = privilege.code.toLowerCase();
+
+        if (
+          parentModule === parentModuleName.toLowerCase() &&
+          normalizedCodePrefixes.length > 0
+        ) {
+          return normalizedCodePrefixes.some((prefix) =>
+            privilegeCode.startsWith(prefix),
+          );
+        }
 
         return (
           parentModule === parentModuleName.toLowerCase() &&
@@ -1102,6 +1135,7 @@ export default function UserMastersTable() {
                             const childPrivileges = getSectionChildPrivileges(
                               section.parentModule,
                               child.childModuleIncludes,
+                              child.codePrefixes,
                             );
 
                             return (
