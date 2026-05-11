@@ -99,6 +99,9 @@ export default function DispatchPlanningLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -176,7 +179,11 @@ export default function DispatchPlanningLeadDetails() {
   const canMoveToDispatch =
     userType?.toLowerCase() === "admin" ||
     userType?.toLowerCase() === "super-admin" ||
-    userType?.toLowerCase() === "sales-executive";
+    userType?.toLowerCase() === "sales-executive" ||
+    (userType?.toLowerCase() === "custom" &&
+      customPrivilegeCodes.includes(
+        "installation.dispatch_planning.move_to_dispatch.enable_disable",
+      ));
 
   console.log("user can move to dispatch :- ", canMoveToDispatch);
   return (
@@ -203,8 +210,8 @@ export default function DispatchPlanningLeadDetails() {
         <div className="flex items-center space-x-2">
           <div className="flex items-center gap-2">
             {/* Move to Dispatch Button */}
-            {canMoveToDispatch &&
-              (isReadyForDispatch ? (
+            {canMoveToDispatch ? (
+              isReadyForDispatch ? (
                 <Button
                   size="sm"
                   variant="default"
@@ -234,7 +241,22 @@ export default function DispatchPlanningLeadDetails() {
                         }`
                   }
                 />
-              ))}
+              )
+            ) : (
+              <CustomeTooltip
+                truncateValue={
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="hidden sm:block"
+                    disabled
+                  >
+                    Move to Dispatch
+                  </Button>
+                }
+                value="You do not have permission to move this lead to Dispatch."
+              />
+            )}
 
             {/* Assign Task Button */}
             <Button
@@ -270,8 +292,8 @@ export default function DispatchPlanningLeadDetails() {
                 Assing Task
               </DropdownMenuItem>
 
-              {canMoveToDispatch &&
-                (isReadyForDispatch ? (
+              {canMoveToDispatch ? (
+                isReadyForDispatch ? (
                   <DropdownMenuItem onClick={() => setOpenMoveConfirm(true)}>
                     <Move size={20} />
                     Move to Dispatch
@@ -292,7 +314,18 @@ export default function DispatchPlanningLeadDetails() {
                           }`
                     }
                   />
-                ))}
+                )
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <DropdownMenuItem disabled>
+                      <Move size={20} />
+                      Move to Dispatch
+                    </DropdownMenuItem>
+                  }
+                  value="You do not have permission to move this lead to Dispatch."
+                />
+              )}
               <DropdownMenuItem
                 onSelect={() => {
                   setActivityType("onHold");

@@ -137,6 +137,9 @@ export default function DispatchPlanningDetails({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth.user?.id) || 0;
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const isAccountLocInEnabled = useAppSelector(
     (state) => state.auth.user?.vendor?.IsAccountLocInEnabled ?? false,
   );
@@ -422,6 +425,18 @@ export default function DispatchPlanningDetails({
     userType,
     leadStatus,
   );
+  const canAccessDispatchPlanningInformation =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.dispatch_planning.dispatch_planning_information.enable_disable",
+        )
+      : canViewAndWork;
+  const canAccessPaymentInformation =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.dispatch_planning.payment_information.enable_disable",
+        )
+      : canViewAndWork;
   const hasPendingDispatchPlanningApproval = dispatchPlanningLockIns.some(
     (lockIn) => !lockIn.is_approved,
   );
@@ -436,7 +451,7 @@ export default function DispatchPlanningDetails({
         ? "Accounts approval for Dispatch Planning is pending"
         : "";
   const canEditDispatchPlanningInfo =
-    canViewAndWork && !isDispatchPlanningInfoLocked;
+    canAccessDispatchPlanningInformation && !isDispatchPlanningInfoLocked;
 
   const pendingPayment = watchPayment("pending_payment");
   const pendingPaymentDetails = watchPayment("pending_payment_details");
@@ -702,7 +717,7 @@ export default function DispatchPlanningDetails({
           </div>
 
           <div className="flex justify-end">
-            {canViewAndWork && (
+            {canAccessDispatchPlanningInformation && (
               <Button
                 onClick={handleSaveInfo}
                 disabled={
@@ -780,7 +795,7 @@ export default function DispatchPlanningDetails({
                     onChange={(val) => field.onChange(val?.toString() || "")}
                     placeholder="Enter amount"
                     disabled={
-                      !canViewAndWork ||
+                      !canAccessPaymentInformation ||
                       !infoSaved ||
                       existingPaymentDoc !== null
                     }
@@ -819,7 +834,7 @@ export default function DispatchPlanningDetails({
                     value={field.value || ""}
                     onChange={field.onChange}
                     disabled={
-                      !canViewAndWork ||
+                      !canAccessPaymentInformation ||
                       !infoSaved ||
                       existingPaymentDoc !== null
                     }
@@ -837,7 +852,7 @@ export default function DispatchPlanningDetails({
 
           {/* Payment Screenshot */}
           <div className="space-y-2">
-            {(existingPaymentDoc || canViewAndWork) && (
+            {(existingPaymentDoc || canAccessPaymentInformation) && (
               <Label>
                 Payment Screenshot
                 {(pendingPayment || pendingPaymentDetails) && (
@@ -858,6 +873,7 @@ export default function DispatchPlanningDetails({
                       created_at: doc.created_at,
                     }}
                     index={index}
+                    canDelete={canAccessPaymentInformation && canDelete}
                     onDelete={(id) => setConfirmDelete(Number(id))}
                   />
                 ))}
@@ -871,13 +887,13 @@ export default function DispatchPlanningDetails({
                       signedUrl: doc.signed_url,
                       created_at: doc.created_at,
                     }}
-                    canDelete={canDelete}
+                    canDelete={canAccessPaymentInformation && canDelete}
                     onDelete={(id) => setConfirmDelete(id)}
                   />
                 ))}
               </div>
             ) : (
-              canViewAndWork && (
+              canAccessPaymentInformation && (
                 <Controller
                   name="payment_proof_file"
                   control={controlPayment}
@@ -885,7 +901,7 @@ export default function DispatchPlanningDetails({
                     <FileUploadField
                       value={field.value || []}
                       onChange={field.onChange}
-                      disabled={!canViewAndWork}
+                      disabled={!canAccessPaymentInformation}
                       accept=".jpg,.jpeg,.png,.pdf"
                       multiple={false}
                     />
@@ -902,7 +918,7 @@ export default function DispatchPlanningDetails({
           </div>
 
           {/* Note */}
-          {canViewAndWork &&
+          {canAccessPaymentInformation &&
             !existingPaymentDoc &&
             (pendingPayment ||
               pendingPaymentDetails ||
@@ -916,11 +932,12 @@ export default function DispatchPlanningDetails({
           {/* Save Button */}
 
           <div className="flex justify-end">
-            {canViewAndWork && !existingPaymentDoc && (
+            {canAccessPaymentInformation && !existingPaymentDoc && (
               <Button
                 onClick={handlePaymentSaveClick}
                 disabled={
                   savePaymentMutation.isPending ||
+                  !canAccessPaymentInformation ||
                   !infoSaved ||
                   existingPaymentDoc !== null
                 }

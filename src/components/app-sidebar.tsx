@@ -435,6 +435,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         : true,
                     ),
                   }
+              : item.title === "Installation"
+                ? {
+                    ...item,
+                    items: item.items?.filter((subItem) =>
+                      subItem.title === "Site Readiness"
+                        ? customPrivilegeCodes.some((code) =>
+                            code.startsWith("installation.site_readiness."),
+                          )
+                        : subItem.title === "Dispatch Planning"
+                          ? customPrivilegeCodes.includes(
+                              "installation.dispatch_planning.dispatch_planning_information.enable_disable",
+                            )
+                          : true,
+                    ),
+                  }
               : item,
           )
         : filteredItems;
