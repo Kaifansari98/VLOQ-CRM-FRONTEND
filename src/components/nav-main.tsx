@@ -2,7 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { LucideIcon } from "lucide-react";
+import { useQueries } from "@tanstack/react-query";
+import { useFranchisesByVendorId } from "@/api/franchise";
 import { useLeadStats } from "@/hooks/useLeadStats";
+import { postVendorUserTasks } from "@/hooks/useTasksQueries";
 import { useAppSelector } from "@/redux/store";
 import { Badge } from "./ui/badge";
 import { usePathname } from "next/navigation";
@@ -129,14 +132,64 @@ export function NavMain({
 }) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type as string | undefined,
+  );
+  const normalizedUserType = userType?.toLowerCase();
   const franchiseId =
     useAppSelector((state) => state.auth.franchise_id) ??
     useAppSelector((state) => state.auth.user?.franchise_id) ??
     undefined;
+  const shouldIgnoreMyTaskFranchise = [
+    "super-admin",
+    "head-site-supervisor",
+    "site-supervisor",
+    "backend",
+    "preprod",
+    "pre-prod",
+    "factory",
+  ].includes(normalizedUserType ?? "");
   const { data: leadStats, isLoading } = useLeadStats(
     vendorId,
     userId,
     franchiseId
+  );
+  const { data: vendorFranchises = [], isLoading: isFranchisesLoading } =
+    useFranchisesByVendorId(vendorId ?? 0, !!vendorId && shouldIgnoreMyTaskFranchise);
+  const myTaskFranchiseIds = shouldIgnoreMyTaskFranchise
+    ? vendorFranchises.map((franchise) => franchise.id)
+    : franchiseId != null
+      ? [franchiseId]
+      : [];
+  const myTaskCountQueries = useQueries({
+    queries: myTaskFranchiseIds.flatMap((targetFranchiseId) =>
+      ["today", "upcoming", "overdue"].map((dueFilter) => ({
+        queryKey: [
+          "sidebarMyTaskCount",
+          vendorId,
+          userId,
+          targetFranchiseId,
+          dueFilter,
+        ],
+        queryFn: () =>
+          postVendorUserTasks(vendorId ?? 0, userId ?? 0, {
+            page: 1,
+            limit: 1,
+            created_at: "desc",
+            due_filter: dueFilter as "today" | "upcoming" | "overdue",
+            franchise_id: targetFranchiseId,
+          }),
+        enabled: !!vendorId && !!userId && !!targetFranchiseId,
+        staleTime: 5 * 60 * 1000,
+        refetchOnWindowFocus: false,
+      })),
+    ),
+  });
+  const isMyTaskCountLoading =
+    isFranchisesLoading || myTaskCountQueries.some((query) => query.isLoading);
+  const myTaskTotalCount = myTaskCountQueries.reduce(
+    (sum, query) => sum + (query.data?.count ?? 0),
+    0,
   );
   const { isMobile, setOpenMobile } = useSidebar();
 
@@ -169,6 +222,13 @@ export function NavMain({
     if (!leadStats?.data || !showCount) return undefined;
     const data = leadStats.data;
     return data[showCount as keyof typeof data];
+  };
+
+  const getSingleItemCount = (item: NavItem) => {
+    if (item.title === "My Task") {
+      return myTaskTotalCount;
+    }
+    return item.customCount ?? getCountForItem(item.showCount);
   };
 
   const getGroupCount = (item: NavItem) => {
@@ -332,9 +392,9 @@ export function NavMain({
                   }
                 }
               >
-                {isLoading || item.customCountLoading
+                {isLoading || item.customCountLoading || (item.title === "My Task" && isMyTaskCountLoading)
                   ? "…"
-                  : item.customCount ?? getCountForItem(item.showCount!)}
+                  : getSingleItemCount(item)}
               </Badge>
             )}
           </Link>

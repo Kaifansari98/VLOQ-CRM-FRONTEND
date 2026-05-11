@@ -19,6 +19,7 @@ import {
   ColumnFiltersState,
   VisibilityState,
 } from "@tanstack/react-table";
+import { useQueries } from "@tanstack/react-query";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,8 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   TaskFilterPayload,
+  postVendorAllTasksFilter,
+  postVendorUserTasks,
   useVendorAllTasksFilter,
   useVendorUserTasksFilter,
 } from "@/hooks/useTasksQueries";
@@ -70,7 +73,7 @@ function FranchiseFilter({
 }: {
   value?: number;
   defaultValue?: number;
-  options: { id: number; label: string }[];
+  options: { id: number; label: string; count?: number; isLoading?: boolean }[];
   onChange: (value: number) => void;
 }) {
   const selectedOption = options.find((option) => option.id === value);
@@ -107,9 +110,12 @@ function FranchiseFilter({
                 />
                 <Badge
                   variant="secondary"
-                  className="font-normal px-1.5 py-0 h-5 text-xs truncate max-w-[140px]"
+                  className="font-normal px-1.5 py-0 h-5 text-xs truncate max-w-[180px] flex items-center gap-1.5"
                 >
-                  {selectedOption.label}
+                  <span className="truncate">{selectedOption.label}</span>
+                  <span className="text-muted-foreground">
+                    {selectedOption.isLoading ? "…" : (selectedOption.count ?? 0)}
+                  </span>
                 </Badge>
               </>
             )}
@@ -121,11 +127,14 @@ function FranchiseFilter({
           <button
             key={option.id}
             onClick={() => onChange(option.id)}
-            className={`w-full text-left px-3 py-1.5 text-sm rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
+            className={`w-full flex items-center justify-between gap-3 px-3 py-1.5 text-sm rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
               value === option.id ? "bg-accent text-accent-foreground font-medium" : ""
             }`}
           >
-            {option.label}
+            <span className="truncate">{option.label}</span>
+            <span className="shrink-0 text-muted-foreground">
+              {option.isLoading ? "…" : (option.count ?? 0)}
+            </span>
           </button>
         ))}
       </PopoverContent>
@@ -335,6 +344,72 @@ const MyTaskTable = () => {
     isLoading: isVendorAllLoading,
     isFetching: isVendorAllFetching,
   } = useVendorAllTasksFilter(vendorId || 0, overallTaskPayload);
+
+  const franchiseCountBasePayload = useMemo<TaskFilterPayload>(() => {
+    const activePayload = viewScope === "overall" ? overallTaskPayload : myTaskPayload;
+    return {
+      ...activePayload,
+      page: 1,
+      limit: 1,
+      due_filter: undefined,
+    };
+  }, [myTaskPayload, overallTaskPayload, viewScope]);
+
+  const franchiseCountQueries = useQueries({
+    queries: franchiseOptions.map((franchise) => ({
+      queryKey: [
+        "taskFranchiseCount",
+        viewScope,
+        vendorId,
+        userId,
+        franchise.id,
+        franchiseCountBasePayload.created_at,
+        franchiseCountBasePayload.global_search,
+        franchiseCountBasePayload.task_type,
+        franchiseCountBasePayload.due_filter,
+        franchiseCountBasePayload.date_range,
+        franchiseCountBasePayload.assignat_range,
+        franchiseCountBasePayload.assign_by,
+        franchiseCountBasePayload.assign_to,
+        franchiseCountBasePayload.site_map_link,
+        franchiseCountBasePayload.site_type,
+        franchiseCountBasePayload.product_type,
+        franchiseCountBasePayload.product_structure,
+      ],
+      queryFn: async () => {
+        const payload = {
+          ...franchiseCountBasePayload,
+          franchise_id: franchise.id,
+        };
+
+        if (viewScope === "overall") {
+          return postVendorAllTasksFilter(vendorId!, payload);
+        }
+
+        return postVendorUserTasks(vendorId!, userId!, payload);
+      },
+      enabled:
+        showFranchiseFilter &&
+        !!vendorId &&
+        (viewScope === "overall" || !!userId),
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+    })),
+  });
+
+  const franchiseFilterOptions = useMemo(
+    () =>
+      franchiseOptions.map((franchise, index) => ({
+        id: franchise.id,
+        label: franchise.label,
+        count:
+          (franchiseCountQueries[index]?.data?.summary?.today ?? 0) +
+          (franchiseCountQueries[index]?.data?.summary?.upcoming ?? 0) +
+          (franchiseCountQueries[index]?.data?.summary?.overdue ?? 0),
+        isLoading: franchiseCountQueries[index]?.isLoading,
+      })),
+    [franchiseCountQueries, franchiseOptions],
+  );
 
   console.log("vendorUserData:", vendorUserData);
   console.log("vendorAllData:", vendorAllData);
@@ -758,10 +833,7 @@ const MyTaskTable = () => {
                 <FranchiseFilter
                   value={selectedFranchiseId}
                   defaultValue={defaultFranchiseId}
-                  options={franchiseOptions.map(({ id, label }) => ({
-                    id,
-                    label,
-                  }))}
+                  options={franchiseFilterOptions}
                   onChange={setSelectedFranchiseId}
                 />
               )}
@@ -818,10 +890,7 @@ const MyTaskTable = () => {
                 <FranchiseFilter
                   value={selectedFranchiseId}
                   defaultValue={defaultFranchiseId}
-                  options={franchiseOptions.map(({ id, label }) => ({
-                    id,
-                    label,
-                  }))}
+                  options={franchiseFilterOptions}
                   onChange={setSelectedFranchiseId}
                 />
               )}

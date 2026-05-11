@@ -41,20 +41,21 @@ const ActivityStatusModal: React.FC<Props> = ({
   existingRemark,
   existingRemarkLabel = "Sales executive remark",
 }) => {
+  const defaultLostRemark = statusType === "lost" && existingRemark ? "N/A" : "";
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      remark: statusType === "lost" ? "N/A" : "",
+      remark: defaultLostRemark,
       dueDate: "",
     },
   });
 
   useEffect(() => {
     form.reset({
-      remark: statusType === "lost" ? "N/A" : "",
+      remark: defaultLostRemark,
       dueDate: "",
     });
-  }, [form, open, statusType]);
+  }, [defaultLostRemark, form, open, statusType]);
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
     if (statusType === "onHold" && !values.dueDate) {

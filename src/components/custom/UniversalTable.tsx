@@ -100,6 +100,15 @@ function getProductionStatusFromInstance(instance: any) {
   return "Pending";
 }
 
+function compareOrderLoginCompletedAtDesc(
+  a?: string | null,
+  b?: string | null,
+) {
+  const aTime = a ? new Date(a).getTime() : Number.NEGATIVE_INFINITY;
+  const bTime = b ? new Date(b).getTime() : Number.NEGATIVE_INFINITY;
+  return bTime - aTime;
+}
+
 function matchesProductionStatusFilter(
   status: string | undefined,
   filterValue: string,
@@ -323,11 +332,11 @@ export function UniversalTable({
 
   // ✅ SEPARATE SORTING FOR BOTH VIEWS
   const [mySorting, setMySorting] = useState<SortingState>([
-    { id: "createdAt", desc: true },
+    ...(normalizedType === "type 10" ? [] : [{ id: "createdAt", desc: true }]),
   ]);
 
   const [overallSorting, setOverallSorting] = useState<SortingState>([
-    { id: "createdAt", desc: true },
+    ...(normalizedType === "type 10" ? [] : [{ id: "createdAt", desc: true }]),
   ]);
 
   // ✅ SEPARATE COLUMN FILTERS FOR BOTH VIEWS
@@ -767,6 +776,7 @@ export function UniversalTable({
       leadCodeSuffix?: string;
       furnitureStructureOverride?: string;
       productionStatus?: string;
+      orderLoginCompletedAt?: string | null;
       instanceTitle?: string;
       instanceDescription?: string;
     },
@@ -793,6 +803,7 @@ export function UniversalTable({
         (p: any) => p.productStructure?.type
       ) ?? [],
     productionStatus: options?.productionStatus,
+    orderLoginCompletedAt: options?.orderLoginCompletedAt,
     instanceTitle: options?.instanceTitle,
     instanceDescription: options?.instanceDescription,
     source: lead.source?.type ?? "",
@@ -872,6 +883,7 @@ export function UniversalTable({
             productionStatus: isType10
               ? getProductionStatusFromInstance(onlyInstance)
               : undefined,
+            orderLoginCompletedAt: onlyInstance?.order_login_completed_at ?? null,
             instanceTitle: onlyInstance?.title ?? undefined,
             instanceDescription: onlyInstance?.description ?? undefined,
           }),
@@ -898,6 +910,7 @@ export function UniversalTable({
             productionStatus: isType10
               ? getProductionStatusFromInstance(instance)
               : undefined,
+            orderLoginCompletedAt: instance?.order_login_completed_at ?? null,
             instanceTitle: instance?.title ?? undefined,
             instanceDescription: instance?.description ?? undefined,
           }),
@@ -911,6 +924,15 @@ export function UniversalTable({
     if (isType10 && productionStatusFilter !== "all") {
       rows = rows.filter((row) =>
         matchesProductionStatusFilter(row.productionStatus, productionStatusFilter),
+      );
+    }
+
+    if (isType10) {
+      rows = [...rows].sort((a, b) =>
+        compareOrderLoginCompletedAtDesc(
+          a.orderLoginCompletedAt,
+          b.orderLoginCompletedAt,
+        ),
       );
     }
 

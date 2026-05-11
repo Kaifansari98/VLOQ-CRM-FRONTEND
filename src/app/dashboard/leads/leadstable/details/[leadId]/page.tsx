@@ -124,11 +124,13 @@ export default function LeadDetails() {
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
-  const [activityType, setActivityType] = useState<"onHold" | "lostApproval">(
+  const [activityType, setActivityType] = useState<"onHold" | "lostApproval" | "lost">(
     "onHold",
   );
 
   const normalizedUserType = userType?.trim().toLowerCase();
+  const shouldDirectlyMarkLost =
+    normalizedUserType === "admin" || normalizedUserType === "super-admin";
   const canReassign =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
@@ -337,7 +339,9 @@ export default function LeadDetails() {
                     {canMarkAsLost && (
                       <DropdownMenuItem
                         onSelect={() => {
-                          setActivityType("lostApproval");
+                          setActivityType(
+                            shouldDirectlyMarkLost ? "lost" : "lostApproval",
+                          );
                           setActivityModalOpen(true);
                         }}
                       >
@@ -488,7 +492,12 @@ export default function LeadDetails() {
             });
             return;
           }
-          const status = activityType === "onHold" ? "onHold" : "lostApproval";
+          const status =
+            activityType === "onHold"
+              ? "onHold"
+              : activityType === "lost"
+                ? "lost"
+                : "lostApproval";
           updateActivityStatusMutation.mutate(
             {
               leadId: leadIdNum,
@@ -508,7 +517,9 @@ export default function LeadDetails() {
                   title:
                     status === "onHold"
                       ? "Lead marked as On Hold!"
-                      : "Lead sent for Lost Approval!",
+                      : status === "lost"
+                        ? "Lead marked as Lost!"
+                        : "Lead sent for Lost Approval!",
                   type: "success",
                 });
                 setActivityModalOpen(false);

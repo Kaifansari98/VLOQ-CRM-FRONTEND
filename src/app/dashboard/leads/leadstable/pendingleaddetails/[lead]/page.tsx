@@ -51,6 +51,12 @@ export default function PendingLeadDetails() {
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type.user_type as string | undefined,
+  );
+  const normalizedUserType = userType?.trim().toLowerCase();
+  const shouldDirectlyMarkLost =
+    normalizedUserType === "admin" || normalizedUserType === "super-admin";
 
   const tab = searchParams.get("tab");
 
@@ -323,12 +329,14 @@ export default function PendingLeadDetails() {
       <ActivityStatusModal
         open={openMarkLost}
         onOpenChange={setOpenMarkLost}
-        statusType="lostApproval"
+        statusType={shouldDirectlyMarkLost ? "lost" : "lostApproval"}
         onSubmitRemark={(remark) => {
           if (!vendorId || !userId) {
             toastManager.add({ title: "Missing vendor/user info", type: "error" });
             return;
           }
+
+          const status = shouldDirectlyMarkLost ? "lost" : "lostApproval";
 
           markAsLostMutation.mutate(
             {
@@ -337,19 +345,28 @@ export default function PendingLeadDetails() {
                 vendorId,
                 accountId: Number(accountId),
                 userId,
-                status: "lostApproval",
+                status,
                 remark,
                 createdBy: userId,
               },
             },
             {
               onSuccess: () => {
-                toastManager.add({ title: "Lead marked as Lost Approval!", type: "success" });
+                toastManager.add({
+                  title:
+                    status === "lost"
+                      ? "Lead marked as Lost!"
+                      : "Lead marked as Lost Approval!",
+                  type: "success",
+                });
                 setOpenMarkLost(false);
 
                 // ✅ Refresh related data
                 queryClient.invalidateQueries({ queryKey: ["onHoldLeads"] });
                 queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
+                if (status === "lostApproval") {
+                  queryClient.invalidateQueries({ queryKey: ["lostApprovalLeads"] });
+                }
 
                 // ✅ Redirect back to Pending Leads On Hold tab
                 router.push("/dashboard/leads/leadstable");

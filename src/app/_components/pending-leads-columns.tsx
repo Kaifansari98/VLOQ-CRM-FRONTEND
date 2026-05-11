@@ -10,6 +10,7 @@ import type { ProcessedLead } from "./view-tables-coloumns";
 import {
   siteMapLinkSort,
   tableMultiValueFilter,
+  tableSingleValueMultiSelectFilter,
   tableTextSearchFilter,
 } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -117,6 +118,23 @@ export function getPendingLeadsColumns({}: {
       ),
       meta: {
         label: "Site Type",
+      },
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
+    },
+    {
+      accessorKey: "sales_executive",
+      filterFn: tableSingleValueMultiSelectFilter,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Sales Executive" />
+      ),
+      cell: ({ row }) => {
+        const salesExecutive = row.getValue("sales_executive") as string;
+        return salesExecutive || "—";
+      },
+      meta: {
+        label: "Sales Executive",
       },
       enableSorting: false,
       enableHiding: true,

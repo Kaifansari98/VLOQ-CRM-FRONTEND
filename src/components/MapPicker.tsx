@@ -1,6 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Search, MapPin } from "lucide-react";
@@ -30,7 +35,8 @@ export default function MapPicker({
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
-  const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null);
+  const autocompleteService =
+    useRef<google.maps.places.AutocompleteService | null>(null);
   const placesService = useRef<google.maps.places.PlacesService | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -74,7 +80,7 @@ export default function MapPicker({
 
   const placeMarkerAndGetAddress = (
     position: google.maps.LatLng,
-    fromSearch = false
+    fromSearch = false,
   ) => {
     if (!mapInstance.current) return;
     setError(null);
@@ -103,7 +109,7 @@ export default function MapPicker({
         });
       } else {
         setError(
-          "Unable to get address for this location. Please try selecting a different location."
+          "Unable to get address for this location. Please try selecting a different location.",
         );
         if (markerRef.current) {
           markerRef.current.setMap(null);
@@ -116,9 +122,11 @@ export default function MapPicker({
 
   const initializeServices = () => {
     if (!mapInstance.current) return;
-    
+
     autocompleteService.current = new google.maps.places.AutocompleteService();
-    placesService.current = new google.maps.places.PlacesService(mapInstance.current);
+    placesService.current = new google.maps.places.PlacesService(
+      mapInstance.current,
+    );
   };
 
   const searchPlaces = async (query: string) => {
@@ -129,7 +137,7 @@ export default function MapPicker({
     }
 
     setIsSearching(true);
-    
+
     autocompleteService.current.getPlacePredictions(
       {
         input: query,
@@ -137,7 +145,10 @@ export default function MapPicker({
       },
       (predictions, status) => {
         setIsSearching(false);
-        if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+        if (
+          status === google.maps.places.PlacesServiceStatus.OK &&
+          predictions
+        ) {
           setPredictions(predictions);
           setShowPredictions(true);
           setSelectedIndex(-1);
@@ -145,7 +156,7 @@ export default function MapPicker({
           setPredictions([]);
           setShowPredictions(false);
         }
-      }
+      },
     );
   };
 
@@ -155,16 +166,19 @@ export default function MapPicker({
     placesService.current.getDetails(
       {
         placeId: placeId,
-        fields: ['geometry', 'formatted_address', 'name']
+        fields: ["geometry", "formatted_address", "name"],
       },
       (place, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && place?.geometry?.location) {
+        if (
+          status === google.maps.places.PlacesServiceStatus.OK &&
+          place?.geometry?.location
+        ) {
           setSearchQuery(description);
           setShowPredictions(false);
           setPredictions([]);
           placeMarkerAndGetAddress(place.geometry.location, true);
         }
-      }
+      },
     );
   };
 
@@ -206,13 +220,11 @@ export default function MapPicker({
         (e: google.maps.MapMouseEvent) => {
           if (!e.latLng || !mapInstance.current) return;
           placeMarkerAndGetAddress(e.latLng);
-        }
+        },
       );
       setIsLoading(false);
     } catch (err) {
-      setMapError(
-        err instanceof Error ? err.message : "Failed to load map"
-      );
+      setMapError(err instanceof Error ? err.message : "Failed to load map");
       setIsLoading(false);
     }
   };
@@ -220,7 +232,7 @@ export default function MapPicker({
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
-    
+
     // Debounce search
     const timeoutId = setTimeout(() => {
       searchPlaces(value);
@@ -233,24 +245,24 @@ export default function MapPicker({
     if (!showPredictions || predictions.length === 0) return;
 
     switch (e.key) {
-      case 'ArrowDown':
+      case "ArrowDown":
         e.preventDefault();
-        setSelectedIndex(prev => 
-          prev < predictions.length - 1 ? prev + 1 : prev
+        setSelectedIndex((prev) =>
+          prev < predictions.length - 1 ? prev + 1 : prev,
         );
         break;
-      case 'ArrowUp':
+      case "ArrowUp":
         e.preventDefault();
-        setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
         break;
-      case 'Enter':
+      case "Enter":
         e.preventDefault();
         if (selectedIndex >= 0 && selectedIndex < predictions.length) {
           const selected = predictions[selectedIndex];
           selectPlace(selected.place_id, selected.description);
         }
         break;
-      case 'Escape':
+      case "Escape":
         setShowPredictions(false);
         setSelectedIndex(-1);
         break;
@@ -354,7 +366,7 @@ export default function MapPicker({
                       <div
                         key={prediction.place_id}
                         className={`px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 hover:bg-gray-50 ${
-                          index === selectedIndex ? 'bg-blue-50' : ''
+                          index === selectedIndex ? "bg-blue-50" : ""
                         }`}
                         onMouseDown={(e) => e.preventDefault()} // Prevent blur
                         onClick={() => handlePredictionClick(prediction)}
@@ -429,7 +441,11 @@ export default function MapPicker({
                     <p className="text-red-600 text-sm mt-1">{error}</p>
                   </div>
                   <div className="flex gap-2">
-                    <Button onClick={() => setError(null)} size="sm" variant="outline">
+                    <Button
+                      onClick={() => setError(null)}
+                      size="sm"
+                      variant="outline"
+                    >
                       Try Different Location
                     </Button>
                     <Button onClick={onClose} size="sm">
@@ -448,7 +464,9 @@ export default function MapPicker({
           </div>
           {pendingSelection && (
             <div className="mt-4 flex flex-col gap-2 items-end">
-              <Button size="sm" onClick={handleConfirm}>Confirm Selection</Button>
+              <Button size="sm" onClick={handleConfirm}>
+                Confirm Selection
+              </Button>
             </div>
           )}
         </div>

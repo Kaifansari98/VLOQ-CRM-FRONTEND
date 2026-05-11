@@ -184,9 +184,11 @@ export default function DesigningStageLead() {
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [bookingOpenLead, setBookingOpenLead] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
-  const [activityType, setActivityType] = useState<"onHold" | "lostApproval">(
+  const [activityType, setActivityType] = useState<"onHold" | "lostApproval" | "lost">(
     "onHold",
   );
+  const shouldDirectlyMarkLost =
+    userType?.toLowerCase() === "admin" || userType?.toLowerCase() === "super-admin";
 
   // tabs state
   const [activeTab, setActiveTab] = useState(
@@ -375,7 +377,9 @@ export default function DesigningStageLead() {
                     {canMarkAsLost && (
                       <DropdownMenuItem
                         onSelect={() => {
-                          setActivityType("lostApproval");
+                          setActivityType(
+                            shouldDirectlyMarkLost ? "lost" : "lostApproval",
+                          );
                           setActivityModalOpen(true);
                         }}
                       >
@@ -590,7 +594,9 @@ export default function DesigningStageLead() {
                   title:
                     activityType === "onHold"
                       ? "Lead marked as On Hold!"
-                      : "Lead sent for Lost Approval!",
+                      : activityType === "lost"
+                        ? "Lead marked as Lost!"
+                        : "Lead sent for Lost Approval!",
                   type: "success",
                 });
                 setActivityModalOpen(false);
