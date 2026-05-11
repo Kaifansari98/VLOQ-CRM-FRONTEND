@@ -62,6 +62,9 @@ export default function SiteReadinessDetails({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   const [checklistData, setChecklistData] = useState<ChecklistItem[]>(
     CHECKLIST_ITEMS.map((item) => ({
@@ -248,6 +251,12 @@ export default function SiteReadinessDetails({
   }
 
   const canViewAndWork = canViewAndWorkSiteRedinessStage(userType, leadStatus);
+  const canEditChecklist =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.site_readiness.checklist_of_site_readiness.update_edit",
+        )
+      : canViewAndWork;
 
   return (
     <div className="space-y-4 w-full mx-auto">
@@ -313,7 +322,7 @@ export default function SiteReadinessDetails({
                   >
                     <Button
                       onClick={handleSubmit}
-                      disabled={loading || !canViewAndWork}
+                      disabled={loading || !canEditChecklist}
                       size="sm"
                     >
                       {loading ? (
@@ -331,9 +340,11 @@ export default function SiteReadinessDetails({
                   </div>
                 }
                 value={
-                  !canViewAndWork && userType === "site-supervisor"
+                  !canEditChecklist && userType === "site-supervisor"
                     ? "This lead stage has progressed. Site Supervisors cannot modify this section."
-                    : !canViewAndWork
+                    : !canEditChecklist && userType === "custom"
+                      ? "You do not have permission to update the Site Readiness checklist."
+                      : !canEditChecklist
                       ? "You do not have access to save changes."
                       : undefined
                 }
@@ -388,7 +399,7 @@ export default function SiteReadinessDetails({
                 <div className="flex gap-1.5">
                   <button
                     type="button"
-                    disabled={!canViewAndWork}
+                    disabled={!canEditChecklist}
                     onClick={() => handleChecklistChange(index, "value", true)}
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all duration-150",
@@ -396,7 +407,7 @@ export default function SiteReadinessDetails({
                       item.value === true
                         ? "bg-green-500 border-green-500 text-white shadow-sm"
                         : "bg-background border-border text-muted-foreground hover:border-green-400 hover:text-green-600",
-                      !canViewAndWork && "opacity-60 cursor-not-allowed", // 🔥 added here
+                      !canEditChecklist && "opacity-60 cursor-not-allowed",
                     )}
                   >
                     <Check className="h-3.5 w-3.5" />
@@ -405,7 +416,7 @@ export default function SiteReadinessDetails({
 
                   <button
                     type="button"
-                    disabled={!canViewAndWork}
+                    disabled={!canEditChecklist}
                     onClick={() => handleChecklistChange(index, "value", false)}
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all duration-150",
@@ -413,7 +424,7 @@ export default function SiteReadinessDetails({
                       item.value === false
                         ? "bg-red-500 border-red-500 text-white shadow-sm"
                         : "bg-background border-border text-muted-foreground hover:border-red-400 hover:text-red-600",
-                      !canViewAndWork && "opacity-60 cursor-not-allowed", // 🔥 added here
+                      !canEditChecklist && "opacity-60 cursor-not-allowed",
                     )}
                   >
                     <X className="h-3.5 w-3.5" />
@@ -440,7 +451,7 @@ export default function SiteReadinessDetails({
                     handleChecklistChange(index, "remark", e.target.value)
                   }
                   placeholder="Add any relevant notes or observations..."
-                  disabled={!canViewAndWork}
+                  disabled={!canEditChecklist}
                   className="resize-none text-xs h-16 py-2"
                   rows={2}
                 />

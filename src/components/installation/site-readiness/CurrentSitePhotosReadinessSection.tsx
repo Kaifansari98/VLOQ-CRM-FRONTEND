@@ -41,6 +41,9 @@ export default function CurrentSitePhotosReadinessSection({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const queryClient = useQueryClient();
 
   // 🔹 Fetch existing site photos
@@ -133,6 +136,18 @@ export default function CurrentSitePhotosReadinessSection({
     (userType === "site-supervisor" && leadStatus === "site-readiness-stage");
 
   const canViewAndWork = canViewAndWorkSiteRedinessStage(userType, leadStatus);
+  const canUploadDocuments =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.site_readiness.current_site_photos.upload",
+        )
+      : canViewAndWork;
+  const canDeleteDocuments =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.site_readiness.current_site_photos.delete",
+        )
+      : canDelete;
 
   // 🧩 --- Handlers ---
   const handleConfirmDelete = () => {
@@ -170,7 +185,7 @@ export default function CurrentSitePhotosReadinessSection({
       </div>
 
       {/* -------------------------------- UPLOAD AREA -------------------------------- */}
-      {canViewAndWork && (
+      {canUploadDocuments && (
         <div className="p-6 border-b space-y-4">
           <FileUploadField
             value={selectedFiles}
@@ -237,7 +252,7 @@ export default function CurrentSitePhotosReadinessSection({
                   created_at: doc.created_at,
                 }}
                 index={index}
-                canDelete={canDelete}
+                canDelete={canDeleteDocuments}
                 onDelete={(id) => setConfirmDelete(Number(id))}
               />
             ))}
@@ -251,7 +266,7 @@ export default function CurrentSitePhotosReadinessSection({
                   signedUrl: doc.signed_url,
                   created_at: doc.created_at,
                 }}
-                canDelete={canDelete}
+                canDelete={canDeleteDocuments}
                 onDelete={(id) => setConfirmDelete(id)}
               />
             ))}

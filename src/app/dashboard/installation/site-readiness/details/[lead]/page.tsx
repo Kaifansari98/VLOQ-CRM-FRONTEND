@@ -100,6 +100,9 @@ export default function ReadyToDispatchLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const effectiveUserType = userType;
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
@@ -141,6 +144,12 @@ export default function ReadyToDispatchLeadDetails() {
   const [openMoveConfirm, setOpenMoveConfirm] = useState(false);
 
   const isCompleted = readinessStatus?.is_site_readiness_completed ?? false;
+  const canMoveToDispatchPlanning =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.site_readiness.move_to_dispatch_planning.enable_disable",
+        )
+      : true;
 
   const canReassign = canReassignLeadButton(effectiveUserType ?? "");
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
@@ -262,7 +271,7 @@ export default function ReadyToDispatchLeadDetails() {
 
         <div className="flex items-center space-x-2">
           {/* ✅ Move to Dispatch Planning Button */}
-          {isCompleted ? (
+          {isCompleted && canMoveToDispatchPlanning ? (
             <Button
               size="sm"
               variant="default"
@@ -285,7 +294,11 @@ export default function ReadyToDispatchLeadDetails() {
                   Move to Dispatch Planning
                 </Button>
               }
-              value="Complete all 6 Site Readiness items and upload at least one current site photo to enable this action."
+              value={
+                !isCompleted
+                  ? "Complete all 6 Site Readiness items and upload at least one current site photo to enable this action."
+                  : "You do not have permission to move this lead to Dispatch Planning."
+              }
             />
           )}
 
@@ -318,7 +331,7 @@ export default function ReadyToDispatchLeadDetails() {
                 Assign Task
               </DropdownMenuItem>
 
-              {isCompleted ? (
+              {isCompleted && canMoveToDispatchPlanning ? (
                 <DropdownMenuItem
                   className="sm:hidden"
                   onClick={() => setOpenMoveConfirm(true)}
@@ -334,7 +347,11 @@ export default function ReadyToDispatchLeadDetails() {
                       Move to Dispatch Planning
                     </DropdownMenuItem>
                   }
-                  value="Complete all 6 Site Readiness items and upload at least one current site photo to enable this action."
+                  value={
+                    !isCompleted
+                      ? "Complete all 6 Site Readiness items and upload at least one current site photo to enable this action."
+                      : "You do not have permission to move this lead to Dispatch Planning."
+                  }
                 />
               )}
               <DropdownMenuItem

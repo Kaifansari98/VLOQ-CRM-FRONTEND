@@ -6,6 +6,7 @@ import SmoothTab from "@/components/kokonutui/smooth-tab";
 import SiteReadinessDetails from "./SiteReadinessDetails";
 import CurrentSitePhotosReadinessSection from "./CurrentSitePhotosReadinessSection";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
+import { useAppSelector } from "@/redux/store";
 
 interface SiteReadinessTabsProps {
   leadId: number;
@@ -19,6 +20,19 @@ export default function SiteReadinessTabs({
   accountId,
   name,
 }: SiteReadinessTabsProps) {
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
+  const canViewCurrentSitePhotos =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.site_readiness.current_site_photos.view",
+        )
+      : true;
+
   const tabItems = [
     {
       id: "checklist",
@@ -48,6 +62,8 @@ export default function SiteReadinessTabs({
         </div>
       ),
       color: "bg-zinc-900 hover:bg-zinc-900",
+      disabled: !canViewCurrentSitePhotos,
+      disabledReason: "You don’t have permission to access Current Site Photos.",
       cardContent: (
         <div className="relative w-full h-full p-0">
           <CurrentSitePhotosReadinessSection

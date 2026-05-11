@@ -55,6 +55,9 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   // API hooks
   const { data: companyVendors } = useCompanyVendors(vendorId);
@@ -125,6 +128,12 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   const role = userType?.toLowerCase() ?? "";
   const isAdmin = role === "admin" || role === "super-admin";
   const isBackend = role === "backend";
+  const canAccessOrderLoginDetailsForCustomUser =
+    role === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.order_login.order_login_details.enable_disable",
+        )
+      : true;
   const isBackendLockedAfterOrderLogin = isBackend && isOrderLoginMarked;
 
   const normalizedStage = leadStatus.toLowerCase().replace(/_/g, "-");
@@ -154,6 +163,10 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   // Other             → never editable
   // ─────────────────────────────────────────────────────────
   const getItemEditPermissions = (item: any) => {
+    if (role === "custom") {
+      return { canEdit: canAccessOrderLoginDetailsForCustomUser };
+    }
+
     if (isBackendLockedAfterOrderLogin) return { canEdit: false };
 
     if (isOrderLoginStage && (isAdmin || isBackend)) return { canEdit: true };
@@ -253,7 +266,8 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
 
   // Completed button is visible only when role can access AND mandatory fields filled
   const canShowCompletedButton =
-    (isAdmin || isBackend) &&
+    (isAdmin || isBackend || role === "custom") &&
+    canAccessOrderLoginDetailsForCustomUser &&
     hasValidInstanceId &&
     (isOrderLoginStage || isProductionStage) &&
     mandatoryValidation.isValid;

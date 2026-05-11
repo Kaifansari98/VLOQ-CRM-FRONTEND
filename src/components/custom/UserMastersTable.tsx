@@ -421,7 +421,43 @@ const customPrivilegeSections: readonly CustomPrivilegeSection[] = [
     parentModule: "Installation",
     description:
       "Manage access to installation progress, readiness, documents, and handover actions.",
-    children: [],
+    children: [
+      {
+        id: "site_readiness",
+        title: "Site Readiness",
+        childModuleIncludes: [
+          "Site Readiness",
+          "Checklist of site readiness",
+          "Current sites photos",
+          "Move to Dispatch Planning",
+        ],
+        codePrefixes: ["installation.site_readiness."],
+      },
+      {
+        id: "dispatch_planning",
+        title: "Dispatch Planning",
+        childModuleIncludes: ["Dispatch Planning"],
+        codePrefixes: ["installation.dispatch_planning."],
+      },
+      {
+        id: "dispatch_stage",
+        title: "Dispatch",
+        childModuleIncludes: ["Dispatch"],
+        codePrefixes: ["installation.dispatch."],
+      },
+      {
+        id: "under_installation",
+        title: "Under Installation",
+        childModuleIncludes: ["Under Installation"],
+        codePrefixes: ["installation.under_installation."],
+      },
+      {
+        id: "final_handover",
+        title: "Final Handover",
+        childModuleIncludes: ["Final Handover"],
+        codePrefixes: ["installation.final_handover."],
+      },
+    ],
   },
 ] as const;
 
