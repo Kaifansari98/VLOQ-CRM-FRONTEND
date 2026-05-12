@@ -56,7 +56,13 @@ interface FinalHandoverProps {
 }
 
 interface DocumentSection {
-  id: string;
+  id:
+    | "final_site_photos"
+    | "warranty_card"
+    | "handover_booklet"
+    | "final_handover_form"
+    | "qc_documents"
+    | "amc_contract_documents";
   title: string;
   icon: React.ReactNode;
   description: string;
@@ -73,6 +79,9 @@ export default function FinalHandover({
 }: FinalHandoverProps) {
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
   const effectiveUserType = userType === "admin" ? "sales-executive" : userType;
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const queryClient = useQueryClient();
@@ -104,6 +113,100 @@ export default function FinalHandover({
     effectiveUserType ?? "",
     leadStatus,
   );
+  const isCustomUser = userType === "custom";
+  const canViewFinalSitePhotos = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.final_site_photos.view",
+      )
+    : true;
+  const canUploadFinalSitePhotos = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.final_site_photos.upload",
+      )
+    : canWork;
+  const canDeleteFinalSitePhotos = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.final_site_photos.delete",
+      )
+    : canWork;
+  const canViewWarrantyCard = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.warranty_card_photos.view",
+      )
+    : true;
+  const canUploadWarrantyCard = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.warranty_card_photos.upload",
+      )
+    : canWork;
+  const canDeleteWarrantyCard = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.warranty_card_photos.delete",
+      )
+    : canWork;
+  const canViewHandoverBooklet = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.handover_booklet.view",
+      )
+    : true;
+  const canUploadHandoverBooklet = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.handover_booklet.upload",
+      )
+    : canWork;
+  const canDeleteHandoverBooklet = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.handover_booklet.delete",
+      )
+    : canWork;
+  const canViewFinalHandoverForm = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.final_handover_form.view",
+      )
+    : true;
+  const canUploadFinalHandoverForm = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.final_handover_form.upload",
+      )
+    : canWork;
+  const canDeleteFinalHandoverForm = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.final_handover_form.delete",
+      )
+    : canWork;
+  const canViewQcDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.qc_documents.view",
+      )
+    : true;
+  const canUploadQcDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.qc_documents.upload",
+      )
+    : canWork;
+  const canDeleteQcDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.qc_documents.delete",
+      )
+    : canWork;
+  const canToggleAmcOptIn = isCustomUser
+    ? customPrivilegeCodes.includes("installation.final_handover.amc.opt_in")
+    : null;
+  const canViewAmcDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.amc_documents.view",
+      )
+    : true;
+  const canUploadAmcDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.amc_documents.upload",
+      )
+    : canWork;
+  const canDeleteAmcDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.final_handover.amc_documents.delete",
+      )
+    : canWork;
   const [localDocuments, setLocalDocuments] = useState<any[]>([]);
   const [confirmAmcStatus, setConfirmAmcStatus] = useState<boolean | null>(null);
   const isAmcOpted = !!leadData?.is_amc_opted;
@@ -111,7 +214,7 @@ export default function FinalHandover({
     data: servicingDocuments,
     isLoading: isServicingLoading,
   } = useGetServicingDocuments(vendorId, leadId, isAmcOpted);
-  const sections: DocumentSection[] = [
+  const sections = [
     {
       id: "final_site_photos",
       title: "Final Site Photos",
@@ -167,7 +270,7 @@ export default function FinalHandover({
       bgColor: "bg-orange-50 dark:bg-orange-950",
       iconBg: "bg-orange-100 dark:bg-orange-900",
     },
-  ];
+  ] satisfies DocumentSection[];
 
   const finalSections = React.useMemo(
     () =>
@@ -188,6 +291,29 @@ export default function FinalHandover({
           ]
         : sections,
     [isAmcOpted, sections],
+  );
+
+  const visibleSections = React.useMemo(
+    () =>
+      finalSections.filter((section) => {
+        if (section.id === "final_site_photos") return canViewFinalSitePhotos;
+        if (section.id === "warranty_card") return canViewWarrantyCard;
+        if (section.id === "handover_booklet") return canViewHandoverBooklet;
+        if (section.id === "final_handover_form")
+          return canViewFinalHandoverForm;
+        if (section.id === "qc_documents") return canViewQcDocuments;
+        if (section.id === "amc_contract_documents") return canViewAmcDocuments;
+        return true;
+      }),
+    [
+      finalSections,
+      canViewFinalSitePhotos,
+      canViewWarrantyCard,
+      canViewHandoverBooklet,
+      canViewFinalHandoverForm,
+      canViewQcDocuments,
+      canViewAmcDocuments,
+    ],
   );
 
   useEffect(() => {
@@ -285,11 +411,15 @@ export default function FinalHandover({
   const canSetAmcNo = ["admin", "super-admin"].includes(normalizedUserType);
   const canToggleAmc =
     !updateAmcOptedMutation.isPending &&
-    ((!isAmcOpted && canSetAmcYes) || (isAmcOpted && canSetAmcNo));
+    (isCustomUser
+      ? !!canToggleAmcOptIn
+      : ((!isAmcOpted && canSetAmcYes) || (isAmcOpted && canSetAmcNo)));
   const amcDisabledReason = !["site-supervisor", "admin", "super-admin"].includes(
     normalizedUserType,
   )
     ? "Only site-supervisor, admin, and super-admin can update AMC status."
+    : isCustomUser && !canToggleAmcOptIn
+      ? "You do not have permission to update AMC status."
     : isAmcOpted && !canSetAmcNo
       ? "Only admin and super-admin can mark AMC back to No."
       : undefined;
@@ -308,6 +438,44 @@ export default function FinalHandover({
       return !imageExtensions.includes(ext || "");
     });
     return { images, nonImages };
+  };
+
+  const canUploadSection = (sectionId: DocumentSection["id"]) => {
+    switch (sectionId) {
+      case "final_site_photos":
+        return canUploadFinalSitePhotos;
+      case "warranty_card":
+        return canUploadWarrantyCard;
+      case "handover_booklet":
+        return canUploadHandoverBooklet;
+      case "final_handover_form":
+        return canUploadFinalHandoverForm;
+      case "qc_documents":
+        return canUploadQcDocuments;
+      case "amc_contract_documents":
+        return canUploadAmcDocuments;
+      default:
+        return canWork;
+    }
+  };
+
+  const canDeleteSection = (sectionId: DocumentSection["id"]) => {
+    switch (sectionId) {
+      case "final_site_photos":
+        return canDeleteFinalSitePhotos;
+      case "warranty_card":
+        return canDeleteWarrantyCard;
+      case "handover_booklet":
+        return canDeleteHandoverBooklet;
+      case "final_handover_form":
+        return canDeleteFinalHandoverForm;
+      case "qc_documents":
+        return canDeleteQcDocuments;
+      case "amc_contract_documents":
+        return canDeleteAmcDocuments;
+      default:
+        return canWork;
+    }
   };
 
   if (isLoading || (isAmcOpted && isServicingLoading)) {
@@ -388,7 +556,7 @@ export default function FinalHandover({
 
       {/* Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {finalSections.map((section, index) => {
+        {visibleSections.map((section, index) => {
           const docs = getDocumentsForSection(section.id);
 
           return (
@@ -446,7 +614,7 @@ export default function FinalHandover({
                           setSelectedFiles([]); // allow adding new files
                         }}
                       >
-                        Upload
+                        {canUploadSection(section.id) ? "Upload" : "View"}
                       </Button>
                     ) : (
                       <Button
@@ -544,7 +712,7 @@ export default function FinalHandover({
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-4"
               >
-                {canWork && (
+                {canUploadSection(activeSection.id) && (
                   <>
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-semibold">
@@ -564,7 +732,8 @@ export default function FinalHandover({
                     />
                   </>
                 )}
-                {selectedFiles.length > 0 && (
+                {selectedFiles.length > 0 &&
+                  canUploadSection(activeSection.id) && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
@@ -641,7 +810,7 @@ export default function FinalHandover({
                                 created_at: doc.created_at,
                               }}
                               index={index}
-                              canDelete={canWork}
+                              canDelete={canDeleteSection(activeSection.id)}
                               onDelete={(id) => setConfirmDelete(Number(id))}
                             />
                           </motion.div>
@@ -663,7 +832,7 @@ export default function FinalHandover({
                                 signedUrl: doc.signed_url,
                                 created_at: doc.created_at,
                               }}
-                              canDelete={canWork}
+                              canDelete={canDeleteSection(activeSection.id)}
                               onDelete={(id) => setConfirmDelete(id)}
                             />
                           </motion.div>

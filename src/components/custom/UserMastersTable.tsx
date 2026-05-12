@@ -462,7 +462,10 @@ const customPrivilegeSections: readonly CustomPrivilegeSection[] = [
       {
         id: "final_handover",
         title: "Final Handover",
-        childModuleIncludes: ["Final Handover"],
+        childModuleIncludes: [
+          "Final Handover",
+          "Pending Work",
+        ],
         codePrefixes: ["installation.final_handover."],
       },
     ],

@@ -4,6 +4,7 @@ import SmoothTab from "@/components/kokonutui/smooth-tab";
 import { ClipboardCheck, FileText } from "lucide-react";
 import FinalHandover from "./FinalHandoverDetails";
 import PendingWorkTab from "./PendingWorkTab";
+import { useAppSelector } from "@/redux/store";
 
 export default function FinalHandoverWrapper({
   leadId,
@@ -13,6 +14,18 @@ export default function FinalHandoverWrapper({
   accountId: number;
   instanceId?: number | null;
 }) {
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
+
+  const canViewPendingWorkTab =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.final_handover.pending_work.enable_disable_action",
+        )
+      : true;
+
   const TAB_ITEMS = [
     {
       id: "finalHandover",
@@ -46,7 +59,10 @@ export default function FinalHandoverWrapper({
         </div>
       ),
     },
-  ];
+  ].filter((tab) => {
+    if (tab.id === "pendingWork") return canViewPendingWorkTab;
+    return true;
+  });
 
   return (
     <SmoothTab
