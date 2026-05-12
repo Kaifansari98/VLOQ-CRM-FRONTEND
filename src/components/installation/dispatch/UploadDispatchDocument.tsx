@@ -47,6 +47,9 @@ export default function UploadDispatchDocument({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
   const queryClient = useQueryClient();
 
   const { data: docsData, isLoading } = useDispatchDocuments(vendorId, leadId);
@@ -60,7 +63,17 @@ export default function UploadDispatchDocument({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
-  console.log("Dispatch stage disabled: ", disabled);
+  const isCustomUser = userType === "custom";
+  const canViewDispatchDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.dispatch.dispatch_documents.view",
+      )
+    : true;
+  const canUploadDispatchDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.dispatch.dispatch_documents.upload",
+      )
+    : disabled;
 
   /* -----------------------------------------------------------
      🔹 HELPERS (PURE FUNCTIONS)
@@ -149,6 +162,10 @@ export default function UploadDispatchDocument({
     );
   }
 
+  if (!canViewDispatchDocuments) {
+    return null;
+  }
+
   /* -----------------------------------------------------------
      🔹 MAIN COMPONENT
   ------------------------------------------------------------ */
@@ -178,7 +195,9 @@ export default function UploadDispatchDocument({
                 className="text-xs"
                 onClick={() => setOpenModal(true)}
               >
-                {docs.length === 0 && disabled ? "Upload" : "View"}
+                {docs.length === 0 && canUploadDispatchDocuments
+                  ? "Upload"
+                  : "View"}
               </Button>
             </div>
 
@@ -243,7 +262,7 @@ export default function UploadDispatchDocument({
         <div className="space-y-6 p-4">
           {/* Upload Section */}
           <div className="space-y-4">
-            {disabled && (
+            {canUploadDispatchDocuments && (
               <>
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold">Upload New Files</h4>
@@ -313,7 +332,7 @@ export default function UploadDispatchDocument({
                       signedUrl: doc.signedUrl ?? doc.signed_url,
                       created_at: doc.created_at,
                     }}
-                    canDelete={disabled}
+                    canDelete={canUploadDispatchDocuments}
                     onDelete={(id) =>
                       setConfirmDelete(typeof id === "string" ? +id : id)
                     }
@@ -329,7 +348,7 @@ export default function UploadDispatchDocument({
                       signedUrl: doc.signedUrl ?? doc.signed_url,
                       created_at: doc.created_at,
                     }}
-                    canDelete={disabled}
+                    canDelete={canUploadDispatchDocuments}
                     onDelete={(id) =>
                       setConfirmDelete(typeof id === "string" ? +id : id)
                     }

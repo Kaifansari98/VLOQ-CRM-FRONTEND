@@ -442,7 +442,15 @@ const customPrivilegeSections: readonly CustomPrivilegeSection[] = [
       {
         id: "dispatch_stage",
         title: "Dispatch",
-        childModuleIncludes: ["Dispatch"],
+        childModuleIncludes: [
+          "Dispatch",
+          "Dispatch Snapshot",
+          "Dispatch Details",
+          "Dispatch Documents",
+          "Add Pending Material",
+          "Post Dispatch",
+          "Move to Under Installation",
+        ],
         codePrefixes: ["installation.dispatch."],
       },
       {

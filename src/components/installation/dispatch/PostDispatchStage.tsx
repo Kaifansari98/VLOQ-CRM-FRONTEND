@@ -39,6 +39,9 @@ export default function PostDispatchStage({
 }: PostDispatchStageProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
 
   const userId = useAppSelector((s) => s.auth.user?.id);
   const queryClient = useQueryClient();
@@ -119,13 +122,27 @@ export default function PostDispatchStage({
     }
   };
 
-  const canDelete =
-    userType === "admin" ||
-    userType === "super-admin" ||
-    (userType === "factory" && leadStatus === "dispatch-stage");
+  const isCustomUser = userType === "custom";
+  const canViewPostDispatch = isCustomUser
+    ? customPrivilegeCodes.includes("installation.dispatch.post_dispatch.view")
+    : canViewAndWorkDispatchStage(userType, leadStatus);
+  const canUploadPostDispatch = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.dispatch.post_dispatch.upload",
+      )
+    : canUploadDispatchDocument(userType, leadStatus);
+  const canDeletePostDispatch = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.dispatch.post_dispatch.delete",
+      )
+    : userType === "admin" ||
+        userType === "super-admin" ||
+        (userType === "factory" && leadStatus === "dispatch-stage");
 
-  const canViewAndWork = canViewAndWorkDispatchStage(userType, leadStatus);
-  const uploadDispatchDocument = canUploadDispatchDocument(userType, leadStatus);
+  if (!canViewPostDispatch) {
+    return null;
+  }
+
   return (
     <div className="border rounded-lg  bg-background">
       {/* Header */}
@@ -141,7 +158,7 @@ export default function PostDispatchStage({
 
       {/* Upload Section */}
 
-      {uploadDispatchDocument && (
+      {canUploadPostDispatch && (
         <div className="p-6 border-b space-y-4">
           <FileUploadField
             value={selectedFiles}
@@ -211,7 +228,7 @@ export default function PostDispatchStage({
                 }}
                 key={index}
                 index={index}
-                canDelete={canDelete}
+                canDelete={canDeletePostDispatch}
                 onDelete={(id) => setConfirmDelete(Number(id))}
               />
             ))}
@@ -225,7 +242,7 @@ export default function PostDispatchStage({
                   signedUrl: doc.signed_url,
                   created_at: doc.created_at,
                 }}
-                canDelete={canDelete}
+                canDelete={canDeletePostDispatch}
                 onDelete={(id) => setConfirmDelete(id)}
               />
             ))}

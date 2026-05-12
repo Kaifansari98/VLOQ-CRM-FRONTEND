@@ -444,10 +444,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             code.startsWith("installation.site_readiness."),
                           )
                         : subItem.title === "Dispatch Planning"
-                          ? customPrivilegeCodes.includes(
-                              "installation.dispatch_planning.dispatch_planning_information.enable_disable",
+                          ? customPrivilegeCodes.some((code) =>
+                              code.startsWith(
+                                "installation.dispatch_planning.",
+                              ),
                             )
-                          : true,
+                          : subItem.title === "Dispatch"
+                            ? customPrivilegeCodes.some((code) =>
+                                code.startsWith("installation.dispatch."),
+                              )
+                            : subItem.title === "Under Installation"
+                              ? customPrivilegeCodes.some((code) =>
+                                  code.startsWith(
+                                    "installation.under_installation.",
+                                  ),
+                                )
+                              : subItem.title === "Final Handover"
+                                ? customPrivilegeCodes.some((code) =>
+                                    code.startsWith(
+                                      "installation.final_handover.",
+                                    ),
+                                  )
+                                : true,
                     ),
                   }
               : item,

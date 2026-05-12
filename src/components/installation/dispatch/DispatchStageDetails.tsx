@@ -135,6 +135,9 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   const [openTaskModal, setOpenTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
@@ -267,8 +270,32 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     }
   };
 
-  // const canDelete = userType === "admin" || userType === "super-admin";
-  const canViewAndWork = canViewAndWorkDispatchStage(userType, leadStatus);
+  const isCustomUser = userType === "custom";
+  const canEditDispatchSnapshotBoxes = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.dispatch.dispatch_snapshot.view_edit_no_of_boxes",
+      )
+    : canViewAndWorkDispatchStage(userType, leadStatus);
+  const canManageDispatchDetails = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.dispatch.dispatch_details.enable_disable_action",
+      )
+    : canViewAndWorkDispatchStage(userType, leadStatus);
+  const canViewDispatchDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.dispatch.dispatch_documents.view",
+      )
+    : canViewAndWorkDispatchStage(userType, leadStatus);
+  const canUploadDispatchDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.dispatch.dispatch_documents.upload",
+      )
+    : canViewAndWorkDispatchStage(userType, leadStatus);
+  const canManagePendingMaterial = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.dispatch.add_pending_material.enable_disable_action",
+      )
+    : canViewAndWorkDispatchStage(userType, leadStatus);
 
   const leadLevelBoxes = Number(requiredDateData?.no_of_boxes || 0);
   const useLeadLevelBoxes = leadLevelBoxes > 0;
@@ -354,7 +381,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                     No. of Boxes
                   </p>
                 </div>
-                {canViewAndWork && !loadingRequiredDate && (
+                {canEditDispatchSnapshotBoxes && !loadingRequiredDate && (
                   <Button
                     size="icon"
                     variant="ghost"
@@ -517,7 +544,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
           </div>
 
           {/* Save Button – stays in header but triggers form */}
-          {canViewAndWork && (
+          {canManageDispatchDetails && (
             <Button
               type="submit"
               form="dispatch-form"
@@ -564,7 +591,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
                         <div
                           className={
-                            !canViewAndWork
+                            !canManageDispatchDetails
                               ? "opacity-50 pointer-events-none"
                               : ""
                           }
@@ -591,7 +618,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                       <FormItem>
                         <div
                           className={
-                            !canViewAndWork
+                            !canManageDispatchDetails
                               ? "opacity-50 pointer-events-none"
                               : ""
                           }
@@ -617,7 +644,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                         <FormLabel className="text-sm">Driver Name</FormLabel>
                         <div
                           className={
-                            !canViewAndWork
+                            !canManageDispatchDetails
                               ? "opacity-50 pointer-events-none"
                               : ""
                           }
@@ -647,7 +674,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
                         <div
                           className={
-                            !canViewAndWork
+                            !canManageDispatchDetails
                               ? "opacity-50 pointer-events-none"
                               : ""
                           }
@@ -683,7 +710,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                             placeholder="Add any remarks..."
                             rows={3}
                             {...field}
-                            disabled={!canViewAndWork}
+                            disabled={!canManageDispatchDetails}
                             className="text-sm"
                           />
                         </FormControl>
@@ -693,7 +720,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                   />
                 </div>
                 <div className="flex justify-end">
-                  {canViewAndWork && (
+                  {canManageDispatchDetails && (
                     <Button
                       type="submit"
                       form="dispatch-form"
@@ -720,18 +747,20 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         <div className="h-full">
-          <UploadDispatchDocument
-            leadId={leadId}
-            accountId={accountId}
-            disabled={canViewAndWork}
-          />
+          {canViewDispatchDocuments && (
+            <UploadDispatchDocument
+              leadId={leadId}
+              accountId={accountId}
+              disabled={canUploadDispatchDocuments}
+            />
+          )}
         </div>
 
         <div className="h-full">
           <PendingMaterialDetails
             leadId={leadId}
             accountId={accountId}
-            disabled={canViewAndWork}
+            disabled={canManagePendingMaterial}
           />
         </div>
       </div>
@@ -801,7 +830,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                       <Card
                         onClick={() => {
                           if (
-                            !canViewAndWork ||
+                            !canManagePendingMaterial ||
                             task.status === "completed" ||
                             task.status === "cancelled"
                           )
