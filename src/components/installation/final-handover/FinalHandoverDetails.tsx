@@ -273,7 +273,7 @@ export default function FinalHandover({
   ] satisfies DocumentSection[];
 
   const finalSections = React.useMemo(
-    () =>
+    (): DocumentSection[] =>
       isAmcOpted
         ? [
             ...sections,
