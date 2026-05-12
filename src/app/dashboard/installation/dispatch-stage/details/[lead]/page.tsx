@@ -98,6 +98,9 @@ export default function DispatchPlanningLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const effectiveUserType = userType;
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
@@ -118,7 +121,12 @@ export default function DispatchPlanningLeadDetails() {
   const updateStatusMutation = useUpdateActivityStatus();
 
   const { data: readiness } = useCheckReadyForPostDispatch(vendorId, leadIdNum);
-  const canAccessButton = canDoMoveToUnderInstallation(effectiveUserType ?? "");
+  const canAccessButton =
+    effectiveUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.dispatch.move_to_under_installation.enable_disable_action",
+        )
+      : canDoMoveToUnderInstallation(effectiveUserType ?? "");
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
