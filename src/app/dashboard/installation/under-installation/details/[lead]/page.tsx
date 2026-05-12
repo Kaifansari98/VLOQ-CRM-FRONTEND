@@ -105,6 +105,9 @@ export default function UnderInstallationLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const effectiveUserType = userType;
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -148,6 +151,18 @@ export default function UnderInstallationLeadDetails() {
   const canAccessTodoTab = canAccessTodoTaskTabUnderInstallationStage(
     effectiveUserType ?? "",
   );
+  const canStartInstallation =
+    effectiveUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.under_installation.start_installation.action",
+        )
+      : canAccessTodoTab;
+  const canMoveToFinalHandover =
+    effectiveUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.under_installation.move_to_final_handover.enable_disable_action",
+        )
+      : true;
   const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
   const canViewSiteHistory =
     canViewSiteHistoryTab(effectiveUserType ?? "") &&
@@ -232,7 +247,8 @@ export default function UnderInstallationLeadDetails() {
           {/* ───────────────────────────────────────────── */}
           {/*  MOVE TO FINAL HANDOVER BUTTON WITH CONDITIONS */}
           {/* ───────────────────────────────────────────── */}
-          {!underDetails?.actual_installation_start_date ? (
+          {canMoveToFinalHandover &&
+            (!underDetails?.actual_installation_start_date ? (
             // 1️⃣ Installation NOT started → block
             <CustomeTooltip
               truncateValue={
@@ -347,7 +363,7 @@ export default function UnderInstallationLeadDetails() {
             >
               Move to Final Handover
             </Button>
-          )}
+          ))}
 
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           <NotificationBell />
@@ -365,7 +381,8 @@ export default function UnderInstallationLeadDetails() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
-              {!underDetails?.actual_installation_start_date ? (
+              {canMoveToFinalHandover &&
+                (!underDetails?.actual_installation_start_date ? (
                 // 1️⃣ Installation NOT started → block
                 <CustomeTooltip
                   truncateValue={
@@ -443,7 +460,7 @@ export default function UnderInstallationLeadDetails() {
                   <Handshake size={20} />
                   Move to Final Handover
                 </DropdownMenuItem>
-              )}
+              ))}
               <DropdownMenuItem
                 onSelect={() => {
                   setActivityType("onHold");
@@ -544,7 +561,7 @@ export default function UnderInstallationLeadDetails() {
 
           <div className="flex">
             {!underDetails?.actual_installation_start_date ? (
-              canAccessTodoTab ? (
+              canStartInstallation ? (
                 // ✅ User allowed — normal working button
                 <Button size="sm" onClick={() => setOpenStartModal(true)}>
                   Start Installation
@@ -552,7 +569,7 @@ export default function UnderInstallationLeadDetails() {
               ) : (
                 // ❌ No access — show tooltip + disabled button
                 <CustomeTooltip
-                  value="Only site supervisor can access this button"
+                  value="You do not have permission to access this action."
                   truncateValue={
                     <Button
                       size="sm"

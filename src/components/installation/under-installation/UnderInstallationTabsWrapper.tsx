@@ -24,6 +24,10 @@ export default function UnderInstallationTabsWrapper({
   instanceId?: number | null;
 }) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
   const account_id = accountId || 0;
   const searchParams = useSearchParams();
   const taskIdParam = searchParams.get("taskId");
@@ -80,6 +84,25 @@ export default function UnderInstallationTabsWrapper({
       .join(", ");
     return `Complete to unlock: ${list}`;
   }, [readyData, derivedPending]);
+
+  const canViewMiscellaneousTab =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.under_installation.miscellaneous_section.enable_disable_action",
+        )
+      : true;
+  const canViewIssueLogTab =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.under_installation.issue_log.enable_disable_action",
+        )
+      : true;
+  const canViewUsableHandoverTab =
+    userType === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("installation.under_installation.usable_handover."),
+        )
+      : true;
 
   const tabs = [
     {
@@ -146,7 +169,12 @@ export default function UnderInstallationTabsWrapper({
         />
       ),
     },
-  ];
+  ].filter((tab) => {
+    if (tab.id === "misc") return canViewMiscellaneousTab;
+    if (tab.id === "issueLog") return canViewIssueLogTab;
+    if (tab.id === "handover") return canViewUsableHandoverTab;
+    return true;
+  });
 
   const preferredTabId = searchParams.get("tab");
   const resolvedDefaultTabId =

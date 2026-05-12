@@ -43,6 +43,9 @@ export default function UnderInstallationDetails({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
 
   // 🔹 Fetch installation data
   const { data: details } = useUnderInstallationDetails(vendorId, leadId);
@@ -68,12 +71,42 @@ export default function UnderInstallationDetails({
   const installationStarted = !!details?.actual_installation_start_date;
 
   // 🔹 Privileges & Permissions
+  const isCustomUser = userType === "custom";
   const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
+  const canUpdateExpectedCompletionDate = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.under_installation.expected_installation_completion_date.update_edit",
+      )
+    : canWork;
+  const canAssignInstallers = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.under_installation.assign_installers.update",
+      )
+    : canWork;
+  const canManageDayWiseReports = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.under_installation.installation_day_wise_update.add_edit_delete",
+      )
+    : canWork;
+  const canToggleCarcassCompletion = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.under_installation.installation_completion.carcass_completion_date.check_uncheck",
+      )
+    : canWork;
+  const canToggleShutterCompletion = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.under_installation.installation_completion.shutter_completion_date.check_uncheck",
+      )
+    : canWork;
+  const canSaveInstallationDetails =
+    canUpdateExpectedCompletionDate || canAssignInstallers;
   const isSupervisor = userType === "site-supervisor";
   const hasAssignedData = mappedInstallers?.length > 0;
 
-  const isDateLocked = canWork && hasAssignedData && isSupervisor;
-  const isInstallersLocked = canWork && hasAssignedData && isSupervisor;
+  const isDateLocked =
+    canUpdateExpectedCompletionDate && hasAssignedData && isSupervisor;
+  const isInstallersLocked =
+    canAssignInstallers && hasAssignedData && isSupervisor;
   const isInstallationDetailsComplete =
     !!details?.expected_installation_end_date && hasAssignedData;
   const installationDetailsDisabledReason =
@@ -183,7 +216,7 @@ export default function UnderInstallationDetails({
 
   // 🔹 Reusable Date Picker Component
   const renderDatePicker = () => {
-    if (!canWork) {
+    if (!canUpdateExpectedCompletionDate) {
       return (
         <CustomeDatePicker
           value={endDate}
@@ -217,8 +250,8 @@ export default function UnderInstallationDetails({
 
   // 🔹 Reusable Multi-Selector Component
   const renderMultiSelector = () => {
-    const isDisabled = !canWork || isInstallersLocked;
-    const tooltipMessage = !canWork
+    const isDisabled = !canAssignInstallers || isInstallersLocked;
+    const tooltipMessage = !canAssignInstallers
       ? "You do not have permission to modify installers."
       : "Site Supervisor cannot modify installers once assigned.";
 
@@ -262,15 +295,19 @@ export default function UnderInstallationDetails({
     completionDate: string | null,
     type: "carcass" | "shutter",
   ) => {
+    const canToggle =
+      type === "carcass"
+        ? canToggleCarcassCompletion
+        : canToggleShutterCompletion;
     // Check if THIS specific checkbox has data (completion date exists)
     const hasCompletionData = !!completionDate;
 
     // Checkbox is locked only if:
     // 1. User doesn't have permission (!canWork), OR
     // 2. User is supervisor AND this specific checkbox already has completion data
-    const isCheckboxLocked = !canWork || (isSupervisor && hasCompletionData);
+    const isCheckboxLocked = !canToggle || (isSupervisor && hasCompletionData);
 
-    const tooltipMessage = !canWork
+    const tooltipMessage = !canToggle
       ? "You do not have permission to modify completion status."
       : "Site Supervisor cannot modify completion status once it has been marked.";
 
@@ -363,7 +400,7 @@ export default function UnderInstallationDetails({
                 Assign installers & set expected installation completion date.
               </p>
             </div>
-            {canWork && (
+            {canSaveInstallationDetails && (
               <Button onClick={onSave} size="sm">
                 {hasAssignedData ? "Update" : "Save"}
               </Button>
@@ -396,7 +433,7 @@ export default function UnderInstallationDetails({
             vendorId={vendorId}
             leadId={leadId}
             accountId={accountId}
-            accessBtn={canWork}
+            accessBtn={canManageDayWiseReports}
           />,
         )}
 

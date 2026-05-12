@@ -259,10 +259,7 @@ export default function InstallationDayWiseReports({
     );
   };
 
-  const canDelete =
-    userType === "super-admin" ||
-    (userType === "site-supervisor" &&
-      leadStatus === "under-installation-stage");
+  const canDelete = !!accessBtn;
 
   const resetAddReportForm = React.useCallback(() => {
     setSelectedDate(undefined);

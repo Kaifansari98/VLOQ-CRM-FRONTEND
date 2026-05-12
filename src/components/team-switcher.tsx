@@ -123,7 +123,7 @@ export function TeamSwitcher({
                   ) : (
                     <>
                       <Image
-                        src="/logos/furnix-logo-dark.png"
+                        src="/logos/furnix-logo-light.png"
                         alt="Logo"
                         fill
                         className="object-cover dark:hidden"

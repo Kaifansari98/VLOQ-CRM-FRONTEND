@@ -65,6 +65,7 @@ export default function UsableHandover({
 }: UsableHandoverProps) {
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector((s) => s.customPrivileges.codes);
   const queryClient = useQueryClient();
 
   const [pendingWorkDetails, setPendingWorkDetails] = useState("");
@@ -90,9 +91,44 @@ export default function UsableHandover({
   const leadStatus = leadData?.status;
 
   const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
+  const isCustomUser = userType === "custom";
+  const canViewFinalSitePhotos = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.under_installation.usable_handover.final_site_photo.view",
+      )
+    : true;
+  const canViewHandoverDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.under_installation.usable_handover.handover_document.view",
+      )
+    : true;
+  const canUploadFinalSitePhotos = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.under_installation.usable_handover.final_site_photo.upload",
+      )
+    : canWork;
+  const canDeleteFinalSitePhotos = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.under_installation.usable_handover.final_site_photo.delete",
+      )
+    : canWork;
+  const canUploadHandoverDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.under_installation.usable_handover.handover_document.upload",
+      )
+    : canWork;
+  const canDeleteHandoverDocuments = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.under_installation.usable_handover.handover_document.delete",
+      )
+    : canWork;
+  const canAccessPendingWork = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.under_installation.usable_handover.pending_work.action",
+      )
+    : true;
   const canMarkCompleted =
-    userType === "super-admin" ||
-    userType === "site-supervisor";
+    userType === "super-admin" || userType === "site-supervisor";
 
   useEffect(() => {
     if (handoverData?.pending_work_details) {
@@ -119,7 +155,11 @@ export default function UsableHandover({
       color: "text-emerald-600",
       iconBg: "bg-emerald-100 dark:bg-emerald-900",
     },
-  ];
+  ].filter((section) => {
+    if (section.id === "final_site_photos") return canViewFinalSitePhotos;
+    if (section.id === "handover_documents") return canViewHandoverDocuments;
+    return true;
+  });
 
   const getDocumentsForSection = (sectionId: DocumentSection["id"]) => {
     if (!handoverData) return [];
@@ -154,9 +194,22 @@ export default function UsableHandover({
     return { images, nonImages };
   };
 
+  const canUploadSection = (sectionId: DocumentSection["id"]) => {
+    if (sectionId === "final_site_photos") return canUploadFinalSitePhotos;
+    return canUploadHandoverDocuments;
+  };
+
+  const canDeleteSection = (sectionId: DocumentSection["id"]) => {
+    if (sectionId === "final_site_photos") return canDeleteFinalSitePhotos;
+    return canDeleteHandoverDocuments;
+  };
+
   const handleUpload = async () => {
     if (!activeSection || selectedFiles.length === 0) {
-      toastManager.add({ title: "Please select at least one file to upload.", type: "error" });
+      toastManager.add({
+        title: "Please select at least one file to upload.",
+        type: "error",
+      });
       return;
     }
 
@@ -175,9 +228,15 @@ export default function UsableHandover({
       await updateMutation.mutateAsync(formData);
 
       if (activeSection.id === "final_site_photos") {
-        toastManager.add({ title: "Final site photos uploaded successfully!", type: "success" });
+        toastManager.add({
+          title: "Final site photos uploaded successfully!",
+          type: "success",
+        });
       } else {
-        toastManager.add({ title: "Handover documents uploaded successfully!", type: "success" });
+        toastManager.add({
+          title: "Handover documents uploaded successfully!",
+          type: "success",
+        });
       }
 
       setSelectedFiles([]);
@@ -190,7 +249,7 @@ export default function UsableHandover({
         queryKey: ["finalHandoverReady"],
       });
 
-         queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: ["allLeadDocuments"],
       });
     } catch (error) {
@@ -341,7 +400,7 @@ export default function UsableHandover({
                           setSelectedFiles([]);
                         }}
                       >
-                        Upload
+                        {canUploadSection(section.id) ? "Upload" : "View"}
                       </Button>
                     ) : (
                       <Button
@@ -411,7 +470,9 @@ export default function UsableHandover({
       </div>
 
       {/* Pending Work Component */}
-      <PendingWorkDetails leadId={leadId} accountId={accountId} />
+      {canAccessPendingWork && (
+        <PendingWorkDetails leadId={leadId} accountId={accountId} />
+      )}
 
       <BaseModal
         open={!!activeSection}
@@ -444,7 +505,7 @@ export default function UsableHandover({
               animate={{ opacity: 1, y: 0 }}
               className="space-y-4"
             >
-              {canWork && (
+              {canUploadSection(activeSection.id) && (
                 <>
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold">Upload New Files</h4>
@@ -462,7 +523,8 @@ export default function UsableHandover({
                   />
                 </>
               )}
-              {selectedFiles.length > 0 && (
+              {selectedFiles.length > 0 &&
+                canUploadSection(activeSection.id) && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
@@ -538,7 +600,7 @@ export default function UsableHandover({
                             created_at: doc.created_at,
                           }}
                           index={index}
-                          canDelete={canWork}
+                          canDelete={canDeleteSection(activeSection.id)}
                           onDelete={(id) => setConfirmDelete(Number(id))}
                         />
                       </motion.div>
@@ -560,7 +622,7 @@ export default function UsableHandover({
                             signedUrl: doc.signedUrl ?? doc.signed_url,
                             created_at: doc.created_at,
                           }}
-                          canDelete={canWork}
+                          canDelete={canDeleteSection(activeSection.id)}
                           onDelete={(id) => setConfirmDelete(id)}
                         />
                       </motion.div>
