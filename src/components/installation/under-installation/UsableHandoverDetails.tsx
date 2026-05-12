@@ -136,7 +136,7 @@ export default function UsableHandover({
     }
   }, [handoverData]);
 
-  const sections: DocumentSection[] = [
+  const sections = [
     {
       id: "final_site_photos",
       title: "Final Site Photos",
@@ -155,7 +155,9 @@ export default function UsableHandover({
       color: "text-emerald-600",
       iconBg: "bg-emerald-100 dark:bg-emerald-900",
     },
-  ].filter((section) => {
+  ] satisfies DocumentSection[];
+
+  const visibleSections: DocumentSection[] = sections.filter((section) => {
     if (section.id === "final_site_photos") return canViewFinalSitePhotos;
     if (section.id === "handover_documents") return canViewHandoverDocuments;
     return true;
@@ -344,7 +346,7 @@ export default function UsableHandover({
 
       {/* Cards Grid – same pattern as FinalHandover */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {sections.map((section, index) => {
+        {visibleSections.map((section, index) => {
           const docs = getDocumentsForSection(section.id);
 
           return (
