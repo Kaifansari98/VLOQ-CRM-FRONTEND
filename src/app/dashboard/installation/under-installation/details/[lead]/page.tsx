@@ -778,6 +778,8 @@ export default function UnderInstallationLeadDetails() {
 
                       if (canRedirectToFinalHandover) {
                         router.push("/dashboard/installation/final-handover");
+                      } else {
+                        router.push("/dashboard/installation/under-installation");
                       }
                     },
                   },
