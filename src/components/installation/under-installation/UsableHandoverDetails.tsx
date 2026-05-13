@@ -127,8 +127,13 @@ export default function UsableHandover({
         "installation.under_installation.usable_handover.pending_work.action",
       )
     : true;
-  const canMarkCompleted =
-    userType === "super-admin" || userType === "site-supervisor";
+  const canMarkCompleted = isCustomUser
+    ? [
+        "installation.under_installation.usable_handover.final_site_photo.upload",
+        "installation.under_installation.usable_handover.handover_document.upload",
+        "installation.under_installation.move_to_final_handover.enable_disable_action",
+      ].some((code) => customPrivilegeCodes.includes(code))
+    : userType === "super-admin" || userType === "site-supervisor";
 
   useEffect(() => {
     if (handoverData?.pending_work_details) {

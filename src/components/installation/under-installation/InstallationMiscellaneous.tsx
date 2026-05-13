@@ -119,6 +119,7 @@ export default function InstallationMiscellaneous({
 }: InstallationMiscellaneousProps) {
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector((s) => s.customPrivileges.codes);
 
   const { data: miscTypes = [], isLoading: loadingTypes } =
     useMiscTypes(vendorId);
@@ -181,6 +182,12 @@ export default function InstallationMiscellaneous({
     leadStatus,
   );
   const canMarkAsReady = userType === "factory" || userType === "super-admin";
+  const canAddMiscellaneous =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.under_installation.miscellaneous_section.enable_disable_action",
+        )
+      : true;
 
   const isTaskReady = viewModalData?.task?.status === "completed";
 
@@ -480,7 +487,7 @@ export default function InstallationMiscellaneous({
         </div>
 
         <div className="w-full sm:w-auto flex justify-end">
-          {canWork && (
+          {canWork && canAddMiscellaneous && (
             <Button onClick={() => setIsAddModalOpen(true)} size="sm">
               <Plus className="w-4 h-4 mr-2" />
               Add Miscellaneous
