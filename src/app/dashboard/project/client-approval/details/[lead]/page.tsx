@@ -194,7 +194,11 @@ export default function ClientApprovalLeadDetails() {
   const canEdit = canEditLeadButton(userType);
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory =
-    canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
+      : canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
   const canAccessClientApprovalForm =
     userType === "custom"
       ? customPrivilegeCodes.includes(

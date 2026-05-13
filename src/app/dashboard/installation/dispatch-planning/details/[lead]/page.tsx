@@ -175,7 +175,11 @@ export default function DispatchPlanningLeadDetails() {
   const canEdit = canEditLeadButton(userType);
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory =
-    canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
+      : canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
   const canMoveToDispatch =
     userType?.toLowerCase() === "admin" ||
     userType?.toLowerCase() === "super-admin" ||

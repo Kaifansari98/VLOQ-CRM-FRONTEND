@@ -168,7 +168,11 @@ export default function LeadDetails() {
       : canEditLeadForSalesExecutiveButton(userType);
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory =
-    canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
+      : canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {

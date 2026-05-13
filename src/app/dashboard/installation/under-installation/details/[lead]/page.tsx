@@ -171,8 +171,12 @@ export default function UnderInstallationLeadDetails() {
       : true;
   const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
   const canViewSiteHistory =
-    canViewSiteHistoryTab(effectiveUserType ?? "") &&
-    effectiveUserType?.toLowerCase() !== "admin";
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
+      : canViewSiteHistoryTab(effectiveUserType ?? "") &&
+        effectiveUserType?.toLowerCase() !== "admin";
 
   const miscStatusReady = miscStatus?.all_resolved;
   const isUsableHandoverCompleted = Boolean(

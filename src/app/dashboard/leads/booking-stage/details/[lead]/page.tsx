@@ -169,7 +169,11 @@ export default function BookingStageLeadsDetails() {
   const canEdit = canEditLeadForSalesExecutiveButton(userType);
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory =
-    canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
+      : canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
   const canAccessMarkOnHold =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.booking_done.details.mark_on_hold")

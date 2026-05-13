@@ -103,6 +103,9 @@ export default function FinalHandoverLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const effectiveUserType = userType;
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
@@ -124,8 +127,12 @@ export default function FinalHandoverLeadDetails() {
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
   const canViewSiteHistory =
-    canViewSiteHistoryTab(effectiveUserType ?? "") &&
-    effectiveUserType?.toLowerCase() !== "admin";
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
+      : canViewSiteHistoryTab(effectiveUserType ?? "") &&
+        effectiveUserType?.toLowerCase() !== "admin";
   const canAccessTodoTab =
     canAccessTodoTaskTabUnderFinalHandoverStage(effectiveUserType ?? "");
   const normalizedUserType = userType?.toLowerCase() ?? "";

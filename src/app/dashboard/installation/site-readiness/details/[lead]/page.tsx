@@ -156,8 +156,12 @@ export default function ReadyToDispatchLeadDetails() {
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
   const canViewSiteHistory =
-    canViewSiteHistoryTab(effectiveUserType ?? "") &&
-    effectiveUserType?.toLowerCase() !== "admin";
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
+      : canViewSiteHistoryTab(effectiveUserType ?? "") &&
+        effectiveUserType?.toLowerCase() !== "admin";
 
   const handleMoveToDispatch = async () => {
     try {

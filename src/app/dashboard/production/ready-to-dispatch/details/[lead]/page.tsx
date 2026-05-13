@@ -97,6 +97,9 @@ export default function ReadyToDispatchLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -134,7 +137,11 @@ export default function ReadyToDispatchLeadDetails() {
   const canEdit = canEditLeadButton(userType);
   const canViewPayment = canViewPaymentTab(userType);
   const canViewSiteHistory =
-    canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
+      : canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
   const handleExpectedDateChange = async (newDate?: string) => {
     if (!newDate || !vendorId || !userId || !leadIdNum) return;
 
