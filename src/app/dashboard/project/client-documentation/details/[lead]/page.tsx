@@ -194,6 +194,12 @@ export default function ClientDocumentationLeadDetails() {
           "leads.open_leads.details_of_lead.chat.enable_disable",
         )
       : true;
+  const canViewDocuments =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+        )
+      : true;
   const canAccessClientDocumentation =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
@@ -372,10 +378,12 @@ export default function ClientDocumentationLeadDetails() {
               </TabsTrigger>
             )}
 
-            <TabsTrigger value="documents">
-              <FolderOpen size={16} className="mr-1 opacity-60" />
-              Documents
-            </TabsTrigger>
+            {canViewDocuments && (
+              <TabsTrigger value="documents">
+                <FolderOpen size={16} className="mr-1 opacity-60" />
+                Documents
+              </TabsTrigger>
+            )}
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
@@ -407,13 +415,15 @@ export default function ClientDocumentationLeadDetails() {
           </TabsContent>
         )}
 
-        <TabsContent value="documents">
-          <ProjectDocumentsTimeline
-            leadId={leadIdNum}
-            vendorId={vendorId ?? 0}
-            upToStage="clientDoc"
-          />
-        </TabsContent>
+        {canViewDocuments && (
+          <TabsContent value="documents">
+            <ProjectDocumentsTimeline
+              leadId={leadIdNum}
+              vendorId={vendorId ?? 0}
+              upToStage="clientDoc"
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* MODALS */}

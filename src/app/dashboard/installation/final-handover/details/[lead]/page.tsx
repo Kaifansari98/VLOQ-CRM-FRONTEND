@@ -144,6 +144,12 @@ export default function FinalHandoverLeadDetails() {
           "leads.open_leads.details_of_lead.chat.enable_disable",
         )
       : true;
+  const canViewDocuments =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+        )
+      : true;
   const canAccessTodoTab =
     canAccessTodoTaskTabUnderFinalHandoverStage(effectiveUserType ?? "");
   const normalizedUserType = userType?.toLowerCase() ?? "";
@@ -427,10 +433,12 @@ export default function FinalHandoverLeadDetails() {
                       Chats
                     </TabsTrigger>
                   )}
-                  <TabsTrigger value="documents">
-                    <FolderOpen size={16} className="mr-1 opacity-60" />
-                    Documents
-                  </TabsTrigger>
+                  {canViewDocuments && (
+                    <TabsTrigger value="documents">
+                      <FolderOpen size={16} className="mr-1 opacity-60" />
+                      Documents
+                    </TabsTrigger>
+                  )}
                 </TabsList>
               </div>
               <ScrollBar orientation="horizontal" />
@@ -494,13 +502,15 @@ export default function FinalHandoverLeadDetails() {
           </TabsContent>
         )}
 
-        <TabsContent value="documents">
-          <ProjectDocumentsTimeline
-            leadId={leadIdNum}
-            vendorId={vendorId ?? 0}
-            upToStage="finalHandover"
-          />
-        </TabsContent>
+        {canViewDocuments && (
+          <TabsContent value="documents">
+            <ProjectDocumentsTimeline
+              leadId={leadIdNum}
+              vendorId={vendorId ?? 0}
+              upToStage="finalHandover"
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* 🔹 Modals */}

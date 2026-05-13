@@ -189,6 +189,12 @@ export default function DesigningStageLead() {
           "leads.open_leads.details_of_lead.chat.enable_disable",
         )
       : true;
+  const canViewDocuments =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+        )
+      : true;
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
@@ -498,10 +504,12 @@ export default function DesigningStageLead() {
                     Chats
                   </TabsTrigger>
                 )}
-                <TabsTrigger value="documents">
-                  <FolderOpen size={16} className="mr-1 opacity-60" />
-                  Documents
-                </TabsTrigger>
+                {canViewDocuments && (
+                  <TabsTrigger value="documents">
+                    <FolderOpen size={16} className="mr-1 opacity-60" />
+                    Documents
+                  </TabsTrigger>
+                )}
               </TabsList>
 
               <ScrollBar orientation="horizontal" />
@@ -547,13 +555,15 @@ export default function DesigningStageLead() {
             <LeadWiseChatScreen leadId={leadIdNum} />
           </TabsContent>
         )}
-        <TabsContent value="documents">
-          <ProjectDocumentsTimeline
-            leadId={leadIdNum}
-            vendorId={vendorId ?? 0}
-            upToStage="ism"
-          />
-        </TabsContent>
+        {canViewDocuments && (
+          <TabsContent value="documents">
+            <ProjectDocumentsTimeline
+              leadId={leadIdNum}
+              vendorId={vendorId ?? 0}
+              upToStage="ism"
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* ✅ Modals */}

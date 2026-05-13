@@ -379,6 +379,12 @@ export default function ClientApprovalLeadDetails() {
           "leads.open_leads.details_of_lead.chat.enable_disable",
         )
       : true;
+  const canViewDocuments =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+        )
+      : true;
 
   const moveScope = validInstanceId
     ? {
@@ -713,10 +719,12 @@ export default function ClientApprovalLeadDetails() {
                   Chats
                 </TabsTrigger>
               )}
-              <TabsTrigger value="documents">
-                <FolderOpen size={16} className="mr-1 opacity-60" />
-                Documents
-              </TabsTrigger>
+              {canViewDocuments && (
+                <TabsTrigger value="documents">
+                  <FolderOpen size={16} className="mr-1 opacity-60" />
+                  Documents
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* Scrollbar ONLY for tabs */}
@@ -814,13 +822,15 @@ export default function ClientApprovalLeadDetails() {
           </TabsContent>
         )}
 
-        <TabsContent value="documents">
-          <ProjectDocumentsTimeline
-            leadId={leadIdNum}
-            vendorId={vendorId ?? 0}
-            upToStage="techCheck"
-          />
-        </TabsContent>
+        {canViewDocuments && (
+          <TabsContent value="documents">
+            <ProjectDocumentsTimeline
+              leadId={leadIdNum}
+              vendorId={vendorId ?? 0}
+              upToStage="techCheck"
+            />
+          </TabsContent>
+        )}
       </Tabs>
       {/* Modals */}
       <AssignLeadModal

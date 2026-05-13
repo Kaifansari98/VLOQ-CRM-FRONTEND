@@ -158,6 +158,12 @@ export default function DispatchPlanningLeadDetails() {
           "leads.open_leads.details_of_lead.chat.enable_disable",
         )
       : true;
+  const canViewDocuments =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+        )
+      : true;
   const deleteLeadMutation = useDeleteLead();
 
   // 🔥 Auto-open To-Do modal for Sales Executive
@@ -400,10 +406,12 @@ export default function DispatchPlanningLeadDetails() {
                     Chats
                   </TabsTrigger>
                 )}
-                <TabsTrigger value="documents">
-                  <FolderOpen size={16} className="mr-1 opacity-60" />
-                  Documents
-                </TabsTrigger>
+                {canViewDocuments && (
+                  <TabsTrigger value="documents">
+                    <FolderOpen size={16} className="mr-1 opacity-60" />
+                    Documents
+                  </TabsTrigger>
+                )}
               </TabsList>
             </div>
           </div>
@@ -453,13 +461,15 @@ export default function DispatchPlanningLeadDetails() {
             <LeadWiseChatScreen leadId={leadIdNum} />
           </TabsContent>
         )}
-        <TabsContent value="documents">
-          <ProjectDocumentsTimeline
-            leadId={leadIdNum}
-            vendorId={vendorId ?? 0}
-            upToStage="dispatch"
-          />
-        </TabsContent>
+        {canViewDocuments && (
+          <TabsContent value="documents">
+            <ProjectDocumentsTimeline
+              leadId={leadIdNum}
+              vendorId={vendorId ?? 0}
+              upToStage="dispatch"
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Modals */}

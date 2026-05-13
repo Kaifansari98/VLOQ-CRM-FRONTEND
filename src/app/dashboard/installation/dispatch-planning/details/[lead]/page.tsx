@@ -191,6 +191,12 @@ export default function DispatchPlanningLeadDetails() {
           "leads.open_leads.details_of_lead.chat.enable_disable",
         )
       : true;
+  const canViewDocuments =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+        )
+      : true;
   const canMoveToDispatch =
     userType?.toLowerCase() === "admin" ||
     userType?.toLowerCase() === "super-admin" ||
@@ -431,10 +437,12 @@ export default function DispatchPlanningLeadDetails() {
                 Chats
               </TabsTrigger>
             )}
-            <TabsTrigger value="documents">
-              <FolderOpen size={16} className="mr-1 opacity-60" />
-              Documents
-            </TabsTrigger>
+            {canViewDocuments && (
+              <TabsTrigger value="documents">
+                <FolderOpen size={16} className="mr-1 opacity-60" />
+                Documents
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <ScrollBar orientation="horizontal" />
@@ -480,13 +488,15 @@ export default function DispatchPlanningLeadDetails() {
           </TabsContent>
         )}
 
-        <TabsContent value="documents">
-          <ProjectDocumentsTimeline
-            leadId={leadIdNum}
-            vendorId={vendorId ?? 0}
-            upToStage="siteReadiness"
-          />
-        </TabsContent>
+        {canViewDocuments && (
+          <TabsContent value="documents">
+            <ProjectDocumentsTimeline
+              leadId={leadIdNum}
+              vendorId={vendorId ?? 0}
+              upToStage="siteReadiness"
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Modals */}
