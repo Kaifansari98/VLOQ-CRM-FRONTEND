@@ -76,13 +76,14 @@ export default function AssignToPicker({
         key={item.id}
         value={item.label.toLowerCase()}
         disabled={item.disabled}
+        className="min-w-0"
         onSelect={() => {
           if (item.disabled) return;
           setOpen(false);
           onChange?.(value === item.id ? null : item.id);
         }}
       >
-        {item.label}
+        <span className="min-w-0 flex-1 truncate">{item.label}</span>
         {value === item.id && <CheckIcon size={16} className="ml-auto" />}
       </CommandItem>
     );
@@ -102,7 +103,7 @@ export default function AssignToPicker({
   };
 
   return (
-    <div className="relative *:not-first:mt-2 group">
+    <div className="relative w-full min-w-0 *:not-first:mt-2 group">
       <Popover open={open && !disabled} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -112,7 +113,7 @@ export default function AssignToPicker({
             aria-expanded={open}
             disabled={disabled}
             className={cn(
-              "bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
+              "bg-background hover:bg-background border-input w-full min-w-0 justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
               disabled &&
                 "opacity-60 cursor-not-allowed relative after:content-[''] after:absolute after:inset-0 after:border-2 after:border-transparent after:rounded-md"
               // ✅ Adds red border on hover when disabled
@@ -137,7 +138,7 @@ export default function AssignToPicker({
         {!disabled && (
           <PopoverContent
             portalled={false}
-            className="border-input w-full min-w-[var(--radix-popper-anchor-width)] p-0"
+            className="border-input w-[var(--radix-popper-anchor-width)] min-w-0 max-w-[var(--radix-popper-anchor-width)] overflow-hidden p-0"
             align="start"
           >
             <TooltipProvider>
