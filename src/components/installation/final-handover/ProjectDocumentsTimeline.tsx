@@ -40,6 +40,28 @@ interface StageUIConfig {
   icon: React.ElementType;
 }
 
+const DOCUMENT_STAGE_PRIVILEGE_CODES: Record<string, string> = {
+  ism: "leads.open_leads.details_of_lead.documents_section.initial_site_measurement.enable_disable",
+  bookingDone:
+    "leads.open_leads.details_of_lead.documents_section.booking_done_documents.enable_disable",
+  finalMeasurement:
+    "leads.open_leads.details_of_lead.documents_section.final_measurement.enable_disable",
+  clientDoc:
+    "leads.open_leads.details_of_lead.documents_section.client_documentation.enable_disable",
+  clientApproval:
+    "leads.open_leads.details_of_lead.documents_section.client_approval.enable_disable",
+  techCheck:
+    "leads.open_leads.details_of_lead.documents_section.tech_check.enable_disable",
+  production:
+    "leads.open_leads.details_of_lead.documents_section.production.enable_disable",
+  siteReadiness:
+    "leads.open_leads.details_of_lead.documents_section.site_readiness.enable_disable",
+  dispatch:
+    "leads.open_leads.details_of_lead.documents_section.dispatch_stage.enable_disable",
+  underInstallation:
+    "leads.open_leads.details_of_lead.documents_section.under_installation.enable_disable",
+};
+
 const STAGE_UI: StageUIConfig[] = [
   { id: "ism", label: "Initial Site Measurement", icon: Ruler },
   { id: "bookingDone", label: "Booking Done Documents", icon: FileText },
@@ -585,6 +607,9 @@ export default function ProjectDocumentsTimeline({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type as string | undefined,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   const visibleStages = useMemo(() => {
     let ui = STAGE_UI;
@@ -595,13 +620,19 @@ export default function ProjectDocumentsTimeline({
       ui = idx === -1 ? STAGE_UI : STAGE_UI.slice(0, idx + 1);
     }
     return ui.filter((s) => {
+      if (userType?.toLowerCase() === "custom") {
+        const requiredPrivilegeCode = DOCUMENT_STAGE_PRIVILEGE_CODES[s.id];
+        if (requiredPrivilegeCode) {
+          return customPrivilegeCodes.includes(requiredPrivilegeCode);
+        }
+      }
       if (s.id === "orderLogin")
         return userType === "backend" || userType === "super-admin";
       if (s.id === "production")
         return userType === "factory" || userType === "super-admin";
       return true;
     });
-  }, [upToStage, userType]);
+  }, [customPrivilegeCodes, upToStage, userType]);
 
   const stageResultMap = useMemo(() => {
     const map: Record<string, StageDocResult> = {};
