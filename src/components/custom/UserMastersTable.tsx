@@ -698,6 +698,42 @@ export default function UserMastersTable() {
     );
   }, [privilegeMasters]);
 
+  const generalToolsPrivilegeGroups = React.useMemo(() => {
+    const groups = new Map<
+      string,
+      {
+        id: string;
+        title: string;
+        privileges: typeof privilegeMasters;
+      }
+    >();
+
+    privilegeMasters.forEach((privilege) => {
+      if (privilege.parent_module.toLowerCase() !== "lead detail") return;
+
+      const normalizedChildModule = privilege.child_module.trim();
+      if (!normalizedChildModule) return;
+
+      const groupKey = normalizedChildModule.toLowerCase();
+      const existingGroup = groups.get(groupKey);
+
+      if (existingGroup) {
+        existingGroup.privileges.push(privilege);
+        return;
+      }
+
+      groups.set(groupKey, {
+        id: `general-tools-${groupKey.replace(/[^a-z0-9]+/g, "-")}`,
+        title: normalizedChildModule,
+        privileges: [privilege],
+      });
+    });
+
+    return Array.from(groups.values()).sort((left, right) =>
+      left.title.localeCompare(right.title),
+    );
+  }, [privilegeMasters]);
+
   const handleSaveUserPrivileges = () => {
     if (!editingUserId || !vendorId) return;
 
@@ -1358,9 +1394,147 @@ export default function UserMastersTable() {
                           </TabsContent>
 
                           <TabsContent value="general_tools">
-                            <div className="rounded-lg border bg-background px-4 py-3 text-xs text-muted-foreground">
-                              General tool privileges will be added here next.
-                            </div>
+                            {generalToolsPrivilegeGroups.length === 0 ? (
+                              <div className="rounded-lg border bg-background px-4 py-3 text-xs text-muted-foreground">
+                                No general tool privileges found yet.
+                              </div>
+                            ) : (
+                              <>
+                                <div className="mb-3">
+                                  <Input
+                                    value={privilegeSearch}
+                                    onChange={(e) =>
+                                      setPrivilegeSearch(e.target.value)
+                                    }
+                                    placeholder="Search by code or action..."
+                                    className="h-9 bg-background"
+                                    disabled={
+                                      updateUserPrivilegesMutation.isPending
+                                    }
+                                  />
+                                </div>
+
+                                {isLoadingPrivilegeMasters ? (
+                                  <div className="text-xs text-muted-foreground">
+                                    Loading privilege actions...
+                                  </div>
+                                ) : isPrivilegeMastersError ? (
+                                  <div className="text-xs text-destructive">
+                                    Failed to load privilege actions.
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {generalToolsPrivilegeGroups.map((group) => {
+                                      const shouldRenderOpenDirectly =
+                                        generalToolsPrivilegeGroups.length === 1;
+                                      const isLeadSectionOpen =
+                                        shouldRenderOpenDirectly ||
+                                        openLeadPrivilegeSection === group.id;
+
+                                      return (
+                                        <div
+                                          key={group.id}
+                                          className="overflow-hidden rounded-lg border bg-background"
+                                        >
+                                          {shouldRenderOpenDirectly ? (
+                                            <div className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
+                                              <p className="text-sm font-medium text-foreground">
+                                                {group.title}
+                                              </p>
+                                            </div>
+                                          ) : (
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                setOpenLeadPrivilegeSection(
+                                                  (current) =>
+                                                    current === group.id
+                                                      ? null
+                                                      : group.id,
+                                                )
+                                              }
+                                              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40"
+                                            >
+                                              <p className="text-sm font-medium text-foreground">
+                                                {group.title}
+                                              </p>
+                                              <ChevronDown
+                                                className={cn(
+                                                  "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                                                  isLeadSectionOpen &&
+                                                    "rotate-180",
+                                                )}
+                                              />
+                                            </button>
+                                          )}
+
+                                          {isLeadSectionOpen && (
+                                            <div className="border-t bg-muted/20 px-4 py-3">
+                                              <div className="space-y-2">
+                                                {group.privileges.map(
+                                                  (privilege) => {
+                                                    const isChecked =
+                                                      selectedPrivilegeIds.includes(
+                                                        privilege.id,
+                                                      );
+
+                                                    return (
+                                                      <label
+                                                        key={privilege.id}
+                                                        className="flex items-center gap-3 rounded-md border bg-background px-3 py-2"
+                                                      >
+                                                        <Checkbox
+                                                          checked={isChecked}
+                                                          disabled={
+                                                            updateUserPrivilegesMutation.isPending
+                                                          }
+                                                          onCheckedChange={(
+                                                            checked,
+                                                          ) =>
+                                                            setSelectedPrivilegeIds(
+                                                              (current) => {
+                                                                if (checked) {
+                                                                  return current.includes(
+                                                                    privilege.id,
+                                                                  )
+                                                                    ? current
+                                                                    : [
+                                                                        ...current,
+                                                                        privilege.id,
+                                                                      ];
+                                                                }
+
+                                                                return current.filter(
+                                                                  (id) =>
+                                                                    id !==
+                                                                    privilege.id,
+                                                                );
+                                                              },
+                                                            )
+                                                          }
+                                                        />
+                                                        <div className="space-y-0.5">
+                                                          <p className="text-sm font-medium text-foreground">
+                                                            {privilege.action}
+                                                          </p>
+                                                          <p className="text-xs text-muted-foreground">
+                                                            {privilege.code}
+                                                          </p>
+                                                        </div>
+                                                      </label>
+                                                    );
+                                                  },
+                                                )}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </>
+                            )}
                           </TabsContent>
                         </Tabs>
                       ) : section.children.length > 0 ? (
