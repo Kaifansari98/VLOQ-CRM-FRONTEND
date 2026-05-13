@@ -51,6 +51,7 @@ export default function InstallationIssueLog({
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
 
   const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
+  const customPrivilegeCodes = useAppSelector((s) => s.customPrivileges.codes);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [issueTypeOptions, setIssueTypeOptions] = useState<Option[]>([]);
   const [teamOptions, setTeamOptions] = useState<Option[]>([]);
@@ -155,6 +156,12 @@ export default function InstallationIssueLog({
   };
 
   const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
+  const canAddIssueLog =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.under_installation.issue_log.enable_disable_action",
+        )
+      : true;
 
   const getImpactBadge = (impact: string) => {
     const lowerImpact = impact.toLowerCase();
@@ -188,7 +195,7 @@ export default function InstallationIssueLog({
           </p>
         </div>
 
-        {canWork && (
+        {canWork && canAddIssueLog && (
           <Button className="gap-2" onClick={() => setIsModalOpen(true)}>
             <Plus className="h-4 w-4" /> Add Issue Log
           </Button>
