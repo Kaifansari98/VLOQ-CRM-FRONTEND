@@ -40,6 +40,7 @@ export default function PendingWorkDetails({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector((s) => s.customPrivileges.codes);
 
   const queryClient = useQueryClient();
   const { data: leadData } = useLeadStatus(leadId, vendorId);
@@ -115,7 +116,14 @@ export default function PendingWorkDetails({
   }, [selectedInstanceId]);
 
   const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
-  const allowForm = canWork && pendingWorkAnswer === "yes";
+  const canAccessPendingWorkForCustomUser =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.under_installation.usable_handover.pending_work.action",
+        )
+      : false;
+  const canWorkPendingWork = canWork || canAccessPendingWorkForCustomUser;
+  const allowForm = canWorkPendingWork && pendingWorkAnswer === "yes";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,7 +193,7 @@ export default function PendingWorkDetails({
 
             </div>
             <div className="flex gap-6 items-center mt-2">
-            {canWork ? (
+            {canWorkPendingWork ? (
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 text-sm">
                     <Checkbox
