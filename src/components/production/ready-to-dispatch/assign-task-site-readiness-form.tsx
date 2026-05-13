@@ -107,8 +107,14 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const leadId = data?.id!;
   const mutation = useAssignToSiteReadiness(leadId);
   const queryClient = useQueryClient();
-  const isAllowedToAssignSR = canAssignSR(userType);
   const normalizedUserType = (loggedInUserType ?? userType ?? "").toLowerCase();
+  const isAllowedToAssignSR =
+    normalizedUserType === "custom"
+      ? canAssignSR(userType) &&
+        customPrivilegeCodes.includes(
+          "installation.site_readiness.move_to_dispatch_planning.enable_disable",
+        )
+      : canAssignSR(userType);
   const canAssignSiteReadinessForCustomUser =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(

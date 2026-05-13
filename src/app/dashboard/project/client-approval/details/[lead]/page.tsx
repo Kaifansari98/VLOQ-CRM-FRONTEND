@@ -201,6 +201,12 @@ export default function ClientApprovalLeadDetails() {
           "project.client_approval.client_approval_form.enable_disable",
         )
       : canUploadClientApproval(userType);
+  const isCustomUser = userType === "custom";
+  const canRequestToTechCheckAccess = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "project.client_approval.client_approval_screenshots.upload",
+      )
+    : canRequestToTeckCheck(userType);
 
   return (
     <>
@@ -241,11 +247,20 @@ export default function ClientApprovalLeadDetails() {
               }
               value="Submit approval first"
             />
-          ) : canRequestToTeckCheck(userType) ? (
+          ) : canRequestToTechCheckAccess ? (
             <Button
               size="sm"
               className="hidden lg:block"
               onClick={() => setOpenRequestToTechCheckModal(true)}
+            >
+              Request To Tech Check
+            </Button>
+          ) : isCustomUser ? (
+            <Button
+              className="hidden lg:block"
+              size="sm"
+              disabled
+              variant="secondary"
             >
               Request To Tech Check
             </Button>
@@ -323,11 +338,16 @@ export default function ClientApprovalLeadDetails() {
                     value="Only Sales-executive access this option"
                   />
                 )
-              ) : canRequestToTeckCheck(userType) ? (
+              ) : canRequestToTechCheckAccess ? (
                 <DropdownMenuItem
                   className="lg:hidden"
                   onClick={() => setOpenRequestToTechCheckModal(true)}
                 >
+                  <FileText size={20} />
+                  Request To Tech Check
+                </DropdownMenuItem>
+              ) : isCustomUser ? (
+                <DropdownMenuItem className="lg:hidden" disabled>
                   <FileText size={20} />
                   Request To Tech Check
                 </DropdownMenuItem>
@@ -385,7 +405,7 @@ export default function ClientApprovalLeadDetails() {
             setPreviousTab(activeTab);
 
             // First logic: access privilege + tech-check flow
-            if (canRequestToTeckCheck?.(userType)) {
+            if (canRequestToTechCheckAccess) {
               if (!is_client_approval_submitted) {
                 setOpenClientApprovalModal(true);
               } else {
