@@ -183,6 +183,12 @@ export default function DesigningStageLead() {
           "leads.open_leads.details_of_lead.payment_information.enable_disable",
         )
       : canViewPaymentTab(userType);
+  const canViewChats =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.chat.enable_disable",
+        )
+      : true;
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
@@ -486,10 +492,12 @@ export default function DesigningStageLead() {
                     Payment
                   </TabsTrigger>
                 )}
-                <TabsTrigger value="chats">
-                  <MessageSquare size={16} className="mr-1 opacity-60" />
-                  Chats
-                </TabsTrigger>
+                {canViewChats && (
+                  <TabsTrigger value="chats">
+                    <MessageSquare size={16} className="mr-1 opacity-60" />
+                    Chats
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="documents">
                   <FolderOpen size={16} className="mr-1 opacity-60" />
                   Documents
@@ -534,9 +542,11 @@ export default function DesigningStageLead() {
           </TabsContent>
         )}
 
-        <TabsContent value="chats">
-          <LeadWiseChatScreen leadId={leadIdNum} />
-        </TabsContent>
+        {canViewChats && (
+          <TabsContent value="chats">
+            <LeadWiseChatScreen leadId={leadIdNum} />
+          </TabsContent>
+        )}
         <TabsContent value="documents">
           <ProjectDocumentsTimeline
             leadId={leadIdNum}

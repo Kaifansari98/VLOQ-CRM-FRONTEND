@@ -204,6 +204,12 @@ export default function ClientApprovalLeadDetails() {
           "leads.open_leads.details_of_lead.site_history.enable_disable",
         )
       : canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
+  const canViewChats =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.chat.enable_disable",
+        )
+      : true;
   const canAccessClientApprovalForm =
     userType === "custom"
       ? customPrivilegeCodes.includes(
@@ -472,10 +478,12 @@ export default function ClientApprovalLeadDetails() {
                 Payment
               </TabsTrigger>
             )}
-            <TabsTrigger value="chats">
-              <MessageSquare size={16} className="mr-1 opacity-60" />
-              Chats
-            </TabsTrigger>
+            {canViewChats && (
+              <TabsTrigger value="chats">
+                <MessageSquare size={16} className="mr-1 opacity-60" />
+                Chats
+              </TabsTrigger>
+            )}
 
             <TabsTrigger value="documents">
               <FolderOpen size={16} className="mr-1 opacity-60" />
@@ -516,9 +524,11 @@ export default function ClientApprovalLeadDetails() {
           </TabsContent>
         )}
 
-        <TabsContent value="chats">
-          <LeadWiseChatScreen leadId={leadIdNum} />
-        </TabsContent>
+        {canViewChats && (
+          <TabsContent value="chats">
+            <LeadWiseChatScreen leadId={leadIdNum} />
+          </TabsContent>
+        )}
 
         <TabsContent value="documents">
           <ProjectDocumentsTimeline

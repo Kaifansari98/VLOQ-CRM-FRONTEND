@@ -266,6 +266,12 @@ export default function ProductionLeadDetails() {
         )
       : canViewSiteHistoryTab(effectiveUserType ?? "") &&
         effectiveUserType?.toLowerCase() !== "admin";
+  const canViewChats =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.chat.enable_disable",
+        )
+      : true;
 
   const productionDefaultTab = handledproductionDefaultTab(
     effectiveUserType ?? "",
@@ -766,10 +772,12 @@ export default function ProductionLeadDetails() {
                   Payment
                 </TabsTrigger>
               )}
-              <TabsTrigger value="chats">
-                <MessageSquare size={16} className="mr-1 opacity-60" />
-                Chats
-              </TabsTrigger>
+              {canViewChats && (
+                <TabsTrigger value="chats">
+                  <MessageSquare size={16} className="mr-1 opacity-60" />
+                  Chats
+                </TabsTrigger>
+              )}
               <TabsTrigger value="documents">
                 <FolderOpen size={16} className="mr-1 opacity-60" />
                 Documents
@@ -847,9 +855,11 @@ export default function ProductionLeadDetails() {
           </TabsContent>
         )}
 
-        <TabsContent value="chats">
-          <LeadWiseChatScreen leadId={leadIdNum} />
-        </TabsContent>
+        {canViewChats && (
+          <TabsContent value="chats">
+            <LeadWiseChatScreen leadId={leadIdNum} />
+          </TabsContent>
+        )}
 
         <TabsContent value="documents">
           <ProjectDocumentsTimeline

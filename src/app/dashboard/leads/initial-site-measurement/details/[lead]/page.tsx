@@ -200,6 +200,12 @@ export default function SiteMeasurementLead() {
           "leads.open_leads.details_of_lead.site_history.enable_disable",
         )
       : canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
+  const canViewChats =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.chat.enable_disable",
+        )
+      : true;
   const canAccessTodoTask =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
@@ -398,10 +404,12 @@ export default function SiteMeasurementLead() {
                 Payment
               </TabsTrigger>
             )}
-            <TabsTrigger value="chats">
-              <MessageSquare size={16} className="mr-1 opacity-60" />
-              Chats
-            </TabsTrigger>
+            {canViewChats && (
+              <TabsTrigger value="chats">
+                <MessageSquare size={16} className="mr-1 opacity-60" />
+                Chats
+              </TabsTrigger>
+            )}
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
@@ -425,9 +433,11 @@ export default function SiteMeasurementLead() {
           </TabsContent>
         )}
 
-        <TabsContent value="chats">
-          <LeadWiseChatScreen leadId={leadIdNum} />
-        </TabsContent>
+        {canViewChats && (
+          <TabsContent value="chats">
+            <LeadWiseChatScreen leadId={leadIdNum} />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Modals */}

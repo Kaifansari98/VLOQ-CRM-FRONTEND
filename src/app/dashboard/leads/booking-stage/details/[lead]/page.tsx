@@ -179,6 +179,12 @@ export default function BookingStageLeadsDetails() {
           "leads.open_leads.details_of_lead.site_history.enable_disable",
         )
       : canViewSiteHistoryTab(userType) && userType?.toLowerCase() !== "admin";
+  const canViewChats =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.chat.enable_disable",
+        )
+      : true;
   const canAccessMarkOnHold =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.booking_done.details.mark_on_hold")
@@ -359,10 +365,12 @@ export default function BookingStageLeadsDetails() {
                 Payment
               </TabsTrigger>
             )}
-            <TabsTrigger value="chats">
-              <MessageSquare size={16} className="mr-1 opacity-60" />
-              Chats
-            </TabsTrigger>
+            {canViewChats && (
+              <TabsTrigger value="chats">
+                <MessageSquare size={16} className="mr-1 opacity-60" />
+                Chats
+              </TabsTrigger>
+            )}
             <TabsTrigger value="documents">
               <FolderOpen size={16} className="mr-1 opacity-60" />
               Documents
@@ -394,9 +402,11 @@ export default function BookingStageLeadsDetails() {
           </TabsContent>
         )}
 
-        <TabsContent value="chats">
-          <LeadWiseChatScreen leadId={leadIdNum} />
-        </TabsContent>
+        {canViewChats && (
+          <TabsContent value="chats">
+            <LeadWiseChatScreen leadId={leadIdNum} />
+          </TabsContent>
+        )}
         <TabsContent value="documents">
           <ProjectDocumentsTimeline
             leadId={leadIdNum}

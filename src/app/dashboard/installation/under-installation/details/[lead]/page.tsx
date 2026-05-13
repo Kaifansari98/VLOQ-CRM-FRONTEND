@@ -182,6 +182,12 @@ export default function UnderInstallationLeadDetails() {
         )
       : canViewSiteHistoryTab(effectiveUserType ?? "") &&
         effectiveUserType?.toLowerCase() !== "admin";
+  const canViewChats =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.chat.enable_disable",
+        )
+      : true;
 
   const miscStatusReady = miscStatus?.all_resolved;
   const isUsableHandoverCompleted = Boolean(
@@ -561,10 +567,12 @@ export default function UnderInstallationLeadDetails() {
                   Payment
                 </TabsTrigger>
               )}
-              <TabsTrigger value="chats">
-                <MessageSquare size={16} className="mr-1 opacity-60" />
-                Chats
-              </TabsTrigger>
+              {canViewChats && (
+                <TabsTrigger value="chats">
+                  <MessageSquare size={16} className="mr-1 opacity-60" />
+                  Chats
+                </TabsTrigger>
+              )}
               <TabsTrigger value="documents">
                 <FolderOpen size={16} className="mr-1 opacity-60" />
                 Documents
@@ -658,9 +666,11 @@ export default function UnderInstallationLeadDetails() {
           </TabsContent>
         )}
 
-        <TabsContent value="chats">
-          <LeadWiseChatScreen leadId={leadIdNum} />
-        </TabsContent>
+        {canViewChats && (
+          <TabsContent value="chats">
+            <LeadWiseChatScreen leadId={leadIdNum} />
+          </TabsContent>
+        )}
 
         <TabsContent value="documents">
           <ProjectDocumentsTimeline

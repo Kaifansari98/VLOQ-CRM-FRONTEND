@@ -167,6 +167,12 @@ export default function ReadyToDispatchLeadDetails() {
         )
       : canViewSiteHistoryTab(effectiveUserType ?? "") &&
         effectiveUserType?.toLowerCase() !== "admin";
+  const canViewChats =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.chat.enable_disable",
+        )
+      : true;
 
   const handleMoveToDispatch = async () => {
     try {
@@ -448,10 +454,12 @@ export default function ReadyToDispatchLeadDetails() {
                 Payment
               </TabsTrigger>
             )}
-            <TabsTrigger value="chats">
-              <MessageSquare size={16} className="mr-1 opacity-60" />
-              Chats
-            </TabsTrigger>
+            {canViewChats && (
+              <TabsTrigger value="chats">
+                <MessageSquare size={16} className="mr-1 opacity-60" />
+                Chats
+              </TabsTrigger>
+            )}
             <TabsTrigger value="documents">
               <FolderOpen size={16} className="mr-1 opacity-60" />
               Documents
@@ -497,9 +505,11 @@ export default function ReadyToDispatchLeadDetails() {
           </TabsContent>
         )}
 
-        <TabsContent value="chats">
-          <LeadWiseChatScreen leadId={leadIdNum} />
-        </TabsContent>
+        {canViewChats && (
+          <TabsContent value="chats">
+            <LeadWiseChatScreen leadId={leadIdNum} />
+          </TabsContent>
+        )}
 
         <TabsContent value="documents">
           <ProjectDocumentsTimeline
