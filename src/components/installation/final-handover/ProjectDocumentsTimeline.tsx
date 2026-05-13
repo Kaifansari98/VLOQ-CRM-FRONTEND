@@ -60,6 +60,8 @@ const DOCUMENT_STAGE_PRIVILEGE_CODES: Record<string, string> = {
     "leads.open_leads.details_of_lead.documents_section.dispatch_stage.enable_disable",
   underInstallation:
     "leads.open_leads.details_of_lead.documents_section.under_installation.enable_disable",
+  finalHandover:
+    "leads.open_leads.details_of_lead.documents_section.final_handover.enable_disable",
 };
 
 const STAGE_UI: StageUIConfig[] = [
