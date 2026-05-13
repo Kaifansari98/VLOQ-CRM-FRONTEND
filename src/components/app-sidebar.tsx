@@ -367,109 +367,117 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     const customFilteredItems =
       userType === "custom"
-        ? filteredItems.map((item) =>
-            item.title === "Leads"
-              ? {
-                  ...item,
-                  items: item.items?.filter((subItem) =>
-                    subItem.title === "Open Leads"
-                      ? customPrivilegeCodes.includes(
-                          "leads.open_leads.details_of_lead.view",
-                        )
-                      : subItem.title === "ISM Leads"
-                        ? customPrivilegeCodes.includes(
-                            "leads.ism_leads.ism_details.view",
-                          )
-                      : subItem.title === "Designing Stage"
-                        ? customPrivilegeCodes.includes(
-                            "leads.designing_stage.quotation.view",
-                          ) ||
-                          customPrivilegeCodes.includes(
-                            "leads.designing_stage.meetings.view",
-                          ) ||
-                          customPrivilegeCodes.includes(
-                            "leads.designing_stage.designs.view",
-                          )
-                      : subItem.title === "Booking Done"
-                        ? customPrivilegeCodes.some((code) =>
-                            code.startsWith("leads.booking_done."),
-                          )
-                      : true,
-                  ),
-                }
-              : item.title === "Project"
+        ? filteredItems
+            .filter(
+              (item) =>
+                item.title !== "Servicing" ||
+                customPrivilegeCodes.some((code) =>
+                  code.startsWith("installation.servicing."),
+                ),
+            )
+            .map((item) =>
+              item.title === "Leads"
                 ? {
                     ...item,
                     items: item.items?.filter((subItem) =>
-                      subItem.title === "FM Sites"
-                        ? customPrivilegeCodes.some((code) =>
-                            code.startsWith("project.final_measurement."),
-                          )
-                        : subItem.title === "Client Approval"
-                          ? customPrivilegeCodes.some((code) =>
-                              code.startsWith("project.client_approval."),
-                            )
-                        : true,
-                    ),
-                  }
-              : item.title === "Production"
-                ? {
-                    ...item,
-                    items: item.items?.filter((subItem) =>
-                      subItem.title === "Tech Check"
+                      subItem.title === "Open Leads"
                         ? customPrivilegeCodes.includes(
-                            "production.tech_check.tech_check_details.view",
+                            "leads.open_leads.details_of_lead.view",
                           )
-                        : subItem.title === "Order Login"
-                          ? customPrivilegeCodes.some((code) =>
-                              code.startsWith("production.order_login."),
-                            )
-                        : subItem.title === "Production"
-                          ? customPrivilegeCodes.some((code) =>
-                              code.startsWith("production.production."),
-                            )
-                        : subItem.title === "RTD Sites"
+                        : subItem.title === "ISM Leads"
                           ? customPrivilegeCodes.includes(
-                              "production.production.ready_to_dispatch.enable_disable",
+                              "leads.ism_leads.ism_details.view",
                             )
-                        : true,
+                          : subItem.title === "Designing Stage"
+                            ? customPrivilegeCodes.includes(
+                                "leads.designing_stage.quotation.view",
+                              ) ||
+                              customPrivilegeCodes.includes(
+                                "leads.designing_stage.meetings.view",
+                              ) ||
+                              customPrivilegeCodes.includes(
+                                "leads.designing_stage.designs.view",
+                              )
+                            : subItem.title === "Booking Done"
+                              ? customPrivilegeCodes.some((code) =>
+                                  code.startsWith("leads.booking_done."),
+                                )
+                              : true,
                     ),
                   }
-              : item.title === "Installation"
-                ? {
-                    ...item,
-                    items: item.items?.filter((subItem) =>
-                      subItem.title === "Site Readiness"
-                        ? customPrivilegeCodes.some((code) =>
-                            code.startsWith("installation.site_readiness."),
-                          )
-                        : subItem.title === "Dispatch Planning"
+                : item.title === "Project"
+                  ? {
+                      ...item,
+                      items: item.items?.filter((subItem) =>
+                        subItem.title === "FM Sites"
                           ? customPrivilegeCodes.some((code) =>
-                              code.startsWith(
-                                "installation.dispatch_planning.",
-                              ),
+                              code.startsWith("project.final_measurement."),
                             )
-                          : subItem.title === "Dispatch"
+                          : subItem.title === "Client Approval"
                             ? customPrivilegeCodes.some((code) =>
-                                code.startsWith("installation.dispatch."),
+                                code.startsWith("project.client_approval."),
                               )
-                            : subItem.title === "Under Installation"
+                            : true,
+                      ),
+                    }
+                  : item.title === "Production"
+                    ? {
+                        ...item,
+                        items: item.items?.filter((subItem) =>
+                          subItem.title === "Tech Check"
+                            ? customPrivilegeCodes.includes(
+                                "production.tech_check.tech_check_details.view",
+                              )
+                            : subItem.title === "Order Login"
                               ? customPrivilegeCodes.some((code) =>
-                                  code.startsWith(
-                                    "installation.under_installation.",
-                                  ),
+                                  code.startsWith("production.order_login."),
                                 )
-                              : subItem.title === "Final Handover"
+                              : subItem.title === "Production"
+                                ? customPrivilegeCodes.some((code) =>
+                                    code.startsWith("production.production."),
+                                  )
+                                : subItem.title === "RTD Sites"
+                                  ? customPrivilegeCodes.includes(
+                                      "production.production.ready_to_dispatch.enable_disable",
+                                    )
+                                  : true,
+                        ),
+                      }
+                    : item.title === "Installation"
+                      ? {
+                          ...item,
+                          items: item.items?.filter((subItem) =>
+                            subItem.title === "Site Readiness"
+                              ? customPrivilegeCodes.some((code) =>
+                                  code.startsWith("installation.site_readiness."),
+                                )
+                              : subItem.title === "Dispatch Planning"
                                 ? customPrivilegeCodes.some((code) =>
                                     code.startsWith(
-                                      "installation.final_handover.",
+                                      "installation.dispatch_planning.",
                                     ),
                                   )
-                                : true,
-                    ),
-                  }
-              : item,
-          )
+                                : subItem.title === "Dispatch"
+                                  ? customPrivilegeCodes.some((code) =>
+                                      code.startsWith("installation.dispatch."),
+                                    )
+                                  : subItem.title === "Under Installation"
+                                    ? customPrivilegeCodes.some((code) =>
+                                        code.startsWith(
+                                          "installation.under_installation.",
+                                        ),
+                                      )
+                                    : subItem.title === "Final Handover"
+                                      ? customPrivilegeCodes.some((code) =>
+                                          code.startsWith(
+                                            "installation.final_handover.",
+                                          ),
+                                        )
+                                      : true,
+                          ),
+                        }
+                      : item,
+            )
         : filteredItems;
 
     const miscItem = {

@@ -52,6 +52,9 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type as string | undefined,
   );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const [openRescheduleConfirm, setOpenRescheduleConfirm] = useState(false);
   const [openRejectConfirm, setOpenRejectConfirm] = useState(false);
   const [openReopenConfirm, setOpenReopenConfirm] = useState(false);
@@ -64,11 +67,26 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
   const updateAmcOptedMutation = useUpdateAmcOptedStatus();
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const normalizedUserType = (userType || "").toLowerCase();
-  const canViewRejectSection = [
-    "head-site-supervisor",
-    "admin",
-    "super-admin",
-  ].includes(normalizedUserType);
+  const isCustomUser = normalizedUserType === "custom";
+  const canCompleteService = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.servicing.service_actions.mark_as_complete",
+      )
+    : true;
+  const canRescheduleService = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.servicing.service_actions.mark_as_reschedule",
+      )
+    : true;
+  const canRejectService = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "installation.servicing.service_actions.mark_as_reject",
+      )
+    : [
+        "head-site-supervisor",
+        "admin",
+        "super-admin",
+      ].includes(normalizedUserType);
   const canReopenRejected = ["admin", "super-admin"].includes(
     normalizedUserType,
   );
@@ -239,85 +257,89 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
             </div>
           ) : null}
 
-          <div className="flex items-center justify-between gap-3 rounded-xl border p-3">
-            <div className="flex flex-col gap-1">
-              <span className="text-base font-semibold">Mark as Complete</span>
-              <p className="text-sm text-muted-foreground">
-                Upload the service document and add an optional remark to
-                complete this servicing visit.
-              </p>
+          {canCompleteService ? (
+            <div className="flex items-center justify-between gap-3 rounded-xl border p-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-base font-semibold">Mark as Complete</span>
+                <p className="text-sm text-muted-foreground">
+                  Upload the service document and add an optional remark to
+                  complete this servicing visit.
+                </p>
+              </div>
+              {isRejectedService ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span tabIndex={0}>
+                      <Button className="w-28" disabled>
+                        Complete
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    {rejectedTooltipMessage}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Button
+                  className="w-28"
+                  onClick={() => setOpenCompleteModal(true)}
+                >
+                  Complete
+                </Button>
+              )}
             </div>
-            {isRejectedService ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span tabIndex={0}>
-                    <Button className="w-28" disabled>
-                      Complete
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  {rejectedTooltipMessage}
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              <Button
-                className="w-28"
-                onClick={() => setOpenCompleteModal(true)}
-              >
-                Complete
-              </Button>
-            )}
-          </div>
+          ) : null}
 
-          <div className="flex items-center justify-between gap-3 rounded-xl border p-3">
-            <div className="flex flex-col gap-1">
-              <span className="text-base font-semibold">
-                Mark as Reschedule
-              </span>
-              <p className="text-sm text-muted-foreground">
-                Move this servicing visit to the next month on the same date.
-              </p>
+          {canRescheduleService ? (
+            <div className="flex items-center justify-between gap-3 rounded-xl border p-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-base font-semibold">
+                  Mark as Reschedule
+                </span>
+                <p className="text-sm text-muted-foreground">
+                  Move this servicing visit to the next month on the same date.
+                </p>
+              </div>
+              {isRejectedService ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span tabIndex={0}>
+                      <Button className="w-28" variant="outline" disabled>
+                        Reschedule
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    {rejectedTooltipMessage}
+                  </TooltipContent>
+                </Tooltip>
+              ) : isRescheduled ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span tabIndex={0}>
+                      <Button className="w-28" variant="outline" disabled>
+                        Reschedule
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    This service has been already rescheduled.
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Button
+                  className="w-28"
+                  variant="outline"
+                  onClick={() => setOpenRescheduleConfirm(true)}
+                  disabled={rescheduleMutation.isPending}
+                >
+                  Reschedule
+                </Button>
+              )}
             </div>
-            {isRejectedService ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span tabIndex={0}>
-                    <Button className="w-28" variant="outline" disabled>
-                      Reschedule
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  {rejectedTooltipMessage}
-                </TooltipContent>
-              </Tooltip>
-            ) : isRescheduled ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span tabIndex={0}>
-                    <Button className="w-28" variant="outline" disabled>
-                      Reschedule
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  This service has been already rescheduled.
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              <Button
-                className="w-28"
-                variant="outline"
-                onClick={() => setOpenRescheduleConfirm(true)}
-                disabled={rescheduleMutation.isPending}
-              >
-                Reschedule
-              </Button>
-            )}
-          </div>
+          ) : null}
 
-          {canViewRejectSection && !isRejectedService ? (
+          {canRejectService && !isRejectedService ? (
             <div className="space-y-4 rounded-xl border p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex flex-col gap-1">

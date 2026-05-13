@@ -59,6 +59,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 type UserMasterRow = {
   srNo: number;
@@ -470,6 +476,14 @@ const customPrivilegeSections: readonly CustomPrivilegeSection[] = [
       },
     ],
   },
+  {
+    id: "general_privileges",
+    title: "General Privileges",
+    parentModule: "General Privileges",
+    description:
+      "Manage access to shared tools and servicing-specific privilege actions.",
+    children: [],
+  },
 ] as const;
 
 export default function UserMastersTable() {
@@ -499,6 +513,8 @@ export default function UserMastersTable() {
   >(customPrivilegeSections[0]?.id ?? null);
   const [openLeadPrivilegeSection, setOpenLeadPrivilegeSection] =
     React.useState<string | null>(null);
+  const [activeGeneralPrivilegeTab, setActiveGeneralPrivilegeTab] =
+    React.useState<"servicing" | "general_tools">("servicing");
   const [selectedPrivilegeIds, setSelectedPrivilegeIds] = React.useState<
     number[]
   >([]);
@@ -646,6 +662,42 @@ export default function UserMastersTable() {
     [privilegeMasters],
   );
 
+  const servicingPrivilegeGroups = React.useMemo(() => {
+    const groups = new Map<
+      string,
+      {
+        id: string;
+        title: string;
+        privileges: typeof privilegeMasters;
+      }
+    >();
+
+    privilegeMasters.forEach((privilege) => {
+      if (privilege.parent_module.toLowerCase() !== "servicing") return;
+
+      const normalizedChildModule = privilege.child_module.trim();
+      if (!normalizedChildModule) return;
+
+      const groupKey = normalizedChildModule.toLowerCase();
+      const existingGroup = groups.get(groupKey);
+
+      if (existingGroup) {
+        existingGroup.privileges.push(privilege);
+        return;
+      }
+
+      groups.set(groupKey, {
+        id: `general-servicing-${groupKey.replace(/[^a-z0-9]+/g, "-")}`,
+        title: normalizedChildModule,
+        privileges: [privilege],
+      });
+    });
+
+    return Array.from(groups.values()).sort((left, right) =>
+      left.title.localeCompare(right.title),
+    );
+  }, [privilegeMasters]);
+
   const handleSaveUserPrivileges = () => {
     if (!editingUserId || !vendorId) return;
 
@@ -668,6 +720,7 @@ export default function UserMastersTable() {
     setOpenPrivilegesModal(false);
     setOpenPrivilegeSection(customPrivilegeSections[0]?.id ?? null);
     setOpenLeadPrivilegeSection(null);
+    setActiveGeneralPrivilegeTab("servicing");
     setSelectedPrivilegeIds([]);
     setPrivilegeSearch("");
   };
@@ -1122,6 +1175,7 @@ export default function UserMastersTable() {
           if (!open) {
             setOpenPrivilegeSection(customPrivilegeSections[0]?.id ?? null);
             setOpenLeadPrivilegeSection(null);
+            setActiveGeneralPrivilegeTab("servicing");
             setSelectedPrivilegeIds([]);
             setPrivilegeSearch("");
           }
@@ -1174,7 +1228,142 @@ export default function UserMastersTable() {
 
                   {isOpen && (
                     <div className="border-t bg-muted/20 px-4 py-3">
-                      {section.children.length > 0 ? (
+                      {section.id === "general_privileges" ? (
+                        <Tabs
+                          value={activeGeneralPrivilegeTab}
+                          onValueChange={(value) =>
+                            setActiveGeneralPrivilegeTab(
+                              value as "servicing" | "general_tools",
+                            )
+                          }
+                          className="gap-3"
+                        >
+                          <TabsList className="h-auto gap-2 p-1">
+                            <TabsTrigger value="servicing">
+                              Servicing
+                            </TabsTrigger>
+                            <TabsTrigger value="general_tools">
+                              General Tools
+                            </TabsTrigger>
+                          </TabsList>
+
+                          <TabsContent value="servicing" className="space-y-2">
+                            {servicingPrivilegeGroups.length === 0 ? (
+                              <div className="rounded-lg border bg-background px-4 py-3 text-xs text-muted-foreground">
+                                No servicing privileges found yet.
+                              </div>
+                            ) : (
+                              <>
+                                <div className="mb-3">
+                                  <Input
+                                    value={privilegeSearch}
+                                    onChange={(e) =>
+                                      setPrivilegeSearch(e.target.value)
+                                    }
+                                    placeholder="Search by code or action..."
+                                    className="h-9 bg-background"
+                                    disabled={
+                                      updateUserPrivilegesMutation.isPending
+                                    }
+                                  />
+                                </div>
+
+                                {isLoadingPrivilegeMasters ? (
+                                  <div className="text-xs text-muted-foreground">
+                                    Loading privilege actions...
+                                  </div>
+                                ) : isPrivilegeMastersError ? (
+                                  <div className="text-xs text-destructive">
+                                    Failed to load privilege actions.
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {servicingPrivilegeGroups.map((group) => {
+                                      return (
+                                        <div
+                                          key={group.id}
+                                          className="overflow-hidden rounded-lg border bg-background"
+                                        >
+                                          <div className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
+                                            <p className="text-sm font-medium text-foreground">
+                                              {group.title}
+                                            </p>
+                                          </div>
+
+                                          <div className="border-t bg-muted/20 px-4 py-3">
+                                            <div className="space-y-2">
+                                              {group.privileges.map(
+                                                (privilege) => {
+                                                  const isChecked =
+                                                    selectedPrivilegeIds.includes(
+                                                      privilege.id,
+                                                    );
+
+                                                  return (
+                                                    <label
+                                                      key={privilege.id}
+                                                      className="flex items-center gap-3 rounded-md border bg-background px-3 py-2"
+                                                    >
+                                                      <Checkbox
+                                                        checked={isChecked}
+                                                        disabled={
+                                                          updateUserPrivilegesMutation.isPending
+                                                        }
+                                                        onCheckedChange={(
+                                                          checked,
+                                                        ) =>
+                                                          setSelectedPrivilegeIds(
+                                                            (current) => {
+                                                              if (checked) {
+                                                                return current.includes(
+                                                                  privilege.id,
+                                                                )
+                                                                  ? current
+                                                                  : [
+                                                                      ...current,
+                                                                      privilege.id,
+                                                                    ];
+                                                              }
+
+                                                              return current.filter(
+                                                                (id) =>
+                                                                  id !==
+                                                                  privilege.id,
+                                                              );
+                                                            },
+                                                          )
+                                                        }
+                                                      />
+                                                      <div className="space-y-0.5">
+                                                        <p className="text-sm font-medium text-foreground">
+                                                          {privilege.action}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                          {privilege.code}
+                                                        </p>
+                                                      </div>
+                                                    </label>
+                                                  );
+                                                },
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </TabsContent>
+
+                          <TabsContent value="general_tools">
+                            <div className="rounded-lg border bg-background px-4 py-3 text-xs text-muted-foreground">
+                              General tool privileges will be added here next.
+                            </div>
+                          </TabsContent>
+                        </Tabs>
+                      ) : section.children.length > 0 ? (
                         <div className="space-y-2">
                           {section.children.map((child) => {
                             const isLeadSectionOpen =
