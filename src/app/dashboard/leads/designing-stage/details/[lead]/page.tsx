@@ -177,7 +177,12 @@ export default function DesigningStageLead() {
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.designing_stage.details.edit")
       : canEditLeadForSalesExecutiveButton(userType);
-  const canViewPayment = canViewPaymentTab(userType);
+  const canViewPayment =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.payment_information.enable_disable",
+        )
+      : canViewPaymentTab(userType);
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();

@@ -169,7 +169,12 @@ export default function UnderInstallationLeadDetails() {
           code.startsWith("installation.final_handover."),
         )
       : true;
-  const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
+  const canViewPayment =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.payment_information.enable_disable",
+        )
+      : canViewPaymentTab(effectiveUserType ?? "");
   const canViewSiteHistory =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(

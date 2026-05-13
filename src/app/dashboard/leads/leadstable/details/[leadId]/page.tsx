@@ -166,7 +166,12 @@ export default function LeadDetails() {
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes("leads.open_leads.details_of_lead.edit")
       : canEditLeadForSalesExecutiveButton(userType);
-  const canViewPayment = canViewPaymentTab(userType);
+  const canViewPayment =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.payment_information.enable_disable",
+        )
+      : canViewPaymentTab(userType);
   const canViewSiteHistory =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
