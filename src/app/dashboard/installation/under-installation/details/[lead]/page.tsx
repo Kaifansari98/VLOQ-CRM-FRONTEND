@@ -163,6 +163,12 @@ export default function UnderInstallationLeadDetails() {
           "installation.under_installation.move_to_final_handover.enable_disable_action",
         )
       : true;
+  const canRedirectToFinalHandover =
+    effectiveUserType === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("installation.final_handover."),
+        )
+      : true;
   const canViewPayment = canViewPaymentTab(effectiveUserType ?? "");
   const canViewSiteHistory =
     canViewSiteHistoryTab(effectiveUserType ?? "") &&
@@ -770,7 +776,9 @@ export default function UnderInstallationLeadDetails() {
                         exact: false,
                       });
 
-                      router.push("/dashboard/installation/final-handover");
+                      if (canRedirectToFinalHandover) {
+                        router.push("/dashboard/installation/final-handover");
+                      }
                     },
                   },
                 );
