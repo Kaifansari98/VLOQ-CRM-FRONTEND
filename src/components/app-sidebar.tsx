@@ -267,6 +267,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     (state) => state.auth.franchise_id,
   );
   const userType = user?.user_type?.user_type?.toLowerCase();
+  const isCustomUserTypeOnlyVendor =
+    user?.vendor?.is_this_vendor_is_custom_usertype_only === true;
   const canSeeOverallLeads = userType === "admin" || userType === "super-admin";
   const isSuperAdmin = userType === "super-admin";
   const shouldBootstrapFranchise =
@@ -518,7 +520,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           ...section,
           items:
             environment === "PRODUCTION"
-              ? section.items.filter((item) => item.title !== "User Master")
+              ? section.items.filter((item) =>
+                  item.title === "User Master"
+                    ? isCustomUserTypeOnlyVendor
+                    : true,
+                )
               : section.items,
         }))
       : [];
@@ -535,6 +541,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     miscLeadsCount,
     isMiscLeadLoading,
     userType,
+    isCustomUserTypeOnlyVendor,
     customPrivilegeCodes,
   ]);
 
