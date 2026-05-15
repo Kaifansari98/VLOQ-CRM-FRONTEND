@@ -66,7 +66,10 @@ import PendingMaterialDetails from "./PendingMaterialDetails";
 import VehicleNumberInput from "@/components/custom/VehicleNumberInput";
 import { useDeleteDocument } from "@/api/leads";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
-import { canViewAndWorkDispatchStage } from "@/components/utils/privileges";
+import {
+  canUploadDispatchDocument,
+  canViewAndWorkDispatchStage,
+} from "@/components/utils/privileges";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -285,12 +288,12 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     ? customPrivilegeCodes.includes(
         "installation.dispatch.dispatch_documents.view",
       )
-    : canViewAndWorkDispatchStage(userType, leadStatus);
+    : true;
   const canUploadDispatchDocuments = isCustomUser
     ? customPrivilegeCodes.includes(
         "installation.dispatch.dispatch_documents.upload",
       )
-    : canViewAndWorkDispatchStage(userType, leadStatus);
+    : canUploadDispatchDocument(userType, leadStatus);
   const canManagePendingMaterial = isCustomUser
     ? customPrivilegeCodes.includes(
         "installation.dispatch.add_pending_material.enable_disable_action",
