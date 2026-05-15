@@ -169,7 +169,7 @@ const data = {
           showCount: "total_dispatch_stage_leads" as const,
         },
         {
-          title: "Under Installation",
+          title: "Installation",
           url: "/dashboard/installation/under-installation",
           showCount: "total_under_installation_stage_leads" as const,
         },
@@ -463,7 +463,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                   ? customPrivilegeCodes.some((code) =>
                                       code.startsWith("installation.dispatch."),
                                     )
-                                  : subItem.title === "Under Installation"
+                                  : subItem.title === "Installation"
                                     ? customPrivilegeCodes.some((code) =>
                                         code.startsWith(
                                           "installation.under_installation.",
@@ -496,7 +496,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const finalNavItems = customFilteredItems.map((item) => {
       if (item.title === "Installation" && item.items) {
         const underInstallationIndex = item.items.findIndex(
-          (subItem) => subItem.title === "Under Installation",
+          (subItem) => subItem.title === "Installation",
         );
         if (underInstallationIndex !== -1) {
           const shouldShowMisc = canSeeMiscLeads && miscLeadsCount > 0;
