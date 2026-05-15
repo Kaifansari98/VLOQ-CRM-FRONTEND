@@ -343,6 +343,7 @@ export function canViewAndWorkDispatchStage(
   stage: string,
 ): boolean {
   return (
+    role === "admin" ||
     role === "super-admin" ||
     (role === "factory" && stage === "dispatch-stage")
   );
