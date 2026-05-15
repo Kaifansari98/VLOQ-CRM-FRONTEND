@@ -1,6 +1,7 @@
 "use client";
 
-import { getBoxItems, getProjectDetail, ProjectDetailData } from "@/api/track-trace/track-trace-cutlist.api";
+import { toastManager } from "@/components/ui/toast";
+import { getBoxItems, getProjectDetail, ProjectDetailData, downloadBoxPdf, downloadProjectFullReport } from "@/api/track-trace/track-trace-cutlist.api";
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink,
   BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
@@ -21,6 +22,9 @@ import { cn } from "@/lib/utils";
 import {
   Box, CheckCircle2, Clock, MapPin, Package,
   TruckIcon, User, Layers, ChevronRight, X,
+  Download,
+  Loader2,
+
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -50,7 +54,7 @@ function StatCard({ label, value, sub, color = "blue" }: {
   label: string; value: string | number; sub?: string;
   color?: "blue" | "green" | "amber" | "purple" | "slate";
 }) {
-  const bg  = { blue: "bg-blue-50", green: "bg-emerald-50", amber: "bg-amber-50", purple: "bg-indigo-50", slate: "bg-slate-50" }[color];
+  const bg = { blue: "bg-blue-50", green: "bg-emerald-50", amber: "bg-amber-50", purple: "bg-indigo-50", slate: "bg-slate-50" }[color];
   const txt = { blue: "text-blue-600", green: "text-emerald-600", amber: "text-amber-600", purple: "text-indigo-600", slate: "text-slate-600" }[color];
   return (
     <div className={cn("rounded-xl border p-4 flex flex-col gap-1", bg)}>
@@ -86,30 +90,56 @@ function MachineBar({ m }: { m: ProjectDetailData["machines"][0] }) {
 
 // ─── Box Card ─────────────────────────────────────────────────────────────────
 
-function BoxCard({ box, onClick }: { box: ProjectDetailData["boxes"][0]; onClick: () => void }) {
-  const isPacked  = box.box_status === "packed";
+function BoxCard({
+  box,
+  onClick,
+  onDownload,
+  downloading,
+}: {
+  box: ProjectDetailData["boxes"][0];
+  onClick: () => void;
+  onDownload: () => void;
+  downloading?: boolean;
+}) {
+  const isPacked = box.box_status === "packed";
   const factoryOut = !!box.factory_out_at;
-  const siteIn     = !!box.site_in_at;
+  const siteIn = !!box.site_in_at;
 
   return (
-    <button
+    <div
       onClick={onClick}
-      className="group w-full text-left rounded-xl border bg-card hover:border-indigo-300 hover:shadow-md transition-all p-4 flex gap-4 items-start"
+      className="group w-full cursor-pointer rounded-xl border bg-card hover:border-indigo-300 hover:shadow-md transition-all p-4 flex gap-4 items-start"
     >
-      <div className={cn("mt-0.5 rounded-lg p-2", isPacked ? "bg-emerald-50" : "bg-amber-50")}>
-        <Package size={18} className={isPacked ? "text-emerald-600" : "text-amber-500"} />
+      <div
+        className={cn(
+          "mt-0.5 rounded-lg p-2",
+          isPacked ? "bg-emerald-50" : "bg-amber-50"
+        )}
+      >
+        <Package
+          size={18}
+          className={isPacked ? "text-emerald-600" : "text-amber-500"}
+        />
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-2">
-          <span className="font-bold text-sm text-foreground truncate">{box.box_name}</span>
-          <Badge variant={isPacked ? "default" : "secondary"} className="text-[10px] shrink-0">
+          <span className="font-bold text-sm text-foreground truncate">
+            {box.box_name}
+          </span>
+
+          <Badge
+            variant={isPacked ? "default" : "secondary"}
+            className="text-[10px] shrink-0"
+          >
             {box.box_status}
           </Badge>
-          <span className="text-xs text-muted-foreground shrink-0">{box.items_count} items</span>
+
+          <span className="text-xs text-muted-foreground shrink-0">
+            {box.items_count} items
+          </span>
         </div>
 
-        {/* Dispatch timeline */}
         <div className="flex items-center gap-4 flex-wrap">
           <DispatchStep
             label="Factory Out"
@@ -118,7 +148,9 @@ function BoxCard({ box, onClick }: { box: ProjectDetailData["boxes"][0]; onClick
             at={box.factory_out_at}
             Icon={TruckIcon}
           />
+
           <div className="h-px w-6 bg-border shrink-0" />
+
           <DispatchStep
             label="Site In"
             done={siteIn}
@@ -129,8 +161,34 @@ function BoxCard({ box, onClick }: { box: ProjectDetailData["boxes"][0]; onClick
         </div>
       </div>
 
-      <ChevronRight size={16} className="text-muted-foreground mt-1 shrink-0 group-hover:text-indigo-500 transition-colors" />
-    </button>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          type="button"
+          disabled={downloading}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDownload();
+          }}
+          className={cn(
+            "inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-background transition-all",
+            "hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200",
+            "disabled:cursor-not-allowed disabled:opacity-60"
+          )}
+          title="Download box PDF"
+        >
+          {downloading ? (
+            <Loader2 size={15} className="animate-spin" />
+          ) : (
+            <Download size={15} />
+          )}
+        </button>
+
+        <ChevronRight
+          size={16}
+          className="text-muted-foreground group-hover:text-indigo-500 transition-colors"
+        />
+      </div>
+    </div>
   );
 }
 
@@ -145,7 +203,7 @@ function DispatchStep({ label, done, by, at, Icon }: {
       <div>
         <p className={cn("text-[10px] font-bold", done ? "text-emerald-700" : "text-muted-foreground")}>{label}</p>
         {done && at && <p className="text-[9px] text-muted-foreground">{fmtDateTime(at)}</p>}
-        {done && by  && <p className="text-[9px] text-muted-foreground">by {by}</p>}
+        {done && by && <p className="text-[9px] text-muted-foreground">by {by}</p>}
       </div>
     </div>
   );
@@ -350,11 +408,13 @@ export default function ProjectDetailPage() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const { project_id } = useParams<{ project_id: string }>();
 
-  const [data, setData]       = useState<ProjectDetailData | null>(null);
+  const [data, setData] = useState<ProjectDetailData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(false);
+  const [error, setError] = useState(false);
 
   const [selectedBox, setSelectedBox] = useState<{ id: number; name: string } | null>(null);
+  const [downloadingBoxId, setDownloadingBoxId] = useState<number | null>(null);
+  const [downloadingAll, setDownloadingAll] = useState(false);
 
   useEffect(() => {
     if (!vendorId || !project_id) return;
@@ -368,6 +428,96 @@ export default function ProjectDetailPage() {
   const machineIds = data
     ? data.machines.map(m => ({ id: m.machine_id, name: m.machine_name }))
     : [];
+
+  const handleDownloadBoxPdf = async (box: ProjectDetailData["boxes"][0]) => {
+    if (!vendorId || !project_id) return;
+
+    try {
+      setDownloadingBoxId(box.id);
+
+      const response = await downloadBoxPdf(
+        box.id,
+        String(project_id),
+        Number(vendorId)
+      );
+
+      if (!response?.status && !response?.success) {
+        throw new Error(response?.message || "Failed to generate PDF");
+      }
+
+      const pdfUrl =
+        response?.data?.download_url ||
+        response?.data?.pdf_url ||
+        response?.download_url ||
+        response?.pdf_url;
+
+      if (!pdfUrl) {
+        throw new Error("PDF URL not found in response");
+      }
+
+      const link = document.createElement("a");
+      link.href = pdfUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.download = `${box.box_name || "box"}.pdf`;
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toastManager.add({
+        title: "Box PDF generated successfully",
+        type: "success",
+      });
+    } catch (error: any) {
+      console.error("Download box PDF error:", error);
+      alert(error?.message || "Failed to download box PDF");
+    } finally {
+      setDownloadingBoxId(null);
+    }
+  };
+
+
+  const handleDownloadAllBoxes = async () => {
+    if (!vendorId || !project_id) return;
+
+    try {
+      setDownloadingAll(true);
+
+      const response = await downloadProjectFullReport(
+        String(project_id),
+        Number(vendorId)
+      );
+
+      if (!response?.status && !response?.success) {
+        throw new Error(response?.message || "Failed to generate full report");
+      }
+
+      const pdfUrl =
+        response?.data?.download_url ||
+        response?.data?.pdf_url ||
+        response?.download_url ||
+        response?.pdf_url;
+
+      if (!pdfUrl) {
+        throw new Error("Report URL not found in response");
+      }
+
+      const link = document.createElement("a");
+      link.href = pdfUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.download = `${data?.project?.project_name || "project"}-full-report.pdf`;
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error: any) {
+      console.error("Download all boxes error:", error);
+      alert(error?.message || "Failed to download full report");
+    } finally {
+      setDownloadingAll(false);
+    }
+  };
 
   return (
     <>
@@ -451,11 +601,11 @@ export default function ProjectDetailPage() {
 
           {/* ── Stats grid ── */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            <StatCard label="Total Items"  value={data.stats.total_items}    color="blue"   />
-            <StatCard label="Total Panels" value={data.stats.total_panels}   color="purple" />
-            <StatCard label="Total Boxes"  value={data.stats.total_boxes}    color="slate"  />
-            <StatCard label="Packed Boxes" value={data.stats.packed_boxes}   color="green"  />
-            <StatCard label="Unpacked"     value={data.stats.unpacked_boxes} color="amber"  />
+            <StatCard label="Total Items" value={data.stats.total_items} color="blue" />
+            <StatCard label="Total Panels" value={data.stats.total_panels} color="purple" />
+            <StatCard label="Total Boxes" value={data.stats.total_boxes} color="slate" />
+            <StatCard label="Packed Boxes" value={data.stats.packed_boxes} color="green" />
+            <StatCard label="Unpacked" value={data.stats.unpacked_boxes} color="amber" />
           </div>
 
           {/* ── Machine progress ── */}
@@ -471,15 +621,36 @@ export default function ProjectDetailPage() {
           {/* ── Boxes ── */}
           {data.boxes.length > 0 && (
             <div>
-              <h2 className="font-bold text-sm mb-3 text-foreground flex items-center gap-2">
-                <Box size={15} className="text-indigo-500" /> Boxes ({data.boxes.length})
-              </h2>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
+                  <Box size={15} className="text-indigo-500" />
+                  Boxes ({data.boxes.length})
+                </h2>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={downloadingAll}
+                  onClick={handleDownloadAllBoxes}
+                  className="h-8 gap-2 rounded-lg"
+                >
+                  {downloadingAll ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Download size={14} />
+                  )}
+                  Download All
+                </Button>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                 {data.boxes.map(box => (
                   <BoxCard
                     key={box.id}
                     box={box}
+                    downloading={downloadingBoxId === box.id}
                     onClick={() => setSelectedBox({ id: box.id, name: box.box_name })}
+                    onDownload={() => handleDownloadBoxPdf(box)}
                   />
                 ))}
               </div>

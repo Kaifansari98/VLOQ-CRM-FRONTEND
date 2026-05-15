@@ -121,10 +121,12 @@ function findGroupForPath(items: NavItem[], pathname: string): string | null {
 export function NavMain({
   items,
   trackTraceItems,
+  inventoryItems,
   mastersItems,
 }: {
   items: NavItem[];
   trackTraceItems?: NavItem[];
+  inventoryItems?:NavItem[];
   mastersItems?: NavItem[];
 }) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -141,7 +143,7 @@ export function NavMain({
   const { isMobile, setOpenMobile } = useSidebar();
 
   const pathname = usePathname();
-  const allItems = [...items, ...(trackTraceItems ?? []), ...(mastersItems ?? [])];
+  const allItems = [...items, ...(trackTraceItems ?? []),...(inventoryItems ?? []), ...(mastersItems ?? [])];
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
     const initial = new Set<string>();
@@ -357,6 +359,15 @@ export function NavMain({
           <SidebarGroupLabel>Track &amp; Trace</SidebarGroupLabel>
           <SidebarMenu>
             {trackTraceItems.map((item) => renderItem(item))}
+          </SidebarMenu>
+        </SidebarGroup>
+      )}
+
+       {inventoryItems && inventoryItems.length > 0 && (
+        <SidebarGroup>
+          <SidebarGroupLabel>Inventory Management</SidebarGroupLabel>
+          <SidebarMenu>
+            {inventoryItems.map((item) => renderItem(item))}
           </SidebarMenu>
         </SidebarGroup>
       )}

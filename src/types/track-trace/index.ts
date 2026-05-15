@@ -338,10 +338,12 @@ export interface VendorLeadsResponse {
 }
 
 export interface CreateTrackTraceProjectRequest {
-  vendorToken: string;
   vendorId: number;
+  lead_id: number;
   projectName: string;
   file: File;
+
+
 }
 
 export interface CreateTrackTraceProjectResponse {
@@ -350,4 +352,13 @@ export interface CreateTrackTraceProjectResponse {
   excel_url: string;
   storage_key: string;
   message?: string;
+}
+
+export interface TrackTraceLeadOption {
+  id: number;
+  firstname: string | null;
+  email: string | null;
+  contact_no: string | null;
+  lead_code: string | null;
+  created_at: string;
 }
