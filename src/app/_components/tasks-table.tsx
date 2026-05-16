@@ -56,6 +56,7 @@ import DispatchPlanningApprovalModal from "@/components/tasks/DispatchPlanningAp
 import InitialSiteMeasurementTaskModal from "@/components/tasks/InitialSiteMeasurementTaskModal";
 import FinalMeasurementTaskModal from "@/components/tasks/FinalMeasurementTaskModal";
 import OrderLoginCompletedTaskModal from "@/components/tasks/OrderLoginCompletedTaskModal";
+import PreProdCompletedTaskModal from "@/components/tasks/PreProdCompletedTaskModal";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import {
   Popover,
@@ -249,6 +250,7 @@ const MyTaskTable = () => {
   const [openFollowUp, setOpenFollowUp] = useState(false);
   const [openOrderLoginCompleted, setOpenOrderLoginCompleted] =
     useState(false);
+  const [openPreProdCompleted, setOpenPreProdCompleted] = useState(false);
   const [openMiscTaskModal, setOpenMiscTaskModal] = useState(false);
 
   const showScopeToggle = isAdminUser;
@@ -569,6 +571,12 @@ const MyTaskTable = () => {
           variant: "orderlogincompleted",
         });
         setOpenOrderLoginCompleted(true);
+      } else if (row.taskType === "Pre Prod Completed") {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "preprodcompleted",
+        });
+        setOpenPreProdCompleted(true);
       } else if (
         row.taskType === "1st Servicing" ||
         row.taskType === "2nd Servicing" ||
@@ -1046,6 +1054,17 @@ const MyTaskTable = () => {
       <OrderLoginCompletedTaskModal
         open={openOrderLoginCompleted}
         onOpenChange={setOpenOrderLoginCompleted}
+        data={{
+          leadId: rowAction?.row.original.leadId || 0,
+          accountId: rowAction?.row.original.accountId || 0,
+          taskId: rowAction?.row.original.id || 0,
+          instanceId: rowAction?.row.original.instance_id || undefined,
+        }}
+      />
+
+      <PreProdCompletedTaskModal
+        open={openPreProdCompleted}
+        onOpenChange={setOpenPreProdCompleted}
         data={{
           leadId: rowAction?.row.original.leadId || 0,
           accountId: rowAction?.row.original.accountId || 0,

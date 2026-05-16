@@ -524,6 +524,8 @@ export const useMarkPreProdDone = (
   vendorId?: number,
   leadId?: number,
 ) => {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async ({ instanceId, updatedBy }: { instanceId: number; updatedBy: number }) => {
       if (!vendorId || !leadId) throw new Error("Missing vendorId or leadId");
@@ -532,6 +534,29 @@ export const useMarkPreProdDone = (
         { instance_id: instanceId, updated_by: updatedBy },
       );
       return data;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["lead-product-structure-instances", leadId, vendorId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["vendorUserTasks"],
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["vendorAllTasks"],
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["sidebarMyTaskCount"],
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["leadStats"],
+          exact: false,
+        }),
+      ]);
     },
   });
 };
