@@ -140,7 +140,11 @@ export function NavMain({
     useAppSelector((state) => state.auth.franchise_id) ??
     useAppSelector((state) => state.auth.user?.franchise_id) ??
     undefined;
-  const shouldIgnoreMyTaskFranchise = [
+  const isAdminUser =
+    normalizedUserType === "admin" || normalizedUserType === "super-admin";
+  const isSuperAdmin = normalizedUserType === "super-admin";
+  const shouldResolveMyTaskFranchiseFromVendor = [
+    "admin",
     "super-admin",
     "head-site-supervisor",
     "site-supervisor",
@@ -155,10 +159,36 @@ export function NavMain({
     franchiseId
   );
   const { data: vendorFranchises = [], isLoading: isFranchisesLoading } =
-    useFranchisesByVendorId(vendorId ?? 0, !!vendorId && shouldIgnoreMyTaskFranchise);
-  const myTaskFranchiseId = shouldIgnoreMyTaskFranchise
-    ? vendorFranchises[0]?.id
-    : franchiseId;
+    useFranchisesByVendorId(
+      vendorId ?? 0,
+      !!vendorId &&
+        (shouldResolveMyTaskFranchiseFromVendor ||
+          (!franchiseId && isAdminUser)),
+    );
+  const myTaskFranchiseId = React.useMemo(() => {
+    if (!shouldResolveMyTaskFranchiseFromVendor && franchiseId) {
+      return franchiseId;
+    }
+
+    if (franchiseId) {
+      return franchiseId;
+    }
+
+    if (isSuperAdmin) {
+      return (
+        vendorFranchises.find((franchise) => franchise.is_head_office === true)
+          ?.id ??
+        vendorFranchises[0]?.id
+      );
+    }
+
+    return vendorFranchises[0]?.id;
+  }, [
+    franchiseId,
+    isSuperAdmin,
+    shouldResolveMyTaskFranchiseFromVendor,
+    vendorFranchises,
+  ]);
   const { data: myTaskCountData, isLoading: isMyTaskCountLoading } = useQuery({
     queryKey: ["sidebarMyTaskCount", vendorId, userId, myTaskFranchiseId],
     queryFn: () =>
@@ -172,7 +202,7 @@ export function NavMain({
       !!vendorId &&
       !!userId &&
       !!myTaskFranchiseId &&
-      (!shouldIgnoreMyTaskFranchise || !isFranchisesLoading),
+      (!shouldResolveMyTaskFranchiseFromVendor || !isFranchisesLoading),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
