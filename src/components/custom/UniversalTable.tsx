@@ -136,6 +136,18 @@ function compareTechCheckCompletedAtDesc(a?: string | null, b?: string | null) {
   return bTime - aTime;
 }
 
+function getLeadStageSortFallbackTimestamp(lead: any) {
+  return (
+    lead?.status_updated_at ??
+    lead?.stage_updated_at ??
+    lead?.latest_status_log_created_at ??
+    lead?.latestStatusLogCreatedAt ??
+    lead?.updated_at ??
+    lead?.created_at ??
+    null
+  );
+}
+
 function extractLatestStatusLogCreatedAtForTag(lead: any, tag: string) {
   const statusLogs = Array.isArray(lead?.leadStatusLogs)
     ? lead.leadStatusLogs
@@ -158,9 +170,11 @@ function extractLatestStatusLogCreatedAtForTag(lead: any, tag: string) {
     return String(logTag).trim().toLowerCase() === targetTag;
   });
 
-  if (matchingLogs.length === 0) return null;
+  if (matchingLogs.length === 0) {
+    return getLeadStageSortFallbackTimestamp(lead);
+  }
 
-  return matchingLogs.reduce((latest: string | null, log: any) => {
+  const latestMatchingLog = matchingLogs.reduce((latest: string | null, log: any) => {
     const createdAt = log?.created_at ?? null;
     if (!createdAt) return latest;
     if (!latest) return createdAt;
@@ -168,6 +182,8 @@ function extractLatestStatusLogCreatedAtForTag(lead: any, tag: string) {
       ? createdAt
       : latest;
   }, null);
+
+  return latestMatchingLog ?? getLeadStageSortFallbackTimestamp(lead);
 }
 
 function compareType8StatusLoggedAtDesc(a?: string | null, b?: string | null) {
