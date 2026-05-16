@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { LucideIcon } from "lucide-react";
-import { useQueries } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { useLeadStats } from "@/hooks/useLeadStats";
 import { postVendorUserTasks } from "@/hooks/useTasksQueries";
@@ -156,41 +156,27 @@ export function NavMain({
   );
   const { data: vendorFranchises = [], isLoading: isFranchisesLoading } =
     useFranchisesByVendorId(vendorId ?? 0, !!vendorId && shouldIgnoreMyTaskFranchise);
-  const myTaskFranchiseIds = shouldIgnoreMyTaskFranchise
-    ? vendorFranchises.map((franchise) => franchise.id)
-    : franchiseId != null
-      ? [franchiseId]
-      : [];
-  const myTaskCountQueries = useQueries({
-    queries: myTaskFranchiseIds.flatMap((targetFranchiseId) =>
-      ["today", "upcoming", "overdue"].map((dueFilter) => ({
-        queryKey: [
-          "sidebarMyTaskCount",
-          vendorId,
-          userId,
-          targetFranchiseId,
-          dueFilter,
-        ],
-        queryFn: () =>
-          postVendorUserTasks(vendorId ?? 0, userId ?? 0, {
-            page: 1,
-            limit: 1,
-            created_at: "desc",
-            due_filter: dueFilter as "today" | "upcoming" | "overdue",
-            franchise_id: targetFranchiseId,
-          }),
-        enabled: !!vendorId && !!userId && !!targetFranchiseId,
-        staleTime: 5 * 60 * 1000,
-        refetchOnWindowFocus: false,
-      })),
-    ),
+  const myTaskFranchiseId = shouldIgnoreMyTaskFranchise
+    ? vendorFranchises[0]?.id
+    : franchiseId;
+  const { data: myTaskCountData, isLoading: isMyTaskCountLoading } = useQuery({
+    queryKey: ["sidebarMyTaskCount", vendorId, userId, myTaskFranchiseId],
+    queryFn: () =>
+      postVendorUserTasks(vendorId ?? 0, userId ?? 0, {
+        page: 1,
+        limit: 1,
+        created_at: "desc",
+        franchise_id: myTaskFranchiseId,
+      }),
+    enabled:
+      !!vendorId &&
+      !!userId &&
+      !!myTaskFranchiseId &&
+      (!shouldIgnoreMyTaskFranchise || !isFranchisesLoading),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
-  const isMyTaskCountLoading =
-    isFranchisesLoading || myTaskCountQueries.some((query) => query.isLoading);
-  const myTaskTotalCount = myTaskCountQueries.reduce(
-    (sum, query) => sum + (query.data?.count ?? 0),
-    0,
-  );
+  const myTaskTotalCount = myTaskCountData?.count ?? 0;
   const { isMobile, setOpenMobile } = useSidebar();
 
   const pathname = usePathname();
