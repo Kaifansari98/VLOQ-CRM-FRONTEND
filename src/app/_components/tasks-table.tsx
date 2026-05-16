@@ -55,6 +55,7 @@ import OrderLoginApprovalModal from "@/components/tasks/OrderLoginApprovalModal"
 import DispatchPlanningApprovalModal from "@/components/tasks/DispatchPlanningApprovalModal";
 import InitialSiteMeasurementTaskModal from "@/components/tasks/InitialSiteMeasurementTaskModal";
 import FinalMeasurementTaskModal from "@/components/tasks/FinalMeasurementTaskModal";
+import OrderLoginCompletedTaskModal from "@/components/tasks/OrderLoginCompletedTaskModal";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import {
   Popover,
@@ -246,6 +247,8 @@ const MyTaskTable = () => {
   const [rowAction, setRowAction] =
     useState<DataTableRowAction<ProcessedTask> | null>(null);
   const [openFollowUp, setOpenFollowUp] = useState(false);
+  const [openOrderLoginCompleted, setOpenOrderLoginCompleted] =
+    useState(false);
   const [openMiscTaskModal, setOpenMiscTaskModal] = useState(false);
 
   const showScopeToggle = isAdminUser;
@@ -560,6 +563,12 @@ const MyTaskTable = () => {
           params.set("instance_id", String(row.instance_id));
         }
         router.push(`${basePath}?${params.toString()}`);
+      } else if (row.taskType === "Order Login Completed") {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "orderlogincompleted",
+        });
+        setOpenOrderLoginCompleted(true);
       } else if (
         row.taskType === "1st Servicing" ||
         row.taskType === "2nd Servicing" ||
@@ -1031,6 +1040,17 @@ const MyTaskTable = () => {
           taskId: rowAction?.row.original.id || 0,
           remark: rowAction?.row.original.remark,
           dueDate: rowAction?.row.original.dueDate,
+        }}
+      />
+
+      <OrderLoginCompletedTaskModal
+        open={openOrderLoginCompleted}
+        onOpenChange={setOpenOrderLoginCompleted}
+        data={{
+          leadId: rowAction?.row.original.leadId || 0,
+          accountId: rowAction?.row.original.accountId || 0,
+          taskId: rowAction?.row.original.id || 0,
+          instanceId: rowAction?.row.original.instance_id || undefined,
         }}
       />
     </>

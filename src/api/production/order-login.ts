@@ -625,6 +625,26 @@ export const useMarkOrderLoginFilled = (
         queryKey: ["lead-product-structure-instances"],
         exact: false,
       });
+
+      queryClient.invalidateQueries({
+        queryKey: ["vendorUserTasks"],
+        exact: false,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["vendorAllTasks"],
+        exact: false,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["sidebarMyTaskCount"],
+        exact: false,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["leadStats"],
+        exact: false,
+      });
     },
 
     onError: (error: any) => {
