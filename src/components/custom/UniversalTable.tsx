@@ -176,6 +176,22 @@ function compareType8StatusLoggedAtDesc(a?: string | null, b?: string | null) {
   return bTime - aTime;
 }
 
+function compareCreatedAt(a?: string | number | null, b?: string | number | null) {
+  const aTime =
+    typeof a === "number"
+      ? a
+      : a
+        ? new Date(a).getTime()
+        : Number.NEGATIVE_INFINITY;
+  const bTime =
+    typeof b === "number"
+      ? b
+      : b
+        ? new Date(b).getTime()
+        : Number.NEGATIVE_INFINITY;
+  return aTime - bTime;
+}
+
 function matchesProductionStatusFilter(
   status: string | undefined,
   filterValue: string,
@@ -932,11 +948,24 @@ export function UniversalTable({
     const isType8 = normalizedType === "type 8";
     const isType9 = normalizedType === "type 9";
     const isType10 = normalizedType === "type 10";
+    const primarySort = activeSorting[0];
+    const shouldSortByCreatedAt = primarySort?.id === "createdAt";
+    const createdAtDirection = primarySort?.desc ? "desc" : "asc";
 
     let rows: LeadColumn[];
 
     if (!isType8 && !isType9 && !isType10) {
-      rows = activeData.map((item, idx) =>
+      const baseData = shouldSortByCreatedAt
+        ? [...activeData].sort((a, b) => {
+            const comparison = compareCreatedAt(
+              a?.created_at ?? null,
+              b?.created_at ?? null,
+            );
+            return createdAtDirection === "desc" ? -comparison : comparison;
+          })
+        : activeData;
+
+      rows = baseData.map((item, idx) =>
         mapUniversalRow(item, idx, { rowKey: String(item.id) }),
       );
     } else {
@@ -1074,7 +1103,7 @@ export function UniversalTable({
     // The backend receives date_range but may not filter reliably, so we
     // enforce it here using the already-resolved next-pending service date.
     if (showServicingColumn && pendingServicesOnly && servicingMonthFilter) {
-      return rows.filter((row) => {
+      rows = rows.filter((row) => {
         if (!row.scheduledAt) return false;
         const date = new Date(row.scheduledAt as string);
         if (isNaN(date.getTime())) return false;
@@ -1085,9 +1114,13 @@ export function UniversalTable({
       });
     }
 
-    return rows;
+    return rows.map((row, index) => ({
+      ...row,
+      srNo: index + 1,
+    }));
   }, [
     activeData,
+    activeSorting,
     normalizedType,
     pendingServicesOnly,
     productionStatusFilter,
