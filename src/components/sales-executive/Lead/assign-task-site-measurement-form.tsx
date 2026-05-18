@@ -101,6 +101,8 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     isLoading: loadingSalesExecutiveUsers,
     error: salesExecutiveUsersError,
   } = useVendorSalesExecutiveUsers(vendorId!, franchiseId!);
+
+  
   const {
     data: customPrivilegeUsers,
     isLoading: loadingCustomPrivilegeUsers,
@@ -110,6 +112,9 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     requiredPrivilegeCode:
       "leads.ism_leads.ism_details.upload_measurement",
   });
+  
+
+  console.log("custome privilage: ", customPrivilegeUsers);
   const router = useRouter();
   const leadId = data?.id!;
   const userId = useAppSelector((state) => state.auth.user?.id);

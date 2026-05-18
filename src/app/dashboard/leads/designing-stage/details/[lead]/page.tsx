@@ -110,7 +110,28 @@ export default function DesigningStageLead() {
     (state) => state.customPrivileges.codes,
   );
 
-  const canAccessTodoTab = canAccessDessingTodoTab(userType);
+  const canUploadQuotation =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.designing_stage.quotation.upload")
+      : true;
+
+  const canUploadMeetings =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.designing_stage.meetings.upload")
+      : true;
+
+  const canUploadDesigns =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.designing_stage.designs.upload")
+      : true;
+
+  const canAccessTodoTab =
+    userType?.toLowerCase() === "custom"
+      ? (canUploadQuotation || canUploadMeetings || canUploadDesigns)
+      : canAccessDessingTodoTab(userType);
+
+
+        
   const canMoveToBooking =
     countsData?.QuotationDoc > 0 && countsData?.DesignsDoc > 0;
   const canViewSiteHistory =
@@ -192,7 +213,9 @@ export default function DesigningStageLead() {
   const canViewDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+          code.startsWith(
+            "leads.open_leads.details_of_lead.documents_section.",
+          ),
         )
       : true;
 
@@ -205,11 +228,12 @@ export default function DesigningStageLead() {
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [bookingOpenLead, setBookingOpenLead] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
-  const [activityType, setActivityType] = useState<"onHold" | "lostApproval" | "lost">(
-    "onHold",
-  );
+  const [activityType, setActivityType] = useState<
+    "onHold" | "lostApproval" | "lost"
+  >("onHold");
   const shouldDirectlyMarkLost =
-    userType?.toLowerCase() === "admin" || userType?.toLowerCase() === "super-admin";
+    userType?.toLowerCase() === "admin" ||
+    userType?.toLowerCase() === "super-admin";
 
   // tabs state
   const [activeTab, setActiveTab] = useState(

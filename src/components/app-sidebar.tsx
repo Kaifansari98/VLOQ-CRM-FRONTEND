@@ -263,6 +263,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
+  console.log("customPrivilegeCodes in AppSidebar:", customPrivilegeCodes);
+
   const selectedFranchiseId = useAppSelector(
     (state) => state.auth.franchise_id,
   );
@@ -415,11 +417,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           ? customPrivilegeCodes.some((code) =>
                               code.startsWith("project.final_measurement."),
                             )
-                          : subItem.title === "Client Approval"
+                          : subItem.title === "Client Documents"
                             ? customPrivilegeCodes.some((code) =>
-                                code.startsWith("project.client_approval."),
+                                code.startsWith("project.client_documentation."),
                               )
-                            : true,
+                            : subItem.title === "Client Approval"
+                              ? customPrivilegeCodes.some((code) =>
+                                  code.startsWith("project.client_approval."),
+                                )
+                              : true,
                       ),
                     }
                   : item.title === "Production"
