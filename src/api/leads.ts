@@ -542,17 +542,20 @@ export const fetchLeadLogs = async ({
   limit = 10,
   cursor,
   historyType,
+  search,
 }: {
   leadId: number;
   vendorId: number;
   limit?: number;
   cursor?: number;
   historyType?: "Lead" | "Task" | "FollowUp";
+  search?: string;
 }) => {
   const query = new URLSearchParams();
   query.append("limit", String(limit));
   if (cursor) query.append("cursor", String(cursor));
   if (historyType) query.append("history_type", historyType);
+  if (search?.trim()) query.append("search", search.trim());
 
   const response = await apiClient.get(
     `/leads/vendorId/${vendorId}/leadId/${leadId}/logs?${query.toString()}`,

@@ -16,8 +16,11 @@ import {
   Upload,
   Edit3,
   FileSpreadsheet,
+  Search,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { generateSiteHistoryReport } from "@/lib/reports/siteHistoryReport";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
@@ -80,9 +83,23 @@ export default function SiteHistoryTab({
   const [activeTab, setActiveTab] = useState<TabId>("lead-history");
   const historyType = HISTORY_TYPE_MAP[activeTab];
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset search when tab changes
+  useEffect(() => {
+    setSearchQuery("");
+    setDebouncedSearch("");
+  }, [activeTab]);
+
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
-      queryKey: ["leadLogs", leadId, vendorId, historyType],
+      queryKey: ["leadLogs", leadId, vendorId, historyType, debouncedSearch],
       queryFn: async ({ pageParam }) =>
         await fetchLeadLogs({
           leadId,
@@ -90,6 +107,7 @@ export default function SiteHistoryTab({
           cursor: pageParam ?? undefined,
           limit: 10,
           historyType,
+          search: debouncedSearch || undefined,
         }),
       getNextPageParam: (lastPage) =>
         lastPage?.meta?.hasMore ? lastPage.meta.nextCursor : undefined,
@@ -340,7 +358,27 @@ export default function SiteHistoryTab({
           defaultTabId="lead-history"
           onChange={(tabId) => setActiveTab(tabId as TabId)}
         />
-        <div className="absolute top-0 right-0">
+        <div className="absolute top-0 right-0 flex items-center gap-2">
+          <div className="relative">
+            <Search
+              size={13}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
+            <Input
+              placeholder="Search history..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-8 pl-8 pr-7 text-xs w-48"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
           <Button
             variant="default"
             size="sm"
