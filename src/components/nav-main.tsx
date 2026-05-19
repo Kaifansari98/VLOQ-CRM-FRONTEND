@@ -2,10 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { LucideIcon } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { useLeadStats } from "@/hooks/useLeadStats";
-import { postVendorUserTasks } from "@/hooks/useTasksQueries";
 import { useAppSelector } from "@/redux/store";
 import { Badge } from "./ui/badge";
 import { usePathname } from "next/navigation";
@@ -189,29 +187,6 @@ export function NavMain({
     shouldResolveMyTaskFranchiseFromVendor,
     vendorFranchises,
   ]);
-  const sidebarMyTaskFranchiseId = isSuperAdmin
-    ? undefined
-    : myTaskFranchiseId;
-  const { data: myTaskCountData, isLoading: isMyTaskCountLoading } = useQuery({
-    queryKey: ["sidebarMyTaskCount", vendorId, userId, sidebarMyTaskFranchiseId ?? null],
-    queryFn: () =>
-      postVendorUserTasks(vendorId ?? 0, userId ?? 0, {
-        page: 1,
-        limit: 1,
-        created_at: "desc",
-        ...(sidebarMyTaskFranchiseId
-          ? { franchise_id: sidebarMyTaskFranchiseId }
-          : {}),
-      }),
-    enabled:
-      !!vendorId &&
-      !!userId &&
-      (isSuperAdmin || !!myTaskFranchiseId) &&
-      (!shouldResolveMyTaskFranchiseFromVendor || !isFranchisesLoading),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
-  const myTaskTotalCount = myTaskCountData?.count ?? 0;
   const { isMobile, setOpenMobile } = useSidebar();
 
   const pathname = usePathname();
@@ -247,7 +222,7 @@ export function NavMain({
 
   const getSingleItemCount = (item: NavItem) => {
     if (item.title === "My Task") {
-      return myTaskTotalCount;
+      return getCountForItem(item.showCount);
     }
     return item.customCount ?? getCountForItem(item.showCount);
   };
@@ -413,7 +388,7 @@ export function NavMain({
                   }
                 }
               >
-                {isLoading || item.customCountLoading || (item.title === "My Task" && isMyTaskCountLoading)
+                {isLoading || item.customCountLoading
                   ? "…"
                   : getSingleItemCount(item)}
               </Badge>
