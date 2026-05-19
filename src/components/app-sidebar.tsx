@@ -445,7 +445,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                   : true,
                         ),
                       }
-                    : item.title === "Installation"
+                    : item.title === "Execution"
                       ? {
                           ...item,
                           items: item.items?.filter((subItem) =>
@@ -494,7 +494,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     };
 
     const finalNavItems = customFilteredItems.map((item) => {
-      if (item.title === "Installation" && item.items) {
+      if (item.title === "Execution" && item.items) {
         const underInstallationIndex = item.items.findIndex(
           (subItem) => subItem.title === "Installation",
         );
