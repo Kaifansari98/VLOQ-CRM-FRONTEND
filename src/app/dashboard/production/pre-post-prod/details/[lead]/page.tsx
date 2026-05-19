@@ -935,6 +935,7 @@ export default function ProductionLeadDetails() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              disabled={moveLeadMutation.isPending}
               onClick={async () => {
                 if (!vendorId || !userId || !leadIdNum) {
                   toastManager.add({
