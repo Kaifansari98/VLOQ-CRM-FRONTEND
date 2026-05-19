@@ -154,11 +154,17 @@ export default function ReadyToDispatchLeadDetails() {
         )
       : true;
   const canViewDocuments =
-    userType?.toLowerCase() === "custom"
+    userType === "custom"
       ? customPrivilegeCodes.some((code) =>
           code.startsWith("leads.open_leads.details_of_lead.documents_section."),
         )
       : true;
+  const canShowTodoTab =
+    userType === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("production.production.ready_to_dispatch"),
+        )
+      : canAssignSR(userType);
   const handleExpectedDateChange = async (newDate?: string) => {
     if (!newDate || !vendorId || !userId || !leadIdNum) return;
 
@@ -347,7 +353,7 @@ export default function ReadyToDispatchLeadDetails() {
               </TabsTrigger>
 
               {/* ✅ To-Do Task (Conditional Access) */}
-              {canAssignSR(userType) ? (
+              {canShowTodoTab ? (
                 <TabsTrigger value="todo" onClick={() => setAssignOpen(true)}>
                   <PencilLine size={16} className="mr-1 opacity-60" />
                   To-Do Task
@@ -360,7 +366,11 @@ export default function ReadyToDispatchLeadDetails() {
                       To-Do Task
                     </TabsTrigger>
                   }
-                  value="Only Admin or Sales Executive can access this tab"
+                  value={
+                    userType === "custom"
+                      ? "You don’t have permission to access To-Do Tasks."
+                      : "Only Admin or Sales Executive can access this tab"
+                  }
                 />
               )}
 

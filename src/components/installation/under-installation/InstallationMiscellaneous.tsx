@@ -412,7 +412,12 @@ export default function InstallationMiscellaneous({
     label: type.name,
   }));
 
-  const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
+  const canWork =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.under_installation.miscellaneous_section.enable_disable_action",
+        )
+      : canViewAndWorkUnderInstallationStage(userType, leadStatus);
 
   const entry = viewModalData;
   const miscApproved = viewModalData?.misc_approved;

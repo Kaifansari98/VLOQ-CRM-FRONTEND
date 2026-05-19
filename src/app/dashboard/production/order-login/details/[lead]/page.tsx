@@ -117,7 +117,24 @@ export default function OrderLoginLeadDetails() {
           "production.order_login.move_to_production.enable_disable",
         )
       : canMoveToProduction(effectiveUserType);
-  const canViewTodoTask = canWorkTodoTaskOrderLoginStage(effectiveUserType);
+  const canViewTodoTask =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.order_login.approved_documents.view",
+        ) ||
+        customPrivilegeCodes.includes(
+          "production.order_login.production_files.view",
+        ) ||
+        customPrivilegeCodes.includes(
+          "production.order_login.order_login_details.enable_disable",
+        )
+      : canWorkTodoTaskOrderLoginStage(effectiveUserType);
+  const canViewOrderLoginTabByDefault =
+    userType === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("production.order_login."),
+        )
+      : canOrderLogin(effectiveUserType);
   const canViewSiteHistory =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
@@ -450,7 +467,11 @@ export default function OrderLoginLeadDetails() {
                 ) : (
                   // Restricted Tab With Tooltip Message
                   <CustomeTooltip
-                    value="Only Backend access to this tab."
+                    value={
+                      userType === "custom"
+                        ? "You don’t have permission to access To-Do Tasks."
+                        : "Only Backend access to this tab."
+                    }
                     truncateValue={
                       <TabsTrigger value="todo" disabled>
                         <PencilLine size={16} className="mr-1 opacity-60" />
@@ -495,7 +516,7 @@ export default function OrderLoginLeadDetails() {
           <LeadDetailsGrouped
             status="orderLogin"
             defaultTab={
-              canOrderLogin(effectiveUserType) ? "orderLogin" : "techcheck"
+              canViewOrderLoginTabByDefault ? "orderLogin" : "techcheck"
             }
             leadId={leadIdNum}
             accountId={accountId}
@@ -512,7 +533,7 @@ export default function OrderLoginLeadDetails() {
           <LeadDetailsGrouped
             status="orderLogin"
             defaultTab={
-              canOrderLogin(effectiveUserType) ? "orderLogin" : "techcheck"
+              canViewOrderLoginTabByDefault ? "orderLogin" : "techcheck"
             }
             leadId={leadIdNum}
             accountId={accountId}

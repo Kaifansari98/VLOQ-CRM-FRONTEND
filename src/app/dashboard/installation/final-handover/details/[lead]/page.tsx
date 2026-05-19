@@ -167,8 +167,20 @@ export default function FinalHandoverLeadDetails() {
     (mapping: any) => mapping.productType?.tag === "Type 7",
   );
   const allowServicingTabFromDeliveredProjects = !isSmallOrderLead;
+  const hasAnyUploadPrivilege =
+    normalizedUserType === "custom" &&
+    [
+      "installation.final_handover.warranty_card_photos.upload",
+      "installation.final_handover.final_site_photos.upload",
+      "installation.final_handover.handover_booklet.upload",
+      "installation.final_handover.final_handover_form.upload",
+      "installation.final_handover.qc_documents.upload",
+      "installation.final_handover.amc_documents.upload",
+    ].some((code) => customPrivilegeCodes.includes(code));
+
   const canShowMarkCompleted =
-    ["super-admin", "site-supervisor"].includes(normalizedEffectiveUserType) &&
+    (["super-admin", "site-supervisor"].includes(normalizedEffectiveUserType) ||
+      hasAnyUploadPrivilege) &&
     leadStatusTag !== "Type 17";
 
   const { data: readiness, isLoading: readinessLoading } =

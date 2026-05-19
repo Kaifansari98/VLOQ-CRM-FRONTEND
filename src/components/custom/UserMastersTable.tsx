@@ -1565,16 +1565,90 @@ export default function UserMastersTable() {
                                   <p className="text-sm font-medium text-foreground">
                                     {child.title}
                                   </p>
-                                  <ChevronDown
-                                    className={cn(
-                                      "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                                      isLeadSectionOpen && "rotate-180",
-                                    )}
-                                  />
+                                  <div className="flex items-center gap-2">
+                                    {(() => {
+                                      const allChildIds = getSectionChildPrivileges(
+                                        section.parentModule,
+                                        child.childModuleIncludes,
+                                        child.codePrefixes,
+                                      ).map((p) => p.id);
+                                      const selCount = allChildIds.filter((id) =>
+                                        selectedPrivilegeIds.includes(id),
+                                      ).length;
+                                      if (allChildIds.length === 0) return null;
+                                      return (
+                                        <span
+                                          className={cn(
+                                            "inline-flex rounded-full px-2 py-0.5 text-xs font-medium border",
+                                            selCount === allChildIds.length
+                                              ? "bg-emerald-500/15 text-emerald-600 border-emerald-200"
+                                              : selCount > 0
+                                              ? "bg-primary/10 text-primary border-primary/20"
+                                              : "bg-muted text-muted-foreground",
+                                          )}
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          {selCount}/{allChildIds.length}
+                                        </span>
+                                      );
+                                    })()}
+                                    <ChevronDown
+                                      className={cn(
+                                        "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                                        isLeadSectionOpen && "rotate-180",
+                                      )}
+                                    />
+                                  </div>
                                 </button>
 
                                 {isLeadSectionOpen && (
                                   <div className="border-t bg-muted/20 px-4 py-3">
+                                    {(() => {
+                                      const allChildIds = getSectionChildPrivileges(
+                                        section.parentModule,
+                                        child.childModuleIncludes,
+                                        child.codePrefixes,
+                                      ).map((p) => p.id);
+                                      const selCount = allChildIds.filter((id) =>
+                                        selectedPrivilegeIds.includes(id),
+                                      ).length;
+                                      const isAllSelected =
+                                        allChildIds.length > 0 &&
+                                        selCount === allChildIds.length;
+                                      if (allChildIds.length === 0) return null;
+                                      return (
+                                        <div className="mb-3 flex items-center justify-between gap-2">
+                                          <button
+                                            type="button"
+                                            disabled={updateUserPrivilegesMutation.isPending}
+                                            onClick={() =>
+                                              setSelectedPrivilegeIds((current) => {
+                                                if (isAllSelected) {
+                                                  return current.filter(
+                                                    (id) => !allChildIds.includes(id),
+                                                  );
+                                                }
+                                                return Array.from(
+                                                  new Set([...current, ...allChildIds]),
+                                                );
+                                              })
+                                            }
+                                            className={cn(
+                                              "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                                              isAllSelected
+                                                ? "border-emerald-200 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
+                                                : "border-primary/20 bg-primary/5 text-primary hover:bg-primary/10",
+                                            )}
+                                          >
+                                            <CheckIcon className="h-3.5 w-3.5" />
+                                            {isAllSelected ? "Deselect All" : "Select All"}
+                                          </button>
+                                          <span className="text-xs text-muted-foreground">
+                                            {selCount} of {allChildIds.length} selected
+                                          </span>
+                                        </div>
+                                      );
+                                    })()}
                                     <div className="mb-3">
                                       <Input
                                         value={privilegeSearch}

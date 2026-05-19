@@ -96,6 +96,9 @@ export default function LeadDetailsProductionUtil({
     scopedInstanceId ?? undefined,
   );
 
+
+  console.log("data: ", data)
+
   const { data: preProductionReadyData } = useCheckPreProductionFilesReady(
     vendorId,
     leadId,
@@ -162,6 +165,18 @@ export default function LeadDetailsProductionUtil({
           "production.production.under_production.enable_disable",
         )
       : canAccessAllTabs;
+  const canViewPostProduction =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.post_production_woodwork.view",
+        ) ||
+        customPrivilegeCodes.includes(
+          "production.production.post_production_hardware.view",
+        ) ||
+        customPrivilegeCodes.includes(
+          "production.production.post_production_qc_photos.view",
+        )
+      : canAccessAllTabs;
 
   const allTabs = [
     {
@@ -226,9 +241,10 @@ export default function LeadDetailsProductionUtil({
       id: "postProduction",
       title: "Post Production",
       color: "bg-zinc-900 hover:bg-zinc-900",
-      disabled: canAccessAllTabs && !readyForPostProduction,
-      disabledReason:
-        "You can access Post Production only after completing Under-Production.",
+      disabled: !canViewPostProduction || !readyForPostProduction,
+      disabledReason: !canViewPostProduction
+        ? "You don’t have permission to access Post Production."
+        : "You can access Post Production only after completing Under-Production.",
       cardContent: (
         <PostProductionDetails
           leadId={leadId}
@@ -291,12 +307,19 @@ export default function LeadDetailsProductionUtil({
       )}
       <SmoothTab
         items={allTabs}
-        defaultTabId={
-          canAccessAllTabs
-            ? (tabFromUrl ??
-              (defaultTab ? "preProductionFiles" : "postProduction"))
-            : "postProduction"
-        }
+        defaultTabId={(() => {
+          if (
+            tabFromUrl &&
+            allTabs.some((tab) => tab.id === tabFromUrl && !tab.disabled)
+          ) {
+            return tabFromUrl;
+          }
+          if (canAccessAllTabs) {
+            return defaultTab ? "preProductionFiles" : "postProduction";
+          }
+          const firstEnabledTab = allTabs.find((tab) => !tab.disabled);
+          return firstEnabledTab ? firstEnabledTab.id : "productionFiles";
+        })()}
       />
     </div>
   );

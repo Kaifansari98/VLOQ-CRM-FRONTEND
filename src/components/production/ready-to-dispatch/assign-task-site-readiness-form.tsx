@@ -110,9 +110,8 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const normalizedUserType = (loggedInUserType ?? userType ?? "").toLowerCase();
   const isAllowedToAssignSR =
     normalizedUserType === "custom"
-      ? canAssignSR(userType) &&
-        customPrivilegeCodes.includes(
-          "installation.site_readiness.move_to_dispatch_planning.enable_disable",
+      ? customPrivilegeCodes.includes(
+          "production.production.ready_to_dispatch.assign_site_readiness_task.action",
         )
       : canAssignSR(userType);
   const canAssignSiteReadinessForCustomUser =
@@ -121,6 +120,8 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
           "production.production.ready_to_dispatch.assign_site_readiness_task.action",
         )
       : true;
+
+      console.log("canAssignSiteReadinessForCustomUser log: ", canAssignSiteReadinessForCustomUser)
   const canShowSiteReadinessTaskType =
     isAllowedToAssignSR && canAssignSiteReadinessForCustomUser;
   const dueDateMinDate = React.useMemo(() => {
@@ -188,20 +189,27 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     "A Follow Up Task is already assigned to this user, which is not yet completed.";
 
   const mappedData =
-    taskType === "Follow Up"
+    normalizedUserType === "custom"
       ? (followUpUsersData?.data?.users ?? []).map((u: any) => ({
           id: u.id,
           label: u.user_name,
-          disabled:
-            u.id !== userId &&
-            followUpConflicts.some((task) => task.assignee?.id === u.id),
-          tooltip:
-            u.id !== userId &&
-            followUpConflicts.some((task) => task.assignee?.id === u.id)
-              ? followUpTooltip
-              : undefined,
+          disabled: false,
+          tooltip: undefined,
         }))
-      : siteSupervisorList;
+      : taskType === "Follow Up"
+        ? (followUpUsersData?.data?.users ?? []).map((u: any) => ({
+            id: u.id,
+            label: u.user_name,
+            disabled:
+              u.id !== userId &&
+              followUpConflicts.some((task) => task.assignee?.id === u.id),
+            tooltip:
+              u.id !== userId &&
+              followUpConflicts.some((task) => task.assignee?.id === u.id)
+                ? followUpTooltip
+                : undefined,
+          }))
+        : siteSupervisorList;
 
   const assignedSupervisorId =
     assignedSiteSupervisor?.supervisor?.id ??
@@ -211,7 +219,8 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     (user: { id: number; label: string }) => user.id === assignedSupervisorId
   )?.id;
   const isSiteReadinessTask = taskType === "Site Readiness";
-  const shouldLockAssignee = isSiteReadinessTask && !!matchedSupervisorId;
+  const shouldLockAssignee =
+    normalizedUserType !== "custom" && isSiteReadinessTask && !!matchedSupervisorId;
   const isSiteReadinessSelectionDisabled =
     isLoadingSiteReadinessTaskConflicts ||
     isSiteReadinessConflictLocked ||
@@ -239,13 +248,14 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
 
   React.useEffect(() => {
     if (
+      normalizedUserType !== "custom" &&
       isSiteReadinessTask &&
       shouldLockAssignee &&
       form.getValues("assign_lead_to") !== matchedSupervisorId
     ) {
       form.setValue("assign_lead_to", matchedSupervisorId);
     }
-  }, [isSiteReadinessTask, shouldLockAssignee, matchedSupervisorId, form]);
+  }, [isSiteReadinessTask, shouldLockAssignee, matchedSupervisorId, form, normalizedUserType]);
 
   React.useEffect(() => {
     if (taskType !== "Follow Up") return;
@@ -425,7 +435,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm">
-                      Select Site Supervisor
+                      {normalizedUserType === "custom" ? "Select User" : "Select Site Supervisor"}
                     </FormLabel>
                     <FormControl>
                       <AssignToPicker
