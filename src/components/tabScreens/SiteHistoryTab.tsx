@@ -75,7 +75,7 @@ const parseActionMessage = (action: string) => {
 };
 
 const formatStageLabel = (stageName?: string | null) => {
-  if (!stageName) return "Unknown Stage";
+  if (!stageName) return null;
 
   return stageName
     .replace(/[-_]+/g, " ")
@@ -192,12 +192,14 @@ export default function SiteHistoryTab({
                             )}
                           </span>
                         </div>
-                        <Badge
-                          variant="secondary"
-                          className="capitalize text-xs font-medium h-5 px-1.5"
-                        >
-                          {formatStageLabel(log.stage?.name)}
-                        </Badge>
+                        {formatStageLabel(log.stage?.name) && (
+                          <Badge
+                            variant="secondary"
+                            className="capitalize text-xs font-medium h-5 px-1.5"
+                          >
+                            {formatStageLabel(log.stage?.name)}
+                          </Badge>
+                        )}
                       </div>
 
                       {(() => {
