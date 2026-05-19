@@ -39,14 +39,14 @@ const getActionIcon = (actionType: string) => {
   }
 };
 
-const getActionColor = (actionType: string) => {
+const getActionStyle = (actionType: string) => {
   switch (actionType) {
     case "CREATE":
-      return "bg-foreground";
+      return "bg-foreground text-primary-foreground ring-4 ring-background";
     case "UPDATE":
-      return "bg-muted-foreground";
+      return "bg-background text-foreground border-2 border-foreground/40 ring-4 ring-background";
     default:
-      return "bg-muted-foreground/60";
+      return "bg-background text-muted-foreground border-2 border-border ring-4 ring-background";
   }
 };
 
@@ -146,18 +146,18 @@ export default function SiteHistoryTab({
           </p>
         </div>
         <Button
-          variant="outline"
+          variant="default"
           size="sm"
-          className="shrink-0 gap-2 h-8 text-xs"
+          className="shrink-0 gap-2"
           disabled={isExporting}
           onClick={handleExport}
         >
           {isExporting ? (
-            <Loader2 className="size-3 animate-spin" />
+            <Loader2 className="size-4 animate-spin" />
           ) : (
-            <FileSpreadsheet className="size-3" />
+            <FileSpreadsheet className="size-4" />
           )}
-          {isExporting ? "Exporting..." : "Export"}
+          {isExporting ? "Exporting..." : "Export Site History"}
         </Button>
       </div>
 
@@ -168,7 +168,7 @@ export default function SiteHistoryTab({
         <AnimatePresence mode="popLayout">
           {allLogs.map((log, index) => {
             const ActionIcon = getActionIcon(log.action_type);
-            const dotColor = getActionColor(log.action_type);
+            const dotStyle = getActionStyle(log.action_type);
 
             return (
               <motion.div
@@ -184,7 +184,7 @@ export default function SiteHistoryTab({
               >
                 {/* Timeline dot */}
                 <div
-                  className={`absolute left-0 top-2.5 h-8 w-8 rounded-full ${dotColor} flex items-center justify-center ring-2 ring-background`}
+                  className={`absolute left-0 top-2.5 h-8 w-8 rounded-full ${dotStyle} flex items-center justify-center`}
                 >
                   <ActionIcon size={14} className="text-primary-foreground" />
                 </div>
@@ -313,7 +313,7 @@ export default function SiteHistoryTab({
           </Button>
         ) : allLogs.length > 0 ? (
           <p className="text-xs text-muted-foreground py-3">
-            End of timeline
+            You've reached the end of the timeline
           </p>
         ) : (
           <div className="text-center py-10">
