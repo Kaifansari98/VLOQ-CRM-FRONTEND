@@ -74,6 +74,16 @@ const parseActionMessage = (action: string) => {
   return { main: cleanedMain, remark: cleanedRemark };
 };
 
+const formatStageLabel = (stageName?: string | null) => {
+  if (!stageName) return "Unknown Stage";
+
+  return stageName
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 export default function SiteHistoryTab({
   leadId,
   vendorId,
@@ -186,22 +196,7 @@ export default function SiteHistoryTab({
                           variant="secondary"
                           className="capitalize text-xs font-medium h-5 px-1.5"
                         >
-                          {(() => {
-                            switch (log.action_type) {
-                              case "CREATE":
-                                return "Created";
-                              case "UPDATE":
-                                return "Updated";
-                              case "DELETE":
-                                return "Deleted";
-                              case "UPLOAD":
-                                return "Uploaded";
-                              case "STATUS_CHANGE":
-                                return "Status Changed";
-                              default:
-                                return "Action";
-                            }
-                          })()}
+                          {formatStageLabel(log.stage?.name)}
                         </Badge>
                       </div>
 
