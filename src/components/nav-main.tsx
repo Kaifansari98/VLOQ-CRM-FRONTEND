@@ -189,19 +189,24 @@ export function NavMain({
     shouldResolveMyTaskFranchiseFromVendor,
     vendorFranchises,
   ]);
+  const sidebarMyTaskFranchiseId = isSuperAdmin
+    ? undefined
+    : myTaskFranchiseId;
   const { data: myTaskCountData, isLoading: isMyTaskCountLoading } = useQuery({
-    queryKey: ["sidebarMyTaskCount", vendorId, userId, myTaskFranchiseId],
+    queryKey: ["sidebarMyTaskCount", vendorId, userId, sidebarMyTaskFranchiseId ?? null],
     queryFn: () =>
       postVendorUserTasks(vendorId ?? 0, userId ?? 0, {
         page: 1,
         limit: 1,
         created_at: "desc",
-        franchise_id: myTaskFranchiseId,
+        ...(sidebarMyTaskFranchiseId
+          ? { franchise_id: sidebarMyTaskFranchiseId }
+          : {}),
       }),
     enabled:
       !!vendorId &&
       !!userId &&
-      !!myTaskFranchiseId &&
+      (isSuperAdmin || !!myTaskFranchiseId) &&
       (!shouldResolveMyTaskFranchiseFromVendor || !isFranchisesLoading),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
