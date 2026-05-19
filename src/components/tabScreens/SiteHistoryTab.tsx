@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { generateSiteHistoryReport } from "@/lib/reports/siteHistoryReport";
+import SmoothTab from "@/components/kokonutui/smooth-tab";
 
 interface SiteHistoryTabProps {
   leadId: number;
@@ -27,6 +28,14 @@ interface SiteHistoryTabProps {
   leadCode?: string | null;
   leadName?: string | null;
 }
+
+type TabId = "lead-history" | "task-history" | "follow-ups";
+
+const HISTORY_TYPE_MAP: Record<TabId, "Lead" | "Task" | "FollowUp"> = {
+  "lead-history": "Lead",
+  "task-history": "Task",
+  "follow-ups": "FollowUp",
+};
 
 const getActionIcon = (actionType: string) => {
   switch (actionType) {
@@ -55,15 +64,11 @@ const parseActionMessage = (action: string) => {
     return { main: action.trim(), remark: null };
   }
 
-  // Split and clean up both parts
   const [mainPart, remarkPart] = action.split("Remark:");
-  const cleanedMain = mainPart.replace(/—\s*$/, "").trim(); // remove trailing "—" or "— "
+  const cleanedMain = mainPart.replace(/—\s*$/, "").trim();
   const cleanedRemark = remarkPart?.trim() || null;
 
-  return {
-    main: cleanedMain,
-    remark: cleanedRemark,
-  };
+  return { main: cleanedMain, remark: cleanedRemark };
 };
 
 export default function SiteHistoryTab({
@@ -72,24 +77,24 @@ export default function SiteHistoryTab({
   leadCode,
   leadName,
 }: SiteHistoryTabProps) {
+  const [activeTab, setActiveTab] = useState<TabId>("lead-history");
+  const historyType = HISTORY_TYPE_MAP[activeTab];
+
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
-      queryKey: ["leadLogs", leadId, vendorId],
+      queryKey: ["leadLogs", leadId, vendorId, historyType],
       queryFn: async ({ pageParam }) =>
         await fetchLeadLogs({
           leadId,
           vendorId,
           cursor: pageParam ?? undefined,
           limit: 10,
+          historyType,
         }),
       getNextPageParam: (lastPage) =>
         lastPage?.meta?.hasMore ? lastPage.meta.nextCursor : undefined,
       initialPageParam: undefined,
     });
-
-  useEffect(() => {
-    console.log("🔍 Logs Data:", data?.pages);
-  }, [data]);
 
   const [isExporting, setIsExporting] = useState(false);
 
@@ -114,218 +119,243 @@ export default function SiteHistoryTab({
     }
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  if (isLoading) {
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="flex flex-col items-center justify-center py-20"
-      >
-        <Loader2 className="animate-spin text-primary mb-3" size={40} />
-        <p className="text-sm text-muted-foreground">Loading history...</p>
-      </motion.div>
-    );
-  }
-
   const allLogs = data?.pages.flatMap((page) => page.data) ?? [];
+
+  const timelineContent = (
+    <div className="pt-3">
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-16">
+          <Loader2 className="animate-spin text-muted-foreground mb-2" size={24} />
+          <p className="text-xs text-muted-foreground">Loading...</p>
+        </div>
+      ) : (
+        <>
+          <div className="relative">
+            <div className="absolute left-[15px] top-0 bottom-0 w-px bg-border" />
+
+            <AnimatePresence mode="popLayout">
+              {allLogs.map((log, index) => {
+                const ActionIcon = getActionIcon(log.action_type);
+                const dotStyle = getActionStyle(log.action_type);
+
+                return (
+                  <motion.div
+                    key={log.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25, delay: index * 0.04 }}
+                    className="relative pl-12 pb-3 last:pb-0"
+                  >
+                    <div
+                      className={`absolute left-0 top-2.5 h-8 w-8 rounded-full ${dotStyle} flex items-center justify-center`}
+                    >
+                      <ActionIcon size={14} />
+                    </div>
+
+                    <Card className="p-4 border border-border bg-transparent gap-2.5">
+                      <div className="flex items-start justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <Clock size={13} className="text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">
+                            {format(
+                              new Date(log.created_at),
+                              "MMM dd, yyyy · hh:mm a"
+                            )}
+                          </span>
+                        </div>
+                        <Badge
+                          variant="secondary"
+                          className="capitalize text-xs font-medium h-5 px-1.5"
+                        >
+                          {(() => {
+                            switch (log.action_type) {
+                              case "CREATE":
+                                return "Created";
+                              case "UPDATE":
+                                return "Updated";
+                              case "DELETE":
+                                return "Deleted";
+                              case "UPLOAD":
+                                return "Uploaded";
+                              case "STATUS_CHANGE":
+                                return "Status Changed";
+                              default:
+                                return "Action";
+                            }
+                          })()}
+                        </Badge>
+                      </div>
+
+                      {(() => {
+                        const { main, remark } = parseActionMessage(log.action);
+                        return (
+                          <>
+                            <p className="text-sm text-foreground font-medium leading-relaxed">
+                              {main}
+                            </p>
+                            {remark && (
+                              <p className="text-xs text-muted-foreground italic">
+                                {remark}
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
+
+                      <div
+                        className={`flex items-center gap-2 ${
+                          log.docs.length > 0
+                            ? "border-b border-border/50 pb-2.5"
+                            : ""
+                        }`}
+                      >
+                        <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          <span className="text-[10px] font-bold text-muted-foreground">
+                            {log.created_by?.name?.charAt(0) || "?"}
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-foreground text-xs">
+                            {log.created_by?.name || "Unknown"}
+                          </span>
+                          {log.created_by?.email && (
+                            <span className="text-[10px] text-muted-foreground">
+                              {log.created_by.email}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {log.docs.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                            Attachments ({log.docs.length})
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {log.docs.map((doc: any) => (
+                              <a
+                                key={doc.id}
+                                href={doc.signedUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border border-border bg-muted/40 hover:bg-muted transition-colors"
+                              >
+                                <FileText
+                                  size={12}
+                                  className="text-muted-foreground shrink-0"
+                                />
+                                <span className="font-medium truncate max-w-[180px]">
+                                  {doc.original_name}
+                                </span>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+
+          <div ref={ref} className="flex justify-center mt-5 mb-2">
+            {isFetchingNextPage ? (
+              <div className="flex items-center gap-2 py-3">
+                <Loader2
+                  className="animate-spin text-muted-foreground"
+                  size={16}
+                />
+                <p className="text-xs text-muted-foreground">Loading more...</p>
+              </div>
+            ) : hasNextPage ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => fetchNextPage()}
+                className="text-xs text-muted-foreground"
+              >
+                Load more
+              </Button>
+            ) : allLogs.length > 0 ? (
+              <p className="text-xs text-muted-foreground py-3">
+                End of timeline
+              </p>
+            ) : (
+              <div className="text-center py-10">
+                <FileText
+                  className="mx-auto text-muted-foreground/30 mb-2"
+                  size={36}
+                />
+                <p className="text-sm text-muted-foreground">
+                  No logs available yet
+                </p>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  const tabItems = [
+    {
+      id: "lead-history",
+      title: "Lead History",
+      color: "bg-foreground",
+      cardContent: timelineContent,
+    },
+    {
+      id: "task-history",
+      title: "Task History",
+      color: "bg-foreground",
+      cardContent: timelineContent,
+    },
+    {
+      id: "follow-ups",
+      title: "Follow Up's",
+      color: "bg-foreground",
+      cardContent: timelineContent,
+    },
+  ];
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="relative py-4 w-full mx-auto"
+      className="relative pb-4 w-full mx-auto"
     >
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">
-            Site History
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Track all activities and changes for this lead
-          </p>
-        </div>
-        <Button
-          variant="default"
-          size="sm"
-          className="shrink-0 gap-2"
-          disabled={isExporting}
-          onClick={handleExport}
-        >
-          {isExporting ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <FileSpreadsheet className="size-4" />
-          )}
-          {isExporting ? "Exporting..." : "Export Site History"}
-        </Button>
+      <div className="mb-5">
+        <h2 className="text-lg font-semibold text-foreground">Site History</h2>
+        <p className="text-xs text-muted-foreground">
+          Track all activities and changes for this lead
+        </p>
       </div>
 
       <div className="relative">
-        {/* Timeline line */}
-        <div className="absolute left-[15px] top-0 bottom-0 w-px bg-border" />
-
-        <AnimatePresence mode="popLayout">
-          {allLogs.map((log, index) => {
-            const ActionIcon = getActionIcon(log.action_type);
-            const dotStyle = getActionStyle(log.action_type);
-
-            return (
-              <motion.div
-                key={log.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{
-                  duration: 0.25,
-                  delay: index * 0.04,
-                }}
-                className="relative pl-12 pb-3 last:pb-0"
-              >
-                {/* Timeline dot */}
-                <div
-                  className={`absolute left-0 top-2.5 h-8 w-8 rounded-full ${dotStyle} flex items-center justify-center`}
-                >
-                  <ActionIcon size={14} className="text-primary-foreground" />
-                </div>
-
-                <Card className="p-4 border border-border bg-transparent gap-2.5">
-                  <div className="flex items-start justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <Clock size={13} className="text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">
-                        {format(
-                          new Date(log.created_at),
-                          "MMM dd, yyyy · hh:mm a"
-                        )}
-                      </span>
-                    </div>
-                    <Badge
-                      variant="secondary"
-                      className="capitalize text-xs font-medium h-5 px-1.5"
-                    >
-                      {(() => {
-                        switch (log.action_type) {
-                          case "CREATE":
-                            return "Created";
-                          case "UPDATE":
-                            return "Updated";
-                          case "DELETE":
-                            return "Deleted";
-                          case "UPLOAD":
-                            return "Uploaded";
-                          case "STATUS_CHANGE":
-                            return "Status Changed";
-                          default:
-                            return "Action";
-                        }
-                      })()}
-                    </Badge>
-                  </div>
-
-                  {(() => {
-                    const { main, remark } = parseActionMessage(log.action);
-                    return (
-                      <>
-                        <p className="text-sm text-foreground font-medium leading-relaxed">
-                          {main}
-                        </p>
-                        {remark && (
-                          <p className="text-xs text-muted-foreground italic">
-                            {remark}
-                          </p>
-                        )}
-                      </>
-                    );
-                  })()}
-
-                  <div
-                    className={`flex items-center gap-2 ${
-                      log.docs.length > 0
-                        ? "border-b border-border/50 pb-2.5"
-                        : ""
-                    }`}
-                  >
-                    <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center shrink-0">
-                      <span className="text-[10px] font-bold text-muted-foreground">
-                        {log.created_by?.name?.charAt(0) || "?"}
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-foreground text-xs">
-                        {log.created_by?.name || "Unknown"}
-                      </span>
-                      {log.created_by?.email && (
-                        <span className="text-[10px] text-muted-foreground">
-                          {log.created_by.email}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {log.docs.length > 0 && (
-                    <div className="space-y-1.5">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                        Attachments ({log.docs.length})
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {log.docs.map((doc: any) => (
-                          <a
-                            key={doc.id}
-                            href={doc.signedUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border border-border bg-muted/40 hover:bg-muted transition-colors"
-                          >
-                            <FileText size={12} className="text-muted-foreground shrink-0" />
-                            <span className="font-medium truncate max-w-[180px]">
-                              {doc.original_name}
-                            </span>
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </Card>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-      </div>
-
-      <div
-        ref={ref}
-        className="flex justify-center mt-5 mb-4"
-      >
-        {isFetchingNextPage ? (
-          <div className="flex items-center gap-2 py-3">
-            <Loader2 className="animate-spin text-muted-foreground" size={16} />
-            <p className="text-xs text-muted-foreground">Loading more...</p>
-          </div>
-        ) : hasNextPage ? (
+        <SmoothTab
+          items={tabItems}
+          defaultTabId="lead-history"
+          onChange={(tabId) => setActiveTab(tabId as TabId)}
+        />
+        <div className="absolute top-0 right-0">
           <Button
-            variant="ghost"
+            variant="default"
             size="sm"
-            onClick={() => fetchNextPage()}
-            className="text-xs text-muted-foreground"
+            className="shrink-0 gap-2"
+            disabled={isExporting}
+            onClick={handleExport}
           >
-            Load more
+            {isExporting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="size-4" />
+            )}
+            {isExporting ? "Exporting..." : "Export Site History"}
           </Button>
-        ) : allLogs.length > 0 ? (
-          <p className="text-xs text-muted-foreground py-3">
-            You've reached the end of the timeline
-          </p>
-        ) : (
-          <div className="text-center py-10">
-            <FileText
-              className="mx-auto text-muted-foreground/30 mb-2"
-              size={36}
-            />
-            <p className="text-sm text-muted-foreground">
-              No history logs available yet
-            </p>
-          </div>
-        )}
+        </div>
       </div>
     </motion.div>
   );
