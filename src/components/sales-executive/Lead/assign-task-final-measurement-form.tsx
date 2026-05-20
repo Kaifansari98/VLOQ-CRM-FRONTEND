@@ -225,13 +225,16 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     : null;
   const canUseRestrictedTaskAssignments =
     canAccessRestrictedTasks || isCustomUser;
+  const shouldRequireAssignedSiteSupervisorForFinalMeasurements =
+    vendorCustomUserTypeMode !== true;
   const isFinalMeasurementsDisabled =
     restrictedTaskConflictsLoading ||
     !!finalMeasurementsConflict ||
     (requiresBookingDoneApproval &&
       (bookingDoneLockInsLoading || hasPendingBookingDoneApproval)) ||
     !canUseRestrictedTaskAssignments ||
-    !isSiteSupervisorAssigned;
+    (shouldRequireAssignedSiteSupervisorForFinalMeasurements &&
+      !isSiteSupervisorAssigned);
   const finalMeasurementsTooltip =
     restrictedTaskConflictsLoading
     ? "Checking existing tasks"
@@ -243,7 +246,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       ? "Accounts approval for Booking Done is pending"
       : !canUseRestrictedTaskAssignments
         ? "You don't have permission to select this"
-        : !isSiteSupervisorAssigned
+        : shouldRequireAssignedSiteSupervisorForFinalMeasurements &&
+            !isSiteSupervisorAssigned
           ? "Site supervisor is not assigned yet"
           : null;
   const isBookingDoneDisabled =

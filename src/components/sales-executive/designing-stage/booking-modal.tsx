@@ -384,7 +384,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       title="Booking Form"
       description="Complete the booking details and attach all required documents."
       size="lg"
-    >
+    > 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
           {/* File Upload Section */}
