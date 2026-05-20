@@ -291,6 +291,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const userType = user?.user_type?.user_type?.toLowerCase();
   const isCustomUserTypeOnlyVendor =
     user?.vendor?.is_this_vendor_is_custom_usertype_only === true;
+  const isInventoryEnabled = user?.vendor?.is_inventory_enabled === true;
   const canSeeOverallLeads = userType === "admin" || userType === "super-admin";
   const isSuperAdmin = userType === "super-admin";
   const shouldBootstrapFranchise =
@@ -337,13 +338,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }
     : data.user;
 
-  const { navItems, trackTraceItems,inventoryItems, mastersItems } = React.useMemo(() => {
+  const { navItems, trackTraceItems, inventoryItems, mastersItems } = React.useMemo(() => {
     const environment = (
       process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION"
     ).toUpperCase();
     const showTrackTrace =
-      environment === "STAGING" || environment === "LOCAL";
-      const showInventory =
       environment === "STAGING" || environment === "LOCAL";
 
     const withoutOverall = canSeeOverallLeads
@@ -543,7 +542,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     // Track & Trace sirf STAGING mein dikhega
     const finalTrackTraceItems = showTrackTrace ? data.trackTraceNav : [];
-    const finalInventoryItems = showInventory ? data.inventoryTraceNav : [];
+    const finalInventoryItems = isInventoryEnabled
+      ? data.inventoryTraceNav
+      : [];
     const finalMastersItems = isSuperAdmin
       ? data.mastersNav.map((section) => ({
           ...section,
@@ -572,6 +573,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isMiscLeadLoading,
     userType,
     isCustomUserTypeOnlyVendor,
+    isInventoryEnabled,
     customPrivilegeCodes,
   ]);
 
