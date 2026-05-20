@@ -124,6 +124,10 @@ export function PurchaseOrderTable({
                         <p className="text-xs text-muted-foreground">
                           {po.companyVendor?.vendor_code ?? "—"}
                         </p>
+                         <p className="text-xs text-muted-foreground">
+                          
+                          {po.paymentTerm?.term_name ?? "—"}
+                        </p>
                       </div>
                     </div>
                   </td>

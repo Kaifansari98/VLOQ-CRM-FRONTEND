@@ -119,5 +119,6 @@ export const getInitialSelectionFromMapping = (
     uom: itemUom ?? productUom ?? "",
     expected_delivery_date: fmtDateInput((vm as any).required_by_date),
     remarks: (vm as any).remarks ?? "",
+    payment_term_id: vm.payment_term_id ? String(vm.payment_term_id) : "",
   };
 };

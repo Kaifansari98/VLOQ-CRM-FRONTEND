@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  fetchPIPaymentTerms,
+  PaymentTermOption,
+} from "@/api/inventory/purchaseIntent";
+import {
   getPIForConversion,
   convertPIToPO,
   PIForConversion,
@@ -78,11 +82,16 @@ export default function ConvertToPOModal({
   const [globalDate, setGlobalDate] = useState("");
   const [globalRemark, setGlobalRemark] = useState("");
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+  const [paymentTerms, setPaymentTerms] = useState<PaymentTermOption[]>([]);
 
   useEffect(() => {
-    getPIForConversion(vendorId, piId)
-      .then((data) => {
+    Promise.all([
+      getPIForConversion(vendorId, piId),
+      fetchPIPaymentTerms(vendorId),
+    ])
+      .then(([data, terms]) => {
         setPi(data);
+        setPaymentTerms(terms ?? []);
 
         const init: SelectionsMap = {};
         const exp: Record<number, boolean> = {};
@@ -357,6 +366,10 @@ export default function ConvertToPOModal({
         rowError.expected_delivery_date = "Required";
         valid = false;
       }
+      if (!sel.payment_term_id) {
+        rowError.payment_term_id = "Required";
+        valid = false;
+      }
 
       if (Object.keys(rowError).length) {
         nextErrors[Number(id)] = rowError;
@@ -411,6 +424,9 @@ export default function ConvertToPOModal({
           amount: totals.amount,
           tax_amount: totals.taxAmount,
           total_amount: totals.totalAmount,
+          payment_term_id: sel.payment_term_id
+            ? Number(sel.payment_term_id)
+            : null,
         } as any);
       }
     }
@@ -427,9 +443,8 @@ export default function ConvertToPOModal({
       });
 
       toastManager.add({
-        title: `${result.count} Purchase Order${
-          result.count > 1 ? "s" : ""
-        } created!`,
+        title: `${result.count} Purchase Order${result.count > 1 ? "s" : ""
+          } created!`,
         type: "success",
       });
 
@@ -578,6 +593,7 @@ export default function ConvertToPOModal({
                         selections={selections}
                         errors={errors}
                         expanded={!!expanded[item.id]}
+                        paymentTerms={paymentTerms}
                         onToggleExpand={() =>
                           setExpanded((prev) => ({
                             ...prev,
@@ -597,13 +613,13 @@ export default function ConvertToPOModal({
 
               <aside className="hidden min-h-0 border-l bg-background lg:block">
                 <div className="h-full min-h-0">
-                <ConversionSummary
-                  summary={summary}
-                  checkedCount={checkedCount}
-                  submitting={submitting}
-                  onClose={onClose}
-                  onSubmit={handleSubmit}
-                />
+                  <ConversionSummary
+                    summary={summary}
+                    checkedCount={checkedCount}
+                    submitting={submitting}
+                    onClose={onClose}
+                    onSubmit={handleSubmit}
+                  />
                 </div>
               </aside>
             </div>

@@ -19,6 +19,8 @@ export interface SelectionState {
   uom: string;
   expected_delivery_date: string;
   remarks: string;
+  payment_term_id: string;
+
 }
 
 export type SelectionsMap = Record<number, SelectionState>;
@@ -26,6 +28,8 @@ export type SelectionsMap = Record<number, SelectionState>;
 export interface RowErrors {
   ordered_qty?: string;
   expected_delivery_date?: string;
+  payment_term_id?: string;
+
 }
 
 export type ErrorsMap = Record<number, RowErrors>;

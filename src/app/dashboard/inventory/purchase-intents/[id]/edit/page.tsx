@@ -9,6 +9,8 @@ import {
   getPurchaseIntentById,
   PIPriority,
   PIDetail,
+  fetchPIPaymentTerms,
+  PaymentTermOption,
 } from "@/api/inventory/purchaseIntent";
 import {
   PICategory,
@@ -422,17 +424,20 @@ function ProductIntentCard({
   idx,
   allVendors,
   vendorsLoading,
+  paymentTerms,
   onItemChange,
   onRemoveItem,
   onAddVendor,
   onUpdateVendor,
   onRemoveVendor,
   onToggleExpand,
+
 }: {
   item: SelectedItem;
   idx: number;
   allVendors: PICompanyVendor[];
   vendorsLoading: boolean;
+  paymentTerms: PaymentTermOption[];
   onItemChange: (i: number, f: keyof SelectedItem, v: any) => void;
   onRemoveItem: (i: number) => void;
   onAddVendor: (i: number, v: PICompanyVendor) => void;
@@ -683,6 +688,7 @@ function ProductIntentCard({
                       vi={vi}
                       errors={item.errors?.vendors?.[vi]}
                       canEdit={true}
+                      paymentTerms={paymentTerms}
                       onUpdate={onUpdateVendor}
                       onRemove={onRemoveVendor}
                     />
@@ -743,6 +749,7 @@ export default function EditPurchaseIntentPage() {
   const [remarks, setRemarks] = useState("");
   const [state_id, setStateId] = useState<number>(0);
   const [productPickerOpen, setProductPickerOpen] = useState(false);
+  const [paymentTerms, setPaymentTerms] = useState<PaymentTermOption[]>([]);
 
   useEffect(() => {
     if (!vendorId || !intentId) return;
@@ -755,8 +762,10 @@ export default function EditPurchaseIntentPage() {
       fetchPICategories(vendorId),
       fetchCompanyStateId(vendorId),
       fetchPICompanyVendors(vendorId, ""),
+      fetchPIPaymentTerms(vendorId),
+
     ])
-      .then(([intentData, cats, stateId, vendors]) => {
+      .then(([intentData, cats, stateId, vendors, terms]) => {
         if (intentData.status !== "Draft") {
           setNotFound(true);
           return;
@@ -766,6 +775,7 @@ export default function EditPurchaseIntentPage() {
         setCategories(cats);
         setStateId(stateId);
         setAllVendors(vendors);
+        setPaymentTerms(terms ?? []);
 
         setSelectedCategory(intentData.category.id);
         setPriority(intentData.priority);
@@ -808,6 +818,9 @@ export default function EditPurchaseIntentPage() {
                 : "",
               total_amount: vm.total_amount
                 ? String(parseFloat(vm.total_amount))
+                : "",
+              payment_term_id: vm.payment_term_id
+                ? String(vm.payment_term_id)
                 : "",
             };
 
@@ -1139,6 +1152,9 @@ export default function EditPurchaseIntentPage() {
           remarks: item.remarks || undefined,
           vendors: item.vendor_entries.map((entry) => ({
             company_vendor_id: entry.vendor.id,
+            payment_term_id: entry.payment_term_id
+              ? Number(entry.payment_term_id)
+              : null,
             required_qty: toNum(entry.required_qty),
             required_by_date: entry.required_by_date || undefined,
             remarks: entry.remarks || undefined,
@@ -1153,6 +1169,7 @@ export default function EditPurchaseIntentPage() {
             tax_amount: toNum(entry.tax_amount) || null,
             amount: toNum(entry.amount) || null,
             total_amount: toNum(entry.total_amount) || null,
+
           })),
         })),
       });
@@ -1422,9 +1439,8 @@ export default function EditPurchaseIntentPage() {
                     )}
                   >
                     {stats.errorCount > 0
-                      ? `${stats.errorCount} item${
-                          stats.errorCount > 1 ? "s" : ""
-                        } need fixing`
+                      ? `${stats.errorCount} item${stats.errorCount > 1 ? "s" : ""
+                      } need fixing`
                       : selectedItems.length
                         ? "Ready to save"
                         : "Add products"}
@@ -1484,6 +1500,7 @@ export default function EditPurchaseIntentPage() {
                       idx={idx}
                       allVendors={allVendors}
                       vendorsLoading={vendorLoading}
+                      paymentTerms={paymentTerms}
                       onItemChange={updateItem}
                       onRemoveItem={removeItem}
                       onAddVendor={addVendorToItem}

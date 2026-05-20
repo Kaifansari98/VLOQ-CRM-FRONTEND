@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/apiClient";
 
-export type POStatus = "Draft"|"Approved"|"PartiallyReceived"|"Received"|"Cancelled";
+export type POStatus = "Draft" | "Approved" | "PartiallyReceived" | "Received" | "Cancelled";
 
 export interface PIForConversion {
   id: number; intent_no: string; status: string; priority: string;
@@ -10,33 +10,43 @@ export interface PIForConversion {
     product: { id: number; product_name: string; article_code: string | null; unit_of_measure: string | null; moq: number; level1_price: string | null };
     vendorMappings: {
       id: number; company_vendor_id: number; required_qty: string;
+      payment_term_id: number;
       estimated_price: string | null; required_by_date: string | null; remarks: string | null;
       companyVendor: { id: number; company_name: string; vendor_code: string; contact_no: string; email: string | null; point_of_contact: string };
+      paymentTerm: { id: number; term_name: string; description: string }
     }[];
   }[];
 }
 
 export interface ConversionSelection {
   pi_item_vendor_mapping_id: number;
-  company_vendor_id:         number;
-  product_id:                number;
-  ordered_qty:               number;
-  unit_price?:               number;
-  uom?:                      string;
-  expected_delivery_date?:   string;
-  remarks?:                  string;
+  company_vendor_id: number;
+  product_id: number;
+  payment_term_id?: number | null;
+  paymentTerm: {
+    id: number;
+    term_name: string;
+    description: string | null;
+    company_vendor_id: number | null;
+  } | null;
+
+  ordered_qty: number;
+  unit_price?: number;
+  uom?: string;
+  expected_delivery_date?: string;
+  remarks?: string;
   mrp?: number;
-discount_pct?: number;
-rate?: number;
+  discount_pct?: number;
+  rate?: number;
 
-tax_pct?: number;
-cgst_pct?: number;
-sgst_pct?: number;
-igst_pct?: number;
+  tax_pct?: number;
+  cgst_pct?: number;
+  sgst_pct?: number;
+  igst_pct?: number;
 
-amount?: number;
-tax_amount?: number;
-total_amount?: number;
+  amount?: number;
+  tax_amount?: number;
+  total_amount?: number;
 }
 
 export interface PurchaseOrder {
@@ -73,6 +83,12 @@ export interface PurchaseOrder {
   _count: {
     items: number;
   };
+  paymentTerm: {
+    id: number;
+    term_name: string;
+    description: string | null;    
+  } | null;
+
 }
 
 
@@ -91,7 +107,7 @@ export const convertPIToPO = async (vendorId: number, payload: {
 
 export const listPurchaseOrders = async (vendorId: number, params: { page?: number; status?: string; search?: string }) => {
   const q = new URLSearchParams();
-  if (params.page)   q.set("page",   String(params.page));
+  if (params.page) q.set("page", String(params.page));
   if (params.status) q.set("status", params.status);
   if (params.search) q.set("search", params.search);
   const { data } = await apiClient.get(`/purchase-orders/${vendorId}?${q}`);
@@ -120,7 +136,7 @@ export interface POGRN {
   gate_entry_no: string | null;
   invoice_no: string | null;
   confirmed_at: string | null;
-  createdBy:   { id: number; user_name: string };
+  createdBy: { id: number; user_name: string };
   confirmedBy: { id: number; user_name: string } | null;
   items: POGRNItem[];
 }

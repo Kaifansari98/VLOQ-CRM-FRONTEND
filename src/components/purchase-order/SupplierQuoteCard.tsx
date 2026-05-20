@@ -14,6 +14,8 @@ import {
 } from "../../types/inventory/convertToPO.types";
 import { fmtMoney, fmtQty, toNum } from "../../utils/convertToPO.utils";
 
+import { PaymentTermOption } from "@/api/inventory/purchaseIntent";
+
 const inputClass =
   "h-10 w-full rounded-xl border bg-background px-3 text-sm outline-none transition-all focus:ring-2 focus:ring-indigo-300/60";
 
@@ -29,6 +31,7 @@ export function SupplierQuoteCard({
   errors,
   totals,
   isBestPrice,
+  paymentTerms,
   onToggle,
   onUpdateField,
 }: {
@@ -37,9 +40,31 @@ export function SupplierQuoteCard({
   errors?: RowErrors;
   totals: CalculatedTotals;
   isBestPrice: boolean;
+  paymentTerms: PaymentTermOption[];
   onToggle: () => void;
   onUpdateField: (field: keyof SelectionState, value: string) => void;
 }) {
+  const availablePaymentTerms = paymentTerms.filter(
+    (term) =>
+      term.company_vendor_id === null ||
+      Number(term.company_vendor_id) === Number(vm.company_vendor_id)
+  );
+
+  const hasPiTermInList =
+    vm.paymentTerm &&
+    !availablePaymentTerms.some((term) => Number(term.id) === Number(vm.paymentTerm?.id));
+
+  const finalPaymentTerms = hasPiTermInList && vm.paymentTerm
+    ? [
+      {
+        id: vm.paymentTerm.id,
+        term_name: vm.paymentTerm.term_name,
+        description: vm.paymentTerm.description,
+        company_vendor_id: vm.company_vendor_id,
+      } as any,
+      ...availablePaymentTerms,
+    ]
+    : availablePaymentTerms;
   return (
     <div
       className={cn(
@@ -87,6 +112,9 @@ export function SupplierQuoteCard({
 
             <p className="text-xs text-muted-foreground">
               {vm.companyVendor.vendor_code} • PI Qty: {fmtQty((vm as any).required_qty)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              PI Term: {vm.paymentTerm?.term_name || "Not selected"}
             </p>
           </div>
         </div>
@@ -231,6 +259,8 @@ export function SupplierQuoteCard({
               </p>
             )}
           </div>
+
+
         </div>
 
         <div className="mt-3">
@@ -241,6 +271,32 @@ export function SupplierQuoteCard({
             className={inputClass}
             placeholder="Supplier-specific PO remark"
           />
+        </div>
+
+        <div>
+          <label className={labelClass}>Payment Term *</label>
+
+          <select
+            value={selection.payment_term_id || ""}
+            onChange={(e) => onUpdateField("payment_term_id", e.target.value)}
+            className={errors?.payment_term_id ? errorInputClass : inputClass}
+          >
+            <option value="">Select payment term</option>
+
+            {finalPaymentTerms.map((term) => (
+              <option key={term.id} value={String(term.id)}>
+                {term.term_name}
+                {Number(term.id) === Number(vm.payment_term_id) ? " · PI Selected" : ""}
+                {term.company_vendor_id ? " · Supplier specific" : ""}
+              </option>
+            ))}
+          </select>
+
+          {errors?.payment_term_id && (
+            <p className="mt-1 text-xs text-red-500">
+              {errors.payment_term_id}
+            </p>
+          )}
         </div>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">

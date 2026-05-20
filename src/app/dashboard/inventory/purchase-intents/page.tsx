@@ -697,6 +697,10 @@ function IntentDetailPanel({
                                         <p className="text-xs text-muted-foreground">
                                           {vm.companyVendor?.vendor_code ?? "—"}
                                         </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {console.log(vm.paymentTerm)}
+                                          {vm.paymentTerm?.term_name ?? "—"}
+                                        </p>
                                       </div>
                                     </div>
 

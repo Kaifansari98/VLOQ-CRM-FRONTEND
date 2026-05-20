@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   Button,
 } from "@/components/ui/button";
+import { PaymentTermOption } from "@/api/inventory/purchaseIntent";
 import {
   ChevronDown,
   ChevronUp,
@@ -29,6 +30,7 @@ export function ProductQuoteBlock({
   selections,
   errors,
   expanded,
+  paymentTerms,
   onToggleExpand,
   onToggleItem,
   onUpdateField,
@@ -40,6 +42,7 @@ export function ProductQuoteBlock({
   selections: SelectionsMap;
   errors: ErrorsMap;
   expanded: boolean;
+  paymentTerms: PaymentTermOption[];
   onToggleExpand: () => void;
   onToggleItem: (vmId: number) => void;
   onUpdateField: (
@@ -206,6 +209,7 @@ export function ProductQuoteBlock({
                   uom: "",
                   expected_delivery_date: "",
                   remarks: "",
+                  payment_term_id: vm.payment_term_id ? String(vm.payment_term_id) : "",
                 };
 
               const rowError = errors[vm.id];
@@ -220,6 +224,7 @@ export function ProductQuoteBlock({
                   errors={rowError}
                   totals={totals}
                   isBestPrice={isBestPrice}
+                  paymentTerms={paymentTerms}
                   onToggle={() => onToggleItem(vm.id)}
                   onUpdateField={(field, value) =>
                     onUpdateField(vm.id, field, value)
