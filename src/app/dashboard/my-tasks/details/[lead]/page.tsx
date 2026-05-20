@@ -26,12 +26,12 @@ export default function MyTaskLeadDetails() {
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+  const lead = data?.data?.lead;
 
-  if (isLoading && !data?.data?.lead) {
+  if (isLoading && !lead) {
     return <p className="p-6">Loading lead details...</p>;
   }
 
-  const lead = data?.data?.lead;
   if (!lead) {
     return <p className="p-6">Lead details not found or you do not have access.</p>;
   }
