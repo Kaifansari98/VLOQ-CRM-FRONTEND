@@ -11,7 +11,7 @@ export interface BookingPayload {
   bookingAmount: number;
   bookingAmountPaymentDetailsText: string;
   finalBookingAmount: number;
-  siteSupervisorId: number;
+  siteSupervisorId?: number;
   final_documents: File[];
   booking_payment_file: File[];
   mrpValue: number;
@@ -31,7 +31,9 @@ export const moveToBookingStage = async (payload: BookingPayload) => {
     payload.bookingAmountPaymentDetailsText.toString()
   );
   formData.append("finalBookingAmount", payload.finalBookingAmount.toString());
-  formData.append("siteSupervisorId", payload.siteSupervisorId.toString());
+  if (payload.siteSupervisorId !== undefined && payload.siteSupervisorId !== null) {
+    formData.append("siteSupervisorId", payload.siteSupervisorId.toString());
+  }
   payload.booking_payment_file.forEach((file) => {
     formData.append("booking_payment_file", file);
   });

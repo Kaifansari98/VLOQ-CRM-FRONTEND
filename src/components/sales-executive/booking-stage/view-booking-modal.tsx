@@ -169,6 +169,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userName = useAppSelector((state) => state.auth.user?.user_name);
   const userEmail = useAppSelector((state) => state.auth.user?.user_email);
+  const vendorCustomUserTypeMode = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only
+  );
+
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
@@ -278,14 +282,14 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const canAssignSiteSupervisor =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.assign_site_supervisor.assign",
-        )
+        "leads.booking_done.assign_site_supervisor.assign",
+      )
       : userType === "head-site-supervisor" || userType === "super-admin";
   const canReassignSiteSupervisor =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.assign_site_supervisor.reassign",
-        )
+        "leads.booking_done.assign_site_supervisor.reassign",
+      )
       : userType === "head-site-supervisor" || userType === "super-admin";
   const isSupervisorAssigned = siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
 
@@ -322,14 +326,14 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const canViewTotalBookingValue =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.total_booking_value.view",
-        )
+        "leads.booking_done.total_booking_value.view",
+      )
       : true;
   const canEditTotalBookingValue =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.total_booking_value.edit",
-        )
+        "leads.booking_done.total_booking_value.edit",
+      )
       : canEditBookingValues;
   const canViewBookingAmount =
     userType?.toLowerCase() === "custom"
@@ -342,20 +346,20 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const canViewBookingStageCurrentSitePhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.current_site_photos.view",
-        )
+        "leads.booking_done.current_site_photos.view",
+      )
       : true;
   const canUploadBookingStageCurrentSitePhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.current_site_photos.upload",
-        )
+        "leads.booking_done.current_site_photos.upload",
+      )
       : canEditBookingValues;
   const canDeleteBookingStageCurrentSitePhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.current_site_photos.delete",
-        )
+        "leads.booking_done.current_site_photos.delete",
+      )
       : canDelete;
   const canViewBookingDocuments =
     userType?.toLowerCase() === "custom"
@@ -364,98 +368,98 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const canUploadBookingDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.booking_documents.upload",
-        )
+        "leads.booking_done.booking_documents.upload",
+      )
       : canDelete;
   const canDeleteBookingDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.booking_documents.delete",
-        )
+        "leads.booking_done.booking_documents.delete",
+      )
       : canDelete;
   const canViewBookingPaymentProofs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.booking_payment_proofs.view",
-        )
+        "leads.booking_done.booking_payment_proofs.view",
+      )
       : true;
   const canDeleteBookingPaymentProofs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.booking_payment_proofs.delete",
-        )
+        "leads.booking_done.booking_payment_proofs.delete",
+      )
       : canDelete;
   const canViewConsolidatedIsmPhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.ism_photos_view",
-        )
+        "leads.booking_done.consolidated_view.ism_photos_view",
+      )
       : true;
   const canDeleteConsolidatedIsmPhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.ism_photos_delete",
-        )
+        "leads.booking_done.consolidated_view.ism_photos_delete",
+      )
       : canDelete;
   const canUploadConsolidatedIsmPhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.ism_photos_upload",
-        )
+        "leads.booking_done.consolidated_view.ism_photos_upload",
+      )
       : canEditBookingValues;
   const canViewConsolidatedIsmMeasurementDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.ism_measurement_document_view",
-        )
+        "leads.booking_done.consolidated_view.ism_measurement_document_view",
+      )
       : true;
   const canDeleteConsolidatedIsmMeasurementDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.ism_measurement_document_delete",
-        )
+        "leads.booking_done.consolidated_view.ism_measurement_document_delete",
+      )
       : canDelete;
   const canUploadConsolidatedIsmMeasurementDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.ism_measurement_document_upload",
-        )
+        "leads.booking_done.consolidated_view.ism_measurement_document_upload",
+      )
       : canEditBookingValues;
   const canViewConsolidatedDesignDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.design_document_view",
-        )
+        "leads.booking_done.consolidated_view.design_document_view",
+      )
       : true;
   const canDeleteConsolidatedDesignDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.design_document_delete",
-        )
+        "leads.booking_done.consolidated_view.design_document_delete",
+      )
       : canDelete;
   const canUploadConsolidatedDesignDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.design_document_upload",
-        )
+        "leads.booking_done.consolidated_view.design_document_upload",
+      )
       : canEditBookingValues;
   const canViewConsolidatedFinalMeasurementAssignmentDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.final_measurement_assignement_docs_view",
-        )
+        "leads.booking_done.consolidated_view.final_measurement_assignement_docs_view",
+      )
       : true;
   const canDeleteConsolidatedFinalMeasurementAssignmentDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.final_measurement_assignement_docs_delete",
-        )
+        "leads.booking_done.consolidated_view.final_measurement_assignement_docs_delete",
+      )
       : canDelete;
   const canUploadConsolidatedFinalMeasurementAssignmentDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.final_measurement_assignement_docs_upload",
-        )
+        "leads.booking_done.consolidated_view.final_measurement_assignement_docs_upload",
+      )
       : canEditBookingValues;
 
   console.log("Lead Status: ", status);
@@ -570,8 +574,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
           setTotalProjectModalOpen(false);
         },
         onError: (error: any) => {
-          toastManager.add({ title: error?.response?.data?.message ||
-              "Failed to update total project amount.", type: "error" });
+          toastManager.add({
+            title: error?.response?.data?.message ||
+              "Failed to update total project amount.", type: "error"
+          });
         },
       },
     );
@@ -593,8 +599,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
           setBookingAmountModalOpen(false);
         },
         onError: (error: any) => {
-          toastManager.add({ title: error?.response?.data?.message ||
-              "Failed to update booking amount.", type: "error" });
+          toastManager.add({
+            title: error?.response?.data?.message ||
+              "Failed to update booking amount.", type: "error"
+          });
         },
       },
     );
@@ -758,205 +766,218 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
           {/* -------- Top Summary Cards -------- */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 pt-2">
             {/* Site Supervisor */}
-            <div
-              className="
+
+
+
+<div
+  className="
     bg-white dark:bg-neutral-900
     border border-border rounded-2xl 
     p-5 flex items-center gap-4
-
   "
-            >
-              {/* Icon Container */}
-              <div
-                className="
+>
+  {/* Icon */}
+  <div
+    className="
       w-7 h-7 rounded-xl flex items-center justify-center
-      bg-[#fff] dark:bg-[#0a0a0a] 
+      bg-[#fff] dark:bg-[#0a0a0a]
       text-gray-600 dark:text-gray-400
     "
-              >
-                <User className="w-6 h-6" />
-              </div>
+  >
+    <User className="w-6 h-6" />
+  </div>
 
-              {/* Text */}
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground font-medium mb-1">
-                  Site Supervisor
-                </p>
+  {/* Content */}
+  <div className="flex-1">
+    <p className="text-sm text-muted-foreground font-medium mb-1">
+      {!vendorCustomUserTypeMode
+        ? "Assigned User"
+        : "Site Supervisor"}
+    </p>
 
-                {!isSupervisorAssigned && canAssignSiteSupervisor ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setReassignOpen(true)}
-                  >
-                    Assign Site Supervisor
-                  </Button>
-                ) : (
-                  <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
-                    {currentSupervisor?.userName || "Not Assigned Yet"}
-                  </p>
-                )}
-              </div>
+    {!vendorCustomUserTypeMode ? (
+      <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
+        {currentSupervisor?.userName || "Not Assigned Yet"}
+      </p>
+    ) : !isSupervisorAssigned && canAssignSiteSupervisor ? (
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={() => setReassignOpen(true)}
+      >
+        Assign Site Supervisor
+      </Button>
+    ) : (
+      <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
+        {currentSupervisor?.userName || "Not Assigned Yet"}
+      </p>
+    )}
+  </div>
 
-              {isSupervisorAssigned && canReassignSiteSupervisor && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setReassignOpen(true)}
-                >
-                  <UserPen />
-                </Button>
-              )}
-            </div>
+  {/* Edit button only when true */}
+  {vendorCustomUserTypeMode &&
+    isSupervisorAssigned &&
+    canReassignSiteSupervisor && (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setReassignOpen(true)}
+      >
+        <UserPen className="w-4 h-4" />
+      </Button>
+    )}
+</div>
+
+
 
             {/* MRP Value */}
             {canViewMrpValue && (
               <div
-              className="
+                className="
     bg-white dark:bg-neutral-900
     border border-border rounded-2xl 
     p-5 flex items-center justify-between gap-4
     transition-all duration-200 
     hover:ring-1 hover:ring-primary/30
   "
-            >
-              <div className="flex items-center gap-4">
-                <div
-                  className="
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className="
       w-7 h-7 rounded-xl flex items-center justify-center
       bg-[#fff] dark:bg-[#0a0a0a]
       text-gray-600 dark:text-gray-400
     "
-                >
-                  <IndianRupee className="w-6 h-6" />
+                  >
+                    <IndianRupee className="w-6 h-6" />
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground font-medium">
+                      MRP Value
+                    </p>
+
+                    <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
+                      ₹{leadData?.mrpValue?.toLocaleString("en-IN") || "0"}
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">
-                    MRP Value
-                  </p>
-
-                  <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
-                    ₹{leadData?.mrpValue?.toLocaleString("en-IN") || "0"}
-                  </p>
-                </div>
-              </div>
-
-              {canEditMrpValue && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setMrpModalOpen(true)}
-                >
-                  <UserPen className="w-4 h-4" />
-                </Button>
-              )}
+                {canEditMrpValue && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMrpModalOpen(true)}
+                  >
+                    <UserPen className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
 
             {/* Total Booking Value */}
             {canViewTotalBookingValue && (
               <div
-              className="
+                className="
     bg-white dark:bg-neutral-900
     border border-border rounded-2xl 
     p-5 flex items-center justify-between gap-4
     transition-all duration-200 
     hover:ring-1 hover:ring-primary/30
   "
-            >
-              <div className="flex items-center gap-4">
-                <div
-                  className="
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className="
       w-7 h-7 rounded-xl flex items-center justify-center
       bg-[#fff] dark:bg-[#0a0a0a]
       text-gray-600 dark:text-gray-400
     "
-                >
-                  <CreditCard className="w-6 h-6" />
+                  >
+                    <CreditCard className="w-6 h-6" />
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground font-medium">
+                      Total Booking Value
+                    </p>
+
+                    <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
+                      ₹
+                      {leadData?.finalBookingAmount?.toLocaleString("en-IN") ||
+                        "0"}
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">
-                    Total Booking Value
-                  </p>
-
-                  <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
-                    ₹
-                    {leadData?.finalBookingAmount?.toLocaleString("en-IN") ||
-                      "0"}
-                  </p>
-                </div>
-              </div>
-
-              {canEditTotalBookingValue && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setTotalProjectModalOpen(true)}
-                >
-                  <UserPen className="w-4 h-4" />
-                </Button>
-              )}
+                {canEditTotalBookingValue && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTotalProjectModalOpen(true)}
+                  >
+                    <UserPen className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
 
             {/* Amount Received */}
             {canViewBookingAmount && (
               <div
-              className="
+                className="
     bg-white dark:bg-neutral-900
     border border-border rounded-2xl 
     p-5 flex items-center justify-between gap-4
     transition-all duration-200 
     hover:ring-1 hover:ring-primary/30
   "
-            >
-              <div className="flex items-center gap-4">
-                <div
-                  className="
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className="
       w-7 h-7 rounded-xl flex items-center justify-center
       bg-[#fff] dark:bg-[#0a0a0a]
       text-gray-600 dark:text-gray-400
     "
-                >
-                  <IndianRupee className="w-6 h-6" />
+                  >
+                    <IndianRupee className="w-6 h-6" />
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground font-medium">
+                      Booking Amount
+                    </p>
+
+                    <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
+                      ₹{leadData?.bookingAmount?.toLocaleString("en-IN") || "0"}
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">
-                    Booking Amount
-                  </p>
-
-                  <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
-                    ₹{leadData?.bookingAmount?.toLocaleString("en-IN") || "0"}
-                  </p>
-                </div>
-              </div>
-
-              {canEditBookingAmount && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setBookingAmountModalOpen(true)}
-                >
-                  <UserPen className="w-4 h-4" />
-                </Button>
-              )}
+                {canEditBookingAmount && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setBookingAmountModalOpen(true)}
+                  >
+                    <UserPen className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
 
           {/* -------- Booking Stage – Current Site Photos -------- */}
-            {!cspLoading &&
-              canViewBookingStageCurrentSitePhotos &&
-              (bookingStagePhotos.length > 0 ||
-                canUploadBookingStageCurrentSitePhotos) && (
+          {!cspLoading &&
+            canViewBookingStageCurrentSitePhotos &&
+            (bookingStagePhotos.length > 0 ||
+              canUploadBookingStageCurrentSitePhotos) && (
               <div
                 className="
       bg-white dark:bg-neutral-900
@@ -982,7 +1003,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                           created_at: photo.createdAt,
                         }}
                         index={index}
-                         onDelete={(id) => setConfirmDelete(Number(id))}
+                        onDelete={(id) => setConfirmDelete(Number(id))}
                         canDelete={canDeleteBookingStageCurrentSitePhotos}
                       />
                     ))}
@@ -1095,131 +1116,131 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
 
           {canViewBookingPaymentProofs && (
             <>
-            {/* ----- Payment Proofs Card ----- */}
-            <div
-              className="
+              {/* ----- Payment Proofs Card ----- */}
+              <div
+                className="
       bg-[#fff] dark:bg-[#0a0a0a]
       rounded-2xl 
       border border-border 
       overflow-hidden
     "
-            >
-              {/* Header */}
-              <div
-                className="
+              >
+                {/* Header */}
+                <div
+                  className="
         flex items-center justify-between 
         px-5 py-3 
         border-b border-border 
         bg-[#fff] dark:bg-[#0a0a0a]
       "
-              >
-                <div className="flex items-center gap-2">
-                  <Images size={20} className="text-muted-foreground" />
-                  <h1 className="text-base font-semibold tracking-tight">
-                    Booking Payment Proofs
-                  </h1>
-                </div>
-              </div>
-
-              {/* Body */}
-              <div className="p-5">
-                {bookingPaymentDocs.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {bookingPaymentDocs.map((doc, index) => (
-                      <ImageComponent
-                        key={doc.id}
-                        doc={{
-                          id: doc.id,
-                          doc_og_name: doc.originalName,
-                          signedUrl: doc.signedUrl,
-                        }}
-                        index={index}
-                        canDelete={canDeleteBookingPaymentProofs}
-                        onDelete={(id) => setConfirmDelete(Number(id))}
-                      />
-                    ))}
+                >
+                  <div className="flex items-center gap-2">
+                    <Images size={20} className="text-muted-foreground" />
+                    <h1 className="text-base font-semibold tracking-tight">
+                      Booking Payment Proofs
+                    </h1>
                   </div>
-                ) : (
-                  <div
-                    className="
+                </div>
+
+                {/* Body */}
+                <div className="p-5">
+                  {bookingPaymentDocs.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {bookingPaymentDocs.map((doc, index) => (
+                        <ImageComponent
+                          key={doc.id}
+                          doc={{
+                            id: doc.id,
+                            doc_og_name: doc.originalName,
+                            signedUrl: doc.signedUrl,
+                          }}
+                          index={index}
+                          canDelete={canDeleteBookingPaymentProofs}
+                          onDelete={(id) => setConfirmDelete(Number(id))}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div
+                      className="
             flex flex-col items-center justify-center 
             py-12 
             text-center
           "
-                  >
-                    <Images size={40} className="text-muted-foreground mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      No payment proofs uploaded yet.
-                    </p>
-                  </div>
-                )}
+                    >
+                      <Images size={40} className="text-muted-foreground mb-3" />
+                      <p className="text-sm text-muted-foreground">
+                        No payment proofs uploaded yet.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
             </>
           )}
-        {/* -------- Consolidated Documents -------- */}
-        {(initialMeasurementDocs.length > 0 ||
-          initialCurrentSitePhotos.length > 0 ||
-          bookingDoneIsmDocs.length > 0 ||
-          bookingDoneIsmCurrentSite.length > 0 ||
-          bookingDoneIsmPaymentImages.length > 0 ||
-          designDocs.length > 0 ||
-          bookingStagePhotos.length > 0) && (
-          <div className="">
-            <div
-              className="
+          {/* -------- Consolidated Documents -------- */}
+          {(initialMeasurementDocs.length > 0 ||
+            initialCurrentSitePhotos.length > 0 ||
+            bookingDoneIsmDocs.length > 0 ||
+            bookingDoneIsmCurrentSite.length > 0 ||
+            bookingDoneIsmPaymentImages.length > 0 ||
+            designDocs.length > 0 ||
+            bookingStagePhotos.length > 0) && (
+              <div className="">
+                <div
+                  className="
           bg-white dark:bg-neutral-900
           rounded-2xl
           border border-border
           overflow-hidden
         "
-            >
-              <SectionHeader
-                title="Consolidated Documents"
-                icon={<Folder size={20} />}
-              />
+                >
+                  <SectionHeader
+                    title="Consolidated Documents"
+                    icon={<Folder size={20} />}
+                  />
 
-              <div className="p-6 space-y-8">
-                {((canViewConsolidatedIsmMeasurementDocs &&
-                  initialMeasurementDocs.length > 0) ||
-                  (canViewConsolidatedIsmPhotos &&
-                    initialCurrentSitePhotos.length > 0)) && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <FileText size={18} />
-                      <h2 className="text-base font-semibold">
-                        Initial Site Measurement
-                      </h2>
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
-                      {canViewConsolidatedIsmPhotos &&
-                        initialCurrentSitePhotos.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-muted-foreground">
-                            Current Site Photos (
-                            {initialCurrentSitePhotos.length})
-                          </p>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            {initialCurrentSitePhotos.map(
-                              (photo: any, index: any) => (
-                                <ImageComponent
-                                  key={photo.id}
-                                  doc={{
-                                    id: photo.id,
-                                    doc_og_name: photo.originalName,
-                                    signedUrl: photo.signedUrl,
-                                    created_at: photo.uploadedAt,
-                                  }}
-                                  index={index}
-                                  canDelete={canDeleteConsolidatedIsmPhotos}
-                                   onDelete={(id) => setConfirmDelete(Number(id))}
-                                />
-                              ),
-                            )}
-                            {canUploadConsolidatedIsmPhotos && (
-                              <div
-                                onClick={() => setInitialSitePhotosOpen(true)}
-                                className="
+                  <div className="p-6 space-y-8">
+                    {((canViewConsolidatedIsmMeasurementDocs &&
+                      initialMeasurementDocs.length > 0) ||
+                      (canViewConsolidatedIsmPhotos &&
+                        initialCurrentSitePhotos.length > 0)) && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <FileText size={18} />
+                            <h2 className="text-base font-semibold">
+                              Initial Site Measurement
+                            </h2>
+                          </div>
+                          <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
+                            {canViewConsolidatedIsmPhotos &&
+                              initialCurrentSitePhotos.length > 0 && (
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium text-muted-foreground">
+                                    Current Site Photos (
+                                    {initialCurrentSitePhotos.length})
+                                  </p>
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    {initialCurrentSitePhotos.map(
+                                      (photo: any, index: any) => (
+                                        <ImageComponent
+                                          key={photo.id}
+                                          doc={{
+                                            id: photo.id,
+                                            doc_og_name: photo.originalName,
+                                            signedUrl: photo.signedUrl,
+                                            created_at: photo.uploadedAt,
+                                          }}
+                                          index={index}
+                                          canDelete={canDeleteConsolidatedIsmPhotos}
+                                          onDelete={(id) => setConfirmDelete(Number(id))}
+                                        />
+                                      ),
+                                    )}
+                                    {canUploadConsolidatedIsmPhotos && (
+                                      <div
+                                        onClick={() => setInitialSitePhotosOpen(true)}
+                                        className="
                                     flex flex-col items-center justify-center
                                     h-28
                                     border-2 border-dashed border-border
@@ -1227,11 +1248,254 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                     hover:bg-mutedBg dark:hover:bg-neutral-800
                                     transition-all duration-200
                                   "
+                                      >
+                                        <Plus
+                                          size={26}
+                                          className="text-muted-foreground mb-1"
+                                        />
+                                        <span className="text-xs font-medium text-muted-foreground">
+                                          Add Photos
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                            {canViewConsolidatedIsmMeasurementDocs &&
+                              initialMeasurementDocs.length > 0 && (
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium text-muted-foreground">
+                                    Measurement Documents (
+                                    {initialMeasurementDocs.length})
+                                  </p>
+                                  <div className="space-y-3 ">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+
+                                      {initialMeasurementDocs.map((doc: any) => (
+                                        <DocumentCard
+                                          key={doc.id}
+                                          doc={{
+                                            id: doc.id,
+                                            originalName: doc.originalName,
+                                            signedUrl: doc.signedUrl,
+                                            created_at: doc.uploadedAt,
+                                          }}
+                                          canDelete={canDeleteConsolidatedIsmMeasurementDocs}
+                                          onDelete={(id) => setConfirmDelete(Number(id))}
+                                        />
+                                      ))}
+                                    </div>
+                                    {canUploadConsolidatedIsmMeasurementDocs && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (!initialMeasurementDocs.length) {
+                                            toastManager.add({ title: "No document available to replace.", type: "error" });
+                                            return;
+                                          }
+                                          setReplaceInitialDocId(
+                                            initialMeasurementDocs[0].id,
+                                          );
+                                        }}
+                                        className="
+                                    flex items-center gap-2
+                                    rounded-md border border-dashed border-border
+                                    px-3 py-2 text-xs text-muted-foreground
+                                    hover:bg-mutedBg dark:hover:bg-neutral-800
+                                    transition
+                                  "
+                                      >
+                                        <Plus size={14} />
+                                        Replace Document
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                          </div>
+                        </div>
+                      )}
+
+                    {(bookingDoneIsmDocs.length > 0 ||
+                      bookingDoneIsmCurrentSite.length > 0 ||
+                      bookingDoneIsmPaymentImages.length > 0) && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <FileText size={18} />
+                            <h2 className="text-base font-semibold">
+                              Booking Done – ISM
+                            </h2>
+                          </div>
+                          <div className="space-y-4">
+                            {bookingDoneIsmDocs.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  Documents ({bookingDoneIsmDocs.length})
+                                </p>
+                                <div className="space-y-3 w-fit">
+                                  {bookingDoneIsmDocs.map((doc: any) => (
+                                    <DocumentCard
+                                      key={doc.id}
+                                      doc={{
+                                        id: doc.id,
+                                        originalName: doc.originalName,
+                                        signedUrl: doc.signedUrl,
+                                        created_at: doc.createdAt,
+                                      }}
+                                      canDelete={canDelete}
+                                      onDelete={(id) => setConfirmDelete(Number(id))}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {bookingDoneIsmCurrentSite.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  Current Site Photos (
+                                  {bookingDoneIsmCurrentSite.length})
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {bookingDoneIsmCurrentSite.map(
+                                    (photo: any, index: any) => (
+                                      <ImageComponent
+                                        key={photo.id}
+                                        doc={{
+                                          id: photo.id,
+                                          doc_og_name: photo.originalName,
+                                          signedUrl: photo.signedUrl,
+                                          created_at: photo.createdAt,
+                                        }}
+                                        index={index}
+                                        canDelete={canDelete}
+                                        onDelete={(id) => setConfirmDelete(Number(id))}
+                                      />
+                                    ),
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {bookingDoneIsmPaymentImages.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  Payment Images ({bookingDoneIsmPaymentImages.length}
+                                  )
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {bookingDoneIsmPaymentImages.map(
+                                    (photo: any, index: any) => (
+                                      <ImageComponent
+                                        key={photo.id}
+                                        doc={{
+                                          id: photo.id,
+                                          doc_og_name: photo.originalName,
+                                          signedUrl: photo.signedUrl,
+                                          created_at: photo.createdAt,
+                                        }}
+                                        index={index}
+                                        canDelete={canDelete}
+                                        onDelete={(id) => setConfirmDelete(Number(id))}
+                                      />
+                                    ),
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                    {canViewConsolidatedDesignDocuments && designDocs.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <FileText size={18} />
+                          <h2 className="text-base font-semibold">
+                            Design Documents ({designDocs.length})
+                          </h2>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {designDocs.map((doc: any) => (
+                            <DocumentCard
+                              key={doc.id}
+                              doc={{
+                                id: doc.id,
+                                originalName: doc.doc_og_name ?? doc.originalName,
+                                signedUrl:
+                                  doc.signedUrl ??
+                                  doc.signed_url ??
+                                  doc.doc_sys_name,
+                                created_at: doc.created_at,
+                              }}
+                              canDelete={canDeleteConsolidatedDesignDocuments}
+                              onDelete={(id) => setConfirmDelete(Number(id))}
+                            />
+                          ))}
+                          {canUploadConsolidatedDesignDocuments && (
+                            <button
+                              type="button"
+                              onClick={() => setDesignsModalOpen(true)}
+                              className="
+                              flex flex-col items-center justify-center
+                              border border-dashed border-border/70
+                              rounded-xl p-6 text-center
+                              bg-mutedBg/40 dark:bg-neutral-800/40
+                              hover:bg-muted/40 dark:hover:bg-neutral-800/60
+                              transition
+                            "
+                            >
+                              <Plus className="w-8 h-8 text-muted-foreground mb-2" />
+                              <p className="text-sm font-medium text-muted-foreground">
+                                Upload Designs
+                              </p>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {canViewConsolidatedFinalMeasurementAssignmentDocs &&
+                      bookingStagePhotos.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Images size={18} />
+                            <h2 className="text-base font-semibold">
+                              Final Measurement Assignment Docs (
+                              {bookingStagePhotos.length})
+                            </h2>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {bookingStagePhotos.map((photo, index) => (
+                              <ImageComponent
+                                key={photo.id}
+                                doc={{
+                                  id: photo.id,
+                                  doc_og_name: photo.originalName,
+                                  signedUrl: photo.signedUrl,
+                                  created_at: photo.createdAt,
+                                }}
+                                index={index}
+                                canDelete={
+                                  canDeleteConsolidatedFinalMeasurementAssignmentDocs
+                                }
+                                onDelete={(id) => setConfirmDelete(Number(id))}
+                              />
+                            ))}
+                            {canUploadConsolidatedFinalMeasurementAssignmentDocs && (
+                              <div
+                                onClick={() => setCspUploadOpen(true)}
+                                className="
+                              flex flex-col items-center justify-center
+                              h-28
+                              border-2 border-dashed border-border
+                              rounded-xl cursor-pointer
+                              hover:bg-mutedBg dark:hover:bg-neutral-800
+                              transition-all duration-200
+                            "
                               >
-                                <Plus
-                                  size={26}
-                                  className="text-muted-foreground mb-1"
-                                />
+                                <Plus size={26} className="text-muted-foreground mb-1" />
                                 <span className="text-xs font-medium text-muted-foreground">
                                   Add Photos
                                 </span>
@@ -1240,253 +1504,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                           </div>
                         </div>
                       )}
-
-                      {canViewConsolidatedIsmMeasurementDocs &&
-                        initialMeasurementDocs.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-muted-foreground">
-                            Measurement Documents (
-                            {initialMeasurementDocs.length})
-                          </p>
-                          <div className="space-y-3 ">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-
-                            {initialMeasurementDocs.map((doc: any) => (
-                              <DocumentCard
-                                key={doc.id}
-                                doc={{
-                                  id: doc.id,
-                                  originalName: doc.originalName,
-                                  signedUrl: doc.signedUrl,
-                                  created_at: doc.uploadedAt,
-                                }}
-                               canDelete={canDeleteConsolidatedIsmMeasurementDocs}
-                                onDelete={(id) => setConfirmDelete(Number(id))}
-                              />
-                            ))}
-                          </div>
-                            {canUploadConsolidatedIsmMeasurementDocs && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (!initialMeasurementDocs.length) {
-                                    toastManager.add({ title: "No document available to replace.", type: "error" });
-                                    return;
-                                  }
-                                  setReplaceInitialDocId(
-                                    initialMeasurementDocs[0].id,
-                                  );
-                                }}
-                                className="
-                                    flex items-center gap-2
-                                    rounded-md border border-dashed border-border
-                                    px-3 py-2 text-xs text-muted-foreground
-                                    hover:bg-mutedBg dark:hover:bg-neutral-800
-                                    transition
-                                  "
-                              >
-                                <Plus size={14} />
-                                Replace Document
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
                   </div>
-                )}
-
-                {(bookingDoneIsmDocs.length > 0 ||
-                  bookingDoneIsmCurrentSite.length > 0 ||
-                  bookingDoneIsmPaymentImages.length > 0) && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <FileText size={18} />
-                      <h2 className="text-base font-semibold">
-                        Booking Done – ISM
-                      </h2>
-                    </div>
-                    <div className="space-y-4">
-                      {bookingDoneIsmDocs.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-muted-foreground">
-                            Documents ({bookingDoneIsmDocs.length})
-                          </p>
-                          <div className="space-y-3 w-fit">
-                            {bookingDoneIsmDocs.map((doc: any) => (
-                              <DocumentCard
-                                key={doc.id}
-                                doc={{
-                                  id: doc.id,
-                                  originalName: doc.originalName,
-                                  signedUrl: doc.signedUrl,
-                                  created_at: doc.createdAt,
-                                }}
-                                canDelete={canDelete}
-                                 onDelete={(id) => setConfirmDelete(Number(id))}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {bookingDoneIsmCurrentSite.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-muted-foreground">
-                            Current Site Photos (
-                            {bookingDoneIsmCurrentSite.length})
-                          </p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {bookingDoneIsmCurrentSite.map(
-                              (photo: any, index: any) => (
-                                <ImageComponent
-                                  key={photo.id}
-                                  doc={{
-                                    id: photo.id,
-                                    doc_og_name: photo.originalName,
-                                    signedUrl: photo.signedUrl,
-                                    created_at: photo.createdAt,
-                                  }}
-                                  index={index}
-                                  canDelete={canDelete}
-                                   onDelete={(id) => setConfirmDelete(Number(id))}
-                                />
-                              ),
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {bookingDoneIsmPaymentImages.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-muted-foreground">
-                            Payment Images ({bookingDoneIsmPaymentImages.length}
-                            )
-                          </p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {bookingDoneIsmPaymentImages.map(
-                              (photo: any, index: any) => (
-                                <ImageComponent
-                                  key={photo.id}
-                                  doc={{
-                                    id: photo.id,
-                                    doc_og_name: photo.originalName,
-                                    signedUrl: photo.signedUrl,
-                                    created_at: photo.createdAt,
-                                  }}
-                                  index={index}
-                                  canDelete={canDelete}
-                                   onDelete={(id) => setConfirmDelete(Number(id))}
-                                />
-                              ),
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {canViewConsolidatedDesignDocuments && designDocs.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <FileText size={18} />
-                      <h2 className="text-base font-semibold">
-                        Design Documents ({designDocs.length})
-                      </h2>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {designDocs.map((doc: any) => (
-                        <DocumentCard
-                          key={doc.id}
-                          doc={{
-                            id: doc.id,
-                            originalName: doc.doc_og_name ?? doc.originalName,
-                            signedUrl:
-                              doc.signedUrl ??
-                              doc.signed_url ??
-                              doc.doc_sys_name,
-                            created_at: doc.created_at,
-                          }}
-                          canDelete={canDeleteConsolidatedDesignDocuments}
-                           onDelete={(id) => setConfirmDelete(Number(id))}
-                        />
-                      ))}
-                      {canUploadConsolidatedDesignDocuments && (
-                        <button
-                          type="button"
-                          onClick={() => setDesignsModalOpen(true)}
-                          className="
-                              flex flex-col items-center justify-center
-                              border border-dashed border-border/70
-                              rounded-xl p-6 text-center
-                              bg-mutedBg/40 dark:bg-neutral-800/40
-                              hover:bg-muted/40 dark:hover:bg-neutral-800/60
-                              transition
-                            "
-                        >
-                          <Plus className="w-8 h-8 text-muted-foreground mb-2" />
-                          <p className="text-sm font-medium text-muted-foreground">
-                            Upload Designs
-                          </p>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                  {canViewConsolidatedFinalMeasurementAssignmentDocs &&
-                    bookingStagePhotos.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Images size={18} />
-                        <h2 className="text-base font-semibold">
-                          Final Measurement Assignment Docs (
-                          {bookingStagePhotos.length})
-                        </h2>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {bookingStagePhotos.map((photo, index) => (
-                          <ImageComponent
-                            key={photo.id}
-                            doc={{
-                              id: photo.id,
-                              doc_og_name: photo.originalName,
-                              signedUrl: photo.signedUrl,
-                              created_at: photo.createdAt,
-                            }}
-                            index={index}
-                            canDelete={
-                              canDeleteConsolidatedFinalMeasurementAssignmentDocs
-                            }
-                             onDelete={(id) => setConfirmDelete(Number(id))}
-                          />
-                        ))}
-                        {canUploadConsolidatedFinalMeasurementAssignmentDocs && (
-                          <div
-                            onClick={() => setCspUploadOpen(true)}
-                            className="
-                              flex flex-col items-center justify-center
-                              h-28
-                              border-2 border-dashed border-border
-                              rounded-xl cursor-pointer
-                              hover:bg-mutedBg dark:hover:bg-neutral-800
-                              transition-all duration-200
-                            "
-                          >
-                            <Plus size={26} className="text-muted-foreground mb-1" />
-                            <span className="text-xs font-medium text-muted-foreground">
-                              Add Photos
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
         </div>
 

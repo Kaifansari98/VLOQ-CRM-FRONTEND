@@ -41,6 +41,7 @@ import {
   useHeadSiteSupervisorFranchiseMapping,
   useFranchisesByVendorId,
 } from "@/api/franchise";
+import AssignToPicker from "@/components/assign-to-picker";
 
 // ✅ Enhanced Zod schema with proper file validation
 const bookingSchema = z
@@ -68,7 +69,7 @@ const bookingSchema = z
 
     payment_text: z.string().default(""),
 
-    assign_to: z.string().min(1, "Please select an assignee"),
+    assign_to: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     const hasPaymentText = !!data.payment_text.trim();
@@ -150,6 +151,9 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id
   );
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const vendorCustomUserTypeMode = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only
+  );
   const [openSelectDocModal, setOpenSelectDocModal] = useState(false);
   const leadId = data?.id;
   const accountId = data?.accountId;
@@ -172,6 +176,9 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       franchiseId ?? undefined,
       hasMultipleSupervisors
     );
+
+
+  console.log("headSupervisorMapping,................", headSupervisorMapping)
   const { data: franchises = [] } = useFranchisesByVendorId(
     vendorId ?? 0,
     !!vendorId
@@ -197,6 +204,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
 
   React.useEffect(() => {
     if (!open) return;
+    if (vendorCustomUserTypeMode === true) return;
     if (!vendorUser.length) {
       // console.log(
       //   "[BookingModal] auto-select failed: no head site supervisors available"
@@ -204,10 +212,17 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       return;
     }
 
-    let selected = vendorUser.length === 1 ? vendorUser[0] : undefined;
+    // 3. Auto-select logic if we have multiple site supervisors but only one mapped for the franchise
+    let selected: any = vendorUser.length === 1 ? vendorUser[0] : undefined;
 
     if (!selected && hasMultipleSupervisors) {
-      const mappedUserId = headSupervisorMapping?.user_id;
+      let mappedUserId = null;
+      if (Array.isArray(headSupervisorMapping) && headSupervisorMapping.length === 1) {
+        mappedUserId = headSupervisorMapping[0]?.id;
+      } else if (headSupervisorMapping && !Array.isArray(headSupervisorMapping)) {
+        mappedUserId = headSupervisorMapping.user_id;
+      }
+
       if (mappedUserId) {
         selected = vendorUser.find((user: any) => user.id === mappedUserId);
       }
@@ -251,6 +266,11 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   }
 
   const onSubmit: SubmitHandler<BookingFormValues> = (values) => {
+    if (vendorCustomUserTypeMode !== true && (!values.assign_to || values.assign_to.trim() === "")) {
+      form.setError("assign_to", { type: "manual", message: "Site supervisor is required." });
+      return;
+    }
+
     if (values.amount_received > values.final_booking_amount) {
       toastManager.add({ title: "Booking Advance Received should not be greater than Total Booking Value", type: "error" });
       return;
@@ -303,15 +323,17 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
         });
 
         // Auto-create task for head site supervisor
-        const today = new Date().toISOString().split("T")[0];
-        assignTaskBooking(leadId, {
-          task_type: "Assign a Site Supervisor",
-          due_date: today,
-          user_id: Number(values.assign_to),
-          created_by: userId!,
-        }).catch(() => {
-          // best-effort — don't block on task creation failure
-        });
+        if (values.assign_to) {
+          const today = new Date().toISOString().split("T")[0];
+          assignTaskBooking(leadId, {
+            task_type: "Assign a Site Supervisor",
+            due_date: today,
+            user_id: Number(values.assign_to),
+            created_by: userId!,
+          }).catch(() => {
+            // best-effort — don't block on task creation failure
+          });
+        }
 
         queryClient.invalidateQueries({
           queryKey: ["leadStats", vendorId, userId],
@@ -322,7 +344,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
           exact: false,
         });
 
-        
+
         onOpenChange(false);
         form.reset();
 
@@ -344,6 +366,10 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       payment_text: "",
     });
   };
+
+
+
+  console.log("vendorCustomUserTypeMode..........", vendorCustomUserTypeMode)
   return (
     <BaseModal
       open={open}
@@ -446,6 +472,25 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                 )}
               />
 
+              {vendorCustomUserTypeMode !== true && hasMultipleSupervisors && (
+                <FormField
+                  control={form.control}
+                  name="assign_to"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">Assign Head Site Supervisor *</FormLabel>
+                      <AssignToPicker
+                        data={vendorUser.map((u: any) => ({ id: u.id, label: u.user_name }))}
+                        value={field.value ? Number(field.value) : undefined}
+                        onChange={(val) => field.onChange(val ? String(val) : "")}
+                        placeholder="Search site supervisor..."
+                        emptyLabel="Select an option"
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             {ismPaymentInfo?.amount && (
