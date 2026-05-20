@@ -491,6 +491,8 @@ export const useSetInstallationCompletion = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["underInstallationDetails"] });
       qc.invalidateQueries({ queryKey: ["mappedInstallers"] });
+      qc.invalidateQueries({ queryKey: ["usableHandoverReady"] });
+      qc.invalidateQueries({ queryKey: ["finalHandoverReady"] });
     },
   });
 };
@@ -504,6 +506,8 @@ export const useUpdateInstallationCompletion = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["underInstallationDetails"] });
       qc.invalidateQueries({ queryKey: ["mappedInstallers"] });
+      qc.invalidateQueries({ queryKey: ["usableHandoverReady"] });
+      qc.invalidateQueries({ queryKey: ["finalHandoverReady"] });
     },
   });
 };

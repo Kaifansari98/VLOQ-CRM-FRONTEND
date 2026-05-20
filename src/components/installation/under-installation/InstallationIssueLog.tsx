@@ -155,7 +155,13 @@ export default function InstallationIssueLog({
     });
   };
 
-  const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
+  const canWork =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.under_installation.issue_log.enable_disable_action",
+        )
+      : canViewAndWorkUnderInstallationStage(userType, leadStatus);
+
   const canAddIssueLog =
     userType === "custom"
       ? customPrivilegeCodes.includes(

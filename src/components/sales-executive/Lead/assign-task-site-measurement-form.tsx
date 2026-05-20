@@ -96,20 +96,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     (state) => state.customPrivileges.codes,
   );
   const isCustomUser = (userType || "").toLowerCase() === "custom";
-  const {
-    data: salesExecutiveUsers,
-    isLoading: loadingSalesExecutiveUsers,
-    error: salesExecutiveUsersError,
-  } = useVendorSalesExecutiveUsers(vendorId!, franchiseId!);
-  const {
-    data: customPrivilegeUsers,
-    isLoading: loadingCustomPrivilegeUsers,
-    error: customPrivilegeUsersError,
-  } = useVendorSalesExecutiveUsers(vendorId!, franchiseId!, {
-    assigneeUserType: "custom",
-    requiredPrivilegeCode:
-      "leads.ism_leads.ism_details.upload_measurement",
-  });
+  
   const router = useRouter();
   const leadId = data?.id!;
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -148,6 +135,24 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const followUpConflicts = taskConflicts?.followUpConflicts ?? [];
   const taskType = form.watch("task_type");
   const isFollowUp = taskType === "Follow Up" || !!onlyFollowUp;
+
+  const {
+    data: salesExecutiveUsers,
+    isLoading: loadingSalesExecutiveUsers,
+    error: salesExecutiveUsersError,
+  } = useVendorSalesExecutiveUsers(vendorId!, franchiseId!, {
+    taskType: isFollowUp ? "followup" : undefined,
+  });
+
+  const {
+    data: customPrivilegeUsers,
+    isLoading: loadingCustomPrivilegeUsers,
+    error: customPrivilegeUsersError,
+  } = useVendorSalesExecutiveUsers(vendorId!, franchiseId!, {
+    assigneeUserType: "custom",
+    requiredPrivilegeCode: "leads.ism_leads.ism_details.upload_measurement",
+    taskType: isFollowUp ? "followup" : undefined,
+  });
   const initialSiteMeasurementConflict = initialSiteMeasurementTaskConflicts.find(
     (task) => task.task_type === "Initial Site Measurement",
   );

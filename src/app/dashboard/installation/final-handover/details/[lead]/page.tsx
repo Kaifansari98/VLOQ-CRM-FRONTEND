@@ -145,7 +145,11 @@ export default function FinalHandoverLeadDetails() {
         )
       : true;
   const canAccessTodoTab =
-    canAccessTodoTaskTabUnderFinalHandoverStage(effectiveUserType ?? "");
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("installation.final_handover."),
+        )
+      : canAccessTodoTaskTabUnderFinalHandoverStage(effectiveUserType ?? "");
   const normalizedUserType = userType?.toLowerCase() ?? "";
   const normalizedEffectiveUserType = effectiveUserType?.toLowerCase() ?? "";
   const isSiteSupervisor = normalizedUserType === "site-supervisor";
@@ -161,8 +165,20 @@ export default function FinalHandoverLeadDetails() {
     (mapping: any) => mapping.productType?.tag === "Type 7",
   );
   const allowServicingTabFromDeliveredProjects = !isSmallOrderLead;
+  const hasAnyUploadPrivilege =
+    normalizedUserType === "custom" &&
+    [
+      "installation.final_handover.warranty_card_photos.upload",
+      "installation.final_handover.final_site_photos.upload",
+      "installation.final_handover.handover_booklet.upload",
+      "installation.final_handover.final_handover_form.upload",
+      "installation.final_handover.qc_documents.upload",
+      "installation.final_handover.amc_documents.upload",
+    ].some((code) => customPrivilegeCodes.includes(code));
+
   const canShowMarkCompleted =
-    ["super-admin", "site-supervisor"].includes(normalizedEffectiveUserType) &&
+    (["super-admin", "site-supervisor"].includes(normalizedEffectiveUserType) ||
+      hasAnyUploadPrivilege) &&
     leadStatusTag !== "Type 17";
 
   const { data: readiness, isLoading: readinessLoading } =
@@ -402,7 +418,11 @@ export default function FinalHandoverLeadDetails() {
                           To-Do Task
                         </div>
                       }
-                      value="Only Site Supervisor can access this tab"
+                      value={
+                        effectiveUserType?.toLowerCase() === "custom"
+                          ? "You don’t have permission to access To-Do Tasks."
+                          : "Only Site Supervisor can access this tab"
+                      }
                     />
                   )}
 
@@ -460,23 +480,25 @@ export default function FinalHandoverLeadDetails() {
           </main>
         </TabsContent>
 
-        <TabsContent value="todo">
-          <main className="flex-1 h-fit">
-            {!isLoading && accountId && (
-              <LeadDetailsGrouped
-                status="finalHandover"
-                defaultTab="finalHandover"
-                leadId={leadIdNum}
-                accountId={accountId}
-                defaultParentTab="installation"
-                finalHandoverInstanceId={validInstanceId}
-                allowServicingTabFromDeliveredProjects={
-                  allowServicingTabFromDeliveredProjects
-                }
-              />
-            )}
-          </main>
-        </TabsContent>
+        {canAccessTodoTab && (
+          <TabsContent value="todo">
+            <main className="flex-1 h-fit">
+              {!isLoading && accountId && (
+                <LeadDetailsGrouped
+                  status="finalHandover"
+                  defaultTab="finalHandover"
+                  leadId={leadIdNum}
+                  accountId={accountId}
+                  defaultParentTab="installation"
+                  finalHandoverInstanceId={validInstanceId}
+                  allowServicingTabFromDeliveredProjects={
+                    allowServicingTabFromDeliveredProjects
+                  }
+                />
+              )}
+            </main>
+          </TabsContent>
+        )}
 
         {canViewSiteHistory && (
           <TabsContent value="history">

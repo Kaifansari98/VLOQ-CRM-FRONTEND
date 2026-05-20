@@ -159,6 +159,12 @@ export default function DispatchPlanningLeadDetails() {
         )
       : true;
   const deleteLeadMutation = useDeleteLead();
+  const canShowTodoTab =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("installation.dispatch."),
+        )
+      : canAccessTodoTaskTabDispatchStage(effectiveUserType ?? "");
 
   // 🔥 Auto-open To-Do modal for Sales Executive
   useEffect(() => {
@@ -362,7 +368,7 @@ export default function DispatchPlanningLeadDetails() {
                 </TabsTrigger>
 
                 {/* ✅ To-Do Task (Conditional Access) */}
-                {canAccessTodoTaskTabDispatchStage(effectiveUserType ?? "") ? (
+                {canShowTodoTab ? (
                   <TabsTrigger value="todo">
                     <PencilLine size={16} className="mr-1 opacity-60" />
                     To-Do Task
@@ -371,11 +377,15 @@ export default function DispatchPlanningLeadDetails() {
                   <CustomeTooltip
                     truncateValue={
                       <TabsTrigger disabled value="todo">
-                        <PencilLine size={16} />
+                        <PencilLine size={16} className="mr-1 opacity-60" />
                         To-Do Task
                       </TabsTrigger>
                     }
-                    value="Only factory can access this tab"
+                    value={
+                      effectiveUserType?.toLowerCase() === "custom"
+                        ? "You don’t have permission to access To-Do Tasks."
+                        : "Only factory can access this tab"
+                    }
                   />
                 )}
 
@@ -425,18 +435,20 @@ export default function DispatchPlanningLeadDetails() {
           )}
         </TabsContent>
 
-        <TabsContent value="todo">
-          {!isLoading && accountId && (
-            <LeadDetailsGrouped
-              status="dispatch"
-              defaultTab="dispatch"
-              leadId={leadIdNum}
-              accountId={accountId}
-              defaultParentTab="installation"
-              dispatchInstanceId={validInstanceId}
-            />
-          )}
-        </TabsContent>
+        {canShowTodoTab && (
+          <TabsContent value="todo">
+            {!isLoading && accountId && (
+              <LeadDetailsGrouped
+                status="dispatch"
+                defaultTab="dispatch"
+                leadId={leadIdNum}
+                accountId={accountId}
+                defaultParentTab="installation"
+                dispatchInstanceId={validInstanceId}
+              />
+            )}
+          </TabsContent>
+        )}
 
         {canViewSiteHistory && (
           <TabsContent value="history">

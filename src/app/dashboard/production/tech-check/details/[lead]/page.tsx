@@ -123,6 +123,25 @@ export default function ClientApprovalLeadDetails() {
   );
   const effectiveUserType = userType;
 
+  const canAccessTechCheckWorkflow =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.tech_check.tech_check_action.tech_check_workflow_action",
+        )
+      : canTechCheck(effectiveUserType);
+  const canAccessUploadRevisedDocs =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.tech_check.tech_check_action.upload_revised_docs_action",
+        )
+      : canUploadRevisedClientDocumentationFiles(effectiveUserType);
+  const canAccessMoveToOrderLogin =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.tech_check.tech_check_action.move_to_order_login_action",
+        )
+      : canMoveToOrderLogin(effectiveUserType);
+
   const { mutate: approveTechCheckMutate, isPending: approving } =
     useApproveTechCheck();
   const { mutate: rejectTechCheckMutate, isPending: rejecting } =
@@ -157,13 +176,13 @@ export default function ClientApprovalLeadDetails() {
   useEffect(() => {
     if (isChatNotification) return;
     if (
-      canTechCheck(effectiveUserType) &&
+      canAccessTechCheckWorkflow &&
       effectiveUserType?.toLowerCase() !== "admin" &&
       effectiveUserType?.toLowerCase() !== "super-admin"
     ) {
       setOpenRejectDocsModal(true);
     }
-  }, [isChatNotification, effectiveUserType]);
+  }, [isChatNotification, effectiveUserType, canAccessTechCheckWorkflow]);
 
   const [selectedDocs, setSelectedDocs] = useState<number[]>([]);
   const [openRemarkModal, setOpenRemarkModal] = useState(false);
@@ -242,24 +261,6 @@ export default function ClientApprovalLeadDetails() {
 
   const validInstanceId =
     instanceIdNum && !Number.isNaN(instanceIdNum) ? instanceIdNum : null;
-  const canAccessTechCheckWorkflow =
-    userType === "custom"
-      ? customPrivilegeCodes.includes(
-          "production.tech_check.tech_check_action.tech_check_workflow_action",
-        )
-      : canTechCheck(effectiveUserType);
-  const canAccessUploadRevisedDocs =
-    userType === "custom"
-      ? customPrivilegeCodes.includes(
-          "production.tech_check.tech_check_action.upload_revised_docs_action",
-        )
-      : canUploadRevisedClientDocumentationFiles(effectiveUserType);
-  const canAccessMoveToOrderLogin =
-    userType === "custom"
-      ? customPrivilegeCodes.includes(
-          "production.tech_check.tech_check_action.move_to_order_login_action",
-        )
-      : canMoveToOrderLogin(effectiveUserType);
   const groupedDocs = clientDocsData?.documents_by_instance ?? [];
   const scopedGroup = validInstanceId
     ? groupedDocs.find((group: any) => group?.instance_id === validInstanceId)
@@ -653,7 +654,7 @@ export default function ClientApprovalLeadDetails() {
         value={activeTab}
         onValueChange={(val) => {
           if (val === "todo") {
-            if (!canTechCheck(effectiveUserType)) {
+            if (!canAccessTechCheckWorkflow) {
               toastManager.add({
                 title: "You don’t have permission to access To-Do Tasks",
                 type: "error",
@@ -677,7 +678,7 @@ export default function ClientApprovalLeadDetails() {
                 Lead Details
               </TabsTrigger>
 
-              {canTechCheck(effectiveUserType) ? (
+              {canAccessTechCheckWorkflow ? (
                 <TabsTrigger value="todo">
                   <PencilLine size={16} className="mr-1 opacity-60" />
                   To-Do Task

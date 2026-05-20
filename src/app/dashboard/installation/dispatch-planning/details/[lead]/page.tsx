@@ -200,6 +200,12 @@ export default function DispatchPlanningLeadDetails() {
       customPrivilegeCodes.includes(
         "installation.dispatch_planning.move_to_dispatch.enable_disable",
       ));
+  const canShowTodoTab =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("installation.dispatch_planning."),
+        )
+      : canDoDispatchPlanning(userType);
 
   console.log("user can move to dispatch :- ", canMoveToDispatch);
   return (
@@ -394,7 +400,7 @@ export default function DispatchPlanningLeadDetails() {
             </TabsTrigger>
 
             {/* ✅ To-Do Task (Conditional Access) */}
-            {canDoDispatchPlanning(userType) ? (
+            {canShowTodoTab ? (
               <TabsTrigger value="todo">
                 <PencilLine size={16} className="mr-1 opacity-60" />
                 To-Do Task
@@ -407,7 +413,11 @@ export default function DispatchPlanningLeadDetails() {
                     To-Do Task
                   </TabsTrigger>
                 }
-                value="Only Admin or Sales Executive can access this tab"
+                value={
+                  userType?.toLowerCase() === "custom"
+                    ? "You don’t have permission to access To-Do Tasks."
+                    : "Only Admin or Sales Executive can access this tab"
+                }
               />
             )}
 
@@ -454,16 +464,18 @@ export default function DispatchPlanningLeadDetails() {
           />
         </TabsContent>
 
-        <TabsContent value="todo">
-          <LeadDetailsGrouped
-            status="dispatchPlanning"
-            defaultTab="dispatchPlanning"
-            leadId={leadIdNum}
-            accountId={accountId}
-            defaultParentTab="installation"
-            dispatchPlanningInstanceId={validInstanceId}
-          />
-        </TabsContent>
+        {canShowTodoTab && (
+          <TabsContent value="todo">
+            <LeadDetailsGrouped
+              status="dispatchPlanning"
+              defaultTab="dispatchPlanning"
+              leadId={leadIdNum}
+              accountId={accountId}
+              defaultParentTab="installation"
+              dispatchPlanningInstanceId={validInstanceId}
+            />
+          </TabsContent>
+        )}
 
         {canViewSiteHistory && (
           <TabsContent value="history">

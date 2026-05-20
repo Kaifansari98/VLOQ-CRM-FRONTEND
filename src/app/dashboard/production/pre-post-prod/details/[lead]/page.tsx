@@ -171,7 +171,12 @@ export default function ProductionLeadDetails() {
       : effectiveUserType?.toLowerCase() === "factory" ||
         effectiveUserType?.toLowerCase() === "super-admin";
 
-  const canShowTodoTab = canAccessTodoTaskTabProductionStage(effectiveUserType);
+  const canShowTodoTab =
+    userType === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("production.production."),
+        )
+      : canAccessTodoTaskTabProductionStage(effectiveUserType);
 
   const latestOrderLoginDate =
     latestOrderLoginData?.data?.estimated_completion_date ?? null;
@@ -276,6 +281,12 @@ export default function ProductionLeadDetails() {
   const productionDefaultTab = handledproductionDefaultTab(
     effectiveUserType ?? "",
   );
+  const canViewProductionTabByDefault =
+    userType === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("production.production."),
+        )
+      : productionDefaultTab;
 
   const deleteLeadMutation = useDeleteLead();
 
@@ -752,12 +763,16 @@ export default function ProductionLeadDetails() {
               ) : (
                 <CustomeTooltip
                   truncateValue={
-                    <TabsTrigger value="too" disabled>
+                    <TabsTrigger value="todo" disabled>
                       <PencilLine size={16} className="mr-1 opacity-60" />
                       To-Do Task
                     </TabsTrigger>
                   }
-                  value="Only factory user can access this tab"
+                  value={
+                    userType === "custom"
+                      ? "You don’t have permission to access To-Do Tasks."
+                      : "Only factory user can access this tab"
+                  }
                 />
               )}
               {canViewSiteHistory && (
@@ -823,7 +838,7 @@ export default function ProductionLeadDetails() {
         <TabsContent value="details">
           <LeadDetailsGrouped
             status="production"
-            defaultTab={productionDefaultTab ? "production" : "techcheck"}
+            defaultTab={canViewProductionTabByDefault ? "production" : "techcheck"}
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
@@ -835,7 +850,7 @@ export default function ProductionLeadDetails() {
         <TabsContent value="todo">
           <LeadDetailsGrouped
             status="production"
-            defaultTab={productionDefaultTab ? "production" : "techcheck"}
+            defaultTab={canViewProductionTabByDefault ? "production" : "techcheck"}
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"

@@ -148,9 +148,12 @@ export default function UnderInstallationLeadDetails() {
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const deleteLeadMutation = useDeleteLead();
-  const canAccessTodoTab = canAccessTodoTaskTabUnderInstallationStage(
-    effectiveUserType ?? "",
-  );
+  const canAccessTodoTab =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("installation.under_installation."),
+        )
+      : canAccessTodoTaskTabUnderInstallationStage(effectiveUserType ?? "");
   const canStartInstallation =
     effectiveUserType === "custom"
       ? customPrivilegeCodes.includes(
@@ -548,7 +551,11 @@ export default function UnderInstallationLeadDetails() {
                       To-Do Task
                     </TabsTrigger>
                   }
-                  value="Only Site Supervisor can access this tab"
+                  value={
+                    effectiveUserType?.toLowerCase() === "custom"
+                      ? "You don’t have permission to access To-Do Tasks."
+                      : "Only Site Supervisor can access this tab"
+                  }
                 />
               )}
 
@@ -642,20 +649,22 @@ export default function UnderInstallationLeadDetails() {
           </main>
         </TabsContent>
 
-        <TabsContent value="todo">
-          <main className="flex-1 h-fit">
-            {!isLoading && accountId && (
-              <LeadDetailsGrouped
-                status="underInstallation"
-                defaultTab="underInstallation"
-                leadId={leadIdNum}
-                accountId={accountId}
-                defaultParentTab="installation"
-                underInstallationInstanceId={validInstanceId}
-              />
-            )}
-          </main>
-        </TabsContent>
+        {canAccessTodoTab && (
+          <TabsContent value="todo">
+            <main className="flex-1 h-fit">
+              {!isLoading && accountId && (
+                <LeadDetailsGrouped
+                  status="underInstallation"
+                  defaultTab="underInstallation"
+                  leadId={leadIdNum}
+                  accountId={accountId}
+                  defaultParentTab="installation"
+                  underInstallationInstanceId={validInstanceId}
+                />
+              )}
+            </main>
+          </TabsContent>
+        )}
         {canViewSiteHistory && (
           <TabsContent value="history">
             <SiteHistoryTab leadId={leadIdNum} vendorId={vendorId!} />

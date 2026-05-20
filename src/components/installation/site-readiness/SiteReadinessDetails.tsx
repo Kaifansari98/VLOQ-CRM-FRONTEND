@@ -317,7 +317,7 @@ export default function SiteReadinessDetails({
                 truncateValue={
                   <div
                     className={`${
-                      !canViewAndWork ? "opacity-70 pointer-events-none" : ""
+                      !canEditChecklist ? "opacity-70 pointer-events-none" : ""
                     }`}
                   >
                     <Button

@@ -173,6 +173,12 @@ export default function ReadyToDispatchLeadDetails() {
           code.startsWith("leads.open_leads.details_of_lead.documents_section."),
         )
       : true;
+  const canShowTodoTab =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("installation.site_readiness."),
+        )
+      : canDoSR(effectiveUserType ?? "");
 
   const handleMoveToDispatch = async () => {
     try {
@@ -422,7 +428,7 @@ export default function ReadyToDispatchLeadDetails() {
             </TabsTrigger>
 
             {/* ✅ To-Do Task (Conditional Access) */}
-            {canDoSR(effectiveUserType ?? "") ? (
+            {canShowTodoTab ? (
               <TabsTrigger value="todo">
                 <PencilLine size={16} className="mr-1 opacity-60" />
                 To-Do Task
@@ -435,7 +441,11 @@ export default function ReadyToDispatchLeadDetails() {
                     To-Do Task
                   </TabsTrigger>
                 }
-                value="Only Admin or Site Supervisor can access this tab"
+                value={
+                  effectiveUserType?.toLowerCase() === "custom"
+                    ? "You don’t have permission to access To-Do Tasks."
+                    : "Only Admin or Site Supervisor can access this tab"
+                }
               />
             )}
 
@@ -483,7 +493,7 @@ export default function ReadyToDispatchLeadDetails() {
         </TabsContent>
 
         {/* ✅ To-Do Task (Same as Site Readiness Details, but only for canAssignSR) */}
-        {canDoSR(effectiveUserType ?? "") && (
+        {canShowTodoTab && (
           <TabsContent value="todo">
             <LeadDetailsGrouped
               status="siteReadiness"
