@@ -306,10 +306,17 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       bookingAmountPaymentDetailsText: values.payment_text,
       finalBookingAmount: values.final_booking_amount,
       mrpValue: values.mrp_value, // ➕ ADD
-      siteSupervisorId: Number(values.assign_to),
       booking_payment_file: values.payment_details_document,
       final_documents: values.final_documents,
     };
+
+    if (
+      vendorCustomUserTypeMode !== true &&
+      values.assign_to &&
+      values.assign_to.trim() !== ""
+    ) {
+      payload.siteSupervisorId = Number(values.assign_to);
+    }
 
     console.log("✅ Booking Payload:", payload);
 
