@@ -158,7 +158,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   } = useVendorSalesExecutiveUsers(vendorId!, undefined, {
     assigneeUserType: "custom",
     requiredPrivilegeCode:
-      "leads.booking_done.assign_task.final_measurement",
+      "project.final_measurement.fm_action_upload_of_fm.enable_disable",
   });
   const router = useRouter();
   const leadId = data?.id!;
@@ -332,6 +332,16 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   ]);
 
   const mappedData = React.useMemo(() => {
+    if (
+      vendorCustomUserTypeMode === true &&
+      taskType === "Final Measurements"
+    ) {
+      return eligibleFinalMeasurementCustomUsers.map((user: any) => ({
+        id: user.id,
+        label: user.user_name,
+      }));
+    }
+
     if (isCustomUser) {
       return eligibleCustomUsers.map((user: any) => ({
         id: user.id,
@@ -381,6 +391,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       })) ?? []
     );
   }, [
+    eligibleFinalMeasurementCustomUsers,
     eligibleCustomUsers,
     finalMeasurementUsers,
     followUpConflicts,
@@ -391,6 +402,25 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     taskType,
     userId,
   ]);
+
+  React.useEffect(() => {
+    if (
+      !open ||
+      vendorCustomUserTypeMode !== true ||
+      taskType !== "Final Measurements"
+    ) {
+      return;
+    }
+
+    if (mappedData.length === 1) {
+      const onlyUserId = mappedData[0]?.id;
+      if (onlyUserId && form.getValues("assign_lead_to") !== onlyUserId) {
+        form.setValue("assign_lead_to", onlyUserId, {
+          shouldValidate: true,
+        });
+      }
+    }
+  }, [form, mappedData, open, taskType, vendorCustomUserTypeMode]);
 
   React.useEffect(() => {
     if (isCustomUser || vendorCustomUserTypeMode !== null && vendorCustomUserTypeMode !== undefined) {
