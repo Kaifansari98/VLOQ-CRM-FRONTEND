@@ -460,7 +460,20 @@ export function canViewPaymentTab(role: string): boolean {
 }
 
 export function canViewSiteHistoryTab(role: string): boolean {
-  return role === "admin" || role === "super-admin";
+  const normalizedRole = role?.trim().toLowerCase();
+
+  return [
+    "super-admin",
+    "custom",
+    "admin",
+    "sales-executive",
+    "site-supervisor",
+    "head-site-supervisor",
+    "tech-check",
+    "backend",
+    "factory",
+    "pre-prod",
+  ].includes(normalizedRole);
 }
 
 export function canUpdateDessingStageSelectionInputs(

@@ -118,13 +118,7 @@ export default function OrderLoginLeadDetails() {
         )
       : canMoveToProduction(effectiveUserType);
   const canViewTodoTask = canWorkTodoTaskOrderLoginStage(effectiveUserType);
-  const canViewSiteHistory =
-    effectiveUserType?.toLowerCase() === "custom"
-      ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.site_history.enable_disable",
-        )
-      : canViewSiteHistoryTab(effectiveUserType) &&
-        effectiveUserType?.toLowerCase() !== "admin";
+  const canViewSiteHistory = canViewSiteHistoryTab(effectiveUserType);
   const canViewChats =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
