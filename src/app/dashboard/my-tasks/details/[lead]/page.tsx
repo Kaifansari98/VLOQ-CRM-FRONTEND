@@ -27,11 +27,14 @@ export default function MyTaskLeadDetails() {
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
 
-  if (isLoading) {
+  if (isLoading && !data?.data?.lead) {
     return <p className="p-6">Loading lead details...</p>;
   }
 
   const lead = data?.data?.lead;
+  if (!lead) {
+    return <p className="p-6">Lead details not found or you do not have access.</p>;
+  }
   const leadStatus = lead?.statusType?.type;
 
   const formatDateTime = (dateString?: string) => {

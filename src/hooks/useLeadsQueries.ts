@@ -144,6 +144,7 @@ export function useLeadById(leadId?: number, vendorId?: number, userId?: number)
     queryFn: () => getLeadById(leadId!, vendorId!, userId!),
     enabled: !!leadId && !!vendorId && !!userId,
     placeholderData: keepPreviousData,
+    retry: false,
     staleTime: 1000 * 60 * 5,        // 5 min — baar baar refetch nahi hoga
     refetchOnWindowFocus: false,      // ← YEH SABSE IMPORTANT FIX HAI
     refetchOnReconnect: false,

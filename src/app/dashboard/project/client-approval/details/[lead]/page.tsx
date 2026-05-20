@@ -185,8 +185,12 @@ export default function ClientApprovalLeadDetails() {
     setOpenDelete(false);
   };
 
-  if (isLoading) {
+  if (isLoading && !lead) {
     return <p className="p-6">Loading Client Approval Lead details…</p>;
+  }
+
+  if (!lead) {
+    return <p className="p-6">Lead details not found or you do not have access.</p>;
   }
 
   const canReassign = canReassignLeadButton(userType);

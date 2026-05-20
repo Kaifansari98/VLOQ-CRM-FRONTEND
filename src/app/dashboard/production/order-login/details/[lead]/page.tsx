@@ -247,8 +247,12 @@ export default function OrderLoginLeadDetails() {
     setOpenDelete(false);
   };
 
-  if (isLoading) {
+  if (isLoading && !lead) {
     return <p className="p-6">Loading order login lead details...</p>;
+  }
+
+  if (!lead) {
+    return <p className="p-6">Lead details not found or you do not have access.</p>;
   }
 
   const canReassign = canReassignLeadButton(effectiveUserType ?? "");

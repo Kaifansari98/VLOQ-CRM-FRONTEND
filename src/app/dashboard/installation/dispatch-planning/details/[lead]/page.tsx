@@ -166,8 +166,12 @@ export default function DispatchPlanningLeadDetails() {
     setOpenDelete(false);
   };
 
-  if (isLoading) {
+  if (isLoading && !lead) {
     return <p className="p-6">Loading Dispatch Planning lead details...</p>;
+  }
+
+  if (!lead) {
+    return <p className="p-6">Lead details not found or you do not have access.</p>;
   }
 
   const canReassign = canReassignLeadButton(userType);

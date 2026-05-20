@@ -221,8 +221,12 @@ export default function ReadyToDispatchLeadDetails() {
     }
   }, [isChatNotification, userType, hasSitePhotos]);
 
-  if (isLoading) {
+  if (isLoading && !lead) {
     return <p className="p-6">Loading Ready-To-Dispatch lead details...</p>;
+  }
+
+  if (!lead) {
+    return <p className="p-6">Lead details not found or you do not have access.</p>;
   }
 
   function formatDate(input: string | Date): string {

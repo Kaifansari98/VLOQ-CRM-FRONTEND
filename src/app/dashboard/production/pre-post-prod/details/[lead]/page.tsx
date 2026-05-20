@@ -453,7 +453,7 @@ export default function ProductionLeadDetails() {
     setOpenDelete(false);
   };
 
-  if (isLoading) {
+  if (isLoading && !lead) {
     return <p className="p-6">Loading production lead details...</p>;
   }
 

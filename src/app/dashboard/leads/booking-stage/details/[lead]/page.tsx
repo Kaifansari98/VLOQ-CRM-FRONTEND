@@ -160,8 +160,12 @@ export default function BookingStageLeadsDetails() {
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
 
-  if (isLoading) {
+  if (isLoading && !lead) {
     return <p className="p-6">Loading lead details...</p>;
+  }
+
+  if (!lead) {
+    return <p className="p-6">Lead details not found or you do not have access.</p>;
   }
 
   const canReassign = canReassignLeadButton(userType);
