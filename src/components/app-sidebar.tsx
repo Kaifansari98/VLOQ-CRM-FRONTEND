@@ -5,7 +5,11 @@ import {
   GalleryVerticalEnd,
   Users,
   LayoutDashboard,
+  FolderKanban,
   Monitor,
+  ScanBarcode,
+  Warehouse,
+  FolderCog,
   ClipboardList,
   NotebookPen,
   HardHat,
@@ -183,7 +187,7 @@ const data = {
     {
       title: "Servicing",
       url: "/dashboard/installation/servicing",
-      icon: Drill,
+      icon: FolderCog,
       showCount: "total_servicing_stage_leads" as const,
     },
   ],
@@ -191,7 +195,7 @@ const data = {
     {
       title: "Track Trace",
       url: "#",
-      icon: Monitor,
+      icon: ScanBarcode,
       items: [
         { title: "Dashboard", url: "/dashboard/track-trace" },
         { title: "Real Time", url: "/dashboard/track-trace/dashboard" },
@@ -208,9 +212,9 @@ const data = {
       ],
     },
     {
-      title: "Master",
+      title: "Track Trace Master",
       url: "#",
-      icon: Monitor,
+      icon: FolderKanban,
       items: [{ title: "Workstation", url: "/dashboard/track-trace/master/workstation" },
         { title: "Category", url: "/dashboard/track-trace/master/category" }
       ],
@@ -220,9 +224,9 @@ const data = {
 
   inventoryTraceNav: [   
     {
-      title: "Master",
+      title: "Inventory",
       url: "#",
-      icon: Monitor,
+      icon: Warehouse,
       items: [{ title: "Products", url: "/dashboard/inventory/master/products" },
         { title: "Purchase Intent", url: "/dashboard/inventory/purchase-intents" },
         { title: "Purchase Order", url: "/dashboard/inventory/purchase-orders" },
@@ -237,7 +241,7 @@ const data = {
     {
       title: "CRM Masters",
       url: "#",
-      icon: MapPinned,
+      icon: FolderKanban,
       items: [
         {
           title: "Field Masters",
@@ -629,8 +633,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           mastersItems={mastersItems}
         />
       </SidebarContent>
-
-     
 
       <SidebarFooter>
         <NavUser user={userData} />
