@@ -79,6 +79,13 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const vendorCustomUserTypeMode = useAppSelector(
+    (s) =>
+      s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only as
+        | boolean
+        | null
+        | undefined,
+  );
 
   const { data: techCheckUsers, isLoading } = useTechCheckUsers(vendorId!);
   const { mutate, isPending } = useRequestToTechCheck();
@@ -98,6 +105,22 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
   const activeUsers = techCheckUsers ?? [];
   const isUsersLoading = isLoading;
+  const assignUserLabel =
+    vendorCustomUserTypeMode === true
+      ? "Assign Eligible User for Tech Check"
+      : "Assign User for Tech Check";
+  const loadingUsersLabel =
+    vendorCustomUserTypeMode === true
+      ? "Loading users..."
+      : "Loading tech check users...";
+  const singleUserConfirmTitle =
+    vendorCustomUserTypeMode === true
+      ? "Confirm Tech Check Assignment"
+      : "Confirm Tech Check Request";
+  const singleUserConfirmDescription =
+    vendorCustomUserTypeMode === true
+      ? "Assign this lead to the eligible user"
+      : "Assign this lead to";
 
   const mappedUsers =
     activeUsers?.map((user: any) => ({
@@ -218,10 +241,10 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Tech Check Request</AlertDialogTitle>
+            <AlertDialogTitle>{singleUserConfirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Assign this lead to <strong>{selectedUserName}</strong> for Tech
-              Check.
+              {singleUserConfirmDescription}{" "}
+              <strong>{selectedUserName}</strong> for Tech Check.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -280,7 +303,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
         <ScrollArea className="pt-4 max-h-[60vh]">
           {isUsersLoading ? (
             <div className="p-6 text-center text-muted-foreground">
-              Loading users...
+              {loadingUsersLabel}
             </div>
           ) : (
             <Form {...form}>
@@ -294,7 +317,7 @@ const RequestToTechCheckModal: React.FC<RequestToTechCheckModalProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm">
-                        Assign User for Tech Check
+                        {assignUserLabel}
                       </FormLabel>
                       <FormControl>
                         <AssignToPicker

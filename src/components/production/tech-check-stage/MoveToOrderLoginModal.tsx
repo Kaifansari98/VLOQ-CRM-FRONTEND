@@ -77,11 +77,25 @@ export default function MoveToOrderLoginModal({
 
   const { data: backendUsers, isLoading } = useBackendUsers(vendorId!);
   const { mutate: approveTechCheck, isPending } = useApproveTechCheck();
-
-  
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const dialogTitle =
+    vendorCustomUserTypeMode === true
+      ? "Assign User for Order Login"
+      : "Assign Backend User";
+  const assignUserLabel =
+    vendorCustomUserTypeMode === true
+      ? "Assign Eligible User for Order Login"
+      : "Assign To Backend User";
+  const loadingUsersLabel =
+    vendorCustomUserTypeMode === true
+      ? "Loading users..."
+      : "Loading backend users...";
+  const confirmTitle =
+    vendorCustomUserTypeMode === true
+      ? "Confirm Order Login Assignment"
+      : "Confirm Move to Order Login";
 
   const mappedUsers =
     backendUsers?.map((user: any) => ({
@@ -164,19 +178,13 @@ export default function MoveToOrderLoginModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
           <DialogContent className="max-w-md w-full">
             <DialogHeader>
-              <DialogTitle>
-                {vendorCustomUserTypeMode === true
-                  ? "Assign User for Order Login"
-                  : "Assign Backend User"}
-              </DialogTitle>
+              <DialogTitle>{dialogTitle}</DialogTitle>
             </DialogHeader>
 
             <ScrollArea className="pt-4 max-h-[60vh]">
               {isLoading ? (
                 <div className="p-6 text-center text-muted-foreground">
-                  {vendorCustomUserTypeMode === true
-                    ? "Loading users..."
-                    : "Loading backend users..."}
+                  {loadingUsersLabel}
                 </div>
               ) : (
                 <Form {...form}>
@@ -190,9 +198,7 @@ export default function MoveToOrderLoginModal({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm">
-                            {vendorCustomUserTypeMode === true
-                              ? "Assign User for Order Login"
-                              : "Assign To Backend User"}
+                            {assignUserLabel}
                           </FormLabel>
                           <FormControl>
                             <AssignToPicker
@@ -232,10 +238,12 @@ export default function MoveToOrderLoginModal({
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Move to Order Login</AlertDialogTitle>
+            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedUserName
-                ? `Are you sure you want to assign this lead to ${selectedUserName}?`
+                ? vendorCustomUserTypeMode === true
+                  ? `Are you sure you want to assign this lead to the eligible user ${selectedUserName}?`
+                  : `Are you sure you want to assign this lead to ${selectedUserName}?`
                 : `Are you sure you want to move this lead to Order Login stage?`}
             </AlertDialogDescription>
           </AlertDialogHeader>

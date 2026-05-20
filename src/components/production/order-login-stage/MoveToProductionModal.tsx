@@ -79,11 +79,25 @@ export default function MoveToProductionModal({
 
   const { data: factoryUsers, isLoading } = useFactoryUsers(vendorId!);
   const { mutate, isPending } = useRequestToProduction();
-//  const { data: leadDetails } = useLeadById(data?.id, vendorId, userId);
-
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const dialogTitle =
+    vendorCustomUserTypeMode === true
+      ? "Assign User for Production"
+      : "Move Lead to Production";
+  const assignUserLabel =
+    vendorCustomUserTypeMode === true
+      ? "Assign Eligible User for Production"
+      : "Assign To Factory User";
+  const loadingUsersLabel =
+    vendorCustomUserTypeMode === true
+      ? "Loading users..."
+      : "Loading factory users...";
+  const confirmTitle =
+    vendorCustomUserTypeMode === true
+      ? "Confirm Production Assignment"
+      : "Confirm Move To Production";
 
   const { data: leadDetails } = useLeadById(data?.id, vendorId, userId);
 
@@ -180,15 +194,13 @@ export default function MoveToProductionModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
           <DialogContent className="max-w-md w-full">
             <DialogHeader>
-              <DialogTitle>Move Lead to Production</DialogTitle>
+              <DialogTitle>{dialogTitle}</DialogTitle>
             </DialogHeader>
 
             <ScrollArea className="pt-4 max-h-[60vh]">
               {isLoading ? (
                 <div className="p-6 text-center text-muted-foreground">
-                  {vendorCustomUserTypeMode === true
-                    ? "Loading users..."
-                    : "Loading factory users..."}
+                  {loadingUsersLabel}
                 </div>
               ) : (
                 <Form {...form}>
@@ -202,9 +214,7 @@ export default function MoveToProductionModal({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm">
-                            {vendorCustomUserTypeMode === true
-                              ? "Assign User for Production"
-                              : "Assign To Factory User"}
+                            {assignUserLabel}
                           </FormLabel>
                           <FormControl>
                             <AssignToPicker
@@ -244,10 +254,12 @@ export default function MoveToProductionModal({
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Move To Production</AlertDialogTitle>
+            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedUserName
-                ? `Are you sure you want to assign this lead to ${selectedUserName} for Production?`
+                ? vendorCustomUserTypeMode === true
+                  ? `Are you sure you want to assign this lead to the eligible user ${selectedUserName} for Production?`
+                  : `Are you sure you want to assign this lead to ${selectedUserName} for Production?`
                 : `Are you sure you want to move this lead to Production stage?`}
             </AlertDialogDescription>
           </AlertDialogHeader>
