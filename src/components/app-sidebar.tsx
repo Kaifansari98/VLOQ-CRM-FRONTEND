@@ -533,6 +533,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     // Track & Trace sirf STAGING mein dikhega
     const finalTrackTraceItems = showTrackTrace ? data.trackTraceNav : [];
+    const finalInventoryItems = showInventory ? data.inventoryTraceNav : [];
     const finalMastersItems = isSuperAdmin
       ? data.mastersNav.map((section) => ({
           ...section,
@@ -550,7 +551,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return {
       navItems: finalNavItems,
       trackTraceItems: finalTrackTraceItems,
-      inventoryItems:finalInvetoryItems,
+      inventoryItems: finalInventoryItems,
       mastersItems: finalMastersItems,
     };
   }, [
