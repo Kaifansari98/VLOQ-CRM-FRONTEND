@@ -8,6 +8,7 @@ export const useVendorSalesExecutiveUsers = (
   options?: {
     assigneeUserType?: string;
     requiredPrivilegeCode?: string;
+    taskType?: string;
   },
 ) => {
   return useQuery({

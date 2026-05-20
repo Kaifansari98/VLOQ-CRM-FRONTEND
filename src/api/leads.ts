@@ -370,6 +370,7 @@ export const getVendorSalesExecutiveUsers = async (
   options?: {
     assigneeUserType?: string;
     requiredPrivilegeCode?: string;
+    taskType?: string;
   },
 ) => {
   const params: Record<string, string | number> = {};
@@ -379,6 +380,9 @@ export const getVendorSalesExecutiveUsers = async (
   }
   if (options?.requiredPrivilegeCode) {
     params.required_privilege_code = options.requiredPrivilegeCode;
+  }
+  if (options?.taskType) {
+    params.task_type = options.taskType;
   }
 
   const response = await apiClient.get(
