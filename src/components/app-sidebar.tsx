@@ -292,6 +292,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isCustomUserTypeOnlyVendor =
     user?.vendor?.is_this_vendor_is_custom_usertype_only === true;
   const isInventoryEnabled = user?.vendor?.is_inventory_enabled === true;
+  const isTrackTraceEnabled = user?.vendor?.is_tracktrace_enabled === true;
   const canSeeOverallLeads = userType === "admin" || userType === "super-admin";
   const isSuperAdmin = userType === "super-admin";
   const shouldBootstrapFranchise =
@@ -342,8 +343,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const environment = (
       process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION"
     ).toUpperCase();
-    const showTrackTrace =
-      environment === "STAGING" || environment === "LOCAL";
 
     const withoutOverall = canSeeOverallLeads
       ? data.navMain
@@ -540,8 +539,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return item;
     });
 
-    // Track & Trace sirf STAGING mein dikhega
-    const finalTrackTraceItems = showTrackTrace ? data.trackTraceNav : [];
+    const finalTrackTraceItems = isTrackTraceEnabled
+      ? data.trackTraceNav
+      : [];
     const finalInventoryItems = isInventoryEnabled
       ? data.inventoryTraceNav
       : [];
@@ -574,6 +574,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     userType,
     isCustomUserTypeOnlyVendor,
     isInventoryEnabled,
+    isTrackTraceEnabled,
     customPrivilegeCodes,
   ]);
 
