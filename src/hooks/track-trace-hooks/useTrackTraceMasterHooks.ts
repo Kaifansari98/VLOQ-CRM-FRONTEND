@@ -8,6 +8,7 @@ import {
   getMachinesByVendor,
   postVendorLeads,
   updateMachine,
+  searchTrackTraceLeadsApi
 } from "@/api/trackAndTrace/track-trace-master";
 import {
   ApplyConfigurationPayload,
@@ -17,8 +18,28 @@ import {
   MachineData,
   VendorLeadsPostPayload,
   VendorLeadsResponse,
+  TrackTraceLeadOption
 } from "@/types/track-trace";
+
+
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+
+export const useSearchTrackTraceLeads = (
+  vendorId?: number,
+  search = "",
+  enabled = true
+) => {
+  return useQuery<TrackTraceLeadOption[]>({
+    queryKey: ["track-trace-leads", vendorId, search],
+    queryFn: () => searchTrackTraceLeadsApi(vendorId!, search),
+    enabled: !!vendorId && enabled,
+    staleTime: 1000 * 60,
+    retry: 1,
+  });
+};
+
 
 export const useMachinesByVendor = (vendorId: number) => {
   return useQuery({

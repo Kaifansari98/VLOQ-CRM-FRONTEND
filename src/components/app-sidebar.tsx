@@ -217,6 +217,22 @@ const data = {
     },
     
   ],
+
+  inventoryTraceNav: [   
+    {
+      title: "Master",
+      url: "#",
+      icon: Monitor,
+      items: [{ title: "Products", url: "/dashboard/inventory/master/products" },
+        { title: "Purchase Intent", url: "/dashboard/inventory/purchase-intents" },
+        { title: "Purchase Order", url: "/dashboard/inventory/purchase-orders" },
+        { title: "GRN", url: "/dashboard/inventory/grn" },
+        
+        // { title: "Category", url: "/dashboard/track-trace/master/category" }
+      ],
+    },
+    
+  ],
   mastersNav: [
     {
       title: "CRM Masters",
@@ -315,11 +331,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }
     : data.user;
 
-  const { navItems, trackTraceItems, mastersItems } = React.useMemo(() => {
+  const { navItems, trackTraceItems,inventoryItems, mastersItems } = React.useMemo(() => {
     const environment = (
       process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION"
     ).toUpperCase();
     const showTrackTrace =
+      environment === "STAGING" || environment === "LOCAL";
+      const showInventory =
       environment === "STAGING" || environment === "LOCAL";
 
     const withoutOverall = canSeeOverallLeads
@@ -532,6 +550,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return {
       navItems: finalNavItems,
       trackTraceItems: finalTrackTraceItems,
+      inventoryItems:finalInvetoryItems,
       mastersItems: finalMastersItems,
     };
   }, [
@@ -605,9 +624,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain
           items={navItems}
           trackTraceItems={trackTraceItems}
+          inventoryItems={inventoryItems}
           mastersItems={mastersItems}
         />
       </SidebarContent>
+
+     
 
       <SidebarFooter>
         <NavUser user={userData} />

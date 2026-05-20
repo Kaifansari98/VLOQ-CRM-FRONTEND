@@ -11,7 +11,9 @@ import {
   UpdateMachineParams,
   VendorLeadsPostPayload,
   VendorLeadsResponse,
+  TrackTraceLeadOption,
 } from "@/types/track-trace";
+
 
 export const getMachinesByVendor = async (
   vendorId: number,
@@ -132,10 +134,10 @@ export const createTrackTraceProjectApi = async (
 ): Promise<CreateTrackTraceProjectResponse> => {
   const formData = new FormData();
 
-  formData.append("vendorToken", payload.vendorToken);
-  formData.append("vendorId",    String(payload.vendorId));
+  formData.append("vendorId", String(payload.vendorId));
+  formData.append("lead_id", String(payload.lead_id));
   formData.append("projectName", payload.projectName);
-  formData.append("file",        payload.file);
+  formData.append("file", payload.file);
 
   const response = await apiClient.post<CreateTrackTraceProjectResponse>(
     "/track-trace-project/onboard/create-project",
@@ -148,6 +150,19 @@ export const createTrackTraceProjectApi = async (
   );
 
   return response.data;
+};
+
+export const searchTrackTraceLeadsApi = async (
+  vendorId: number,
+  search = ""
+): Promise<TrackTraceLeadOption[]> => {
+  const { data } = await apiClient.get(
+    `/track-trace-project/onboard/${vendorId}/leads?search=${encodeURIComponent(
+      search
+    )}`
+  );
+
+  return data.data || [];
 };
 
 

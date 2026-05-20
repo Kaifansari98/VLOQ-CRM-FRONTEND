@@ -197,3 +197,25 @@ export const getBoxItems = async (vendorId: number, projectId: string, boxId: nu
   };
 };
  
+export const downloadBoxPdf = async (
+  boxId: number,
+  projectId: string | number,
+  vendorId: number
+) => {
+  const { data } = await apiClient.get(
+    `/boxes/boxes/pdf/${boxId}/${projectId}/${vendorId}/web`
+  );
+
+  return data;
+};
+
+export const downloadProjectFullReport = async (
+  projectId: string | number,
+  vendorId: number
+) => {
+  const { data } = await apiClient.get(
+    `/boxes/project-full-report/${projectId}/${vendorId}/web`
+  );
+
+  return data;
+};
