@@ -543,6 +543,7 @@ export const fetchLeadLogs = async ({
   cursor,
   historyType,
   search,
+  userTypeId,
 }: {
   leadId: number;
   vendorId: number;
@@ -550,12 +551,14 @@ export const fetchLeadLogs = async ({
   cursor?: number;
   historyType?: "Lead" | "Task" | "FollowUp";
   search?: string;
+  userTypeId?: number;
 }) => {
   const query = new URLSearchParams();
   query.append("limit", String(limit));
   if (cursor) query.append("cursor", String(cursor));
   if (historyType) query.append("history_type", historyType);
   if (search?.trim()) query.append("search", search.trim());
+  if (userTypeId) query.append("user_type_id", String(userTypeId));
 
   const response = await apiClient.get(
     `/leads/vendorId/${vendorId}/leadId/${leadId}/logs?${query.toString()}`,

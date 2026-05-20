@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { generateSiteHistoryReport } from "@/lib/reports/siteHistoryReport";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
+import { useAppSelector } from "@/redux/store";
 
 interface SiteHistoryTabProps {
   leadId: number;
@@ -90,7 +91,19 @@ export default function SiteHistoryTab({
   leadCode,
   leadName,
 }: SiteHistoryTabProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("lead-history");
+  const userType = useAppSelector((state) => state.auth.user?.user_type?.user_type);
+  const userTypeId = useAppSelector((state) => state.auth.user?.user_type_id);
+  const normalizedUserType = userType?.trim().toLowerCase() ?? "";
+  const canSeeLeadHistoryTab =
+    normalizedUserType === "super-admin" || normalizedUserType === "custom";
+  const visibleTabIds: TabId[] = canSeeLeadHistoryTab
+    ? ["lead-history", "task-history", "follow-ups"]
+    : ["task-history", "follow-ups"];
+  const defaultTabId: TabId = canSeeLeadHistoryTab
+    ? "lead-history"
+    : "task-history";
+
+  const [activeTab, setActiveTab] = useState<TabId>(defaultTabId);
   const historyType = HISTORY_TYPE_MAP[activeTab];
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -107,9 +120,22 @@ export default function SiteHistoryTab({
     setDebouncedSearch("");
   }, [activeTab]);
 
+  useEffect(() => {
+    if (!visibleTabIds.includes(activeTab)) {
+      setActiveTab(defaultTabId);
+    }
+  }, [activeTab, defaultTabId, visibleTabIds]);
+
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
-      queryKey: ["leadLogs", leadId, vendorId, historyType, debouncedSearch],
+      queryKey: [
+        "leadLogs",
+        leadId,
+        vendorId,
+        historyType,
+        debouncedSearch,
+        userTypeId,
+      ],
       queryFn: async ({ pageParam }) =>
         await fetchLeadLogs({
           leadId,
@@ -118,7 +144,9 @@ export default function SiteHistoryTab({
           limit: 10,
           historyType,
           search: debouncedSearch || undefined,
+          userTypeId,
         }),
+      enabled: Boolean(userTypeId && visibleTabIds.includes(activeTab)),
       getNextPageParam: (lastPage) =>
         lastPage?.meta?.hasMore ? lastPage.meta.nextCursor : undefined,
       initialPageParam: undefined,
@@ -127,9 +155,20 @@ export default function SiteHistoryTab({
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
+    if (!userTypeId) {
+      toast.error("User type is not available.");
+      return;
+    }
+
     setIsExporting(true);
     try {
-      await generateSiteHistoryReport({ leadId, vendorId, leadCode, leadName });
+      await generateSiteHistoryReport({
+        leadId,
+        vendorId,
+        leadCode,
+        leadName,
+        userTypeId,
+      });
       toast.success("Site history exported successfully.");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to export.";
@@ -333,7 +372,7 @@ export default function SiteHistoryTab({
       color: "bg-foreground",
       cardContent: timelineContent,
     },
-  ];
+  ].filter((item) => visibleTabIds.includes(item.id as TabId));
 
   return (
     <motion.div
@@ -352,7 +391,7 @@ export default function SiteHistoryTab({
       <div className="relative">
         <SmoothTab
           items={tabItems}
-          defaultTabId="lead-history"
+          defaultTabId={defaultTabId}
           onChange={(tabId) => setActiveTab(tabId as TabId)}
         />
         <div className="absolute top-0 right-0 flex items-center gap-2">

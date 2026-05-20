@@ -8,6 +8,7 @@ interface GenerateSiteHistoryReportParams {
   leadCode?: string | null;
   leadName?: string | null;
   onProgress?: (stage: string) => void;
+  userTypeId?: number;
 }
 
 function sanitizeRole(role: string | null | undefined): string {
@@ -44,11 +45,14 @@ export async function generateSiteHistoryReport({
   leadCode,
   leadName,
   onProgress,
+  userTypeId,
 }: GenerateSiteHistoryReportParams): Promise<void> {
   onProgress?.("Fetching logs...");
+  const query = new URLSearchParams({ limit: "9999" });
+  if (userTypeId) query.append("user_type_id", String(userTypeId));
 
   const response = await apiClient.get(
-    `/leads/vendorId/${vendorId}/leadId/${leadId}/logs?limit=9999`,
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/logs?${query.toString()}`,
   );
 
   const logs: any[] = response.data.data ?? [];

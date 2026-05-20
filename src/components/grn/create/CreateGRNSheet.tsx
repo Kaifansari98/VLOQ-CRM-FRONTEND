@@ -43,7 +43,9 @@ export function CreateGRNSheet({
   onClose: () => void;
   onCreated: () => void;
 }) {
-  const [poInput, setPoInput] = useState(initialPoId ? String(initialPoId) : "");
+  const [poInput, setPoInput] = useState(
+    initialPoId ? String(initialPoId) : "",
+  );
   const [poData, setPoData] = useState<POPrefill | null>(null);
   const [poLoading, setPoLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -59,27 +61,27 @@ export function CreateGRNSheet({
   });
 
   const [amountInfo, setAmountInfo] = useState<GRNAdditionalAmountState>({
-  discount_amount: "",
-  packing_amount: "",
-  freight_amount: "",
-  other_charges_amount: "",
-  roundoff_amount: "",
-  cess_amount: "",
-  eway_bill_no: "",
-  transporter_name: "",
-  lr_no: "",
-  lr_date: "",
-});
+    discount_amount: "",
+    packing_amount: "",
+    freight_amount: "",
+    other_charges_amount: "",
+    roundoff_amount: "",
+    cess_amount: "",
+    eway_bill_no: "",
+    transporter_name: "",
+    lr_no: "",
+    lr_date: "",
+  });
 
-const numOrUndefined = (value: string) => {
-  if (value === "" || value === null || value === undefined) return undefined;
-  return Number(value);
-};
+  const numOrUndefined = (value: string) => {
+    if (value === "" || value === null || value === undefined) return undefined;
+    return Number(value);
+  };
 
-const strOrUndefined = (value: string) => {
-  if (!value || !value.trim()) return undefined;
-  return value.trim();
-};
+  const strOrUndefined = (value: string) => {
+    if (!value || !value.trim()) return undefined;
+    return value.trim();
+  };
   const [rows, setRows] = useState<Record<number, GRNCreateRow>>({});
 
   useEffect(() => {
@@ -107,7 +109,7 @@ const strOrUndefined = (value: string) => {
         });
 
         const found = res.purchase_orders.find(
-          (p) => p.po_no.toLowerCase() === raw.toLowerCase()
+          (p) => p.po_no.toLowerCase() === raw.toLowerCase(),
         );
 
         if (!found) {
@@ -137,8 +139,12 @@ const strOrUndefined = (value: string) => {
 
       for (const item of data.items) {
         init[item.id] = {
-          received_qty: String(item.remaining_qty > 0 ? item.remaining_qty : ""),
-          accepted_qty: String(item.remaining_qty > 0 ? item.remaining_qty : ""),
+          received_qty: String(
+            item.remaining_qty > 0 ? item.remaining_qty : "",
+          ),
+          accepted_qty: String(
+            item.remaining_qty > 0 ? item.remaining_qty : "",
+          ),
           rejected_qty: "0",
           rejection_reason: "",
           unit_price: item.unit_price
@@ -158,11 +164,7 @@ const strOrUndefined = (value: string) => {
     }
   };
 
-  const updateRow = (
-    id: number,
-    field: keyof GRNCreateRow,
-    value: string
-  ) => {
+  const updateRow = (id: number, field: keyof GRNCreateRow, value: string) => {
     setRows((p) => ({
       ...p,
       [id]: {
@@ -175,16 +177,24 @@ const strOrUndefined = (value: string) => {
   const autoCalc = (
     id: number,
     field: "accepted_qty" | "rejected_qty",
-    value: string
+    value: string,
   ) => {
     const received = Number(rows[id]?.received_qty || 0);
 
     if (field === "accepted_qty") {
       updateRow(id, "accepted_qty", value);
-      updateRow(id, "rejected_qty", String(Math.max(0, received - Number(value || 0))));
+      updateRow(
+        id,
+        "rejected_qty",
+        String(Math.max(0, received - Number(value || 0))),
+      );
     } else {
       updateRow(id, "rejected_qty", value);
-      updateRow(id, "accepted_qty", String(Math.max(0, received - Number(value || 0))));
+      updateRow(
+        id,
+        "accepted_qty",
+        String(Math.max(0, received - Number(value || 0))),
+      );
     }
   };
 
@@ -194,6 +204,7 @@ const strOrUndefined = (value: string) => {
     const items: CreateGRNItemPayload[] = poData.items
       .filter((item) => rows[item.id] && Number(rows[item.id].received_qty) > 0)
       .map((item) => ({
+        purchase_order_item_id: item.id,
         po_item_id: item.id,
         product_id: item.product.id,
         received_qty: Number(rows[item.id].received_qty),
@@ -238,33 +249,33 @@ const strOrUndefined = (value: string) => {
     setSubmitting(true);
 
     try {
-     await createGRN(vendorId, {
-  user_id: userId,
-  purchase_order_id: poData.id,
-  company_vendor_id: poData.companyVendor.id,
+      await createGRN(vendorId, {
+        user_id: userId,
+        purchase_order_id: poData.id,
+        company_vendor_id: poData.companyVendor.id,
 
-  received_date: meta.received_date,
-  vehicle_no: strOrUndefined(meta.vehicle_no),
-  gate_entry_no: strOrUndefined(meta.gate_entry_no),
-  invoice_no: strOrUndefined(meta.invoice_no),
-  invoice_date: meta.invoice_date || undefined,
-  invoice_amount: numOrUndefined(meta.invoice_amount || ""),
-  remarks: strOrUndefined(meta.remarks),
+        received_date: meta.received_date,
+        vehicle_no: strOrUndefined(meta.vehicle_no),
+        gate_entry_no: strOrUndefined(meta.gate_entry_no),
+        invoice_no: strOrUndefined(meta.invoice_no),
+        invoice_date: meta.invoice_date || undefined,
+        invoice_amount: numOrUndefined(meta.invoice_amount || ""),
+        remarks: strOrUndefined(meta.remarks),
 
-  discount_amount: numOrUndefined(amountInfo.discount_amount),
-  packing_amount: numOrUndefined(amountInfo.packing_amount),
-  freight_amount: numOrUndefined(amountInfo.freight_amount),
-  other_charges_amount: numOrUndefined(amountInfo.other_charges_amount),
-  roundoff_amount: numOrUndefined(amountInfo.roundoff_amount),
-  cess_amount: numOrUndefined(amountInfo.cess_amount),
+        discount_amount: numOrUndefined(amountInfo.discount_amount),
+        packing_amount: numOrUndefined(amountInfo.packing_amount),
+        freight_amount: numOrUndefined(amountInfo.freight_amount),
+        other_charges_amount: numOrUndefined(amountInfo.other_charges_amount),
+        roundoff_amount: numOrUndefined(amountInfo.roundoff_amount),
+        cess_amount: numOrUndefined(amountInfo.cess_amount),
 
-  eway_bill_no: strOrUndefined(amountInfo.eway_bill_no),
-  transporter_name: strOrUndefined(amountInfo.transporter_name),
-  lr_no: strOrUndefined(amountInfo.lr_no),
-  lr_date: amountInfo.lr_date || undefined,
+        eway_bill_no: strOrUndefined(amountInfo.eway_bill_no),
+        transporter_name: strOrUndefined(amountInfo.transporter_name),
+        lr_no: strOrUndefined(amountInfo.lr_no),
+        lr_date: amountInfo.lr_date || undefined,
 
-  items,
-});
+        items,
+      });
 
       toastManager.add({
         title: "GRN created successfully",
@@ -284,7 +295,10 @@ const strOrUndefined = (value: string) => {
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
       <aside className="fixed right-0 top-0 z-50 flex h-full w-full max-w-5xl flex-col border-l bg-background shadow-2xl">
         <div className="flex items-center justify-between border-b px-5 py-4">
@@ -388,20 +402,20 @@ const strOrUndefined = (value: string) => {
                   />
                 </SectionCard>
                 <SectionCard
-  title="Additional Amount Information"
-  description="Capture freight, packing, discounts, other charges and transport details."
->
-  <GRNAdditionalAmountForm
-    amountInfo={amountInfo}
-    setAmountInfo={setAmountInfo}
-  />
-</SectionCard>
+                  title="Additional Amount Information"
+                  description="Capture freight, packing, discounts, other charges and transport details."
+                >
+                  <GRNAdditionalAmountForm
+                    amountInfo={amountInfo}
+                    setAmountInfo={setAmountInfo}
+                  />
+                </SectionCard>
 
                 <GRNFinancialSummary
-  poData={poData}
-  rows={rows}
-  amountInfo={amountInfo}
-/>
+                  poData={poData}
+                  rows={rows}
+                  amountInfo={amountInfo}
+                />
               </>
             )}
           </div>
@@ -424,7 +438,7 @@ const strOrUndefined = (value: string) => {
             disabled={submitting || !poData}
             className={cn(
               "rounded-xl bg-indigo-600 font-bold hover:bg-indigo-700",
-              "gap-1.5"
+              "gap-1.5",
             )}
           >
             {submitting ? (
