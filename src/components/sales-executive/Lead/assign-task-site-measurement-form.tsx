@@ -232,6 +232,11 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const error = salesExecutiveUsersError || customPrivilegeUsersError;
 
   React.useEffect(() => {
+    if (onlyFollowUp) {
+      form.setValue("task_type", "Follow Up");
+      return;
+    }
+
     if (
       form.getValues("task_type") === "Initial Site Measurement" &&
       isInitialSiteMeasurementDisabled &&
@@ -239,7 +244,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     ) {
       form.setValue("task_type", "Follow Up");
     }
-  }, [form, isInitialSiteMeasurementDisabled, canShowFollowUpOption]);
+  }, [form, isInitialSiteMeasurementDisabled, canShowFollowUpOption, onlyFollowUp]);
 
   React.useEffect(() => {
     const currentTaskType = form.getValues("task_type");
@@ -401,33 +406,43 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-sm">Task Type</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={!!onlyFollowUp}
+                  >
                     <FormControl>
                       <SelectTrigger className="text-sm w-full">
                         <SelectValue placeholder="Select task type" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {/* ✅ Only show "Initial Site Measurement" if not restricted */}
-                      {!isInitialSiteMeasurementDisabled ? (
-                        <SelectItem value="Initial Site Measurement">
-                          Initial Site Measurement
-                        </SelectItem>
-                      ) : (
-                        <CustomeTooltip
-                          value={initialSiteMeasurementTooltip}
-                          truncateValue={
-                            <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
-                              <span>Initial Site Measurement</span>
-                              <span className="text-xs italic text-muted-foreground ml-1">
-                                (locked)
-                              </span>
-                            </div>
-                          }
-                        />
-                      )}
-                      {canShowFollowUpOption && (
+                      {onlyFollowUp ? (
                         <SelectItem value="Follow Up">Follow Up</SelectItem>
+                      ) : (
+                        <>
+                      {/* ✅ Only show "Initial Site Measurement" if not restricted */}
+                          {!isInitialSiteMeasurementDisabled ? (
+                            <SelectItem value="Initial Site Measurement">
+                              Initial Site Measurement
+                            </SelectItem>
+                          ) : (
+                            <CustomeTooltip
+                              value={initialSiteMeasurementTooltip}
+                              truncateValue={
+                                <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                  <span>Initial Site Measurement</span>
+                                  <span className="text-xs italic text-muted-foreground ml-1">
+                                    (locked)
+                                  </span>
+                                </div>
+                              }
+                            />
+                          )}
+                          {canShowFollowUpOption && (
+                            <SelectItem value="Follow Up">Follow Up</SelectItem>
+                          )}
+                        </>
                       )}
                     </SelectContent>
                   </Select>
