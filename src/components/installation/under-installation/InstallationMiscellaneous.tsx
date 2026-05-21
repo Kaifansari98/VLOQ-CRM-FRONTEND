@@ -76,6 +76,65 @@ import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import MiscTaskModal from "@/components/misc-task-modal";
 import VideoCard from "@/components/utils/VideoCard";
 
+// ─── RHF + Zod ────────────────────────────────────────────────────────────────
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
+const miscFormSchema = z.object({
+  misc_type_id: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .refine((val): val is number => typeof val === "number" && val > 0, {
+      message: "Please select an issue type",
+    }),
+  selected_instance_id: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .refine((val): val is number => typeof val === "number" && val > 0, {
+      message: "Please select an instance",
+    }),
+  problem_description: z
+    .string()
+    .min(5, "Problem description must be at least 5 characters"),
+  reorder_material_details: z
+    .string()
+    .min(3, "Reorder material details must be at least 3 characters"),
+  supervisor_remark: z
+    .string()
+    .min(3, "Supervisor remark must be at least 3 characters"),
+  selectedTeams: z
+    .array(
+      z.object({
+        value: z.string(),
+        label: z.string(),
+        disable: z.boolean().optional(),
+        fixed: z.boolean().optional(),
+      }),
+    )
+    .min(1, "Please select at least one team"),
+  files: z
+    .array(z.instanceof(File))
+    .min(1, "Please upload at least one document"),
+  quantity: z.number().positive().optional(),
+  cost: z.number().positive().optional(),
+  expected_ready_date: z.string().optional(),
+});
+
+type MiscFormValues = z.infer<typeof miscFormSchema>;
+
 interface InstallationMiscellaneousProps {
   vendorId: number;
   leadId: number;
@@ -129,18 +188,26 @@ export default function InstallationMiscellaneous({
   const queryClient = useQueryClient();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    misc_type_id: undefined as number | undefined,
-    selected_instance_id: undefined as number | undefined,
-    problem_description: "",
-    reorder_material_details: "",
-    quantity: undefined as number | undefined,
-    cost: undefined as number | undefined,
-    supervisor_remark: "",
-    expected_ready_date: undefined as string | undefined,
-    selectedTeams: [] as Option[],
+
+  const form = useForm<MiscFormValues>({
+    resolver: zodResolver(miscFormSchema),
+    mode: "onBlur",
+    defaultValues: {
+      misc_type_id: undefined,
+      selected_instance_id: undefined,
+      problem_description: "",
+      reorder_material_details: "",
+      supervisor_remark: "",
+      selectedTeams: [],
+      files: [],
+      quantity: undefined,
+      cost: undefined,
+      expected_ready_date: undefined,
+    },
   });
-  const [files, setFiles] = useState<File[]>([]);
+
+  // ── Watched values used by derived computations ──────────────────────────
+  const watchedInstanceId = form.watch("selected_instance_id");
 
   const resolveMisc = useResolveMiscellaneousEntry();
 
@@ -163,6 +230,8 @@ export default function InstallationMiscellaneous({
     [entries, viewModal.id],
   );
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  // Separate files state for the "Upload Documents" modal on an existing entry
+  const [files, setFiles] = useState<File[]>([]);
   const { mutate: uploadDocs, isPending } = useUploadMiscellaneousDocuments();
 
   const [selectedERD, setSelectedERD] = useState<string | undefined>(undefined);
@@ -221,19 +290,18 @@ export default function InstallationMiscellaneous({
   }, [instances]);
 
   const filteredOrderLoginSummary = useMemo(() => {
-    if (!formData.selected_instance_id) return [];
+    if (!watchedInstanceId) return [];
     return orderLoginSummary.filter(
       (item: any) =>
-        Number(item?.instance_id) === Number(formData.selected_instance_id),
+        Number(item?.instance_id) === Number(watchedInstanceId),
     );
-  }, [orderLoginSummary, formData.selected_instance_id]);
+  }, [orderLoginSummary, watchedInstanceId]);
 
+  // Clear reorder_material_details whenever instance changes
   useEffect(() => {
-    setFormData((prev) => ({
-      ...prev,
-      reorder_material_details: "",
-    }));
-  }, [formData.selected_instance_id]);
+    form.setValue("reorder_material_details", "", { shouldValidate: false });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedInstanceId]);
 
   const [initialModalHandled, setInitialModalHandled] = useState(false);
   const { mutate: deleteDocument, isPending: deleting } =
@@ -287,50 +355,33 @@ export default function InstallationMiscellaneous({
     }
   }, [initialTaskId, entries, initialModalHandled]);
 
-  const handleCreateEntry = () => {
-    if (!formData.misc_type_id) {
-      toastManager.add({ title: "Please select an issue type", type: "error" });
-      return;
-    }
-    if (!formData.selected_instance_id) {
-      toastManager.add({ title: "Please select an instance", type: "error" });
-      return;
-    }
-
-    if (files.length === 0) {
-      toastManager.add({
-        title: "Please upload at least one document",
-        type: "error",
-      });
-      return;
-    }
-
-    const selectedInstanceTitle = formData.selected_instance_id
-      ? instanceTitleById.get(Number(formData.selected_instance_id)) || ""
+  const handleCreateEntry = form.handleSubmit((values: MiscFormValues) => {
+    const selectedInstanceTitle = values.selected_instance_id
+      ? instanceTitleById.get(Number(values.selected_instance_id)) || ""
       : "";
     const formattedReorderMaterial =
-      selectedInstanceTitle && formData.reorder_material_details
-        ? `${selectedInstanceTitle} - ${formData.reorder_material_details}`
-        : formData.reorder_material_details;
+      selectedInstanceTitle && values.reorder_material_details
+        ? `${selectedInstanceTitle} - ${values.reorder_material_details}`
+        : values.reorder_material_details;
 
     const payload: CreateMiscellaneousPayload = {
       vendorId,
       leadId,
       account_id: accountId,
-      misc_type_id: formData.misc_type_id,
-      problem_description: formData.problem_description.trim() || undefined,
+      misc_type_id: values.misc_type_id!,
+      problem_description: values.problem_description.trim() || undefined,
       reorder_material_details: formattedReorderMaterial.trim() || undefined,
-      quantity: formData.quantity,
-      cost: formData.cost,
-      supervisor_remark: formData.supervisor_remark.trim() || undefined,
-      expected_ready_date: formData.expected_ready_date,
+      quantity: values.quantity,
+      cost: values.cost,
+      supervisor_remark: values.supervisor_remark.trim() || undefined,
+      expected_ready_date: values.expected_ready_date,
       is_resolved: false,
       teams:
-        formData.selectedTeams.length > 0
-          ? formData.selectedTeams.map((t) => Number(t.value))
+        values.selectedTeams.length > 0
+          ? values.selectedTeams.map((t) => Number(t.value))
           : undefined,
       created_by: userId!,
-      files,
+      files: values.files,
     };
 
     createMutation.mutate(payload, {
@@ -343,21 +394,10 @@ export default function InstallationMiscellaneous({
         refetch();
       },
     });
-  };
+  });
 
   const resetForm = () => {
-    setFormData({
-      misc_type_id: undefined,
-      selected_instance_id: undefined,
-      problem_description: "",
-      reorder_material_details: "",
-      quantity: undefined,
-      cost: undefined,
-      supervisor_remark: "",
-      expected_ready_date: undefined,
-      selectedTeams: [],
-    });
-    setFiles([]);
+    form.reset();
   };
 
   const formatDate = (dateString: string) => {
@@ -728,217 +768,284 @@ export default function InstallationMiscellaneous({
         description="Log a miscellaneous issue with required details, supporting proofs, and material information."
         size="lg"
       >
-        <div className="space-y-4 py-4 px-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Miscellaneous Type */}
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">
-                Miscellaneous Type *
-              </label>
-              <AssignToPicker
-                data={typeSelectData}
-                value={formData.misc_type_id}
-                onChange={(id) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    misc_type_id: id || undefined,
-                  }))
-                }
-                placeholder="Select issue type"
-                emptyLabel="Select issue type"
-                disabled={loadingTypes}
+        <Form {...form}>
+          <form
+            onSubmit={handleCreateEntry}
+            className="space-y-4 py-4 px-6"
+            noValidate
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Miscellaneous Type */}
+              <FormField
+                control={form.control}
+                name="misc_type_id"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-1">
+                    <FormLabel className="text-sm font-medium">
+                      Miscellaneous Type *
+                    </FormLabel>
+                    <FormControl>
+                      <AssignToPicker
+                        data={typeSelectData}
+                        value={field.value}
+                        onChange={(id) => field.onChange(id ?? undefined)}
+                        placeholder="Select issue type"
+                        emptyLabel="Select issue type"
+                        disabled={loadingTypes}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Team Responsible */}
+              <FormField
+                control={form.control}
+                name="selectedTeams"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-1">
+                    <FormLabel className="text-sm font-medium">
+                      Team Responsible *
+                    </FormLabel>
+                    <FormControl>
+                      <MultipleSelector
+                        value={field.value}
+                        onChange={(options) => field.onChange(options)}
+                        defaultOptions={teamOptions}
+                        options={teamOptions}
+                        placeholder="Select teams..."
+                        emptyIndicator={
+                          <p className="text-center text-sm text-muted-foreground">
+                            No teams found
+                          </p>
+                        }
+                        disabled={loadingTeams}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
 
-            {/* Team Responsible */}
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Team Responsible *</label>
-              <MultipleSelector
-                value={formData.selectedTeams}
-                onChange={(options) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    selectedTeams: options,
-                  }))
-                }
-                defaultOptions={teamOptions}
-                placeholder="Select teams..."
-                emptyIndicator={
-                  <p className="text-center text-sm text-muted-foreground">
-                    No teams found
+            {/* Problem Description */}
+            <FormField
+              control={form.control}
+              name="problem_description"
+              render={({ field }) => (
+                <FormItem className="flex flex-col gap-1">
+                  <FormLabel className="text-sm font-medium">
+                    Problem Description *
+                  </FormLabel>
+                  <FormControl>
+                    <TextAreaInput
+                      value={field.value}
+                      onChange={(value) => field.onChange(value)}
+                      placeholder="Describe the issue in detail..."
+                      maxLength={1000}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {/* Select Instance */}
+              <FormField
+                control={form.control}
+                name="selected_instance_id"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-1">
+                    <FormLabel className="text-sm font-medium">
+                      Select Instance *
+                    </FormLabel>
+                    <FormControl>
+                      <TextSelectPicker
+                        options={instanceOptions.map((opt) => opt.label)}
+                        value={
+                          instanceOptions.find(
+                            (opt) => Number(opt.value) === field.value,
+                          )?.label || ""
+                        }
+                        onChange={(selectedText) => {
+                          const match = instanceOptions.find(
+                            (opt) => opt.label === selectedText,
+                          );
+                          field.onChange(
+                            match ? Number(match.value) : undefined,
+                          );
+                        }}
+                        placeholder={
+                          instances.length === 0
+                            ? "No instances available"
+                            : "Select instance..."
+                        }
+                        emptyLabel="Select instance"
+                        disabled={instances.length === 0}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Reorder Material Type */}
+              <FormField
+                control={form.control}
+                name="reorder_material_details"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-1">
+                    <FormLabel className="text-sm font-medium">
+                      Reorder Material Type *
+                    </FormLabel>
+                    <FormControl>
+                      <TextSelectPicker
+                        options={
+                          filteredOrderLoginSummary.map(
+                            (item: any) =>
+                              item.item_desc ||
+                              item.item_type ||
+                              "Untitled Item",
+                          ) || []
+                        }
+                        value={field.value}
+                        onChange={(selectedText) =>
+                          field.onChange(selectedText)
+                        }
+                        placeholder={
+                          loadingSummary
+                            ? "Loading materials..."
+                            : "Select material details..."
+                        }
+                        emptyLabel="Select material details"
+                        disabled={loadingSummary}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Supervisor Remark */}
+            <FormField
+              control={form.control}
+              name="supervisor_remark"
+              render={({ field }) => (
+                <FormItem className="flex flex-col gap-1">
+                  <FormLabel className="text-sm font-medium">
+                    Reorder Material Details *
+                  </FormLabel>
+                  <FormControl>
+                    <TextAreaInput
+                      value={field.value}
+                      onChange={(value) => field.onChange(value)}
+                      placeholder="Any remarks from supervisor..."
+                      maxLength={1000}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Supporting Proofs */}
+            <FormField
+              control={form.control}
+              name="files"
+              render={({ field }) => (
+                <FormItem className="flex flex-col gap-1">
+                  <FormLabel className="text-sm font-medium">
+                    Supporting Proofs *
+                  </FormLabel>
+                  <FormControl>
+                    <FileUploadField
+                      value={field.value}
+                      onChange={(newFiles) => field.onChange(newFiles)}
+                      accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,.avi,"
+                      multiple
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Max 10 files. Supported: Images, PDFs, Documents
                   </p>
-                }
-                disabled={loadingTeams}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Quantity + Cost */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="quantity"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-1">
+                    <FormLabel className="text-sm font-medium">Quantity</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        value={field.value ?? ""}
+                        onChange={(e) =>
+                          field.onChange(
+                            e.target.value ? Number(e.target.value) : undefined,
+                          )
+                        }
+                        placeholder="Enter quantity"
+                        min="0"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="cost"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-1">
+                    <FormLabel className="text-sm font-medium">Cost (₹)</FormLabel>
+                    <FormControl>
+                      <CurrencyInput
+                        value={field.value}
+                        onChange={(value) => field.onChange(value)}
+                        placeholder="Enter cost"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
-          </div>
 
-          {/* Problem Description */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Problem Description *</label>
-            <TextAreaInput
-              value={formData.problem_description}
-              onChange={(value) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  problem_description: value,
-                }))
-              }
-              placeholder="Describe the issue in detail..."
-              maxLength={1000}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {/* Select Instance */}
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Select Instance *</label>
-              <TextSelectPicker
-                options={instanceOptions.map((opt) => opt.label)}
-                value={
-                  instanceOptions.find(
-                    (opt) =>
-                      Number(opt.value) === formData.selected_instance_id,
-                  )?.label || ""
-                }
-                onChange={(selectedText) => {
-                  const match = instanceOptions.find(
-                    (opt) => opt.label === selectedText,
-                  );
-                  setFormData((prev) => ({
-                    ...prev,
-                    selected_instance_id: match
-                      ? Number(match.value)
-                      : undefined,
-                  }));
+            {/* Footer */}
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAddModalOpen(false);
+                  resetForm();
                 }}
-                placeholder={
-                  instances.length === 0
-                    ? "No instances available"
-                    : "Select instance..."
-                }
-                emptyLabel="Select instance"
-                disabled={instances.length === 0}
-              />
+                disabled={createMutation.isPending}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="submit"
+                disabled={createMutation.isPending}
+              >
+                {createMutation.isPending
+                  ? "Creating..."
+                  : "Create Miscellaneous"}
+              </Button>
             </div>
-
-            {/* Reorder Material Type */}
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">
-                Reorder Material Type *
-              </label>
-              <TextSelectPicker
-                options={
-                  filteredOrderLoginSummary.map(
-                    (item: any) =>
-                      item.item_desc || item.item_type || "Untitled Item",
-                  ) || []
-                }
-                value={formData.reorder_material_details}
-                onChange={(selectedText) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    reorder_material_details: selectedText,
-                  }))
-                }
-                placeholder={
-                  loadingSummary
-                    ? "Loading materials..."
-                    : "Select material details..."
-                }
-                emptyLabel="Select material details"
-                disabled={loadingSummary}
-              />
-            </div>
-          </div>
-
-          {/* Reorder Material Details */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">
-              Reorder Material Details *
-            </label>
-            <TextAreaInput
-              value={formData.supervisor_remark}
-              onChange={(value) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  supervisor_remark: value,
-                }))
-              }
-              placeholder="Any remarks from supervisor..."
-              maxLength={1000}
-            />
-          </div>
-
-          {/* Supporting Proofs */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Supporting Proofs *</label>
-            <FileUploadField
-              value={files}
-              onChange={setFiles}
-              accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,.avi,"
-              multiple
-            />
-            <p className="text-xs text-muted-foreground">
-              Max 10 files. Supported: Images, PDFs, Documents
-            </p>
-          </div>
-
-          {/* Quantity + Cost */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Quantity</label>
-              <Input
-                type="number"
-                value={formData.quantity || ""}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    quantity: e.target.value
-                      ? Number(e.target.value)
-                      : undefined,
-                  }))
-                }
-                placeholder="Enter quantity"
-                min="0"
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Cost (₹)</label>
-              <CurrencyInput
-                value={formData.cost}
-                onChange={(value) =>
-                  setFormData((prev) => ({ ...prev, cost: value }))
-                }
-                placeholder="Enter cost"
-              />
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsAddModalOpen(false);
-                resetForm();
-              }}
-              disabled={createMutation.isPending}
-            >
-              Cancel
-            </Button>
-
-            <Button
-              onClick={handleCreateEntry}
-              disabled={createMutation.isPending}
-            >
-              {createMutation.isPending
-                ? "Creating..."
-                : "Create Miscellaneous"}
-            </Button>
-          </div>
-        </div>
+          </form>
+        </Form>
       </BaseModal>
 
       {/* View Modal */}
