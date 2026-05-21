@@ -88,6 +88,7 @@ import { toastError } from "@/lib/utils";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 
 export default function FinalHandoverLeadDetails() {
   const router = useRouter();
@@ -109,6 +110,7 @@ export default function FinalHandoverLeadDetails() {
   const effectiveUserType = userType;
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
 
@@ -269,6 +271,14 @@ export default function FinalHandoverLeadDetails() {
 
         {/* 🔹 Header Actions */}
         <div className="flex items-center space-x-3">
+          <Button
+            size="sm"
+            className="hidden md:flex"
+            onClick={() => setAssignOpen(true)}
+          >
+            Assign Task
+          </Button>
+
           {/* {!paymentStatusLoading &&
               paymentStatus &&
               !paymentStatus.is_paid && (
@@ -323,6 +333,13 @@ export default function FinalHandoverLeadDetails() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="md:hidden"
+                onClick={() => setAssignOpen(true)}
+              >
+                <Users size={18} />
+                Assign Task
+              </DropdownMenuItem>
               {canShowMarkCompleted &&
                 (canMarkCompleted ? (
                   <DropdownMenuItem
@@ -540,6 +557,13 @@ export default function FinalHandoverLeadDetails() {
         open={openEditModal}
         onOpenChange={setOpenEditModal}
         leadData={{ id: leadIdNum }}
+      />
+
+      <AssignTaskSiteMeasurementForm
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        onlyFollowUp={true}
+        data={{ id: leadIdNum, name: "" }}
       />
 
       {/* Delete Dialog */}

@@ -91,6 +91,7 @@ import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
+import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 
 export default function UnderInstallationLeadDetails() {
   const { lead: leadId } = useParams();
@@ -125,6 +126,7 @@ export default function UnderInstallationLeadDetails() {
 
   const [openStartModal, setOpenStartModal] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
@@ -268,6 +270,14 @@ export default function UnderInstallationLeadDetails() {
 
         {/* 🔹 Header Actions */}
         <div className="flex items-center space-x-2">
+          <Button
+            size="sm"
+            className="hidden sm:flex"
+            onClick={() => setAssignOpen(true)}
+          >
+            Assign Task
+          </Button>
+
           {/* ───────────────────────────────────────────── */}
           {/*  MOVE TO FINAL HANDOVER BUTTON WITH CONDITIONS */}
           {/* ───────────────────────────────────────────── */}
@@ -405,6 +415,13 @@ export default function UnderInstallationLeadDetails() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="sm:hidden"
+                onClick={() => setAssignOpen(true)}
+              >
+                <Handshake size={20} />
+                Assign Task
+              </DropdownMenuItem>
               {canMoveToFinalHandover &&
                 (!underDetails?.actual_installation_start_date ? (
                 // 1️⃣ Installation NOT started → block
@@ -705,6 +722,13 @@ export default function UnderInstallationLeadDetails() {
         open={openEditModal}
         onOpenChange={setOpenEditModal}
         leadData={{ id: leadIdNum }}
+      />
+
+      <AssignTaskSiteMeasurementForm
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        onlyFollowUp={true}
+        data={{ id: leadIdNum, name: "" }}
       />
 
       {/* Delete Dialog */}
