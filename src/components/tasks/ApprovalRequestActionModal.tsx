@@ -9,6 +9,7 @@ import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
 import { useActOnApprovalRequest } from "@/hooks/useApprovalRequests";
+import { CheckCircle2, XCircle, Calendar, Clock, FileText } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -26,7 +27,7 @@ export default function ApprovalRequestActionModal({
   onOpenChange,
   data,
 }: Props) {
-  const [mode, setMode] = useState<"approve" | "reject">("approve");
+  const [mode, setMode] = useState<"approve" | "reject" | null>(null);
   const [remark, setRemark] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -34,26 +35,34 @@ export default function ApprovalRequestActionModal({
   const queryClient = useQueryClient();
   const actionMutation = useActOnApprovalRequest();
 
-  const title = useMemo(
-    () => (mode === "approve" ? "Approve Request" : "Reject Request"),
-    [mode],
-  );
+  const formattedDueDate = useMemo(() => {
+    if (!data?.dueDate) return null;
 
-  const description = useMemo(
-    () =>
-      mode === "approve"
-        ? "Review the request and approve it. Remark and file upload are optional."
-        : "Review the request and reject it. Remark is required and file upload is optional.",
-    [mode],
-  );
+    const parsedDate = new Date(data.dueDate);
+    if (Number.isNaN(parsedDate.getTime())) return data.dueDate;
+
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(parsedDate);
+  }, [data?.dueDate]);
 
   const resetState = () => {
-    setMode("approve");
+    setMode(null);
     setRemark("");
     setFiles([]);
   };
 
   const handleSubmit = () => {
+    if (!mode) {
+      toastManager.add({
+        title: "Please select approve or reject",
+        type: "error",
+      });
+      return;
+    }
+
     if (!data?.leadId || !data?.taskId || !userId) {
       toastManager.add({
         title: "Missing lead, task, or user information",
@@ -127,99 +136,158 @@ export default function ApprovalRequestActionModal({
         onOpenChange(nextOpen);
         if (!nextOpen) resetState();
       }}
-      title="Approval Request"
-      description="Review this approval task and choose whether to approve or reject it."
-      size="md"
+      title="Review Approval Request"
+      description="Make your decision to approve or reject this request"
+      size="lg"
     >
-      <div className="space-y-5 p-6">
-        <div className="rounded-md border bg-muted/30 p-3 text-sm">
-          <p>
-            <span className="font-medium">Task ID:</span> {data?.taskId ?? "-"}
-          </p>
-          {data?.dueDate ? (
-            <p>
-              <span className="font-medium">Due Date:</span> {data.dueDate}
-            </p>
-          ) : null}
-          {data?.remark ? (
-            <p>
-              <span className="font-medium">Request Remark:</span> {data.remark}
-            </p>
-          ) : null}
-        </div>
+      <div className="space-y-6 p-6 bg-white">
 
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant={mode === "approve" ? "default" : "outline"}
+        {/* Request Remark Section */}
+        {data?.remark && (
+          <div className="rounded-lg bg-white border border-slate-200 p-5">
+            {formattedDueDate && (
+              <div className="flex-shrink-0 bg-slate-100 border border-slate-200 rounded-lg p-3 w-full mb-5">
+                <div className="flex items-center gap-2 justify-start mb-2">
+                  <Calendar className="w-4 h-4 text-slate-600" />
+                  <p className="text-xs font-semibold text-slate-600">
+                    DUE DATE
+                  </p>
+                </div>
+                <p className="text-sm font-medium text-slate-900">
+                  {formattedDueDate}
+                </p>
+              </div>
+            )}
+            <p className="text-xs font-semibold text-slate-600 mb-3">
+              REQUEST DETAILS
+            </p>
+            <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700 bg-slate-50 rounded p-3 border border-slate-200">
+              {data.remark}
+            </p>
+          </div>
+        )}
+
+        {/* Mode Selection - Toggle */}
+        <div className="rounded-lg bg-white border border-slate-200 p-1 inline-flex gap-0 w-full">
+          <button
             onClick={() => setMode("approve")}
-            className="flex-1"
+            className={`flex items-center justify-center w-full gap-2 px-6 py-2.5 rounded-md font-medium transition-all ${
+              mode === "approve"
+                ? "bg-green-600 text-white"
+                : "bg-white text-slate-700 hover:bg-slate-50"
+            }`}
           >
-            Approve
-          </Button>
-          <Button
-            type="button"
-            variant={mode === "reject" ? "destructive" : "outline"}
+            <CheckCircle2 className="w-4 h-4" />
+            Approve Request
+          </button>
+          <button
             onClick={() => setMode("reject")}
-            className="flex-1"
+            className={`flex items-center justify-center w-full gap-2 px-6 py-2.5 rounded-md font-medium transition-all ${
+              mode === "reject"
+                ? "bg-red-600 text-white"
+                : "bg-white text-slate-700 hover:bg-slate-50"
+            }`}
           >
-            Reject
-          </Button>
+            <XCircle className="w-4 h-4" />
+            Reject Request
+          </button>
         </div>
 
-        <div className="rounded-md border p-4 space-y-4">
-          <div>
-            <p className="text-sm font-medium">{title}</p>
-            <p className="text-xs text-muted-foreground mt-1">{description}</p>
-          </div>
+        {/* Dynamic Content Area - Shows after mode selection */}
+        {mode && (
+          <div className="rounded-lg bg-white border border-slate-200 p-5 space-y-5">
+            {/* Header */}
+            <div className="space-y-1 pb-4 border-b border-slate-200">
+              <p className="text-sm font-semibold text-slate-900">
+                {mode === "approve" ? "Approve Request" : "Reject Request"}
+              </p>
+              <p className="text-xs text-slate-600">
+                {mode === "approve"
+                  ? "Remark and files are optional."
+                  : "Remark is required."}
+              </p>
+            </div>
 
-          <div className="space-y-2">
-            <p className="text-sm font-medium">
-              Remark{mode === "reject" ? " *" : ""}
-            </p>
-            <TextAreaInput
-              value={remark}
-              onChange={setRemark}
-              placeholder={
-                mode === "approve"
-                  ? "Add an optional approval remark"
-                  : "Add rejection reason"
-              }
-            />
-          </div>
+            {/* Form Fields */}
+            <div className="space-y-4">
+              {/* Remark Field */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-semibold text-slate-900">
+                    {mode === "reject" ? "Rejection Reason" : "Remark"}
+                  </label>
+                  {mode === "reject" && (
+                    <span className="text-slate-900 text-sm">*</span>
+                  )}
+                </div>
+                <TextAreaInput
+                  value={remark}
+                  onChange={setRemark}
+                  placeholder={
+                    mode === "reject"
+                      ? "Explain why you're rejecting..."
+                      : "Add notes (optional)"
+                  }
+                  className="min-h-[100px] rounded-lg border border-slate-200 bg-white text-slate-900 placeholder:text-slate-500"
+                />
+                <p className="text-xs text-slate-600">
+                  {remark.length} / 500 characters
+                </p>
+              </div>
 
-          <div className="space-y-2">
-            <p className="text-sm font-medium">File Upload</p>
-            <FileUploadField
-              value={files}
-              onChange={setFiles}
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
-              multiple
-              maxFiles={10}
-            />
+              {/* File Upload Field */}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-900">
+                  Attachments
+                </label>
+                <FileUploadField
+                  value={files}
+                  onChange={setFiles}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
+                  multiple
+                  maxFiles={10}
+                />
+                <p className="text-xs text-slate-600">
+                  {files.length} file{files.length !== 1 ? "s" : ""} selected
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="flex justify-end gap-2">
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
+            className="rounded-lg border-slate-200 text-slate-700"
           >
             Cancel
           </Button>
-          <Button
-            type="button"
-            variant={mode === "reject" ? "destructive" : "default"}
-            onClick={handleSubmit}
-            disabled={actionMutation.isPending}
-          >
-            {actionMutation.isPending
-              ? "Processing..."
-              : mode === "approve"
-                ? "Approve"
-                : "Reject"}
-          </Button>
+          {mode && (
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={actionMutation.isPending}
+              className={`rounded-lg text-white font-medium transition-all ${
+                mode === "approve"
+                  ? "bg-green-600 hover:bg-green-700 disabled:bg-green-600"
+                  : "bg-red-600 hover:bg-red-700 disabled:bg-red-600"
+              } disabled:opacity-60`}
+            >
+              {actionMutation.isPending ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                  Processing...
+                </div>
+              ) : mode === "approve" ? (
+                "Approve"
+              ) : (
+                "Reject"
+              )}
+            </Button>
+          )}
         </div>
       </div>
     </BaseModal>
