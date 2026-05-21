@@ -229,8 +229,32 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     vendorCustomUserTypeMode,
   ]);
 
+  const approvalRequestUsers = React.useMemo(() => {
+    const users = approvalRequestAssignableUsersData?.users ?? [];
+    const shouldRestrictToFranchise =
+      normalizedUserType === "admin" ||
+      normalizedUserType === "sales-executive";
+
+    return users.filter((user) => {
+      if (user.id === userId) {
+        return false;
+      }
+
+      if (shouldRestrictToFranchise) {
+        return user.franchise_id === franchiseId;
+      }
+
+      return true;
+    });
+  }, [
+    approvalRequestAssignableUsersData?.users,
+    normalizedUserType,
+    userId,
+    franchiseId,
+  ]);
+
   const mappedData = isApprovalRequestTask
-    ? (approvalRequestAssignableUsersData?.users ?? []).map((user) => ({
+    ? approvalRequestUsers.map((user) => ({
         id: user.id,
         label: user.user_name,
       }))
