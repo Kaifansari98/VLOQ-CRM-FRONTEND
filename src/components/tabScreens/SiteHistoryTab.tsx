@@ -18,9 +18,12 @@ import {
   FileSpreadsheet,
   Search,
   X,
-  GitBranch,
   CheckCheck,
   XCircle,
+  AlertCircle,
+  User,
+  Calendar,
+  FileCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,17 +56,6 @@ const getActionIcon = (actionType: string) => {
       return Edit3;
     default:
       return CheckCircle2;
-  }
-};
-
-const getActionStyle = (actionType: string) => {
-  switch (actionType) {
-    case "CREATE":
-      return "bg-foreground text-primary-foreground ring-4 ring-background";
-    case "UPDATE":
-      return "bg-background text-foreground border-2 border-foreground/40 ring-4 ring-background";
-    default:
-      return "bg-background text-muted-foreground border-2 border-border ring-4 ring-background";
   }
 };
 
@@ -103,34 +95,37 @@ const getApprovalStatus = (action: string) => {
   return "requested" as const;
 };
 
-const getApprovalStatusMeta = (status: ReturnType<typeof getApprovalStatus>) => {
+const getApprovalStatusConfig = (status: ReturnType<typeof getApprovalStatus>) => {
   switch (status) {
     case "approved":
       return {
         label: "Approved",
         icon: CheckCheck,
-        badgeClass:
-          "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300",
-        dotClass:
-          "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300",
+        bgClass: "bg-green-50 dark:bg-green-950/30",
+        borderClass: "border-green-200 dark:border-green-900/60",
+        badgeClass: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-green-200 dark:border-green-900/60",
+        dotClass: "bg-green-500 dark:bg-green-600",
+        textClass: "text-green-900 dark:text-green-100",
       };
     case "rejected":
       return {
         label: "Rejected",
         icon: XCircle,
-        badgeClass:
-          "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300",
-        dotClass:
-          "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300",
+        bgClass: "bg-red-50 dark:bg-red-950/30",
+        borderClass: "border-red-200 dark:border-red-900/60",
+        badgeClass: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:border-red-900/60",
+        dotClass: "bg-red-500 dark:bg-red-600",
+        textClass: "text-red-900 dark:text-red-100",
       };
     default:
       return {
-        label: "Requested",
-        icon: GitBranch,
-        badgeClass:
-          "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-300",
-        dotClass:
-          "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-300",
+        label: "Pending",
+        icon: AlertCircle,
+        bgClass: "bg-amber-50 dark:bg-amber-950/30",
+        borderClass: "border-amber-200 dark:border-amber-900/60",
+        badgeClass: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-900/60",
+        dotClass: "bg-amber-500 dark:bg-amber-600",
+        textClass: "text-amber-900 dark:text-amber-100",
       };
   }
 };
@@ -164,7 +159,6 @@ export default function SiteHistoryTab({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Reset search when tab changes
   useEffect(() => {
     setSearchQuery("");
     setDebouncedSearch("");
@@ -239,19 +233,7 @@ export default function SiteHistoryTab({
   const allLogs = data?.pages.flatMap((page) => page.data) ?? [];
   const isApprovalTimeline = activeTab === "approvals";
 
-  const timelineItems = allLogs.map((log) => {
-    const parsed = parseActionMessage(log.action);
-    const approvalStatus = getApprovalStatus(log.action);
-    const approvalMeta = getApprovalStatusMeta(approvalStatus);
-
-    return {
-      log,
-      parsed,
-      approvalStatus,
-      approvalMeta,
-    };
-  });
-
+  // Timeline content for non-approval tabs
   const timelineContent = (
     <div className="pt-3">
       {isLoading ? (
@@ -259,185 +241,113 @@ export default function SiteHistoryTab({
           <Loader2 className="animate-spin text-muted-foreground mb-2" size={24} />
           <p className="text-xs text-muted-foreground">Loading...</p>
         </div>
+      ) : allLogs.length === 0 ? (
+        <div className="text-center py-10">
+          <FileText className="mx-auto text-muted-foreground/30 mb-2" size={36} />
+          <p className="text-sm text-muted-foreground">No logs available yet</p>
+        </div>
       ) : (
         <>
           <div className="relative">
-            <div
-              className={`absolute left-[15px] top-0 bottom-0 w-px ${
-                isApprovalTimeline
-                  ? "bg-gradient-to-b from-sky-200 via-border to-red-200 dark:from-sky-900/50 dark:via-border dark:to-red-900/50"
-                  : "bg-border"
-              }`}
-            />
+            <div className="absolute left-[15px] top-0 bottom-0 w-px bg-border" />
 
             <AnimatePresence mode="popLayout">
-              {timelineItems.map(
-                ({ log, parsed, approvalMeta, approvalStatus }, index) => {
-                  const ActionIcon = isApprovalTimeline
-                    ? approvalMeta.icon
-                    : getActionIcon(log.action_type);
-                  const dotStyle = isApprovalTimeline
-                    ? `border ${approvalMeta.dotClass}`
-                    : getActionStyle(log.action_type);
+              {allLogs.map((log, index) => {
+                const parsed = parseActionMessage(log.action);
+                const ActionIcon = getActionIcon(log.action_type);
 
-                  return (
-                    <motion.div
-                      key={log.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.25, delay: index * 0.04 }}
-                      className="relative pl-12 pb-3 last:pb-0"
-                    >
-                      <div
-                        className={`absolute left-0 top-2.5 flex h-8 w-8 items-center justify-center rounded-full ${dotStyle}`}
-                      >
-                        <ActionIcon size={14} />
+                return (
+                  <motion.div
+                    key={log.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25, delay: index * 0.04 }}
+                    className="relative pl-12 pb-3 last:pb-0"
+                  >
+                    <div className="absolute left-0 top-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-primary-foreground ring-4 ring-background">
+                      <ActionIcon size={14} />
+                    </div>
+
+                    <Card className="gap-2.5 border p-4 bg-transparent">
+                      <div className="flex items-start justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <Clock size={13} className="text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">
+                            {format(
+                              new Date(log.created_at),
+                              "MMM dd, yyyy · hh:mm a"
+                            )}
+                          </span>
+                        </div>
+
+                        {formatStageLabel(log.stage?.name) && (
+                          <Badge
+                            variant="secondary"
+                            className="capitalize text-xs font-medium h-5 px-1.5"
+                          >
+                            {formatStageLabel(log.stage?.name)}
+                          </Badge>
+                        )}
                       </div>
 
-                      <Card
-                        className={`gap-2.5 border p-4 ${
-                          isApprovalTimeline
-                            ? "border-border/80 bg-gradient-to-br from-background via-background to-muted/20"
-                            : "border-border bg-transparent"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between flex-wrap gap-2">
-                          <div className="flex items-center gap-1.5">
-                            <Clock size={13} className="text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground">
-                              {format(
-                                new Date(log.created_at),
-                                "MMM dd, yyyy · hh:mm a"
-                              )}
-                            </span>
-                          </div>
+                      <p className="text-sm text-foreground font-medium leading-relaxed">
+                        {parsed.main}
+                      </p>
+                      {parsed.remark && (
+                        <p className="text-xs text-muted-foreground italic">
+                          {parsed.remark}
+                        </p>
+                      )}
 
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {isApprovalTimeline ? (
-                              <Badge
-                                variant="outline"
-                                className={`h-5 px-2 text-[11px] font-semibold ${approvalMeta.badgeClass}`}
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          <span className="text-[10px] font-bold text-muted-foreground">
+                            {log.created_by?.name?.charAt(0) || "?"}
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-foreground text-xs">
+                            {log.created_by?.name || "Unknown"}
+                          </span>
+                          {log.created_by?.email && (
+                            <span className="text-[10px] text-muted-foreground">
+                              {log.created_by.email}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {log.docs.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                            Attachments ({log.docs.length})
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {log.docs.map((doc: any) => (
+                              <a
+                                key={doc.id}
+                                href={doc.signedUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 rounded-md border border-border bg-muted/40 hover:bg-muted px-3 py-1.5 text-xs transition-colors"
                               >
-                                {approvalMeta.label}
-                              </Badge>
-                            ) : null}
-                            {formatStageLabel(log.stage?.name) && (
-                              <Badge
-                                variant="secondary"
-                                className="capitalize text-xs font-medium h-5 px-1.5"
-                              >
-                                {formatStageLabel(log.stage?.name)}
-                              </Badge>
-                            )}
+                                <FileText
+                                  size={12}
+                                  className="text-muted-foreground shrink-0"
+                                />
+                                <span className="font-medium truncate max-w-[180px]">
+                                  {doc.original_name}
+                                </span>
+                              </a>
+                            ))}
                           </div>
                         </div>
-
-                        {isApprovalTimeline ? (
-                          <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                              <GitBranch size={13} />
-                              <span className="tracking-wide uppercase">
-                                Approval Event
-                              </span>
-                            </div>
-                            <p className="mt-2 text-sm font-semibold text-foreground leading-relaxed">
-                              {parsed.main}
-                            </p>
-                            {parsed.remark && (
-                              <div className="mt-2 rounded-md border border-border/50 bg-background/80 px-3 py-2">
-                                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                  Remark
-                                </p>
-                                <p className="mt-1 text-xs italic text-muted-foreground">
-                                  {parsed.remark}
-                                </p>
-                              </div>
-                            )}
-                            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                              <span className="inline-flex h-2 w-2 rounded-full bg-current opacity-70" />
-                              <span>
-                                Approval Request{" "}
-                                {approvalStatus === "requested"
-                                  ? "raised"
-                                  : approvalStatus}
-                              </span>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <p className="text-sm text-foreground font-medium leading-relaxed">
-                              {parsed.main}
-                            </p>
-                            {parsed.remark && (
-                              <p className="text-xs text-muted-foreground italic">
-                                {parsed.remark}
-                              </p>
-                            )}
-                          </>
-                        )}
-
-                        <div
-                          className={`flex items-center gap-2 ${
-                            log.docs.length > 0
-                              ? "border-b border-border/50 pb-2.5"
-                              : ""
-                          }`}
-                        >
-                          <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center shrink-0">
-                            <span className="text-[10px] font-bold text-muted-foreground">
-                              {log.created_by?.name?.charAt(0) || "?"}
-                            </span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-medium text-foreground text-xs">
-                              {log.created_by?.name || "Unknown"}
-                            </span>
-                            {log.created_by?.email && (
-                              <span className="text-[10px] text-muted-foreground">
-                                {log.created_by.email}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {log.docs.length > 0 && (
-                          <div className="space-y-1.5">
-                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                              {isApprovalTimeline
-                                ? `Linked Files (${log.docs.length})`
-                                : `Attachments (${log.docs.length})`}
-                            </p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {log.docs.map((doc: any) => (
-                                <a
-                                  key={doc.id}
-                                  href={doc.signedUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors ${
-                                    isApprovalTimeline
-                                      ? "border-border/80 bg-background hover:bg-muted/50"
-                                      : "border-border bg-muted/40 hover:bg-muted"
-                                  }`}
-                                >
-                                  <FileText
-                                    size={12}
-                                    className="text-muted-foreground shrink-0"
-                                  />
-                                  <span className="font-medium truncate max-w-[180px]">
-                                    {doc.original_name}
-                                  </span>
-                                </a>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </Card>
-                    </motion.div>
-                  );
-                },
-              )}
+                      )}
+                    </Card>
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </div>
 
@@ -463,17 +373,205 @@ export default function SiteHistoryTab({
               <p className="text-xs text-muted-foreground py-3">
                 End of timeline
               </p>
-            ) : (
-              <div className="text-center py-10">
-                <FileText
-                  className="mx-auto text-muted-foreground/30 mb-2"
-                  size={36}
+            ) : null}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  // Card-based approval content
+  const approvalContent = (
+    <div className="pt-3">
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-16">
+          <Loader2 className="animate-spin text-muted-foreground mb-2" size={24} />
+          <p className="text-xs text-muted-foreground">Loading approvals...</p>
+        </div>
+      ) : allLogs.length === 0 ? (
+        <div className="text-center py-12">
+          <FileCheck className="mx-auto text-muted-foreground/30 mb-3" size={40} />
+          <p className="text-sm text-muted-foreground font-medium">No approval requests yet</p>
+          <p className="text-xs text-muted-foreground mt-1">All requests will appear here</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-4">
+            <AnimatePresence mode="popLayout">
+              {allLogs.map((log, index) => {
+                const parsed = parseActionMessage(log.action);
+                const approvalStatus = getApprovalStatus(log.action);
+                const config = getApprovalStatusConfig(approvalStatus);
+                const StatusIcon = config.icon;
+
+                return (
+                  <motion.div
+                    key={log.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                  >
+                    <Card className={`border-2 overflow-hidden transition-all hover:shadow-md ${config.borderClass} ${config.bgClass}`}>
+                      {/* Status Header */}
+                      <div className="flex items-center justify-between p-4 border-b border-inherit">
+                        <div className="flex items-center gap-3">
+                          <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${config.bgClass} border ${config.borderClass}`}>
+                            <StatusIcon className={`w-5 h-5 ${config.textClass}`} />
+                          </div>
+                          <div>
+                            <h4 className={`text-sm font-bold ${config.textClass}`}>
+                              {config.label}
+                            </h4>
+                            <p className="text-xs text-muted-foreground">
+                              Approval Request
+                            </p>
+                          </div>
+                        </div>
+                        <Badge
+                          className={`font-semibold border ${config.badgeClass}`}
+                        >
+                          {config.label}
+                        </Badge>
+                      </div>
+
+                      {/* Content Section */}
+                      <div className="p-4 space-y-4">
+                        {/* Main Action Message */}
+                        <div className="space-y-2">
+                          <p className="text-sm font-semibold text-foreground leading-relaxed">
+                            {parsed.main}
+                          </p>
+                          {parsed.remark && (
+                            <div className="bg-background/80 border border-border rounded-lg p-3">
+                              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                                Remark
+                              </p>
+                              <p className="text-sm text-foreground italic">
+                                {parsed.remark}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Metadata Grid */}
+                        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-inherit">
+                          {/* Date & Time */}
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                              Date & Time
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Calendar size={13} className="text-muted-foreground flex-shrink-0" />
+                              <span className="text-xs text-foreground font-medium">
+                                {format(
+                                  new Date(log.created_at),
+                                  "MMM dd, yyyy"
+                                )}
+                              </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground ml-5">
+                              {format(
+                                new Date(log.created_at),
+                                "hh:mm a"
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Approved/Requested By */}
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                              {approvalStatus === "requested" ? "Requested By" : "Actioned By"}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                <span className="text-[9px] font-bold text-muted-foreground">
+                                  {log.created_by?.name?.charAt(0) || "?"}
+                                </span>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-medium text-foreground truncate">
+                                  {log.created_by?.name || "Unknown"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Stage Badge */}
+                        {formatStageLabel(log.stage?.name) && (
+                          <div className="pt-2 border-t border-inherit">
+                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                              Stage
+                            </p>
+                            <Badge
+                              variant="outline"
+                              className="capitalize text-xs font-medium px-3 py-1.5 bg-background/60"
+                            >
+                              {formatStageLabel(log.stage?.name)}
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Attachments Section */}
+                      {log.docs.length > 0 && (
+                        <div className="px-4 py-3 border-t border-inherit bg-background/30">
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                            Linked Documents ({log.docs.length})
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {log.docs.map((doc: any) => (
+                              <a
+                                key={doc.id}
+                                href={doc.signedUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 rounded-md border border-border bg-background hover:bg-muted px-2.5 py-1.5 text-xs transition-all hover:border-foreground/40"
+                              >
+                                <FileText
+                                  size={12}
+                                  className="text-muted-foreground flex-shrink-0"
+                                />
+                                <span className="font-medium truncate max-w-[150px]">
+                                  {doc.original_name}
+                                </span>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+
+          {/* Load More */}
+          <div ref={ref} className="flex justify-center mt-6">
+            {isFetchingNextPage ? (
+              <div className="flex items-center gap-2 py-4">
+                <Loader2
+                  className="animate-spin text-muted-foreground"
+                  size={16}
                 />
-                <p className="text-sm text-muted-foreground">
-                  No logs available yet
-                </p>
+                <p className="text-xs text-muted-foreground">Loading more...</p>
               </div>
-            )}
+            ) : hasNextPage ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchNextPage()}
+                className="text-xs"
+              >
+                Load more approvals
+              </Button>
+            ) : allLogs.length > 0 ? (
+              <p className="text-xs text-muted-foreground py-4">
+                No more approvals to load
+              </p>
+            ) : null}
           </div>
         </>
       )}
@@ -495,7 +593,7 @@ export default function SiteHistoryTab({
     },
     {
       id: "follow-ups",
-      title: "Follow Up's",
+      title: "Follow Ups",
       color: "bg-foreground",
       cardContent: timelineContent,
     },
@@ -503,7 +601,7 @@ export default function SiteHistoryTab({
       id: "approvals",
       title: "Approvals",
       color: "bg-foreground",
-      cardContent: timelineContent,
+      cardContent: isApprovalTimeline ? approvalContent : timelineContent,
     },
   ].filter((item) => visibleTabIds.includes(item.id as TabId));
 
@@ -517,7 +615,9 @@ export default function SiteHistoryTab({
       <div className="mb-5">
         <h2 className="text-lg font-semibold text-foreground">Site History</h2>
         <p className="text-xs text-muted-foreground">
-          Track all activities and changes for this lead
+          {isApprovalTimeline
+            ? "View all approval requests and their status"
+            : "Track all activities and changes for this lead"}
         </p>
       </div>
 
@@ -534,7 +634,7 @@ export default function SiteHistoryTab({
               className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
             />
             <Input
-              placeholder="Search history..."
+              placeholder={isApprovalTimeline ? "Search approvals..." : "Search history..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-8 pl-8 pr-7 text-xs w-48"
@@ -560,7 +660,7 @@ export default function SiteHistoryTab({
             ) : (
               <FileSpreadsheet className="size-4" />
             )}
-            {isExporting ? "Exporting..." : "Export Site History"}
+            {isExporting ? "Exporting..." : "Export"}
           </Button>
         </div>
       </div>
