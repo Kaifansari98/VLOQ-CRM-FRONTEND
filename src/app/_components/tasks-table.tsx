@@ -53,6 +53,7 @@ import { extractTitleText, mapTaskTableFiltersToPayload } from "@/lib/utils";
 import TaskTypeFilter from "@/components/data-table/data-table-task-filter";
 import OrderLoginApprovalModal from "@/components/tasks/OrderLoginApprovalModal";
 import DispatchPlanningApprovalModal from "@/components/tasks/DispatchPlanningApprovalModal";
+import ApprovalRequestActionModal from "@/components/tasks/ApprovalRequestActionModal";
 import InitialSiteMeasurementTaskModal from "@/components/tasks/InitialSiteMeasurementTaskModal";
 import FinalMeasurementTaskModal from "@/components/tasks/FinalMeasurementTaskModal";
 import OrderLoginCompletedTaskModal from "@/components/tasks/OrderLoginCompletedTaskModal";
@@ -200,6 +201,8 @@ const MyTaskTable = () => {
   const [openBookingDoneApproval, setOpenBookingDoneApproval] = useState(false);
   const [openOrderLoginApproval, setOpenOrderLoginApproval] = useState(false);
   const [openDispatchPlanningApproval, setOpenDispatchPlanningApproval] =
+    useState(false);
+  const [openApprovalRequestAction, setOpenApprovalRequestAction] =
     useState(false);
 
   // ✅ SEPARATE TASK TYPE FILTERS
@@ -466,6 +469,12 @@ const MyTaskTable = () => {
           variant: "dispatchplanningapproval",
         });
         setOpenDispatchPlanningApproval(true);
+      } else if (row.taskType === "Approval Request") {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "view",
+        });
+        setOpenApprovalRequestAction(true);
       } else if (row.taskType === "Final Measurements") {
         setRowAction({
           row: { original: row } as any,
@@ -1035,6 +1044,17 @@ const MyTaskTable = () => {
         data={{
           leadId: rowAction?.row.original.leadId || 0,
           taskId: rowAction?.row.original.id || 0,
+        }}
+      />
+
+      <ApprovalRequestActionModal
+        open={openApprovalRequestAction}
+        onOpenChange={setOpenApprovalRequestAction}
+        data={{
+          leadId: rowAction?.row.original.leadId || 0,
+          taskId: rowAction?.row.original.id || 0,
+          dueDate: rowAction?.row.original.dueDate,
+          remark: rowAction?.row.original.remark,
         }}
       />
 

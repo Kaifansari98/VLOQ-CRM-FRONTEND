@@ -18,6 +18,7 @@ const TASK_TYPES = [
   "Production Ready",
   "Post Dispatch Photos",
   "Follow Up",
+  "Approval Request",
   "BookingDone - ISM",
   "Initial Site Measurement",
   "Order Login",
