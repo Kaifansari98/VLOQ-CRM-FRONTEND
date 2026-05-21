@@ -24,6 +24,8 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import MultipleSelector, { Option } from "@/components/ui/multiselect";
+import { useMiscTeams } from "@/api/installation/useUnderInstallationStageLeads";
 
 interface ReportLeadAvailabilityRow {
   id?: number;
@@ -53,6 +55,7 @@ export interface ReportFilters {
   _franchiseId?: number | "all";
   _employeeName?: string;
   _leadName?: string;
+  selectedTeams?: Option[];
 }
 
 const DEFAULT_FILTERS: ReportFilters = {
@@ -60,6 +63,7 @@ const DEFAULT_FILTERS: ReportFilters = {
   userId: "",
   fromDate: "",
   toDate: "",
+  selectedTeams: [],
 };
 
 interface Props {
@@ -104,8 +108,8 @@ export function ReportFilterModal({
     defaultFilters._franchiseId === "all"
       ? "all"
       : defaultFilters._franchiseId
-      ? String(defaultFilters._franchiseId)
-      : "",
+        ? String(defaultFilters._franchiseId)
+        : "",
   );
   const [filters, setFilters] = useState<ReportFilters>(initialFilters ?? defaultFilters);
 
@@ -116,8 +120,8 @@ export function ReportFilterModal({
       nextFilters._franchiseId === "all"
         ? "all"
         : nextFilters._franchiseId
-        ? String(nextFilters._franchiseId)
-        : "",
+          ? String(nextFilters._franchiseId)
+          : "",
     );
   }, [defaultFilters, initialFilters, open]);
 
@@ -150,6 +154,17 @@ export function ReportFilterModal({
     : adminFranchiseId ?? undefined;
 
   const { data: franchises = [] } = useFranchisesByVendorId(vendorId, isSuperAdmin);
+
+  const { data: miscTeams = [], isLoading: loadingTeams } = useMiscTeams(vendorId);
+
+
+
+  const teamOptions: Option[] = useMemo(() => {
+    return miscTeams.map((team: any) => ({
+      value: String(team.id),
+      label: team.name,
+    }));
+  }, [miscTeams]);
 
   const { data: vendorLeads = [], isLoading: isLeadsLoading } = useQuery({
     queryKey: ["report-filter-leads", vendorId],
@@ -330,8 +345,8 @@ export function ReportFilterModal({
       defaultFilters._franchiseId === "all"
         ? "all"
         : defaultFilters._franchiseId
-        ? String(defaultFilters._franchiseId)
-        : "",
+          ? String(defaultFilters._franchiseId)
+          : "",
     );
     onResetDraft?.();
   };
@@ -346,15 +361,28 @@ export function ReportFilterModal({
     const resolvedFranchiseId: ReportFilters["_franchiseId"] = isAllFranchise
       ? "all"
       : selectedFranchiseId
-      ? Number(selectedFranchiseId)
-      : activeFranchiseId;
+        ? Number(selectedFranchiseId)
+        : activeFranchiseId;
     const nextFilters: ReportFilters = {
       ...filters,
+
       userId: resolvedUserId,
+
       _franchiseId: resolvedFranchiseId,
-      _employeeName: resolvedUserId === "all" ? "All" : (selectedUser?.user_name ?? ""),
-      _leadName: selectedLead?.label ?? "",
+
+      _employeeName:
+        resolvedUserId === "all"
+          ? "All"
+          : (selectedUser?.user_name ?? ""),
+
+      _leadName:
+        selectedLead?.label ?? "",
+
+      selectedTeams:
+        filters.selectedTeams ?? [],
     };
+
+
     onApply(nextFilters);
     onDraftChange?.(nextFilters);
     onOpenChange(false);
@@ -535,17 +563,41 @@ export function ReportFilterModal({
                     {showFranchiseSelect && !selectedFranchiseId
                       ? "Select a franchise first"
                       : !selectedUserType
-                      ? "Select a user type first"
-                      : isAllUserType || isAllFranchise
-                      ? "All users will be included"
-                      : isUsersLoading
-                      ? "Loading users..."
-                      : null}
+                        ? "Select a user type first"
+                        : isAllUserType || isAllFranchise
+                          ? "All users will be included"
+                          : isUsersLoading
+                            ? "Loading users..."
+                            : null}
                   </TooltipContent>
                 )}
               </Tooltip>
             </div>
           </>
+        )}
+
+        {isMiscIssueLogReport && (
+          <div className="flex flex-col gap-2">
+            <Label className="text-xs">Team Responsible</Label>
+            <MultipleSelector
+              value={filters.selectedTeams || []}
+              onChange={(options) =>
+                updateFilters((prev) => ({
+                  ...prev,
+                  selectedTeams: options,
+                }))
+              }
+              defaultOptions={teamOptions}
+              options={teamOptions}
+              placeholder="Select teams..."
+              emptyIndicator={
+                <p className="text-center text-sm text-muted-foreground">
+                  No teams found
+                </p>
+              }
+              disabled={loadingTeams}
+            />
+          </div>
         )}
 
         {/* Date Filter */}
