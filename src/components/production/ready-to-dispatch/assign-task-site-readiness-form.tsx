@@ -39,6 +39,11 @@ import { canAssignSR } from "@/components/utils/privileges";
 import CustomeTooltip from "@/components/custom-tooltip";
 import { useAssignedSiteSupervisor } from "@/api/installation/useSiteReadinessLeads";
 import { useFollowUpUsers } from "@/hooks/useFollowUpUsers";
+import { FileUploadField } from "@/components/custom/file-upload";
+import {
+  useApprovalRequestAssignableUsers,
+  useCreateApprovalRequest,
+} from "@/hooks/useApprovalRequests";
 
 function formatLocalDate(date: Date) {
   const year = date.getFullYear();
@@ -51,7 +56,7 @@ function formatLocalDate(date: Date) {
 const formSchema = z
   .object({
     assign_lead_to: z.number().min(1, "Assign lead to is required"),
-    task_type: z.enum(["Site Readiness", "Follow Up"], {
+    task_type: z.enum(["Site Readiness", "Follow Up", "Approval Request"], {
       message: "Task Type is required",
     }),
     due_date: z
@@ -73,6 +78,22 @@ const formSchema = z
       message: "Remark is required for Follow Up",
       path: ["remark"],
     }
+  )
+  .refine(
+    (data) => {
+      if (data.task_type === "Approval Request") {
+        return (
+          !!data.remark &&
+          data.remark.trim().length > 0 &&
+          data.remark.trim().toLowerCase() !== "n/a"
+        );
+      }
+      return true;
+    },
+    {
+      message: "Remark is required",
+      path: ["remark"],
+    },
   );
 
 interface Props {
@@ -96,6 +117,12 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const loggedInUserType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
+  const isApprovalTaskEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_approval_task_enabled as
+      | boolean
+      | null
+      | undefined,
+  );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
@@ -106,6 +133,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const router = useRouter();
   const leadId = data?.id!;
   const mutation = useAssignToSiteReadiness(leadId);
+  const approvalRequestMutation = useCreateApprovalRequest(leadId);
   const queryClient = useQueryClient();
   const normalizedUserType = (loggedInUserType ?? userType ?? "").toLowerCase();
   const isAllowedToAssignSR =
@@ -167,6 +195,11 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   } = useVendorSiteSupervisorUsers(vendorId!);
 
   const { data: followUpUsersData } = useFollowUpUsers(vendorId, leadId, franchiseId);
+  const {
+    data: approvalRequestAssignableUsersData,
+    isLoading: loadingApprovalRequestUsers,
+    error: approvalRequestUsersError,
+  } = useApprovalRequestAssignableUsers(vendorId, leadId);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -179,6 +212,9 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   });
 
   const taskType = form.watch("task_type");
+  const [approvalFiles, setApprovalFiles] = React.useState<File[]>([]);
+  const isApprovalRequestTask = taskType === "Approval Request";
+  const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
 
   const siteSupervisorList =
     vendorUsers?.data?.site_supervisors?.map((user: any) => ({
@@ -187,9 +223,33 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     })) ?? [];
   const followUpTooltip =
     "A Follow Up Task is already assigned to this user, which is not yet completed.";
+  const approvalRequestUsers = React.useMemo(() => {
+    const users = approvalRequestAssignableUsersData?.users ?? [];
+    const shouldRestrictToFranchise =
+      normalizedUserType === "admin" ||
+      normalizedUserType === "sales-executive";
+
+    return users.filter((user) => {
+      if (user.id === userId) return false;
+      if (shouldRestrictToFranchise) {
+        return user.franchise_id === franchiseId;
+      }
+      return true;
+    });
+  }, [
+    approvalRequestAssignableUsersData?.users,
+    franchiseId,
+    normalizedUserType,
+    userId,
+  ]);
 
   const mappedData =
-    normalizedUserType === "custom"
+    isApprovalRequestTask
+      ? approvalRequestUsers.map((user) => ({
+          id: user.id,
+          label: user.user_name,
+        }))
+      : normalizedUserType === "custom"
       ? (followUpUsersData?.data?.users ?? []).map((u: any) => ({
           id: u.id,
           label: u.user_name,
@@ -248,6 +308,15 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
 
   React.useEffect(() => {
     if (
+      taskType === "Approval Request" &&
+      form.getValues("remark")?.trim().toLowerCase() === "n/a"
+    ) {
+      form.setValue("remark", "");
+    }
+  }, [form, taskType]);
+
+  React.useEffect(() => {
+    if (
       normalizedUserType !== "custom" &&
       isSiteReadinessTask &&
       shouldLockAssignee &&
@@ -270,7 +339,73 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     }
   }, [form, taskType, followUpConflicts, userId]);
 
+  React.useEffect(() => {
+    if (
+      form.getValues("task_type") === "Approval Request" &&
+      !canShowApprovalRequestOption
+    ) {
+      form.setValue(
+        "task_type",
+        canShowSiteReadinessTaskType && !isSiteReadinessSelectionDisabled
+          ? "Site Readiness"
+          : "Follow Up",
+      );
+    }
+  }, [
+    canShowApprovalRequestOption,
+    canShowSiteReadinessTaskType,
+    form,
+    isSiteReadinessSelectionDisabled,
+  ]);
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    if (values.task_type === "Approval Request") {
+      approvalRequestMutation.mutate(
+        {
+          due_date: values.due_date,
+          remark: values.remark?.trim() ?? "",
+          user_id: values.assign_lead_to!,
+          created_by: userId!,
+          files: approvalFiles,
+        },
+        {
+          onSuccess: () => {
+            toastManager.add({
+              title: "Approval request assigned successfully!",
+              type: "success",
+            });
+            queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+            queryClient.invalidateQueries({
+              queryKey: ["universal-stage-leads"],
+              exact: false,
+            });
+            queryClient.invalidateQueries({
+              queryKey: ["vendorOverallLeads"],
+            });
+            queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+            queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
+            queryClient.invalidateQueries({ queryKey: ["leadLogs"] });
+            setApprovalFiles([]);
+            onOpenChange(false);
+            form.reset({
+              assign_lead_to: undefined,
+              task_type: canShowSiteReadinessTaskType ? "Site Readiness" : "Follow Up",
+              due_date: "",
+              remark: "N/A",
+            });
+          },
+          onError: (error: any) => {
+            const backendMessage =
+              error?.response?.data?.message ||
+              error.message ||
+              "Something went wrong";
+            toastManager.add({ title: backendMessage, type: "error" });
+          },
+        },
+      );
+      return;
+    }
+
     if (
       values.task_type === "Site Readiness" &&
       isSiteReadinessConflictLocked
@@ -334,7 +469,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     });
   };
 
-  if (loadingUsers) {
+  if (loadingUsers || loadingApprovalRequestUsers) {
     return (
       <BaseModal
         open={open}
@@ -347,7 +482,8 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     );
   }
 
-  if (error) {
+  if (error || approvalRequestUsersError) {
+    const resolvedError = error || approvalRequestUsersError;
     return (
       <BaseModal
         open={open}
@@ -355,7 +491,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
         title="Error"
         size="lg"
       >
-        <div className="p-6">Error: {error.message}</div>
+        <div className="p-6">Error: {resolvedError?.message}</div>
       </BaseModal>
     );
   }
@@ -365,12 +501,16 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       open={open}
       onOpenChange={onOpenChange}
       title={
-        form.watch("task_type") === "Follow Up" || !canShowSiteReadinessTaskType
+        form.watch("task_type") === "Approval Request"
+          ? "Assign Approval Request"
+          : form.watch("task_type") === "Follow Up" || !canShowSiteReadinessTaskType
           ? "Assign Task for Follow Up"
           : "Assign Task for Site Readiness"
       }
       description={
-        form.watch("task_type") === "Follow Up" || !canShowSiteReadinessTaskType
+        form.watch("task_type") === "Approval Request"
+          ? "Use this form to assign an approval request."
+          : form.watch("task_type") === "Follow Up" || !canShowSiteReadinessTaskType
           ? "Use this form to assign a follow up task."
           : "Use this form to assign a task to a Site Supervisor for Site Readiness."
       }
@@ -416,9 +556,21 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
 
                           {/* Always allow Follow Up */}
                           <SelectItem value="Follow Up">Follow Up</SelectItem>
+                          {canShowApprovalRequestOption && (
+                            <SelectItem value="Approval Request">
+                              Approval Request
+                            </SelectItem>
+                          )}
                         </>
                       ) : (
-                        <SelectItem value="Follow Up">Follow Up</SelectItem>
+                        <>
+                          <SelectItem value="Follow Up">Follow Up</SelectItem>
+                          {canShowApprovalRequestOption && (
+                            <SelectItem value="Approval Request">
+                              Approval Request
+                            </SelectItem>
+                          )}
+                        </>
                       )}
                     </SelectContent>
                   </Select>
@@ -488,6 +640,21 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                 </FormItem>
               )}
             />
+
+            {isApprovalRequestTask && (
+              <FormItem>
+                <FormLabel className="text-sm">File Upload</FormLabel>
+                <FormControl>
+                  <FileUploadField
+                    value={approvalFiles}
+                    onChange={setApprovalFiles}
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
+                    multiple
+                    maxFiles={10}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
 
             {/* Buttons */}
             <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">

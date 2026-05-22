@@ -40,6 +40,10 @@ import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUse
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { useFollowUpUsers } from "@/hooks/useFollowUpUsers";
 import {
+  useApprovalRequestAssignableUsers,
+  useCreateApprovalRequest,
+} from "@/hooks/useApprovalRequests";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -66,7 +70,12 @@ interface Props {
 const formSchema = z
   .object({
     assign_lead_to: z.number().min(1, "Assign lead to is required"),
-    task_type: z.enum(["Final Measurements", "Follow Up", "BookingDone - ISM"]),
+    task_type: z.enum([
+      "Final Measurements",
+      "Follow Up",
+      "BookingDone - ISM",
+      "Approval Request",
+    ]),
     due_date: z.string().min(1, "Due Date is required"),
     remark: z.string().optional(),
     current_site_photos: z.array(z.instanceof(File)).optional(),
@@ -93,6 +102,20 @@ const formSchema = z
         });
       }
     }
+
+    if (data.task_type === "Approval Request") {
+      if (
+        !data.remark ||
+        !data.remark.trim() ||
+        data.remark.trim().toLowerCase() === "n/a"
+      ) {
+        ctx.addIssue({
+          path: ["remark"],
+          message: "Remark is required",
+          code: z.ZodIssueCode.custom,
+        });
+      }
+    }
   });
 
 const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
@@ -110,6 +133,12 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         | boolean
         | null
         | undefined,
+  );
+  const isApprovalTaskEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_approval_task_enabled as
+      | boolean
+      | null
+      | undefined,
   );
   const userRole = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type
@@ -177,6 +206,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const { data: bookingDoneLockIns = [], isLoading: bookingDoneLockInsLoading } =
     useLeadSuperAdminApprovalLockIns(vendorId, leadId, "booking_done");
   const mutation = useAssignToFinalMeasurement(leadId);
+  const approvalRequestMutation = useCreateApprovalRequest(leadId);
   const queryClient = useQueryClient();
   const uploadCSPMutation = useUploadCSPBooking();
   const { data: leadData } = useLeadById(leadId, vendorId, userId);
@@ -203,8 +233,10 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     },
   });
   const hasUserChangedTaskTypeRef = React.useRef(false);
+  const [approvalFiles, setApprovalFiles] = React.useState<File[]>([]);
 
   const taskType = form.watch("task_type");
+  const isApprovalRequestTask = taskType === "Approval Request";
   const restrictedTaskConflicts = taskConflicts?.restrictedTaskConflicts ?? [];
   const followUpConflicts = taskConflicts?.followUpConflicts ?? [];
   const finalMeasurementsConflict = restrictedTaskConflicts.find(
@@ -275,15 +307,18 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         "leads.booking_done.assign_task.bookingdone_ism",
       )
     : true;
+  const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
   const availableTaskTypes = React.useMemo(() => {
     return [
       hasFinalMeasurementPrivilege ? "Final Measurements" : null,
       hasFollowUpPrivilege ? "Follow Up" : null,
       hasBookingDoneIsmPrivilege ? "BookingDone - ISM" : null,
+      canShowApprovalRequestOption ? "Approval Request" : null,
     ].filter(Boolean) as Array<
-      "Final Measurements" | "Follow Up" | "BookingDone - ISM"
+      "Final Measurements" | "Follow Up" | "BookingDone - ISM" | "Approval Request"
     >;
   }, [
+    canShowApprovalRequestOption,
     hasBookingDoneIsmPrivilege,
     hasFinalMeasurementPrivilege,
     hasFollowUpPrivilege,
@@ -294,6 +329,11 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     leadId,
     franchiseId
   );
+  const {
+    data: approvalRequestAssignableUsersData,
+    isLoading: loadingApprovalRequestUsers,
+    error: approvalRequestUsersError,
+  } = useApprovalRequestAssignableUsers(vendorId, leadId);
   const followUpTooltip =
     "A Follow Up Task is already assigned to this user, which is not yet completed.";
   const eligibleCustomUsers = salesExecutives?.data?.sales_executives ?? [];
@@ -335,7 +375,34 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     vendorCustomUserTypeMode,
   ]);
 
+  const approvalRequestUsers = React.useMemo(() => {
+    const users = approvalRequestAssignableUsersData?.users ?? [];
+    const shouldRestrictToFranchise =
+      normalizedUserRole === "admin" ||
+      normalizedUserRole === "sales-executive";
+
+    return users.filter((user) => {
+      if (user.id === userId) return false;
+      if (shouldRestrictToFranchise) {
+        return user.franchise_id === franchiseId;
+      }
+      return true;
+    });
+  }, [
+    approvalRequestAssignableUsersData?.users,
+    franchiseId,
+    normalizedUserRole,
+    userId,
+  ]);
+
   const mappedData = React.useMemo(() => {
+    if (taskType === "Approval Request") {
+      return approvalRequestUsers.map((user) => ({
+        id: user.id,
+        label: user.user_name,
+      }));
+    }
+
     if (
       vendorCustomUserTypeMode === true &&
       taskType === "Final Measurements"
@@ -395,6 +462,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       })) ?? []
     );
   }, [
+    approvalRequestUsers,
     eligibleFinalMeasurementCustomUsers,
     eligibleCustomUsers,
     finalMeasurementUsers,
@@ -406,6 +474,15 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     taskType,
     userId,
   ]);
+
+  React.useEffect(() => {
+    if (
+      taskType === "Approval Request" &&
+      form.getValues("remark")?.trim().toLowerCase() === "n/a"
+    ) {
+      form.setValue("remark", "");
+    }
+  }, [form, taskType]);
 
   React.useEffect(() => {
     if (
@@ -538,6 +615,29 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   ]);
 
   React.useEffect(() => {
+    if (
+      form.getValues("task_type") === "Approval Request" &&
+      !canShowApprovalRequestOption
+    ) {
+      if (hasFollowUpPrivilege) {
+        form.setValue("task_type", "Follow Up");
+      } else if (hasFinalMeasurementPrivilege && !isFinalMeasurementsDisabled) {
+        form.setValue("task_type", "Final Measurements");
+      } else if (hasBookingDoneIsmPrivilege && !isBookingDoneDisabled) {
+        form.setValue("task_type", "BookingDone - ISM");
+      }
+    }
+  }, [
+    canShowApprovalRequestOption,
+    form,
+    hasBookingDoneIsmPrivilege,
+    hasFinalMeasurementPrivilege,
+    hasFollowUpPrivilege,
+    isBookingDoneDisabled,
+    isFinalMeasurementsDisabled,
+  ]);
+
+  React.useEffect(() => {
     if (taskType !== "Follow Up") return;
 
     const selectedUserId = form.getValues("assign_lead_to");
@@ -575,6 +675,55 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
+      if (values.task_type === "Approval Request") {
+        approvalRequestMutation.mutate(
+          {
+            due_date: values.due_date,
+            remark: values.remark?.trim() ?? "",
+            user_id: values.assign_lead_to!,
+            created_by: userId!,
+            files: approvalFiles,
+          },
+          {
+            onSuccess: () => {
+              toastManager.add({
+                title: "Approval request assigned successfully!",
+                type: "success",
+              });
+              queryClient.invalidateQueries({
+                queryKey: ["universal-stage-leads"],
+                exact: false,
+              });
+              queryClient.invalidateQueries({
+                queryKey: ["leadStats", vendorId, userId],
+              });
+              queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+              queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
+              queryClient.invalidateQueries({ queryKey: ["leadLogs"] });
+              setApprovalFiles([]);
+              form.reset({
+                assign_lead_to: undefined,
+                task_type: canAccessRestrictedTasks ? "Final Measurements" : "Follow Up",
+                due_date: "",
+                remark: "N/A",
+                current_site_photos: [],
+              });
+              onOpenChange(false);
+            },
+            onError: (error: any) => {
+              toastManager.add({
+                title:
+                  error?.response?.data?.message ||
+                  error.message ||
+                  "Something went wrong",
+                type: "error",
+              });
+            },
+          },
+        );
+        return;
+      }
+
       console.log("[AssignFM] site_map_link", {
         value: lead?.site_map_link ?? null,
         hasValue: Boolean(lead?.site_map_link?.trim()),
@@ -686,7 +835,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   if (
     loadingSupervisors ||
     loadingSalesExecs ||
-    loadingCustomFinalMeasurementUsers
+    loadingCustomFinalMeasurementUsers ||
+    loadingApprovalRequestUsers
   ) {
     return (
       <BaseModal
@@ -700,7 +850,12 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     );
   }
 
-  if (supervisorError || salesExecError || customFinalMeasurementUsersError) {
+  if (
+    supervisorError ||
+    salesExecError ||
+    customFinalMeasurementUsersError ||
+    approvalRequestUsersError
+  ) {
     return (
       <BaseModal
         open={open}
@@ -718,12 +873,16 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       open={open}
       onOpenChange={onOpenChange}
       title={
-        form.watch("task_type") === "Follow Up"
+        form.watch("task_type") === "Approval Request"
+          ? "Assign Approval Request"
+          : form.watch("task_type") === "Follow Up"
           ? "Assign Task for Follow Up"
           : "Assign Task for Final Site Measurements"
       }
       description={
-        form.watch("task_type") === "Follow Up"
+        form.watch("task_type") === "Approval Request"
+          ? "Use this form to assign an approval request."
+          : form.watch("task_type") === "Follow Up"
           ? "Use this form to assign a follow up task."
           : "Use this form to assign a final measurement task."
       }
@@ -777,6 +936,12 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                         {/* Follow Up */}
                         {hasFollowUpPrivilege && (
                           <SelectItem value="Follow Up">Follow Up</SelectItem>
+                        )}
+
+                        {canShowApprovalRequestOption && (
+                          <SelectItem value="Approval Request">
+                            Approval Request
+                          </SelectItem>
                         )}
 
                         {/* BookingDone - ISM */}
@@ -870,6 +1035,21 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                 </FormItem>
               )}
             />
+
+            {isApprovalRequestTask && (
+              <FormItem>
+                <FormLabel className="text-sm">File Upload</FormLabel>
+                <FormControl>
+                  <FileUploadField
+                    value={approvalFiles}
+                    onChange={setApprovalFiles}
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
+                    multiple
+                    maxFiles={10}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
 
             {form.watch("task_type") === "Final Measurements" && (
               <FormField

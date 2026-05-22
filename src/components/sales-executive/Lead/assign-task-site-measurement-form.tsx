@@ -101,6 +101,12 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
         | null
         | undefined,
   );
+  const isApprovalTaskEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_approval_task_enabled as
+      | boolean
+      | null
+      | undefined,
+  );
   const franchiseId = useAppSelector(
     (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id,
   );
@@ -145,13 +151,15 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       : true;
   const canShowFollowUpOption =
     normalizedUserType === "custom" ? canAssignFollowUpForCustomUser : true;
+  const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
+  const isFollowUpOnlyRestricted = !!onlyFollowUp && !canShowApprovalRequestOption;
 
   const initialSiteMeasurementTaskConflicts =
     taskConflicts?.restrictedTaskConflicts ?? [];
   const followUpConflicts = taskConflicts?.followUpConflicts ?? [];
   const taskType = form.watch("task_type");
   const [approvalFiles, setApprovalFiles] = React.useState<File[]>([]);
-  const isFollowUp = taskType === "Follow Up" || !!onlyFollowUp;
+  const isFollowUp = taskType === "Follow Up";
   const isApprovalRequestTask = taskType === "Approval Request";
 
   const {
@@ -289,7 +297,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     approvalRequestUsersError;
 
   React.useEffect(() => {
-    if (onlyFollowUp) {
+    if (isFollowUpOnlyRestricted) {
       form.setValue("task_type", "Follow Up");
       return;
     }
@@ -301,12 +309,25 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     ) {
       form.setValue("task_type", "Follow Up");
     }
-  }, [form, isInitialSiteMeasurementDisabled, canShowFollowUpOption, onlyFollowUp]);
+  }, [
+    form,
+    isInitialSiteMeasurementDisabled,
+    canShowFollowUpOption,
+    isFollowUpOnlyRestricted,
+  ]);
 
   React.useEffect(() => {
     const currentTaskType = form.getValues("task_type");
 
     if (currentTaskType === "Initial Site Measurement" && !canShowInitialSiteMeasurementOption) {
+      form.setValue("task_type", "Follow Up");
+      return;
+    }
+
+    if (
+      currentTaskType === "Approval Request" &&
+      !canShowApprovalRequestOption
+    ) {
       form.setValue("task_type", "Follow Up");
       return;
     }
@@ -318,6 +339,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     form,
     canShowFollowUpOption,
     canShowInitialSiteMeasurementOption,
+    canShowApprovalRequestOption,
   ]);
 
   React.useEffect(() => {
@@ -531,7 +553,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}
-                    disabled={!!onlyFollowUp}
+                    disabled={isFollowUpOnlyRestricted}
                   >
                     <FormControl>
                       <SelectTrigger className="text-sm w-full">
@@ -539,7 +561,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {onlyFollowUp ? (
+                      {isFollowUpOnlyRestricted ? (
                         <SelectItem value="Follow Up">Follow Up</SelectItem>
                       ) : (
                         <>
@@ -564,9 +586,11 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                           {canShowFollowUpOption && (
                             <SelectItem value="Follow Up">Follow Up</SelectItem>
                           )}
-                          <SelectItem value="Approval Request">
-                            Approval Request
-                          </SelectItem>
+                          {canShowApprovalRequestOption && (
+                            <SelectItem value="Approval Request">
+                              Approval Request
+                            </SelectItem>
+                          )}
                         </>
                       )}
                     </SelectContent>
