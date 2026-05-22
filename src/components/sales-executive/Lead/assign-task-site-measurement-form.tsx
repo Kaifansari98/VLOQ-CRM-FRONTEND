@@ -153,6 +153,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     normalizedUserType === "custom" ? canAssignFollowUpForCustomUser : true;
   const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
   const isFollowUpOnlyRestricted = !!onlyFollowUp && !canShowApprovalRequestOption;
+  const shouldShowInitialSiteMeasurementOption = !onlyFollowUp;
 
   const initialSiteMeasurementTaskConflicts =
     taskConflicts?.restrictedTaskConflicts ?? [];
@@ -566,23 +567,24 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                       ) : (
                         <>
                       {/* ✅ Only show "Initial Site Measurement" if not restricted */}
-                          {!isInitialSiteMeasurementDisabled ? (
-                            <SelectItem value="Initial Site Measurement">
-                              Initial Site Measurement
-                            </SelectItem>
-                          ) : (
-                            <CustomeTooltip
-                              value={initialSiteMeasurementTooltip}
-                              truncateValue={
-                                <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
-                                  <span>Initial Site Measurement</span>
-                                  <span className="text-xs italic text-muted-foreground ml-1">
-                                    (locked)
-                                  </span>
-                                </div>
-                              }
-                            />
-                          )}
+                          {shouldShowInitialSiteMeasurementOption &&
+                            (!isInitialSiteMeasurementDisabled ? (
+                              <SelectItem value="Initial Site Measurement">
+                                Initial Site Measurement
+                              </SelectItem>
+                            ) : (
+                              <CustomeTooltip
+                                value={initialSiteMeasurementTooltip}
+                                truncateValue={
+                                  <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                    <span>Initial Site Measurement</span>
+                                    <span className="text-xs italic text-muted-foreground ml-1">
+                                      (locked)
+                                    </span>
+                                  </div>
+                                }
+                              />
+                            ))}
                           {canShowFollowUpOption && (
                             <SelectItem value="Follow Up">Follow Up</SelectItem>
                           )}
