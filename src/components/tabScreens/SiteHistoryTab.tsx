@@ -21,7 +21,6 @@ import {
   CheckCheck,
   XCircle,
   AlertCircle,
-  User,
   Calendar,
   FileCheck,
 } from "lucide-react";
@@ -101,33 +100,45 @@ const getApprovalStatusConfig = (status: ReturnType<typeof getApprovalStatus>) =
       return {
         label: "Approved",
         icon: CheckCheck,
-        bgClass: "bg-green-50 dark:bg-green-950/30",
-        borderClass: "border-green-200 dark:border-green-900/60",
-        badgeClass: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-green-200 dark:border-green-900/60",
-        dotClass: "bg-green-500 dark:bg-green-600",
-        textClass: "text-green-900 dark:text-green-100",
+        badgeClass:
+          "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300",
+        accentClass: "text-emerald-600 dark:text-emerald-400",
+        borderClass: "border-2 border-green-500/80 dark:border-green-500/50",
       };
     case "rejected":
       return {
         label: "Rejected",
         icon: XCircle,
-        bgClass: "bg-red-50 dark:bg-red-950/30",
-        borderClass: "border-red-200 dark:border-red-900/60",
-        badgeClass: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:border-red-900/60",
-        dotClass: "bg-red-500 dark:bg-red-600",
-        textClass: "text-red-900 dark:text-red-100",
+        badgeClass:
+          "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300",
+        accentClass: "text-rose-600 dark:text-rose-400",
+        borderClass: "border-2 border-rose-200/80 dark:border-rose-900/50",
       };
     default:
       return {
-        label: "Pending",
+        label: "Submitted",
         icon: AlertCircle,
-        bgClass: "bg-amber-50 dark:bg-amber-950/30",
-        borderClass: "border-amber-200 dark:border-amber-900/60",
-        badgeClass: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-900/60",
-        dotClass: "bg-amber-500 dark:bg-amber-600",
-        textClass: "text-amber-900 dark:text-amber-100",
+        badgeClass:
+          "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300",
+        accentClass: "text-slate-600 dark:text-slate-400",
+        borderClass: "border-2 border-slate-200 dark:border-slate-800",
       };
   }
+};
+
+type ApprovalLog = {
+  id: number;
+  action: string;
+  action_type: string;
+  created_at: string;
+  created_by?: { name?: string; email?: string } | null;
+  stage?: { name?: string | null } | null;
+  docs: any[];
+};
+
+type ApprovalGroup = {
+  request: ApprovalLog;
+  response?: ApprovalLog;
 };
 
 export default function SiteHistoryTab({
@@ -232,6 +243,28 @@ export default function SiteHistoryTab({
 
   const allLogs = data?.pages.flatMap((page) => page.data) ?? [];
   const isApprovalTimeline = activeTab === "approvals";
+  const approvalGroups = isApprovalTimeline
+    ? [...allLogs]
+        .reverse()
+        .reduce<ApprovalGroup[]>((groups, log) => {
+          const typedLog = log as ApprovalLog;
+          const status = getApprovalStatus(typedLog.action);
+
+          if (status === "requested" || groups.length === 0) {
+            groups.push({ request: typedLog });
+            return groups;
+          }
+
+          const currentGroup = groups[groups.length - 1];
+          if (!currentGroup.response) {
+            currentGroup.response = typedLog;
+          } else {
+            groups.push({ request: typedLog });
+          }
+
+          return groups;
+        }, [])
+    : [];
 
   // Timeline content for non-approval tabs
   const timelineContent = (
@@ -398,150 +431,256 @@ export default function SiteHistoryTab({
         <>
           <div className="grid gap-4">
             <AnimatePresence mode="popLayout">
-              {allLogs.map((log, index) => {
-                const parsed = parseActionMessage(log.action);
-                const approvalStatus = getApprovalStatus(log.action);
-                const config = getApprovalStatusConfig(approvalStatus);
-                const StatusIcon = config.icon;
+              {approvalGroups.map((group, index) => {
+                const requestParsed = parseActionMessage(group.request.action);
+                const responseStatus = group.response
+                  ? getApprovalStatus(group.response.action)
+                  : null;
+                const responseParsed = group.response
+                  ? parseActionMessage(group.response.action)
+                  : null;
+                const responseConfig = responseStatus
+                  ? getApprovalStatusConfig(responseStatus)
+                  : null;
+                const ResponseIcon = responseConfig?.icon;
 
                 return (
                   <motion.div
-                    key={log.id}
+                    key={group.request.id}
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -12 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
+                    className="space-y-4"
                   >
-                    <Card className={`border-2 overflow-hidden transition-all hover:shadow-md ${config.borderClass} ${config.bgClass}`}>
-                      {/* Status Header */}
-                      <div className="flex items-center justify-between p-4 border-b border-inherit">
-                        <div className="flex items-center gap-3">
-                          <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${config.bgClass} border ${config.borderClass}`}>
-                            <StatusIcon className={`w-5 h-5 ${config.textClass}`} />
-                          </div>
-                          <div>
-                            <h4 className={`text-sm font-bold ${config.textClass}`}>
-                              {config.label}
+                    <Card className="overflow-hidden border border-2 border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 px-6">
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-0.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                              Approval Flow
+                            </p>
+                            <h4 className="text-xs font-semibold text-foreground">
+                              Approval Request Submitted
                             </h4>
-                            <p className="text-xs text-muted-foreground">
-                              Approval Request
-                            </p>
                           </div>
-                        </div>
-                        <Badge
-                          className={`font-semibold border ${config.badgeClass}`}
-                        >
-                          {config.label}
-                        </Badge>
-                      </div>
-
-                      {/* Content Section */}
-                      <div className="p-4 space-y-4">
-                        {/* Main Action Message */}
-                        <div className="space-y-2">
-                          <p className="text-sm font-semibold text-foreground leading-relaxed">
-                            {parsed.main}
-                          </p>
-                          {parsed.remark && (
-                            <div className="bg-background/80 border border-border rounded-lg p-3">
-                              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-                                Remark
-                              </p>
-                              <p className="text-sm text-foreground italic">
-                                {parsed.remark}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Metadata Grid */}
-                        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-inherit">
-                          {/* Date & Time */}
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                              Date & Time
+                          
+                          <div className="grid sm:grid-cols-2">
+                          <div className="px-1.5">
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+                              Submitted On
                             </p>
-                            <div className="flex items-center gap-2">
-                              <Calendar size={13} className="text-muted-foreground flex-shrink-0" />
-                              <span className="text-xs text-foreground font-medium">
+                            <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-foreground">
+                              <Calendar size={10} className="text-slate-400" />
+                              <span>
                                 {format(
-                                  new Date(log.created_at),
-                                  "MMM dd, yyyy"
+                                  new Date(group.request.created_at),
+                                  "dd MMM · hh:mm a",
                                 )}
                               </span>
                             </div>
-                            <div className="text-xs text-muted-foreground ml-5">
-                              {format(
-                                new Date(log.created_at),
-                                "hh:mm a"
-                              )}
-                            </div>
                           </div>
-
-                          {/* Approved/Requested By */}
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                              {approvalStatus === "requested" ? "Requested By" : "Actioned By"}
+                          <div className="px-1.5 border-l-2">
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+                              Submitted By
                             </p>
-                            <div className="flex items-center gap-2">
-                              <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                                <span className="text-[9px] font-bold text-muted-foreground">
-                                  {log.created_by?.name?.charAt(0) || "?"}
-                                </span>
-                              </div>
+                            <div className="mt-0.5 flex items-center gap-1">
                               <div className="min-w-0">
-                                <p className="text-xs font-medium text-foreground truncate">
-                                  {log.created_by?.name || "Unknown"}
+                                <p className="truncate text-[10px] font-medium text-foreground">
+                                  {group.request.created_by?.name || "Unknown"}
                                 </p>
                               </div>
                             </div>
                           </div>
                         </div>
+                        </div>
+                      </div>
 
-                        {/* Stage Badge */}
-                        {formatStageLabel(log.stage?.name) && (
-                          <div className="pt-2 border-t border-inherit">
-                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium leading-4 text-foreground">
+                          {requestParsed.main}
+                        </p>
+
+                        {requestParsed.remark && (
+                          <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-1.5 dark:border-slate-800 dark:bg-slate-900/40">
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+                              Remark
+                            </p>
+                            <p className="mt-0.5 text-[11px] leading-4 text-slate-700 dark:text-slate-300">
+                              {requestParsed.remark}
+                            </p>
+                          </div>
+                        )}
+
+                        
+
+                        {/* {formatStageLabel(group.request.stage?.name) && (
+                          <div>
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
                               Stage
                             </p>
                             <Badge
                               variant="outline"
-                              className="capitalize text-xs font-medium px-3 py-1.5 bg-background/60"
+                              className="mt-1 capitalize border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
                             >
-                              {formatStageLabel(log.stage?.name)}
+                              {formatStageLabel(group.request.stage?.name)}
                             </Badge>
+                          </div>
+                        )} */}
+
+                        {group.request.docs.length > 0 && (
+                          <div className="border-t border-slate-100 pt-1.5 dark:border-slate-800">
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+                              Attachments ({group.request.docs.length})
+                            </p>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {group.request.docs.map((doc: any) => (
+                                <a
+                                  key={doc.id}
+                                  href={doc.signedUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
+                                >
+                                  <FileText
+                                    size={10}
+                                    className="text-muted-foreground flex-shrink-0"
+                                  />
+                                  <span className="max-w-[140px] truncate font-medium">
+                                    {doc.original_name}
+                                  </span>
+                                </a>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
-
-                      {/* Attachments Section */}
-                      {log.docs.length > 0 && (
-                        <div className="px-4 py-3 border-t border-inherit bg-background/30">
-                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                            Linked Documents ({log.docs.length})
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {log.docs.map((doc: any) => (
-                              <a
-                                key={doc.id}
-                                href={doc.signedUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 rounded-md border border-border bg-background hover:bg-muted px-2.5 py-1.5 text-xs transition-all hover:border-foreground/40"
-                              >
-                                <FileText
-                                  size={12}
-                                  className="text-muted-foreground flex-shrink-0"
-                                />
-                                <span className="font-medium truncate max-w-[150px]">
-                                  {doc.original_name}
-                                </span>
-                              </a>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </Card>
+
+                    {group.response && responseConfig && ResponseIcon && responseParsed && (
+                      <div className="relative ml-20">
+                        <svg
+                          className="pointer-events-none absolute -left-16 -top-4 h-14 w-10 text-slate-300 dark:text-slate-700"
+                          viewBox="0 0 40 56"
+                          fill="none"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M4 0V20C4 34 14 44 28 44H40"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M32 36L40 44L32 52"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+
+                        <Card
+                          className={`overflow-hidden px-6 bg-white dark:bg-slate-950 ${responseConfig.borderClass}`}
+                        >
+                          <div>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <div className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
+                                  <ResponseIcon
+                                    className={`h-2.5 w-2.5 ${responseConfig.accentClass}`}
+                                  />
+                                </div>
+                                <div>
+                                  <h4 className="text-[11px] font-semibold leading-3 text-foreground">
+                                    {responseConfig.label}
+                                  </h4>
+                                  <p className="text-[9px] text-muted-foreground">
+                                    Response
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="grid sm:grid-cols-2">
+                              <div className="px-1.5 dark:border-slate-800 dark:bg-slate-900/40">
+                                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+                                  {responseConfig.label} On
+                                </p>
+                                <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-foreground">
+                                  <Calendar size={10} className="text-slate-400" />
+                                  <span>
+                                    {format(
+                                      new Date(group.response.created_at),
+                                      "dd MMM · hh:mm a",
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="px-1.5 border-l dark:border-slate-800 dark:bg-slate-900/40">
+                                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+                                {responseConfig.label} By
+                                </p>
+                                <div className="mt-0.5 flex items-center gap-1">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-[10px] font-medium text-foreground">
+                                      {group.response.created_by?.name || "Unknown"}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>  
+                            </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <p className="text-xs font-medium leading-4 text-foreground">
+                              {responseParsed.main}
+                            </p>
+
+                            {responseParsed.remark && (
+                              <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-1.5 dark:border-slate-800 dark:bg-slate-900/40">
+                                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+                                  Remark
+                                </p>
+                                <p className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-slate-700 dark:text-slate-300">
+                                  {responseParsed.remark}
+                                </p>
+                              </div>
+                            )}
+
+                            
+
+                            {group.response.docs.length > 0 && (
+                              <div className="border-t border-slate-100 pt-1.5 dark:border-slate-800">
+                                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+                                  Attachments ({group.response.docs.length})
+                                </p>
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {group.response.docs.map((doc: any) => (
+                                    <a
+                                      key={doc.id}
+                                      href={doc.signedUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
+                                    >
+                                      <FileText
+                                        size={10}
+                                        className="text-muted-foreground flex-shrink-0"
+                                      />
+                                      <span className="max-w-[130px] truncate font-medium">
+                                        {doc.original_name}
+                                      </span>
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </Card>
+                      </div>
+                    )}
                   </motion.div>
                 );
               })}
@@ -549,9 +688,9 @@ export default function SiteHistoryTab({
           </div>
 
           {/* Load More */}
-          <div ref={ref} className="flex justify-center mt-6">
+          <div ref={ref} className="flex justify-center mt-4">
             {isFetchingNextPage ? (
-              <div className="flex items-center gap-2 py-4">
+              <div className="flex items-center gap-2 py-3">
                 <Loader2
                   className="animate-spin text-muted-foreground"
                   size={16}
@@ -568,8 +707,8 @@ export default function SiteHistoryTab({
                 Load more approvals
               </Button>
             ) : allLogs.length > 0 ? (
-              <p className="text-xs text-muted-foreground py-4">
-                No more approvals to load
+              <p className="text-xs text-muted-foreground py-3">
+                No more approvals
               </p>
             ) : null}
           </div>
