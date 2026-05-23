@@ -337,7 +337,8 @@ export function ReportFilterModal({
   };
 
   const handleApply = () => {
-    const resolvedUserId = isAllUserType || isAllFranchise ? "all" : filters.userId;
+    const resolvedUserId =
+      isAllUserType || isAllFranchise || !filters.userId ? "all" : filters.userId;
     const selectedUser = userOptions.find((u) => String(u.id) === filters.userId);
     const selectedLead = leadOptions.find(
       (lead) => String(lead.id) === filters.leadId,
