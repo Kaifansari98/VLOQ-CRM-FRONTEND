@@ -8,8 +8,21 @@ import { FileUploadField } from "@/components/custom/file-upload";
 import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { useActOnApprovalRequest } from "@/hooks/useApprovalRequests";
-import { CheckCircle2, XCircle, Calendar, Clock, FileText } from "lucide-react";
+import {
+  useActOnApprovalRequest,
+  useApprovalRequestDetails,
+} from "@/hooks/useApprovalRequests";
+import { ImageComponent } from "@/components/utils/ImageCard";
+import DocumentCard from "@/components/utils/documentCard";
+import {
+  CheckCircle2,
+  XCircle,
+  Calendar,
+  Clock,
+  FileText,
+  Loader2,
+  UserRound,
+} from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -21,6 +34,11 @@ interface Props {
     remark?: string;
   };
 }
+
+const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"]);
+
+const getFileExtension = (fileName: string) =>
+  fileName.split(".").pop()?.toLowerCase() ?? "";
 
 export default function ApprovalRequestActionModal({
   open,
@@ -34,6 +52,8 @@ export default function ApprovalRequestActionModal({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const queryClient = useQueryClient();
   const actionMutation = useActOnApprovalRequest();
+  const { data: approvalRequest, isLoading: isApprovalRequestLoading } =
+    useApprovalRequestDetails(data?.leadId, data?.taskId, open);
 
   const formattedDueDate = useMemo(() => {
     if (!data?.dueDate) return null;
@@ -47,6 +67,21 @@ export default function ApprovalRequestActionModal({
       year: "numeric",
     }).format(parsedDate);
   }, [data?.dueDate]);
+
+  const formattedRaisedAt = useMemo(() => {
+    if (!approvalRequest?.created_at) return null;
+
+    const parsedDate = new Date(approvalRequest.created_at);
+    if (Number.isNaN(parsedDate.getTime())) return approvalRequest.created_at;
+
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(parsedDate);
+  }, [approvalRequest?.created_at]);
 
   const resetState = () => {
     setMode(null);
@@ -129,6 +164,8 @@ export default function ApprovalRequestActionModal({
     );
   };
 
+  const requestDocuments = approvalRequest?.request_documents ?? [];
+
   return (
     <BaseModal
       open={open}
@@ -141,9 +178,48 @@ export default function ApprovalRequestActionModal({
       size="lg"
     >
       <div className="space-y-6 p-6 bg-white">
+        <div className="rounded-lg border border-slate-200 bg-white p-5">
+          {isApprovalRequestLoading ? (
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading approval request details...
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <UserRound className="h-4 w-4 text-slate-600" />
+                  <p className="text-xs font-semibold text-slate-600">
+                    APPROVAL RAISED BY
+                  </p>
+                </div>
+                <p className="text-sm font-medium text-slate-900">
+                  {approvalRequest?.requester?.user_name || "Unknown"}
+                </p>
+                {approvalRequest?.requester?.user_email && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    {approvalRequest.requester.user_email}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-slate-600" />
+                  <p className="text-xs font-semibold text-slate-600">
+                    RAISED ON
+                  </p>
+                </div>
+                <p className="text-sm font-medium text-slate-900">
+                  {formattedRaisedAt || "Not available"}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Request Remark Section */}
-        {data?.remark && (
+        {(approvalRequest?.request_remark || data?.remark) && (
           <div className="rounded-lg bg-white border border-slate-200 p-5">
             {formattedDueDate && (
               <div className="flex-shrink-0 bg-slate-100 border border-slate-200 rounded-lg p-3 w-full mb-5">
@@ -162,8 +238,52 @@ export default function ApprovalRequestActionModal({
               REQUEST DETAILS
             </p>
             <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700 bg-slate-50 rounded p-3 border border-slate-200">
-              {data.remark}
+              {approvalRequest?.request_remark || data?.remark}
             </p>
+          </div>
+        )}
+
+        {!isApprovalRequestLoading && requestDocuments.length > 0 && (
+          <div className="rounded-lg border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <FileText className="h-4 w-4 text-slate-600" />
+              <p className="text-sm font-semibold text-slate-900">
+                Submitted Documents
+              </p>
+            </div>
+
+            <div className="grid gap-3">
+              {requestDocuments.map((doc) => {
+                const extension = getFileExtension(doc.original_name);
+                const isImage = IMAGE_EXTENSIONS.has(extension);
+
+                if (isImage) {
+                  return (
+                    <ImageComponent
+                      key={doc.id}
+                      doc={{
+                        id: doc.id,
+                        doc_og_name: doc.original_name,
+                        signedUrl: doc.signedUrl,
+                        created_at: doc.created_at,
+                      }}
+                    />
+                  );
+                }
+
+                return (
+                  <DocumentCard
+                    key={doc.id}
+                    doc={{
+                      id: doc.id,
+                      originalName: doc.original_name,
+                      signedUrl: doc.signedUrl,
+                      created_at: doc.created_at,
+                    }}
+                  />
+                );
+              })}
+            </div>
           </div>
         )}
 

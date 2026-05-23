@@ -30,6 +30,8 @@ import { toast } from "sonner";
 import { generateSiteHistoryReport } from "@/lib/reports/siteHistoryReport";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import { useAppSelector } from "@/redux/store";
+import { ImageComponent } from "@/components/utils/ImageCard";
+import DocumentCard from "@/components/utils/documentCard";
 
 interface SiteHistoryTabProps {
   leadId: number;
@@ -141,6 +143,19 @@ type ApprovalGroup = {
   response?: ApprovalLog;
 };
 
+const IMAGE_EXTENSIONS = new Set([
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "webp",
+  "bmp",
+  "svg",
+]);
+
+const getFileExtension = (fileName?: string | null) =>
+  fileName?.split(".").pop()?.toLowerCase() ?? "";
+
 export default function SiteHistoryTab({
   leadId,
   vendorId,
@@ -245,7 +260,11 @@ export default function SiteHistoryTab({
   const isApprovalTimeline = activeTab === "approvals";
   const approvalGroups = isApprovalTimeline
     ? [...allLogs]
-        .reverse()
+        .sort(
+          (a, b) =>
+            new Date((a as ApprovalLog).created_at).getTime() -
+            new Date((b as ApprovalLog).created_at).getTime(),
+        )
         .reduce<ApprovalGroup[]>((groups, log) => {
           const typedLog = log as ApprovalLog;
           const status = getApprovalStatus(typedLog.action);
@@ -264,6 +283,11 @@ export default function SiteHistoryTab({
 
           return groups;
         }, [])
+        .sort(
+          (a, b) =>
+            new Date(b.request.created_at).getTime() -
+            new Date(a.request.created_at).getTime(),
+        )
     : [];
 
   // Timeline content for non-approval tabs
@@ -533,23 +557,29 @@ export default function SiteHistoryTab({
                             <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
                               Attachments ({group.request.docs.length})
                             </p>
-                            <div className="mt-1 flex flex-wrap gap-1">
+                            <div className="mt-2 grid gap-3">
                               {group.request.docs.map((doc: any) => (
-                                <a
-                                  key={doc.id}
-                                  href={doc.signedUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
-                                >
-                                  <FileText
-                                    size={10}
-                                    className="text-muted-foreground flex-shrink-0"
+                                IMAGE_EXTENSIONS.has(
+                                  getFileExtension(doc.original_name),
+                                ) ? (
+                                  <ImageComponent
+                                    key={doc.id}
+                                    doc={{
+                                      id: doc.id,
+                                      doc_og_name: doc.original_name,
+                                      signedUrl: doc.signedUrl,
+                                    }}
                                   />
-                                  <span className="max-w-[140px] truncate font-medium">
-                                    {doc.original_name}
-                                  </span>
-                                </a>
+                                ) : (
+                                  <DocumentCard
+                                    key={doc.id}
+                                    doc={{
+                                      id: doc.id,
+                                      originalName: doc.original_name,
+                                      signedUrl: doc.signedUrl,
+                                    }}
+                                  />
+                                )
                               ))}
                             </div>
                           </div>
@@ -652,27 +682,31 @@ export default function SiteHistoryTab({
                             
 
                             {group.response.docs.length > 0 && (
-                              <div className="border-t border-slate-100 pt-1.5 dark:border-slate-800">
-                                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
-                                  Attachments ({group.response.docs.length})
-                                </p>
-                                <div className="mt-1 flex flex-wrap gap-1">
+                              <div className="">
+                                
+                                <div className="mt-2 grid gap-3">
                                   {group.response.docs.map((doc: any) => (
-                                    <a
-                                      key={doc.id}
-                                      href={doc.signedUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
-                                    >
-                                      <FileText
-                                        size={10}
-                                        className="text-muted-foreground flex-shrink-0"
+                                    IMAGE_EXTENSIONS.has(
+                                      getFileExtension(doc.original_name),
+                                    ) ? (
+                                      <ImageComponent
+                                        key={doc.id}
+                                        doc={{
+                                          id: doc.id,
+                                          doc_og_name: doc.original_name,
+                                          signedUrl: doc.signedUrl,
+                                        }}
                                       />
-                                      <span className="max-w-[130px] truncate font-medium">
-                                        {doc.original_name}
-                                      </span>
-                                    </a>
+                                    ) : (
+                                      <DocumentCard
+                                        key={doc.id}
+                                        doc={{
+                                          id: doc.id,
+                                          originalName: doc.original_name,
+                                          signedUrl: doc.signedUrl,
+                                        }}
+                                      />
+                                    )
                                   ))}
                                 </div>
                               </div>

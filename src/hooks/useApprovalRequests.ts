@@ -4,6 +4,7 @@ import {
   ActOnApprovalRequestPayload,
   createApprovalRequest,
   CreateApprovalRequestPayload,
+  getApprovalRequestDetails,
   getApprovalRequestAssignableUsers,
 } from "@/api/approval-requests";
 
@@ -38,5 +39,19 @@ export const useActOnApprovalRequest = () => {
       taskId: number;
       payload: ActOnApprovalRequestPayload;
     }) => actOnApprovalRequest(leadId, taskId, payload),
+  });
+};
+
+export const useApprovalRequestDetails = (
+  leadId?: number,
+  taskId?: number,
+  enabled: boolean = true,
+) => {
+  return useQuery({
+    queryKey: ["approvalRequestDetails", leadId, taskId],
+    queryFn: () => getApprovalRequestDetails(leadId!, taskId!),
+    enabled: enabled && !!leadId && !!taskId,
+    staleTime: 1000 * 30,
+    refetchOnWindowFocus: false,
   });
 };
