@@ -49,6 +49,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useSelfAssignTaskTypes } from "@/hooks/useSelfAssignTaskTypes";
 
 function formatLocalDate(date: Date) {
   const year = date.getFullYear();
@@ -70,12 +71,7 @@ interface Props {
 const formSchema = z
   .object({
     assign_lead_to: z.number().min(1, "Assign lead to is required"),
-    task_type: z.enum([
-      "Final Measurements",
-      "Follow Up",
-      "BookingDone - ISM",
-      "Approval Request",
-    ]),
+    task_type: z.string().min(1, "Task Type is required"),
     due_date: z.string().min(1, "Due Date is required"),
     remark: z.string().optional(),
     current_site_photos: z.array(z.instanceof(File)).optional(),
@@ -140,9 +136,17 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       | null
       | undefined,
   );
+  const isSelfAssignTaskTypeMasterEnabled = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_self_assign_task_type_master_enabed !== false,
+  );
   const userRole = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type
   );
+  const loggedInUserName = useAppSelector(
+    (state) => state.auth.user?.user_name ?? "",
+  );
+  const userTypeId = useAppSelector((state) => state.auth.user?.user_type_id);
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
@@ -237,6 +241,36 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
   const taskType = form.watch("task_type");
   const isApprovalRequestTask = taskType === "Approval Request";
+  const {
+    data: selfAssignTaskTypes = [],
+    isLoading: loadingSelfAssignTaskTypes,
+    error: selfAssignTaskTypesError,
+  } = useSelfAssignTaskTypes(
+    vendorId,
+    userTypeId,
+    isSelfAssignTaskTypeMasterEnabled,
+  );
+  const selfAssignTaskTypeNames = React.useMemo(
+    () =>
+      Array.from(
+        new Set(
+          selfAssignTaskTypes
+            .map((taskType) => taskType.type?.trim())
+            .filter(
+              (taskType): taskType is string =>
+                !!taskType &&
+                ![
+                  "Final Measurements",
+                  "Follow Up",
+                  "BookingDone - ISM",
+                  "Approval Request",
+                ].includes(taskType),
+            ),
+        ),
+      ),
+    [selfAssignTaskTypes],
+  );
+  const isSelfAssignTask = selfAssignTaskTypeNames.includes(taskType);
   const restrictedTaskConflicts = taskConflicts?.restrictedTaskConflicts ?? [];
   const followUpConflicts = taskConflicts?.followUpConflicts ?? [];
   const finalMeasurementsConflict = restrictedTaskConflicts.find(
@@ -314,14 +348,14 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       hasFollowUpPrivilege ? "Follow Up" : null,
       hasBookingDoneIsmPrivilege ? "BookingDone - ISM" : null,
       canShowApprovalRequestOption ? "Approval Request" : null,
-    ].filter(Boolean) as Array<
-      "Final Measurements" | "Follow Up" | "BookingDone - ISM" | "Approval Request"
-    >;
+      ...selfAssignTaskTypeNames,
+    ].filter(Boolean) as string[];
   }, [
     canShowApprovalRequestOption,
     hasBookingDoneIsmPrivilege,
     hasFinalMeasurementPrivilege,
     hasFollowUpPrivilege,
+    selfAssignTaskTypeNames,
   ]);
 
   const { data: followUpUsersData } = useFollowUpUsers(
@@ -403,6 +437,15 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       }));
     }
 
+    if (isSelfAssignTask) {
+      return [
+        {
+          id: userId ?? 0,
+          label: loggedInUserName,
+        },
+      ];
+    }
+
     if (
       vendorCustomUserTypeMode === true &&
       taskType === "Final Measurements"
@@ -470,6 +513,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     followUpTooltip,
     followUpUsersData,
     isCustomUser,
+    isSelfAssignTask,
+    loggedInUserName,
     salesExecutives,
     taskType,
     userId,
@@ -483,6 +528,18 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       form.setValue("remark", "");
     }
   }, [form, taskType]);
+
+  React.useEffect(() => {
+    if (
+      isSelfAssignTask &&
+      userId &&
+      form.getValues("assign_lead_to") !== userId
+    ) {
+      form.setValue("assign_lead_to", userId, {
+        shouldValidate: true,
+      });
+    }
+  }, [form, isSelfAssignTask, userId]);
 
   React.useEffect(() => {
     if (
@@ -663,16 +720,6 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     }
   }, [form, mappedData]);
 
-  console.log("[AssignFM] site_map_link", {
-    value: lead?.site_map_link ?? null,
-    hasValue: Boolean(lead?.site_map_link?.trim()),
-  });
-
-  console.log("[AssignFM] site_map_link", {
-    value: lead?.site_map_link ?? null,
-    hasValue: Boolean(lead?.site_map_link?.trim()),
-  });
-
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       if (values.task_type === "Approval Request") {
@@ -724,10 +771,6 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         return;
       }
 
-      console.log("[AssignFM] site_map_link", {
-        value: lead?.site_map_link ?? null,
-        hasValue: Boolean(lead?.site_map_link?.trim()),
-      });
       if (
         values.task_type === "Final Measurements" &&
         finalMeasurementsConflict
@@ -759,6 +802,14 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       ) {
         toastManager.add({
           title: followUpTooltip,
+          type: "error",
+        });
+        return;
+      }
+
+      if (isSelfAssignTask && values.assign_lead_to !== userId) {
+        toastManager.add({
+          title: "This task type can only be assigned to yourself.",
           type: "error",
         });
         return;
@@ -836,7 +887,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     loadingSupervisors ||
     loadingSalesExecs ||
     loadingCustomFinalMeasurementUsers ||
-    loadingApprovalRequestUsers
+    loadingApprovalRequestUsers ||
+    loadingSelfAssignTaskTypes
   ) {
     return (
       <BaseModal
@@ -854,7 +906,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     supervisorError ||
     salesExecError ||
     customFinalMeasurementUsersError ||
-    approvalRequestUsersError
+    approvalRequestUsersError ||
+    selfAssignTaskTypesError
   ) {
     return (
       <BaseModal
@@ -877,6 +930,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
           ? "Assign Approval Request"
           : form.watch("task_type") === "Follow Up"
           ? "Assign Task for Follow Up"
+          : isSelfAssignTask
+          ? "Assign Task"
           : "Assign Task for Final Site Measurements"
       }
       description={
@@ -884,6 +939,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
           ? "Use this form to assign an approval request."
           : form.watch("task_type") === "Follow Up"
           ? "Use this form to assign a follow up task."
+          : isSelfAssignTask
+          ? "Use this form to assign a task to yourself."
           : "Use this form to assign a final measurement task."
       }
       size="lg"
@@ -944,6 +1001,12 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                           </SelectItem>
                         )}
 
+                        {selfAssignTaskTypeNames.map((taskTypeName) => (
+                          <SelectItem key={taskTypeName} value={taskTypeName}>
+                            {taskTypeName}
+                          </SelectItem>
+                        ))}
+
                         {/* BookingDone - ISM */}
                         {hasBookingDoneIsmPrivilege && (
                           <Tooltip>
@@ -986,9 +1049,10 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                         value={field.value}
                         onChange={field.onChange}
                         disabled={
-                          taskType === "Final Measurements" &&
-                          !!assignedSiteSupervisorId &&
-                          vendorCustomUserTypeMode == null
+                          isSelfAssignTask ||
+                          (taskType === "Final Measurements" &&
+                            !!assignedSiteSupervisorId &&
+                            vendorCustomUserTypeMode == null)
                         }
                       />
                     </FormControl>

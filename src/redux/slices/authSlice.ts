@@ -16,6 +16,7 @@ export interface User {
     vendor_code?: string
     vendor_report_code?: string | null
     eligible_booking_days?: number | null
+    is_self_assign_task_type_master_enabed?: boolean | null
     ["vendor-report-code"]?: string | null
     [key: string]: any
   }

@@ -110,7 +110,7 @@ export const useUploadCurrentSitePhotos = (
 };
 
 export interface AssignToSiteReadinessPayload {
-  task_type: "Site Readiness" | "Follow Up";
+  task_type: string;
   due_date: string;
   remark?: string;
   user_id: number;

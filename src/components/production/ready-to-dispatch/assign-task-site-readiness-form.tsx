@@ -44,6 +44,7 @@ import {
   useApprovalRequestAssignableUsers,
   useCreateApprovalRequest,
 } from "@/hooks/useApprovalRequests";
+import { useSelfAssignTaskTypes } from "@/hooks/useSelfAssignTaskTypes";
 
 function formatLocalDate(date: Date) {
   const year = date.getFullYear();
@@ -56,9 +57,7 @@ function formatLocalDate(date: Date) {
 const formSchema = z
   .object({
     assign_lead_to: z.number().min(1, "Assign lead to is required"),
-    task_type: z.enum(["Site Readiness", "Follow Up", "Approval Request"], {
-      message: "Task Type is required",
-    }),
+    task_type: z.string().min(1, "Task Type is required"),
     due_date: z
       .string()
       .min(1, "Due Date is required")
@@ -123,6 +122,10 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       | null
       | undefined,
   );
+  const isSelfAssignTaskTypeMasterEnabled = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_self_assign_task_type_master_enabed !== false,
+  );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
@@ -130,6 +133,10 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id
   );
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const loggedInUserName = useAppSelector(
+    (state) => state.auth.user?.user_name ?? "",
+  );
+  const userTypeId = useAppSelector((state) => state.auth.user?.user_type_id);
   const router = useRouter();
   const leadId = data?.id!;
   const mutation = useAssignToSiteReadiness(leadId);
@@ -149,7 +156,6 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
         )
       : true;
 
-      console.log("canAssignSiteReadinessForCustomUser log: ", canAssignSiteReadinessForCustomUser)
   const canShowSiteReadinessTaskType =
     isAllowedToAssignSR && canAssignSiteReadinessForCustomUser;
   const dueDateMinDate = React.useMemo(() => {
@@ -215,6 +221,33 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const [approvalFiles, setApprovalFiles] = React.useState<File[]>([]);
   const isApprovalRequestTask = taskType === "Approval Request";
   const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
+  const {
+    data: selfAssignTaskTypes = [],
+    isLoading: loadingSelfAssignTaskTypes,
+    error: selfAssignTaskTypesError,
+  } = useSelfAssignTaskTypes(
+    vendorId,
+    userTypeId,
+    isSelfAssignTaskTypeMasterEnabled,
+  );
+  const selfAssignTaskTypeNames = React.useMemo(
+    () =>
+      Array.from(
+        new Set(
+          selfAssignTaskTypes
+            .map((taskType) => taskType.type?.trim())
+            .filter(
+              (taskType): taskType is string =>
+                !!taskType &&
+                !["Site Readiness", "Follow Up", "Approval Request"].includes(
+                  taskType,
+                ),
+            ),
+        ),
+      ),
+    [selfAssignTaskTypes],
+  );
+  const isSelfAssignTask = selfAssignTaskTypeNames.includes(taskType);
 
   const siteSupervisorList =
     vendorUsers?.data?.site_supervisors?.map((user: any) => ({
@@ -249,6 +282,13 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
           id: user.id,
           label: user.user_name,
         }))
+      : isSelfAssignTask
+      ? [
+          {
+            id: userId ?? 0,
+            label: loggedInUserName,
+          },
+        ]
       : normalizedUserType === "custom"
       ? (followUpUsersData?.data?.users ?? []).map((u: any) => ({
           id: u.id,
@@ -293,17 +333,35 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
 
   // ✅ Auto-select "Follow Up" if Site Readiness is disabled
   React.useEffect(() => {
-    if (isLoadingCurrentSitePhotosCount || !canShowSiteReadinessTaskType) return;
+    if (!open || isLoadingCurrentSitePhotosCount) return;
 
-    form.setValue(
-      "task_type",
-      !isSiteReadinessSelectionDisabled ? "Site Readiness" : "Follow Up"
-    );
+    const currentTaskType = form.getValues("task_type");
+
+    if (
+      isSelfAssignTask ||
+      currentTaskType === "Approval Request" ||
+      currentTaskType === "Follow Up"
+    ) {
+      return;
+    }
+
+    const nextTaskType =
+      canShowSiteReadinessTaskType && !isSiteReadinessSelectionDisabled
+        ? "Site Readiness"
+        : "Follow Up";
+
+    if (currentTaskType !== nextTaskType) {
+      form.setValue("task_type", nextTaskType, {
+        shouldValidate: true,
+      });
+    }
   }, [
     canShowSiteReadinessTaskType,
-    isLoadingCurrentSitePhotosCount,
-    isSiteReadinessSelectionDisabled,
     form,
+    isLoadingCurrentSitePhotosCount,
+    isSelfAssignTask,
+    isSiteReadinessSelectionDisabled,
+    open,
   ]);
 
   React.useEffect(() => {
@@ -314,6 +372,18 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       form.setValue("remark", "");
     }
   }, [form, taskType]);
+
+  React.useEffect(() => {
+    if (
+      isSelfAssignTask &&
+      userId &&
+      form.getValues("assign_lead_to") !== userId
+    ) {
+      form.setValue("assign_lead_to", userId, {
+        shouldValidate: true,
+      });
+    }
+  }, [form, isSelfAssignTask, userId]);
 
   React.useEffect(() => {
     if (
@@ -338,6 +408,19 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       form.resetField("assign_lead_to");
     }
   }, [form, taskType, followUpConflicts, userId]);
+
+  React.useEffect(() => {
+    const selectedUserId = form.getValues("assign_lead_to");
+    if (!selectedUserId) return;
+
+    const isSelectedUserStillAvailable = mappedData.some(
+      (user: { id: number }) => user.id === selectedUserId,
+    );
+
+    if (!isSelectedUserStillAvailable) {
+      form.resetField("assign_lead_to");
+    }
+  }, [form, mappedData]);
 
   React.useEffect(() => {
     if (
@@ -431,6 +514,14 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       return;
     }
 
+    if (isSelfAssignTask && values.assign_lead_to !== userId) {
+      toastManager.add({
+        title: "This task type can only be assigned to yourself.",
+        type: "error",
+      });
+      return;
+    }
+
     const payload: AssignToSiteReadinessPayload = {
       task_type: values.task_type,
       due_date: values.due_date,
@@ -469,7 +560,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     });
   };
 
-  if (loadingUsers || loadingApprovalRequestUsers) {
+  if (loadingUsers || loadingApprovalRequestUsers || loadingSelfAssignTaskTypes) {
     return (
       <BaseModal
         open={open}
@@ -482,8 +573,8 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     );
   }
 
-  if (error || approvalRequestUsersError) {
-    const resolvedError = error || approvalRequestUsersError;
+  if (error || approvalRequestUsersError || selfAssignTaskTypesError) {
+    const resolvedError = error || approvalRequestUsersError || selfAssignTaskTypesError;
     return (
       <BaseModal
         open={open}
@@ -505,6 +596,8 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
           ? "Assign Approval Request"
           : form.watch("task_type") === "Follow Up" || !canShowSiteReadinessTaskType
           ? "Assign Task for Follow Up"
+          : isSelfAssignTask
+          ? "Assign Task"
           : "Assign Task for Site Readiness"
       }
       description={
@@ -512,6 +605,8 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
           ? "Use this form to assign an approval request."
           : form.watch("task_type") === "Follow Up" || !canShowSiteReadinessTaskType
           ? "Use this form to assign a follow up task."
+          : isSelfAssignTask
+          ? "Use this form to assign a task to yourself."
           : "Use this form to assign a task to a Site Supervisor for Site Readiness."
       }
       size="smd"
@@ -561,6 +656,14 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                               Approval Request
                             </SelectItem>
                           )}
+                          {selfAssignTaskTypeNames.map((taskTypeName) => (
+                            <SelectItem
+                              key={taskTypeName}
+                              value={taskTypeName}
+                            >
+                              {taskTypeName}
+                            </SelectItem>
+                          ))}
                         </>
                       ) : (
                         <>
@@ -570,6 +673,14 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                               Approval Request
                             </SelectItem>
                           )}
+                          {selfAssignTaskTypeNames.map((taskTypeName) => (
+                            <SelectItem
+                              key={taskTypeName}
+                              value={taskTypeName}
+                            >
+                              {taskTypeName}
+                            </SelectItem>
+                          ))}
                         </>
                       )}
                     </SelectContent>
@@ -594,7 +705,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                         data={mappedData}
                         value={field.value}
                         onChange={field.onChange}
-                        disabled={shouldLockAssignee}
+                        disabled={shouldLockAssignee || isSelfAssignTask}
                       />
                     </FormControl>
                     <FormMessage />

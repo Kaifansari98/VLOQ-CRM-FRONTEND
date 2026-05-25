@@ -39,6 +39,7 @@ import {
   useApprovalRequestAssignableUsers,
   useCreateApprovalRequest,
 } from "@/hooks/useApprovalRequests";
+import { useSelfAssignTaskTypes } from "@/hooks/useSelfAssignTaskTypes";
 
 interface Props {
   open: boolean;
@@ -53,11 +54,7 @@ interface Props {
 const formSchema = z
   .object({
     assign_lead_to: z.number().min(1, "Assign lead to is required"),
-    task_type: z.enum(
-      ["Initial Site Measurement", "Follow Up", "Approval Request"],
-      {
-      message: "Task Type is required",
-    }),
+    task_type: z.string().min(1, "Task Type is required"),
     due_date: z
       .string()
       .min(1, "Due Date is required")
@@ -107,6 +104,14 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       | null
       | undefined,
   );
+  const isSelfAssignTaskTypeMasterEnabled = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_self_assign_task_type_master_enabed !== false,
+  );
+  const loggedInUserName = useAppSelector(
+    (state) => state.auth.user?.user_name ?? "",
+  );
+  const userTypeId = useAppSelector((state) => state.auth.user?.user_type_id);
   const franchiseId = useAppSelector(
     (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id,
   );
@@ -152,7 +157,6 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const canShowFollowUpOption =
     normalizedUserType === "custom" ? canAssignFollowUpForCustomUser : true;
   const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
-  const isFollowUpOnlyRestricted = !!onlyFollowUp && !canShowApprovalRequestOption;
   const shouldShowInitialSiteMeasurementOption = !onlyFollowUp;
 
   const initialSiteMeasurementTaskConflicts =
@@ -162,6 +166,39 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const [approvalFiles, setApprovalFiles] = React.useState<File[]>([]);
   const isFollowUp = taskType === "Follow Up";
   const isApprovalRequestTask = taskType === "Approval Request";
+  const {
+    data: selfAssignTaskTypes = [],
+    isLoading: loadingSelfAssignTaskTypes,
+    error: selfAssignTaskTypesError,
+  } = useSelfAssignTaskTypes(
+    vendorId,
+    userTypeId,
+    isSelfAssignTaskTypeMasterEnabled,
+  );
+  const selfAssignTaskTypeNames = React.useMemo(
+    () =>
+      Array.from(
+        new Set(
+          selfAssignTaskTypes
+            .map((taskType) => taskType.type?.trim())
+            .filter(
+              (taskType): taskType is string =>
+                !!taskType &&
+                ![
+                  "Initial Site Measurement",
+                  "Follow Up",
+                  "Approval Request",
+                ].includes(taskType),
+            ),
+        ),
+      ),
+    [selfAssignTaskTypes],
+  );
+  const isSelfAssignTask = selfAssignTaskTypeNames.includes(taskType);
+  const isFollowUpOnlyRestricted =
+    !!onlyFollowUp &&
+    !canShowApprovalRequestOption &&
+    selfAssignTaskTypeNames.length === 0;
 
   const {
     data: salesExecutiveUsers,
@@ -267,6 +304,13 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
         id: user.id,
         label: user.user_name,
       }))
+    : isSelfAssignTask
+      ? [
+          {
+            id: userId ?? 0,
+            label: loggedInUserName,
+          },
+        ]
     : isFollowUp
       ? (isCustomUser
           ? eligibleCustomUsers
@@ -291,11 +335,13 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const loadingUsers =
     loadingSalesExecutiveUsers ||
     loadingCustomPrivilegeUsers ||
-    loadingApprovalRequestUsers;
+    loadingApprovalRequestUsers ||
+    loadingSelfAssignTaskTypes;
   const error =
     salesExecutiveUsersError ||
     customPrivilegeUsersError ||
-    approvalRequestUsersError;
+    approvalRequestUsersError ||
+    selfAssignTaskTypesError;
 
   React.useEffect(() => {
     if (isFollowUpOnlyRestricted) {
@@ -351,6 +397,18 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       form.setValue("remark", "");
     }
   }, [form, taskType]);
+
+  React.useEffect(() => {
+    if (
+      isSelfAssignTask &&
+      userId &&
+      form.getValues("assign_lead_to") !== userId
+    ) {
+      form.setValue("assign_lead_to", userId, {
+        shouldValidate: true,
+      });
+    }
+  }, [form, isSelfAssignTask, userId]);
 
   React.useEffect(() => {
     if (taskType !== "Follow Up") return;
@@ -455,6 +513,14 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       return;
     }
 
+    if (isSelfAssignTask && values.assign_lead_to !== userId) {
+      toastManager.add({
+        title: "This task type can only be assigned to yourself.",
+        type: "error",
+      });
+      return;
+    }
+
     const payload: AssignToSiteMeasurementPayload = {
       task_type: values.task_type,
       due_date: values.due_date,
@@ -530,6 +596,8 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
           ? "Assign Approval Request"
           : form.watch("task_type") === "Follow Up" || onlyFollowUp
             ? "Assign Task for Follow Up"
+            : isSelfAssignTask
+              ? "Assign Task"
             : "Assign Task for Initial Site Measurement"
       }
       description={
@@ -537,6 +605,8 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
           ? "Use this form to assign an approval request."
           : form.watch("task_type") === "Follow Up" || onlyFollowUp
             ? "Use this form to assign a follow up task."
+            : isSelfAssignTask
+              ? "Use this form to assign a task to yourself."
             : "Use this form to assign a site measurement task."
       }
       size="smd"
@@ -593,6 +663,14 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                               Approval Request
                             </SelectItem>
                           )}
+                          {selfAssignTaskTypeNames.map((taskTypeName) => (
+                            <SelectItem
+                              key={taskTypeName}
+                              value={taskTypeName}
+                            >
+                              {taskTypeName}
+                            </SelectItem>
+                          ))}
                         </>
                       )}
                     </SelectContent>
@@ -615,6 +693,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                         data={mappedData}
                         value={field.value}
                         onChange={field.onChange}
+                        disabled={isSelfAssignTask}
                       />
                     </FormControl>
                     <FormMessage />
