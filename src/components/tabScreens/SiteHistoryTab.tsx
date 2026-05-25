@@ -145,6 +145,7 @@ type ApprovalGroup = {
 
 type HistoryLog = {
   id: number;
+  task_id?: number | null;
   action: string;
   action_type: string;
   created_at: string;
@@ -418,7 +419,11 @@ export default function SiteHistoryTab({
           const typedLog = log as HistoryLog;
           const parsed = parseTaskHistoryAction(typedLog.action);
 
-          if (!parsed.taskLabel || parsed.type === "created" || groups.length === 0) {
+          if (
+            parsed.type === "created" ||
+            groups.length === 0 ||
+            typedLog.task_id == null
+          ) {
             groups.push({
               taskLabel: parsed.taskLabel ?? "Task Update",
               request: typedLog,
@@ -429,11 +434,15 @@ export default function SiteHistoryTab({
 
           const currentGroup = [...groups]
             .reverse()
-            .find((group) => group.taskLabel === parsed.taskLabel);
+            .find(
+              (group) =>
+                group.request.task_id != null &&
+                group.request.task_id === typedLog.task_id,
+            );
 
           if (!currentGroup) {
             groups.push({
-              taskLabel: parsed.taskLabel,
+              taskLabel: parsed.taskLabel ?? "Task Update",
               request: typedLog,
               events: [],
             });
