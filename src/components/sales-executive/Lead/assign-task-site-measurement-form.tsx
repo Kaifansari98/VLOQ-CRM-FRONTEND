@@ -597,7 +597,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
           : form.watch("task_type") === "Follow Up" || onlyFollowUp
             ? "Assign Task for Follow Up"
             : isSelfAssignTask
-              ? "Assign Task"
+              ? `Assign Task for ${form.watch("task_type")}`
             : "Assign Task for Initial Site Measurement"
       }
       description={
@@ -606,7 +606,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
           : form.watch("task_type") === "Follow Up" || onlyFollowUp
             ? "Use this form to assign a follow up task."
             : isSelfAssignTask
-              ? "Use this form to assign a task to yourself."
+              ? `Use this form to assign a ${form.watch("task_type").toLowerCase()} task to yourself.`
             : "Use this form to assign a site measurement task."
       }
       size="smd"
