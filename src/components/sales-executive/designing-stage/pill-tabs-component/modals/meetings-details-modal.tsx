@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, FileText, Plus } from "lucide-react";
+import { Calendar, FileText, Plus, Tag } from "lucide-react";
 import { getFileExtension, isImageExt } from "@/components/utils/filehelper";
 import BaseModal from "@/components/utils/baseModal";
 import { ImageComponent } from "@/components/utils/ImageCard";
@@ -142,7 +142,7 @@ const MeetingDetailsModal = ({
       >
         <div className="px-6 py-5 space-y-4">
           {/* --- INFO CARDS WRAPPER --- */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* DATE CARD */}
             <div
               className="
@@ -196,6 +196,31 @@ const MeetingDetailsModal = ({
                 </Badge>
               </div>
             </div>
+
+            {meeting.meetingType && (
+              <div
+                className="
+          bg-white dark:bg-neutral-900 
+          border border-border 
+          rounded-2xl p-5 shadow-soft
+          flex flex-col gap-3
+        "
+              >
+                <div className="flex items-center gap-2">
+                  <Tag
+                    size={18}
+                    className="text-gray-600 dark:text-gray-400"
+                  />
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Meeting Type
+                  </span>
+                </div>
+
+                <p className="text-base font-semibold text-heading dark:text-neutral-100">
+                  {meeting.meetingType.type}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* --- DESCRIPTION SECTION --- */}
