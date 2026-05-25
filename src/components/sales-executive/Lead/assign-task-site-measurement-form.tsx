@@ -594,19 +594,19 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       title={
         form.watch("task_type") === "Approval Request"
           ? "Assign Approval Request"
+          : isSelfAssignTask
+            ? `Assign Task for ${form.watch("task_type")}`
           : form.watch("task_type") === "Follow Up" || onlyFollowUp
             ? "Assign Task for Follow Up"
-            : isSelfAssignTask
-              ? `Assign Task for ${form.watch("task_type")}`
             : "Assign Task for Initial Site Measurement"
       }
       description={
         form.watch("task_type") === "Approval Request"
           ? "Use this form to assign an approval request."
+          : isSelfAssignTask
+            ? `Use this form to assign a ${form.watch("task_type").toLowerCase()} task to yourself.`
           : form.watch("task_type") === "Follow Up" || onlyFollowUp
             ? "Use this form to assign a follow up task."
-            : isSelfAssignTask
-              ? `Use this form to assign a ${form.watch("task_type").toLowerCase()} task to yourself.`
             : "Use this form to assign a site measurement task."
       }
       size="smd"

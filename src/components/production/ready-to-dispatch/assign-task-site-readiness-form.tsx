@@ -594,19 +594,19 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       title={
         form.watch("task_type") === "Approval Request"
           ? "Assign Approval Request"
-          : form.watch("task_type") === "Follow Up" || !canShowSiteReadinessTaskType
-          ? "Assign Task for Follow Up"
           : isSelfAssignTask
           ? `Assign Task for ${form.watch("task_type")}`
+          : form.watch("task_type") === "Follow Up" || !canShowSiteReadinessTaskType
+          ? "Assign Task for Follow Up"
           : "Assign Task for Site Readiness"
       }
       description={
         form.watch("task_type") === "Approval Request"
           ? "Use this form to assign an approval request."
-          : form.watch("task_type") === "Follow Up" || !canShowSiteReadinessTaskType
-          ? "Use this form to assign a follow up task."
           : isSelfAssignTask
           ? `Use this form to assign a ${form.watch("task_type").toLowerCase()} task to yourself.`
+          : form.watch("task_type") === "Follow Up" || !canShowSiteReadinessTaskType
+          ? "Use this form to assign a follow up task."
           : "Use this form to assign a task to a Site Supervisor for Site Readiness."
       }
       size="smd"
