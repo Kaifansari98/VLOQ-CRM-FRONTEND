@@ -37,6 +37,8 @@ interface LeadTrackingReportRow {
   ol_date: string | null;
   production_start_date: string | null;
   production_completion_date: string | null;
+  production_erd_date?: string | null;
+  ready_to_dispatch_date?: string | null;
   site_readiness_scheduled_date: string | null;
   site_readiness_completion_date: string | null;
   dispatch_planning_done_date: string | null;
@@ -125,7 +127,9 @@ function buildLeadTrackingSheet(
     "TC Approval Date",
     "OL Date",
     "Production Start Date",
+    "Production ERD Date",
     "Production Completion Date",
+    "Ready to Dispatch Date",
     "Site Readiness Scheduled Date",
     "Site Readiness Completion Date",
     "Dispatch Planning Done Date",
@@ -157,7 +161,9 @@ function buildLeadTrackingSheet(
     { key: "tcApprovalDate", width: 18 },
     { key: "olDate", width: 18 },
     { key: "productionStartDate", width: 18 },
+    { key: "productionErdDate", width: 18 },
     { key: "productionCompletionDate", width: 22 },
+    { key: "readyToDispatchDate", width: 22 },
     { key: "siteReadinessScheduledDate", width: 22 },
     { key: "siteReadinessCompletionDate", width: 22 },
     { key: "dispatchPlanningDoneDate", width: 22 },
@@ -226,7 +232,9 @@ function buildLeadTrackingSheet(
       formatDate(entry.tc_approval_date),
       formatDate(entry.ol_date),
       formatDate(entry.production_start_date),
+      formatDate(entry.production_erd_date),
       formatDate(entry.production_completion_date),
+      formatDate(entry.ready_to_dispatch_date),
       formatDate(entry.site_readiness_scheduled_date),
       formatDate(entry.site_readiness_completion_date),
       formatDate(entry.dispatch_planning_done_date),
