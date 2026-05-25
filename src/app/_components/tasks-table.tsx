@@ -59,6 +59,7 @@ import FinalMeasurementTaskModal from "@/components/tasks/FinalMeasurementTaskMo
 import OrderLoginCompletedTaskModal from "@/components/tasks/OrderLoginCompletedTaskModal";
 import PreProdCompletedTaskModal from "@/components/tasks/PreProdCompletedTaskModal";
 import { useFranchisesByVendorId } from "@/api/franchise";
+import { useVendorSelfAssignTaskTypes } from "@/hooks/useSelfAssignTaskTypes";
 import {
   Popover,
   PopoverContent,
@@ -67,6 +68,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ListFilter, XCircle } from "lucide-react";
+import SelfAssignTaskModal from "@/components/self-assign-task-modal";
 
 function FranchiseFilter({
   value,
@@ -251,12 +253,25 @@ const MyTaskTable = () => {
   const [rowAction, setRowAction] =
     useState<DataTableRowAction<ProcessedTask> | null>(null);
   const [openFollowUp, setOpenFollowUp] = useState(false);
+  const [openSelfAssignTask, setOpenSelfAssignTask] = useState(false);
   const [openOrderLoginCompleted, setOpenOrderLoginCompleted] =
     useState(false);
   const [openPreProdCompleted, setOpenPreProdCompleted] = useState(false);
   const [openMiscTaskModal, setOpenMiscTaskModal] = useState(false);
 
   const showScopeToggle = isAdminUser;
+  const {
+    data: selfAssignTaskTypes = [],
+  } = useVendorSelfAssignTaskTypes(vendorId, !!vendorId);
+  const selfAssignTaskTypeNames = useMemo(
+    () =>
+      new Set(
+        selfAssignTaskTypes
+          .map((taskType) => taskType.type?.trim())
+          .filter((taskType): taskType is string => !!taskType),
+      ),
+    [selfAssignTaskTypes],
+  );
 
   // ✅ ACTIVE STATE SELECTION
   const activePagination =
@@ -507,6 +522,12 @@ const MyTaskTable = () => {
           variant: "Pending Work",
         });
         setOpenFollowUp(true);
+      } else if (selfAssignTaskTypeNames.has(row.taskType)) {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "selfassigntask",
+        });
+        setOpenSelfAssignTask(true);
       } else if (row.taskType === "Assign a Site Supervisor") {
         router.push(
           `/dashboard/leads/booking-stage/details/${row.leadId}?accountId=${row.accountId}`,
@@ -598,7 +619,7 @@ const MyTaskTable = () => {
         console.log("follow up is under development");
       }
     },
-    [router],
+    [router, selfAssignTaskTypeNames],
   );
 
   // Process leads into table data
@@ -1066,6 +1087,19 @@ const MyTaskTable = () => {
           id: rowAction?.row.original.leadId || 0,
           accountId: rowAction?.row.original.accountId || 0,
           taskId: rowAction?.row.original.id || 0,
+          remark: rowAction?.row.original.remark,
+          dueDate: rowAction?.row.original.dueDate,
+        }}
+      />
+
+      <SelfAssignTaskModal
+        open={openSelfAssignTask}
+        onOpenChange={setOpenSelfAssignTask}
+        data={{
+          id: rowAction?.row.original.leadId || 0,
+          accountId: rowAction?.row.original.accountId || 0,
+          taskId: rowAction?.row.original.id || 0,
+          taskType: rowAction?.row.original.taskType || "",
           remark: rowAction?.row.original.remark,
           dueDate: rowAction?.row.original.dueDate,
         }}

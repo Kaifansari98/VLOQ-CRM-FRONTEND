@@ -11,12 +11,12 @@ export interface SelfAssignTaskType {
 
 const getSelfAssignTaskTypes = async (
   vendorId: number,
-  userTypeId: number,
+  userTypeId?: number,
 ): Promise<SelfAssignTaskType[]> => {
   const { data } = await apiClient.get("/vendors/self-assign-task-types", {
     params: {
       vendor_id: vendorId,
-      user_type_id: userTypeId,
+      ...(userTypeId ? { user_type_id: userTypeId } : {}),
     },
   });
 
@@ -30,8 +30,21 @@ export const useSelfAssignTaskTypes = (
 ) => {
   return useQuery({
     queryKey: ["selfAssignTaskTypes", vendorId, userTypeId],
-    queryFn: () => getSelfAssignTaskTypes(vendorId!, userTypeId!),
+    queryFn: () => getSelfAssignTaskTypes(vendorId!, userTypeId),
     enabled: enabled && !!vendorId && !!userTypeId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useVendorSelfAssignTaskTypes = (
+  vendorId?: number,
+  enabled: boolean = true,
+) => {
+  return useQuery({
+    queryKey: ["vendorSelfAssignTaskTypes", vendorId],
+    queryFn: () => getSelfAssignTaskTypes(vendorId!),
+    enabled: enabled && !!vendorId,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });

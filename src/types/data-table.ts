@@ -56,6 +56,7 @@ export interface DataTableRowAction<TData> {
     | "Follow Up"
     | "Pending Materials"
     | "Pending Work"
+    | "selfassigntask"
     | "sitereadinessstage"
     | "productionready"
     | "bookingdoneism"
