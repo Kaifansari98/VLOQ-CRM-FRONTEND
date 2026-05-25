@@ -15,6 +15,7 @@ export interface User {
     vendor_name?: string
     vendor_code?: string
     vendor_report_code?: string | null
+    eligible_booking_days?: number | null
     ["vendor-report-code"]?: string | null
     [key: string]: any
   }

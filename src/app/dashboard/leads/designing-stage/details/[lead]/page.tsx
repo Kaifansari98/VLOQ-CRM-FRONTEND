@@ -87,6 +87,28 @@ import {
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 
+const startOfDay = (date: Date) =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+const addDays = (date: Date, days: number) => {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+};
+
+const formatDisplayDate = (value?: string | Date | null) => {
+  if (!value) return "";
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+};
+
 export default function DesigningStageLead() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -105,6 +127,9 @@ export default function DesigningStageLead() {
 
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
+  );
+  const eligibleBookingDaysValue = useAppSelector(
+    (state) => state.auth.user?.vendor?.eligible_booking_days ?? null,
   );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
@@ -130,8 +155,6 @@ export default function DesigningStageLead() {
       ? (canUploadQuotation || canUploadMeetings || canUploadDesigns)
       : canAccessDessingTodoTab(userType);
 
-
-        
   const canMoveToBooking =
     countsData?.QuotationDoc > 0 && countsData?.DesignsDoc > 0;
   const canViewSiteHistory = canViewSiteHistoryTab(userType);
@@ -158,25 +181,59 @@ export default function DesigningStageLead() {
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
   const isChatNotification = useIsChatNotification();
+  const normalizedUserType = userType?.toLowerCase() ?? "";
+  const isSuperAdmin = normalizedUserType === "super-admin";
+  const eligibleBookingDays =
+    eligibleBookingDaysValue == null
+      ? null
+      : Number(eligibleBookingDaysValue);
+  const leadCreatedAt = lead?.created_at ? new Date(lead.created_at) : null;
+  const hasEligibleBookingWindow =
+    typeof eligibleBookingDays === "number" &&
+    Number.isFinite(eligibleBookingDays) &&
+    eligibleBookingDays > 0;
+  const bookingEligibleOn =
+    leadCreatedAt &&
+    !Number.isNaN(leadCreatedAt.getTime()) &&
+    hasEligibleBookingWindow
+      ? addDays(startOfDay(leadCreatedAt), eligibleBookingDays + 1)
+      : null;
+  const isBookingLockedByEligibleDays =
+    !isSuperAdmin &&
+    !!bookingEligibleOn &&
+    startOfDay(new Date()) < bookingEligibleOn;
+  const bookingLockTooltip =
+    isBookingLockedByEligibleDays && bookingEligibleOn
+      ? `This lead cannot be moved to Booking yet. Booking is locked for ${eligibleBookingDays} full day${eligibleBookingDays === 1 ? "" : "s"} from the lead creation date and will unlock on ${formatDisplayDate(bookingEligibleOn)}. Lead created on ${formatDisplayDate(leadCreatedAt)}.`
+      : "";
+  const moveToBookingTooltip = !canMoveToBooking
+    ? "Requires at least 1 Quotation and 1 Design"
+    : isBookingLockedByEligibleDays
+      ? bookingLockTooltip
+      : !canPerformMoveToBooking
+        ? "You don't have permission to move this lead to booking stage"
+        : "";
+  const canOpenBookingModal =
+    canMoveToBooking &&
+    canPerformMoveToBooking &&
+    !isBookingLockedByEligibleDays;
 
   useEffect(() => {
     if (isLoading || isChatNotification) return;
 
-    // ✅ Only auto-open if user can move to booking, but not admin/super-admin
+    // Auto-open only when booking is actually allowed for this user.
     if (
-      canPerformMoveToBooking &&
-      canMoveToBooking &&
-      userType?.toLowerCase() !== "admin" &&
-      userType?.toLowerCase() !== "super-admin"
+      canOpenBookingModal &&
+      normalizedUserType !== "admin" &&
+      normalizedUserType !== "super-admin"
     ) {
       setBookingOpenLead(true);
     }
   }, [
     isLoading,
     isChatNotification,
-    userType,
-    canMoveToBooking,
-    canPerformMoveToBooking,
+    normalizedUserType,
+    canOpenBookingModal,
   ]);
 
   const canReassign =
@@ -317,7 +374,7 @@ export default function DesigningStageLead() {
         <div className="flex items-center space-x-2">
           <div>
             {/* Move to Booking */}
-            {!canMoveToBooking ? (
+            {!canMoveToBooking || isBookingLockedByEligibleDays ? (
               <CustomeTooltip
                 truncateValue={
                   <div className="flex items-center opacity-50 cursor-not-allowed px-2">
@@ -325,7 +382,8 @@ export default function DesigningStageLead() {
                     Move To Booking
                   </div>
                 }
-                value="Requires at least 1 Quotation and 1 Design"
+                value={moveToBookingTooltip}
+                contentClassName="max-w-80 text-center"
               />
             ) : canPerformMoveToBooking ? (
               <Button
@@ -343,7 +401,8 @@ export default function DesigningStageLead() {
                     Move To Booking
                   </div>
                 }
-                value="You don't have permission to move this lead to booking stage"
+                value={moveToBookingTooltip}
+                contentClassName="max-w-80 text-center"
               />
             )}
           </div>
@@ -378,7 +437,7 @@ export default function DesigningStageLead() {
                 Assign Task
               </DropdownMenuItem>
               {/* Move to Booking */}
-              {canPerformMoveToBooking && canMoveToBooking ? (
+              {canOpenBookingModal ? (
                 <DropdownMenuItem onClick={() => setBookingOpenLead(true)}>
                   <ClipboardCheck className="h-4 w-4" />
                   Move To Booking
@@ -391,11 +450,8 @@ export default function DesigningStageLead() {
                       Move To Booking
                     </div>
                   }
-                  value={
-                    !canMoveToBooking
-                      ? "Requires at least 1 Quotation and 1 Design"
-                      : "You don't have permission to move this lead to booking stage"
-                  }
+                  value={moveToBookingTooltip}
+                  contentClassName="max-w-80 text-center"
                 />
               )}
 
@@ -473,7 +529,11 @@ export default function DesigningStageLead() {
           if (val === "projects") {
             if (canMoveToBooking) {
               // ✅ If booking possible → open BookingModal directly
-              setBookingOpenLead(true);
+              if (canOpenBookingModal) {
+                setBookingOpenLead(true);
+              } else {
+                setActiveTab("details");
+              }
             } else {
               // ✅ Otherwise behave like Lead Details tab
               setActiveTab("details");
