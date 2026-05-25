@@ -5,6 +5,7 @@ import {
   GetDesigningStageResponse,
   GetDesignsResponse,
   GetMeetingsResponse,
+  MeetingTypeMaster,
 } from "@/types/designing-stage-types";
 
 // ✅ Define the response type (adjust fields once API shape is confirmed)
@@ -97,11 +98,12 @@ export const submitQuotation = async (
 
 export interface SubmitMeetingPayload {
   files: File[];
-  desc: string;
+  desc?: string;
   date: string;
   vendorId: number;
   leadId: number;
   userId: number;
+  meeting_type_id?: number;
 }
 
 export interface SubmitDesignPayload {
@@ -118,7 +120,12 @@ export const submitMeeting = async (payload: SubmitMeetingPayload) => {
   formData.append("vendorId", payload.vendorId.toString());
   formData.append("userId", payload.userId.toString());
   formData.append("date", new Date(payload.date).toISOString()); // safer
-  formData.append("desc", payload.desc);
+  if (payload.desc != null) {
+    formData.append("desc", payload.desc);
+  }
+  if (payload.meeting_type_id) {
+    formData.append("meeting_type_id", payload.meeting_type_id.toString());
+  }
 
   payload.files.forEach((file) => {
     formData.append("files", file);
@@ -141,6 +148,18 @@ export const getMeetings = async (
     `/leads/designing-stage/${vendorId}/${leadId}/design-meetings`,
   );
   return data;
+};
+
+export const getMeetingTypes = async (
+  vendorId: number,
+): Promise<MeetingTypeMaster[]> => {
+  const { data } = await apiClient.get<{
+    success: boolean;
+    message: string;
+    data: MeetingTypeMaster[];
+  }>(`/leads/designing-stage/vendor/${vendorId}/meeting-types`);
+
+  return data.data ?? [];
 };
 
 export const submitDesigns = async (payload: SubmitDesignPayload) => {

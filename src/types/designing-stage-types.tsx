@@ -305,13 +305,27 @@ export interface Meeting {
   lead_id: number;
   account_id: number;
   vendor_id: number;
+  meeting_type_id?: number | null;
   date: string;
   desc: string;
   created_by: number;
   updated_by: number | null;
   created_at: string;
   updated_at: string | null;
+  meetingType?: {
+    id: number;
+    vendor_id: number;
+    type: string;
+    created_at: string;
+  } | null;
   designMeetingDocsMapping: DesignMeetingDocsMapping[];
+}
+
+export interface MeetingTypeMaster {
+  id: number;
+  vendor_id: number;
+  type: string;
+  created_at: string;
 }
 
 // API Response interface

@@ -14,6 +14,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import TextAreaInput from "@/components/origin-text-area";
 import { Button } from "@/components/ui/button";
@@ -23,10 +30,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { submitMeeting } from "@/api/designingStageQueries";
 import { toastManager } from "@/components/ui/toast";
 import BaseModal from "@/components/utils/baseModal";
+import { useGetMeetingTypes } from "@/hooks/designing-stage/use-meeting-types";
 
 export const meetingSchema = z.object({
   date: z.string().min(1, "Meeting date is required"),
-  desc: z.string().min(1, "Meeting description is required"),
+  meeting_type_id: z.number().optional(),
+  desc: z.string().optional(),
   files: z.array(z.custom<File>()).optional(),
 });
 
@@ -44,6 +53,8 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
   const { leadId } = useDetails();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id)!;
   const userId = useAppSelector((s) => s.auth.user?.id)!;
+  const { data: meetingTypes = [] } = useGetMeetingTypes(vendorId);
+  const hasMeetingTypes = meetingTypes.length > 0;
 
   const queryClient = useQueryClient();
 
@@ -51,6 +62,7 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
     resolver: zodResolver(meetingSchema),
     defaultValues: {
       date: "",
+      meeting_type_id: undefined,
       desc: "",
       files: [],
     },
@@ -60,11 +72,12 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
     mutationFn: (values: MeetingFormValues) =>
       submitMeeting({
         files: values.files ?? [],
-        desc: values.desc,
+        desc: values.desc?.trim() || "",
         date: values.date,
         vendorId,
         leadId,
         userId,
+        meeting_type_id: values.meeting_type_id,
       }),
     onSuccess: () => {
       toastManager.add({ title: "Meeting added successfully!", type: "success" });
@@ -85,6 +98,22 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
   });
 
   const onSubmit = (values: MeetingFormValues) => {
+    if (hasMeetingTypes && !values.meeting_type_id) {
+      form.setError("meeting_type_id", {
+        type: "manual",
+        message: "Meeting type is required",
+      });
+      return;
+    }
+
+    if (!hasMeetingTypes && !values.desc?.trim()) {
+      form.setError("desc", {
+        type: "manual",
+        message: "Meeting description is required",
+      });
+      return;
+    }
+
     mutation.mutate(values);
   };
 
@@ -117,6 +146,39 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
             )}
           />
 
+          {hasMeetingTypes && (
+            <FormField
+              control={form.control}
+              name="meeting_type_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Meeting Type</FormLabel>
+                  <FormControl>
+                    <Select
+                      value={field.value ? String(field.value) : undefined}
+                      onValueChange={(value) => field.onChange(Number(value))}
+                    >
+                      <SelectTrigger className="text-sm w-full">
+                        <SelectValue placeholder="Select meeting type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {meetingTypes.map((meetingType) => (
+                          <SelectItem
+                            key={meetingType.id}
+                            value={String(meetingType.id)}
+                          >
+                            {meetingType.type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
           {/* Description */}
           <FormField
             control={form.control}
@@ -126,7 +188,7 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
                 <FormLabel className="text-sm">Meeting Description</FormLabel>
                 <FormControl>
                   <TextAreaInput
-                    value={field.value}
+                    value={field.value ?? ""}
                     onChange={field.onChange}
                     placeholder="Enter meeting details"
                     className="min-h-[120px]"
