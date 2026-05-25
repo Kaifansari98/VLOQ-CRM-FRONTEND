@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { FolderOpen, Upload, Loader2, CheckCircle2 } from "lucide-react";
+import { FolderOpen, Upload, Loader2, CheckCircle2, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { toastManager } from "@/components/ui/toast";
@@ -13,6 +13,7 @@ import {
   useUploadPreProductionFiles,
   useMarkPreProdDone,
 } from "@/api/production/production-api";
+import { updateLeadProductStructureInstance } from "@/api/leads";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { useDeleteDocument } from "@/api/leads";
 import {
@@ -37,6 +38,7 @@ import {
   useLeadStatus,
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
+import TextAreaInput from "@/components/origin-text-area";
 
 interface PreProductionFilesSectionProps {
   leadId: number;
@@ -98,12 +100,14 @@ export default function PreProductionFilesSection({
     (inst: any) => Number(inst.id) === effectiveInstanceId,
   );
   const isPreProdDone = currentInstance?.is_pre_prod_done === true;
+  const normalizedRemark = currentInstance?.pre_prod_remark ?? "";
 
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [remark, setRemark] = useState(normalizedRemark);
 
   const hasFiles = Array.isArray(files) && files.length > 0;
 
@@ -142,6 +146,12 @@ export default function PreProductionFilesSection({
           "production.production.pre_production_files.mark_pre_prod_done_action",
         )
       : canViewAndWork;
+  const canEditPreProdRemark =
+    userType === "super-admin" || userType === "pre-prod";
+
+  useEffect(() => {
+    setRemark(normalizedRemark);
+  }, [normalizedRemark]);
 
   const handleMarkPreProdDone = async () => {
     if (!effectiveInstanceId || !userId) return;
@@ -205,6 +215,45 @@ export default function PreProductionFilesSection({
         title:
           error?.response?.data?.message ||
           "Failed to upload pre-production files.",
+        type: "error",
+      });
+    }
+  };
+
+  const handleRemarkUpdate = async () => {
+    if (!vendorId || !effectiveInstanceId || !currentInstance) {
+      toastManager.add({
+        title: "Product structure instance not found.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!remark.trim()) {
+      toastManager.add({ title: "Remark cannot be empty.", type: "error" });
+      return;
+    }
+
+    try {
+      await updateLeadProductStructureInstance(vendorId, leadId, effectiveInstanceId, {
+        product_structure_id: currentInstance.product_structure_id,
+        title: currentInstance.title,
+        description: currentInstance.description ?? "",
+        pre_prod_remark: remark,
+        updated_by: userId,
+      });
+
+      toastManager.add({
+        title: normalizedRemark ? "Remark updated!" : "Remark added!",
+        type: "success",
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["lead-product-structure-instances", leadId, vendorId],
+      });
+    } catch (error: any) {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update remark.",
         type: "error",
       });
     }
@@ -323,6 +372,31 @@ export default function PreProductionFilesSection({
                   </>
                 )}
               </Button>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-semibold tracking-tight">Remark</p>
+
+              <TextAreaInput
+                value={remark}
+                onChange={setRemark}
+                maxLength={500}
+                placeholder="Add any notes related to pre-production..."
+                className="h-[130px] bg-muted/20 rounded-lg"
+                disabled={!canEditPreProdRemark}
+              />
+
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={handleRemarkUpdate}
+                  disabled={!remark.trim() || !canEditPreProdRemark}
+                  className="flex items-center gap-2"
+                >
+                  <Paperclip size={16} />
+                  {normalizedRemark ? "Update Remark" : "Add Remark"}
+                </Button>
+              </div>
             </div>
           </div>
         )}
