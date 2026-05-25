@@ -204,7 +204,7 @@ export default function DesigningStageLead() {
     startOfDay(new Date()) < bookingEligibleOn;
   const bookingLockTooltip =
     isBookingLockedByEligibleDays && bookingEligibleOn
-      ? `This lead cannot be moved to Booking yet. Booking is locked for ${eligibleBookingDays} full day${eligibleBookingDays === 1 ? "" : "s"} from the lead creation date and will unlock on ${formatDisplayDate(bookingEligibleOn)}. Lead created on ${formatDisplayDate(leadCreatedAt)}.`
+      ? `Booking is locked for ${eligibleBookingDays} full day${eligibleBookingDays === 1 ? "" : "s"} and will unlock on ${formatDisplayDate(bookingEligibleOn)}.`
       : "";
   const moveToBookingTooltip = !canMoveToBooking
     ? "Requires at least 1 Quotation and 1 Design"
