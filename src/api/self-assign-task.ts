@@ -20,7 +20,7 @@ export const updateSelfAssignTask = async (
   payload: UpdateSelfAssignTaskPayload,
 ) => {
   const { data } = await apiClient.patch(
-    `/tasks/leadId/${leadId}/taskId/${taskId}/update-self-assign-task`,
+    `/leads/tasks/leadId/${leadId}/taskId/${taskId}/update-self-assign-task`,
     payload,
   );
 
@@ -33,7 +33,7 @@ export const rescheduleSelfAssignTask = async (
   payload: RescheduleSelfAssignTaskPayload,
 ) => {
   const { data } = await apiClient.patch(
-    `/tasks/leadId/${leadId}/taskId/${taskId}/reschedule-self-assign-task`,
+    `/leads/tasks/leadId/${leadId}/taskId/${taskId}/reschedule-self-assign-task`,
     payload,
   );
 
