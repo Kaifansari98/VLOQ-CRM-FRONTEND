@@ -18,6 +18,7 @@ import {
   Drill,
   BarChart3,
   MapPinned,
+  Building2,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -254,6 +255,18 @@ const data = {
       ],
     },
   ],
+  masterAdminNav: [
+    {
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: LayoutDashboard,
+    },
+    {
+      title: "Vendors",
+      url: "/dashboard/vendors",
+      icon: Building2,
+    },
+  ],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -295,6 +308,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isTrackTraceEnabled = user?.vendor?.is_tracktrace_enabled === true;
   const canSeeOverallLeads = userType === "admin" || userType === "super-admin";
   const isSuperAdmin = userType === "super-admin";
+  const isMasterAdmin = userType === "master-admin";
   const shouldBootstrapFranchise =
     userType === "admin" || userType === "super-admin";
   const canSeeMiscLeads =
@@ -340,6 +354,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     : data.user;
 
   const { navItems, trackTraceItems, inventoryItems, mastersItems } = React.useMemo(() => {
+    // master-admin only sees Dashboard + Vendors — no CRM pipeline nav
+    if (isMasterAdmin) {
+      return {
+        navItems: data.masterAdminNav,
+        trackTraceItems: [],
+        inventoryItems: [],
+        mastersItems: [],
+      };
+    }
+
     const environment = (
       process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION"
     ).toUpperCase();
@@ -569,6 +593,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     mounted,
     canSeeOverallLeads,
     isSuperAdmin,
+    isMasterAdmin,
     miscLeadsCount,
     isMiscLeadLoading,
     userType,
@@ -580,6 +605,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const teams = React.useMemo(() => {
     if (!user) return [];
+
+    // master-admin always sees "Furnix CRM" as the org entry
+    if (isMasterAdmin) {
+      return [
+        {
+          id: 0,
+          name: "Furnix CRM",
+          logo: GalleryVerticalEnd,
+          plan: "vloq.info@gmail.com",
+        },
+      ];
+    }
 
     const activeFranchise = franchises.find(
       (franchise) => franchise.id === franchiseId,
@@ -610,7 +647,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       logo: GalleryVerticalEnd,
       plan: (franchise.franchise_code ?? user?.user_type?.user_type) || "",
     }));
-  }, [user, isSuperAdmin, franchises, franchiseId]);
+  }, [user, isMasterAdmin, isSuperAdmin, franchises, franchiseId]);
 
   const sidebarStyle: React.CSSProperties = {
     ...(sidebarBg && {

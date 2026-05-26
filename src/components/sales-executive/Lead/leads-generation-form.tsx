@@ -517,7 +517,7 @@ export default function LeadsGenerationForm({
   );
 
   const similarLeadErrorMessage =
-    "Similar lead already exists in the CRM, Hence it connot be created.";
+    "Similar lead already exists in the CRM, Hence it cannot be created.";
 
   const handleDuplicateCheck = (
     field: "contact_no" | "alt_contact_no" | "email"

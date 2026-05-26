@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Download, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -11,6 +13,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTableMonthFilter } from "@/components/data-table/data-table-month-filter";
+import { useAppSelector } from "@/redux/store";
+import { generateFactoryCalendarReport } from "@/lib/reports/factoryCalendarReport";
 import { cn } from "@/lib/utils";
 import type {
   FactoryERDCalendarItem,
@@ -67,10 +71,17 @@ export default function FactoryERDCalendarTable({
   isLoadingERD,
   isLoadingDispatches,
 }: FactoryERDCalendarTableProps) {
+  const user = useAppSelector((state) => state.auth.user);
+  const vendorReportCode =
+    user?.vendor?.vendor_report_code ||
+    user?.vendor?.["vendor-report-code"] ||
+    user?.vendor?.vendor_code ||
+    `VENDOR_${user?.vendor_id ?? "REPORT"}`;
   const [activeTab, setActiveTab] = useState<TabId>("pending");
   const [monthFilter, setMonthFilter] = useState<MonthFilterValue>(
     getCurrentMonthFilter
   );
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const isLoading = activeTab === "pending" ? isLoadingERD : isLoadingDispatches;
   const meta = TAB_META[activeTab];
@@ -101,34 +112,78 @@ export default function FactoryERDCalendarTable({
     });
   }, [dispatchData, monthFilter]);
 
+  const exportRows = activeTab === "pending" ? filteredERD : filteredDispatches;
+
+  const handleDownload = async () => {
+    if (exportRows.length === 0 || isDownloading) return;
+
+    setIsDownloading(true);
+    try {
+      await generateFactoryCalendarReport({
+        activeTab,
+        month: monthFilter.month,
+        year: monthFilter.year,
+        vendorReportCode,
+        rows: exportRows,
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <Card className="w-full border flex flex-col bg-background">
       <div className="flex items-start justify-between gap-3 pl-4 pr-3 pb-1">
-        <div className="flex flex-col gap-1">
+        <div className="flex w-full flex-col gap-1">
           <span className="text-sm font-medium">{meta.title}</span>
           <span className="text-xs text-muted-foreground">{meta.subtitle}</span>
-          <div className="flex w-full items-center gap-1 mt-4">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "text-xs px-2.5 py-1 rounded-md font-medium transition-colors whitespace-nowrap",
-                  activeTab === tab.id
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <div className="mt-4 flex w-full items-center justify-between gap-4">
+            <div className="flex items-center gap-1">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "text-xs px-2.5 py-1 rounded-md font-medium transition-colors whitespace-nowrap",
+                    activeTab === tab.id
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            
           </div>
         </div>
+        <div className="flex flex-col items-end">
+
+
         <DataTableMonthFilter
           title="Filter By Month"
           value={monthFilter}
           onChange={(value) => setMonthFilter(value ?? getCurrentMonthFilter())}
         />
+        <Button
+              size="sm"
+              className="gap-2 shrink-0 mt-5"
+              disabled={isDownloading || exportRows.length === 0}
+              onClick={handleDownload}
+            >
+              {isDownloading ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin shrink-0" />
+                  <span className="truncate text-xs">Preparing...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="size-3.5" />
+                  Download
+                </>
+              )}
+            </Button>
+        </div>
       </div>
 
       <CardContent className="p-0 flex-1 px-4">
