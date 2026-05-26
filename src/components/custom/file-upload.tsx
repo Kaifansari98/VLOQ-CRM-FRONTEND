@@ -32,10 +32,10 @@ export function FileUploadField({
   accept,
   multiple = true,
   disabled,
-  maxFiles,
+  maxFiles, // Kept for type compatibility but ignored for 'multiple' uploads
 }: FileUploadFieldProps) {
   const finalAccept = accept ?? "*/*";
-  const finalMaxFiles = maxFiles ?? (multiple ? 20 : 1);
+  const finalMaxFiles = multiple ? undefined : 1;
 
   // Upload simulation
   const onUpload: NonNullable<FileUploadProps["onUpload"]> = React.useCallback(
@@ -144,8 +144,8 @@ export function FileUploadField({
           </p>
           <p className="text-muted-foreground text-xs">
             {multiple
-              ? `On click to browse (max ${finalMaxFiles} files allowed)`
-              : `On click to browse (only 1 file allowed`}
+              ? `On click to browse files`
+              : `On click to browse (only 1 file allowed)`}
           </p>
         </div>
         <FileUploadTrigger asChild>
