@@ -23,6 +23,9 @@ import {
   checkContactOrEmailExists,
   ContactOrEmailCheckPayload,
   ContactOrEmailCheckResult,
+  checkSimilarLeadExists,
+  SimilarLeadCheckPayload,
+  SimilarLeadCheckResult,
   getLeadProductStructureInstances,
   uploadMoreSitePhotos,
 } from "@/api/leads";
@@ -385,6 +388,17 @@ export const useCheckContactOrEmailExists = () => {
   >({
     mutationFn: ({ vendorId, payload }) =>
       checkContactOrEmailExists(vendorId, payload),
+  });
+};
+
+export const useCheckSimilarLeadExists = () => {
+  return useMutation<
+    SimilarLeadCheckResult,
+    Error,
+    { vendorId: number; payload: SimilarLeadCheckPayload }
+  >({
+    mutationFn: ({ vendorId, payload }) =>
+      checkSimilarLeadExists(vendorId, payload),
   });
 };
 

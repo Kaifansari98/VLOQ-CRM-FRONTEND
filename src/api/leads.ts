@@ -133,6 +133,21 @@ export interface ContactOrEmailCheckResult {
   } | null;
 }
 
+export interface SimilarLeadCheckPayload {
+  phone_number: string;
+  product_types: number[];
+  product_structures: number[];
+}
+
+export interface SimilarLeadCheckResult {
+  exists: boolean;
+  lead: {
+    lead_id: number;
+    lead_code: string | null;
+    lead_name: string;
+  } | null;
+}
+
 export interface AssignToPayload {
   assign_to: number;
   assign_by: number;
@@ -432,6 +447,17 @@ export const checkContactOrEmailExists = async (
     payload,
   );
   return data?.data as ContactOrEmailCheckResult;
+};
+
+export const checkSimilarLeadExists = async (
+  vendorId: number,
+  payload: SimilarLeadCheckPayload,
+): Promise<SimilarLeadCheckResult> => {
+  const { data } = await apiClient.post(
+    `/leads/vendorId/${vendorId}/check-similar-lead`,
+    payload,
+  );
+  return data?.data as SimilarLeadCheckResult;
 };
 
 export const assignLeadToAnotherSalesExecutive = async (

@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type FocusEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -48,7 +55,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import AssignToPicker from "@/components/assign-to-picker";
 import { useRouter } from "next/navigation";
-import { useCheckContactOrEmailExists } from "@/hooks/useLeadsQueries";
+import {
+  useCheckContactOrEmailExists,
+  useCheckSimilarLeadExists,
+} from "@/hooks/useLeadsQueries";
 import {
   Tooltip,
   TooltipContent,
@@ -160,6 +170,12 @@ export default function LeadsGenerationForm({
     alt_contact_no: string;
     email: string;
   }>({ contact_no: "", alt_contact_no: "", email: "" });
+  const [similarLeadWarning, setSimilarLeadWarning] = useState<{
+    lead_id: number;
+    lead_code: string | null;
+    lead_name: string;
+  } | null>(null);
+  const [lastSimilarLeadCheckKey, setLastSimilarLeadCheckKey] = useState("");
 
   const [savedMapLocation, setSavedMapLocation] = useState<{
     lat: number;
@@ -354,6 +370,7 @@ export default function LeadsGenerationForm({
 
   const queryClient = useQueryClient();
   const checkContactMutation = useCheckContactOrEmailExists();
+  const checkSimilarLeadMutation = useCheckSimilarLeadExists();
 
   // fetch data once at top of component (after form etc.)
   const { data: vendorUsers, isLoading: isVendorUsersLoading } =
@@ -418,6 +435,90 @@ export default function LeadsGenerationForm({
     return value.replace(/\D/g, "");
   };
 
+  const resetSimilarLeadValidation = useCallback(() => {
+    setSimilarLeadWarning(null);
+    setLastSimilarLeadCheckKey("");
+  }, []);
+
+  const getSimilarLeadCheckPayload = useCallback(() => {
+    const phoneNumber = normalizePhone(form.getValues("contact_no"));
+    const productTypes = (form.getValues("product_types") || [])
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value));
+    const productStructures = (form.getValues("product_structures") || [])
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value));
+
+    if (!phoneNumber || productTypes.length === 0 || productStructures.length === 0) {
+      return null;
+    }
+
+    const signature = [
+      phoneNumber,
+      [...productTypes].sort((a, b) => a - b).join(","),
+      [...productStructures].sort((a, b) => a - b).join(","),
+    ].join("|");
+
+    return {
+      signature,
+      payload: {
+        phone_number: phoneNumber,
+        product_types: productTypes,
+        product_structures: productStructures,
+      },
+    };
+  }, [form]);
+
+  const handleSimilarLeadCheck = useCallback(() => {
+    if (!vendorId) return;
+
+    const details = getSimilarLeadCheckPayload();
+    if (!details) {
+      resetSimilarLeadValidation();
+      return;
+    }
+
+    if (lastSimilarLeadCheckKey === details.signature) return;
+    setLastSimilarLeadCheckKey(details.signature);
+
+    checkSimilarLeadMutation.mutate(
+      { vendorId, payload: details.payload },
+      {
+        onSuccess: (res) => {
+          setSimilarLeadWarning(res?.exists ? res.lead : null);
+        },
+        onError: (err: any) => {
+          setLastSimilarLeadCheckKey("");
+          toastManager.add({
+            title: err?.message || "Could not verify similar lead",
+            type: "error",
+          });
+        },
+      }
+    );
+  }, [
+    checkSimilarLeadMutation,
+    getSimilarLeadCheckPayload,
+    lastSimilarLeadCheckKey,
+    resetSimilarLeadValidation,
+    vendorId,
+  ]);
+
+  const handleSimilarityFieldBlur = useCallback(
+    (event: FocusEvent<HTMLElement>) => {
+      const nextFocused = event.relatedTarget;
+      if (nextFocused && event.currentTarget.contains(nextFocused as Node)) {
+        return;
+      }
+
+      handleSimilarLeadCheck();
+    },
+    [handleSimilarLeadCheck]
+  );
+
+  const similarLeadErrorMessage =
+    "Similar lead already exists in the CRM, Hence it connot be created.";
+
   const handleDuplicateCheck = (
     field: "contact_no" | "alt_contact_no" | "email"
   ) => {
@@ -481,6 +582,11 @@ export default function LeadsGenerationForm({
   };
 
   function onSubmit(values: FormValues) {
+    if (similarLeadWarning) {
+      toastManager.add({ title: similarLeadErrorMessage, type: "error" });
+      return;
+    }
+
     if (!vendorId || !createdBy || !franchiseId) {
       toastManager.add({ title: "User authentication required", type: "error" });
       return;
@@ -699,17 +805,27 @@ export default function LeadsGenerationForm({
                     placeholder="Enter phone number"
                     className="text-sm"
                     value={field.value}
-                    onChange={(val) => field.onChange(val)}
+                    onChange={(val) => {
+                      field.onChange(val);
+                      resetSimilarLeadValidation();
+                    }}
                     onBlur={() => {
                       field.onBlur();
                       handleDuplicateCheck("contact_no");
-                    }}validateIndianNumber={true}
+                      handleSimilarLeadCheck();
+                    }}
+                    validateIndianNumber={true}
                   />
                 </FormControl>
                 {/* <FormDescription className="text-xs">
                     Primary phone number.
                   </FormDescription> */}
                 <FormMessage />
+                {similarLeadWarning && (
+                  <p className="text-sm font-medium text-destructive">
+                    {similarLeadErrorMessage}
+                  </p>
+                )}
               </FormItem>
             )}
           />
@@ -957,6 +1073,7 @@ export default function LeadsGenerationForm({
           items={structureQuantityItems}
           className="mt-2"
           onRemove={(removeIndex) => {
+            resetSimilarLeadValidation();
             const current = form.getValues("product_structures") || [];
             const next = current.filter((_, index) => index !== removeIndex);
             form.setValue("product_structures", next, {
@@ -986,24 +1103,32 @@ export default function LeadsGenerationForm({
 
               return (
                 <FormItem>
-                  <FormLabel className="text-sm">Furniture Type *</FormLabel>
+                <FormLabel className="text-sm">Furniture Type *</FormLabel>
 
                   {isProductTypesLoading ? (
                     <p className="text-xs text-muted-foreground">Loading...</p>
                   ) : (
-                    <AssignToPicker
-                      data={pickerData}
-                      value={
-                        field.value?.length ? Number(field.value[0]) : undefined
-                      } // ✅ array → single
-                      onChange={(selectedId) => {
-                        field.onChange(selectedId ? [String(selectedId)] : []); // ✅ single → array
-                      }}
-                      placeholder="Search furniture type..."
-                    />
+                    <div onBlurCapture={handleSimilarityFieldBlur}>
+                      <AssignToPicker
+                        data={pickerData}
+                        value={
+                          field.value?.length ? Number(field.value[0]) : undefined
+                        }
+                        onChange={(selectedId) => {
+                          resetSimilarLeadValidation();
+                          field.onChange(selectedId ? [String(selectedId)] : []);
+                        }}
+                        placeholder="Search furniture type..."
+                      />
+                    </div>
                   )}
 
                   <FormMessage />
+                  {similarLeadWarning && (
+                    <p className="text-sm font-medium text-destructive">
+                      {similarLeadErrorMessage}
+                    </p>
+                  )}
                 </FormItem>
               );
             }}
@@ -1038,12 +1163,16 @@ export default function LeadsGenerationForm({
                     Furniture Structure *
                   </FormLabel>
                   <FormControl>
-                    <Tooltip {...(shouldShowMaxTooltip ? { open: true } : {})}>
+                  <Tooltip {...(shouldShowMaxTooltip ? { open: true } : {})}>
                       <TooltipTrigger asChild>
-                        <div className="w-full">
+                        <div
+                          className="w-full"
+                          onBlurCapture={handleSimilarityFieldBlur}
+                        >
                           <MultipleSelector
                             value={selectedOptions} // Pass Option[] with proper labels
                             onChange={(selectedOptions) => {
+                              resetSimilarLeadValidation();
                               const nextOptions = isKitchenSingleSelect
                                 ? selectedOptions.slice(-1)
                                 : selectedOptions;
@@ -1081,12 +1210,17 @@ export default function LeadsGenerationForm({
                           {tooltipMessage}
                         </TooltipContent>
                       )}
-                    </Tooltip>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
+                  </Tooltip>
+                </FormControl>
+                <FormMessage />
+                {similarLeadWarning && (
+                  <p className="text-sm font-medium text-destructive">
+                    {similarLeadErrorMessage}
+                  </p>
+                )}
+              </FormItem>
+            );
+          }}
           />
         </div>
 
@@ -1280,7 +1414,11 @@ export default function LeadsGenerationForm({
           <Button
             type="submit"
             className="text-sm"
-            disabled={createLeadMutation.isPending}
+            disabled={
+              createLeadMutation.isPending ||
+              checkSimilarLeadMutation.isPending ||
+              Boolean(similarLeadWarning)
+            }
           >
             {createLeadMutation.isPending ? "Creating..." : "Create Lead"}
           </Button>
