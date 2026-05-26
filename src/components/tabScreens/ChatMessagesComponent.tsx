@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
-import { Loader2, Download } from "lucide-react";
+import { Loader2, Download, CornerUpLeft } from "lucide-react";
 import { useInView } from "react-intersection-observer";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
 import DocumentCard from "../utils/documentCard";
+import type { LeadChatMessage } from "@/api/lead-chats";
 import {
   useLeadChatMembers,
   useLeadChatMessages,
@@ -17,12 +18,14 @@ interface ChatMessagesComponentProps {
   leadId: number;
   vendorId: number;
   userId: number;
+  onReply?: (message: LeadChatMessage) => void;
 }
 
 export default function ChatMessagesComponent({
   leadId,
   vendorId,
   userId,
+  onReply,
 }: ChatMessagesComponentProps) {
   const {
     data,
@@ -39,6 +42,9 @@ export default function ChatMessagesComponent({
   const previousScrollTop = useRef(0);
   const isInitialMount = useRef(true);
   const hasScrolledToMessage = useRef(false);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<number | null>(
+    null
+  );
   const searchParams = useSearchParams();
   const messageIdParam = Number(searchParams.get("messageId"));
 
@@ -195,6 +201,38 @@ export default function ChatMessagesComponent({
   const escapeRegex = (value: string) =>
     value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+  const scrollToMessage = (messageId: number) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const target = container.querySelector(
+      `[data-message-id="${messageId}"]`
+    ) as HTMLElement | null;
+
+    if (!target) return;
+
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightedMessageId(messageId);
+    window.setTimeout(() => {
+      setHighlightedMessageId((current) => (current === messageId ? null : current));
+    }, 1800);
+  };
+
+  const getReplyPreviewText = (message: LeadChatMessage) => {
+    if (message.reply_to?.message_text?.trim()) {
+      return message.reply_to.message_text.trim();
+    }
+
+    if (message.reply_to?.attachment_name) {
+      const count = message.reply_to.attachment_count;
+      return count > 1
+        ? `Document: ${message.reply_to.attachment_name} +${count - 1} more`
+        : `Document: ${message.reply_to.attachment_name}`;
+    }
+
+    return "Message";
+  };
+
   const renderMessageText = (
     text: string,
     mentions: { id: number; user_name: string }[] | undefined,
@@ -317,9 +355,17 @@ export default function ChatMessagesComponent({
                 <div
                   key={message.id}
                   data-message-id={message.id}
-                  className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                  className={`flex transition-colors ${
+                    isMine ? "justify-end" : "justify-start"
+                  } ${
+                    highlightedMessageId === message.id ? "rounded-2xl bg-primary/5" : ""
+                  }`}
                 >
-                  <div className={`flex max-w-[75%] gap-2 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+                  <div
+                    className={`flex max-w-[75%] gap-2 ${
+                      isMine ? "flex-row-reverse" : "flex-row"
+                    }`}
+                  >
                     <div className="flex-shrink-0">
                       {showAvatar ? (
                         <Avatar className="h-8 w-8">
@@ -332,12 +378,50 @@ export default function ChatMessagesComponent({
                       )}
                     </div>
 
-                    <div className={`group relative flex flex-col gap-1 ${isMine ? "items-end" : "items-start"}`}>
+                    <div
+                      className={`group flex min-w-0 items-start gap-2 ${
+                        isMine ? "flex-row-reverse" : "flex-row"
+                      }`}
+                    >
+                      <div
+                        className={`relative flex min-w-0 flex-col gap-1 ${
+                          isMine ? "items-end" : "items-start"
+                        }`}
+                      >
                       {!isMine && showAvatar && (
                         <div className="mb-0.5 flex items-center gap-2 px-3 text-xs">
                           <span className="font-semibold text-foreground">{meta?.name || "Unknown"}</span>
                           {meta?.role && <span className="text-muted-foreground">{meta.role}</span>}
                         </div>
+                      )}
+
+                      {message.reply_to && (
+                        <button
+                          type="button"
+                          onClick={() => scrollToMessage(message.reply_to!.id)}
+                          className={`w-full max-w-sm rounded-xl border px-3 py-2 text-left transition-colors ${
+                            isMine
+                              ? "border-primary-foreground/20 bg-primary/80 text-primary-foreground hover:bg-primary/75"
+                              : "border-border bg-background hover:bg-muted/60"
+                          }`}
+                        >
+                          <p
+                            className={`text-[11px] font-semibold ${
+                              isMine ? "text-primary-foreground/90" : "text-primary"
+                            }`}
+                          >
+                            {message.reply_to.sender_name}
+                          </p>
+                          <p
+                            className={`truncate text-xs ${
+                              isMine
+                                ? "text-primary-foreground/80"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {getReplyPreviewText(message)}
+                          </p>
+                        </button>
                       )}
 
                       {/* Images Grid */}
@@ -389,6 +473,18 @@ export default function ChatMessagesComponent({
                       <div className="px-1 text-[10px] text-muted-foreground">
                         {format(new Date(message.created_at), "h:mm a")}
                       </div>
+                      </div>
+
+                      {!isMine && onReply && (
+                        <button
+                          type="button"
+                          onClick={() => onReply(message)}
+                          aria-label="Reply to message"
+                          className="mt-7 shrink-0 self-start rounded-full bg-background p-2 text-muted-foreground opacity-0 shadow-sm ring-1 ring-border transition-all hover:bg-muted hover:text-foreground group-hover:opacity-100"
+                        >
+                          <CornerUpLeft className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
