@@ -302,8 +302,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser
       : normalizedUserType === "admin" ||
-        normalizedUserType === "super-admin" ||
-        (normalizedUserType === "sales-executive" && isBookingStage);
+      normalizedUserType === "super-admin" ||
+      (normalizedUserType === "sales-executive" && isBookingStage);
   const currentProductTypeId =
     lead?.productMappings?.[0]?.product_type_id ||
     lead?.productMappings?.[0]?.productType?.id ||
@@ -425,11 +425,11 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const canUploadSitePhotos =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.add_current_site_photos",
-        )
+        "leads.open_leads.details_of_lead.add_current_site_photos",
+      )
       : userType === "admin" ||
-        userType === "super-admin" ||
-        (userType === "sales-executive" && leadStage === "open");
+      userType === "super-admin" ||
+      (userType === "sales-executive" && leadStage === "open");
 
   // ✅ 11. EVENT HANDLERS
   const handleOpenProductTypeEdit = () => {
@@ -489,10 +489,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     setEditStructure((prev) =>
       prev
         ? {
-            ...prev,
-            product_structure_id: selectedId,
-            title: selectedStructure?.type?.trim() || prev.title || "",
-          }
+          ...prev,
+          product_structure_id: selectedId,
+          title: selectedStructure?.type?.trim() || prev.title || "",
+        }
         : prev,
     );
     if (editStructureError) setEditStructureError("");
@@ -580,14 +580,24 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         createdBy: userId,
         files: uploadFiles,
       });
-      toastManager.add({ title: "Site photos uploaded successfully!", type: "success" });
-      setUploadFiles([]);
-      setUploadOpen(false);
-      queryClient.invalidateQueries({
-        queryKey: ["lead", leadId, vendorId, userId],
+
+      toastManager.add({
+        title: "Site photos uploaded successfully",
+        type: "success",
       });
+
     } catch (error: any) {
-      toastManager.add({ title: error?.response?.data?.message || "Failed to upload site photos.", type: "error" });
+
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload site photos";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 
@@ -669,23 +679,23 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 />
                 {(structureSummary.total > 0 ||
                   structureSummary.uniqueStructures > 0) && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    {structureSummary.total > 0 && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
-                        <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
-                        {structureSummary.total} instance
-                        {structureSummary.total === 1 ? "" : "s"}
-                      </span>
-                    )}
-                    {structureSummary.uniqueStructures > 0 && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
-                        <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
-                        {structureSummary.uniqueStructures} structure
-                        {structureSummary.uniqueStructures === 1 ? "" : "s"}
-                      </span>
-                    )}
-                  </div>
-                )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {structureSummary.total > 0 && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
+                          <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
+                          {structureSummary.total} instance
+                          {structureSummary.total === 1 ? "" : "s"}
+                        </span>
+                      )}
+                      {structureSummary.uniqueStructures > 0 && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
+                          <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
+                          {structureSummary.uniqueStructures} structure
+                          {structureSummary.uniqueStructures === 1 ? "" : "s"}
+                        </span>
+                      )}
+                    </div>
+                  )}
               </div>
 
               {isStructuresLoading ? (
@@ -1308,9 +1318,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                       setAddStructure((prev) =>
                         prev
                           ? {
-                              ...prev,
-                              product_structure_id: selectedId,
-                            }
+                            ...prev,
+                            product_structure_id: selectedId,
+                          }
                           : prev,
                       );
                       if (editStructureError) setEditStructureError("");
@@ -1376,7 +1386,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 onChange={handleUploadFilesChange}
                 accept=".jpg,.jpeg,.png"
                 multiple
-                maxFiles={10}
+                maxSizeMB={400}
+                maxFiles={50}
               />
               <div className="flex justify-end gap-2">
                 <Button
