@@ -4,13 +4,16 @@ import { validateSessionApi } from "@/api/auth";
 import { forceClientLogout } from "@/lib/sessionCleanup";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useAppDispatch } from "@/redux/store";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
 
 export function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const dispatch = useAppDispatch();
+  const authUser = useAppSelector((state) => state.auth.user);
+  const authToken = useAppSelector((state) => state.auth.token);
   const [isReady, setIsReady] = useState(false);
+  const hasReduxSession = Boolean(authUser && authToken);
 
   useEffect(() => {
     if (pathname === "/login") {
@@ -50,6 +53,10 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, [dispatch, pathname, router]);
+
+  if (pathname !== "/login" && !hasReduxSession) {
+    return null;
+  }
 
   if (!isReady) return null;
 
