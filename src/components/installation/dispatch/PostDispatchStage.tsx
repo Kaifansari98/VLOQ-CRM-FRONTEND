@@ -106,8 +106,16 @@ export default function PostDispatchStage({
         queryKey: ["postDispatchDocuments", vendorId, leadId],
       });
     } catch (error: any) {
-      toastManager.add({ title: error?.response?.data?.message ||
-          "Failed to upload Post Dispatch documents.", type: "error" });
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload Post Dispatch documents.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 

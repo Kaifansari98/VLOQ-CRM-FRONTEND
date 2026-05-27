@@ -202,7 +202,16 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
         queryKey: ["orderLoginPoFiles", vendorId, leadId, orderLoginId],
       });
     } catch (error: any) {
-      toastManager.add({ title: error?.response?.data?.message || "Failed to upload PO files.", type: "error" });
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload PO files.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 
@@ -221,7 +230,16 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
 
       setConfirmDelete(null);
     } catch (err: any) {
-      toastManager.add({ title: err?.message || "Failed to delete document", type: "error" });
+      const errorMessage =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to delete document";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     } finally {
       setDeleting(false);
     }

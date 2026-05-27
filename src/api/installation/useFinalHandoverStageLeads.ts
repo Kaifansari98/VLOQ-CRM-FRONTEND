@@ -176,10 +176,6 @@ export const useUploadFinalHandoverDocuments = () => {
         queryKey: ["finalHandoverStageLeads"],
       });
     },
-
-    onError: (err: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: err?.response?.data?.message || "Failed to upload documents", type: "error" });
-    },
   });
 };
 

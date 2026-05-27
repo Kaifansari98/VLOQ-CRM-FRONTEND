@@ -149,8 +149,14 @@ export default function PostProductionQcPhotosSection({
 
       await refetchCompleteness();
     } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload QC photos.";
+
       toastManager.add({
-        title: error?.response?.data?.message || "Failed to upload QC photos.",
+        title: errorMessage,
         type: "error",
       });
     }

@@ -128,8 +128,17 @@ export default function UploadDispatchDocument({
       queryClient.invalidateQueries({
         queryKey: ["allLeadDocuments"],
       });
-    } catch (error) {
-      toastManager.add({ title: "Failed to upload files.", type: "error" });
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload files.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 

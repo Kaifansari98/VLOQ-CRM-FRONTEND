@@ -155,9 +155,15 @@ export default function InstallationDayWiseReports({
           handleAddModalChange(false);
           refetch();
         },
-        onError: (error) => {
+        onError: (error: any) => {
+          const errorMessage =
+            error?.response?.data?.error ||
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to upload report";
+
           toastManager.add({
-            title: error?.message || "Failed to upload report",
+            title: errorMessage,
             type: "error",
           });
         },

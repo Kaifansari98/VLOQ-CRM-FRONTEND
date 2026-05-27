@@ -259,9 +259,18 @@ export default function UsableHandover({
       queryClient.invalidateQueries({
         queryKey: ["allLeadDocuments"],
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading files:", error);
-      toastManager.add({ title: "Failed to upload files.", type: "error" });
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload files.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 

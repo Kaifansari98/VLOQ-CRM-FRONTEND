@@ -191,8 +191,14 @@ export default function WoodworkPackingDetailsSection({
 
       await refetchCompleteness();
     } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Upload failed.";
+
       toastManager.add({
-        title: error?.response?.data?.message || "Upload failed.",
+        title: errorMessage,
         type: "error",
       });
     }
@@ -222,8 +228,14 @@ export default function WoodworkPackingDetailsSection({
         ],
       });
     } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to update remark.";
+
       toastManager.add({
-        title: error?.response?.data?.message || "Failed to update remark.",
+        title: errorMessage,
         type: "error",
       });
     }

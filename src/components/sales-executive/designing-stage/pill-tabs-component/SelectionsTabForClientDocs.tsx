@@ -654,8 +654,14 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         queryKey: ["getSelectionData", vendorId, leadId],
       });
     } catch (e: any) {
+      const errorMessage =
+        e?.response?.data?.error ||
+        e?.response?.data?.message ||
+        e?.message ||
+        "Some selections failed to update";
+
       toastManager.add({
-        title: e?.message || "Some selections failed to update",
+        title: errorMessage,
         type: "error",
       });
     }
@@ -854,8 +860,14 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         queryKey: ["allLeadDocuments"],
       });
     } catch (e: any) {
+      const errorMessage =
+        e?.response?.data?.error ||
+        e?.response?.data?.message ||
+        e?.message ||
+        "Failed to upload files";
+
       toastManager.add({
-        title: e?.response?.data?.message || "Failed to upload files",
+        title: errorMessage,
         type: "error",
       });
     }

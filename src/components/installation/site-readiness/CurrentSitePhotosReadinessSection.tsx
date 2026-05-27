@@ -122,10 +122,14 @@ export default function CurrentSitePhotosReadinessSection({
         queryKey: ["allLeadDocuments"],
       });
     } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload Current Site Photos.";
+
       toastManager.add({
-        title:
-          error?.response?.data?.message ||
-          "Failed to upload Current Site Photos.",
+        title: errorMessage,
         type: "error",
       });
     }
