@@ -31,6 +31,8 @@ import {
   updateLeadProductType,
   deleteLeadProductStructureInstance,
   createLeadProductStructureInstance,
+  getLeadProductStructureInstances,
+  LeadProductStructureInstance,
 } from "@/api/leads";
 import MultipleSelector, { Option } from "@/components/ui/multiselect";
 import StructureQuantityCards from "@/components/sales-executive/Lead/structure-quantity-cards";
@@ -57,13 +59,13 @@ import { toastError } from "@/lib/utils";
 // ✅ Utility: Normalize phone numbers to E.164 format
 const toE164 = (number?: string, countryCode?: string): string => {
   if (!number) return "";
-  
+
   // Already in E.164 format
   if (number.startsWith("+")) return number;
-  
+
   // Has country code from backend
   if (countryCode) return `${countryCode}${number}`;
-  
+
   // Fallback to India (adjust if needed for your use case)
   return `+91${number}`;
 };
@@ -74,25 +76,48 @@ const priorityOptions = [
   { id: "Low", label: "Low" },
 ] as const;
 
-// Form validation schema
-const formSchema = z.object({
-  // Required fields
+const isPhoneValueValid = (value?: string) => {
+  if (!value || value.trim() === "") return false;
+  try {
+    const parsed = parsePhoneNumber(value);
+    return Boolean(parsed && parsed.isValid());
+  } catch (error) {
+    const digitsOnly = value.replace(/\D/g, "");
+    return digitsOnly.length >= 10;
+  }
+};
+
+const requiredPhoneField = z
+  .string()
+  .min(1, "Phone number is required")
+  .refine(isPhoneValueValid, "Please enter a valid phone number");
+
+const optionalPhoneField = z
+  .string()
+  .optional()
+  .refine(
+    (value) => !value || value.trim() === "" || isPhoneValueValid(value),
+    {
+      message: "Please enter a valid alternate phone number",
+    },
+  );
+
+const optionalDateField = z
+  .string()
+  .optional()
+  .refine(
+    (val) => {
+      if (!val) return true;
+      const today = new Date().toISOString().split("T")[0];
+      return val >= today;
+    },
+    { message: "Initial site measurement date cannot be in the past" },
+  );
+
+const completeFormSchema = z.object({
   firstname: z.string().trim().min(1, "First name is required").max(300),
   lastname: z.string().trim().min(1, "Last name is required").max(300),
-
-  contact_no: z
-    .string()
-    .min(1, "Phone number is required")
-    .refine((val) => {
-      try {
-        const parsed = parsePhoneNumber(val);
-        return parsed && parsed.isValid();
-      } catch (error) {
-        const digitsOnly = val.replace(/\D/g, "");
-        return digitsOnly.length >= 10;
-      }
-    }, "Please enter a valid phone number"),
-
+  contact_no: requiredPhoneField,
   email: z
     .string()
     .trim()
@@ -103,40 +128,45 @@ const formSchema = z.object({
   site_map_link: z.string().optional().or(z.literal("")),
   source_id: z.string().min(1, "Please select a source"),
   priority: z.enum(["High", "Medium", "Low"]),
-
-  // Optional fields
-  alt_contact_no: z
-    .string()
-    .optional()
-    .refine((val) => {
-      if (!val || val.trim() === "") return true;
-      try {
-        const parsed = parsePhoneNumber(val);
-        return parsed && parsed.isValid();
-      } catch (error) {
-        const digitsOnly = val.replace(/\D/g, "");
-        return digitsOnly.length >= 10;
-      }
-    }, "Please enter a valid alternate phone number"),
-
+  alt_contact_no: optionalPhoneField,
   archetech_name: z.string().max(300).optional(),
   designer_remark: z.string().max(2000).optional(),
   product_types: z.array(z.string()).optional(),
   product_structures: z.array(z.string()).optional(),
-  initial_site_measurement_date: z
+  initial_site_measurement_date: optionalDateField,
+});
+
+const draftFormSchema = z.object({
+  firstname: z.string().max(300).optional(),
+  lastname: z.string().max(300).optional(),
+  contact_no: z
     .string()
     .optional()
     .refine(
-      (val) => {
-        if (!val) return true;
-        const today = new Date().toISOString().split("T")[0];
-        return val >= today;
+      (value) => !value || value.trim() === "" || isPhoneValueValid(value),
+      {
+        message: "Please enter a valid phone number",
       },
-      { message: "Initial site measurement date cannot be in the past" }
     ),
+  email: z
+    .string()
+    .trim()
+    .email("Please enter a valid email")
+    .or(z.literal("")),
+  site_type_id: z.string().optional(),
+  site_address: z.string().max(2000).optional(),
+  site_map_link: z.string().optional().or(z.literal("")),
+  source_id: z.string().optional(),
+  priority: z.enum(["High", "Medium", "Low"]).or(z.literal("")),
+  alt_contact_no: optionalPhoneField,
+  archetech_name: z.string().max(300).optional(),
+  designer_remark: z.string().max(2000).optional(),
+  product_types: z.array(z.string()).optional(),
+  product_structures: z.array(z.string()).optional(),
+  initial_site_measurement_date: optionalDateField,
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<typeof draftFormSchema>;
 
 interface EditLeadFormProps {
   leadData: any;
@@ -145,6 +175,7 @@ interface EditLeadFormProps {
 
 export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   const [isLoadingLead, setIsLoadingLead] = useState(false);
+  const [isDraftLead, setIsDraftLead] = useState(false);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const createdBy = useAppSelector((state) => state.auth.user?.id);
   const queryClient = useQueryClient();
@@ -170,35 +201,17 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     useState<number[]>([]);
 
   const updateLeadMutation = useMutation({
-    mutationFn: async (payload: EditLeadPayload) => {
-      const result = await updateLead(payload, leadData.id, createdBy!);
-      return result;
-    },
-    onSuccess: (data) => {
-      console.log("✅ Mutation onSuccess:", data);
-      toastManager.add({ title: "Lead updated successfully!", type: "success" });
-
-      queryClient.invalidateQueries({
-        queryKey: ["lead", leadData.id, vendorId, createdBy],
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: ["universal-stage-leads"],
-        exact: false,
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: ["vendorUserLeads", vendorId, createdBy],
-      });
-      onClose();
-    },
-    onError: (error: any) => {
-      toastManager.add({ title: error?.response?.data?.message || "Failed to update lead", type: "error" });
-    },
+    mutationFn: async (payload: EditLeadPayload) =>
+      updateLead(payload, leadData.id, createdBy!),
   });
 
+  const resolver = useMemo(
+    () => zodResolver(isDraftLead ? draftFormSchema : completeFormSchema),
+    [isDraftLead],
+  );
+
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver,
     defaultValues: {
       firstname: "",
       lastname: "",
@@ -222,6 +235,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   const {
     formState: { dirtyFields },
   } = form;
+  const watchedValues = form.watch();
 
   // Product type & structure hooks
   const { data: productStructures, isLoading: isStructuresLoading } =
@@ -234,9 +248,8 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
 
   const selectedTypeId = selectedProductTypes?.[0];
   const selectedTypeLabel =
-    productTypes?.data?.find(
-      (type: any) => String(type.id) === selectedTypeId
-    )?.type || "";
+    productTypes?.data?.find((type: any) => String(type.id) === selectedTypeId)
+      ?.type || "";
   const normalizedType = selectedTypeLabel.toLowerCase();
   const hasSelectedFurnitureType = Boolean(selectedTypeId);
 
@@ -266,14 +279,14 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           value: String(p.id),
           label: p.type,
         })) ?? [],
-    [parentFilter, productStructures?.data]
+    [parentFilter, productStructures?.data],
   );
 
   const buildStructureDetails = useCallback(
     (
       nextIds: string[],
       prevIds: string[],
-      prevDetails: { title: string; desc: string }[]
+      prevDetails: { title: string; desc: string }[],
     ) => {
       const buckets = new Map<string, { title: string; desc: string }[]>();
       prevIds.forEach((id, index) => {
@@ -292,7 +305,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         return { title: option?.label || id, desc: "" };
       });
     },
-    [structureOptions]
+    [structureOptions],
   );
 
   useEffect(() => {
@@ -342,7 +355,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           index,
         };
       }),
-    [selectedProductStructures, structureInstanceDetails, structureOptions]
+    [selectedProductStructures, structureInstanceDetails, structureOptions],
   );
 
   useEffect(() => {
@@ -364,30 +377,34 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     if (onlySelections.length !== 1 || current.length !== 1) {
       form.setValue("product_structures", [onlyId], { shouldValidate: true });
     }
-  }, [allowDuplicatesForWardrobe, form, hasSelectedFurnitureType, structureOptions]);
+  }, [
+    allowDuplicatesForWardrobe,
+    form,
+    hasSelectedFurnitureType,
+    structureOptions,
+  ]);
 
   useEffect(() => {
-    console.log("LeadID: ", leadData.id);
-    console.log("VendorID: ", vendorId);
-    console.log("CreatedBy: ", createdBy);
-    
     const fetchLeadData = async () => {
       if (!leadData?.id || !vendorId || !createdBy) return;
 
       try {
         setIsLoadingLead(true);
-        const response = await getLeadById(leadData.id, vendorId, createdBy);
+        const [response, instancesResponse] = await Promise.all([
+          getLeadById(leadData.id, vendorId, createdBy),
+          getLeadProductStructureInstances(vendorId, leadData.id),
+        ]);
         const lead = response.data.lead;
+        const structureInstances: LeadProductStructureInstance[] =
+          instancesResponse.data || [];
+        setIsDraftLead(Boolean(lead.is_draft));
 
         // ✅ Normalize phone numbers to E.164 format
-        const formattedContactNo = toE164(
-          lead.contact_no,
-          lead.country_code
-        );
+        const formattedContactNo = toE164(lead.contact_no, lead.country_code);
 
         const formattedAltContactNo = toE164(
           lead.alt_contact_no,
-          lead.country_code
+          lead.country_code,
         );
 
         // Format date for input (YYYY-MM-DD)
@@ -407,14 +424,12 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           ? [String(productTypeId)]
           : [];
 
-        // Pre-fill product structures
-        const structureInstances: any[] =
-          lead.leadProductStructureMapping || [];
-        const structureIds = structureInstances.map((s: any) =>
-          String(s.product_structure_id)
+        // Pre-fill product structures from instances so titles/descriptions stay aligned
+        const structureIds = structureInstances.map((s) =>
+          String(s.product_structure_id),
         );
-        const instanceIds = structureInstances.map((s: any) => s.id);
-        const instanceDetails = structureInstances.map((s: any) => ({
+        const instanceIds = structureInstances.map((s) => s.id);
+        const instanceDetails = structureInstances.map((s) => ({
           title: s.title || "",
           desc: s.description || "",
         }));
@@ -450,7 +465,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         // Handle map location
         if (lead.site_map_link && lead.site_map_link.includes("maps?q=")) {
           const coords = lead.site_map_link.match(
-            /q=(-?\d+\.?\d*),(-?\d+\.?\d*)/
+            /q=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
           );
           if (coords) {
             setSavedMapLocation({
@@ -471,6 +486,25 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     fetchLeadData();
   }, [leadData?.id, vendorId, createdBy, form]);
 
+  const isDraftReadyToConvert = useMemo(() => {
+    if (!isDraftLead) return false;
+
+    const hasRequiredTextFields =
+      watchedValues.firstname?.trim() &&
+      watchedValues.lastname?.trim() &&
+      watchedValues.site_address?.trim() &&
+      watchedValues.site_type_id?.trim() &&
+      watchedValues.source_id?.trim() &&
+      watchedValues.priority?.trim();
+
+    return Boolean(
+      hasRequiredTextFields &&
+      isPhoneValueValid(watchedValues.contact_no) &&
+      watchedValues.product_types?.length &&
+      watchedValues.product_structures?.length,
+    );
+  }, [isDraftLead, watchedValues]);
+
   if (isLoadingLead) {
     return (
       <div className="w-full max-w-none pt-3 pb-6 flex items-center justify-center">
@@ -480,12 +514,11 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   }
 
   const onSubmit = async (values: FormValues) => {
-    console.log("🚀 Update button clicked - Form submission started");
-    console.log("📋 Form values received:", values);
-    console.log("🧩 Dirty fields:", dirtyFields);
-
     if (!vendorId || !createdBy) {
-      toastManager.add({ title: "User authentication required", type: "error" });
+      toastManager.add({
+        title: "User authentication required",
+        type: "error",
+      });
       return;
     }
 
@@ -496,10 +529,14 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     const isDirty = (field: keyof FormValues) => !!dirtyFields[field];
 
     // Handle each field conditionally
-    if (isDirty("firstname")) payload.firstname = values.firstname;
-    if (isDirty("lastname")) payload.lastname = values.lastname;
+    if (isDirty("firstname") && values.firstname?.trim()) {
+      payload.firstname = values.firstname;
+    }
+    if (isDirty("lastname") && values.lastname?.trim()) {
+      payload.lastname = values.lastname;
+    }
 
-    if (isDirty("contact_no")) {
+    if (isDirty("contact_no") && values.contact_no) {
       try {
         const parsed = parsePhoneNumber(values.contact_no);
         if (parsed) {
@@ -521,16 +558,24 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       } catch {
         payload.alt_contact_no = values.alt_contact_no.replace(/\D/g, "");
       }
+    } else if (isDirty("alt_contact_no")) {
+      payload.alt_contact_no = "";
     }
 
     if (isDirty("email")) payload.email = values.email || "";
-    if (isDirty("site_type_id"))
+    if (isDirty("site_type_id") && values.site_type_id)
       payload.site_type_id = Number(values.site_type_id);
-    if (isDirty("source_id")) payload.source_id = Number(values.source_id);
-    if (isDirty("priority")) payload.priority = values.priority;
-    if (isDirty("site_address")) payload.site_address = values.site_address;
-    if (values.site_map_link && values.site_map_link.trim() !== "") {
-      payload.site_map_link = values.site_map_link.trim();
+    if (isDirty("source_id") && values.source_id) {
+      payload.source_id = Number(values.source_id);
+    }
+    if (isDirty("priority") && values.priority) {
+      payload.priority = values.priority;
+    }
+    if (isDirty("site_address") && values.site_address?.trim()) {
+      payload.site_address = values.site_address;
+    }
+    if (isDirty("site_map_link")) {
+      payload.site_map_link = values.site_map_link?.trim() || "";
     }
     if (isDirty("archetech_name"))
       payload.archetech_name = values.archetech_name || "";
@@ -541,7 +586,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       values.initial_site_measurement_date
     ) {
       payload.initial_site_measurement_date = new Date(
-        values.initial_site_measurement_date
+        values.initial_site_measurement_date,
       ).toISOString();
     }
 
@@ -567,18 +612,14 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       return;
     }
 
-    console.log("📤 Final Payload being sent:", payload);
-
     try {
-      // 1. Main lead fields update
-      if (hasMainChanges) {
-        await updateLeadMutation.mutateAsync(payload as EditLeadPayload);
-      }
+      const shouldConvertDraft =
+        isDraftLead && Boolean(currentProductTypeId) && isDraftReadyToConvert;
 
-      // 2. Product type update
+      // 1. Product type update
       if (productTypeChanged && currentProductTypeId) {
         const label = productTypes?.data?.find(
-          (t: any) => t.id === currentProductTypeId
+          (t: any) => t.id === currentProductTypeId,
         )?.type;
         if (label) {
           await updateLeadProductType(leadData.id, createdBy!, {
@@ -587,17 +628,17 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         }
       }
 
-      // 3. Structure instances full replace
+      // 2. Structure instances full replace
       if (structuresChanged) {
-        // Delete all existing instances
         for (const instanceId of existingStructureInstanceIds) {
           await deleteLeadProductStructureInstance(
             vendorId!,
             leadData.id,
-            instanceId
+            instanceId,
+            createdBy!,
           );
         }
-        // Create new instances
+
         const newInstances = buildStructureInstancesPayload();
         for (const instance of newInstances) {
           await createLeadProductStructureInstance(vendorId!, leadData.id, {
@@ -609,26 +650,42 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         }
       }
 
-      if (!hasMainChanges) {
-        // Trigger success manually if only product type/structure changed
-        toastManager.add({
-          title: "Lead updated successfully!",
-          type: "success",
-        });
+      // 3. Update scalar fields, or re-run draft completion after product changes
+      if (hasMainChanges || isDraftLead) {
+        await updateLeadMutation.mutateAsync(payload as EditLeadPayload);
+      }
+
+      await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["lead", leadData.id, vendorId, createdBy],
-        });
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["lead-product-structure-instances", leadData.id, vendorId],
+        }),
         queryClient.invalidateQueries({
           queryKey: ["universal-stage-leads"],
           exact: false,
-        });
-        onClose();
-      }
-    } catch (error: any) {
-      console.error("❌ Update failed:", error);
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["vendorUserLeads", vendorId, createdBy],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["vendorUserLeadsOpenuniversal-stage-leads"],
+        }),
+      ]);
+
       toastManager.add({
-        title:
-          error?.response?.data?.message || "Failed to update lead",
+        title: shouldConvertDraft
+          ? "Draft lead converted successfully!"
+          : isDraftLead
+            ? "Draft lead saved successfully!"
+            : "Lead updated successfully!",
+        type: "success",
+      });
+      onClose();
+    } catch (error: any) {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update lead",
         type: "error",
       });
     }
@@ -878,7 +935,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                       value !== savedMapLocation.address
                     ) {
                       setSavedMapLocation((prev) =>
-                        prev ? { ...prev, address: value } : null
+                        prev ? { ...prev, address: value } : null,
                       );
                     }
                   }}
@@ -909,7 +966,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           )}
         />
 
-
         {/* Product Type & Structure */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
           <FormField
@@ -934,9 +990,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                         field.value?.length ? Number(field.value[0]) : undefined
                       }
                       onChange={(selectedId) => {
-                        field.onChange(
-                          selectedId ? [String(selectedId)] : []
-                        );
+                        field.onChange(selectedId ? [String(selectedId)] : []);
                         // Clear structures when type changes
                         form.setValue("product_structures", [], {
                           shouldValidate: true,
@@ -957,11 +1011,11 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             render={({ field }) => {
               const selectedOptions = (field.value || [])
                 .filter((id) =>
-                  structureOptions.some((opt) => opt.value === id)
+                  structureOptions.some((opt) => opt.value === id),
                 )
                 .map((id) => {
                   const option = structureOptions.find(
-                    (opt) => opt.value === id
+                    (opt) => opt.value === id,
                   );
                   return option || { value: id, label: id };
                 });
@@ -970,16 +1024,14 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
               const tooltipMessage = !hasSelectedFurnitureType
                 ? "Select a furniture type first."
                 : shouldShowMaxTooltip
-                ? "Maximum limit is 10 per item."
-                : "";
+                  ? "Maximum limit is 10 per item."
+                  : "";
 
               return (
                 <FormItem>
                   <FormLabel className="text-sm">Furniture Structure</FormLabel>
                   <FormControl>
-                    <Tooltip
-                      {...(shouldShowMaxTooltip ? { open: true } : {})}
-                    >
+                    <Tooltip {...(shouldShowMaxTooltip ? { open: true } : {})}>
                       <TooltipTrigger asChild>
                         <div className="w-full">
                           <MultipleSelector
@@ -989,7 +1041,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                                 ? opts.slice(-1)
                                 : opts;
                               field.onChange(
-                                nextOptions.map((opt) => opt.value)
+                                nextOptions.map((opt) => opt.value),
                               );
                             }}
                             options={structureOptions}
@@ -999,13 +1051,15 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                             }
                             hidePlaceholderWhenSelected
                             showSelectedOptionsInDropdown
-                            allowDuplicateSelections={allowDuplicatesForWardrobe}
+                            allowDuplicateSelections={
+                              allowDuplicatesForWardrobe
+                            }
                             maxSelectedPerOption={10}
                             onMaxSelectedPerOption={() => {
                               setShowMaxStructureTooltip(true);
                               if (maxStructureTooltipTimerRef.current) {
                                 window.clearTimeout(
-                                  maxStructureTooltipTimerRef.current
+                                  maxStructureTooltipTimerRef.current,
                                 );
                               }
                               maxStructureTooltipTimerRef.current =
@@ -1124,7 +1178,15 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             className="text-sm"
             disabled={updateLeadMutation.isPending}
           >
-            {updateLeadMutation.isPending ? "Updating..." : "Update Lead"}
+            {updateLeadMutation.isPending
+              ? isDraftLead
+                ? "Saving..."
+                : "Updating..."
+              : isDraftLead
+                ? isDraftReadyToConvert
+                  ? "Convert To Lead"
+                  : "Save Draft"
+                : "Update Lead"}
           </Button>
         </div>
       </form>

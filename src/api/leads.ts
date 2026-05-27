@@ -48,6 +48,7 @@ export interface CreateLeadPayload {
 export interface Lead {
   id: number;
   lead_code?: string;
+  is_draft?: boolean;
   firstname: string;
   lastname: string;
   country_code: string;
@@ -288,9 +289,11 @@ export const deleteLeadProductStructureInstance = async (
   vendorId: number,
   leadId: number,
   instanceId: number,
+  updatedBy?: number,
 ) => {
   const response = await apiClient.delete(
     `/leads/lead/${leadId}/vendor/${vendorId}/product-structure-instances/${instanceId}`,
+    updatedBy ? { data: { updated_by: updatedBy } } : undefined,
   );
   return response.data;
 };
